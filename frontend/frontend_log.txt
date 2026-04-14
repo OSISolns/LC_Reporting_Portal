@@ -1536,3 +1536,304 @@ Error: connect ECONNREFUSED 127.0.0.1:5000
       at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
       at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
       at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:20:31 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:22:01 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:22:40 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+8:25:40 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+8:26:22 AM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+8:31:40 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+8:31:57 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+8:33:37 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+8:58:05 AM [vite] hmr update /src/components/Sidebar.jsx
+8:59:54 AM [vite] hmr update /src/pages/Dashboard.jsx
+9:27:25 AM [vite] hmr update /src/pages/Login.jsx
+9:37:20 AM [vite] hmr update /src/pages/Dashboard.jsx
+9:37:46 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+9:38:06 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+9:42:24 AM [vite] hmr update /src/pages/Users.jsx
+9:42:48 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+9:51:39 AM [vite] hmr update /src/pages/Login.jsx
+9:51:58 AM [vite] hmr update /src/pages/Login.jsx
+9:52:50 AM [vite] hmr update /src/pages/Users.jsx
+9:53:02 AM [vite] hmr update /src/pages/Users.jsx
+9:54:06 AM [vite] hmr update /src/components/Sidebar.jsx
+9:55:25 AM [vite] hmr update /src/context/AuthContext.jsx
+9:55:25 AM [vite] hmr invalidate /src/context/AuthContext.jsx Could not Fast Refresh ("useAuth" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:55:25 AM [vite] hmr update /src/App.jsx, /src/components/ProtectedRoute.jsx, /src/pages/Login.jsx, /src/pages/Dashboard.jsx, /src/pages/cancellations/CancellationList.jsx, /src/pages/cancellations/CancellationDetail.jsx, /src/pages/incidents/IncidentList.jsx, /src/components/Sidebar.jsx, /src/components/Header.jsx
+10:16:15 AM [vite] hmr update /src/index.css
+10:16:44 AM [vite] hmr update /src/pages/cancellations/CancellationDetail.jsx
+10:16:57 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+10:17:16 AM [vite] hmr update /src/pages/cancellations/CancellationDetail.jsx
+10:17:24 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+10:17:39 AM [vite] hmr update /src/pages/incidents/IncidentDetail.jsx
+10:17:51 AM [vite] hmr update /src/pages/incidents/IncidentList.jsx
+10:17:58 AM [vite] hmr update /src/pages/incidents/IncidentList.jsx
+10:18:09 AM [vite] hmr update /src/pages/AuditLogs.jsx
+10:18:25 AM [vite] hmr update /src/pages/Users.jsx
+10:18:36 AM [vite] hmr update /src/pages/Users.jsx
+10:21:52 AM [vite] hmr update /src/components/Modal.jsx
+10:29:17 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+10:29:24 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+10:29:33 AM [vite] hmr update /src/pages/cancellations/components/CancellationFormFields.jsx
+10:54:28 AM [vite] hmr update /src/index.css
+10:55:02 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+10:55:23 AM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+11:08:18 AM [vite] hmr update /src/index.css
+11:09:02 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+11:09:24 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+11:09:43 AM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+11:09:57 AM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+11:18:45 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+11:19:00 AM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+11:25:54 AM [vite] hmr update /src/index.css
+11:26:10 AM [vite] hmr update /src/components/PrintBranding.jsx
+11:28:28 AM [vite] hmr update /src/components/PrintBranding.jsx
+11:28:28 AM [vite] hmr invalidate /src/components/PrintBranding.jsx Could not Fast Refresh (new export)
+11:28:28 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx, /src/pages/incidents/components/IncidentDetailsView.jsx
+11:29:01 AM [vite] hmr update /src/index.css
+11:29:17 AM [vite] hmr update /src/index.css
+11:30:19 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+11:30:34 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+11:31:16 AM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+11:39:15 AM [vite] hmr update /src/pages/cancellations/CancellationDetail.jsx
+11:39:30 AM [vite] hmr update /src/pages/incidents/IncidentDetail.jsx
+11:41:14 AM [vite] hmr update /src/components/PrintBranding.jsx
+11:41:26 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+11:41:37 AM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+12:09:49 PM [vite] hmr update /src/components/PrintBranding.jsx
+12:10:06 PM [vite] hmr update /src/index.css
+12:10:23 PM [vite] hmr update /src/index.css
+12:34:47 PM [vite] hmr update /src/pages/incidents/components/IncidentFormFields.jsx
+12:56:49 PM [vite] hmr update /src/pages/Dashboard.jsx, /src/pages/incidents/IncidentList.jsx, /src/pages/incidents/IncidentForm.jsx, /src/pages/incidents/IncidentDetail.jsx
+12:57:02 PM [vite] hmr update /src/pages/incidents/IncidentList.jsx
+12:57:21 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+1:14:45 PM [vite] hmr update /src/components/Sidebar.jsx
+1:15:16 PM [vite] hmr update /src/pages/Dashboard.jsx
+1:20:02 PM [vite] hmr update /src/index.css
+1:20:20 PM [vite] hmr update /src/components/PrintBranding.jsx
+1:20:39 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+1:21:06 PM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+1:30:24 PM [vite] hmr update /src/index.css
+1:49:50 PM [vite] hmr update /src/index.css
+1:49:59 PM [vite] hmr update /src/components/PrintBranding.jsx
+1:50:16 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+1:50:40 PM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+1:56:11 PM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+1:56:11 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+1:56:11 PM [vite] hmr update /src/components/PrintBranding.jsx
+1:56:11 PM [vite] hmr update /src/index.css
+2:03:04 PM [vite] hmr update /src/index.css
+2:03:35 PM [vite] hmr update /src/index.css
+2:03:48 PM [vite] hmr update /src/components/PrintBranding.jsx
+2:04:05 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+2:04:23 PM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+2:15:19 PM [vite] hmr update /src/components/PrintBranding.jsx
+2:46:00 PM [vite] hmr update /src/components/Sidebar.jsx
+3:11:08 PM [vite] hmr update /src/index.css
+3:12:09 PM [vite] hmr update /src/index.css
+3:14:40 PM [vite] hmr update /src/index.css
+3:28:02 PM [vite] hmr update /src/index.css
+3:28:15 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+3:28:48 PM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+3:34:49 PM [vite] hmr update /src/index.css
+3:35:04 PM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+3:35:24 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+3:39:54 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+4:03:46 PM [vite] hmr update /src/pages/incidents/IncidentList.jsx
+4:05:39 PM [vite] hmr update /src/components/Sidebar.jsx
+4:05:57 PM [vite] hmr update /src/pages/incidents/IncidentList.jsx
+4:06:18 PM [vite] hmr update /src/pages/incidents/IncidentList.jsx
+4:06:55 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+4:06:55 PM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/components/IncidentDetailsView.jsx: 'return' outside of function. (19:2)
+
+  17 |   const isPending = data.status === 'pending';
+  18 |
+> 19 |   return (
+     |   ^
+  20 |     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
+  21 |       <PrintHeader title="Incident & Sentinel Event Report" docType="INC" docId={data.id} />
+  22 |       <PrintWatermark />
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/components/IncidentDetailsView.jsx:19:2
+  17 |    const isPending = data.status === 'pending';
+  18 |  
+  19 |    return (
+     |    ^
+  20 |      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
+  21 |        <PrintHeader title="Incident & Sentinel Event Report" docType="INC" docId={data.id} />
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.parseReturnStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13136:12)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12798:21)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseModuleItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseProgram (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12622:10)
+      at JSXParserMixin.parseTopLevel (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12612:25)
+      at JSXParserMixin.parse (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:14488:25)
+      at parse (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:14522:38)
+      at parser (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/gensync/index.js:261:32)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/gensync/index.js:223:11)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/gensync/index.js:189:28
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/gensync/index.js:113:33
+      at step (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/gensync/index.js:287:14)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/gensync/index.js:223:11)
+4:07:10 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+4:07:27 PM [vite] hmr update /src/pages/incidents/components/IncidentDetailsView.jsx
+4:07:50 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+4:08:08 PM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+4:15:13 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+4:15:21 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+4:15:37 PM [vite] hmr update /src/pages/incidents/IncidentList.jsx
+5:29:16 PM [vite] .env changed, restarting server...
+Re-optimizing dependencies because lockfile has changed
+5:29:16 PM [vite] server restarted.
+5:29:31 PM [vite] hmr update /src/pages/Dashboard.jsx, /src/pages/incidents/IncidentList.jsx, /src/pages/incidents/IncidentForm.jsx, /src/pages/incidents/IncidentDetail.jsx, /src/pages/incidents/components/IncidentDetailsView.jsx
+5:29:32 PM [vite] ✨ new dependencies optimized: @libsql/client/web
+5:29:32 PM [vite] ✨ optimized dependencies changed. reloading
+5:29:46 PM [vite] hmr update /src/pages/Dashboard.jsx, /src/pages/cancellations/CancellationList.jsx, /src/pages/cancellations/CancellationForm.jsx, /src/pages/cancellations/CancellationDetail.jsx
+5:29:55 PM [vite] hmr update /src/pages/incidents/IncidentList.jsx

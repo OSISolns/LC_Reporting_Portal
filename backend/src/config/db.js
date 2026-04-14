@@ -1,38 +1,66 @@
 'use strict';
 require('dotenv').config();
-const { Pool } = require('pg');
+const { createClient } = require('@libsql/client');
 
-const dbPassword = String(process.env.DB_PASSWORD || '');
+/**
+ * Initialize Turso (LibSQL) Client
+ */
+const client = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
 
-const connectionConfig = process.env.DATABASE_URL ? {
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
-} : {
-  host:                  process.env.DB_HOST     || 'localhost',
-  port:                  parseInt(process.env.DB_PORT || '5432', 10),
-  database:              process.env.DB_NAME     || 'lc_reporting',
-  user:                  process.env.DB_USER     || 'postgres',
-  password:              dbPassword,
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
+/**
+ * Compatibility Layer: Transforms Postgres-style SQL/params into LibSQL format.
+ * - Converts $1, $2, etc. to ?
+ * - Replaces NOW() with CURRENT_TIMESTAMP or DATETIME('now')
+ * - Replaces ILIKE with LIKE (SQLite LIKE is case-insensitive for ASCII)
+ */
+const transformQuery = (sql, params) => {
+  let transformedSql = sql;
+  
+  // 1. Convert $n placeholders to ?
+  // Postgres uses $1, $2... while SQLite uses ?
+  transformedSql = transformedSql.replace(/\$\d+/g, '?');
+
+  // 2. Dialect translation
+  transformedSql = transformedSql
+    .replace(/ILIKE/gi, 'LIKE')
+    .replace(/NOW\(\)/gi, "CURRENT_TIMESTAMP")
+    .replace(/TIMESTAMPTZ/gi, 'DATETIME')
+    .replace(/SERIAL/gi, 'INTEGER PRIMARY KEY AUTOINCREMENT');
+
+  return { sql: transformedSql, args: params || [] };
 };
 
-const pool = new Pool({
-  ...connectionConfig,
-  max:                   20,
-  idleTimeoutMillis:     30000,
-  connectionTimeoutMillis: 3000,
-});
-
-pool.on('connect', () => {
-  // Uncomment for debug:
-  // console.log('📦 New DB client connected');
-});
-
-pool.on('error', (err) => {
-  console.error('💥 Unexpected PostgreSQL pool error:', err.message);
-});
+/**
+ * Mocking the 'pg' query interface for minimal model refactoring.
+ */
+const query = async (sql, params = []) => {
+  try {
+    const { sql: transformedSql, args } = transformQuery(sql, params);
+    
+    // LibSQL execute returns { rows: [...], columns: [...], ... }
+    const result = await client.execute({ sql: transformedSql, args });
+    
+    // Postgres 'pg' library returns results in a 'rows' array
+    // LibSQL result already has a 'rows' array, but we ensure it matches the expected structure.
+    return {
+      rows: result.rows.map(row => {
+        // LibSQL rows are sometimes objects, sometimes arrays depending on the call.
+        // client.execute returns an array of objects.
+        return row;
+      }),
+      rowCount: result.rows.length
+    };
+  } catch (err) {
+    console.error('💥 Turso/LibSQL Query Error:', err.message);
+    console.error('SQL:', sql);
+    throw err;
+  }
+};
 
 module.exports = {
-  query:   (text, params) => pool.query(text, params),
-  pool,
+  query,
+  client,
 };

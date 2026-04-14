@@ -31,7 +31,7 @@ const IncidentList = () => {
 
   const fetchReports = async () => {
     try {
-      const res = await getIncidents(filters).catch(() => ({ data: { data: [] } }));
+      const res = await getIncidents(filters, user).catch(() => ({ data: { data: [] } }));
       setReports(res.data.data || []);
     } catch (err) {
       console.error('Failed to fetch incident reports');
