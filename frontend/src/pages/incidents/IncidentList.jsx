@@ -88,6 +88,20 @@ const IncidentList = () => {
     } catch (err) { alert('Export failed'); }
   };
 
+  const handlePrint = async (id) => {
+    setActiveIncident(null);
+    setIsViewModalOpen(true);
+    setDetailLoading(true);
+    try {
+      const res = await getIncidentById(id);
+      setActiveIncident({ ...res.data.data, printRequested: true });
+    } catch (err) {
+      console.error('Fetch failed');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const handlePrintList = () => {
     document.body.setAttribute('data-print-date', new Date().toLocaleString());
     window.print();
@@ -109,15 +123,13 @@ const IncidentList = () => {
             <Printer size={18} />
             Print Summary
           </button>
-          {!isManagement && (
-            <button 
-              onClick={() => setIsCreateModalOpen(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--danger)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, boxShadow: '0 4px 6px -1px rgba(220, 53, 69, 0.2)', cursor: 'pointer' }}
-            >
-              <Plus size={20} />
-              Report New Incident
-            </button>
-          )}
+          <button 
+            onClick={() => setIsCreateModalOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--danger)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, boxShadow: '0 4px 6px -1px rgba(220, 53, 69, 0.2)', cursor: 'pointer' }}
+          >
+            <Plus size={20} />
+            Report New Incident
+          </button>
         </div>
       </div>
 
@@ -205,24 +217,54 @@ const IncidentList = () => {
                       {r.status === 'reviewed' ? '✅ Reviewed' : '⏳ Pending'}
                     </span>
                   </td>
-                  <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
+                  <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                     <button 
                       onClick={() => handleViewDetails(r.id)}
+                      title="View Details"
                       style={{ 
                         color: 'var(--primary)', 
                         background: 'none',
                         border: 'none',
                         display: 'inline-flex', 
                         alignItems: 'center', 
-                        gap: '8px', 
-                        fontWeight: 700,
-                        padding: '8px 12px',
+                        padding: '8px',
                         borderRadius: '8px',
                         cursor: 'pointer',
                         transition: 'background 0.2s'
                       }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Eye size={18} />
-                      View Details
+                    </button>
+                    <button 
+                      onClick={() => handleExport(r.id)}
+                      title="Export PDF"
+                      style={{ 
+                        color: 'var(--primary)', 
+                        background: 'none',
+                        border: 'none',
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        padding: '8px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      <Download size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handlePrint(r.id)}
+                      title="Print Report"
+                      style={{ 
+                        color: 'var(--primary)', 
+                        background: 'none',
+                        border: 'none',
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        padding: '8px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      <Printer size={18} />
                     </button>
                   </td>
                 </tr>
@@ -259,8 +301,9 @@ const IncidentList = () => {
         ) : (
           <IncidentDetailsView 
             data={activeIncident} 
-            onExport={() => handleExport(activeIncident.id)}
+            onExport={() => activeIncident && handleExport(activeIncident.id)}
             onReviewComplete={fetchReports}
+            printOnLoad={activeIncident?.printRequested}
           />
         )}
       </Modal>

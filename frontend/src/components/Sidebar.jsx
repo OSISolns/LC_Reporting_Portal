@@ -6,19 +6,24 @@ import {
   AlertTriangle, 
   Users, 
   History, 
-  LogOut 
+  LogOut,
+  Key
 } from 'lucide-react';
+import Modal from './Modal';
+import ChangePasswordModal from './ChangePasswordModal';
+import { useState } from 'react';
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const menuItems = [
     { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/', roles: ['all'] },
-    { name: 'Cancellations', icon: <FileText size={20} />, path: '/cancellations', roles: ['all'] },
+    { name: 'Cancellations', icon: <FileText size={20} />, path: '/cancellations', roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo'] },
     { name: 'Incident Reports', icon: <AlertTriangle size={20} />, path: '/incidents', roles: ['all'] },
-    { name: 'User Management', icon: <Users size={20} />, path: '/users', roles: ['coo', 'chairman', 'admin'] },
-    { name: 'Audit Logs', icon: <History size={20} />, path: '/audit-logs', roles: ['coo', 'chairman', 'admin'] },
+    { name: 'User Management', icon: <Users size={20} />, path: '/users', roles: ['admin'] },
+    { name: 'Audit Logs', icon: <History size={20} />, path: '/audit-logs', roles: ['admin'] },
   ];
 
   const filteredMenu = menuItems.filter(item => 
@@ -66,6 +71,26 @@ const Sidebar = () => {
       </nav>
 
       <button
+        onClick={() => setIsPasswordModalOpen(true)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '0.75rem 1rem',
+          borderRadius: '8px',
+          border: 'none',
+          backgroundColor: 'transparent',
+          color: 'rgba(255,255,255,0.7)',
+          fontWeight: 500,
+          cursor: 'pointer',
+          marginBottom: '0.5rem'
+        }}
+      >
+        <Key size={20} />
+        Update Password
+      </button>
+
+      <button
         onClick={logout}
         style={{
           display: 'flex',
@@ -95,6 +120,14 @@ const Sidebar = () => {
         <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)', fontFamily: 'monospace' }}>@{user?.username}</div>
       </div>
 
+      <Modal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        title="Account Security"
+        maxWidth="500px"
+      >
+        <ChangePasswordModal onClose={() => setIsPasswordModalOpen(false)} />
+      </Modal>
     </aside>
   );
 };

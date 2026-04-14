@@ -31,6 +31,16 @@ if (allowDevLogin) {
   });
 }
 
+router.post(
+  '/password/change',
+  authenticate,
+  validate([
+    body('oldPassword').notEmpty().withMessage('Old password is required'),
+    body('newPassword').isLength({ min: 4 }).withMessage('New password must be at least 4 characters long'),
+  ]),
+  authController.changePassword
+);
+
 router.get('/me', authenticate, authController.getMe);
 
 module.exports = router;

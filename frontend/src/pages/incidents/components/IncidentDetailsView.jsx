@@ -4,7 +4,7 @@ import { PrintHeader, PrintFooter, PrintWatermark } from '../../../components/Pr
 import { useAuth } from '../../../context/AuthContext';
 import { reviewIncident } from '../../../api/incidents';
 
-const IncidentDetailsView = ({ data, onExport, onReviewComplete }) => {
+const IncidentDetailsView = ({ data, onReviewComplete, printOnLoad }) => {
   const { user } = useAuth();
   const [reviewing, setReviewing] = useState(false);
   const [comments, setComments] = useState('');
@@ -18,13 +18,21 @@ const IncidentDetailsView = ({ data, onExport, onReviewComplete }) => {
       await reviewIncident(data.id, comments);
       if (onReviewComplete) onReviewComplete();
       setReviewing(false);
-      // We need to refresh the local data or the parent will refresh
     } catch (err) {
       alert('Failed to submit review');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (printOnLoad && data) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [printOnLoad, data]);
 
   const isQA = user?.role === 'quality_assurance';
   const isPending = data.status === 'pending';
@@ -33,20 +41,25 @@ const IncidentDetailsView = ({ data, onExport, onReviewComplete }) => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
       <PrintHeader title="Incident & Sentinel Event Report" docType="INC" docId={data.id} />
       <PrintWatermark />
-      <div className="official-form-container">
-        <h1 style={{ textAlign: 'center', textDecoration: 'underline', marginBottom: '2rem', fontSize: '1.5rem', fontWeight: 800 }}>INCIDENT & SENTINEL EVENT REPORT</h1>
-        
-        <div style={{ marginBottom: '2rem', fontWeight: 700 }}>
-          DATE OF REPORT: <span style={{ textDecoration: 'underline', marginLeft: '10px' }}>{new Date(data.created_at).toLocaleDateString()}</span>
+      
+      {data.status === 'reviewed' && (
+        <div className="medical-stamp">
+          <img src="/stamps/verified.png" alt="VERIFIED" />
         </div>
+      )}
 
+      <div className="medical-form-modern">
         {/* Section 1 */}
-        <h3 className="official-form-section-title">Section 1: INCIDENT IDENTIFICATION</h3>
-        <table className="official-form-table">
+        <div className="medical-form-section-head">Section 1: INCIDENT IDENTIFICATION</div>
+        <table className="medical-form-table">
           <tbody>
             <tr>
+              <th>Date of Report</th>
+              <td>{new Date(data.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+            </tr>
+            <tr>
               <th>Incident Type</th>
-              <td style={{ fontWeight: 700, color: 'var(--danger)' }}>{data.incident_type}</td>
+              <td style={{ fontWeight: 800, color: '#b91c1c' }}>{data.incident_type}</td>
             </tr>
             <tr>
               <th>Department / Unit</th>
@@ -62,14 +75,14 @@ const IncidentDetailsView = ({ data, onExport, onReviewComplete }) => {
             </tr>
             <tr>
               <th>Patient PID (if applicable)</th>
-              <td>{data.pid_number || '---'}</td>
+              <td>{data.pid_number || 'N/A'}</td>
             </tr>
           </tbody>
         </table>
 
         {/* Section 2 */}
-        <h3 className="official-form-section-title">Section 2: INCIDENT NARRATIVE & ANALYSIS</h3>
-        <table className="official-form-table">
+        <div className="medical-form-section-head">Section 2: NARRATIVE ANALYSIS & PREVENTION</div>
+        <table className="medical-form-table">
           <tbody>
             <tr>
               <th>Description of Event</th>
@@ -89,9 +102,9 @@ const IncidentDetailsView = ({ data, onExport, onReviewComplete }) => {
             </tr>
             {data.status === 'reviewed' && (
               <tr>
-                <th>Reviewer Comments</th>
-                <td style={{ backgroundColor: '#f0fdf4', color: '#166534', fontStyle: 'italic' }}>
-                  {data.review_comments || 'Reviewed and confirmed as accurate.'}
+                <th>QA Reviewer Comments</th>
+                <td style={{ backgroundColor: '#f8fafc', fontStyle: 'italic', fontWeight: 500, color: '#003B44' }}>
+                  {data.review_comments || 'Verified for clinical standards compliance.'}
                 </td>
               </tr>
             )}
@@ -99,103 +112,103 @@ const IncidentDetailsView = ({ data, onExport, onReviewComplete }) => {
         </table>
 
         {/* Section 3 */}
-        <h3 className="official-form-section-title">Section 3: REPORT ATTRIBUTION</h3>
-        <div className="signature-block">
-          <div className="signature-line">
-            <span className="signature-label">Reported by:</span>
-            <span className="signature-value">{data.creator_name || 'System User'}</span>
-            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>@ {new Date(data.created_at).toLocaleString()}</span>
+        <div className="medical-form-section-head">Section 3: AUTHORIZATION & OFFICIAL SIGNATURES</div>
+        <div className="medical-signature-grid">
+          <div className="medical-signature-box">
+            <div className="medical-signature-label">Reported By</div>
+            <div className="medical-signature-line">
+              {data.creator_name}
+            </div>
+            <div className="medical-stamp-area">
+              Digital ID: {data.creator_id || 'REGISTERED_STAFF'}
+            </div>
           </div>
-          <div className="signature-line" style={{ marginTop: '1rem', borderBottom: data.status === 'reviewed' ? '1px solid #000' : '1px dashed #ccc' }}>
-            <span className="signature-label">Quality Assurance Review:</span>
-            <span className="signature-value" style={{ color: data.status === 'reviewed' ? 'var(--primary-dark)' : 'transparent' }}>
-              {data.status === 'reviewed' ? `SIGNED: ${data.reviewer_name || 'Quality Officer'}` : '__________________________'}
-            </span>
-            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-              Date: {data.status === 'reviewed' ? new Date(data.reviewed_at).toLocaleDateString() : '___/___/2026'}
-            </span>
+          
+          <div className="medical-signature-box">
+            <div className="medical-signature-label">Date of Entry</div>
+            <div className="medical-signature-line">
+              {new Date(data.created_at).toLocaleDateString()}
+            </div>
+            <div className="medical-stamp-area">
+              Time: {new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+
+          <div className="medical-signature-box">
+            <div className="medical-signature-label">Quality & Assurance</div>
+            <div className="medical-signature-line" style={{ color: data.status === 'reviewed' ? '#003B44' : '#cbd5e1' }}>
+              {data.status === 'reviewed' ? `SIGNED: ${data.reviewer_name}` : 'PENDING'}
+            </div>
+            <div className="medical-stamp-area">
+              Official Review Date
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Action Panel */}
-      <div className="no-print" style={{ 
-        marginTop: '1rem', 
-        padding: '1.5rem', 
-        backgroundColor: '#f8fafc', 
-        borderRadius: '12px', 
-        border: '1px solid var(--border-color)',
-        display: reviewing ? 'block' : 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '1rem'
-      }}>
-        {reviewing ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary-dark)' }}>
-              <MessageSquare size={18} />
-              Add Quality Assurance Comments (Optional)
-            </div>
-            <textarea 
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              placeholder="Enter any feedback or confirmation details..."
-              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1.5px solid var(--border-color)', minHeight: '100px', outline: 'none' }}
-            />
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button 
-                onClick={handleReview}
-                disabled={isSubmitting}
-                style={{ padding: '0.75rem 1.5rem', backgroundColor: '#07896b', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-              >
-                {isSubmitting ? 'Submitting...' : <><CheckCircle size={18} /> Confirm & Sign Report</>}
-              </button>
-              <button 
-                onClick={() => setReviewing(false)}
-                style={{ padding: '0.75rem 1.5rem', backgroundColor: '#e2e8f0', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <button 
-                onClick={onExport}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
-              >
-                <Download size={18} />
-                Download PDF
-              </button>
-              <button 
-                onClick={() => window.print()}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: 'white', color: 'var(--primary-dark)', border: '1.5px solid var(--border-color)', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
-              >
-                <ShieldCheck size={18} />
-                Print Requisition
-              </button>
-            </div>
-            
-            {isQA && isPending && (
-              <button 
-                onClick={() => setReviewing(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: '#07896b', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(7, 137, 107, 0.2)' }}
-              >
-                <CheckCircle size={18} />
-                Review & Confirm
-              </button>
-            )}
-
-            {!isPending && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#07896b', fontWeight: 700, backgroundColor: 'rgba(7, 137, 107, 0.1)', padding: '8px 16px', borderRadius: '20px' }}>
-                <CheckCircle size={18} />
-                Officially Reviewed
+      {/* Action Panel - Simplified */}
+      {(isQA && isPending) || reviewing || !isPending ? (
+        <div className="no-print" style={{ 
+          marginTop: '1rem', 
+          padding: '1.5rem', 
+          backgroundColor: '#f8fafc', 
+          borderRadius: '12px', 
+          border: '1px solid var(--border-color)',
+          display: reviewing ? 'block' : 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '1rem'
+        }}>
+          {reviewing ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary-dark)' }}>
+                <MessageSquare size={18} />
+                Add Quality Assurance Comments (Optional)
               </div>
-            )}
-          </>
-        )}
-      </div>
+              <textarea 
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                placeholder="Enter any feedback or confirmation details..."
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1.5px solid var(--border-color)', minHeight: '100px', outline: 'none' }}
+              />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button 
+                  onClick={handleReview}
+                  disabled={isSubmitting}
+                  style={{ padding: '0.75rem 1.5rem', backgroundColor: '#07896b', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  {isSubmitting ? 'Submitting...' : <><CheckCircle size={18} /> Confirm & Sign Report</>}
+                </button>
+                <button 
+                  onClick={() => setReviewing(false)}
+                  style={{ padding: '0.75rem 1.5rem', backgroundColor: '#e2e8f0', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {isQA && isPending && (
+                <button 
+                  onClick={() => setReviewing(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: '#07896b', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(7, 137, 107, 0.2)' }}
+                >
+                  <CheckCircle size={18} />
+                  Review & Confirm
+                </button>
+              )}
+
+              {!isPending && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#07896b', fontWeight: 700, backgroundColor: 'rgba(7, 137, 107, 0.1)', padding: '8px 16px', borderRadius: '20px' }}>
+                  <CheckCircle size={18} />
+                  Officially Reviewed
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : null}
       <PrintFooter />
     </div>
   );

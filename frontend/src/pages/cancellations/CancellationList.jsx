@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, Filter, FileSpreadsheet, Trash2, Eye, FileText, Printer } from 'lucide-react';
+import { Plus, Search, Filter, FileSpreadsheet, Trash2, Eye, FileText, Printer, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -96,6 +96,20 @@ const CancellationList = () => {
       document.body.appendChild(link);
       link.click();
     } catch (err) { alert('Export failed'); }
+  };
+
+  const handlePrint = async (id) => {
+    setActiveRequest(null);
+    setShowViewModal(true);
+    setDetailLoading(true);
+    try {
+      const res = await getCancellationById(id);
+      setActiveRequest({ ...res.data.data, printRequested: true });
+    } catch (err) {
+      console.error('Failed to fetch request details');
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -209,20 +223,60 @@ const CancellationList = () => {
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <StatusBadge status={r.status} />
                   </td>
-                  <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem' }}>
+                  <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                     <button 
                       onClick={() => handleViewDetails(r.id)}
-                      className="btn-icon" 
                       title="View Details"
-                    >
+                      style={{ 
+                        color: 'var(--primary)', 
+                        background: 'none',
+                        border: 'none',
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        padding: '8px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Eye size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handleExport(r.id)}
+                      title="Export PDF"
+                      style={{ 
+                        color: 'var(--primary)', 
+                        background: 'none',
+                        border: 'none',
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        padding: '8px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      <Download size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handlePrint(r.id)}
+                      title="Print Report"
+                      style={{ 
+                        color: 'var(--primary)', 
+                        background: 'none',
+                        border: 'none',
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        padding: '8px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      <Printer size={18} />
                     </button>
                     {r.status === 'pending' && (r.created_by === user.id) && ['cashier', 'principal_cashier', 'customer_care'].includes(user.role) && (
                       <button 
                         onClick={() => handleDelete(r.id)}
-                        className="btn-icon" 
                         title="Delete Request"
-                        style={{ color: 'var(--danger)' }}
+                        style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
                       >
                         <Trash2 size={18} />
                       </button>
@@ -263,10 +317,11 @@ const CancellationList = () => {
           <CancellationDetailsView 
             data={activeRequest} 
             user={user}
-            onExport={() => handleExport(activeRequest.id)}
-            onVerify={() => handleAction(verifyCancellation, activeRequest.id)}
-            onApprove={() => handleAction(approveCancellation, activeRequest.id)}
-            onReject={(comment) => handleAction(rejectCancellation, activeRequest.id, comment)}
+            onExport={() => activeRequest && handleExport(activeRequest.id)}
+            onVerify={() => activeRequest && handleAction(verifyCancellation, activeRequest.id)}
+            onApprove={() => activeRequest && handleAction(approveCancellation, activeRequest.id)}
+            onReject={(comment) => activeRequest && handleAction(rejectCancellation, activeRequest.id, comment)}
+            printOnLoad={activeRequest?.printRequested}
           />
         )}
       </Modal>

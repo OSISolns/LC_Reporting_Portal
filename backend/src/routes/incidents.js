@@ -10,7 +10,7 @@ router.use(authenticate);
 
 router.post(
   '/',
-  authorize(['operations_staff', 'customer_care', 'cashier']),
+  authorize(['operations_staff', 'customer_care', 'cashier', 'coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'sales_manager', 'principal_cashier']),
   validate([
     body('incidentType').trim().notEmpty().withMessage('Incident type is required').isIn(['Patient', 'Staff', 'Equipment', 'Others']).withMessage('Invalid incident type'),
     body('department').trim().notEmpty().withMessage('Department is required'),

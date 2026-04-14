@@ -6,7 +6,7 @@ const { authenticate } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 
 router.use(authenticate);
-router.use(authorize(['coo', 'chairman', 'admin'])); // High-level roles + admin can manage users
+router.use(authorize(['admin'])); // Only admin can manage users
 
 router.get('/', userController.getAllUsers);
 router.post('/', userController.createUser);

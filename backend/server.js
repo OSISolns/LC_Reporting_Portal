@@ -73,10 +73,12 @@ app.use((err, _req, res, _next) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`\n🏥  Legacy Clinics Reporting Portal API`);
-  console.log(`🚀  Server running on http://localhost:${PORT}`);
-  console.log(`🌍  Environment: ${process.env.NODE_ENV || 'development'}\n`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`\n🏥  Legacy Clinics Reporting Portal API`);
+    console.log(`🚀  Server running on http://localhost:${PORT}`);
+    console.log(`🌍  Environment: ${process.env.NODE_ENV || 'development'}\n`);
+  });
+}
 
 module.exports = app;

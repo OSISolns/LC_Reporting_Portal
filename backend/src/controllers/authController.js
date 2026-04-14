@@ -115,3 +115,43 @@ exports.devLogin = async (req, res, next) => {
   }
 };
 
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    // Fetch user with password hash
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // Verify old password
+    const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Incorrect current password.' });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    // Update DB directly
+    const db = require('../config/db');
+    await db.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [newPasswordHash, userId]
+    );
+
+    // Log action
+    try {
+      await logAction(req, 'PASSWORD_CHANGE', 'user', userId, { username: user.username });
+    } catch (e) {
+      console.warn('⚠️ Could not log password change: DB down.');
+    }
+
+    res.json({ success: true, message: 'Password updated successfully!' });
+  } catch (err) {
+    next(err);
+  }
+};

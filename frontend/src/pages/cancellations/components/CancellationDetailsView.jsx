@@ -1,12 +1,21 @@
+import { useEffect, useState } from 'react';
 import { Eye, FileText, Calendar, User, Info, Receipt, Download, CheckCircle, XCircle } from 'lucide-react';
 import StatusBadge from '../../../components/StatusBadge';
-import { useState } from 'react';
 import { PrintHeader, PrintFooter, PrintWatermark } from '../../../components/PrintBranding';
 
-const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject }) => {
+const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject, printOnLoad }) => {
 
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
+
+  useEffect(() => {
+    if (printOnLoad && data) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [printOnLoad, data]);
 
   if (!data) return null;
 
@@ -25,93 +34,113 @@ const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, on
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
       <PrintHeader title="Cancellation Request Form" docType="CAN" docId={data.id} />
       <PrintWatermark />
-
-      <div className="official-form-container">
-        <h1 style={{ textAlign: 'center', textDecoration: 'underline', marginBottom: '2rem', fontSize: '1.5rem', fontWeight: 800 }}>CANCELLATION REQUEST FORM</h1>
-        
-        <div style={{ marginBottom: '2rem', fontWeight: 700 }}>
-          DATE OF REQUEST: <span style={{ textDecoration: 'underline', marginLeft: '10px' }}>{new Date(data.created_at).toLocaleDateString()}</span>
+      
+      {data.status === 'approved' && (
+        <div className="medical-stamp">
+          <img src="/stamps/approved.png" alt="APPROVED" />
         </div>
+      )}
+      {data.status === 'rejected' && (
+        <div className="medical-stamp">
+          <img src="/stamps/rejected.png" alt="REJECTED" />
+        </div>
+      )}
 
+      <div className="medical-form-modern">
         {/* Section 1 */}
-        <h3 className="official-form-section-title">Section 1: FORMAL PATIENT IDENTIFICATION</h3>
-        <table className="official-form-table">
+        <div className="medical-form-section-head">Section 1: FORMAL PATIENT IDENTIFICATION</div>
+        <table className="medical-form-table">
           <tbody>
             <tr>
-              <th>Patient's full name</th>
-              <td>{data.patient_full_name}</td>
+              <th>Patient's Full Name</th>
+              <td style={{ fontWeight: 700 }}>{data.patient_full_name}</td>
             </tr>
             <tr>
-              <th>PID number</th>
+              <th>PID Number</th>
               <td>{data.pid_number}</td>
             </tr>
             <tr>
-              <th>SID number</th>
-              <td>{data.new_sid_number || '---'}</td>
+              <th>SID Number</th>
+              <td>{data.new_sid_number || 'N/A'}</td>
             </tr>
             <tr>
-              <th>Telephone number</th>
-              <td>{data.telephone_number || '---'}</td>
+              <th>Telephone Number</th>
+              <td>{data.telephone_number || 'N/A'}</td>
             </tr>
             <tr>
               <th>Insurance / Payer</th>
-              <td>{data.insurance_payer || 'Private'}</td>
+              <td>{data.insurance_payer || 'Private / Walk-in'}</td>
             </tr>
           </tbody>
         </table>
 
         {/* Section 2 */}
-        <h3 className="official-form-section-title">Section 2: TRANSACTION DETAILS</h3>
-        <table className="official-form-table">
+        <div className="medical-form-section-head">Section 2: TRANSACTION & REFUND DETAILS</div>
+        <table className="medical-form-table">
           <tbody>
             <tr>
-              <th>Amount to be refunded</th>
-              <td style={{ fontWeight: 700 }}>RWF {data.total_amount_cancelled}</td>
+              <th>Amount to be Refunded</th>
+              <td style={{ fontWeight: 800, color: '#111827' }}>RWF {Number(data.total_amount_cancelled).toLocaleString()}</td>
             </tr>
             <tr>
-              <th>Original receipt / invoice number</th>
-              <td>{data.original_receipt_number || '---'}</td>
+              <th>Original Receipt / Invoice</th>
+              <td>{data.original_receipt_number || 'STUB_ATTACHED'}</td>
             </tr>
             <tr>
-              <th>Initial transaction date</th>
-              <td>{data.initial_transaction_date ? new Date(data.initial_transaction_date).toLocaleDateString() : '---'}</td>
+              <th>Initial Transaction Date</th>
+              <td>{data.initial_transaction_date ? new Date(data.initial_transaction_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</td>
             </tr>
             <tr>
-              <th>Reason for refund (details)</th>
+              <th>Reason for Refund</th>
               <td>{data.reason_for_cancellation}</td>
             </tr>
           </tbody>
         </table>
 
         {/* Section 3 */}
-        <h3 className="official-form-section-title">Section 3: REFUND APPROVAL WORKFLOW</h3>
-        <div className="signature-block">
-          <div className="signature-line">
-            <span className="signature-label">1. Initiated by (Cashier):</span>
-            <span className="signature-value">{data.creator_name}</span>
-            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>@ {new Date(data.created_at).toLocaleString()}</span>
+        <div className="medical-form-section-head">Section 3: APPROVAL WORKFLOW & OFFICIAL SIGNATURES</div>
+        <div className="medical-signature-grid">
+          {/* Level 1: Cashier */}
+          <div className="medical-signature-box">
+            <div className="medical-signature-label">1. Initiated By</div>
+            <div className="medical-signature-line">
+              {data.creator_name}
+            </div>
+            <div className="medical-stamp-area">
+               {new Date(data.created_at).toLocaleString()}
+            </div>
           </div>
           
-          <div className="signature-line" style={{ opacity: data.verifier_name ? 1 : 0.4 }}>
-            <span className="signature-label">2. Verified by:</span>
-            <span className="signature-value">{data.verifier_name || '__________________________'}</span>
-            {data.verified_at && <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>@ {new Date(data.verified_at).toLocaleString()}</span>}
-          </div>
-
-          <div className="signature-line" style={{ opacity: data.approver_name ? 1 : 0.4 }}>
-            <span className="signature-label">3. Approved by (C.O.O):</span>
-            <span className="signature-value">{data.approver_name || '__________________________'}</span>
-            {data.approved_at && <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>@ {new Date(data.approved_at).toLocaleString()}</span>}
-          </div>
-
-          {data.status === 'rejected' && (
-            <div className="signature-line" style={{ borderBottomColor: 'var(--danger)', marginTop: '1rem' }}>
-              <span className="signature-label" style={{ color: 'var(--danger)' }}>REJECTED BY:</span>
-              <span className="signature-value" style={{ color: 'var(--danger)' }}>{data.rejector_name}</span>
-              <span style={{ fontWeight: 600, color: 'var(--danger)' }}>REASON: {data.rejection_comment}</span>
+          {/* Level 2: Manager */}
+          <div className="medical-signature-box">
+            <div className="medical-signature-label">2. Verified By</div>
+            <div className="medical-signature-line" style={{ color: data.verifier_name ? '#000' : '#cbd5e1' }}>
+              {data.verifier_name || 'PENDING'}
             </div>
-          )}
+            <div className="medical-stamp-area">
+              {data.verified_at ? new Date(data.verified_at).toLocaleDateString() : 'Official Verification'}
+            </div>
+          </div>
+
+          {/* Level 3: COO */}
+          <div className="medical-signature-box">
+            <div className="medical-signature-label">3. Approved (COO)</div>
+            <div className="medical-signature-line" style={{ color: data.approver_name ? '#000' : '#cbd5e1' }}>
+              {data.approver_name || 'PENDING'}
+            </div>
+            <div className="medical-stamp-area">
+              {data.approved_at ? new Date(data.approved_at).toLocaleDateString() : 'Final Authorization'}
+            </div>
+          </div>
         </div>
+
+        {data.status === 'rejected' && (
+          <div style={{ margin: '15pt', padding: '10pt', border: '2px solid #b91c1c', borderRadius: '4px', backgroundColor: '#fef2f2' }}>
+            <div style={{ color: '#b91c1c', fontWeight: 800, fontSize: '8pt', textTransform: 'uppercase', marginBottom: '4px' }}>Request Rejected</div>
+            <div style={{ fontWeight: 700, fontSize: '10pt' }}>Reason: {data.rejection_comment}</div>
+            <div style={{ fontSize: '8pt', marginTop: '4px', opacity: 0.8 }}>Rejected by: {data.rejector_name}</div>
+          </div>
+        )}
       </div>
 
       {(canVerify || canApprove) && !isRejecting && (

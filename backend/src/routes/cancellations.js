@@ -21,6 +21,7 @@ router.post(
 );
 router.get(
   '/',
+  authorize(['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo']),
   validate([
     query('status').optional().isString(),
     query('pid').optional().isString(),
@@ -30,10 +31,10 @@ router.get(
 );
 
 // Export routes
-router.get('/export/excel', validate([]), cancellationController.exportExcel);
-router.get('/:id/pdf', validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.getPDF);
+router.get('/export/excel', authorize(['coo', 'chairman', 'admin', 'deputy_coo', 'sales_manager']), validate([]), cancellationController.exportExcel);
+router.get('/:id/pdf', authorize(['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo']), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.getPDF);
 
-router.get('/:id', validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.getRequestById);
+router.get('/:id', authorize(['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo']), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.getRequestById);
 router.patch('/:id/verify', authorize(['sales_manager']), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.verifyRequest);
 router.patch('/:id/approve', authorize(['coo']), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.approveRequest);
 router.patch('/:id/reject', authorize(['coo', 'sales_manager']), validate([

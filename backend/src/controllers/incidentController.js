@@ -55,7 +55,7 @@ exports.getPDF = async (req, res, next) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=Incident_${report.id}.pdf`);
     
-    generateIncidentPDF(report, res);
+    await generateIncidentPDF(report, res);
   } catch (err) {
     next(err);
   }

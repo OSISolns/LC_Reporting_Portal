@@ -90,7 +90,7 @@ exports.getPDF = async (req, res, next) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=Cancellation_${request.pid_number}.pdf`);
     
-    generateCancellationPDF(request, res);
+    await generateCancellationPDF(request, res);
   } catch (err) {
     next(err);
   }

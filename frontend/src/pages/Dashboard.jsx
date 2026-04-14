@@ -46,8 +46,19 @@ const Dashboard = () => {
         setLoading(false);
       }
     };
-    fetchStats();
-  }, []);
+    if (user?.role !== 'quality_assurance') {
+      fetchStats();
+    } else {
+      // For QA, just fetch incidents
+      const fetchIncidentsOnly = async () => {
+        try {
+          const res = await getIncidents().catch(() => ({ data: { data: [] } }));
+          setStats(prev => ({ ...prev, totalIncidents: res?.data?.data?.length || 0 }));
+        } finally { setLoading(false); }
+      };
+      fetchIncidentsOnly();
+    }
+  }, [user]);
 
   if (loading) return <LoadingSpinner />;
 
@@ -59,30 +70,36 @@ const Dashboard = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <StatCard 
-          title="Pending Approvals" 
-          value={stats.pendingCancellations} 
-          icon={<Clock size={22} />} 
-          color="warning" 
-        />
+        {user?.role !== 'quality_assurance' && (
+          <StatCard 
+            title="Pending Approvals" 
+            value={stats.pendingCancellations} 
+            icon={<Clock size={22} />} 
+            color="warning" 
+          />
+        )}
         <StatCard 
           title="Incident Reports" 
           value={stats.totalIncidents} 
           icon={<AlertTriangle size={22} />} 
           color="danger" 
         />
-        <StatCard 
-          title="Total Cancellations" 
-          value={stats.totalCancellations} 
-          icon={<FileText size={22} />} 
-          color="primary" 
-        />
-        <StatCard 
-          title="Approved Requests" 
-          value={stats.approvedCancellations} 
-          icon={<CheckCircle size={22} />} 
-          color="success" 
-        />
+        {user?.role !== 'quality_assurance' && (
+          <>
+            <StatCard 
+              title="Total Cancellations" 
+              value={stats.totalCancellations} 
+              icon={<FileText size={22} />} 
+              color="primary" 
+            />
+            <StatCard 
+              title="Approved Requests" 
+              value={stats.approvedCancellations} 
+              icon={<CheckCircle size={22} />} 
+              color="success" 
+            />
+          </>
+        )}
       </div>
 
       <div style={{ padding: '2rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
@@ -109,13 +126,15 @@ const Dashboard = () => {
             </button>
           )}
 
-          <button 
-            onClick={() => window.location.href = '/cancellations'}
-            style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}
-          >
-            <div style={{ padding: '12px', borderRadius: '50%', backgroundColor: 'rgba(23,162,184,0.1)', color: 'var(--info)' }}><Activity size={24} /></div>
-            <span style={{ fontWeight: 600, color: 'var(--primary-dark)' }}>View Cancellations</span>
-          </button>
+          {(user?.role !== 'quality_assurance') && (
+            <button 
+              onClick={() => window.location.href = '/cancellations'}
+              style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+              <div style={{ padding: '12px', borderRadius: '50%', backgroundColor: 'rgba(23,162,184,0.1)', color: 'var(--info)' }}><Activity size={24} /></div>
+              <span style={{ fontWeight: 600, color: 'var(--primary-dark)' }}>View Cancellations</span>
+            </button>
+          )}
 
           {(user?.role === 'coo' || user?.role === 'chairman' || user?.role === 'admin') && (
             <button 
