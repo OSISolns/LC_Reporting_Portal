@@ -1,0 +1,1538 @@
+
+> lc-reporting-portal-frontend@1.0.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 301 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+5:49:55 PM [vite] hmr update /src/pages/Dashboard.jsx
+5:50:18 PM [vite] hmr update /src/pages/incidents/IncidentList.jsx
+5:50:59 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+5:51:16 PM [vite] hmr update /src/pages/Users.jsx
+5:51:30 PM [vite] hmr update /src/pages/AuditLogs.jsx
+6:14:05 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+6:14:05 PM [vite] http proxy error: /api/auth/me
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:14:05 PM [vite] http proxy error: /api/auth/me
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:14:16 PM [vite] http proxy error: /api/auth/dev-login
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:14:22 PM [vite] hmr update /src/pages/cancellations/CancellationDetail.jsx
+6:25:56 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+6:26:14 PM [vite] hmr update /src/pages/incidents/IncidentList.jsx
+6:26:14 PM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx: Unexpected token, expected "," (204:6)
+
+  202 |       </div>
+  203 |     </div>
+> 204 |       {/* Create Modal */}
+      |       ^
+  205 |       <Modal
+  206 |         isOpen={isCreateModalOpen}
+  207 |         onClose={() => setIsCreateModalOpen(false)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx:204:6
+  202|        </div>
+  203|      </div>
+  204|        {/* Create Modal */}
+     |        ^
+  205|        <Modal
+  206|          isOpen={isCreateModalOpen}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.unexpected (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6619:16)
+      at JSXParserMixin.expect (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6899:12)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11661:14)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12421:16)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.parseReturnStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13142:28)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12798:21)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseStatementListItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseBlock (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at JSXParserMixin.parseFunctionBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12100:24)
+      at JSXParserMixin.parseArrowExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12075:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11687:12)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12421:16)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseVar (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13384:91)
+      at JSXParserMixin.parseVarStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13230:10)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12851:23)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseModuleItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseProgram (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12622:10)
+      at JSXParserMixin.parseTopLevel (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12612:25)
+      at JSXParserMixin.parse (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:14488:25)
+6:26:14 PM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx: Unexpected token, expected "," (204:6)
+
+  202 |       </div>
+  203 |     </div>
+> 204 |       {/* Create Modal */}
+      |       ^
+  205 |       <Modal
+  206 |         isOpen={isCreateModalOpen}
+  207 |         onClose={() => setIsCreateModalOpen(false)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx:204:6
+  202|        </div>
+  203|      </div>
+  204|        {/* Create Modal */}
+     |        ^
+  205|        <Modal
+  206|          isOpen={isCreateModalOpen}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.unexpected (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6619:16)
+      at JSXParserMixin.expect (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6899:12)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11661:14)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12421:16)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.parseReturnStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13142:28)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12798:21)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseStatementListItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseBlock (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at JSXParserMixin.parseFunctionBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12100:24)
+      at JSXParserMixin.parseArrowExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12075:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11687:12)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12421:16)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseVar (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13384:91)
+      at JSXParserMixin.parseVarStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13230:10)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12851:23)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseModuleItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseProgram (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12622:10)
+      at JSXParserMixin.parseTopLevel (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12612:25)
+      at JSXParserMixin.parse (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:14488:25)
+6:27:11 PM [vite] hmr update /src/pages/cancellations/CancellationForm.jsx
+6:27:58 PM [vite] hmr update /src/pages/cancellations/CancellationDetail.jsx
+6:28:22 PM [vite] hmr update /src/pages/incidents/IncidentForm.jsx
+6:28:42 PM [vite] hmr update /src/pages/incidents/IncidentDetail.jsx
+6:29:02 PM [vite] Pre-transform error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx: Unexpected token, expected "," (204:6)
+
+  202 |       </div>
+  203 |     </div>
+> 204 |       {/* Create Modal */}
+      |       ^
+  205 |       <Modal
+  206 |         isOpen={isCreateModalOpen}
+  207 |         onClose={() => setIsCreateModalOpen(false)}
+6:29:02 PM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx: Unexpected token, expected "," (204:6)
+
+  202 |       </div>
+  203 |     </div>
+> 204 |       {/* Create Modal */}
+      |       ^
+  205 |       <Modal
+  206 |         isOpen={isCreateModalOpen}
+  207 |         onClose={() => setIsCreateModalOpen(false)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx:204:6
+  202|        </div>
+  203|      </div>
+  204|        {/* Create Modal */}
+     |        ^
+  205|        <Modal
+  206|          isOpen={isCreateModalOpen}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.unexpected (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6619:16)
+      at JSXParserMixin.expect (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6899:12)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11661:14)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12421:16)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.parseReturnStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13142:28)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12798:21)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseStatementListItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseBlock (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at JSXParserMixin.parseFunctionBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12100:24)
+      at JSXParserMixin.parseArrowExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12075:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11687:12)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12421:16)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseVar (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13384:91)
+      at JSXParserMixin.parseVarStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13230:10)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12851:23)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseModuleItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseProgram (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12622:10)
+      at JSXParserMixin.parseTopLevel (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12612:25)
+      at JSXParserMixin.parse (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:14488:25)
+6:29:43 PM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx: Unexpected token, expected "," (204:6)
+
+  202 |       </div>
+  203 |     </div>
+> 204 |       {/* Create Modal */}
+      |       ^
+  205 |       <Modal
+  206 |         isOpen={isCreateModalOpen}
+  207 |         onClose={() => setIsCreateModalOpen(false)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx:204:6
+  202|        </div>
+  203|      </div>
+  204|        {/* Create Modal */}
+     |        ^
+  205|        <Modal
+  206|          isOpen={isCreateModalOpen}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.unexpected (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6619:16)
+      at JSXParserMixin.expect (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6899:12)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11661:14)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12421:16)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.parseReturnStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13142:28)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12798:21)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseStatementListItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseBlock (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at JSXParserMixin.parseFunctionBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12100:24)
+      at JSXParserMixin.parseArrowExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12075:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11687:12)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12421:16)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseVar (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13384:91)
+      at JSXParserMixin.parseVarStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13230:10)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12851:23)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseModuleItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseProgram (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12622:10)
+      at JSXParserMixin.parseTopLevel (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12612:25)
+      at JSXParserMixin.parse (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:14488:25)
+6:31:16 PM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx: Unexpected token, expected "," (204:6)
+
+  202 |       </div>
+  203 |     </div>
+> 204 |       {/* Create Modal */}
+      |       ^
+  205 |       <Modal
+  206 |         isOpen={isCreateModalOpen}
+  207 |         onClose={() => setIsCreateModalOpen(false)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/incidents/IncidentList.jsx:204:6
+  202|        </div>
+  203|      </div>
+  204|        {/* Create Modal */}
+     |        ^
+  205|        <Modal
+  206|          isOpen={isCreateModalOpen}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.unexpected (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6619:16)
+      at JSXParserMixin.expect (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6899:12)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11661:14)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12421:16)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.parseReturnStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13142:28)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12798:21)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseStatementListItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseBlock (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at JSXParserMixin.parseFunctionBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12100:24)
+      at JSXParserMixin.parseArrowExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12075:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11687:12)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12421:16)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseVar (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13384:91)
+      at JSXParserMixin.parseVarStatement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13230:10)
+      at JSXParserMixin.parseStatementContent (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12851:23)
+      at JSXParserMixin.parseStatementLike (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at JSXParserMixin.parseModuleItem (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at JSXParserMixin.parseBlockBody (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at JSXParserMixin.parseProgram (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12622:10)
+      at JSXParserMixin.parseTopLevel (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12612:25)
+      at JSXParserMixin.parse (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:14488:25)
+6:31:46 PM [vite] hmr update /src/pages/incidents/IncidentList.jsx
+6:40:44 PM [vite] hmr update /src/pages/Login.jsx
+6:40:44 PM [vite] hmr update /src/pages/Login.jsx
+6:40:54 PM [vite] hmr update /src/pages/Login.jsx
+6:40:56 PM [vite] hmr update /src/pages/Login.jsx
+6:41:02 PM [vite] http proxy error: /api/cancellations?patientName=&pid=&status=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:41:02 PM [vite] http proxy error: /api/cancellations?patientName=&pid=&status=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:41:03 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+6:41:03 PM [vite] http proxy error: /api/cancellations?patientName=&pid=&status=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:41:11 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+6:41:11 PM [vite] http proxy error: /api/cancellations?patientName=&pid=&status=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:41:16 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+6:41:16 PM [vite] http proxy error: /api/cancellations?patientName=&pid=&status=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:41:23 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+6:41:23 PM [vite] http proxy error: /api/cancellations?patientName=&pid=&status=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:41:26 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+6:41:27 PM [vite] http proxy error: /api/cancellations?patientName=&pid=&status=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:41:36 PM [vite] hmr update /src/pages/cancellations/CancellationDetail.jsx
+6:41:36 PM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+6:41:36 PM [vite] hmr update /src/pages/cancellations/CancellationDetail.jsx
+6:41:36 PM [vite] http proxy error: /api/cancellations?patientName=&pid=&status=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:41:45 PM [vite] http proxy error: /api/cancellations/CAN-1024
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:41:46 PM [vite] hmr update /src/pages/cancellations/CancellationDetail.jsx
+6:41:52 PM [vite] http proxy error: /api/cancellations/CAN-1025
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:15 PM [vite] http proxy error: /api/incidents
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:15 PM [vite] http proxy error: /api/cancellations
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:15 PM [vite] http proxy error: /api/incidents
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:15 PM [vite] http proxy error: /api/cancellations
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:17 PM [vite] http proxy error: /api/users
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:17 PM [vite] http proxy error: /api/users/roles
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:17 PM [vite] http proxy error: /api/users
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:18 PM [vite] http proxy error: /api/users/roles
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:23 PM [vite] http proxy error: /api/incidents?type=&department=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:23 PM [vite] http proxy error: /api/incidents?type=&department=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:26 PM [vite] http proxy error: /api/incidents?type=&department=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:28 PM [vite] http proxy error: /api/users
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:28 PM [vite] http proxy error: /api/users/roles
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:28 PM [vite] http proxy error: /api/users
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:28 PM [vite] http proxy error: /api/users/roles
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:29 PM [vite] http proxy error: /api/audit
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:29 PM [vite] http proxy error: /api/audit
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:30 PM [vite] http proxy error: /api/cancellations?patientName=&pid=&status=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:30 PM [vite] http proxy error: /api/cancellations?patientName=&pid=&status=
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:38 PM [vite] http proxy error: /api/auth/dev-login
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:40 PM [vite] http proxy error: /api/auth/dev-login
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:42 PM [vite] http proxy error: /api/auth/dev-login
+Error: connect ECONNREFUSED 127.0.0.1:5000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+6:42:47 PM [vite] hmr update /src/pages/cancellations/CancellationDetail.jsx
+6:45:37 PM [vite] hmr update /src/pages/Login.jsx
+6:45:52 PM [vite] hmr update /src/pages/Login.jsx
+7:57:38 AM [vite] hmr update /src/pages/Dashboard.jsx
+8:02:49 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+8:04:41 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+8:04:41 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (287:10)
+
+  285 |         {detailLoading ? (
+  286 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 287 |           <CancellationDetailsView 
+      |           ^
+  288 |             data={activeRequest} 
+  289 |             user={user}
+  290 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:287:10
+  285|          {detailLoading ? (
+  286|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  287|            <CancellationDetailsView 
+     |            ^
+  288|              data={activeRequest} 
+  289|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:04:41 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (287:10)
+
+  285 |         {detailLoading ? (
+  286 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 287 |           <CancellationDetailsView 
+      |           ^
+  288 |             data={activeRequest} 
+  289 |             user={user}
+  290 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:287:10
+  285|          {detailLoading ? (
+  286|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  287|            <CancellationDetailsView 
+     |            ^
+  288|              data={activeRequest} 
+  289|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:04:41 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (287:10)
+
+  285 |         {detailLoading ? (
+  286 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 287 |           <CancellationDetailsView 
+      |           ^
+  288 |             data={activeRequest} 
+  289 |             user={user}
+  290 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:287:10
+  285|          {detailLoading ? (
+  286|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  287|            <CancellationDetailsView 
+     |            ^
+  288|              data={activeRequest} 
+  289|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:04:50 AM [vite] hmr update /src/pages/cancellations/CancellationList.jsx
+8:04:50 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:04:51 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:04:51 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:05:25 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+8:06:48 AM [vite] Pre-transform error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+8:06:48 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:06:50 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:06:51 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:06:57 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:08:15 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+8:08:15 AM [vite] Pre-transform error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+8:08:15 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:08:27 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+8:08:27 AM [vite] Pre-transform error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+8:08:27 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:08:38 AM [vite] hmr update /src/pages/cancellations/components/CancellationDetailsView.jsx
+8:08:38 AM [vite] Pre-transform error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+8:08:38 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:09:24 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+8:10:32 AM [vite] hmr update /src/index.css
+8:10:32 AM [vite] Internal server error: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (296:10)
+
+  294 |         {detailLoading ? (
+  295 |           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+> 296 |           <CancellationDetailsView 
+      |           ^
+  297 |             data={activeRequest} 
+  298 |             user={user}
+  299 |             onExport={() => handleExport(activeRequest.id)}
+  Plugin: vite:react-babel
+  File: /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/cancellations/CancellationList.jsx:296:10
+  294|          {detailLoading ? (
+  295|            <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+  296|            <CancellationDetailsView 
+     |            ^
+  297|              data={activeRequest} 
+  298|              user={user}
+      at constructor (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:6599:19)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4742:18)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12493:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11675:28)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11331:23)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4764:20)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:17)
+      at JSXParserMixin.parseConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10891:30)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10885:17)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at JSXParserMixin.parseExpressionBase (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10784:23)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)
+      at JSXParserMixin.parseExpression (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10780:17)
+      at JSXParserMixin.jsxParseExpressionContainer (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4632:31)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4711:36)
+      at JSXParserMixin.jsxParseElementAt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4698:32)
+      at JSXParserMixin.jsxParseElement (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4749:17)
+      at JSXParserMixin.parseExprAtom (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:4759:19)
+      at JSXParserMixin.parseExprSubscripts (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11081:23)
+      at JSXParserMixin.parseUpdate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11066:21)
+      at JSXParserMixin.parseMaybeUnary (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:11046:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10899:61)
+      at JSXParserMixin.parseExprOps (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10904:23)
+      at JSXParserMixin.parseMaybeConditional (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10881:23)
+      at JSXParserMixin.parseMaybeAssign (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10831:21)
+      at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:10800:39
+      at JSXParserMixin.allowInAnd (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/node_modules/@babel/parser/lib/index.js:12426:12)

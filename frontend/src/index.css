@@ -1,0 +1,124 @@
+:root {
+  --primary: #007B8A;       /* Teal-blue primary */
+  --primary-dark: #003B44;  /* Dark Navy for text/contrast */
+  --bg-color: #f8fafc;      /* Light background */
+  --sidebar-bg: #003B44;    /* Sidebar Navy */
+  --card-bg: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --danger: #DC3545;
+  --warning: #FFC107;
+  --success: #28A745;
+  --info: #17A2B8;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Open Sans', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Poppins', sans-serif;
+  color: var(--primary-dark);
+}
+
+/* Card Style */
+.glass {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+button {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Poppins', sans-serif;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.card-shadow {
+  box-shadow: var(--shadow);
+}
+
+/* Print Styles for Professional Printouts */
+@media print {
+  body {
+    background: #ffffff;
+    color: #000;
+  }
+  
+  /* Hide Sidebar, Header, Buttons, Modals when printing by default */
+  .sidebar, nav, button, [role="button"], .no-print {
+    display: none !important;
+  }
+  
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .glass, .card-shadow {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+
+  /* Add simulated header with logo using pseudo element */
+  body::before {
+    content: "Legacy Clinics Reporting Portal";
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: right;
+    padding-bottom: 2rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #000;
+    /* We can use the actual logo using background image */
+    background-image: url('/logo.png');
+    background-size: 80px auto;
+    background-repeat: no-repeat;
+    background-position: left center;
+    color: transparent; /* Since the image provides context */
+  }
+}
