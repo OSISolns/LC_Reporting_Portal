@@ -24,11 +24,12 @@ async function authenticate(req, res, next) {
 
     // Verify user still exists and is active
     const { rows } = await db.query(
-      `SELECT u.id, u.full_name, u.email, u.is_active, r.name AS role, r.id AS role_id
+      `SELECT u.id, u.full_name, u.username, u.email, u.is_active, r.name AS role, r.id AS role_id
        FROM users u JOIN roles r ON u.role_id = r.id
        WHERE u.id = $1`,
       [decoded.id]
     );
+
 
     if (!rows.length || !rows[0].is_active) {
       return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });

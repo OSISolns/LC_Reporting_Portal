@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, Filter, FileSpreadsheet, Trash2, Eye, FileText } from 'lucide-react';
+import { Plus, Search, Filter, FileSpreadsheet, Trash2, Eye, FileText, Printer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -43,38 +43,7 @@ const CancellationList = () => {
   const fetchRequests = async () => {
     try {
       const res = await getCancellations(filters).catch(() => ({ data: { data: [] } }));
-      let fetchedData = res.data.data || [];
-
-      if (!fetchedData.length && isDev) {
-        fetchedData = [
-          {
-            id: 'CAN-1024',
-            patient_full_name: 'Sarah Jenkins',
-            pid_number: 'P-99201',
-            total_amount_cancelled: '1,250.00',
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-            status: 'approved'
-          },
-          {
-            id: 'CAN-1025',
-            patient_full_name: 'Robert Chen',
-            pid_number: 'P-99205',
-            total_amount_cancelled: '450.00',
-            created_at: new Date(Date.now() - 43200000).toISOString(),
-            status: 'pending'
-          },
-          {
-            id: 'CAN-1026',
-            patient_full_name: 'Alice Mwangi',
-            pid_number: 'P-98112',
-            total_amount_cancelled: '3,800.00',
-            created_at: new Date().toISOString(),
-            status: 'verified'
-          }
-        ];
-      }
-
-      setRequests(fetchedData);
+      setRequests(res.data.data || []);
     } catch (err) {
       console.error('Failed to fetch requests');
     } finally {
@@ -90,27 +59,12 @@ const CancellationList = () => {
       const res = await getCancellationById(id);
       setActiveRequest(res.data.data);
     } catch (err) {
-      if (isDev && id === 'CAN-1025') {
-        setActiveRequest({
-          id: 'CAN-1025',
-          patient_full_name: 'Robert Chen',
-          pid_number: 'P-99205',
-          old_sid_number: 'SID-8812',
-          new_sid_number: 'SID-8815',
-          insurance_payer: 'BlueCross Shield',
-          total_amount_cancelled: '450.00',
-          original_receipt_number: 'INV-44102',
-          initial_transaction_date: new Date(Date.now() - 43200000).toISOString(),
-          reason_for_cancellation: 'Patient was double charged for consultation fee.',
-          status: 'pending',
-          created_at: new Date(Date.now() - 43200000).toISOString(),
-          creator_name: 'John Cashier'
-        });
-      }
+      console.error('Failed to fetch request details');
     } finally {
       setDetailLoading(false);
     }
   };
+
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
@@ -164,6 +118,11 @@ const CancellationList = () => {
     }
   };
 
+  const handlePrintList = () => {
+    document.body.setAttribute('data-print-date', new Date().toLocaleString());
+    window.print();
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -171,12 +130,16 @@ const CancellationList = () => {
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Cancellation Requests</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Workflow for patient invoice/receipt cancellations.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="glass card-shadow" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1px solid var(--border-color)', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
-            <FileSpreadsheet size={18} />
-            Export Data
+        <div style={{ display: 'flex', gap: '12px' }} className="no-print">
+          <button 
+            onClick={handlePrintList} 
+            className="glass card-shadow" 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1px solid var(--border-color)', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            <Printer size={18} />
+            Print Summary
           </button>
-          {['cashier', 'customer_care'].includes(user?.role) && (
+          {['cashier', 'principal_cashier', 'customer_care'].includes(user?.role) && (
             <button 
               onClick={() => setShowCreateModal(true)}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(0, 123, 138, 0.2)', cursor: 'pointer' }}
@@ -187,6 +150,7 @@ const CancellationList = () => {
           )}
         </div>
       </div>
+
 
       <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff' }}>
         <div style={{ position: 'relative', flex: 2, minWidth: '300px' }}>
@@ -240,27 +204,29 @@ const CancellationList = () => {
                     <div style={{ fontWeight: 600, color: 'var(--primary-dark)', fontSize: '0.95rem' }}>{r.patient_full_name}</div>
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.9rem' }}>{r.pid_number}</td>
-                  <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--primary-dark)' }}>{r.total_amount_cancelled}</td>
+                  <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--primary-dark)' }}>RWF {r.total_amount_cancelled}</td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{new Date(r.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <StatusBadge status={r.status} />
                   </td>
-                  <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                  <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem' }}>
+                    <button 
+                      onClick={() => handleViewDetails(r.id)}
+                      className="btn-icon" 
+                      title="View Details"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    {r.status === 'pending' && (r.created_by === user.id) && ['cashier', 'principal_cashier', 'customer_care'].includes(user.role) && (
                       <button 
-                        onClick={() => handleViewDetails(r.id)}
-                        style={{ background: 'none', border: 'none', color: 'var(--primary)', padding: '6px', borderRadius: '6px', transition: 'background 0.2s', cursor: 'pointer' }} 
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} 
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        onClick={() => handleDelete(r.id)}
+                        className="btn-icon" 
+                        title="Delete Request"
+                        style={{ color: 'var(--danger)' }}
                       >
-                        <Eye size={20} />
+                        <Trash2 size={18} />
                       </button>
-                      {r.status === 'pending' && (r.created_by === user.id) && ['cashier', 'customer_care'].includes(user.role) && (
-                        <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', padding: '6px', borderRadius: '6px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(220,53,69,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                          <Trash2 size={20} />
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -293,6 +259,7 @@ const CancellationList = () => {
       >
         {detailLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+        ) : (
           <CancellationDetailsView 
             data={activeRequest} 
             user={user}

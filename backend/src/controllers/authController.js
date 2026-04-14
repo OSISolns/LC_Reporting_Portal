@@ -6,13 +6,13 @@ const bcrypt = require('bcryptjs');
 
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide email and password.' });
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide username and password.' });
     }
 
-    const user = await User.findByEmail(email);
+    const user = await User.findByUsername(username);
     if (!user || !user.is_active) {
       return res.status(401).json({ success: false, message: 'Invalid credentials or inactive account.' });
     }
@@ -30,7 +30,7 @@ exports.login = async (req, res, next) => {
 
     req.user = user;
     try {
-      await logAction(req, 'LOGIN', 'user', user.id, { email });
+      await logAction(req, 'LOGIN', 'user', user.id, { username });
     } catch (e) {
       console.warn('⚠️ Could not log login action: DB down.');
     }
@@ -41,6 +41,7 @@ exports.login = async (req, res, next) => {
       user: {
         id: user.id,
         fullName: user.full_name,
+        username: user.username,
         email: user.email,
         role: user.role
       }
@@ -49,6 +50,7 @@ exports.login = async (req, res, next) => {
     next(err);
   }
 };
+
 
 exports.getMe = async (req, res, next) => {
   try {
@@ -73,13 +75,13 @@ exports.devLogin = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Dev login is disabled in this environment.' });
     }
 
-    const { email } = req.body;
+    const { username } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Please provide email.' });
+    if (!username) {
+      return res.status(400).json({ success: false, message: 'Please provide username.' });
     }
 
-    const user = await User.findByEmail(email);
+    const user = await User.findByUsername(username);
     if (!user || !user.is_active) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
@@ -92,7 +94,7 @@ exports.devLogin = async (req, res, next) => {
 
     req.user = user;
     try {
-      await logAction(req, 'DEV_LOGIN_BYPASS', 'user', user.id, { email });
+      await logAction(req, 'DEV_LOGIN_BYPASS', 'user', user.id, { username });
     } catch (e) {
       console.warn('⚠️ Could not log devLogin action: DB down.');
     }
@@ -103,6 +105,7 @@ exports.devLogin = async (req, res, next) => {
       user: {
         id: user.id,
         fullName: user.full_name,
+        username: user.username,
         email: user.email,
         role: user.role,
       },
@@ -111,3 +114,4 @@ exports.devLogin = async (req, res, next) => {
     next(err);
   }
 };
+

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getIncidents } from '../../api/incidents';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, Filter, AlertCircle, Eye, Download } from 'lucide-react';
+import { Plus, Search, Filter, AlertCircle, Eye, Download, Printer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
@@ -40,7 +40,8 @@ const IncidentList = () => {
     }
   };
 
-  const isManagement = ['coo', 'chairman'].includes(user?.role);
+  const isManagement = ['coo', 'chairman', 'deputy_coo', 'quality_assurance', 'admin'].includes(user?.role);
+  const isQA = user?.role === 'quality_assurance';
 
   const handleViewDetails = async (id) => {
     setActiveIncident(null);
@@ -87,6 +88,11 @@ const IncidentList = () => {
     } catch (err) { alert('Export failed'); }
   };
 
+  const handlePrintList = () => {
+    document.body.setAttribute('data-print-date', new Date().toLocaleString());
+    window.print();
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -94,15 +100,25 @@ const IncidentList = () => {
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Incident & Sentinel Events</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Quality and safety report tracking for clinical excellence.</p>
         </div>
-        {!isManagement && (
+        <div style={{ display: 'flex', gap: '12px' }} className="no-print">
           <button 
-            onClick={() => setIsCreateModalOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--danger)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, boxShadow: '0 4px 6px -1px rgba(220, 53, 69, 0.2)', cursor: 'pointer' }}
+            onClick={handlePrintList} 
+            className="glass card-shadow" 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1px solid var(--border-color)', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
           >
-            <Plus size={20} />
-            Report New Incident
+            <Printer size={18} />
+            Print Summary
           </button>
-        )}
+          {!isManagement && (
+            <button 
+              onClick={() => setIsCreateModalOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--danger)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, boxShadow: '0 4px 6px -1px rgba(220, 53, 69, 0.2)', cursor: 'pointer' }}
+            >
+              <Plus size={20} />
+              Report New Incident
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff' }}>
@@ -146,6 +162,7 @@ const IncidentList = () => {
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Classification</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Department</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Individuals Involved</th>
+                <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -174,6 +191,20 @@ const IncidentList = () => {
                     <div style={{ fontWeight: 600, color: 'var(--primary-dark)', fontSize: '0.95rem' }}>{r.department}</div>
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{r.names_involved}</td>
+                  <td style={{ padding: '1.25rem 1.5rem' }}>
+                    <span style={{ 
+                      padding: '4px 10px', 
+                      borderRadius: '6px', 
+                      fontSize: '0.75rem', 
+                      fontWeight: 700, 
+                      backgroundColor: r.status === 'reviewed' ? 'rgba(7, 137, 107, 0.1)' : 'rgba(255, 193, 7, 0.1)', 
+                      color: r.status === 'reviewed' ? '#07896b' : '#cc9a06',
+                      border: `1px solid ${r.status === 'reviewed' ? 'rgba(7, 137, 107, 0.2)' : 'rgba(255, 193, 7, 0.2)'}`,
+                      textTransform: 'uppercase'
+                    }}>
+                      {r.status === 'reviewed' ? '✅ Reviewed' : '⏳ Pending'}
+                    </span>
+                  </td>
                   <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                     <button 
                       onClick={() => handleViewDetails(r.id)}
@@ -229,6 +260,7 @@ const IncidentList = () => {
           <IncidentDetailsView 
             data={activeIncident} 
             onExport={() => handleExport(activeIncident.id)}
+            onReviewComplete={fetchReports}
           />
         )}
       </Modal>

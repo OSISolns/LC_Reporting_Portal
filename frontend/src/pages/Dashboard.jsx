@@ -64,14 +64,12 @@ const Dashboard = () => {
           value={stats.pendingCancellations} 
           icon={<Clock size={22} />} 
           color="warning" 
-          trend="+2"
         />
         <StatCard 
           title="Incident Reports" 
           value={stats.totalIncidents} 
           icon={<AlertTriangle size={22} />} 
           color="danger" 
-          trend="+5"
         />
         <StatCard 
           title="Total Cancellations" 
@@ -87,43 +85,51 @@ const Dashboard = () => {
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '1.5rem' }}>
-        <div className="glass card-shadow" style={{ padding: '2rem', gridColumn: 'span 8', backgroundColor: '#ffffff' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>System Activity Overview</h2>
-            <div style={{ padding: '8px', borderRadius: '50%', backgroundColor: 'rgba(0,123,138,0.1)', color: 'var(--primary)' }}>
-              <Activity size={20} />
-            </div>
-          </div>
-          <div style={{ height: '300px', display: 'flex', flex_direction: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', border: '1.5px dashed #e2e8f0', borderRadius: '16px', backgroundColor: '#f8fafc' }}>
-            <TrendingUp size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-            <p style={{ fontWeight: 500 }}>Traffic & Request Trends</p>
-            <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>System API will populate real-time analytics here</p>
-          </div>
-        </div>
+      <div style={{ padding: '2rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: 'var(--primary-dark)' }}>Quick Access</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+          
+          {(user?.role === 'cashier' || user?.role === 'principal_cashier' || user?.role === 'customer_care') && (
+            <button 
+              onClick={() => window.location.href = '/cancellations/new'}
+              style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.2s', ':hover': { backgroundColor: '#f1f5f9', transform: 'translateY(-2px)' } }}
+            >
+              <div style={{ padding: '12px', borderRadius: '50%', backgroundColor: 'rgba(0,123,138,0.1)', color: 'var(--primary)' }}><FileText size={24} /></div>
+              <span style={{ fontWeight: 600, color: 'var(--primary-dark)' }}>New Cancellation</span>
+            </button>
+          )}
 
-        <div className="glass card-shadow" style={{ padding: '2rem', gridColumn: 'span 4', backgroundColor: '#ffffff' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Active Trends</h2>
-            <div style={{ padding: '8px', borderRadius: '50%', backgroundColor: 'rgba(23,162,184,0.1)', color: 'var(--info)' }}>
-              <TrendingUp size={20} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {[
-              { label: 'Patient Cancellations', trend: 'Up 12%', color: 'var(--primary)' },
-              { label: 'Verified Reports', trend: 'Steady', color: 'var(--info)' },
-              { label: 'System Uptime', trend: '99.9%', color: 'var(--success)' }
-            ].map((trend, i) => (
-              <div key={i} style={{ padding: '1.25rem', borderRadius: '12px', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: trend.color }}></div>
-                  <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-dark)' }}>{trend.label}</p>
-                </div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: trend.color }}>{trend.trend}</span>
-              </div>
-            ))}
-          </div>
+          {(user?.role === 'operations_staff' || user?.role === 'customer_care') && (
+            <button 
+              onClick={() => window.location.href = '/incidents/new'}
+              style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.2s', ':hover': { backgroundColor: '#f1f5f9', transform: 'translateY(-2px)' } }}
+            >
+              <div style={{ padding: '12px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--danger)' }}><AlertTriangle size={24} /></div>
+              <span style={{ fontWeight: 600, color: 'var(--primary-dark)' }}>Report Incident</span>
+            </button>
+          )}
+
+          <button 
+            onClick={() => window.location.href = '/cancellations'}
+            style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <div style={{ padding: '12px', borderRadius: '50%', backgroundColor: 'rgba(23,162,184,0.1)', color: 'var(--info)' }}><Activity size={24} /></div>
+            <span style={{ fontWeight: 600, color: 'var(--primary-dark)' }}>View Cancellations</span>
+          </button>
+
+          {(user?.role === 'coo' || user?.role === 'chairman' || user?.role === 'admin') && (
+            <button 
+              onClick={() => window.location.href = '/users'}
+              style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+               <div style={{ padding: '12px', borderRadius: '50%', backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--success)' }}>
+                 {/* I will use TrendingUp as generic icon if Users is not imported from lucid, wait I can just use Activity since lucide-react imports Activity. Actually, let's use Activity here too since Users may not be imported */}
+                 <Activity size={24} />
+               </div>
+               <span style={{ fontWeight: 600, color: 'var(--primary-dark)' }}>Manage Users</span>
+            </button>
+          )}
+
         </div>
       </div>
     </div>

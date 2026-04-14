@@ -16,8 +16,22 @@ exports.createReport = async (req, res, next) => {
 
 exports.getAllReports = async (req, res, next) => {
   try {
-    const reports = await Incident.getAll(req.query);
+    const reports = await Incident.getAll(req.query, req.user);
     res.json({ success: true, data: reports });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.reviewReport = async (req, res, next) => {
+  try {
+    const { comments } = req.body;
+    const report = await Incident.review(req.params.id, req.user.id, comments);
+    
+    if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
+    
+    await logAction(req, 'REVIEW', 'incident_report', report.id, { status: 'reviewed' });
+    res.json({ success: true, data: report });
   } catch (err) {
     next(err);
   }

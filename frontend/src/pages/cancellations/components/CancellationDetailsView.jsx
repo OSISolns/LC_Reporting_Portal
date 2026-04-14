@@ -1,27 +1,10 @@
 import { Eye, FileText, Calendar, User, Info, Receipt, Download, CheckCircle, XCircle } from 'lucide-react';
 import StatusBadge from '../../../components/StatusBadge';
 import { useState } from 'react';
-
-const LabelValue = ({ label, value }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-    <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--primary-dark)' }}>{value || '---'}</span>
-  </div>
-);
-
-const DetailSection = ({ label, value, icon, color }) => (
-  <div style={{ display: 'flex', gap: '15px' }}>
-    <div style={{ flexShrink: 0, width: '36px', height: '36px', borderRadius: '10px', backgroundColor: `${color}15`, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {icon}
-    </div>
-    <div>
-      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '4px' }}>{label}</h4>
-      <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{value}</p>
-    </div>
-  </div>
-);
+import { PrintHeader, PrintFooter, PrintWatermark } from '../../../components/PrintBranding';
 
 const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject }) => {
+
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
 
@@ -39,75 +22,100 @@ const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, on
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <StatusBadge status={data.status} />
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-            ID: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{data.id}</span>
-          </span>
-        </div>
-        {onExport && (
-          <button onClick={onExport} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#ffffff', color: 'var(--primary)', border: '1.5px solid var(--primary)', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' }}>
-            <Download size={16} />
-            Export PDF
-          </button>
-        )}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
+      <PrintHeader title="Cancellation Request Form" docType="CAN" docId={data.id} />
+      <PrintWatermark />
 
-      <div className="glass" style={{ position: 'relative', padding: '2rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-        {data.status === 'approved' && (
-          <img src="/images/stamps/approved.png" alt="Approved Stamp" style={{ position: 'absolute', top: '20px', right: '30px', width: '200px', opacity: 0.75, pointerEvents: 'none', transform: 'rotate(-15deg)', zIndex: 0 }} />
-        )}
-        {data.status === 'rejected' && (
-          <img src="/images/stamps/rejected.png" alt="Rejected Stamp" style={{ position: 'absolute', top: '20px', right: '30px', width: '200px', opacity: 0.75, pointerEvents: 'none', transform: 'rotate(-15deg)', zIndex: 0 }} />
-        )}
-        <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '2rem' }}>
-          <LabelValue label="Patient Name" value={data.patient_full_name} />
-          <LabelValue label="PID Number" value={data.pid_number} />
-          <LabelValue label="Old SID" value={data.old_sid_number} />
-          <LabelValue label="New SID" value={data.new_sid_number} />
-          <LabelValue label="Insurance / Payer" value={data.insurance_payer} />
-          <LabelValue label="Amount" value={data.total_amount_cancelled} />
+      <div className="official-form-container">
+        <h1 style={{ textAlign: 'center', textDecoration: 'underline', marginBottom: '2rem', fontSize: '1.5rem', fontWeight: 800 }}>CANCELLATION REQUEST FORM</h1>
+        
+        <div style={{ marginBottom: '2rem', fontWeight: 700 }}>
+          DATE OF REQUEST: <span style={{ textDecoration: 'underline', marginLeft: '10px' }}>{new Date(data.created_at).toLocaleDateString()}</span>
         </div>
 
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <DetailSection 
-            label="Original Receipt Details" 
-            value={data.original_receipt_number ? `Receipt #${data.original_receipt_number} on ${new Date(data.initial_transaction_date).toLocaleDateString()}` : 'No receipt data provided'} 
-            icon={<Receipt size={18} />} 
-            color="var(--info)" 
-          />
-          <DetailSection 
-            label="Reason for Cancellation" 
-            value={data.reason_for_cancellation} 
-            icon={<Info size={18} />} 
-            color="var(--primary)" 
-          />
-          {data.rejection_comment && (
-            <DetailSection 
-              label="Rejection Comment" 
-              value={data.rejection_comment} 
-              icon={<XCircle size={18} />} 
-              color="var(--danger)" 
-            />
+        {/* Section 1 */}
+        <h3 className="official-form-section-title">Section 1: FORMAL PATIENT IDENTIFICATION</h3>
+        <table className="official-form-table">
+          <tbody>
+            <tr>
+              <th>Patient's full name</th>
+              <td>{data.patient_full_name}</td>
+            </tr>
+            <tr>
+              <th>PID number</th>
+              <td>{data.pid_number}</td>
+            </tr>
+            <tr>
+              <th>SID number</th>
+              <td>{data.new_sid_number || '---'}</td>
+            </tr>
+            <tr>
+              <th>Telephone number</th>
+              <td>{data.telephone_number || '---'}</td>
+            </tr>
+            <tr>
+              <th>Insurance / Payer</th>
+              <td>{data.insurance_payer || 'Private'}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Section 2 */}
+        <h3 className="official-form-section-title">Section 2: TRANSACTION DETAILS</h3>
+        <table className="official-form-table">
+          <tbody>
+            <tr>
+              <th>Amount to be refunded</th>
+              <td style={{ fontWeight: 700 }}>RWF {data.total_amount_cancelled}</td>
+            </tr>
+            <tr>
+              <th>Original receipt / invoice number</th>
+              <td>{data.original_receipt_number || '---'}</td>
+            </tr>
+            <tr>
+              <th>Initial transaction date</th>
+              <td>{data.initial_transaction_date ? new Date(data.initial_transaction_date).toLocaleDateString() : '---'}</td>
+            </tr>
+            <tr>
+              <th>Reason for refund (details)</th>
+              <td>{data.reason_for_cancellation}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Section 3 */}
+        <h3 className="official-form-section-title">Section 3: REFUND APPROVAL WORKFLOW</h3>
+        <div className="signature-block">
+          <div className="signature-line">
+            <span className="signature-label">1. Initiated by (Cashier):</span>
+            <span className="signature-value">{data.creator_name}</span>
+            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>@ {new Date(data.created_at).toLocaleString()}</span>
+          </div>
+          
+          <div className="signature-line" style={{ opacity: data.verifier_name ? 1 : 0.4 }}>
+            <span className="signature-label">2. Verified by:</span>
+            <span className="signature-value">{data.verifier_name || '__________________________'}</span>
+            {data.verified_at && <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>@ {new Date(data.verified_at).toLocaleString()}</span>}
+          </div>
+
+          <div className="signature-line" style={{ opacity: data.approver_name ? 1 : 0.4 }}>
+            <span className="signature-label">3. Approved by (C.O.O):</span>
+            <span className="signature-value">{data.approver_name || '__________________________'}</span>
+            {data.approved_at && <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>@ {new Date(data.approved_at).toLocaleString()}</span>}
+          </div>
+
+          {data.status === 'rejected' && (
+            <div className="signature-line" style={{ borderBottomColor: 'var(--danger)', marginTop: '1rem' }}>
+              <span className="signature-label" style={{ color: 'var(--danger)' }}>REJECTED BY:</span>
+              <span className="signature-value" style={{ color: 'var(--danger)' }}>{data.rejector_name}</span>
+              <span style={{ fontWeight: 600, color: 'var(--danger)' }}>REASON: {data.rejection_comment}</span>
+            </div>
           )}
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '12px', fontSize: '0.85rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
-          <User size={14} />
-          <span>Submitted by <span style={{ fontWeight: 600, color: 'var(--primary-dark)' }}>{data.creator_name}</span></span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
-          <Calendar size={14} />
-          <span>{new Date(data.created_at).toLocaleString()}</span>
-        </div>
-      </div>
-
       {(canVerify || canApprove) && !isRejecting && (
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+        <div className="no-print" style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
           <button onClick={() => setIsRejecting(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: '#fff', color: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
             <XCircle size={18} />
             Reject Request
@@ -116,21 +124,21 @@ const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, on
           {canVerify && (
             <button onClick={onVerify} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--warning)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
               <CheckCircle size={18} />
-              First Level Approval
+              Verify Request (L1)
             </button>
           )}
 
           {canApprove && (
             <button onClick={onApprove} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--success)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
               <CheckCircle size={18} />
-              Final Level Approval
+              Final Approval (COO)
             </button>
           )}
         </div>
       )}
 
       {isRejecting && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem', padding: '1.5rem', backgroundColor: '#fff5f5', borderRadius: '12px', border: '1px solid #fed7d7' }}>
+        <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem', padding: '1.5rem', backgroundColor: '#fff5f5', borderRadius: '12px', border: '1px solid #fed7d7' }}>
           <h4 style={{ color: 'var(--danger)', margin: 0 }}>Provide Rejection Reason</h4>
           <textarea 
             value={rejectComment} 
@@ -144,6 +152,8 @@ const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, on
           </div>
         </div>
       )}
+
+      <PrintFooter />
     </div>
   );
 };

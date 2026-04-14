@@ -25,6 +25,8 @@ INSERT INTO roles (name, display_name) VALUES
   ('operations_staff', 'Operations Staff'),
   ('sales_manager',    'Sales Manager'),
   ('coo',              'Chief Operations Officer'),
+  ('deputy_coo',       'Deputy COO'),
+  ('quality_assurance','Quality & Assurance'),
   ('chairman',         'Chairman');
 
 -- =============================================================
@@ -103,6 +105,11 @@ CREATE TABLE incident_reports (
   immediate_actions   TEXT,
   prevention_measures TEXT,
   created_by          INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  status              VARCHAR(50) NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending', 'reviewed')),
+  reviewed_by         INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at         TIMESTAMPTZ,
+  review_comments     TEXT,
   created_at          TIMESTAMPTZ DEFAULT NOW(),
   updated_at          TIMESTAMPTZ DEFAULT NOW()
 );

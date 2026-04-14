@@ -17,8 +17,8 @@ const Sidebar = () => {
     { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/', roles: ['all'] },
     { name: 'Cancellations', icon: <FileText size={20} />, path: '/cancellations', roles: ['all'] },
     { name: 'Incident Reports', icon: <AlertTriangle size={20} />, path: '/incidents', roles: ['all'] },
-    { name: 'User Management', icon: <Users size={20} />, path: '/users', roles: ['coo', 'chairman'] },
-    { name: 'Audit Logs', icon: <History size={20} />, path: '/audit-logs', roles: ['coo', 'chairman'] },
+    { name: 'User Management', icon: <Users size={20} />, path: '/users', roles: ['coo', 'chairman', 'admin'] },
+    { name: 'Audit Logs', icon: <History size={20} />, path: '/audit-logs', roles: ['coo', 'chairman', 'admin'] },
   ];
 
   const filteredMenu = menuItems.filter(item => 
@@ -77,12 +77,24 @@ const Sidebar = () => {
           backgroundColor: 'transparent',
           color: '#ef4444',
           fontWeight: 500,
-          marginTop: 'auto'
+          cursor: 'pointer'
         }}
       >
         <LogOut size={20} />
         Logout
       </button>
+
+      <div style={{
+        marginTop: '1.5rem',
+        padding: '1rem',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderRadius: '12px',
+        border: '1px solid rgba(255, 255, 255, 0.1)'
+      }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>{user?.fullName}</div>
+        <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)', fontFamily: 'monospace' }}>@{user?.username}</div>
+      </div>
+
     </aside>
   );
 };

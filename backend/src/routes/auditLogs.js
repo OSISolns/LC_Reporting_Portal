@@ -6,7 +6,7 @@ const { authenticate } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 
 router.use(authenticate);
-router.use(authorize(['coo', 'chairman']));
+router.use(authorize(['coo', 'chairman', 'admin']));
 
 router.get('/', async (req, res, next) => {
   try {

@@ -81,44 +81,98 @@ button:active {
   box-shadow: var(--shadow);
 }
 
-/* Print Styles for Professional Printouts */
-@media print {
-  body {
-    background: #ffffff;
-    color: #000;
+.no-screen {
+  display: none;
+}
+
+/* BRANDING & PRINT SYSTEM */
+.print-only-header, .print-only-footer {
+  width: 100%;
+}
+
+.no-screen {
+  display: none !important;
+}
+
+@media screen {
+  .print-only-header {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: #f8fafc;
+    border: 1.5px dashed var(--primary);
+    border-radius: 12px;
   }
-  
-  /* Hide Sidebar, Header, Buttons, Modals when printing by default */
-  .sidebar, nav, button, [role="button"], .no-print {
+}
+
+@media print {
+  @page {
+    margin: 20mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background-color: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+  }
+
+  /* Reset dashboard layout for print */
+  #root, .app-container, .main-content {
+    display: block !important;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .no-print, header, nav, footer:not(.print-only-footer), .sidebar, .no-print-btns {
     display: none !important;
   }
-  
-  .main-content {
-    margin-left: 0 !important;
+
+  .print-only-header {
+    display: flex !important;
+    border: none !important;
+    background: none !important;
     padding: 0 !important;
-    width: 100% !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .print-only-footer {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+
+  .no-screen {
+    display: block !important;
+  }
+
+  .official-form-container {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
   }
 
   .glass, .card-shadow {
     box-shadow: none !important;
-    border: 1px solid #ddd !important;
+    border: 1px solid #e2e8f0 !important;
+    background: #fff !important;
+    border-radius: 0 !important;
   }
 
-  /* Add simulated header with logo using pseudo element */
-  body::before {
-    content: "Legacy Clinics Reporting Portal";
-    display: block;
-    font-size: 1.5rem;
-    font-weight: bold;
-    text-align: right;
-    padding-bottom: 2rem;
-    margin-bottom: 2rem;
-    border-bottom: 2px solid #000;
-    /* We can use the actual logo using background image */
-    background-image: url('/logo.png');
-    background-size: 80px auto;
-    background-repeat: no-repeat;
-    background-position: left center;
-    color: transparent; /* Since the image provides context */
+  h1, h2, h3, h4 {
+    color: #000 !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
   }
 }
+

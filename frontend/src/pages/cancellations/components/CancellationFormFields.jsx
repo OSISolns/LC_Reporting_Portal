@@ -41,9 +41,10 @@ const CancellationFormFields = ({ formData, handleChange, handleSubmit, loading,
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Total Amount *</label>
-            <input type="number" step="0.01" name="totalAmountCancelled" required value={formData.totalAmountCancelled} onChange={handleChange} style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none' }} />
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Total Amount (RWF) *</label>
+            <input type="number" step="0.01" name="totalAmountCancelled" required value={formData.totalAmountCancelled} onChange={handleChange} placeholder="e.g. 50000" style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none' }} />
           </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Original Receipt #</label>
             <input type="text" name="originalReceiptNumber" value={formData.originalReceiptNumber} onChange={handleChange} style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none' }} />

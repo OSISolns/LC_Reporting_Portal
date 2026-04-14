@@ -24,16 +24,16 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
+  const login = async (username, password) => {
+    const res = await api.post('/auth/login', { username, password });
     const { token, user: userData } = res.data;
     localStorage.setItem('token', token);
     setUser(userData);
     return userData;
   };
 
-  const devLogin = async (email) => {
-    const res = await api.post('/auth/dev-login', { email });
+  const devLogin = async (username) => {
+    const res = await api.post('/auth/dev-login', { username });
     const { token, user: userData } = res.data;
     localStorage.setItem('token', token);
     setUser(userData);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { History, Search, User, Activity } from 'lucide-react';
+import { History, Search, User, Activity, Printer } from 'lucide-react';
 
 const AuditLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -22,6 +22,11 @@ const AuditLogs = () => {
     fetchLogs();
   }, []);
 
+  const handlePrint = () => {
+    document.body.setAttribute('data-print-date', new Date().toLocaleString());
+    window.print();
+  };
+
   const filteredLogs = logs.filter(log => 
     log.user_name?.toLowerCase().includes(filter.toLowerCase()) ||
     log.action?.toLowerCase().includes(filter.toLowerCase()) ||
@@ -32,10 +37,21 @@ const AuditLogs = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>System Audit Logs</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Comprehensive tracking of all user actions and system state changes for regulatory compliance.</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+        <div>
+          <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>System Audit Logs</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Comprehensive tracking of all user actions and system state changes for regulatory compliance.</p>
+        </div>
+        <button 
+          onClick={handlePrint} 
+          className="glass card-shadow no-print" 
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1px solid var(--border-color)', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
+        >
+          <Printer size={18} />
+          Print Audit History
+        </button>
       </div>
+
 
       <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', backgroundColor: '#ffffff' }}>
         <div style={{ position: 'relative', maxWidth: '500px' }}>

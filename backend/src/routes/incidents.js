@@ -10,7 +10,7 @@ router.use(authenticate);
 
 router.post(
   '/',
-  authorize(['operations_staff', 'customer_care']),
+  authorize(['operations_staff', 'customer_care', 'cashier']),
   validate([
     body('incidentType').trim().notEmpty().withMessage('Incident type is required').isIn(['Patient', 'Staff', 'Equipment', 'Others']).withMessage('Invalid incident type'),
     body('department').trim().notEmpty().withMessage('Department is required'),
@@ -20,12 +20,22 @@ router.post(
   ]),
   incidentController.createReport
 );
-router.get('/', authorize(['coo', 'chairman']), incidentController.getAllReports);
+router.get('/', authorize(['coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'operations_staff', 'customer_care', 'cashier']), incidentController.getAllReports);
+
+router.patch(
+  '/:id/review',
+  authorize(['quality_assurance']),
+  validate([
+    param('id').isInt().withMessage('Invalid report ID'),
+    body('comments').optional().trim().isString()
+  ]),
+  incidentController.reviewReport
+);
 
 // Export routes
-router.get('/export/excel', authorize(['coo', 'chairman']), incidentController.exportExcel);
-router.get('/:id/pdf', authorize(['coo', 'chairman']), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getPDF);
+router.get('/export/excel', authorize(['coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance']), incidentController.exportExcel);
+router.get('/:id/pdf', authorize(['coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'operations_staff', 'customer_care', 'cashier']), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getPDF);
 
-router.get('/:id', authorize(['coo', 'chairman']), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getReportById);
+router.get('/:id', authorize(['coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'operations_staff', 'customer_care', 'cashier']), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getReportById);
 
 module.exports = router;

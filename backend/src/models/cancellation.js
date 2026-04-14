@@ -10,6 +10,10 @@ class Cancellation {
       initialTransactionDate, rectifiedDate, reasonForCancellation
     } = data;
 
+    // Convert empty strings to null for date/numeric fields to satisfy PG constraints
+    const cleanDate = (d) => (d && d.trim() !== '' ? d : null);
+    const cleanAmount = (a) => (a && a.toString().trim() !== '' ? a : null);
+
     const { rows } = await db.query(
       `INSERT INTO cancellation_requests (
         patient_full_name, pid_number, old_sid_number, new_sid_number,
@@ -21,14 +25,15 @@ class Cancellation {
       RETURNING *`,
       [
         patientFullName, pidNumber, oldSidNumber, newSidNumber,
-        telephoneNumber, insurancePayer, totalAmountCancelled,
+        telephoneNumber, insurancePayer, cleanAmount(totalAmountCancelled),
         originalReceiptNumber, rectifiedReceiptNumber,
-        initialTransactionDate, rectifiedDate, reasonForCancellation,
+        cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
         userId
       ]
     );
     return rows[0];
   }
+
 
   static async getAll(filters = {}) {
     let query = `

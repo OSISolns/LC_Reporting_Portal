@@ -10,7 +10,7 @@ router.use(authenticate);
 
 router.post(
   '/',
-  authorize(['cashier', 'customer_care']),
+  authorize(['cashier', 'principal_cashier', 'customer_care']),
   validate([
     body('patientFullName').trim().notEmpty().withMessage('Patient name is required'),
     body('pidNumber').trim().notEmpty().withMessage('PID number is required'),
@@ -40,6 +40,6 @@ router.patch('/:id/reject', authorize(['coo', 'sales_manager']), validate([
   param('id').isInt().withMessage('Invalid request ID'),
   body('comment').trim().notEmpty().withMessage('Rejection comment is required'),
 ]), cancellationController.rejectRequest);
-router.delete('/:id', authorize(['cashier', 'customer_care']), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.deleteRequest);
+router.delete('/:id', authorize(['cashier', 'principal_cashier', 'customer_care', 'admin']), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.deleteRequest);
 
 module.exports = router;
