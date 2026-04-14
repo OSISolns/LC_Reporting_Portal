@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { authenticate } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 const { validate, body } = require('../middleware/validation');
 
 const allowDevLogin = process.env.NODE_ENV !== 'production' && process.env.ALLOW_DEV_LOGIN !== 'false';
@@ -33,7 +33,7 @@ if (allowDevLogin) {
 
 router.post(
   '/password/change',
-  authenticate,
+  authMiddleware,
   validate([
     body('oldPassword').notEmpty().withMessage('Old password is required'),
     body('newPassword').isLength({ min: 4 }).withMessage('New password must be at least 4 characters long'),
@@ -41,6 +41,6 @@ router.post(
   authController.changePassword
 );
 
-router.get('/me', authenticate, authController.getMe);
+router.get('/me', authMiddleware, authController.getMe);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 'use strict';
 const User = require('../models/user');
 const { logAction } = require('../middleware/audit');
-const jwt = require('jsonwebtoken');
+const generateToken = require('../utils/generateToken');
 const bcrypt = require('bcryptjs');
 
 exports.login = async (req, res, next) => {
@@ -22,11 +22,7 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
 
-    const token = jwt.sign(
-      { id: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
-    );
+    const token = generateToken(user);
 
     req.user = user;
     try {
@@ -86,11 +82,7 @@ exports.devLogin = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    const token = jwt.sign(
-      { id: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
-    );
+    const token = generateToken(user);
 
     req.user = user;
     try {

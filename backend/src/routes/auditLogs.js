@@ -2,11 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const AuditLog = require('../models/auditLog');
-const { authenticate } = require('../middleware/auth');
-const { authorize } = require('../middleware/rbac');
+const { authMiddleware } = require('../middleware/auth');
+const authorizeRoles = require('../middleware/role');
 
-router.use(authenticate);
-router.use(authorize(['admin']));
+router.use(authMiddleware);
+router.use(authorizeRoles(['admin']));
 
 router.get('/', async (req, res, next) => {
   try {

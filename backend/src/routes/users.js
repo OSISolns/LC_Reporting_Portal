@@ -2,11 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-const { authenticate } = require('../middleware/auth');
-const { authorize } = require('../middleware/rbac');
+const { authMiddleware } = require('../middleware/auth');
+const authorizeRoles = require('../middleware/role');
 
-router.use(authenticate);
-router.use(authorize(['admin'])); // Only admin can manage users
+router.use(authMiddleware);
+router.use(authorizeRoles(['admin'])); // Only admin can manage users
 
 router.get('/', userController.getAllUsers);
 router.post('/', userController.createUser);

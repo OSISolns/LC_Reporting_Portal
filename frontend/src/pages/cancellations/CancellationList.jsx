@@ -132,10 +132,6 @@ const CancellationList = () => {
     }
   };
 
-  const handlePrintList = () => {
-    document.body.setAttribute('data-print-date', new Date().toLocaleString());
-    window.print();
-  };
 
   return (
     <div>
@@ -144,15 +140,6 @@ const CancellationList = () => {
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Cancellation Requests</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Workflow for patient invoice/receipt cancellations.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }} className="no-print">
-          <button 
-            onClick={handlePrintList} 
-            className="glass card-shadow" 
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1px solid var(--border-color)', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
-          >
-            <Printer size={18} />
-            Print Summary
-          </button>
           {['cashier', 'principal_cashier', 'customer_care'].includes(user?.role) && (
             <button 
               onClick={() => setShowCreateModal(true)}
@@ -163,7 +150,6 @@ const CancellationList = () => {
             </button>
           )}
         </div>
-      </div>
 
 
       <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff' }}>

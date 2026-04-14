@@ -75,10 +75,6 @@ const Users = () => {
     }
   };
 
-  const handlePrint = () => {
-    document.body.setAttribute('data-print-date', new Date().toLocaleString());
-    window.print();
-  };
 
   if (loading) return <LoadingSpinner />;
 
@@ -89,15 +85,6 @@ const Users = () => {
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>User Management</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Manage clinic staff and their access roles securely.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }} className="no-print">
-          <button 
-            onClick={handlePrint}
-            className="glass card-shadow" 
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1px solid var(--border-color)', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
-          >
-            <Printer size={18} />
-            Print Roster
-          </button>
           <button 
             onClick={() => setIsCreateModalOpen(true)}
             style={{
@@ -118,7 +105,6 @@ const Users = () => {
             Create New User
           </button>
         </div>
-      </div>
 
 
       <div className="glass card-shadow" style={{ overflow: 'hidden', backgroundColor: '#ffffff' }}>

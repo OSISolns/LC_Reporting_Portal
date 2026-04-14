@@ -1,45 +1,26 @@
 'use strict';
 const jwt = require('jsonwebtoken');
-const db  = require('../config/db');
 
 /**
- * Verifies the JWT in the Authorization header and attaches
- * req.user = { id, full_name, email, role, role_id }
+ * Middleware to verify JWT and attach user info to request.
  */
-async function authenticate(req, res, next) {
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, message: 'No token provided' });
+  }
+
+  const token = authHeader.split(' ')[1];
+
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Authentication required.' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (err) {
-      const msg = err.name === 'TokenExpiredError' ? 'Session expired. Please log in again.' : 'Invalid token.';
-      return res.status(401).json({ success: false, message: msg });
-    }
-
-    // Verify user still exists and is active
-    const { rows } = await db.query(
-      `SELECT u.id, u.full_name, u.username, u.email, u.is_active, r.name AS role, r.id AS role_id
-       FROM users u JOIN roles r ON u.role_id = r.id
-       WHERE u.id = $1`,
-      [decoded.id]
-    );
-
-
-    if (!rows.length || !rows[0].is_active) {
-      return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });
-    }
-
-    req.user = rows[0];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // Contains id, role, fullName
     next();
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    const msg = error.name === 'TokenExpiredError' ? 'Session expired' : 'Invalid token';
+    return res.status(401).json({ success: false, message: msg });
   }
 }
 
-module.exports = { authenticate };
+module.exports = { authMiddleware };
