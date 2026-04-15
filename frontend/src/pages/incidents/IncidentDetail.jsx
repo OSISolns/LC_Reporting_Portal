@@ -57,15 +57,13 @@ const IncidentDetail = () => {
           <h1 style={{ fontSize: '2.25rem', fontWeight: 700, color: 'var(--primary-dark)' }}>Incident Report #{data.id}</h1>
           <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '1rem' }}>Historical record of a reported quality or safety event.</p>
       </div>
-
+      </div>
       <div>
         <IncidentDetailsView data={data} onExport={downloadPDF} />
       </div>
     </div>
   );
 };
-
-import { ShieldCheck } from 'lucide-react';
 
 
 
