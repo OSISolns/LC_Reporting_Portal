@@ -27,7 +27,7 @@ const RefundDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject
   const fmt = (n) => n ? Number(n).toLocaleString() : 'N/A';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
+    <div className="print-body-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
       <PrintHeader title="Refund Request Form" docType="REF" docId={data.id} />
       <PrintWatermark />
 

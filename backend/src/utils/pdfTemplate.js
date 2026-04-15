@@ -27,7 +27,8 @@ const getBase64Image = (relativePath) => {
  */
 exports.getMedicalReportHTML = (type, data) => {
   const logoBase64 = getBase64Image('logo.png');
-  const footerBase64 = getBase64Image('legacy_header.svg');
+  const headerBase64 = getBase64Image('legacy_header.svg');
+  const footerBase64 = getBase64Image('legacy_footer.svg');
 
   // Determine Stamps
   let stampHtml = '';
@@ -54,7 +55,7 @@ exports.getMedicalReportHTML = (type, data) => {
       margin: 0;
       padding: 0;
       width: 210mm;
-      min-height: 297mm;
+      height: 297mm;
       font-family: 'Open Sans', sans-serif;
       color: #1e293b;
       line-height: 1.5;
@@ -62,10 +63,10 @@ exports.getMedicalReportHTML = (type, data) => {
     }
 
     body {
-      padding: 12mm 14mm 0 14mm;   /* bottom handled by footer space */
+      padding: 10mm 12mm 0 12mm;
       display: flex;
       flex-direction: column;
-      min-height: 297mm;
+      height: 297mm;
     }
 
     /* ── Header ── */
@@ -102,7 +103,8 @@ exports.getMedicalReportHTML = (type, data) => {
       flex: 1;
       display: flex;
       flex-direction: column;
-      margin-bottom: 14px;
+      margin-bottom: 8px;
+      overflow: hidden;
     }
 
     .medical-form-header {
@@ -215,19 +217,17 @@ exports.getMedicalReportHTML = (type, data) => {
 
     .stamp img { width: 100%; }
 
-    /* ── Footer — sits at bottom of page, doesn't overlap ── */
+    /* ── Footer — anchored to bottom, full bleed ── */
     .footer {
       flex-shrink: 0;
-      width: calc(100% + 28mm);   /* span gutters */
-      margin-left: -14mm;
-      margin-bottom: 0;
+      width: calc(100% + 24mm);
+      margin-left: -12mm;
+      margin-top: auto;
     }
 
     .footer img {
       width: 100%;
       display: block;
-      max-height: 45pt;
-      object-fit: cover;
     }
   `;
 
@@ -382,9 +382,9 @@ exports.getMedicalReportHTML = (type, data) => {
       <style>${styles}</style>
     </head>
     <body>
-      <div class="print-header" style="display:flex; flex-direction:column;">
-        <img src="${footerBase64}" style="width: 100%; display: block; margin-bottom: 10px;" />
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div class="print-header" style="display:flex; flex-direction:column; flex-shrink:0;">
+        <img src="${headerBase64}" style="width: 100%; display: block; margin-bottom: 8px;" />
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 2px solid #003B44; margin-bottom: 10px;">
           <div class="hospital-info" style="text-align:left;">
             LEGACY CLINICS / REPORTING PORTAL<br/>
             <strong>${titleMap[type] || 'Report'}</strong>
@@ -399,6 +399,9 @@ exports.getMedicalReportHTML = (type, data) => {
 
       ${content}
 
+      <div class="footer">
+        <img src="${footerBase64}" />
+      </div>
     </body>
     </html>
   `;

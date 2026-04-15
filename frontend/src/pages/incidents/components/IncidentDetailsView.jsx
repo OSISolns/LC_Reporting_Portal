@@ -38,7 +38,7 @@ const IncidentDetailsView = ({ data, onReviewComplete, printOnLoad }) => {
   const isPending = data.status === 'pending';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
+    <div className="print-body-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
       <PrintHeader title="Incident & Sentinel Event Report" docType="INC" docId={data.id} />
       <PrintWatermark />
 

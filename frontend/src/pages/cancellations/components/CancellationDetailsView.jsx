@@ -31,7 +31,7 @@ const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, on
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
+    <div className="print-body-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
       <PrintHeader title="Cancellation Request Form" docType="CAN" docId={data.id} />
       <PrintWatermark />
 

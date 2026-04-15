@@ -37,7 +37,7 @@ const AuditLogs = () => {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div>
+    <div className="print-body-wrapper">
       <PrintHeader title="SYSTEM AUDIT LOGS" docType="ADT" />
       <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div>
