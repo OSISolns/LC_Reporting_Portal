@@ -399,9 +399,6 @@ exports.getMedicalReportHTML = (type, data) => {
 
       ${content}
 
-      <div class="footer">
-        <img src="${footerBase64}" />
-      </div>
     </body>
     </html>
   `;
