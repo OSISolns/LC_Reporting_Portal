@@ -114,9 +114,9 @@ const CancellationDetail = () => {
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
         <div>
-          <button onClick={() => navigate(-1)} className="no-print" style={{ background: 'none', border: 'none', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem', fontWeight: 600, cursor: 'pointer' }}>
             <ChevronLeft size={20} />
             Back to Dashboard
           </button>
@@ -145,7 +145,7 @@ const CancellationDetail = () => {
         </div>
 
         {/* Action Panel */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <div className="glass card-shadow" style={{ padding: '2rem', backgroundColor: '#ffffff' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <ShieldCheck size={20} style={{ color: 'var(--primary)' }} />
