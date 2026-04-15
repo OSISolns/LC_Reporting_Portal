@@ -39,9 +39,10 @@ export const PrintWatermark = () => (
 export const PrintFooter = () => (
   <div className="print-only-footer no-screen" style={{ width: '100%', bottom: 0 }}>
     <img 
-      src="/footer.png" 
+      src="/legacy_header.svg" 
       alt="Legacy Clinics Official Footer" 
       style={{ width: '100%', display: 'block' }} 
     />
   </div>
 );
+

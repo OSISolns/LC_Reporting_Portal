@@ -14,7 +14,8 @@ const getBase64Image = (relativePath) => {
     }
     const data = fs.readFileSync(fullPath);
     const ext = path.extname(fullPath).slice(1);
-    return `data:image/${ext};base64,${data.toString('base64')}`;
+    const mimeType = ext === 'svg' ? 'svg+xml' : ext;
+    return `data:image/${mimeType};base64,${data.toString('base64')}`;
   } catch (err) {
     console.error('Error encoding image:', err);
     return '';
@@ -26,7 +27,7 @@ const getBase64Image = (relativePath) => {
  */
 exports.getMedicalReportHTML = (type, data) => {
   const logoBase64 = getBase64Image('logo.png');
-  const footerBase64 = getBase64Image('footer.png');
+  const footerBase64 = getBase64Image('legacy_header.svg');
 
   // Determine Stamps
   let stampHtml = '';
