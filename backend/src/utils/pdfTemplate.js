@@ -7,7 +7,7 @@ const path = require('path');
  */
 const getBase64Image = (relativePath) => {
   try {
-    const fullPath = path.resolve(__dirname, '../../../frontend/public', relativePath);
+    const fullPath = path.resolve(__dirname, '../assets', relativePath);
     if (!fs.existsSync(fullPath)) {
       console.warn(`Asset not found: ${fullPath}`);
       return '';

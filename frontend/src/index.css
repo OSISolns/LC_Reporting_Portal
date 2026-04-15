@@ -289,36 +289,55 @@ button:active {
   }
 
   /* Flatten modals/glass cards to full page */
+  .modal-backdrop {
+    background: white !important;
+    position: static !important;
+    display: block !important;
+    padding: 0 !important;
+    backdrop-filter: none !important;
+    z-index: auto !important;
+  }
+
   div.glass, div.modal-content, .animate-fade-in {
     position: static !important;
-    width: 100% !important;
+    width: 210mm !important;
+    height: 297mm !important;
     max-width: none !important;
     margin: 0 !important;
-    padding: 10mm 12mm 0 12mm !important;
+    padding: 0 !important; /* Reset padding to control strictly from internal margin */
     border: none !important;
     box-shadow: none !important;
     background: white !important;
     display: flex !important;
     flex-direction: column !important;
-    height: 297mm !important;
     border-radius: 0 !important;
     max-height: none !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     transform: none !important;
   }
 
+  /* Target the internal scrolling area of our modal */
+  div.glass > div:last-child {
+    padding: 10mm 15mm !important;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
+  }
+
   .medical-form-modern {
-    border: 1.5px solid #000 !important;
+    border: 1.5px solid #003B44 !important;
     max-width: none !important;
     flex: 1 !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 20px !important;
     page-break-after: auto !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .medical-signature-grid {
     page-break-inside: avoid !important;
     page-break-before: auto !important;
+    margin-top: auto !important;
   }
 
   .medical-form-header {
@@ -327,6 +346,7 @@ button:active {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
 
   .medical-form-table th {
     background-color: #f8fafc !important;

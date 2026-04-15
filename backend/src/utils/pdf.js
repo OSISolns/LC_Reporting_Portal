@@ -2,47 +2,57 @@ const { getMedicalReportHTML } = require('./pdfTemplate');
 
 /**
  * Generates a high-fidelity PDF using Puppeteer.
- * Chromium and puppeteer-core are lazy-loaded (and excluded from the Vercel
- * bundle) to keep the serverless function under the 50 MB size limit.
- * On Vercel, PDF endpoints return 503 — use the browser print dialog instead.
+ * Optimized for Vercel Serverless Functions and local development.
  */
 const generateHighFidelityPDF = async (type, data, stream) => {
   let chromium, puppeteer;
+  const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL;
+
   try {
-    chromium  = require('@sparticuz/chromium');
-    puppeteer = require('puppeteer-core');
-  } catch {
-    // On Vercel, these packages are excluded from the bundle to stay < 50 MB.
-    // Signal to the caller to use the browser print dialog.
-    const err = new Error('PDF generation is not available on this deployment. Please use the browser print function (Ctrl+P).');
-    err.status = 503;
-    throw err;
+    if (isProd) {
+      // Production (Vercel) setup
+      chromium = require('@sparticuz/chromium');
+      puppeteer = require('puppeteer-core');
+    } else {
+      // Local development setup
+      // We use puppeteer-core + locally installed chrome to stay lightweight
+      puppeteer = require('puppeteer-core');
+      // No chromium required for local if we have a direct path to Chrome/Chromium
+    }
+  } catch (err) {
+    console.error('Dependency Loading Error:', err);
+    throw new Error('PDF generation dependencies missing. Please install @sparticuz/chromium and puppeteer-core.');
   }
 
   let browser;
   try {
-    const isVercel = process.env.VERCEL || process.env.NODE_ENV === 'production';
-    
-    browser = await puppeteer.launch({
-      args: isVercel ? chromium.args : ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    const launchConfig = isProd ? {
+      args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: isVercel ? await chromium.executablePath() : '/usr/bin/google-chrome', // Fallback for local
+      executablePath: await chromium.executablePath(),
       headless: chromium.headless,
       ignoreHTTPSErrors: true,
-    });
+    } : {
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      executablePath: '/usr/bin/google-chrome', // Local developer path
+      headless: true,
+    };
 
+    browser = await puppeteer.launch(launchConfig);
     const page = await browser.newPage();
     
     // Generate HTML content
     const html = getMedicalReportHTML(type, data);
     
     // Set content and wait for it to render
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setContent(html, { 
+      waitUntil: 'networkidle0',
+      timeout: 15000 
+    });
     
     // Generate PDF buffer
     const pdfBuffer = await page.pdf({
-      width:  '210mm',
-      height: '297mm',
+      format: 'A4',
       printBackground: true,
       displayHeaderFooter: false,
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
@@ -52,7 +62,7 @@ const generateHighFidelityPDF = async (type, data, stream) => {
     stream.write(pdfBuffer);
     stream.end();
   } catch (err) {
-    console.error('Puppeteer PDF Generation Error:', err);
+    console.error('Puppeteer high-fidelity PDF generation failed:', err);
     throw err;
   } finally {
     if (browser) {
@@ -62,22 +72,8 @@ const generateHighFidelityPDF = async (type, data, stream) => {
 };
 
 /**
- * Generates a PDF for a cancellation request.
+ * Exports for various document types.
  */
-exports.generateCancellationPDF = async (data, stream) => {
-  return generateHighFidelityPDF('CANCELLATION', data, stream);
-};
-
-/**
- * Generates a PDF for an incident report.
- */
-exports.generateIncidentPDF = async (data, stream) => {
-  return generateHighFidelityPDF('INCIDENT', data, stream);
-};
-
-/**
- * Generates a PDF for a refund request.
- */
-exports.generateRefundPDF = async (data, stream) => {
-  return generateHighFidelityPDF('REFUND', data, stream);
-};
+exports.generateCancellationPDF = async (data, stream) => generateHighFidelityPDF('CANCELLATION', data, stream);
+exports.generateIncidentPDF = async (data, stream) => generateHighFidelityPDF('INCIDENT', data, stream);
+exports.generateRefundPDF = async (data, stream) => generateHighFidelityPDF('REFUND', data, stream);
