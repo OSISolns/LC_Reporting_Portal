@@ -1,11 +1,24 @@
-const chromium = require('@sparticuz/chromium');
-const puppeteer = require('puppeteer-core');
 const { getMedicalReportHTML } = require('./pdfTemplate');
 
 /**
  * Generates a high-fidelity PDF using Puppeteer.
+ * Chromium and puppeteer-core are lazy-loaded (and excluded from the Vercel
+ * bundle) to keep the serverless function under the 50 MB size limit.
+ * On Vercel, PDF endpoints return 503 — use the browser print dialog instead.
  */
 const generateHighFidelityPDF = async (type, data, stream) => {
+  let chromium, puppeteer;
+  try {
+    chromium  = require('@sparticuz/chromium');
+    puppeteer = require('puppeteer-core');
+  } catch {
+    // On Vercel, these packages are excluded from the bundle to stay < 50 MB.
+    // Signal to the caller to use the browser print dialog.
+    const err = new Error('PDF generation is not available on this deployment. Please use the browser print function (Ctrl+P).');
+    err.status = 503;
+    throw err;
+  }
+
   let browser;
   try {
     const isVercel = process.env.VERCEL || process.env.NODE_ENV === 'production';

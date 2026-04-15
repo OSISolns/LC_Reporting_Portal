@@ -5,10 +5,20 @@
  * Incidents: Classified against the official Legacy Clinics incident taxonomy
  *            (38 types × severity × department) — no API key needed.
  * Cancellations / Refunds: TF-IDF + cosine-similarity clustering.
+ *
+ * NOTE: `natural` is lazy-loaded so it doesn't inflate cold-start time on
+ * Vercel. The module is only required when analyzeRecords() is actually called.
  */
 
-const { PorterStemmer, WordTokenizer } = require('natural');
-const tokenizer = new WordTokenizer();
+// Lazy references — populated on first use
+let PorterStemmer, WordTokenizer, tokenizer;
+function getNLP() {
+  if (!PorterStemmer) {
+    ({ PorterStemmer, WordTokenizer } = require('natural'));
+    tokenizer = new WordTokenizer();
+  }
+  return { PorterStemmer, tokenizer };
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // LEGACY CLINICS INCIDENT TAXONOMY (Official Knowledge Base)
@@ -207,11 +217,18 @@ const INCIDENT_TAXONOMY = [
   },
 ];
 
-// Pre-process taxonomy keywords once at module load
-const STEMMED_TAXONOMY = INCIDENT_TAXONOMY.map(cat => ({
-  ...cat,
-  stemmedKeys: cat.keywords.flatMap(k => k.split(/\s+/).map(w => PorterStemmer.stem(w.toLowerCase()))),
-}));
+// STEMMED_TAXONOMY is computed lazily on first use
+let STEMMED_TAXONOMY = null;
+function getStemmedTaxonomy() {
+  if (!STEMMED_TAXONOMY) {
+    const { PorterStemmer } = getNLP();
+    STEMMED_TAXONOMY = INCIDENT_TAXONOMY.map(cat => ({
+      ...cat,
+      stemmedKeys: cat.keywords.flatMap(k => k.split(/\s+/).map(w => PorterStemmer.stem(w.toLowerCase()))),
+    }));
+  }
+  return STEMMED_TAXONOMY;
+}
 
 // ── Severity: resolve range string to worst-case level ────────────────────────
 function worstSeverity(range) {
@@ -246,6 +263,7 @@ const HIGH_KEYWORDS   = new Set(['error','wrong','mistake','incorrect','duplicat
 const MEDIUM_KEYWORDS = new Set(['complaint','issue','problem','delay','late','missed','failure','failed','waiting','wait','incomplete','partial','pending','rejected','billing','charge']);
 
 function preprocess(text) {
+  const { PorterStemmer, tokenizer } = getNLP();
   if (!text) return [];
   return tokenizer
     .tokenize(text.toLowerCase())
@@ -304,6 +322,7 @@ function clusterDocs(items, minSim = 0.18) {
 }
 
 function labelCluster(centroidKeys, rawWords) {
+  const { PorterStemmer } = getNLP();
   const label = centroidKeys.slice(0, 3).map(stem => {
     const originals = rawWords.filter(w => PorterStemmer.stem(w) === stem);
     if (!originals.length) return stem;
@@ -334,7 +353,7 @@ function matchTaxonomy(text) {
   if (!docTokens.size) return { match: null, score: 0 };
 
   let best = null, bestScore = 0;
-  for (const cat of STEMMED_TAXONOMY) {
+  for (const cat of getStemmedTaxonomy()) {
     const catSet = new Set(cat.stemmedKeys);
     const inter  = [...docTokens].filter(w => catSet.has(w)).length;
     const score  = inter / Math.sqrt(docTokens.size * catSet.size);
@@ -430,7 +449,7 @@ function analyzeGeneric(rows, moduleName) {
     return { categories: [], cashierAttribution: [], executiveSummary: 'No records to analyze yet.', total: 0 };
   }
   const processed = rows.map(r => ({ reason: r.reason || '', cashier: r.cashier || 'Unknown', tokens: preprocess(r.reason) }));
-  const allRawWords = rows.flatMap(r => tokenizer.tokenize((r.reason || '').toLowerCase()).filter(w => w.length > 2 && !STOPWORDS.has(w)));
+  const allRawWords = rows.flatMap(r => getNLP().tokenizer.tokenize((r.reason || '').toLowerCase()).filter(w => w.length > 2 && !STOPWORDS.has(w)));
   const tfidfVecs = buildTFIDF(processed.map(p => p.tokens));
   const items = processed.map((p, i) => ({ ...p, topKeys: topKeywords(tfidfVecs[i], 8) }));
   const clusters = clusterDocs(items);

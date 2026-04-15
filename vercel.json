@@ -4,8 +4,8 @@
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.js": {
-      "memory": 1024,
-      "maxDuration": 20
+      "maxDuration": 20,
+      "excludeFiles": "backend/node_modules/@sparticuz/**,backend/node_modules/puppeteer-core/**,backend/node_modules/natural/**"
     }
   },
   "rewrites": [
