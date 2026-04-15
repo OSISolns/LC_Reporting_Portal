@@ -126,7 +126,6 @@ const CancellationDetail = () => {
           </div>
           <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '1rem' }}>Request ID: <span style={{ fontWeight: 600 }}>#{data.id}</span> • Created on {new Date(data.created_at).toLocaleString()}</p>
         </div>
-        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
