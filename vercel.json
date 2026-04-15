@@ -5,7 +5,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 20,
-      "excludeFiles": "backend/node_modules/@sparticuz/**,backend/node_modules/puppeteer-core/**,backend/node_modules/natural/**"
+      "excludeFiles": "backend/node_modules/@sparticuz/**,backend/node_modules/puppeteer-core/**"
     }
   },
   "rewrites": [

@@ -14,7 +14,8 @@
 let PorterStemmer, WordTokenizer, tokenizer;
 function getNLP() {
   if (!PorterStemmer) {
-    ({ PorterStemmer, WordTokenizer } = require('natural'));
+    PorterStemmer = require('natural/lib/natural/stemmers/porter_stemmer');
+    WordTokenizer = require('natural/lib/natural/tokenizers/regexp_tokenizer').WordTokenizer;
     tokenizer = new WordTokenizer();
   }
   return { PorterStemmer, tokenizer };
