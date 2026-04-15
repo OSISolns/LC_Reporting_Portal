@@ -229,6 +229,16 @@ button:active {
 }
 
 
+.no-screen {
+  display: none !important;
+}
+
+@media print {
+  .no-screen {
+    display: block !important;
+  }
+}
+
 @media screen {
   .print-only-header {
     margin-bottom: 1.5rem;

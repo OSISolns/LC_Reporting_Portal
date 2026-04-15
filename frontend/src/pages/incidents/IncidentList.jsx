@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getIncidents } from '../../api/incidents';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, Filter, AlertCircle, Eye, Download, Printer } from 'lucide-react';
+import { Plus, Search, Filter, AlertCircle, Eye, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
@@ -85,22 +85,15 @@ const IncidentList = () => {
       link.setAttribute('download', `Incident_${id}.pdf`);
       document.body.appendChild(link);
       link.click();
-    } catch (err) { alert('Export failed'); }
-  };
-
-  const handlePrint = async (id) => {
-    setActiveIncident(null);
-    setIsViewModalOpen(true);
-    setDetailLoading(true);
-    try {
-      const res = await getIncidentById(id);
-      setActiveIncident({ ...res.data.data, printRequested: true });
     } catch (err) {
-      console.error('Fetch failed');
-    } finally {
-      setDetailLoading(false);
+      console.error('PDF Export failed, falling back to browser print:', err);
+      // Fallback: If server PDF fails (e.g. on Vercel), use browser print
+      // The CSS in index.css is optimized to make this look identical to the PDF.
+      window.print();
     }
   };
+
+
 
 
   return (

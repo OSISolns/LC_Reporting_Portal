@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getUsers, createUser, updateUser, getRoles } from '../api/users';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { UserPlus, Edit, Save, X, Shield, Mail, Trash2, Key, Printer } from 'lucide-react';
+import { UserPlus, Edit, Save, X, Shield, Mail, Trash2, Key } from 'lucide-react';
 import Modal from '../components/Modal';
 
 const Users = () => {

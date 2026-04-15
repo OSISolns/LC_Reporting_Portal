@@ -11,7 +11,6 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   ChevronLeft, 
   Download, 
-  Printer,
   CheckCircle, 
   XCircle, 
   ShieldCheck,
@@ -104,11 +103,6 @@ const CancellationDetail = () => {
     } catch (err) { alert('PDF generation failed'); }
   };
 
-  const handlePrint = () => {
-    document.body.setAttribute('data-print-date', new Date().toLocaleString());
-    window.print();
-  };
-
   if (loading) return <LoadingSpinner />;
   if (!data) return <div>Request not found</div>;
 
@@ -170,7 +164,7 @@ const CancellationDetail = () => {
               {(data.status === 'pending' || data.status === 'verified') && ['coo', 'sales_manager', 'chairman'].includes(user.role) && (
                 <button onClick={() => setRejectModal(true)} style={{ padding: '14px', backgroundColor: 'transparent', color: 'var(--danger)', border: '1.5px solid var(--danger)', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer' }}>
                   <XCircle size={18} />
-                  Reject Request
+                   Reject Request
                 </button>
               )}
 
@@ -220,13 +214,6 @@ const CancellationDetail = () => {
   );
 };
 
-const LabelValue = ({ label, value }) => (
-  <div style={{ marginBottom: '1.5rem' }}>
-    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em', marginBottom: '6px' }}>{label}</p>
-    <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--primary-dark)' }}>{value || 'N/A'}</p>
-  </div>
-);
-
 const TimelineItem = ({ label, by, date, active, isLast }) => (
   <div style={{ display: 'flex', gap: '15px' }}>
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -254,3 +241,4 @@ const TimelineItem = ({ label, by, date, active, isLast }) => (
 );
 
 export default CancellationDetail;
+

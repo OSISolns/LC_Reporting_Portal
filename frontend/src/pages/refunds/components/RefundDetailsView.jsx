@@ -1,18 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Download, CheckCircle, XCircle, Printer } from 'lucide-react';
+import { useState } from 'react';
+import { Download, CheckCircle, XCircle } from 'lucide-react';
 import StatusBadge from '../../../components/StatusBadge';
 import { PrintHeader, PrintFooter, PrintWatermark } from '../../../components/PrintBranding';
 
-const RefundDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject, printOnLoad }) => {
+const RefundDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject }) => {
   const [isRejecting,   setIsRejecting]   = useState(false);
   const [rejectComment, setRejectComment] = useState('');
-
-  useEffect(() => {
-    if (printOnLoad && data) {
-      const timer = setTimeout(() => window.print(), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [printOnLoad, data]);
 
   if (!data) return null;
 
@@ -130,12 +123,8 @@ const RefundDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject
         )}
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-          <button onClick={() => window.print()}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1.5px solid var(--border-color)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-            <Printer size={18} /> Print Request
-          </button>
           <button onClick={() => onExport && onExport()}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1.5px solid var(--border-color)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1.5px solid var(--border-color)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
             <Download size={18} /> Download PDF
           </button>
         </div>
@@ -162,3 +151,4 @@ const RefundDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject
 };
 
 export default RefundDetailsView;
+

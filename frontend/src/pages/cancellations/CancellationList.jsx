@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, Filter, FileSpreadsheet, Trash2, Eye, FileText, Printer, Download } from 'lucide-react';
+import { Plus, Search, Filter, FileSpreadsheet, Trash2, Eye, FileText, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -95,22 +95,13 @@ const CancellationList = () => {
       link.setAttribute('download', `Cancellation_${id}.pdf`);
       document.body.appendChild(link);
       link.click();
-    } catch (err) { alert('Export failed'); }
-  };
-
-  const handlePrint = async (id) => {
-    setActiveRequest(null);
-    setShowViewModal(true);
-    setDetailLoading(true);
-    try {
-      const res = await getCancellationById(id);
-      setActiveRequest({ ...res.data.data, printRequested: true });
     } catch (err) {
-      console.error('Failed to fetch request details');
-    } finally {
-      setDetailLoading(false);
+      console.error('PDF Export failed, falling back to browser print:', err);
+      window.print();
     }
   };
+
+
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this pending request?")) return;

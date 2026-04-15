@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { AlertCircle, MapPin, Users, FileText, Calendar, Download, ShieldCheck, CheckCircle, MessageSquare, Printer } from 'lucide-react';
+import { useState } from 'react';
+import { AlertCircle, MapPin, Users, FileText, Calendar, Download, ShieldCheck, CheckCircle, MessageSquare } from 'lucide-react';
 import { PrintHeader, PrintFooter, PrintWatermark } from '../../../components/PrintBranding';
 import { useAuth } from '../../../context/AuthContext';
 import { reviewIncident } from '../../../api/incidents';
 
-const IncidentDetailsView = ({ data, onReviewComplete, printOnLoad }) => {
+const IncidentDetailsView = ({ data, onReviewComplete, onExport }) => {
   const { user } = useAuth();
   const [reviewing, setReviewing] = useState(false);
   const [comments, setComments] = useState('');
@@ -24,15 +24,6 @@ const IncidentDetailsView = ({ data, onReviewComplete, printOnLoad }) => {
       setIsSubmitting(false);
     }
   };
-
-  useEffect(() => {
-    if (printOnLoad && data) {
-      const timer = setTimeout(() => {
-        window.print();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [printOnLoad, data]);
 
   const isQA = user?.role === 'quality_assurance';
   const isPending = data.status === 'pending';
@@ -219,13 +210,6 @@ const IncidentDetailsView = ({ data, onReviewComplete, printOnLoad }) => {
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <button
-            onClick={() => window.print()}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1.5px solid var(--border-color)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-          >
-            <Printer size={18} />
-            Print Report
-          </button>
-          <button
             onClick={() => onExport && onExport()}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1.5px solid var(--border-color)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
           >
@@ -239,6 +223,5 @@ const IncidentDetailsView = ({ data, onReviewComplete, printOnLoad }) => {
   );
 };
 
-
-
 export default IncidentDetailsView;
+

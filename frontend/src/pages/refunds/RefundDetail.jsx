@@ -9,7 +9,7 @@ import {
 } from '../../api/refunds';
 import { useAuth } from '../../context/AuthContext';
 import {
-  ChevronLeft, Download, Printer,
+  ChevronLeft, Download,
   CheckCircle, XCircle, ShieldCheck, History,
 } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';
@@ -65,8 +65,6 @@ const RefundDetail = () => {
       link.click();
     } catch { alert('PDF generation failed'); }
   };
-
-  const handlePrint = () => window.print();
 
   if (loading) return <LoadingSpinner />;
   if (!data)   return <div>Request not found</div>;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, FileText, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Eye, Download } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
@@ -83,22 +83,13 @@ const RefundList = () => {
       link.setAttribute('download', `Refund_${id}.pdf`);
       document.body.appendChild(link);
       link.click();
-    } catch (err) { alert('Export failed'); }
-  };
-
-  const handlePrint = async (id) => {
-    setActiveRequest(null);
-    setShowViewModal(true);
-    setDetailLoading(true);
-    try {
-      const res = await getRefundById(id);
-      setActiveRequest({ ...res.data.data, printRequested: true });
     } catch (err) {
-      console.error('Failed to fetch refund details');
-    } finally {
-      setDetailLoading(false);
+      console.error('PDF Export failed, falling back to browser print:', err);
+      window.print();
     }
   };
+
+
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this pending refund request?')) return;

@@ -8,30 +8,28 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import {
   FileText, ReceiptText, AlertTriangle, Clock,
   CheckCircle, TrendingUp, Brain, RefreshCw,
-  ChevronRight, Users2, Activity, Zap, Award,
+  ChevronRight, Users2, Activity, Zap,
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt   = (n) => Number(n || 0).toLocaleString();
 const fmtRWF = (n) => `RWF ${Number(n || 0).toLocaleString()}`;
 
-// ── Gradient stat card ────────────────────────────────────────────────────────
-const BigStatCard = ({ title, value, sub, icon, gradient, badge }) => (
-  <div style={{ background: gradient, borderRadius: '18px', padding: '1.5rem', color: '#fff', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.14)', position: 'relative', overflow: 'hidden', minHeight: '130px' }}>
-    <div style={{ position: 'absolute', top: '-18px', right: '-18px', width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-    <div style={{ position: 'absolute', bottom: '-30px', right: '40px', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+// ── Muted stat card ────────────────────────────────────────────────────────
+const BigStatCard = ({ title, value, sub, icon, color, badge }) => (
+  <div style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', color: 'var(--primary-dark)', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', position: 'relative', overflow: 'hidden', minHeight: '130px' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
-      <div style={{ padding: '10px', borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.2)', flexShrink: 0 }}>{icon}</div>
-      {badge != null && (
-        <span style={{ padding: '3px 10px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 700, backdropFilter: 'blur(8px)' }}>
+      <div style={{ padding: '10px', borderRadius: '12px', backgroundColor: `${color}15`, color: color, flexShrink: 0 }}>{icon}</div>
+      {badge != null && badge > 0 && (
+        <span style={{ padding: '4px 12px', backgroundColor: '#fff7ed', color: '#9a3412', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 700, border: '1px solid #ffedd5' }}>
           {badge} pending
         </span>
       )}
     </div>
     <div style={{ position: 'relative' }}>
-      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.85 }}>{title}</p>
-      <p style={{ margin: '4px 0 0', fontSize: '2.2rem', fontWeight: 800, lineHeight: 1 }}>{value}</p>
-      {sub && <p style={{ margin: '4px 0 0', fontSize: '0.78rem', opacity: 0.8 }}>{sub}</p>}
+      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{title}</p>
+      <p style={{ margin: '4px 0 0', fontSize: '2.2rem', fontWeight: 800, lineHeight: 1, color: 'var(--primary-dark)' }}>{value}</p>
+      {sub && <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{sub}</p>}
     </div>
   </div>
 );
@@ -40,26 +38,27 @@ const BigStatCard = ({ title, value, sub, icon, gradient, badge }) => (
 const PendingRow = ({ item, type, navigate }) => {
   const path = type === 'cancellation' ? `/cancellations/${item.id}` : `/refunds/${item.id}`;
   const age  = Math.floor((Date.now() - new Date(item.created_at)) / 86400000);
+  const typeColor = type === 'cancellation' ? 'var(--primary)' : '#92400e';
+  
   return (
     <div
       onClick={() => navigate(path)}
-      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0.8rem 1rem', cursor: 'pointer', transition: 'background 0.15s', borderBottom: '1px solid #f1f5f9' }}
+      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', cursor: 'pointer', transition: 'background 0.15s', borderBottom: '1px solid #f1f5f9' }}
       onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
       onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
     >
-      <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: type === 'cancellation' ? '#007B8A' : '#f59e0b', flexShrink: 0 }} />
+      <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: `${typeColor}10`, color: typeColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {type === 'cancellation' ? <FileText size={18} /> : <ReceiptText size={18} />}
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontWeight: 600, fontSize: '0.85rem', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: 'var(--primary-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {item.patient_full_name}
         </p>
-        <p style={{ margin: '2px 0 0', fontSize: '0.73rem', color: '#94a3b8' }}>
-          {item.pid_number} · {age === 0 ? 'Today' : `${age}d ago`} · {item.creator_name || 'Unknown'}
+        <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+          {item.pid_number} · {age === 0 ? 'Today' : `${age} days ago`} · {item.creator_name}
         </p>
       </div>
-      <span style={{ padding: '2px 8px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', flexShrink: 0 }}>
-        {item.status}
-      </span>
-      <ChevronRight size={14} style={{ color: '#cbd5e1', flexShrink: 0 }} />
+      <ChevronRight size={16} style={{ color: '#cbd5e1', flexShrink: 0 }} />
     </div>
   );
 };
@@ -68,10 +67,10 @@ const PendingRow = ({ item, type, navigate }) => {
 const ModuleBar = ({ label, approved, total, color }) => {
   const pct = total ? Math.round((approved / total) * 100) : 0;
   return (
-    <div style={{ marginBottom: '14px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569' }}>{label}</span>
-        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b' }}>{fmt(approved)} / {fmt(total)}</span>
+    <div style={{ marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{label}</span>
+        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-dark)' }}>{pct}% ({fmt(approved)}/{fmt(total)})</span>
       </div>
       <div style={{ height: '8px', backgroundColor: '#f1f5f9', borderRadius: '99px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, backgroundColor: color, borderRadius: '99px', transition: 'width 0.8s ease' }} />
@@ -127,149 +126,155 @@ const ManagementDashboard = () => {
   const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
 
   return (
-    <div>
+    <div style={{ paddingBottom: '2rem' }}>
       {/* ── Hero header ── */}
-      <div style={{ background: 'linear-gradient(135deg, #003B44 0%, #007B8A 100%)', borderRadius: '20px', padding: '2rem', color: '#fff', marginBottom: '1.75rem', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '200px', height: '200px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
-        <div style={{ position: 'absolute', bottom: '-60px', right: '120px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', position: 'relative' }}>
+      <div style={{ background: 'var(--primary-dark)', borderRadius: '24px', padding: '2.5rem', color: '#fff', marginBottom: '2rem', position: 'relative', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,59,68,0.1)' }}>
+        <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '240px', height: '240px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)' }} />
+        <div style={{ position: 'absolute', bottom: '-20px', right: '100px', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(255,255,255,0.02)' }} />
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', position: 'relative' }}>
           <div>
-            <p style={{ margin: '0 0 4px', fontSize: '0.85rem', opacity: 0.7, fontWeight: 500 }}>
+            <p style={{ margin: '0 0 6px', fontSize: '0.85rem', opacity: 0.7, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               {now.toLocaleDateString('en-RW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
-            <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, color: '#fff' }}>
+            <h1 style={{ margin: 0, fontSize: '2.25rem', fontWeight: 800, color: '#fff' }}>
               {greeting}, {user?.fullName?.split(' ')[0]} 👋
             </h1>
-            <p style={{ margin: '8px 0 0', opacity: 0.75, fontSize: '0.92rem' }}>
-              Legacy Clinics Reporting Portal — Operations Overview
+            <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '1rem', fontWeight: 500 }}>
+              Legacy Clinics Operational Intelligence Dashboard
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '0.6rem 1.1rem', backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', color: '#fff', fontWeight: 600, fontSize: '0.83rem', cursor: 'pointer', backdropFilter: 'blur(8px)' }}>
-              <RefreshCw size={14} /> Refresh
-            </button>
-          </div>
+          <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}>
+            <RefreshCw size={16} /> Update View
+          </button>
         </div>
 
         {/* Narrative banner */}
         {narrative && (
-          <div style={{ marginTop: '1.25rem', padding: '0.9rem 1.1rem', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '0.83rem', lineHeight: 1.6, opacity: 0.9, position: 'relative', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.15)' }}>
-            <Zap size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+          <div style={{ marginTop: '2rem', padding: '1.25rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '16px', fontSize: '0.9rem', lineHeight: 1.7, color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(5px)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#fff', fontWeight: 700 }}>
+              <Zap size={16} fill="white" /> AI Executive Summary
+            </div>
             {narrative}
           </div>
         )}
       </div>
 
       {/* ── 4 Stat cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.75rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         <BigStatCard
-          title="Cancellations" value={fmt(c.total)} icon={<FileText size={22} />}
-          gradient="linear-gradient(135deg, #007B8A, #005f6b)"
-          sub={`${fmt(c.approved)} approved · ${fmt(c.last30Days)} this month`}
+          title="Total Cancellations" value={fmt(c.total)} icon={<FileText size={24} />}
+          color="var(--primary)"
+          sub={`${fmt(c.approved)} finalized · ${fmt(c.last30Days)} this month`}
           badge={c.pending}
         />
         <BigStatCard
-          title="Refunds" value={fmt(r.total)} icon={<ReceiptText size={22} />}
-          gradient="linear-gradient(135deg, #f59e0b, #d97706)"
+          title="Total Refunds" value={fmt(r.total)} icon={<ReceiptText size={24} />}
+          color="#92400e"
           sub={`${fmtRWF(r.approvedAmountRWF)} paid out · ${fmt(r.last30Days)} this month`}
           badge={(r.pending || 0) + (r.verified || 0)}
         />
         <BigStatCard
-          title="Incidents" value={fmt(i.total)} icon={<AlertTriangle size={22} />}
-          gradient="linear-gradient(135deg, #dc2626, #b91c1c)"
-          sub={`${fmt(i.reviewed)} reviewed · ${fmt(i.last30Days)} this month`}
+          title="Incident Reports" value={fmt(i.total)} icon={<AlertTriangle size={24} />}
+          color="#b91c1c"
+          sub={`${fmt(i.reviewed)} reviews done · ${fmt(i.last30Days)} this month`}
         />
         <BigStatCard
-          title="Pending Action" value={fmt(totalPending)} icon={<Clock size={22} />}
-          gradient="linear-gradient(135deg, #7c3aed, #5b21b6)"
-          sub="Cancellations + Refunds awaiting review"
+          title="Pending Action" value={fmt(totalPending)} icon={<Clock size={24} />}
+          color="#4338ca"
+          sub="Requires managerial determination"
         />
       </div>
 
       {/* ── Two-column middle section ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr', gap: '2rem', marginBottom: '2rem' }}>
 
         {/* Pending queue */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-          <div style={{ padding: '1.1rem 1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Clock size={16} style={{ color: '#f59e0b' }} />
-              Pending Approvals
-              {totalPending > 0 && <span style={{ padding: '2px 8px', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 800 }}>{totalPending}</span>}
+        <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+          <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Clock size={20} style={{ color: '#92400e' }} />
+              Active Review Queue
+              {totalPending > 0 && <span style={{ padding: '4px 10px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 800 }}>{totalPending} NEW</span>}
             </h3>
           </div>
           {pendingCanc.length === 0 && pendingRef.length === 0 ? (
-            <div style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
-              <CheckCircle size={36} style={{ color: '#22c55e', marginBottom: '0.75rem' }} />
-              <p style={{ fontWeight: 600, margin: 0 }}>All queues clear!</p>
+            <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              <CheckCircle size={48} style={{ color: 'var(--success)', marginBottom: '1rem', opacity: 0.6 }} />
+              <p style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary-dark)' }}>Operational Excellence</p>
+              <p style={{ marginTop: '4px' }}>All submission queues are currently clear.</p>
             </div>
           ) : (
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               {pendingCanc.map(item => <PendingRow key={`c-${item.id}`} item={item} type="cancellation" navigate={navigate} />)}
               {pendingRef.map(item => <PendingRow key={`r-${item.id}`} item={item} type="refund" navigate={navigate} />)}
             </div>
           )}
-          <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '8px' }}>
-            <button onClick={() => navigate('/cancellations?status=pending')} style={{ flex: 1, padding: '0.6rem', fontSize: '0.78rem', fontWeight: 700, border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#475569', cursor: 'pointer' }}>
-              View Cancellations
+          <div style={{ padding: '1.25rem', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '1rem' }}>
+            <button onClick={() => navigate('/cancellations?status=pending')} style={{ flex: 1, padding: '0.75rem', fontSize: '0.85rem', fontWeight: 700, border: '1.5px solid #e2e8f0', borderRadius: '10px', backgroundColor: '#fff', color: 'var(--primary-dark)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e2e8f0'}>
+              View All Cancellations
             </button>
-            <button onClick={() => navigate('/refunds?status=pending')} style={{ flex: 1, padding: '0.6rem', fontSize: '0.78rem', fontWeight: 700, border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#475569', cursor: 'pointer' }}>
-              View Refunds
+            <button onClick={() => navigate('/refunds?status=pending')} style={{ flex: 1, padding: '0.75rem', fontSize: '0.85rem', fontWeight: 700, border: '1.5px solid #e2e8f0', borderRadius: '10px', backgroundColor: '#fff', color: 'var(--primary-dark)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e2e8f0'}>
+              View All Refunds
             </button>
           </div>
         </div>
 
         {/* Module breakdown + AI teaser */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Approval rates */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '1.25rem' }}>
-            <h3 style={{ margin: '0 0 1.1rem', fontSize: '0.92rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <TrendingUp size={16} style={{ color: '#22c55e' }} /> Approval Rates
+          <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '1.75rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <h3 style={{ margin: '0 0 1.5rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <TrendingUp size={20} style={{ color: 'var(--success)' }} /> Operational Performance
             </h3>
-            <ModuleBar label="Cancellations" approved={c.approved || 0} total={c.total || 0} color="#007B8A" />
-            <ModuleBar label="Refunds"       approved={r.approved || 0} total={r.total || 0} color="#f59e0b" />
-            <ModuleBar label="Incidents (reviewed)" approved={i.reviewed || 0} total={i.total || 0} color="#dc2626" />
+            <ModuleBar label="Cancellation Completion" approved={c.approved || 0} total={c.total || 0} color="var(--primary)" />
+            <ModuleBar label="Refund Processing"       approved={r.approved || 0} total={r.total || 0} color="#92400e" />
+            <ModuleBar label="Incident Review Rate"    approved={i.reviewed || 0} total={i.total || 0} color="#b91c1c" />
           </div>
 
           {/* AI Insights CTA */}
           <div onClick={() => navigate('/ai-insights')}
-            style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '16px', padding: '1.4rem', color: '#fff', cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s', boxShadow: '0 4px 16px rgba(79,70,229,0.3)' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(79,70,229,0.4)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(79,70,229,0.3)'; }}
+            style={{ background: 'linear-gradient(135deg, #4338ca, #6d28d9)', borderRadius: '20px', padding: '1.75rem', color: '#fff', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 10px 20px rgba(67,56,202,0.15)', position: 'relative', overflow: 'hidden' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(67,56,202,0.25)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(67,56,202,0.15)'; }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ padding: '8px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '10px' }}>
-                <Brain size={20} />
+            <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ padding: '10px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '12px' }}>
+                <Brain size={24} />
               </div>
-              <span style={{ fontWeight: 800, fontSize: '1rem' }}>AI Insights</span>
-              <ChevronRight size={16} style={{ marginLeft: 'auto' }} />
+              <div>
+                <span style={{ fontWeight: 800, fontSize: '1.2rem', display: 'block' }}>Advanced Analytics</span>
+                <span style={{ fontSize: '0.8rem', opacity: 0.8, fontWeight: 500 }}>AI-Powered Insights</span>
+              </div>
             </div>
-            <p style={{ margin: 0, fontSize: '0.82rem', opacity: 0.85, lineHeight: 1.5 }}>
-              Classify submission reasons by category, map to staff, and generate executive briefings.
+            <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.9, lineHeight: 1.6, fontWeight: 500 }}>
+              Deep-dive into submission patterns, staff performance metrics, and automated executive briefings.
             </p>
           </div>
         </div>
       </div>
 
       {/* ── Quick actions ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: '1rem' }}>
+      <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-dark)' }}>Quick Navigation</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem' }}>
         {[
-          { label: 'Cancellations', icon: <FileText size={22} />, color: '#007B8A', bg: 'rgba(0,123,138,0.08)', path: '/cancellations' },
-          { label: 'Refunds',       icon: <ReceiptText size={22} />, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', path: '/refunds' },
-          { label: 'Incidents',     icon: <AlertTriangle size={22} />, color: '#dc2626', bg: 'rgba(220,38,38,0.08)', path: '/incidents' },
-          { label: 'AI Insights',   icon: <Brain size={22} />, color: '#7c3aed', bg: 'rgba(124,58,237,0.08)', path: '/ai-insights' },
+          { label: 'Cancellations', icon: <FileText size={24} />, color: 'var(--primary)', path: '/cancellations' },
+          { label: 'Refunds',       icon: <ReceiptText size={24} />, color: '#92400e', path: '/refunds' },
+          { label: 'Incidents',     icon: <AlertTriangle size={24} />, color: '#b91c1c', path: '/incidents' },
+          { label: 'AI Platform',   icon: <Brain size={24} />, color: '#4338ca', path: '/ai-insights' },
           ...(user?.role === 'admin' ? [
-            { label: 'Users',   icon: <Users2 size={22} />,  color: '#0ea5e9', bg: 'rgba(14,165,233,0.08)', path: '/users' },
-            { label: 'Audit',   icon: <Activity size={22} />, color: '#10b981', bg: 'rgba(16,185,129,0.08)', path: '/audit-logs' },
+            { label: 'Users',   icon: <Users2 size={24} />,  color: '#0369a1', path: '/users' },
+            { label: 'Audit Logs',   icon: <Activity size={24} />, color: '#047857', path: '/audit-logs' },
           ] : []),
         ].map(btn => (
           <button key={btn.label} onClick={() => navigate(btn.path)}
-            style={{ padding: '1.1rem', borderRadius: '14px', border: '1px solid #e2e8f0', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = btn.bg; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08)'; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; }}
+            style={{ padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.06)'; e.currentTarget.style.borderColor = btn.color; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
           >
-            <div style={{ padding: '10px', borderRadius: '12px', backgroundColor: btn.bg, color: btn.color }}>{btn.icon}</div>
-            <span style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1e293b' }}>{btn.label}</span>
+            <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: `${btn.color}10`, color: btn.color, transition: 'all 0.2s' }}>{btn.icon}</div>
+            <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary-dark)' }}>{btn.label}</span>
           </button>
         ))}
       </div>
@@ -278,3 +283,4 @@ const ManagementDashboard = () => {
 };
 
 export default ManagementDashboard;
+

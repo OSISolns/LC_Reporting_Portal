@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getIncidentById, getIncidentPDF } from '../../api/incidents';
-import { ChevronLeft, Download, Printer } from 'lucide-react';
+import { ChevronLeft, Download } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import IncidentDetailsView from './components/IncidentDetailsView';
 
@@ -38,11 +38,6 @@ const IncidentDetail = () => {
     } catch (err) { alert('PDF generation failed'); }
   };
 
-  const handlePrint = () => {
-    document.body.setAttribute('data-print-date', new Date().toLocaleString());
-    window.print();
-  };
-
   if (loading) return <LoadingSpinner />;
   if (!data) return <div>Report not found</div>;
 
@@ -65,6 +60,5 @@ const IncidentDetail = () => {
   );
 };
 
-
-
 export default IncidentDetail;
+
