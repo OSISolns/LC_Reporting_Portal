@@ -233,6 +233,11 @@ exports.getMedicalReportHTML = (type, data) => {
 
 
   // Render Logic based on Type
+  const titleMap = {
+    'INCIDENT': 'Incident / Sentinel Event Report',
+    'REFUND': 'Refund Request Form',
+    'CANCELLATION': 'Cancellation Request Form'
+  };
   let content = '';
   if (type === 'INCIDENT') {
     content = `
@@ -377,17 +382,18 @@ exports.getMedicalReportHTML = (type, data) => {
       <style>${styles}</style>
     </head>
     <body>
-      <div class="print-header">
-        <div class="logo"><img src="${logoBase64}" height="60" /></div>
-        <div class="hospital-info">
-          LEGACY CLINICS & DIAGNOSTICS<br/>
-          KIGALI, RWANDA<br/>
-          CLINICAL REPORTING PORTAL
-        </div>
-        <div class="doc-meta">
-          Doc ID: ${data.id}<br/>
-          Type: ${type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : 'CAN'}<br/>
-          Print Date: ${new Date().toLocaleString()}
+      <div class="print-header" style="display:flex; flex-direction:column;">
+        <img src="${footerBase64}" style="width: 100%; display: block; margin-bottom: 10px;" />
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="hospital-info" style="text-align:left;">
+            LEGACY CLINICS / REPORTING PORTAL<br/>
+            <strong>${titleMap[type] || 'Report'}</strong>
+          </div>
+          <div class="doc-meta" style="text-align:right;">
+            OFFICIAL DOCUMENT ID<br/>
+            <strong>LC-${type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : 'CAN'}-${new Date().getFullYear()}-${String(data.id || '0').padStart(5, '0')}</strong><br/>
+            Print Date: ${new Date().toLocaleString()}
+          </div>
         </div>
       </div>
 

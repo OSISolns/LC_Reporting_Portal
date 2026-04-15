@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { PrintHeader, PrintFooter } from '../components/PrintBranding';
 import { History, Search, User, Activity, Printer } from 'lucide-react';
 
 const AuditLogs = () => {
@@ -37,7 +38,8 @@ const AuditLogs = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+      <PrintHeader title="SYSTEM AUDIT LOGS" docType="ADT" />
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>System Audit Logs</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Comprehensive tracking of all user actions and system state changes for regulatory compliance.</p>
@@ -130,6 +132,7 @@ const AuditLogs = () => {
           </tbody>
         </table>
       </div>
+      <PrintFooter />
     </div>
   );
 };
