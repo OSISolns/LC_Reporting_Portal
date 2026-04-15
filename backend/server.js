@@ -1,6 +1,16 @@
 'use strict';
 require('dotenv').config();
 
+// ── Environment Validation ────────────────────────────────────────────────────
+const requiredEnv = ['JWT_SECRET', 'TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'];
+const missingEnv = requiredEnv.filter(k => !process.env[k]);
+if (missingEnv.length > 0) {
+  console.error(`❌ Critical Environment Variables Missing: ${missingEnv.join(', ')}`);
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+}
+
 const express     = require('express');
 const cors        = require('cors');
 const helmet      = require('helmet');
@@ -8,19 +18,48 @@ const rateLimit   = require('express-rate-limit');
 
 const authRoutes         = require('./src/routes/auth');
 const cancellationRoutes = require('./src/routes/cancellations');
+const refundRoutes       = require('./src/routes/refunds');
 const incidentRoutes     = require('./src/routes/incidents');
 const userRoutes         = require('./src/routes/users');
 const auditRoutes        = require('./src/routes/auditLogs');
+const aiRoutes           = require('./src/routes/ai');
 
 const app = express();
 
 // ── Security ────────────────────────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+// Build allowed origins list
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+];
+
 app.use(cors({
-  origin:      process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (same-origin on Vercel, Postman, curl)
+    if (!origin) return callback(null, true);
+
+    // Allow localhost
+    if (origin.startsWith('http://localhost')) return callback(null, true);
+
+    // Allow any Vercel deployment URL for this project
+    if (origin.match(/https:\/\/project-3oz55[^.]*\.vercel\.app$/)) return callback(null, true);
+
+    // Allow explicitly listed origins
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+
+    console.warn(`CORS blocked: ${origin}`);
+    callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
   credentials: true,
-  methods:     ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// Explicitly handle OPTIONS preflight for all routes
+app.options('*', cors());
 
 // ── Rate limiting ────────────────────────────────────────────────────────────
 const apiLimiter = rateLimit({
@@ -39,9 +78,11 @@ app.use(express.urlencoded({ extended: true }));
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',          authRoutes);
 app.use('/api/cancellations', cancellationRoutes);
+app.use('/api/refunds',       refundRoutes);
 app.use('/api/incidents',     incidentRoutes);
 app.use('/api/users',         userRoutes);
 app.use('/api/audit',         auditRoutes);
+app.use('/api/ai',            aiRoutes);
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {

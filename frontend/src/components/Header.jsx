@@ -1,14 +1,14 @@
 import { useAuth } from '../context/AuthContext';
-import { Bell, User } from 'lucide-react';
+import { Bell, User, Menu } from 'lucide-react';
 
-const Header = () => {
+const Header = ({ onMenuToggle }) => {
   const { user } = useAuth();
 
   return (
     <header style={{
-      height: '70px',
+      height: '64px',
       borderBottom: '1px solid var(--border-color)',
-      padding: '0 2rem',
+      padding: '0 1.25rem',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -16,49 +16,53 @@ const Header = () => {
       boxShadow: 'var(--shadow-sm)',
       position: 'sticky',
       top: 0,
-      zIndex: 10
+      zIndex: 30,
+      gap: '1rem',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <img src="/logo.png" alt="Legacy Clinics" style={{ height: '32px', objectFit: 'contain' }} />
-      </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        <button style={{ 
-          background: 'none', 
-          border: 'none', 
-          color: 'var(--primary-dark)',
-          position: 'relative'
-        }}>
-          <Bell size={20} />
-          <span style={{
-            position: 'absolute',
-            top: '-2px',
-            right: '-2px',
-            width: '8px',
-            height: '8px',
-            backgroundColor: 'var(--danger)',
-            borderRadius: '50%',
-            border: '2px solid var(--bg-color)'
-          }}></span>
-        </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '1.5rem', borderLeft: '1px solid var(--border-color)' }}>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'white' }}>{user?.fullName}</p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{user?.role.replace('_', ' ')}</p>
-          </div>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--card-bg)',
-            display: 'flex',
+      {/* ── Left: hamburger (mobile) + logo ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button
+          onClick={onMenuToggle}
+          className="hamburger-btn"
+          style={{
+            display: 'none',        /* shown via CSS on mobile */
+            background: 'none',
+            border: 'none',
+            color: 'var(--primary-dark)',
+            padding: '6px',
+            borderRadius: '8px',
+            cursor: 'pointer',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--primary)',
-            border: '1px solid var(--border-color)'
-          }}>
-            <User size={20} />
+          }}
+          aria-label="Toggle menu"
+        >
+          <Menu size={22} />
+        </button>
+
+        <img src="/logo.png" alt="Legacy Clinics" style={{ height: '30px', objectFit: 'contain' }} />
+      </div>
+
+      {/* ── Right: bell + user ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <button style={{ background: 'none', border: 'none', color: 'var(--primary-dark)', position: 'relative', padding: '4px', cursor: 'pointer' }}>
+          <Bell size={20} />
+          <span style={{ position: 'absolute', top: '2px', right: '2px', width: '7px', height: '7px', backgroundColor: 'var(--danger)', borderRadius: '50%', border: '2px solid #fff' }} />
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '1rem', borderLeft: '1px solid var(--border-color)' }}>
+          {/* Hide name on very small screens */}
+          <div className="header-user-name" style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-dark)', margin: 0, lineHeight: 1.3 }}>
+              {user?.fullName?.split(' ').slice(0, 2).join(' ')}
+            </p>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', margin: 0, letterSpacing: '0.04em' }}>
+              {user?.role?.replace(/_/g, ' ')}
+            </p>
+          </div>
+          <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
+            <User size={18} />
           </div>
         </div>
       </div>

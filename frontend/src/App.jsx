@@ -7,10 +7,15 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import AuditLogs from './pages/AuditLogs';
+import AIInsights from './pages/AIInsights';
 
 import CancellationList from './pages/cancellations/CancellationList';
 import CancellationForm from './pages/cancellations/CancellationForm';
 import CancellationDetail from './pages/cancellations/CancellationDetail';
+
+import RefundList from './pages/refunds/RefundList';
+import RefundForm from './pages/refunds/RefundForm';
+import RefundDetail from './pages/refunds/RefundDetail';
 
 import IncidentList from './pages/incidents/IncidentList';
 import IncidentForm from './pages/incidents/IncidentForm';
@@ -27,10 +32,15 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/users" element={<Users />} />
             <Route path="/audit-logs" element={<AuditLogs />} />
+            <Route path="/ai-insights" element={<AIInsights />} />
             
             <Route path="/cancellations" element={<CancellationList />} />
             <Route path="/cancellations/new" element={<CancellationForm />} />
             <Route path="/cancellations/:id" element={<CancellationDetail />} />
+
+            <Route path="/refunds" element={<RefundList />} />
+            <Route path="/refunds/new" element={<RefundForm />} />
+            <Route path="/refunds/:id" element={<RefundDetail />} />
             
             <Route path="/incidents" element={<IncidentList />} />
             <Route path="/incidents/new" element={<IncidentForm />} />

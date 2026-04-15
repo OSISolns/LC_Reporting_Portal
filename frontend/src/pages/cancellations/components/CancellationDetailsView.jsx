@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Eye, FileText, Calendar, User, Info, Receipt, Download, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, FileText, Calendar, User, Info, Receipt, Download, CheckCircle, XCircle, Printer } from 'lucide-react';
 import StatusBadge from '../../../components/StatusBadge';
 import { PrintHeader, PrintFooter, PrintWatermark } from '../../../components/PrintBranding';
 
@@ -34,7 +34,7 @@ const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, on
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
       <PrintHeader title="Cancellation Request Form" docType="CAN" docId={data.id} />
       <PrintWatermark />
-      
+
       {data.status === 'approved' && (
         <div className="medical-stamp">
           <img src="/stamps/approved.png" alt="APPROVED" />
@@ -79,7 +79,7 @@ const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, on
         <table className="medical-form-table">
           <tbody>
             <tr>
-              <th>Amount to be Refunded</th>
+              <th>Amount to be Cancelled</th>
               <td style={{ fontWeight: 800, color: '#111827' }}>RWF {Number(data.total_amount_cancelled).toLocaleString()}</td>
             </tr>
             <tr>
@@ -107,10 +107,10 @@ const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, on
               {data.creator_name}
             </div>
             <div className="medical-stamp-area">
-               {new Date(data.created_at).toLocaleString()}
+              {new Date(data.created_at).toLocaleString()}
             </div>
           </div>
-          
+
           {/* Level 2: Manager */}
           <div className="medical-signature-box">
             <div className="medical-signature-label">2. Verified By</div>
@@ -143,34 +143,68 @@ const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, on
         )}
       </div>
 
-      {(canVerify || canApprove) && !isRejecting && (
-        <div className="no-print" style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-          <button onClick={() => setIsRejecting(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: '#fff', color: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-            <XCircle size={18} />
-            Reject Request
-          </button>
-          
-          {canVerify && (
-            <button onClick={onVerify} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--warning)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-              <CheckCircle size={18} />
-              Verify Request (L1)
+      <div className="no-print" style={{
+        marginTop: '2rem',
+        padding: '1.5rem',
+        backgroundColor: '#f8fafc',
+        borderRadius: '12px',
+        border: '1px solid var(--border-color)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.25rem'
+      }}>
+        {(canVerify || canApprove) && !isRejecting && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '1rem',
+            paddingBottom: '1rem',
+            borderBottom: '1px solid #e2e8f0'
+          }}>
+            <button onClick={() => setIsRejecting(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: '#fff', color: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+              <XCircle size={18} />
+              Reject Request
             </button>
-          )}
 
-          {canApprove && (
-            <button onClick={onApprove} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--success)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-              <CheckCircle size={18} />
-              Final Approval (COO)
-            </button>
-          )}
+            {canVerify && (
+              <button onClick={onVerify} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--warning)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+                <CheckCircle size={18} />
+                Verify Request (L1)
+              </button>
+            )}
+
+            {canApprove && (
+              <button onClick={onApprove} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--success)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+                <CheckCircle size={18} />
+                Final Approval (COO)
+              </button>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => window.print()}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1.5px solid var(--border-color)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <Printer size={18} />
+            Print Request
+          </button>
+          <button
+            onClick={() => onExport && onExport()}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#ffffff', color: 'var(--primary-dark)', border: '1.5px solid var(--border-color)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <Download size={18} />
+            Download PDF
+          </button>
         </div>
-      )}
+      </div>
 
       {isRejecting && (
         <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem', padding: '1.5rem', backgroundColor: '#fff5f5', borderRadius: '12px', border: '1px solid #fed7d7' }}>
           <h4 style={{ color: 'var(--danger)', margin: 0 }}>Provide Rejection Reason</h4>
-          <textarea 
-            value={rejectComment} 
+          <textarea
+            value={rejectComment}
             onChange={e => setRejectComment(e.target.value)}
             placeholder="Please enter the reason for rejection..."
             style={{ padding: '1rem', borderRadius: '8px', border: '1px solid #feb2b2', minHeight: '80px', fontFamily: 'inherit' }}

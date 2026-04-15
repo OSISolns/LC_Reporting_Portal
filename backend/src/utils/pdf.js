@@ -1,5 +1,5 @@
-'use strict';
-const puppeteer = require('puppeteer');
+const chromium = require('@sparticuz/chromium');
+const puppeteer = require('puppeteer-core');
 const { getMedicalReportHTML } = require('./pdfTemplate');
 
 /**
@@ -8,10 +8,16 @@ const { getMedicalReportHTML } = require('./pdfTemplate');
 const generateHighFidelityPDF = async (type, data, stream) => {
   let browser;
   try {
+    const isVercel = process.env.VERCEL || process.env.NODE_ENV === 'production';
+    
     browser = await puppeteer.launch({
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      args: isVercel ? chromium.args : ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      defaultViewport: chromium.defaultViewport,
+      executablePath: isVercel ? await chromium.executablePath() : '/usr/bin/google-chrome', // Fallback for local
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true,
     });
+
     const page = await browser.newPage();
     
     // Generate HTML content
@@ -22,14 +28,11 @@ const generateHighFidelityPDF = async (type, data, stream) => {
     
     // Generate PDF buffer
     const pdfBuffer = await page.pdf({
-      format: 'A4',
+      width:  '210mm',
+      height: '297mm',
       printBackground: true,
-      margin: {
-        top: '10mm',
-        right: '10mm',
-        bottom: '10mm',
-        left: '10mm'
-      }
+      displayHeaderFooter: false,
+      margin: { top: '0', right: '0', bottom: '0', left: '0' },
     });
 
     // Write buffer to stream
@@ -57,4 +60,11 @@ exports.generateCancellationPDF = async (data, stream) => {
  */
 exports.generateIncidentPDF = async (data, stream) => {
   return generateHighFidelityPDF('INCIDENT', data, stream);
+};
+
+/**
+ * Generates a PDF for a refund request.
+ */
+exports.generateRefundPDF = async (data, stream) => {
+  return generateHighFidelityPDF('REFUND', data, stream);
 };

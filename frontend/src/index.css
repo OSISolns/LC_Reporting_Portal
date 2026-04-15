@@ -1,8 +1,8 @@
 :root {
-  --primary: #007B8A;       /* Teal-blue primary */
-  --primary-dark: #003B44;  /* Dark Navy for text/contrast */
-  --bg-color: #f8fafc;      /* Light background */
-  --sidebar-bg: #003B44;    /* Sidebar Navy */
+  --primary: #007B8A;
+  --primary-dark: #003B44;
+  --bg-color: #f8fafc;
+  --sidebar-bg: #003B44;
   --card-bg: #ffffff;
   --text-primary: #1e293b;
   --text-secondary: #64748b;
@@ -13,6 +13,19 @@
   --info: #17A2B8;
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --page-padding: 1.75rem;  /* desktop page padding */
+}
+
+@media (max-width: 768px) {
+  :root {
+    --page-padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --page-padding: 0.75rem;
+  }
 }
 
 * {
@@ -327,3 +340,90 @@ button:active {
     page-break-after: auto;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE SYSTEM
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Sidebar drawer ─────────────────────────────────────────── */
+.sidebar-wrapper {
+  position: relative;
+  z-index: 50;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .sidebar-wrapper {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 50;
+  }
+  .sidebar-wrapper.sidebar-open {
+    transform: translateX(0);
+  }
+
+  /* Show X inside sidebar */
+  .sidebar-close-btn {
+    display: flex !important;
+  }
+
+  /* Show hamburger in header */
+  .hamburger-btn {
+    display: flex !important;
+  }
+}
+
+/* ── Headings ───────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  h1 { font-size: 1.45rem !important; }
+  h2 { font-size: 1.15rem !important; }
+}
+
+/* ── Data tables — scroll horizontally on mobile ────────────── */
+@media (max-width: 768px) {
+  .glass {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table { min-width: 560px; }
+}
+
+/* ── Forms — stack single column on mobile ──────────────────── */
+@media (max-width: 640px) {
+  .medical-form-table th,
+  .medical-form-table td {
+    display: block;
+    width: 100% !important;
+    border-right: none;
+  }
+  .medical-form-table th { padding-bottom: 4pt; border-bottom: none; }
+  .medical-signature-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12pt;
+  }
+}
+
+/* ── Panels — two-col stacks to one on mobile ───────────────── */
+@media (max-width: 700px) {
+  [style*="repeat(auto-fit, minmax(300px"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Buttons — larger tap targets ───────────────────────────── */
+@media (max-width: 768px) {
+  button { min-height: 42px; }
+}
+
+/* ── Header user name — hide on tiny screens ────────────────── */
+@media (max-width: 480px) {
+  .header-user-name { display: none !important; }
+}
+
+/* ── Page padding via CSS variable ─────────────────────────── */
+main { padding: var(--page-padding); }
+
+/* ── Hardware-accelerated sidebar slide ─────────────────────── */
+.sidebar-wrapper, .sidebar-wrapper aside { will-change: transform; }

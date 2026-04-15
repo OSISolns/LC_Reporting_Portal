@@ -27,13 +27,13 @@ const getBase64Image = (relativePath) => {
 exports.getMedicalReportHTML = (type, data) => {
   const logoBase64 = getBase64Image('logo.png');
   const footerBase64 = getBase64Image('footer.png');
-  
+
   // Determine Stamps
   let stampHtml = '';
   if (type === 'INCIDENT' && data.status === 'reviewed') {
     const verifiedStamp = getBase64Image('stamps/verified.png');
     stampHtml = `<div class="stamp"><img src="${verifiedStamp}" alt="VERIFIED" /></div>`;
-  } else if (type === 'CANCELLATION') {
+  } else if (type === 'CANCELLATION' || type === 'REFUND') {
     if (data.status === 'approved') {
       const approvedStamp = getBase64Image('stamps/approved.png');
       stampHtml = `<div class="stamp"><img src="${approvedStamp}" alt="APPROVED" /></div>`;
@@ -46,152 +46,190 @@ exports.getMedicalReportHTML = (type, data) => {
   // Define Styles (Mirrors index.css Gold Standard Framework)
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap');
-    
-    body {
-      font-family: 'Open Sans', sans-serif;
+
+    * { box-sizing: border-box; }
+
+    html, body {
       margin: 0;
-      padding: 40px;
+      padding: 0;
+      width: 210mm;
+      min-height: 297mm;
+      font-family: 'Open Sans', sans-serif;
       color: #1e293b;
       line-height: 1.5;
+      background: #ffffff;
     }
 
-    /* Print Header Struct */
+    body {
+      padding: 12mm 14mm 0 14mm;   /* bottom handled by footer space */
+      display: flex;
+      flex-direction: column;
+      min-height: 297mm;
+    }
+
+    /* ── Header ── */
     .print-header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-end;
-      border-bottom: 2px solid #003B44;
-      padding-bottom: 15px;
-      margin-bottom: 30px;
+      align-items: center;
+      border-bottom: 2.5px solid #003B44;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      flex-shrink: 0;
     }
 
     .hospital-info {
       font-size: 9pt;
       color: #003B44;
       font-weight: 700;
+      text-align: center;
+      line-height: 1.6;
     }
 
     .doc-meta {
       text-align: right;
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #64748b;
+      line-height: 1.7;
     }
 
-    /* Form Struct */
+    /* ── Main form card — fills remaining space ── */
     .medical-form-modern {
-      border: 1px solid #cbd5e1;
+      border: 1.5px solid #cbd5e1;
       background: #ffffff;
       position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 14px;
     }
 
     .medical-form-header {
       background-color: #003B44;
       color: #ffffff;
-      padding: 12px 20px;
+      padding: 10px 18px;
       font-size: 11pt;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.08em;
+      flex-shrink: 0;
     }
 
+    /* ── Table ── */
     .medical-form-table {
       width: 100%;
       border-collapse: collapse;
     }
 
     .medical-form-table th {
-      width: 30%;
-      padding: 12px 20px;
+      width: 35%;
+      padding: 10px 16px;
       background-color: #f8fafc;
       color: #475569;
-      font-size: 9.5pt;
+      font-size: 9pt;
       font-weight: 800;
       text-align: left;
       border-right: 1px solid #e2e8f0;
       border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
     }
 
     .medical-form-table td {
-      width: 70%;
-      padding: 12px 20px;
+      width: 65%;
+      padding: 10px 16px;
       color: #1e293b;
-      font-size: 10pt;
+      font-size: 9.5pt;
       border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
     }
 
     .section-head {
-      padding: 10px 20px;
+      padding: 8px 16px;
       background-color: #f1f5f9;
-      border-bottom: 2.5px solid #003B44;
+      border-top: 1px solid #e2e8f0;
+      border-bottom: 2px solid #003B44;
       color: #003B44;
       font-weight: 800;
-      font-size: 10pt;
+      font-size: 9pt;
       text-transform: uppercase;
+      letter-spacing: 0.06em;
+      flex-shrink: 0;
     }
 
+    /* Spacer row that grows to fill empty space inside form */
+    .form-spacer {
+      flex: 1;
+    }
+
+    /* ── Signature grid ── */
     .signature-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 30px;
-      padding: 30px 20px;
+      gap: 24px;
+      padding: 20px 18px;
+      border-top: 1px solid #e2e8f0;
+      margin-top: auto;
     }
 
     .sig-box {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
     }
 
     .sig-label {
-      font-size: 7.5pt;
+      font-size: 7pt;
       font-weight: 800;
       color: #64748b;
       text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
     .sig-line {
       border-bottom: 1.5px solid #000;
-      min-height: 25px;
+      min-height: 28px;
       font-weight: 700;
-      font-size: 10.5pt;
+      font-size: 10pt;
       padding-bottom: 3px;
+      padding-top: 4px;
     }
 
     .sig-meta {
-      font-size: 7pt;
+      font-size: 6.5pt;
       color: #94a3b8;
       font-style: italic;
     }
 
-    /* Stamps */
+    /* ── Stamps ── */
     .stamp {
       position: absolute;
-      top: 15rem;
-      right: 4rem;
-      width: 200px;
+      top: 12rem;
+      right: 3rem;
+      width: 180px;
       transform: rotate(-12deg);
       opacity: 0.8;
       z-index: 100;
+      pointer-events: none;
     }
 
-    .stamp img {
-      width: 100%;
-    }
+    .stamp img { width: 100%; }
 
+    /* ── Footer — sits at bottom of page, doesn't overlap ── */
     .footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 20px;
-      text-align: center;
+      flex-shrink: 0;
+      width: calc(100% + 28mm);   /* span gutters */
+      margin-left: -14mm;
+      margin-bottom: 0;
     }
 
     .footer img {
       width: 100%;
-      max-height: 50pt;
+      display: block;
+      max-height: 45pt;
+      object-fit: cover;
     }
   `;
+
 
   // Render Logic based on Type
   let content = '';
@@ -229,10 +267,63 @@ exports.getMedicalReportHTML = (type, data) => {
             <div class="sig-line">${new Date(data.created_at).toLocaleDateString()}</div>
           </div>
           <div class="sig-box">
-            <div class="sig-label">Quality Assurance</div>
+            <div class="sig-label">Quality & Accreditation</div>
             <div class="sig-line">${data.reviewer_name || 'PENDING'}</div>
           </div>
         </div>
+      </div>
+    `;
+  } else if (type === 'REFUND') {
+    content = `
+      <div class="medical-form-modern">
+        <div class="medical-form-header">Refund Request Form</div>
+        ${stampHtml}
+
+        <div class="section-head">Section 1: FORMAL PATIENT IDENTIFICATION</div>
+        <table class="medical-form-table">
+          <tr><th>Patient's Full Name</th><td style="font-weight:800">${data.patient_full_name}</td></tr>
+          <tr><th>PID Number</th><td>${data.pid_number}</td></tr>
+          <tr><th>SID Number</th><td>${data.sid_number || 'N/A'}</td></tr>
+          <tr><th>Telephone Number</th><td>${data.telephone_number || 'N/A'}</td></tr>
+          <tr><th>Insurance / Payer</th><td>${data.insurance_payer || 'Private / Walk-in'}</td></tr>
+        </table>
+
+        <div class="section-head">Section 2: TRANSACTION DETAILS</div>
+        <table class="medical-form-table">
+          <tr><th>MOMO Code</th><td>${data.momo_code || 'N/A'}</td></tr>
+          <tr><th>Total Amount Paid (RWF)</th><td>${Number(data.total_amount_paid).toLocaleString()}</td></tr>
+          <tr><th>Amount to be Cancelled (RWF)</th><td style="font-weight:800">${Number(data.amount_to_be_refunded).toLocaleString()}</td></tr>
+          <tr><th>Amount Paid By</th><td>${data.amount_paid_by || 'N/A'}</td></tr>
+          <tr><th>Original Receipt / Invoice #</th><td>${data.original_receipt_number || 'N/A'}</td></tr>
+          <tr><th>Initial Transaction Date</th><td>${data.initial_transaction_date ? new Date(data.initial_transaction_date).toLocaleDateString() : 'N/A'}</td></tr>
+          <tr><th>Reason for Refund</th><td>${data.reason_for_refund}</td></tr>
+        </table>
+
+        <div class="section-head">Section 3: REFUND APPROVAL WORKFLOW</div>
+        <div class="signature-grid">
+          <div class="sig-box">
+            <div class="sig-label">1. Initiated By (Cashier)</div>
+            <div class="sig-line">${data.creator_name}</div>
+            <div class="sig-meta">${new Date(data.created_at).toLocaleDateString()}</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-label">2. Verified By</div>
+            <div class="sig-line">${data.verifier_name || 'PENDING'}</div>
+            <div class="sig-meta">${data.verified_at ? new Date(data.verified_at).toLocaleDateString() : 'Official Verification'}</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-label">3. Approved By (C.O.O)</div>
+            <div class="sig-line">${data.approver_name || 'PENDING'}</div>
+            <div class="sig-meta">${data.approved_at ? new Date(data.approved_at).toLocaleDateString() : 'Final Authorization'}</div>
+          </div>
+        </div>
+
+        ${data.status === 'rejected' ? `
+          <div style="margin:15pt; padding:10pt; border:2px solid #b91c1c; border-radius:4px; background:#fef2f2">
+            <div style="color:#b91c1c;font-weight:800;font-size:8pt;text-transform:uppercase;margin-bottom:4px">Request Rejected</div>
+            <div style="font-weight:700;font-size:10pt">Reason: ${data.rejection_comment}</div>
+            <div style="font-size:8pt;margin-top:4px;opacity:0.8">Rejected by: ${data.rejector_name}</div>
+          </div>` : ''}
       </div>
     `;
   } else {
@@ -294,7 +385,7 @@ exports.getMedicalReportHTML = (type, data) => {
         </div>
         <div class="doc-meta">
           Doc ID: ${data.id}<br/>
-          Type: ${type === 'INCIDENT' ? 'INC' : 'CAN'}<br/>
+          Type: ${type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : 'CAN'}<br/>
           Print Date: ${new Date().toLocaleString()}
         </div>
       </div>

@@ -54,7 +54,7 @@ class Incident {
       query += ` AND i.department ILIKE $${params.length}`;
     }
 
-    query += ` ORDER BY i.created_at DESC`;
+    query += ` ORDER BY i.created_at DESC LIMIT 100`;
     const { rows } = await db.query(query, params);
     return rows;
   }

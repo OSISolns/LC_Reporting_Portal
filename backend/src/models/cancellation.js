@@ -37,12 +37,16 @@ class Cancellation {
 
   static async getAll(filters = {}) {
     let query = `
-      SELECT c.*, 
-             u1.full_name as creator_name, 
-             u2.full_name as verifier_name, 
-             u3.full_name as approver_name
+      SELECT c.id, c.patient_full_name, c.pid_number, c.old_sid_number, c.new_sid_number,
+             c.telephone_number, c.insurance_payer, c.total_amount_cancelled,
+             c.original_receipt_number, c.rectified_receipt_number,
+             c.initial_transaction_date, c.rectified_date, c.reason_for_cancellation,
+             c.status, c.created_at, c.updated_at,
+             u1.full_name AS creator_name,
+             u2.full_name AS verifier_name,
+             u3.full_name AS approver_name
       FROM cancellation_requests c
-      LEFT JOIN users u1 ON c.created_by = u1.id
+      LEFT JOIN users u1 ON c.created_by  = u1.id
       LEFT JOIN users u2 ON c.verified_by = u2.id
       LEFT JOIN users u3 ON c.approved_by = u3.id
       WHERE 1=1
@@ -62,7 +66,7 @@ class Cancellation {
       query += ` AND c.patient_full_name ILIKE $${params.length}`;
     }
 
-    query += ` ORDER BY c.created_at DESC`;
+    query += ` ORDER BY c.created_at DESC LIMIT 100`;
     const { rows } = await db.query(query, params);
     return rows;
   }

@@ -4,72 +4,60 @@ A full-stack web application designed for Legacy Clinics to manage Cancellation 
 
 ## Features
 
-- **Authentication & RBAC**: Secure login with 6 roles (Cashier, Customer Care, Ops Staff, Sales Manager, COO, Chairman).
-- **Cancellation Module**: Multi-step workflow (Pending -> Verified -> Approved/Rejected).
-- **Incident Module**: Safety reporting for Patients, Staff, and Equipment.
+- **Authentication & RBAC**: Secure login with 9 institutional roles (Admin, COO, Sales Manager, QA, etc.).
+- **Cancellation Module**: Multi-step financial approval workflow.
+- **Incident Module**: Safety reporting and QA review workflow.
 - **Audit Logs**: Full traceability of all system actions.
-- **Reporting**: PDF generation and Excel export support.
-- **Modern UI**: Dark-themed, responsive dashboard with glassmorphism aesthetics.
+- **Reporting**: High-fidelity PDF generation (Serverless) and Excel exports.
+- **Modern UI**: Dark-themed, responsive dashboard with premium medical aesthetics.
 
 ## Tech Stack
 
 - **Frontend**: React 18, Vite, Lucide React, Axios, React Router.
-- **Backend**: Node.js, Express, PostgreSQL, JWT, PDFKit, ExcelJS.
-- **Database**: PostgreSQL with structured schema and indexes.
+- **Backend**: Node.js, Express, LibSQL (@libsql/client).
+- **Database**: **Turso (LibSQL)** Global Cloud Database.
+- **Deployment**: **Vercel** (Serverless Functions).
 
 ## Installation & Setup
 
 ### 1. Prerequisites
 - Node.js (v18+)
-- PostgreSQL (v14+)
 - npm or yarn
+- Turso CLI (optional, for DB management)
 
-### 2. Database Setup
-1. Create a database named `lc_reporting` in PostgreSQL.
-2. Run the schema script:
-   ```bash
-   psql -d lc_reporting -f database/schema.sql
-   ```
+### 2. Environment Configuration
+Copy `.env.example` in the root and backend directories:
+- `TURSO_DATABASE_URL`: Your Turso DB URL.
+- `TURSO_AUTH_TOKEN`: Your Turso Auth Token.
+- `JWT_SECRET`: A strong random string.
 
-### 3. Backend Setup
-1. Navigate to the `backend` directory.
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Copy `.env.example` to `.env` and configure your database credentials and `JWT_SECRET`.
-4. Run the seed script to create initial users:
-   ```bash
-   npm run seed
-   ```
-5. Start the server:
-   ```bash
-   npm run dev
-   ```
+### 3. Initialization
+Run the following from the root:
+```bash
+npm run build
+cd backend && npm run seed
+```
 
-### 4. Frontend Setup
-1. Navigate to the `frontend` directory.
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
+### 4. Local Development
+```bash
+# Terminal 1 (Backend)
+cd backend && npm run dev
 
-## Sample Test Data (Test Accounts)
+# Terminal 2 (Frontend)
+cd frontend && npm run dev
+```
 
-All accounts use the password: **Legacy@2024**
+## Institutional Accounts
 
-| Role | Email |
-|---|---|
-| Cashier | cashier@legacyclinics.com |
-| Customer Care | care@legacyclinics.com |
-| Operations | ops@legacyclinics.com |
-| Sales Manager | sales@legacyclinics.com |
-| COO | coo@legacyclinics.com |
-| Chairman | chairman@legacyclinics.com |
+| Role | Username | Default Password |
+|---|---|---|
+| Admin | `lc_minega` | `1234` |
+| COO | `lc_sofia` | `1234` |
+| Sales Manager | `lc_uwasekuru` | `1234` |
+| Chairman | `lc_chairman` | `Legacy@2024` |
+
+---
+© 2026 Legacy Clinics & Diagnostics. Kigali, Rwanda.
 
 ## API Documentation
 

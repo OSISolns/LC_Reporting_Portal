@@ -10,16 +10,16 @@ const IncidentFormFields = ({ formData, handleChange, handleSubmit, loading, onC
           </div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-dark)' }}>1. Event Classification</h2>
         </div>
-        
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Incident Type *</label>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               {['Patient', 'Staff', 'Equipment', 'Others'].map(type => (
-                <label key={type} style={{ 
-                  flex: 1, 
-                  padding: '10px', 
-                  textAlign: 'center', 
+                <label key={type} style={{
+                  flex: 1,
+                  padding: '10px',
+                  textAlign: 'center',
                   cursor: 'pointer',
                   backgroundColor: formData.incidentType === type ? 'var(--danger)' : '#f8fafc',
                   color: formData.incidentType === type ? '#ffffff' : 'var(--text-secondary)',
@@ -70,7 +70,7 @@ const IncidentFormFields = ({ formData, handleChange, handleSubmit, loading, onC
           <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(0,123,138,0.1)', color: 'var(--primary)' }}>
             <FileText size={18} />
           </div>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-dark)' }}>3. Analysis & Narrative</h2>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-dark)' }}>3. Narrative</h2>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

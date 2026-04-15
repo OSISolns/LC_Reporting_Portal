@@ -110,14 +110,14 @@ const IncidentList = () => {
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Incident & Sentinel Events</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Quality and safety report tracking for clinical excellence.</p>
         </div>
-          <button 
-            onClick={() => setIsCreateModalOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--danger)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, boxShadow: '0 4px 6px -1px rgba(220, 53, 69, 0.2)', cursor: 'pointer' }}
-          >
-            <Plus size={20} />
-            Report New Incident
-          </button>
-        </div>
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--danger)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, boxShadow: '0 4px 6px -1px rgba(220, 53, 69, 0.2)', cursor: 'pointer' }}
+        >
+          <Plus size={20} />
+          Report New Incident
+        </button>
+      </div>
 
       <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff' }}>
         <div style={{ flex: 1, minWidth: '180px' }}>
@@ -169,12 +169,12 @@ const IncidentList = () => {
                 <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{new Date(r.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
-                    <span style={{ 
-                      padding: '6px 14px', 
-                      borderRadius: '20px', 
-                      fontSize: '0.75rem', 
-                      fontWeight: 700, 
-                      backgroundColor: 'rgba(220, 53, 69, 0.1)', 
+                    <span style={{
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      backgroundColor: 'rgba(220, 53, 69, 0.1)',
                       color: 'var(--danger)',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -190,12 +190,12 @@ const IncidentList = () => {
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{r.names_involved}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
-                    <span style={{ 
-                      padding: '4px 10px', 
-                      borderRadius: '6px', 
-                      fontSize: '0.75rem', 
-                      fontWeight: 700, 
-                      backgroundColor: r.status === 'reviewed' ? 'rgba(7, 137, 107, 0.1)' : 'rgba(255, 193, 7, 0.1)', 
+                    <span style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      backgroundColor: r.status === 'reviewed' ? 'rgba(7, 137, 107, 0.1)' : 'rgba(255, 193, 7, 0.1)',
                       color: r.status === 'reviewed' ? '#07896b' : '#cc9a06',
                       border: `1px solid ${r.status === 'reviewed' ? 'rgba(7, 137, 107, 0.2)' : 'rgba(255, 193, 7, 0.2)'}`,
                       textTransform: 'uppercase'
@@ -204,53 +204,21 @@ const IncidentList = () => {
                     </span>
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                    <button 
+                    <button
                       onClick={() => handleViewDetails(r.id)}
                       title="View Details"
-                      style={{ 
-                        color: 'var(--primary)', 
+                      style={{
+                        color: 'var(--primary)',
                         background: 'none',
                         border: 'none',
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
+                        display: 'inline-flex',
+                        alignItems: 'center',
                         padding: '8px',
                         borderRadius: '8px',
                         cursor: 'pointer',
                         transition: 'background 0.2s'
                       }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Eye size={18} />
-                    </button>
-                    <button 
-                      onClick={() => handleExport(r.id)}
-                      title="Export PDF"
-                      style={{ 
-                        color: 'var(--primary)', 
-                        background: 'none',
-                        border: 'none',
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        padding: '8px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s'
-                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                      <Download size={18} />
-                    </button>
-                    <button 
-                      onClick={() => handlePrint(r.id)}
-                      title="Print Report"
-                      style={{ 
-                        color: 'var(--primary)', 
-                        background: 'none',
-                        border: 'none',
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        padding: '8px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s'
-                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                      <Printer size={18} />
                     </button>
                   </td>
                 </tr>
@@ -266,7 +234,7 @@ const IncidentList = () => {
         title="Report New Incident / Sentinel Event"
         maxWidth="800px"
       >
-        <IncidentFormFields 
+        <IncidentFormFields
           formData={formData}
           handleChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
           handleSubmit={handleCreateSubmit}
@@ -285,8 +253,8 @@ const IncidentList = () => {
         {detailLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
         ) : (
-          <IncidentDetailsView 
-            data={activeIncident} 
+          <IncidentDetailsView
+            data={activeIncident}
             onExport={() => activeIncident && handleExport(activeIncident.id)}
             onReviewComplete={fetchReports}
             printOnLoad={activeIncident?.printRequested}

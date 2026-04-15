@@ -1,26 +1,27 @@
 'use strict';
 const Incident = require('../models/incident');
-const { logAction } = require('../middleware/audit');
+const { logAction }  = require('../middleware/audit');
 const { generateIncidentPDF } = require('../utils/pdf');
 const { exportToExcel } = require('../utils/excel');
+const cache = require('../utils/cache');
 
 exports.createReport = async (req, res, next) => {
   try {
     const report = await Incident.create(req.body, req.user.id);
-    await logAction(req, 'CREATE', 'incident_report', report.id, { type: report.incident_type });
+    try { await logAction(req, 'CREATE', 'incident_report', report.id, { type: report.incident_type }); } catch (e) {}
+    cache.invalidatePattern('inc:list');
+    cache.invalidate('ai:module_stats');
     res.status(201).json({ success: true, data: report });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 exports.getAllReports = async (req, res, next) => {
   try {
-    const reports = await Incident.getAll(req.query, req.user);
-    res.json({ success: true, data: reports });
-  } catch (err) {
-    next(err);
-  }
+    // Cache key includes user id so role-filtered results don't bleed across users
+    const cacheKey = `inc:list:${req.user.id}:${JSON.stringify(req.query)}`;
+    const data = await cache.getOrSet(cacheKey, () => Incident.getAll(req.query, req.user), 15_000);
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
 };
 
 exports.reviewReport = async (req, res, next) => {

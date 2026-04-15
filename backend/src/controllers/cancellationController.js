@@ -1,30 +1,26 @@
 'use strict';
 const Cancellation = require('../models/cancellation');
-const { logAction } = require('../middleware/audit');
+const { logAction }  = require('../middleware/audit');
 const { generateCancellationPDF } = require('../utils/pdf');
 const { exportToExcel } = require('../utils/excel');
+const cache = require('../utils/cache');
 
 exports.createRequest = async (req, res, next) => {
   try {
     const request = await Cancellation.create(req.body, req.user.id);
-    try {
-      await logAction(req, 'CREATE', 'cancellation_request', request.id, { patient: request.patient_full_name });
-    } catch (e) {
-      console.warn('⚠️ Could not log cancellation action: DB down.');
-    }
+    try { await logAction(req, 'CREATE', 'cancellation_request', request.id, { patient: request.patient_full_name }); } catch (e) {}
+    cache.invalidatePattern('canc:list'); // bust list cache
+    cache.invalidate('ai:module_stats');  // bust stats cache
     res.status(201).json({ success: true, data: request });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 exports.getAllRequests = async (req, res, next) => {
   try {
-    const requests = await Cancellation.getAll(req.query);
-    res.json({ success: true, data: requests });
-  } catch (err) {
-    next(err);
-  }
+    const cacheKey = `canc:list:${req.user.role}:${JSON.stringify(req.query)}`;
+    const data = await cache.getOrSet(cacheKey, () => Cancellation.getAll(req.query), 15_000);
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
 };
 
 exports.getRequestById = async (req, res, next) => {

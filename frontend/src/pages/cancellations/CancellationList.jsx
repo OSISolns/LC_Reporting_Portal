@@ -226,38 +226,6 @@ const CancellationList = () => {
                       }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Eye size={18} />
                     </button>
-                    <button 
-                      onClick={() => handleExport(r.id)}
-                      title="Export PDF"
-                      style={{ 
-                        color: 'var(--primary)', 
-                        background: 'none',
-                        border: 'none',
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        padding: '8px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s'
-                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                      <Download size={18} />
-                    </button>
-                    <button 
-                      onClick={() => handlePrint(r.id)}
-                      title="Print Report"
-                      style={{ 
-                        color: 'var(--primary)', 
-                        background: 'none',
-                        border: 'none',
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        padding: '8px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s'
-                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                      <Printer size={18} />
-                    </button>
                     {r.status === 'pending' && (r.created_by === user.id) && ['cashier', 'principal_cashier', 'customer_care'].includes(user.role) && (
                       <button 
                         onClick={() => handleDelete(r.id)}
