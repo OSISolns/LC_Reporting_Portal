@@ -126,15 +126,6 @@ const CancellationDetail = () => {
           </div>
           <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '1rem' }}>Request ID: <span style={{ fontWeight: 600 }}>#{data.id}</span> • Created on {new Date(data.created_at).toLocaleString()}</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={handlePrint} className="glass card-shadow no-print" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.875rem 1.5rem', backgroundColor: '#f8fafc', color: 'var(--primary-dark)', border: '1.5px solid var(--border-color)', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-            <Printer size={18} />
-            Print Report
-          </button>
-          <button onClick={downloadPDF} className="glass card-shadow no-print" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.875rem 1.5rem', backgroundColor: '#ffffff', color: 'var(--primary)', border: '1.5px solid var(--primary)', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary)'; e.currentTarget.style.color = '#ffffff'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.color = 'var(--primary)'; }}>
-            <Download size={18} />
-            Download official PDF
-          </button>
         </div>
       </div>
 
@@ -189,17 +180,6 @@ const CancellationDetail = () => {
                   <CheckCircle size={32} style={{ marginBottom: '12px' }} />
                   <p style={{ fontWeight: 700, fontSize: '1.1rem' }}>Fully Approved</p>
                   <p style={{ fontSize: '0.85rem', marginTop: '5px', marginBottom: '1.5rem' }}>Processed by {data.approver_name}</p>
-                  
-                  <div className="no-print" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                    <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', backgroundColor: '#ffffff', color: 'var(--success)', border: '1.5px solid var(--success)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-                      <Printer size={16} />
-                      Print Requisition
-                    </button>
-                    <button onClick={downloadPDF} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', backgroundColor: 'var(--success)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-                      <Download size={16} />
-                      Download PDF
-                    </button>
-                  </div>
                 </div>
               )}
 
