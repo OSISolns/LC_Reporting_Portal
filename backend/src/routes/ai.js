@@ -8,10 +8,10 @@ const authorizeRoles     = require('../middleware/role');
 router.use(authMiddleware);
 
 // Full management access (all modules + executive briefing)
-const MGMT_ROLES = ['sales_manager','coo','chairman','admin','deputy_coo','quality_assurance'];
+const MGMT_ROLES = ['sales_manager','coo','chairman','admin','deputy_coo','quality_assurance', 'consultant'];
 
 // Principal cashier can view stats + classify cancellations/refunds only
-const STATS_ROLES   = [...MGMT_ROLES, 'principal_cashier'];
+const STATS_ROLES   = [...MGMT_ROLES, 'principal_cashier', 'consultant'];
 
 router.get('/stats',            authorizeRoles(STATS_ROLES), aiController.getModuleStats);
 router.get('/classify/:module', authorizeRoles(STATS_ROLES), aiController.classifyReasons);

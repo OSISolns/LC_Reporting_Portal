@@ -22,6 +22,7 @@ const MODULE_CONFIG = {
   cancellations: { label: 'Cancellations', icon: <FileText size={18} />, color: '#007b8a', lightColor: 'rgba(0,123,138,0.08)' },
   refunds: { label: 'Refunds', icon: <ReceiptText size={18} />, color: '#7c3aed', lightColor: 'rgba(124,58,237,0.08)' },
   incidents: { label: 'Incidents', icon: <AlertTriangle size={18} />, color: '#dc2626', lightColor: 'rgba(220,38,38,0.08)' },
+  transfers: { label: 'Result Transfers', icon: <RefreshCw size={18} />, color: '#059669', lightColor: 'rgba(5,150,105,0.08)' },
 };
 
 // ── Mini bar ──────────────────────────────────────────────────────────────────
@@ -281,8 +282,8 @@ const AIInsights = () => {
   const [error, setError] = useState('');
 
   const isPrincipalCashier = user?.role === 'principal_cashier';
-  const isManagement = ['sales_manager','coo','chairman','admin','deputy_coo','quality_assurance'].includes(user?.role) || isPrincipalCashier;
-  const isExecutive  = ['sales_manager','coo','chairman','admin','deputy_coo'].includes(user?.role);
+  const isManagement = ['sales_manager','coo','chairman','admin','deputy_coo','quality_assurance', 'consultant'].includes(user?.role) || isPrincipalCashier;
+  const isExecutive  = ['sales_manager','coo','chairman','admin','deputy_coo', 'consultant'].includes(user?.role);
 
   useEffect(() => {
     getAIStats()
@@ -321,10 +322,10 @@ const AIInsights = () => {
   const visibleModules = isPrincipalCashier
     ? ['cancellations', 'refunds']
     : isManagement
-      ? ['cancellations', 'refunds', 'incidents']
+      ? ['cancellations', 'refunds', 'incidents', 'transfers']
       : user?.role === 'quality_assurance'
         ? ['incidents']
-        : ['cancellations', 'refunds', 'incidents'];
+        : ['cancellations', 'refunds', 'incidents', 'transfers'];
 
   return (
     <div>

@@ -23,6 +23,7 @@ const incidentRoutes     = require('./src/routes/incidents');
 const userRoutes         = require('./src/routes/users');
 const auditRoutes        = require('./src/routes/auditLogs');
 const aiRoutes           = require('./src/routes/ai');
+const resultTransferRoutes = require('./src/routes/resultTransferRoutes');
 
 const app = express();
 
@@ -83,6 +84,7 @@ app.use('/api/incidents',     incidentRoutes);
 app.use('/api/users',         userRoutes);
 app.use('/api/audit',         auditRoutes);
 app.use('/api/ai',            aiRoutes);
+app.use('/api/results-transfer', resultTransferRoutes);
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {

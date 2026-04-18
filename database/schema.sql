@@ -27,7 +27,8 @@ INSERT INTO roles (name, display_name) VALUES
   ('coo',              'Chief Operations Officer'),
   ('deputy_coo',       'Deputy COO'),
   ('quality_assurance','Quality & Assurance'),
-  ('chairman',         'Chairman');
+  ('chairman',         'Chairman'),
+  ('lab_team_lead',    'Laboratory Team Lead');
 
 -- =============================================================
 -- USERS
@@ -151,3 +152,38 @@ CREATE INDEX idx_audit_action     ON audit_logs(action);
 
 CREATE INDEX idx_users_email   ON users(email);
 CREATE INDEX idx_users_role_id ON users(role_id);
+
+-- =============================================================
+-- RESULTS TRANSFERS
+-- =============================================================
+CREATE TABLE IF NOT EXISTS results_transfers (
+    id                       SERIAL PRIMARY KEY,
+    transfer_date            DATE NOT NULL,
+    old_sid                  VARCHAR(100) NOT NULL,
+    new_sid                  VARCHAR(100) NOT NULL,
+    reason                   TEXT NOT NULL,
+    status                   VARCHAR(50) NOT NULL DEFAULT 'pending'
+                             CHECK (status IN ('pending', 'reviewed', 'approved', 'rejected')),
+    
+    -- Actors
+    created_by               INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_by              INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    approved_by              INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    rejected_by              INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    
+    -- Meta
+    edited_by_name           VARCHAR(200),
+    rejection_comment        TEXT,
+    
+    -- Timestamps
+    created_at               TIMESTAMPTZ DEFAULT NOW(),
+    reviewed_at              TIMESTAMPTZ,
+    approved_at               TIMESTAMPTZ,
+    rejected_at              TIMESTAMPTZ,
+    updated_at               TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_rt_status     ON results_transfers(status);
+CREATE INDEX idx_rt_old_sid    ON results_transfers(old_sid);
+CREATE INDEX idx_rt_new_sid    ON results_transfers(new_sid);
+CREATE INDEX idx_rt_created_at ON results_transfers(created_at DESC);

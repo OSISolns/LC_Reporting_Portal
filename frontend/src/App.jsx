@@ -20,6 +20,7 @@ import RefundDetail from './pages/refunds/RefundDetail';
 import IncidentList from './pages/incidents/IncidentList';
 import IncidentForm from './pages/incidents/IncidentForm';
 import IncidentDetail from './pages/incidents/IncidentDetail';
+import ResultTransferList from './pages/results-transfer/ResultTransferList';
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
             <Route path="/incidents" element={<IncidentList />} />
             <Route path="/incidents/new" element={<IncidentForm />} />
             <Route path="/incidents/:id" element={<IncidentDetail />} />
+            <Route path="/results-transfer" element={<ResultTransferList />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

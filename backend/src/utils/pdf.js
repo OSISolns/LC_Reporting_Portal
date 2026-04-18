@@ -77,3 +77,4 @@ const generateHighFidelityPDF = async (type, data, stream) => {
 exports.generateCancellationPDF = async (data, stream) => generateHighFidelityPDF('CANCELLATION', data, stream);
 exports.generateIncidentPDF = async (data, stream) => generateHighFidelityPDF('INCIDENT', data, stream);
 exports.generateRefundPDF = async (data, stream) => generateHighFidelityPDF('REFUND', data, stream);
+exports.generateResultTransferPDF = async (data, stream) => generateHighFidelityPDF('RESULT_TRANSFER', data, stream);

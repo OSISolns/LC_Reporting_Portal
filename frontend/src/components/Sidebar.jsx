@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X,
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -15,10 +15,11 @@ const Sidebar = ({ onClose }) => {
 
   const menuItems = [
     { name: 'Dashboard',       icon: <LayoutDashboard size={20} />, path: '/',            roles: ['all'] },
-    { name: 'Cancellations',   icon: <FileText size={20} />,        path: '/cancellations', roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo'] },
-    { name: 'Refunds',         icon: <ReceiptText size={20} />,     path: '/refunds',      roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo'] },
+    { name: 'Cancellations',   icon: <FileText size={20} />,        path: '/cancellations', roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
+    { name: 'Refunds',         icon: <ReceiptText size={20} />,     path: '/refunds',      roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
     { name: 'Incident Reports',icon: <AlertTriangle size={20} />,   path: '/incidents',    roles: ['all'] },
-    { name: 'Insights',        icon: <Brain size={20} />,           path: '/ai-insights',  roles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'principal_cashier'] },
+    { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', roles: ['all'] },
+    { name: 'Insights',        icon: <Brain size={20} />,           path: '/ai-insights',  roles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'principal_cashier', 'consultant'] },
     { name: 'User Management', icon: <Users size={20} />,           path: '/users',        roles: ['admin'] },
     { name: 'Audit Logs',      icon: <History size={20} />,         path: '/audit-logs',   roles: ['admin'] },
   ];

@@ -16,10 +16,11 @@ exports.getModuleStats = async (req, res, next) => {
     const cached = cache.get(CACHE_KEY);
     if (cached) return res.json({ success: true, data: cached, cached: true });
 
-    const [cancRows, refundRows, incidentRows] = await Promise.all([
+    const [cancRows, refundRows, incidentRows, rtRows] = await Promise.all([
       queryRows(`SELECT status, COUNT(*) AS cnt FROM cancellation_requests GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM refund_requests       GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM incident_reports      GROUP BY status`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM results_transfers     GROUP BY status`),
     ]);
 
     const summarise = (rows) => {
@@ -39,16 +40,18 @@ exports.getModuleStats = async (req, res, next) => {
     ]);
 
     const since30 = `datetime('now', '-30 days')`;
-    const [cRecent, rRecent, iRecent] = await Promise.all([
+    const [cRecent, rRecent, iRecent, rtRecent] = await Promise.all([
       queryRows(`SELECT COUNT(*) AS cnt FROM cancellation_requests WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM refund_requests       WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM incident_reports      WHERE created_at >= ${since30}`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM results_transfers     WHERE created_at >= ${since30}`),
     ]);
 
     const data = {
       cancellations: { ...summarise(cancRows), approvedAmountRWF: Number(cancAmt[0]?.total || 0),  last30Days: Number(cRecent[0]?.cnt || 0) },
       refunds:       { ...summarise(refundRows), approvedAmountRWF: Number(refundAmt[0]?.total || 0), last30Days: Number(rRecent[0]?.cnt || 0) },
       incidents:     { ...summarise(incidentRows), last30Days: Number(iRecent[0]?.cnt || 0) },
+      transfers:     { ...summarise(rtRows), last30Days: Number(rtRecent[0]?.cnt || 0) },
     };
 
     cache.set(CACHE_KEY, data, 30_000); // cache 30 seconds
@@ -93,8 +96,18 @@ exports.classifyReasons = async (req, res, next) => {
          LEFT JOIN users u ON i.created_by = u.id
          ORDER  BY i.created_at DESC LIMIT 500`
       );
+    } else if (module === 'transfers') {
+      rows = await queryRows(
+        `SELECT t.id,
+                t.reason AS reason,
+                t.status,
+                u.full_name AS cashier
+         FROM   results_transfers t
+         LEFT JOIN users u ON t.created_by = u.id
+         ORDER  BY t.created_at DESC LIMIT 500`
+      );
     } else {
-      return res.status(400).json({ success: false, message: 'Invalid module. Use: cancellations | refunds | incidents' });
+      return res.status(400).json({ success: false, message: 'Invalid module. Use: cancellations | refunds | incidents | transfers' });
     }
 
     // Run the local AI engine (pure JS — no API call)
@@ -107,7 +120,7 @@ exports.classifyReasons = async (req, res, next) => {
 // ── Local AI: cross-module executive narrative ────────────────────────────────
 exports.getExecutiveReport = async (req, res, next) => {
   try {
-    const [cancStat, refundStat, incStat] = await Promise.all([
+    const [cancStat, refundStat, incStat, rtStat] = await Promise.all([
       queryRows(`SELECT COUNT(*) AS total,
                         SUM(CASE WHEN status='approved' THEN 1 ELSE 0 END) AS approved,
                         SUM(CASE WHEN status='pending'  THEN 1 ELSE 0 END) AS pending
@@ -119,18 +132,26 @@ exports.getExecutiveReport = async (req, res, next) => {
       queryRows(`SELECT COUNT(*) AS total,
                         SUM(CASE WHEN status='reviewed' THEN 1 ELSE 0 END) AS reviewed
                  FROM incident_reports`),
+      queryRows(`SELECT COUNT(*) AS total,
+                        SUM(CASE WHEN status='approved' THEN 1 ELSE 0 END) AS approved,
+                        SUM(CASE WHEN status='pending'  THEN 1 ELSE 0 END) AS pending,
+                        SUM(CASE WHEN status='reviewed' THEN 1 ELSE 0 END) AS reviewed
+                 FROM results_transfers`),
     ]);
 
     const c = cancStat[0],   cancTotal    = Number(c.total    || 0);
     const r = refundStat[0], refundTotal  = Number(r.total    || 0);
     const i = incStat[0],    incTotal     = Number(i.total    || 0);
+    const rt = rtStat[0],    rtTotal      = Number(rt.total   || 0);
     const cancPending  = Number(c.pending  || 0);
     const refundPending = Number(r.pending || 0);
+    const rtPending     = Number(rt.pending || 0);
 
     // Template-based executive narrative (no AI needed — data drives the text)
     const bottlenecks = [];
     if (cancPending  > 5)  bottlenecks.push(`${cancPending} cancellation requests awaiting approval`);
     if (refundPending > 5) bottlenecks.push(`${refundPending} refund requests awaiting verification`);
+    if (rtPending > 5)     bottlenecks.push(`${rtPending} result transfers awaiting review`);
 
     const lines = [
       `Legacy Clinics currently has ${cancTotal} cancellation, ${refundTotal} refund, and ${incTotal} incident records across all reporting modules.`,
@@ -143,6 +164,9 @@ exports.getExecutiveReport = async (req, res, next) => {
       incTotal > 0
         ? `Incidents: ${Number(i.reviewed || 0)} of ${incTotal} reviewed (${Math.round(Number(i.reviewed || 0) / incTotal * 100)}%).`
         : 'No incident records on file yet.',
+      rtTotal > 0
+        ? `Result Transfers: ${Number(rt.approved || 0)} approved (${Math.round(Number(rt.approved || 0) / rtTotal * 100)}%).`
+        : 'No result transfer records on file yet.',
       bottlenecks.length
         ? `⚠️ Bottleneck alert: ${bottlenecks.join(' and ')} — immediate review recommended.`
         : '✅ All queues are within normal thresholds.',

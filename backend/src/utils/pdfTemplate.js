@@ -33,9 +33,10 @@ exports.getMedicalReportHTML = (type, data) => {
   if (type === 'INCIDENT' && data.status === 'reviewed') {
     const verifiedStamp = getBase64Image('stamps/verified.png');
     stampHtml = `<div class="stamp"><img src="${verifiedStamp}" alt="VERIFIED" /></div>`;
-  } else if (type === 'CANCELLATION' || type === 'REFUND') {
-    if (data.status === 'approved') {
-      const approvedStamp = getBase64Image('stamps/approved.png');
+  } else if (type === 'CANCELLATION' || type === 'REFUND' || type === 'RESULT_TRANSFER') {
+    if (data.status === 'approved' || data.status === 'reviewed') {
+      const stampFile = type === 'RESULT_TRANSFER' && data.status === 'approved' ? 'done.png' : 'approved.png';
+      const approvedStamp = getBase64Image(`stamps/${stampFile}`);
       stampHtml = `<div class="stamp"><img src="${approvedStamp}" alt="APPROVED" /></div>`;
     } else if (data.status === 'rejected') {
       const rejectedStamp = getBase64Image('stamps/rejected.png');
@@ -225,7 +226,11 @@ exports.getMedicalReportHTML = (type, data) => {
       opacity: 0.8;
       pointer-events: none;
     }
-    .stamp img { width: 100%; }
+    .stamp img { 
+      width: 100%; 
+      mix-blend-mode: multiply; 
+      filter: contrast(1.1) brightness(1.05);
+    }
 
     /* ── Signature grid ── */
     .signature-grid {
@@ -295,12 +300,13 @@ exports.getMedicalReportHTML = (type, data) => {
   const titleMap = {
     'INCIDENT': 'Incident & Safety Report',
     'REFUND': 'Patient Refund Voucher',
-    'CANCELLATION': 'Service Cancellation Form'
+    'CANCELLATION': 'Service Cancellation Form',
+    'RESULT_TRANSFER': 'Results Transfer Form'
   };
 
   const getDocId = () => {
     const year = new Date().getFullYear();
-    const prefix = type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : 'CAN';
+    const prefix = type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : type === 'RESULT_TRANSFER' ? 'RST' : 'CAN';
     return `LC-${prefix}-${year}-${String(data.id || '0').padStart(5, '0')}`;
   };
 
@@ -403,6 +409,61 @@ exports.getMedicalReportHTML = (type, data) => {
             <div style="color:#b91c1c; font-weight:800; font-size:7pt; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.05em;">Request Rejected</div>
             <div style="font-weight:700; font-size:9.5pt; color:#991b1b;">Reason: ${data.rejection_comment}</div>
             <div style="font-size:7pt; margin-top:6px; color:#b91c1c; font-style:italic;">Rejected by: ${data.rejector_name}</div>
+          </div>` : ''}
+      </div>
+    `;
+  } else if (type === 'RESULT_TRANSFER') {
+    content = `
+      <div class="medical-form-modern">
+        <div class="medical-form-header">
+          <span>Results Transfer Authorization</span>
+          <span style="font-size: 8pt; opacity: 0.8;">Laboratory Operations</span>
+        </div>
+        ${stampHtml}
+
+        <div class="section-head">Section 1: Transfer Details</div>
+        <table class="medical-form-table">
+          <tr><th>Date of Request</th><td>${new Date(data.transfer_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</td></tr>
+          <tr><th>Old SID Number</th><td class="important-value">${data.old_sid}</td></tr>
+          <tr><th>New SID Number</th><td class="important-value">${data.new_sid}</td></tr>
+          <tr><th>Reason for Transfer</th><td>${data.reason}</td></tr>
+        </table>
+
+        <div class="section-head">Section 2: Workflow & Approvals</div>
+        <table class="medical-form-table">
+          <tr><th>Cashier Name</th><td>${data.creator_name}</td></tr>
+          <tr><th>Operation Office Verification</th><td><span style="color:${data.reviewer_name ? primaryTeal : '#94a3b8'}">${data.reviewer_name || 'PENDING VERIFICATION'}</span></td></tr>
+          <tr><th>Approved By (Lab TL)</th><td class="important-value">${data.approver_name || 'PENDING APPROVAL'}</td></tr>
+        </table>
+
+        <div class="section-head">Section 3: Laboratory Execution</div>
+        <table class="medical-form-table">
+          <tr><th>Edited By Name</th><td>${data.edited_by_name || 'N/A'}</td></tr>
+          <tr><th>TL Name (Final)</th><td>${data.approver_name || 'N/A'}</td></tr>
+        </table>
+
+        <div class="signature-grid">
+          <div class="sig-box">
+            <div class="sig-label">Cashier Signature</div>
+            <div class="sig-line">${data.creator_name}</div>
+            <div class="sig-meta">Digitally Signed: ${new Date(data.created_at).toLocaleString()}</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-label">Operation Office</div>
+            <div class="sig-line" style="color:${data.reviewer_name ? '#000' : '#cbd5e1'}">${data.reviewer_name || '...'}</div>
+            <div class="sig-meta">Verification Timestamp</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-label">Laboratory TL Signature</div>
+            <div class="sig-line" style="color:${data.approver_name ? '#000' : '#cbd5e1'}">${data.approver_name || '...'}</div>
+            <div class="sig-meta">Done & Stamp</div>
+          </div>
+        </div>
+
+        ${data.status === 'rejected' ? `
+          <div style="margin:20px; padding:15px; border:1px solid #fee2e2; border-radius:8px; background:#fffcfc">
+            <div style="color:#b91c1c; font-weight:800; font-size:7pt; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.05em;">Request Rejected</div>
+            <div style="font-weight:700; font-size:9.5pt; color:#991b1b;">Reason: ${data.rejection_comment}</div>
           </div>` : ''}
       </div>
     `;

@@ -4,7 +4,7 @@ import StaffDashboard from './StaffDashboard';
 import QADashboard from './QADashboard';
 
 const MGMT_ROLES  = ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo'];
-const STAFF_ROLES = ['cashier', 'principal_cashier', 'customer_care', 'operations_staff'];
+const STAFF_ROLES = ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'consultant'];
 
 const Dashboard = () => {
   const { user } = useAuth();

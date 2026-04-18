@@ -4,11 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import { getCancellations } from '../api/cancellations';
 import { getRefunds } from '../api/refunds';
 import { getIncidents } from '../api/incidents';
+import { getResultTransfers } from '../api/resultTransfer';
 import LoadingSpinner from '../components/LoadingSpinner';
 import {
   FileText, ReceiptText, AlertTriangle, Clock,
   CheckCircle, Plus, ChevronRight, ExternalLink,
-  TrendingUp, Info,
+  TrendingUp, Info, RefreshCw
 } from 'lucide-react';
 
 // ── Role labels ───────────────────────────────────────────────────────────────
@@ -17,6 +18,7 @@ const ROLE_LABEL = {
   principal_cashier: 'Principal Cashier',
   customer_care:     'Patient Relations',
   operations_staff:  'Operations Staff',
+  lab_team_lead:     'Laboratory Lead',
 };
 
 // ── Status pill ───────────────────────────────────────────────────────────────
@@ -99,7 +101,7 @@ const StaffDashboard = () => {
   const navigate = useNavigate();
   const isPrincipal = user?.role === 'principal_cashier';
   const isOps       = user?.role === 'operations_staff';
-  const [data,    setData]    = useState({ canc: [], refunds: [], incidents: [] });
+  const [data,    setData]    = useState({ canc: [], refunds: [], incidents: [], transfers: [] });
   const [loading, setLoading] = useState(true);
   const [now,     setNow]     = useState(new Date());
 
@@ -111,15 +113,17 @@ const StaffDashboard = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const promises = [];
-      if (!isOps) promises.push(getCancellations().catch(() => null)); else promises.push(null);
-      if (!isOps) promises.push(getRefunds().catch(() => null));       else promises.push(null);
-      promises.push(getIncidents().catch(() => null));
-      const [cRes, rRes, iRes] = await Promise.all(promises);
+      const [cRes, rRes, iRes, tRes] = await Promise.all([
+        !isOps ? getCancellations().catch(() => null) : Promise.resolve(null),
+        !isOps ? getRefunds().catch(() => null) : Promise.resolve(null),
+        getIncidents().catch(() => null),
+        getResultTransfers().catch(() => null),
+      ]);
       setData({
         canc:      cRes?.data?.data || [],
         refunds:   rRes?.data?.data || [],
         incidents: iRes?.data?.data || [],
+        transfers: tRes?.data?.data || [],
       });
     } finally { setLoading(false); }
   }, [isOps]);
@@ -135,14 +139,17 @@ const StaffDashboard = () => {
   const myCanc      = data.canc.slice(0,5);
   const myRef       = data.refunds.slice(0,5);
   const myInc       = data.incidents.slice(0,5);
-  const pendCount   = data.canc.filter(c => c.status === 'pending').length;
+  const pendCount   = data.canc.filter(c => c.status === 'pending').length + 
+                      data.transfers.filter(t => t.status === 'pending' || t.status === 'reviewed').length;
   const approvedAmt = data.refunds.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.amount_to_be_refunded || 0), 0);
+  const myTransfers = data.transfers.slice(0, 5);
 
   const ROLE_TIPS = {
     cashier:           ['Always verify PID before creating a cancellation.', 'Double-check amounts before submitting — corrections must go through full workflow.', 'Attach the correct receipt numbers to every request.'],
     principal_cashier: ['You can now view AI Insights for cancellations and refunds.', 'Review pending submissions from your team promptly.', 'Ensure all cashier submissions are accurate before they reach management.'],
     customer_care:     ['Complete all patient information fields accurately.', 'If in doubt, escalate to your supervisor before submitting.', "Incident reports must be filed within 24 hours of the event."],
     operations_staff:  ['Report incidents immediately — time-stamping matters.', 'Include all contributing factors for Quality Assurance review.', 'Use "Near Miss" for events that were caught before harm occurred.'],
+    lab_team_lead:     ['Ensure all result transfers are approved only after verifying SID data.', 'Confirm the technician who executed the change in the lab system.', 'Rejected transfers should always include a specific reason for audit purposes.'],
   };
   const tips = ROLE_TIPS[user?.role] || [];
 
@@ -165,26 +172,30 @@ const StaffDashboard = () => {
         {!isOps && <MiniStat label="My Cancellations" value={data.canc.length} color="var(--primary)" icon={<FileText size={20} />} />}
         {!isOps && <MiniStat label="My Refunds"       value={data.refunds.length} color="#92400e" icon={<ReceiptText size={20} />} />}
         <MiniStat label="My Incidents"    value={data.incidents.length} color="#b91c1c" icon={<AlertTriangle size={20} />} />
-        {!isOps && <MiniStat label="Pending Action"   value={pendCount} color="#4338ca" icon={<Clock size={20} />} />}
+        <MiniStat label="My Result Transfers" value={data.transfers.length} color="#059669" icon={<RefreshCw size={20} />} />
+        <MiniStat label="Pending Action"   value={pendCount} color="#4338ca" icon={<Clock size={20} />} />
       </div>
 
       {/* ── Quick actions ── */}
-      <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '1.75rem', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-        <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-dark)' }}>Workflow Actions</h3>
-        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-          {!isOps && (
-            <QuickAction label="New Cancellation" icon={<Plus size={20} />} color="var(--primary)" path="/cancellations/new" navigate={navigate} />
-          )}
-          {!isOps && (
-            <QuickAction label="New Refund" icon={<Plus size={20} />} color="#92400e" path="/refunds/new" navigate={navigate} />
-          )}
-          <QuickAction label="Report Incident" icon={<AlertTriangle size={20} />} color="#b91c1c" path="/incidents/new" navigate={navigate} />
-          <QuickAction label="View History" icon={<ExternalLink size={20} />} color="var(--primary-dark)" path="/incidents" navigate={navigate} />
-          {isPrincipal && (
-            <QuickAction label="AI Platform" icon={<TrendingUp size={20} />} color="#4338ca" path="/ai-insights" navigate={navigate} />
-          )}
+      {user?.role !== 'consultant' && (
+        <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '1.75rem', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-dark)' }}>Workflow Actions</h3>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            {!isOps && (
+              <QuickAction label="New Cancellation" icon={<Plus size={20} />} color="var(--primary)" path="/cancellations/new" navigate={navigate} />
+            )}
+            {!isOps && (
+              <QuickAction label="New Refund" icon={<Plus size={20} />} color="#92400e" path="/refunds/new" navigate={navigate} />
+            )}
+            <QuickAction label="Report Incident" icon={<AlertTriangle size={20} />} color="#b91c1c" path="/incidents/new" navigate={navigate} />
+            <QuickAction label="Result Transfer" icon={<RefreshCw size={20} />} color="#059669" path="/results-transfer" navigate={navigate} />
+            <QuickAction label="View History" icon={<ExternalLink size={20} />} color="var(--primary-dark)" path="/incidents" navigate={navigate} />
+            {isPrincipal && (
+              <QuickAction label="AI Platform" icon={<TrendingUp size={20} />} color="#4338ca" path="/ai-insights" navigate={navigate} />
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Recent submissions + tips ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
@@ -194,7 +205,7 @@ const StaffDashboard = () => {
           <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc' }}>
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--primary-dark)' }}>My Recent Submissions</h3>
           </div>
-          {myCanc.length + myRef.length + myInc.length === 0 ? (
+          {myCanc.length + myRef.length + myInc.length + myTransfers.length === 0 ? (
             <div style={{ padding: '5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <FileText size={48} style={{ marginBottom: '1.25rem', color: '#e2e8f0', opacity: 0.8 }} />
               <p style={{ fontWeight: 700, margin: 0, fontSize: '1rem', color: 'var(--primary-dark)' }}>No Activity Yet</p>
@@ -221,6 +232,13 @@ const StaffDashboard = () => {
                   path={`/incidents/${item.id}`}
                   primary={item.department || 'Clinical Incident'}
                   secondary={`${item.incident_type} Event · ${item.area_of_incident || ''}`}
+                />
+              ))}
+              {myTransfers.map((item, i) => (
+                <RecentRow key={`rt-${item.id}`} item={item} i={i + myCanc.length + myRef.length + myInc.length} navigate={navigate}
+                  path={`/results-transfer`}
+                  primary={`Transfer: ${item.old_sid} ➔ ${item.new_sid}`}
+                  secondary={`Result Transfer Request · ${new Date(item.created_at).toLocaleDateString()}`}
                 />
               ))}
             </div>

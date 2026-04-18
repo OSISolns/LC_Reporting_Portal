@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getAIStats, getExecutiveReport } from '../api/ai';
 import { getCancellations } from '../api/cancellations';
 import { getRefunds } from '../api/refunds';
+import { getResultTransfers } from '../api/resultTransfer';
 import LoadingSpinner from '../components/LoadingSpinner';
 import {
   FileText, ReceiptText, AlertTriangle, Clock,
@@ -36,10 +37,17 @@ const BigStatCard = ({ title, value, sub, icon, color, badge }) => (
 
 // ── Pending item row ──────────────────────────────────────────────────────────
 const PendingRow = ({ item, type, navigate }) => {
-  const path = type === 'cancellation' ? `/cancellations/${item.id}` : `/refunds/${item.id}`;
-  const age  = Math.floor((Date.now() - new Date(item.created_at)) / 86400000);
-  const typeColor = type === 'cancellation' ? 'var(--primary)' : '#92400e';
+  const path = type === 'cancellation' ? `/cancellations/${item.id}` : 
+               type === 'refund' ? `/refunds/${item.id}` : '/results-transfer';
+  const age  = Math.floor((Date.now() - new Date(item.created_at || Date.now())) / 86400000);
+  const typeColor = type === 'cancellation' ? 'var(--primary)' : 
+                    type === 'refund' ? '#92400e' : '#059669';
   
+  const icon = type === 'cancellation' ? <FileText size={18} /> : 
+               type === 'refund' ? <ReceiptText size={18} /> : <RefreshCw size={18} />;
+
+  const title = type === 'transfer' ? `Transfer: ${item.old_sid} ➔ ${item.new_sid}` : item.patient_full_name;
+  const subtitle = type === 'transfer' ? `Result Transfer · ${item.creator_name}` : `${item.pid_number} · ${age === 0 ? 'Today' : `${age} days ago`} · ${item.creator_name}`;
   return (
     <div
       onClick={() => navigate(path)}
@@ -48,14 +56,14 @@ const PendingRow = ({ item, type, navigate }) => {
       onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
     >
       <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: `${typeColor}10`, color: typeColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        {type === 'cancellation' ? <FileText size={18} /> : <ReceiptText size={18} />}
+        {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: 'var(--primary-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {item.patient_full_name}
+          {title}
         </p>
         <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-          {item.pid_number} · {age === 0 ? 'Today' : `${age} days ago`} · {item.creator_name}
+          {subtitle}
         </p>
       </div>
       <ChevronRight size={16} style={{ color: '#cbd5e1', flexShrink: 0 }} />
@@ -87,6 +95,7 @@ const ManagementDashboard = () => {
   const [narrative,  setNarrative]  = useState('');
   const [pendingCanc,setPendingCanc] = useState([]);
   const [pendingRef, setPendingRef]  = useState([]);
+  const [pendingRt,  setPendingRt]   = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [now,        setNow]        = useState(new Date());
 
@@ -99,17 +108,19 @@ const ManagementDashboard = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [sRes, nRes, cRes, rRes] = await Promise.all([
+      const [sRes, nRes, cRes, rRes, tRes] = await Promise.all([
         getAIStats().catch(() => null),
         getExecutiveReport().catch(() => null),
         getCancellations({ status: 'pending' }).catch(() => null),
         getRefunds({ status: 'pending' }).catch(() => null),
+        getResultTransfers().catch(() => null),
       ]);
 
       if (sRes?.data?.data) setStats(sRes.data.data);
       if (nRes?.data?.data?.narrative) setNarrative(nRes.data.data.narrative);
       setPendingCanc((cRes?.data?.data || []).slice(0, 5));
       setPendingRef((rRes?.data?.data || []).slice(0, 5));
+      setPendingRt((tRes?.data?.data || []).filter(t => t.status === 'pending' || t.status === 'reviewed').slice(0, 5));
     } finally {
       setLoading(false);
     }
@@ -122,7 +133,8 @@ const ManagementDashboard = () => {
   const c  = stats?.cancellations || {};
   const r  = stats?.refunds       || {};
   const i  = stats?.incidents     || {};
-  const totalPending = (c.pending || 0) + (r.pending || 0) + (r.verified || 0);
+  const rt = stats?.transfers     || {};
+  const totalPending = (c.pending || 0) + (r.pending || 0) + (r.verified || 0) + (rt.pending || 0) + (rt.reviewed || 0);
   const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
 
   return (
@@ -180,6 +192,12 @@ const ManagementDashboard = () => {
           sub={`${fmt(i.reviewed)} reviews done · ${fmt(i.last30Days)} this month`}
         />
         <BigStatCard
+          title="Result Transfers" value={fmt(rt.total)} icon={<RefreshCw size={24} />}
+          color="#059669"
+          sub={`${fmt(rt.approved)} finalized · ${fmt(rt.last30Days)} this month`}
+          badge={(rt.pending || 0) + (rt.reviewed || 0)}
+        />
+        <BigStatCard
           title="Pending Action" value={fmt(totalPending)} icon={<Clock size={24} />}
           color="#4338ca"
           sub="Requires managerial determination"
@@ -198,7 +216,7 @@ const ManagementDashboard = () => {
               {totalPending > 0 && <span style={{ padding: '4px 10px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 800 }}>{totalPending} NEW</span>}
             </h3>
           </div>
-          {pendingCanc.length === 0 && pendingRef.length === 0 ? (
+          {pendingCanc.length === 0 && pendingRef.length === 0 && pendingRt.length === 0 ? (
             <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <CheckCircle size={48} style={{ color: 'var(--success)', marginBottom: '1rem', opacity: 0.6 }} />
               <p style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary-dark)' }}>Operational Excellence</p>
@@ -208,6 +226,7 @@ const ManagementDashboard = () => {
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {pendingCanc.map(item => <PendingRow key={`c-${item.id}`} item={item} type="cancellation" navigate={navigate} />)}
               {pendingRef.map(item => <PendingRow key={`r-${item.id}`} item={item} type="refund" navigate={navigate} />)}
+              {pendingRt.map(item => <PendingRow key={`rt-${item.id}`} item={item} type="transfer" navigate={navigate} />)}
             </div>
           )}
           <div style={{ padding: '1.25rem', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '1rem' }}>
@@ -229,6 +248,7 @@ const ManagementDashboard = () => {
             </h3>
             <ModuleBar label="Cancellation Completion" approved={c.approved || 0} total={c.total || 0} color="var(--primary)" />
             <ModuleBar label="Refund Processing"       approved={r.approved || 0} total={r.total || 0} color="#92400e" />
+            <ModuleBar label="Result Transfer Finalization" approved={rt.approved || 0} total={rt.total || 0} color="#059669" />
             <ModuleBar label="Incident Review Rate"    approved={i.reviewed || 0} total={i.total || 0} color="#b91c1c" />
           </div>
 
@@ -261,6 +281,7 @@ const ManagementDashboard = () => {
         {[
           { label: 'Cancellations', icon: <FileText size={24} />, color: 'var(--primary)', path: '/cancellations' },
           { label: 'Refunds',       icon: <ReceiptText size={24} />, color: '#92400e', path: '/refunds' },
+          { label: 'Transfers',     icon: <RefreshCw size={24} />, color: '#059669', path: '/results-transfer' },
           { label: 'Incidents',     icon: <AlertTriangle size={24} />, color: '#b91c1c', path: '/incidents' },
           { label: 'AI Platform',   icon: <Brain size={24} />, color: '#4338ca', path: '/ai-insights' },
           ...(user?.role === 'admin' ? [
