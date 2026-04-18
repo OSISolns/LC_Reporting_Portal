@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
@@ -8,6 +9,8 @@ import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import AuditLogs from './pages/AuditLogs';
 import AIInsights from './pages/AIInsights';
+import Notifications from './pages/Notifications';
+
 
 import CancellationList from './pages/cancellations/CancellationList';
 import CancellationForm from './pages/cancellations/CancellationForm';
@@ -25,7 +28,8 @@ import ResultTransferList from './pages/results-transfer/ResultTransferList';
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <NotificationProvider>
+        <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
           
@@ -47,11 +51,14 @@ function App() {
             <Route path="/incidents/new" element={<IncidentForm />} />
             <Route path="/incidents/:id" element={<IncidentDetail />} />
             <Route path="/results-transfer" element={<ResultTransferList />} />
+            <Route path="/notifications" element={<Notifications />} />
           </Route>
+
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Router>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

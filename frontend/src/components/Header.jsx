@@ -1,8 +1,14 @@
 import { useAuth } from '../context/AuthContext';
-import { Bell, User, Menu } from 'lucide-react';
+import { useNotifications } from '../context/NotificationContext';
+import { Bell, User, Menu, X } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import NotificationDropdown from './NotificationDropdown';
 
 const Header = ({ onMenuToggle }) => {
   const { user } = useAuth();
+  const { unreadCount } = useNotifications();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
     <header style={{
@@ -16,7 +22,7 @@ const Header = ({ onMenuToggle }) => {
       boxShadow: 'var(--shadow-sm)',
       position: 'sticky',
       top: 0,
-      zIndex: 30,
+      zIndex: 100, /* Higher z-index for dropdown stack */
       gap: '1rem',
     }}>
 
@@ -46,10 +52,55 @@ const Header = ({ onMenuToggle }) => {
 
       {/* ── Right: bell + user ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <button style={{ background: 'none', border: 'none', color: 'var(--primary-dark)', position: 'relative', padding: '4px', cursor: 'pointer' }}>
-          <Bell size={20} />
-          <span style={{ position: 'absolute', top: '2px', right: '2px', width: '7px', height: '7px', backgroundColor: 'var(--danger)', borderRadius: '50%', border: '2px solid #fff' }} />
-        </button>
+        <div style={{ position: 'relative' }}>
+          <button 
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              color: 'var(--primary-dark)', 
+              position: 'relative', 
+              padding: '4px', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <Bell size={20} />
+            {unreadCount > 0 && (
+              <span style={{ 
+                position: 'absolute', 
+                top: '-2px', 
+                right: '-2px', 
+                minWidth: '18px', 
+                height: '18px', 
+                backgroundColor: 'var(--danger)', 
+                borderRadius: '50%', 
+                border: '2px solid #fff',
+                color: '#fff',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '2px'
+              }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          <NotificationDropdown 
+            isOpen={dropdownOpen} 
+            onClose={() => setDropdownOpen(false)} 
+          />
+        </div>
+
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '1rem', borderLeft: '1px solid var(--border-color)' }}>
           {/* Hide name on very small screens */}

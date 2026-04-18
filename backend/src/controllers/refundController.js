@@ -4,11 +4,42 @@ const { logAction }  = require('../middleware/audit');
 const { generateRefundPDF } = require('../utils/pdf');
 const { exportToExcel } = require('../utils/excel');
 const cache = require('../utils/cache');
+const Notification = require('../models/notification');
+const User = require('../models/user');
+
 
 exports.createRequest = async (req, res, next) => {
   try {
     const request = await Refund.create(req.body, req.user.id);
     try { await logAction(req, 'CREATE', 'refund_request', request.id, { patient: request.patient_full_name }); } catch (e) {}
+    
+    // Notify Operations and Management
+    try {
+      const rolesToNotify = ['operations_staff', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
+      const usersToNotify = [];
+      
+      for (const role of rolesToNotify) {
+        const users = await User.findByRole(role);
+        usersToNotify.push(...users);
+      }
+
+      // Unique users only
+      const uniqueUsers = Array.from(new Set(usersToNotify.map(u => u.id)))
+        .map(id => usersToNotify.find(u => u.id === id));
+
+      for (const user of uniqueUsers) {
+        await Notification.create({
+          userId: user.id,
+          title: 'New Refund Request',
+          message: `A new refund request for ${request.patient_full_name} (${request.amount_to_be_refunded} RWF).`,
+          type: 'info',
+          link: `/refunds/${request.id}`
+        });
+      }
+    } catch (e) {
+      console.error('Notification error:', e);
+    }
+
     cache.invalidatePattern('ref:list');
     cache.invalidate('ai:module_stats');
     res.status(201).json({ success: true, data: request });
@@ -38,6 +69,18 @@ exports.verifyRequest = async (req, res, next) => {
     const request = await Refund.verify(req.params.id, req.user.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be verified' });
     await logAction(req, 'VERIFY', 'refund_request', request.id);
+    
+    // Notify Creator
+    if (request.created_by) {
+      await Notification.create({
+        userId: request.created_by,
+        title: 'Refund Verified',
+        message: `Your refund request for ${request.patient_full_name} has been verified but still requires approval.`,
+        type: 'success',
+        link: `/refunds`
+      });
+    }
+
     res.json({ success: true, data: request });
   } catch (err) {
     next(err);
@@ -49,6 +92,18 @@ exports.approveRequest = async (req, res, next) => {
     const request = await Refund.approve(req.params.id, req.user.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be approved' });
     await logAction(req, 'APPROVE', 'refund_request', request.id);
+    
+    // Notify Creator
+    if (request.created_by) {
+      await Notification.create({
+        userId: request.created_by,
+        title: 'Refund Approved',
+        message: `Your refund request for ${request.patient_full_name} has been approved.`,
+        type: 'success',
+        link: `/refunds`
+      });
+    }
+
     res.json({ success: true, data: request });
   } catch (err) {
     next(err);
@@ -61,6 +116,18 @@ exports.rejectRequest = async (req, res, next) => {
     const request = await Refund.reject(req.params.id, req.user.id, comment);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be rejected' });
     await logAction(req, 'REJECT', 'refund_request', request.id, { reason: comment });
+    
+    // Notify Creator
+    if (request.created_by) {
+      await Notification.create({
+        userId: request.created_by,
+        title: 'Refund Rejected',
+        message: `Your refund request for ${request.patient_full_name} was rejected. Reason: ${comment}`,
+        type: 'error',
+        link: `/refunds`
+      });
+    }
+
     res.json({ success: true, data: request });
   } catch (err) {
     next(err);

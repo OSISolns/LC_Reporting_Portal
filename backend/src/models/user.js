@@ -69,6 +69,17 @@ class User {
     );
     return rows[0];
   }
+
+  static async findByRole(roleName) {
+    const { rows } = await db.query(
+      `SELECT u.id, u.full_name, u.email 
+       FROM users u 
+       JOIN roles r ON u.role_id = r.id 
+       WHERE r.name = $1 AND u.is_active = TRUE`,
+      [roleName]
+    );
+    return rows;
+  }
 }
 
 
