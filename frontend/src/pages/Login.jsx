@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Lock, User, AlertCircle } from 'lucide-react';
+import { Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+  const [showPassword, setShowPassword] = useState(false);
+
   const { login, devLogin } = useAuth();
   const navigate = useNavigate();
 
@@ -80,7 +81,7 @@ const Login = () => {
                 <User size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                 <input
                   type="text"
-                  placeholder="Enter your lc_username"
+                  placeholder="Username"
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -92,15 +93,54 @@ const Login = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-dark)', marginLeft: '4px' }}>Security Password</label>
               <div style={{ position: 'relative' }}>
-                <Lock size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                <Lock size={18} style={{
+                  position: 'absolute',
+                  left: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-secondary)'
+                }} />
+
                 <input
-                  type="password"
-                  placeholder="••••••••"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{ width: '100%', padding: '12px 14px 12px 46px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '12px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem', transition: 'all 0.2s' }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 44px 12px 46px',
+                    backgroundColor: '#f8fafc',
+                    border: '1.5px solid var(--border-color)',
+                    borderRadius: '12px',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    fontSize: '0.95rem',
+                    transition: 'all 0.2s'
+                  }}
                 />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{
+                    position: 'absolute',
+                    right: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
           </div>
@@ -108,11 +148,12 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
+            aria-label={loading ? 'Authenticating...' : 'Sign In'}
             style={{
               padding: '14px',
               borderRadius: '10px',
               border: 'none',
-              backgroundColor: 'var(--primary)',
+              backgroundColor: '#003b44',
               color: '#ffffff',
               fontWeight: 600,
               fontSize: '1rem',
