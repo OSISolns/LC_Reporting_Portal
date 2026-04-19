@@ -37,8 +37,25 @@ const Login = () => {
       justifyContent: 'center',
       backgroundColor: '#f1f5f9',
       backgroundImage: 'radial-gradient(at 0% 0%, rgba(0, 123, 138, 0.05) 0px, transparent 50%), radial-gradient(at 50% 0%, rgba(0, 59, 68, 0.05) 0px, transparent 50%)',
-      padding: '1rem'
+      padding: '1rem',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
+      {/* Background Watermark */}
+      <img 
+        src="/caduceus_bg.png" 
+        alt="" 
+        style={{
+          position: 'absolute',
+          bottom: '-2rem',
+          left: '-2rem',
+          height: '400px',
+          opacity: 0.07,
+          pointerEvents: 'none',
+          zIndex: 0,
+          transform: 'rotate(15deg)'
+        }} 
+      />
       <div className="card-shadow" style={{
         width: '100%',
         maxWidth: '450px',
