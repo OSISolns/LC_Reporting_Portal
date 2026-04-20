@@ -49,6 +49,24 @@ const Layout = () => {
           </div>
         </main>
       </div>
+
+      {/* Subtle Protected Signature */}
+      <div 
+        style={{
+          position: 'fixed',
+          bottom: '8px',
+          right: '8px',
+          fontSize: '10px',
+          fontFamily: 'monospace',
+          color: 'rgba(0, 0, 0, 0.15)',
+          userSelect: 'none',
+          pointerEvents: 'none',
+          zIndex: 9999,
+          letterSpacing: '0.05em'
+        }}
+      >
+        {atob('VmFsZXJ5IFN0cnVjdHVyZQ==') === 'Valery Structure' ? 'VmFsZXJ5IFN0cnVjdHVyZQ==' : ''}
+      </div>
     </div>
   );
 };

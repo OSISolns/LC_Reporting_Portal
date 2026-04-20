@@ -182,10 +182,10 @@ const StaffDashboard = () => {
           <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-dark)' }}>Workflow Actions</h3>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
             {!isOps && (
-              <QuickAction label="New Cancellation" icon={<Plus size={20} />} color="var(--primary)" path="/cancellations/new" navigate={navigate} />
+              <QuickAction label="New Cancellation" icon={<Plus size={20} />} color="#1b669e" path="/cancellations/new" navigate={navigate} />
             )}
             {!isOps && (
-              <QuickAction label="New Refund" icon={<Plus size={20} />} color="#92400e" path="/refunds/new" navigate={navigate} />
+              <QuickAction label="New Refund" icon={<Plus size={20} />} color="#003b44" path="/refunds/new" navigate={navigate} />
             )}
             <QuickAction label="Report Incident" icon={<AlertTriangle size={20} />} color="#b91c1c" path="/incidents/new" navigate={navigate} />
             <QuickAction label="Result Transfer" icon={<RefreshCw size={20} />} color="#059669" path="/results-transfer" navigate={navigate} />

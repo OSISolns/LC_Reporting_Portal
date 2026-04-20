@@ -63,7 +63,7 @@ const CancellationFormFields = ({ formData, handleChange, handleSubmit, loading,
         <button type="submit" disabled={loading} style={{
           flex: 2,
           padding: '1rem',
-          backgroundColor: 'var(--primary)',
+          backgroundColor: '#1b669e',
           color: '#ffffff',
           border: 'none',
           borderRadius: '12px',
@@ -72,7 +72,7 @@ const CancellationFormFields = ({ formData, handleChange, handleSubmit, loading,
           alignItems: 'center',
           justifyContent: 'center',
           gap: '12px',
-          boxShadow: '0 4px 6px -1px rgba(0, 123, 138, 0.2)',
+          boxShadow: '0 4px 6px -1px rgba(27, 102, 158, 0.2)',
           cursor: 'pointer'
         }}>
           <Save size={18} />

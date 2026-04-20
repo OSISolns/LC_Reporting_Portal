@@ -119,7 +119,7 @@ const RefundList = () => {
         </div>
         {canCreate && (
           <button onClick={() => setShowCreateModal(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(0,123,138,0.2)', cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#003b44', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(0,59,68,0.2)', cursor: 'pointer' }}>
             <Plus size={18} /> New Refund Request
           </button>
         )}

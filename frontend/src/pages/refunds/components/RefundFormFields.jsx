@@ -1,3 +1,4 @@
+import { INSURANCES } from '../constants';
 import { Info, Receipt, DollarSign, Save } from 'lucide-react';
 
 const inputStyle = {
@@ -8,6 +9,16 @@ const inputStyle = {
   color: 'var(--text-primary)',
   outline: 'none',
   width: '100%',
+};
+
+const selectStyle = {
+  ...inputStyle,
+  appearance: 'none',
+  backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 1rem center',
+  backgroundSize: '1em',
+  cursor: 'pointer'
 };
 
 const fieldStyle = { display: 'flex', flexDirection: 'column', gap: '6px' };
@@ -48,8 +59,19 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
             <input type="text" name="telephoneNumber" value={formData.telephoneNumber} onChange={handleChange} style={inputStyle} />
           </div>
           <div style={{ ...fieldStyle, gridColumn: 'span 2' }}>
-            <label style={labelStyle}>Insurance / Payer</label>
-            <input type="text" name="insurancePayer" value={formData.insurancePayer} onChange={handleChange} style={inputStyle} placeholder="e.g. RSSB, Private, Walk-in" />
+            <label style={labelStyle}>Insurance / Payer *</label>
+            <select 
+              name="insurancePayer" 
+              required 
+              value={formData.insurancePayer} 
+              onChange={handleChange} 
+              style={selectStyle}
+            >
+              <option value="">Select Insurance / Payer</option>
+              {INSURANCES.map(insurance => (
+                <option key={insurance} value={insurance}>{insurance}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -102,7 +124,7 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
           Cancel
         </button>
         <button type="submit" disabled={loading}
-          style={{ flex: 2, padding: '1rem', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', boxShadow: '0 4px 6px -1px rgba(0,123,138,0.2)', cursor: 'pointer' }}>
+          style={{ flex: 2, padding: '1rem', backgroundColor: '#003b44', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', boxShadow: '0 4px 6px -1px rgba(0,59,68,0.2)', cursor: 'pointer' }}>
           <Save size={18} />
           {loading ? 'Submitting...' : 'Submit Refund Request'}
         </button>

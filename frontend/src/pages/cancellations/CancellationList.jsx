@@ -134,7 +134,7 @@ const CancellationList = () => {
           {['cashier', 'principal_cashier', 'customer_care'].includes(user?.role) && (
             <button 
               onClick={() => setShowCreateModal(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(0, 123, 138, 0.2)', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#1b669e', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(27, 102, 158, 0.2)', cursor: 'pointer' }}
             >
               <Plus size={18} />
               New Request
