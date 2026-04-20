@@ -10,11 +10,11 @@ router.use(authMiddleware);
 
 // All routes require authentication (handled in app.js/router)
 
-// GET all requests (accessible by all staff roles usually, but could be restricted)
-router.get('/', controller.getAllRequests);
-
+// GET all requests (restricted to clinical and management roles)
+router.get('/', authorizeRoles('cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'), controller.getAllRequests);
+ 
 // GET single request
-router.get('/:id', controller.getRequestById);
+router.get('/:id', authorizeRoles('cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'), controller.getRequestById);
 
 
 // POST create request (Cashier/Customer Care only)

@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 exports.login = async (req, res, next) => {
   try {
     const { username, password } = req.body;
+    const Notification = require('../models/notification');
 
     if (!username || !password) {
       return res.status(400).json({ success: false, message: 'Please provide username and password.' });
@@ -17,10 +18,66 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials or inactive account.' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+    // Check if locked out
+    if (user.lockout_until && new Date(user.lockout_until) > new Date()) {
+      const waitTime = Math.ceil((new Date(user.lockout_until) - new Date()) / 60000);
+      return res.status(403).json({ 
+        success: false, 
+        message: `Account is temporarily locked due to multiple failed attempts. Please try again in ${waitTime} minutes.` 
+      });
     }
+
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isMatch) {
+      const attempts = await User.incrementFailedAttempts(user.id);
+      
+      let message = 'Invalid credentials.';
+      
+      if (attempts >= 5) {
+        await User.lockout(user.id, 5);
+        message = 'Account locked for 5 minutes due to 5 failed attempts.';
+        
+        // Report to Admin
+        try {
+          const admins = await User.findByRole('admin');
+          for (const admin of admins) {
+            await Notification.create({
+              userId: admin.id,
+              title: 'Security Alert: Account Lockout',
+              message: `User ${user.full_name} (${user.username}) has been locked out after 5 failed login attempts.`,
+              type: 'error',
+              link: '/audit-logs'
+            });
+          }
+        } catch (e) {}
+
+      } else if (attempts >= 3) {
+        const remaining = 5 - attempts;
+        message = `Invalid credentials. Warning: ${remaining} attempts remaining before account lockout.`;
+        
+        // Report to Admin at 3rd attempt
+        if (attempts === 3) {
+          try {
+            const admins = await User.findByRole('admin');
+            for (const admin of admins) {
+              await Notification.create({
+                userId: admin.id,
+                title: 'Security Warning: Multiple Failed Group Logins',
+                message: `User ${user.full_name} (${user.username}) has failed 3 login attempts. Potential brute-force detected.`,
+                type: 'info',
+                link: '/audit-logs'
+              });
+            }
+          } catch (e) {}
+        }
+      }
+      
+      return res.status(401).json({ success: false, message });
+    }
+
+    // Success - reset attempts
+    await User.resetAttempts(user.id);
 
     const token = generateToken(user);
 

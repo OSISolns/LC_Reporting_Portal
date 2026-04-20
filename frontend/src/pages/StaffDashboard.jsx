@@ -19,6 +19,7 @@ const ROLE_LABEL = {
   customer_care:     'Patient Relations',
   operations_staff:  'Operations Staff',
   lab_team_lead:     'Laboratory Lead',
+  it_officer:        'IT Systems & Security',
 };
 
 // ── Status pill ───────────────────────────────────────────────────────────────
@@ -150,6 +151,7 @@ const StaffDashboard = () => {
     customer_care:     ['Complete all patient information fields accurately.', 'If in doubt, escalate to your supervisor before submitting.', "Incident reports must be filed within 24 hours of the event."],
     operations_staff:  ['Report incidents immediately — time-stamping matters.', 'Include all contributing factors for Quality Assurance review.', 'Use "Near Miss" for events that were caught before harm occurred.'],
     lab_team_lead:     ['Ensure all result transfers are approved only after verifying SID data.', 'Confirm the technician who executed the change in the lab system.', 'Rejected transfers should always include a specific reason for audit purposes.'],
+    it_officer:        ['Monitor audit logs daily for unusual activity patterns.', 'Ensure staff accounts follow clinical access policy.', 'Review reported incidents to ensure system integrity and data accuracy.'],
   };
   const tips = ROLE_TIPS[user?.role] || [];
 
@@ -169,10 +171,10 @@ const StaffDashboard = () => {
 
       {/* ── Mini stats ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-        {!isOps && <MiniStat label="My Cancellations" value={data.canc.length} color="var(--primary)" icon={<FileText size={20} />} />}
-        {!isOps && <MiniStat label="My Refunds"       value={data.refunds.length} color="#92400e" icon={<ReceiptText size={20} />} />}
-        <MiniStat label="My Incidents"    value={data.incidents.length} color="#b91c1c" icon={<AlertTriangle size={20} />} />
-        <MiniStat label="My Result Transfers" value={data.transfers.length} color="#059669" icon={<RefreshCw size={20} />} />
+        {!isOps && <MiniStat label={user?.role === 'it_officer' ? "All Cancellations" : "My Cancellations"} value={data.canc.length} color="var(--primary)" icon={<FileText size={20} />} />}
+        {!isOps && <MiniStat label={user?.role === 'it_officer' ? "All Refunds" : "My Refunds"}       value={data.refunds.length} color="#92400e" icon={<ReceiptText size={20} />} />}
+        <MiniStat label={user?.role === 'it_officer' ? "All Incidents" : "My Incidents"}    value={data.incidents.length} color="#b91c1c" icon={<AlertTriangle size={20} />} />
+        <MiniStat label={user?.role === 'it_officer' ? "All Result Transfers" : "My Result Transfers"} value={data.transfers.length} color="#059669" icon={<RefreshCw size={20} />} />
         <MiniStat label="Pending Action"   value={pendCount} color="#4338ca" icon={<Clock size={20} />} />
       </div>
 

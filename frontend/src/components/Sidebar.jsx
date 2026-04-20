@@ -17,11 +17,11 @@ const Sidebar = ({ onClose }) => {
     { name: 'Dashboard',       icon: <LayoutDashboard size={20} />, path: '/',            roles: ['all'] },
     { name: 'Cancellations',   icon: <FileText size={20} />,        path: '/cancellations', roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
     { name: 'Refunds',         icon: <ReceiptText size={20} />,     path: '/refunds',      roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
-    { name: 'Incident Reports',icon: <AlertTriangle size={20} />,   path: '/incidents',    roles: ['all'] },
-    { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', roles: ['all'] },
+    { name: 'Incident Reports',icon: <AlertTriangle size={20} />,   path: '/incidents',    roles: ['all', 'it_officer'] },
+    { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
     { name: 'Insights',        icon: <Brain size={20} />,           path: '/ai-insights',  roles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'principal_cashier', 'consultant'] },
-    { name: 'User Management', icon: <Users size={20} />,           path: '/users',        roles: ['admin'] },
-    { name: 'Audit Logs',      icon: <History size={20} />,         path: '/audit-logs',   roles: ['admin'] },
+    { name: 'User Management', icon: <Users size={20} />,           path: '/users',        roles: ['admin', 'it_officer'] },
+    { name: 'Audit Logs',      icon: <History size={20} />,         path: '/audit-logs',   roles: ['admin', 'it_officer'] },
   ];
 
   const filteredMenu = menuItems.filter(item =>

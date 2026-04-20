@@ -21,7 +21,14 @@ const EMPTY_FORM = {
 
 const ResultTransferList = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [requests,        setRequests]       = useState([]);
+ 
+  useEffect(() => {
+    if (user?.role === 'it_officer') {
+      navigate('/unauthorized', { replace: true });
+    }
+  }, [user, navigate]);
   const [loading,         setLoading]        = useState(true);
   const [filters,         setFilters]        = useState({ sid: '', status: '' });
   const [showCreateModal, setShowCreateModal] = useState(false);

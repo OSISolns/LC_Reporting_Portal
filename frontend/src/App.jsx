@@ -24,6 +24,7 @@ import IncidentList from './pages/incidents/IncidentList';
 import IncidentForm from './pages/incidents/IncidentForm';
 import IncidentDetail from './pages/incidents/IncidentDetail';
 import ResultTransferList from './pages/results-transfer/ResultTransferList';
+import Unauthorized from './pages/Unauthorized';
 
 function App() {
   return (
@@ -35,23 +36,25 @@ function App() {
           
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/audit-logs" element={<AuditLogs />} />
-            <Route path="/ai-insights" element={<AIInsights />} />
             
-            <Route path="/cancellations" element={<CancellationList />} />
-            <Route path="/cancellations/new" element={<CancellationForm />} />
-            <Route path="/cancellations/:id" element={<CancellationDetail />} />
+            <Route path="/users" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><Users /></ProtectedRoute>} />
+            <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><AuditLogs /></ProtectedRoute>} />
+            <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'principal_cashier', 'consultant']}><AIInsights /></ProtectedRoute>} />
+            
+            <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><CancellationList /></ProtectedRoute>} />
+            <Route path="/cancellations/new" element={<ProtectedRoute allowedRoles={['cashier', 'customer_care', 'admin']}><CancellationForm /></ProtectedRoute>} />
+            <Route path="/cancellations/:id" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><CancellationDetail /></ProtectedRoute>} />
 
-            <Route path="/refunds" element={<RefundList />} />
-            <Route path="/refunds/new" element={<RefundForm />} />
-            <Route path="/refunds/:id" element={<RefundDetail />} />
+            <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><RefundList /></ProtectedRoute>} />
+            <Route path="/refunds/new" element={<ProtectedRoute allowedRoles={['cashier', 'customer_care', 'admin']}><RefundForm /></ProtectedRoute>} />
+            <Route path="/refunds/:id" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><RefundDetail /></ProtectedRoute>} />
             
             <Route path="/incidents" element={<IncidentList />} />
             <Route path="/incidents/new" element={<IncidentForm />} />
             <Route path="/incidents/:id" element={<IncidentDetail />} />
-            <Route path="/results-transfer" element={<ResultTransferList />} />
+            <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><ResultTransferList /></ProtectedRoute>} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
           </Route>
 
 

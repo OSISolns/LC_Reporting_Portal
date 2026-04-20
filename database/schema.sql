@@ -28,7 +28,8 @@ INSERT INTO roles (name, display_name) VALUES
   ('deputy_coo',       'Deputy COO'),
   ('quality_assurance','Quality & Assurance'),
   ('chairman',         'Chairman'),
-  ('lab_team_lead',    'Laboratory Team Lead');
+  ('lab_team_lead',    'Laboratory Team Lead'),
+  ('it_officer',       'IT Officer');
 
 -- =============================================================
 -- USERS
