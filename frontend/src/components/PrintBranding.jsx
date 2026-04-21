@@ -12,7 +12,7 @@ export const PrintHeader = ({ title, docType, docId }) => {
           <div style={{ fontSize: '7.5pt', color: '#64748b', lineHeight: '1.4', fontWeight: 500 }}>
             Legacy Medical Center Rwanda<br/>
             KK3 RD 134, Kicukiro, Kigali<br/>
-            Contact: +250 123 456 789
+            Contact: +250 788 122 100/+250 788 382 000
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>

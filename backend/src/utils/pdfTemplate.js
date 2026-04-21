@@ -535,7 +535,7 @@ exports.getMedicalReportHTML = (type, data) => {
           <div class="clinic-address">
             Legacy Medical Center Rwanda<br/>
             KK3 RD 134, Kicukiro, Kigali<br/>
-            Contact: +250 123 456 789
+            Contact: +250 788 122 100/+250 788 382 000
           </div>
         </div>
         <div class="doc-headline">
