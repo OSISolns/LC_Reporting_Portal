@@ -51,6 +51,9 @@ app.use(cors({
     // Allow explicitly listed origins
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
 
+    // Allow Vercel preview/deployment domains
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+
     console.warn(`CORS blocked: ${origin}`);
     callback(new Error(`Not allowed by CORS: ${origin}`));
   },

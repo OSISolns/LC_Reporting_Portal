@@ -35,7 +35,7 @@ const PATIENTS = [
   { name: 'Mukandutiye Alice',   pid: 'LC-010831' },
 ];
 
-const PAYERS = ['RSSB-RAMA','RSSB-MMI','Cogebanque','SORAS','Out-of-Pocket','Radiant','SONARWA'];
+const PAYERS = ['RSSB-RAMA','MMI','Cogebanque','SORAS','Out-of-Pocket','Radiant','SONARWA'];
 const PAYMENT_MODES = ['MoMo','Cash','Card','Bank Transfer'];
 
 // ── Cancellation reasons (varied, realistic) ──────────────────────────────────
