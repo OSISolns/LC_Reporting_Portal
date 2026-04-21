@@ -188,3 +188,8 @@ CREATE INDEX idx_rt_status     ON results_transfers(status);
 CREATE INDEX idx_rt_old_sid    ON results_transfers(old_sid);
 CREATE INDEX idx_rt_new_sid    ON results_transfers(new_sid);
 CREATE INDEX idx_rt_created_at ON results_transfers(created_at DESC);
+
+-- Performance Indexes for Permission System
+CREATE INDEX IF NOT EXISTS idx_role_permissions_lookup ON role_permissions(role_name, module, action);
+CREATE INDEX IF NOT EXISTS idx_user_overrides_lookup ON user_permission_overrides(user_id, module, action);
+CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_logs(entity_type, entity_id);

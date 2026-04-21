@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { PrintHeader, PrintFooter } from '../components/PrintBranding';
-import { History, Search, User, Activity } from 'lucide-react';
+import { History, Search, User, Activity, Eye, Info, Clock, Terminal } from 'lucide-react';
+import Modal from '../components/Modal';
 
 const AuditLogs = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
+  const [selectedLog, setSelectedLog] = useState(null);
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -28,6 +30,56 @@ const AuditLogs = () => {
     log.action?.toLowerCase().includes(filter.toLowerCase()) ||
     log.entity_type?.toLowerCase().includes(filter.toLowerCase())
   );
+
+  const renderValue = (val) => {
+    if (typeof val === 'boolean') return val ? 'YES' : 'NO';
+    if (val === null || val === undefined) return 'N/A';
+    if (typeof val === 'object') return JSON.stringify(val);
+    return String(val);
+  };
+
+  const renderDetails = (details) => {
+    if (!details) return <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>No additional details available.</p>;
+    
+    // If it's a simple string, just show it
+    if (typeof details === 'string') return <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{details}</p>;
+
+    // Handle nested permissions specifically if it's that type of log
+    if (details.permissions) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {Object.entries(details.permissions).map(([mod, actions]) => (
+            <div key={mod} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+              <p style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '8px' }}>{mod.replace(/_/g, ' ')}</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                {Object.entries(actions).map(([act, status]) => (
+                  <div key={act} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: status ? 'var(--success)' : '#cbd5e1' }} />
+                    <span style={{ fontWeight: 600 }}>{act}:</span>
+                    <span style={{ color: status ? 'var(--success)' : 'var(--text-secondary)' }}>{status ? 'GRANTED' : 'DENIED'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Generic key-value renderer
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {Object.entries(details).map(([key, value]) => (
+          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{key.replace(/_/g, ' ')}</span>
+            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--primary-dark)', textAlign: 'right' }}>
+              {typeof value === 'object' ? JSON.stringify(value) : renderValue(value)}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   if (loading) return <LoadingSpinner />;
 
@@ -97,20 +149,48 @@ const AuditLogs = () => {
                   {log.entity_type.replace('_', ' ')}
                 </td>
                 <td style={{ padding: '1.25rem 1.5rem' }}>
-                  <div style={{ 
-                    fontSize: '0.85rem', 
-                    color: 'var(--text-secondary)', 
-                    fontFamily: 'monospace', 
-                    backgroundColor: '#f8fafc',
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--border-color)',
-                    maxWidth: '300px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }} title={JSON.stringify(log.details)}>
-                    {JSON.stringify(log.details)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      color: 'var(--text-secondary)', 
+                      fontFamily: 'monospace', 
+                      backgroundColor: '#f1f5f9',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      maxWidth: '150px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}
+                    </div>
+                    <button 
+                      onClick={() => setSelectedLog(log)}
+                      className="no-print"
+                      style={{
+                        padding: '6px',
+                        borderRadius: '8px',
+                        backgroundColor: 'rgba(0,123,138,0.05)',
+                        color: 'var(--primary)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="View Full Technical Details"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)';
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.05)';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      <Eye size={16} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -118,6 +198,92 @@ const AuditLogs = () => {
           </tbody>
         </table>
       </div>
+      
+      {/* Technical Details Inspection Modal */}
+      <Modal
+        isOpen={!!selectedLog}
+        onClose={() => setSelectedLog(null)}
+        title="Audit Event Investigation"
+        maxWidth="700px"
+      >
+        {selectedLog && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(2, 1fr)', 
+              gap: '1rem',
+              padding: '1.25rem',
+              backgroundColor: '#f8fafc',
+              borderRadius: '12px',
+              border: '1px solid var(--border-color)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Clock size={16} style={{ color: 'var(--text-secondary)' }} />
+                <div>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Event Time</p>
+                  <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>{new Date(selectedLog.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <User size={16} style={{ color: 'var(--text-secondary)' }} />
+                <div>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Responsible Officer</p>
+                  <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>{selectedLog.user_name}</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Activity size={16} style={{ color: 'var(--text-secondary)' }} />
+                <div>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Action Type</p>
+                  <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>{selectedLog.action}</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Terminal size={16} style={{ color: 'var(--text-secondary)' }} />
+                <div>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Network Address</p>
+                  <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>{selectedLog.ip_address || 'Internal System'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Terminal size={16} style={{ color: 'var(--primary)' }} />
+                <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--primary-dark)' }}>Event Technical Breakdown</h3>
+              </div>
+              <div style={{ 
+                padding: '1.25rem', 
+                backgroundColor: '#ffffff', 
+                borderRadius: '12px', 
+                border: '1.5px solid #f1f5f9',
+                maxHeight: '400px',
+                overflowY: 'auto'
+              }}>
+                {renderDetails(selectedLog.details)}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button 
+                onClick={() => setSelectedLog(null)}
+                style={{ 
+                  padding: '0.75rem 1.5rem', 
+                  backgroundColor: '#f1f5f9', 
+                  color: 'var(--primary-dark)', 
+                  border: 'none', 
+                  borderRadius: '10px', 
+                  fontWeight: 700, 
+                  cursor: 'pointer' 
+                }}
+              >
+                Close Investigation
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <PrintFooter />
     </div>
   );

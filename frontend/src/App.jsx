@@ -24,6 +24,7 @@ import IncidentList from './pages/incidents/IncidentList';
 import IncidentForm from './pages/incidents/IncidentForm';
 import IncidentDetail from './pages/incidents/IncidentDetail';
 import ResultTransferList from './pages/results-transfer/ResultTransferList';
+import Permissions from './pages/Permissions';
 import Unauthorized from './pages/Unauthorized';
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             
             <Route path="/users" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><Users /></ProtectedRoute>} />
+            <Route path="/permissions" element={<ProtectedRoute allowedRoles={['admin']}><Permissions /></ProtectedRoute>} />
             <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><AuditLogs /></ProtectedRoute>} />
             <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'principal_cashier', 'consultant']}><AIInsights /></ProtectedRoute>} />
             

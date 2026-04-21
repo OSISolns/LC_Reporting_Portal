@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Plus, Search, FileText, Trash2, Eye, RefreshCw } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';

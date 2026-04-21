@@ -39,19 +39,10 @@ const transformQuery = (sql, params) => {
 const query = async (sql, params = []) => {
   try {
     const { sql: transformedSql, args } = transformQuery(sql, params);
-    
-    // LibSQL execute returns { rows: [...], columns: [...], ... }
     const result = await client.execute({ sql: transformedSql, args });
-    
-    // Postgres 'pg' library returns results in a 'rows' array
-    // LibSQL result already has a 'rows' array, but we ensure it matches the expected structure.
     return {
-      rows: result.rows.map(row => {
-        // LibSQL rows are sometimes objects, sometimes arrays depending on the call.
-        // client.execute returns an array of objects.
-        return row;
-      }),
-      rowCount: result.rows.length
+      rows: result.rows,
+      rowCount: result.rowsAffected || result.rows.length
     };
   } catch (err) {
     console.error('💥 Turso/LibSQL Query Error:', err.message);
@@ -60,7 +51,25 @@ const query = async (sql, params = []) => {
   }
 };
 
+/**
+ * Batch execution for transactions.
+ * @param {Array} statements - Array of { sql, args } objects.
+ */
+const batch = async (statements) => {
+  try {
+    const transformed = statements.map(s => {
+      const { sql, args } = transformQuery(s.sql, s.args);
+      return { sql, args };
+    });
+    return await client.batch(transformed);
+  } catch (err) {
+    console.error('💥 Turso/LibSQL Batch Error:', err.message);
+    throw err;
+  }
+};
+
 module.exports = {
   query,
+  batch,
   client,
 };

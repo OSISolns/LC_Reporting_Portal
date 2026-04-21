@@ -25,6 +25,7 @@ const auditRoutes        = require('./src/routes/auditLogs');
 const aiRoutes           = require('./src/routes/ai');
 const resultTransferRoutes = require('./src/routes/resultTransferRoutes');
 const notificationRoutes   = require('./src/routes/notificationRoutes');
+const permissionRoutes      = require('./src/routes/permissions');
 
 
 const app = express();
@@ -41,14 +42,11 @@ const ALLOWED_ORIGINS = [
 
 app.use(cors({
   origin: (origin, callback) => {
+    // Allow all origins in development for easy local testing
+    if (process.env.NODE_ENV !== 'production') return callback(null, true);
+    
     // Allow requests with no origin (same-origin on Vercel, Postman, curl)
     if (!origin) return callback(null, true);
-
-    // Allow localhost
-    if (origin.startsWith('http://localhost')) return callback(null, true);
-
-    // Allow any Vercel deployment URL for this project
-    if (origin.match(/https:\/\/project-3oz55[^.]*\.vercel\.app$/)) return callback(null, true);
 
     // Allow explicitly listed origins
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
@@ -88,6 +86,7 @@ app.use('/api/audit',         auditRoutes);
 app.use('/api/ai',            aiRoutes);
 app.use('/api/results-transfer', resultTransferRoutes);
 app.use('/api/notifications',     notificationRoutes);
+app.use('/api/permissions',       permissionRoutes);
 
 
 // ── Root ──────────────────────────────────────────────────────────────────────

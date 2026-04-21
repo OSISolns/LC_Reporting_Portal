@@ -188,7 +188,7 @@ exports.changePassword = async (req, res, next) => {
     // Update DB directly
     const db = require('../config/db');
     await db.query(
-      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [newPasswordHash, userId]
     );
 

@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -21,6 +21,7 @@ const Sidebar = ({ onClose }) => {
     { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
     { name: 'Insights',        icon: <Brain size={20} />,           path: '/ai-insights',  roles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'principal_cashier', 'consultant'] },
     { name: 'User Management', icon: <Users size={20} />,           path: '/users',        roles: ['admin', 'it_officer'] },
+    { name: 'Permissions',     icon: <Shield size={20} />,          path: '/permissions',  roles: ['admin'] },
     { name: 'Audit Logs',      icon: <History size={20} />,         path: '/audit-logs',   roles: ['admin', 'it_officer'] },
   ];
 
