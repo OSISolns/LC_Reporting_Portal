@@ -2,32 +2,34 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
 import { useState } from 'react';
 
 const Sidebar = ({ onClose }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const location = useLocation();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const menuItems = [
-    { name: 'Dashboard',       icon: <LayoutDashboard size={20} />, path: '/',            roles: ['all'] },
-    { name: 'Cancellations',   icon: <FileText size={20} />,        path: '/cancellations', roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
-    { name: 'Refunds',         icon: <ReceiptText size={20} />,     path: '/refunds',      roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
-    { name: 'Incident Reports',icon: <AlertTriangle size={20} />,   path: '/incidents',    roles: ['all', 'it_officer'] },
-    { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', roles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
-    { name: 'Insights',        icon: <Brain size={20} />,           path: '/ai-insights',  roles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'principal_cashier', 'consultant'] },
-    { name: 'User Management', icon: <Users size={20} />,           path: '/users',        roles: ['admin', 'it_officer'] },
-    { name: 'Permissions',     icon: <Shield size={20} />,          path: '/permissions',  roles: ['admin'] },
-    { name: 'Audit Logs',      icon: <History size={20} />,         path: '/audit-logs',   roles: ['admin', 'it_officer'] },
+    { name: 'Dashboard',        icon: <LayoutDashboard size={20} />, path: '/',            requiredPerm: null },
+    { name: 'Cancellations',    icon: <FileText size={20} />,        path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' } },
+    { name: 'Refunds',          icon: <ReceiptText size={20} />,     path: '/refunds',      requiredPerm: { mod: 'refunds', act: 'view' } },
+    { name: 'Incident Reports', icon: <AlertTriangle size={20} />,   path: '/incidents',    requiredPerm: { mod: 'incident_reports', act: 'view' } },
+    { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' } },
+    { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' } },
+    { name: 'Insights',         icon: <Brain size={20} />,           path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' } },
+    { name: 'User Management',  icon: <Users size={20} />,           path: '/users',        requiredPerm: { mod: 'user_management', act: 'view' } },
+    { name: 'Permissions',      icon: <Shield size={20} />,          path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' } }, // Re-using user_management edit for security
+    { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' } },
   ];
 
-  const filteredMenu = menuItems.filter(item =>
-    item.roles.includes('all') || item.roles.includes(user?.role)
-  );
+  const filteredMenu = menuItems.filter(item => {
+    if (!item.requiredPerm) return true;
+    return hasPermission(item.requiredPerm.mod, item.requiredPerm.act);
+  });
 
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);

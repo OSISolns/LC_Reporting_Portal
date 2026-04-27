@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { Download, CheckCircle, XCircle } from 'lucide-react';
 import StatusBadge from '../../../components/StatusBadge';
 import { PrintHeader, PrintFooter, PrintWatermark } from '../../../components/PrintBranding';
+import { useAuth } from '../../../context/AuthContext';
 
-const RefundDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject }) => {
+const RefundDetailsView = ({ data, onExport, onVerify, onApprove, onReject }) => {
+  const { user, hasPermission } = useAuth();
   const [isRejecting,   setIsRejecting]   = useState(false);
   const [rejectComment, setRejectComment] = useState('');
 
   if (!data) return null;
 
-  const canVerify  = data.status === 'pending'  && user?.role === 'sales_manager';
-  const canApprove = data.status === 'verified' && user?.role === 'coo';
+  const canVerify  = data.status === 'pending'  && hasPermission('refunds', 'review');
+  const canApprove = data.status === 'verified' && hasPermission('refunds', 'approve');
 
   const handleRejectSubmit = () => {
     if (!rejectComment.trim()) { alert('Rejection comment is required.'); return; }
@@ -45,6 +47,12 @@ const RefundDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject
             <tr><th>SID Number</th><td>{data.sid_number || 'N/A'}</td></tr>
             <tr><th>Telephone Number</th><td>{data.telephone_number || 'N/A'}</td></tr>
             <tr><th>Insurance / Payer</th><td>{data.insurance_payer || 'Private / Walk-in'}</td></tr>
+            {data.billed_by_name && (
+              <tr>
+                <th>Billed by</th>
+                <td style={{ color: 'var(--primary)', fontWeight: 600 }}>{data.billed_by_name}</td>
+              </tr>
+            )}
           </tbody>
         </table>
 

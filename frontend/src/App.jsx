@@ -24,6 +24,7 @@ import IncidentList from './pages/incidents/IncidentList';
 import IncidentForm from './pages/incidents/IncidentForm';
 import IncidentDetail from './pages/incidents/IncidentDetail';
 import ResultTransferList from './pages/results-transfer/ResultTransferList';
+import PerformanceDashboard from './pages/performance/PerformanceDashboard';
 import Permissions from './pages/Permissions';
 import Unauthorized from './pages/Unauthorized';
 
@@ -55,6 +56,7 @@ function App() {
             <Route path="/incidents/new" element={<IncidentForm />} />
             <Route path="/incidents/:id" element={<IncidentDetail />} />
             <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><ResultTransferList /></ProtectedRoute>} />
+            <Route path="/performance" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care']}><PerformanceDashboard /></ProtectedRoute>} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
           </Route>

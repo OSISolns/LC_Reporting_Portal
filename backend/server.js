@@ -26,6 +26,7 @@ const aiRoutes           = require('./src/routes/ai');
 const resultTransferRoutes = require('./src/routes/resultTransferRoutes');
 const notificationRoutes   = require('./src/routes/notificationRoutes');
 const permissionRoutes      = require('./src/routes/permissions');
+const performanceRoutes     = require('./src/routes/performanceRoutes');
 
 
 const app = express();
@@ -90,6 +91,7 @@ app.use('/api/ai',            aiRoutes);
 app.use('/api/results-transfer', resultTransferRoutes);
 app.use('/api/notifications',     notificationRoutes);
 app.use('/api/permissions',       permissionRoutes);
+app.use('/api/performance',       performanceRoutes);
 
 
 // ── Root ──────────────────────────────────────────────────────────────────────

@@ -4,13 +4,14 @@
  * System Permission Modules Definition
  */
 const MODULES = [
-  { name: 'cancellations',     display: 'Cancellation Requests', actions: ['view','create','edit','approve','reject'] },
-  { name: 'refunds',           display: 'Refund Requests',       actions: ['view','create','edit','approve','reject'] },
-  { name: 'results_transfer',  display: 'Results Transfer',      actions: ['view','create','edit','approve','reject'] },
+  { name: 'cancellations',     display: 'Cancellation Requests', actions: ['view','create','edit','review','approve','reject'] },
+  { name: 'refunds',           display: 'Refund Requests',       actions: ['view','create','edit','review','approve','reject'] },
+  { name: 'results_transfer',  display: 'Result Transfers',      actions: ['view','create','edit','review','approve','reject'] },
   { name: 'incident_reports',  display: 'Incident Reports',      actions: ['view','create','edit','approve'] },
   { name: 'user_management',   display: 'User Management',       actions: ['view','create','edit','delete'] },
   { name: 'audit_logs',        display: 'Audit Logs',            actions: ['view'] },
   { name: 'reports',           display: 'Reports & Insights',    actions: ['view','download'] },
+  { name: 'staff_performance', display: 'Staff Performance',     actions: ['view','create'] },
 ];
 
 /**
@@ -25,6 +26,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:1, create:1, edit:1, delete:1 },
     audit_logs:       { view:1 },
     reports:          { view:1, download:1 },
+    staff_performance: { view:1, create:1 },
   },
   it_officer: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -34,6 +36,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:1, create:1, edit:1, delete:0 },
     audit_logs:       { view:1 },
     reports:          { view:0, download:0 },
+    staff_performance: { view:0, create:0 },
   },
   coo: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -43,6 +46,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:1, download:1 },
+    staff_performance: { view:1, create:1 },
   },
   deputy_coo: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -52,6 +56,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:1, download:1 },
+    staff_performance: { view:1, create:1 },
   },
   chairman: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:0 },
@@ -61,6 +66,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:1, download:1 },
+    staff_performance: { view:1, create:0 },
   },
   sales_manager: {
     cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
@@ -70,6 +76,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:1, download:1 },
+    staff_performance: { view:1, create:1 },
   },
   cashier: {
     cancellations:    { view:1, create:1, edit:0, approve:0, reject:0 },
@@ -79,24 +86,27 @@ const ROLE_DEFAULTS = {
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:0, download:0 },
+    staff_performance: { view:1, create:0 },
   },
   principal_cashier: {
-    cancellations:    { view:1, create:1, edit:0, approve:1, reject:0 },
-    refunds:          { view:1, create:1, edit:0, approve:1, reject:0 },
-    results_transfer: { view:1, create:0, edit:0, approve:0, reject:0 },
+    cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
+    refunds:          { view:1, create:0, edit:0, approve:1, reject:1 },
+    results_transfer: { view:1, create:0, edit:0, approve:1, reject:1 },
     incident_reports: { view:1, create:1, edit:0, approve:0 },
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:1, download:0 },
+    staff_performance: { view:1, create:1 },
   },
   customer_care: {
-    cancellations:    { view:1, create:1, edit:0, approve:0, reject:0 },
-    refunds:          { view:1, create:1, edit:0, approve:0, reject:0 },
-    results_transfer: { view:1, create:1, edit:0, approve:0, reject:0 },
+    cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
+    refunds:          { view:1, create:0, edit:0, approve:0, reject:0 },
+    results_transfer: { view:1, create:0, edit:0, approve:0, reject:0 },
     incident_reports: { view:1, create:1, edit:0, approve:0 },
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:0, download:0 },
+    staff_performance: { view:1, create:0 },
   },
   quality_assurance: {
     cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
@@ -106,6 +116,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:1, download:1 },
+    staff_performance: { view:1, create:1 },
   },
   lab_team_lead: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -115,6 +126,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:0, download:0 },
+    staff_performance: { view:0, create:0 },
   },
   consultant: {
     cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
@@ -124,6 +136,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:1, download:0 },
+    staff_performance: { view:0, create:0 },
   },
   operations_staff: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -133,6 +146,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:0, download:0 },
+    staff_performance: { view:1, create:1 },
   },
 };
 

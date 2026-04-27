@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createCancellation } from '../../api/cancellations';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, User as UserIcon } from 'lucide-react';
 import CancellationFormFields from './components/CancellationFormFields';
+import { getStaffList } from '../../api/users';
+import { useEffect } from 'react';
 
 const CancellationForm = () => {
   const navigate = useNavigate();
@@ -11,8 +13,22 @@ const CancellationForm = () => {
     patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
     telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
     originalReceiptNumber: '', rectifiedReceiptNumber: '',
-    initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: ''
+    initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '',
+    billedBy: ''
   });
+  const [staff, setStaff] = useState([]);
+
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        const res = await getStaffList();
+        setStaff(res.data.data);
+      } catch (err) {
+        console.error('Failed to fetch staff list');
+      }
+    };
+    fetchStaff();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,6 +65,7 @@ const CancellationForm = () => {
         handleSubmit={handleSubmit}
         loading={loading}
         onCancel={() => navigate(-1)}
+        staff={staff}
       />
     </div>
   );

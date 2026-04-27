@@ -48,8 +48,14 @@ exports.createRequest = async (req, res, next) => {
 
 exports.getAllRequests = async (req, res, next) => {
   try {
-    const cacheKey = `canc:list:${req.user.role}:${JSON.stringify(req.query)}`;
-    const data = await cache.getOrSet(cacheKey, () => Cancellation.getAll(req.query), 15_000);
+    const filters = { ...req.query };
+    const privilegedRoles = ['sales_manager', 'coo', 'deputy_coo', 'admin', 'chairman', 'principal_cashier', 'operations_staff'];
+    const isPrivileged = privilegedRoles.includes(req.user.role);
+    if (!isPrivileged) {
+      filters.created_by = req.user.id;
+    }
+    const cacheKey = `canc:list:${req.user.role}:${req.user.id}:${JSON.stringify(filters)}`;
+    const data = await cache.getOrSet(cacheKey, () => Cancellation.getAll(filters), 15_000);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };
@@ -58,6 +64,13 @@ exports.getRequestById = async (req, res, next) => {
   try {
     const request = await Cancellation.findById(req.params.id);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
+    
+    const privilegedRoles = ['sales_manager', 'coo', 'deputy_coo', 'admin', 'chairman', 'principal_cashier', 'operations_staff'];
+    const isPrivileged = privilegedRoles.includes(req.user.role);
+    if (!isPrivileged && request.created_by !== req.user.id) {
+       return res.status(403).json({ success: false, message: 'Access denied: You can only view your own requests.' });
+    }
+
     res.json({ success: true, data: request });
   } catch (err) {
     next(err);
@@ -113,6 +126,12 @@ exports.approveRequest = async (req, res, next) => {
 exports.rejectRequest = async (req, res, next) => {
   try {
     const { comment } = req.body;
+    const requestToCheck = await Cancellation.findById(req.params.id);
+    if (!requestToCheck) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (req.user.role === 'coo' && requestToCheck.status === 'pending') {
+      return res.status(403).json({ success: false, message: 'COO cannot reject a pending request before verification' });
+    }
+
     const request = await Cancellation.reject(req.params.id, req.user.id, comment);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be rejected' });
     await logAction(req, 'REJECT', 'cancellation_request', request.id, { reason: comment });

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 
 const Users = () => {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, hasPermission } = useAuth();
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,9 +30,13 @@ const Users = () => {
     fetchData();
   }, []);
 
-  const filteredUsers = (currentUser?.role === 'it_officer' 
-    ? users.filter(u => ['Cashier', 'Customer Care', 'Patient Relations'].includes(u.role_name))
-    : users
+  // Full edit access (admin-level): show all users and all roles
+  // Limited access (e.g. IT Officer): show only non-privileged staff
+  const canEditAll = hasPermission('user_management', 'edit');
+
+  const filteredUsers = (canEditAll
+    ? users
+    : users.filter(u => ['Cashier', 'Customer Care', 'Patient Relations'].includes(u.role_name))
   ).filter(u => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -44,9 +48,9 @@ const Users = () => {
     );
   });
 
-  const filteredRoles = currentUser?.role === 'it_officer'
-    ? roles.filter(r => ['cashier', 'customer_care'].includes(r.name))
-    : roles;
+  const filteredRoles = canEditAll
+    ? roles
+    : roles.filter(r => ['cashier', 'customer_care'].includes(r.name));
 
   const fetchData = async () => {
     try {

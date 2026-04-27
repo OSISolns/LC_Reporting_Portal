@@ -1,12 +1,14 @@
 import { FileText, User, Calendar, Hash, CheckCircle, XCircle, Download, Clock } from 'lucide-react';
-import StatusBadge from '../../../components/StatusBadge';
 import { useState } from 'react';
+import StatusBadge from '../../../components/StatusBadge';
+import { useAuth } from '../../../context/AuthContext';
 
 const labelStyle = { fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.05em' };
 const valueStyle = { fontSize: '1rem', color: 'var(--primary-dark)', fontWeight: 600 };
 const boxStyle   = { padding: '1.25rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #f1f5f9' };
 
-const ResultTransferDetailsView = ({ data, user, onReview, onApprove, onReject, onExport }) => {
+const ResultTransferDetailsView = ({ data, onReview, onApprove, onReject, onExport }) => {
+  const { user, hasPermission } = useAuth();
   const [rejectMode, setRejectMode] = useState(false);
   const [approveMode, setApproveMode] = useState(false);
   const [rejectionComment, setRejectionComment] = useState('');
@@ -14,8 +16,8 @@ const ResultTransferDetailsView = ({ data, user, onReview, onApprove, onReject, 
 
   if (!data) return null;
 
-  const isOperations = ['operations_staff', 'principal_cashier', 'deputy_coo', 'admin'].includes(user?.role);
-  const isLabLead    = user?.role === 'lab_team_lead' || user?.role === 'admin';
+  const isOperations = hasPermission('results_transfer', 'review');
+  const isLabLead    = hasPermission('results_transfer', 'approve');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>

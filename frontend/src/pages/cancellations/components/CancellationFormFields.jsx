@@ -1,6 +1,8 @@
 import { Info, Receipt, Save } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 
-const CancellationFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel }) => {
+const CancellationFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel, staff }) => {
+  const { user } = useAuth();
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Section 1 */}
@@ -27,6 +29,23 @@ const CancellationFormFields = ({ formData, handleChange, handleSubmit, loading,
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>New SID Number</label>
             <input type="text" name="newSidNumber" value={formData.newSidNumber} onChange={handleChange} style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Billed by *</label>
+            <select 
+              name="billedBy" 
+              required 
+              value={formData.billedBy} 
+              onChange={handleChange} 
+              style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none' }}
+            >
+              <option value="">Select Staff Member</option>
+              {staff && staff.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.id === user?.id ? `Self (${s.full_name})` : `${s.full_name} (${s.role})`}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>

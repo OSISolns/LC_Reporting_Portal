@@ -241,6 +241,7 @@ const Permissions = () => {
                     <th style={{ padding: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center' }}>View</th>
                     <th style={{ padding: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center' }}>Create</th>
                     <th style={{ padding: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center' }}>Edit</th>
+                    <th style={{ padding: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center' }}>Review</th>
                     <th style={{ padding: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center' }}>Approve</th>
                     <th style={{ padding: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center' }}>Reject</th>
                   </tr>
@@ -252,7 +253,7 @@ const Permissions = () => {
                         <div style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>{mod.display_name}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{mod.name}</div>
                       </td>
-                      {['view', 'create', 'edit', 'approve', 'reject'].map(action => {
+                      {['view', 'create', 'edit', 'review', 'approve', 'reject'].map(action => {
                         const isSupported = mod.actions.includes(action);
                         const isGranted = roleMatrix[selectedRole]?.[mod.name]?.[action];
                         

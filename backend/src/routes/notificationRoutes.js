@@ -8,8 +8,8 @@ router.use(authMiddleware); // All notification routes require authentication
 
 router.get('/', notificationController.getNotifications);
 router.get('/unread-count', notificationController.getUnreadCount);
-router.put('/:id/read', notificationController.markAsRead);
 router.put('/mark-all-read', notificationController.markAllAsRead);
+router.put('/:id/read', notificationController.markAsRead);
 router.delete('/:id', notificationController.deleteNotification);
 
 module.exports = router;

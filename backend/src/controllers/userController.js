@@ -71,3 +71,19 @@ exports.getRoles = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getStaffList = async (req, res, next) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT u.id, u.full_name, r.display_name as role, r.name as role_key
+      FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE u.is_active = 1 
+        AND (r.name IN ('cashier', 'principal_cashier', 'customer_care') OR u.id = $1)
+      ORDER BY u.full_name ASC
+    `, [req.user.id]);
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};

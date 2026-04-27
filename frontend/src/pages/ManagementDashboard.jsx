@@ -89,7 +89,7 @@ const ModuleBar = ({ label, approved, total, color }) => {
 
 // ══════════════════════════════════════════════════════════════════════════════
 const ManagementDashboard = () => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [stats,      setStats]      = useState(null);
   const [narrative,  setNarrative]  = useState('');
@@ -160,16 +160,6 @@ const ManagementDashboard = () => {
             <RefreshCw size={16} /> Update View
           </button>
         </div>
-
-        {/* Narrative banner */}
-        {narrative && (
-          <div style={{ marginTop: '2rem', padding: '1.25rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '16px', fontSize: '0.9rem', lineHeight: 1.7, color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(5px)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#fff', fontWeight: 700 }}>
-              <Zap size={16} fill="white" /> AI Executive Summary
-            </div>
-            {narrative}
-          </div>
-        )}
       </div>
 
       {/* ── 4 Stat cards ── */}
@@ -252,26 +242,6 @@ const ManagementDashboard = () => {
             <ModuleBar label="Incident Review Rate"    approved={i.reviewed || 0} total={i.total || 0} color="#b91c1c" />
           </div>
 
-          {/* AI Insights CTA */}
-          <div onClick={() => navigate('/ai-insights')}
-            style={{ background: 'linear-gradient(135deg, #4338ca, #6d28d9)', borderRadius: '20px', padding: '1.75rem', color: '#fff', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 10px 20px rgba(67,56,202,0.15)', position: 'relative', overflow: 'hidden' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(67,56,202,0.25)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(67,56,202,0.15)'; }}
-          >
-            <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <div style={{ padding: '10px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '12px' }}>
-                <Brain size={24} />
-              </div>
-              <div>
-                <span style={{ fontWeight: 800, fontSize: '1.2rem', display: 'block' }}>Advanced Analytics</span>
-                <span style={{ fontSize: '0.8rem', opacity: 0.8, fontWeight: 500 }}>AI-Powered Insights</span>
-              </div>
-            </div>
-            <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.9, lineHeight: 1.6, fontWeight: 500 }}>
-              Deep-dive into submission patterns, staff performance metrics, and automated executive briefings.
-            </p>
-          </div>
         </div>
       </div>
 
@@ -279,16 +249,13 @@ const ManagementDashboard = () => {
       <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-dark)' }}>Quick Navigation</h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem' }}>
         {[
-          { label: 'Cancellations', icon: <FileText size={24} />, color: 'var(--primary)', path: '/cancellations' },
-          { label: 'Refunds',       icon: <ReceiptText size={24} />, color: '#92400e', path: '/refunds' },
-          { label: 'Transfers',     icon: <RefreshCw size={24} />, color: '#059669', path: '/results-transfer' },
-          { label: 'Incidents',     icon: <AlertTriangle size={24} />, color: '#b91c1c', path: '/incidents' },
-          { label: 'AI Platform',   icon: <Brain size={24} />, color: '#4338ca', path: '/ai-insights' },
-          ...(user?.role === 'admin' ? [
-            { label: 'Users',   icon: <Users2 size={24} />,  color: '#0369a1', path: '/users' },
-            { label: 'Audit Logs',   icon: <Activity size={24} />, color: '#047857', path: '/audit-logs' },
-          ] : []),
-        ].map(btn => (
+          { label: 'Cancellations', icon: <FileText size={24} />, color: 'var(--primary)', path: '/cancellations', perm: { mod: 'cancellations', act: 'view' } },
+          { label: 'Refunds',       icon: <ReceiptText size={24} />, color: '#92400e', path: '/refunds', perm: { mod: 'refunds', act: 'view' } },
+          { label: 'Transfers',     icon: <RefreshCw size={24} />, color: '#059669', path: '/results-transfer', perm: { mod: 'results_transfer', act: 'view' } },
+          { label: 'Incidents',     icon: <AlertTriangle size={24} />, color: '#b91c1c', path: '/incidents', perm: { mod: 'incident_reports', act: 'view' } },
+          { label: 'Users',         icon: <Users2 size={24} />,  color: '#0369a1', path: '/users', perm: { mod: 'user_management', act: 'view' } },
+          { label: 'Audit Logs',    icon: <Activity size={24} />, color: '#047857', path: '/audit-logs', perm: { mod: 'audit_logs', act: 'view' } },
+        ].filter(btn => hasPermission(btn.perm.mod, btn.perm.act)).map(btn => (
           <button key={btn.label} onClick={() => navigate(btn.path)}
             style={{ padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
             onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.06)'; e.currentTarget.style.borderColor = btn.color; }}

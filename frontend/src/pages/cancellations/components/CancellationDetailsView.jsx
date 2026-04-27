@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { Download, CheckCircle, XCircle } from 'lucide-react';
 import StatusBadge from '../../../components/StatusBadge';
 import { PrintHeader, PrintFooter, PrintWatermark } from '../../../components/PrintBranding';
+import { useAuth } from '../../../context/AuthContext';
 
-const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, onReject }) => {
-
+const CancellationDetailsView = ({ data, onExport, onVerify, onApprove, onReject }) => {
+  const { user, hasPermission } = useAuth();
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
 
   if (!data) return null;
 
-  const canVerify = data.status === 'pending' && user?.role === 'sales_manager';
-  const canApprove = data.status === 'verified' && user?.role === 'coo';
+  const canVerify = data.status === 'pending' && hasPermission('cancellations', 'review');
+  const canApprove = data.status === 'verified' && hasPermission('cancellations', 'approve');
 
   const handleRejectSubmit = () => {
     if (!rejectComment.trim()) {
@@ -62,6 +63,12 @@ const CancellationDetailsView = ({ data, user, onExport, onVerify, onApprove, on
               <th>Insurance / Payer</th>
               <td>{data.insurance_payer || 'Private / Walk-in'}</td>
             </tr>
+            {data.billed_by_name && (
+              <tr>
+                <th>Billed by</th>
+                <td style={{ color: 'var(--primary)', fontWeight: 600 }}>{data.billed_by_name}</td>
+              </tr>
+            )}
           </tbody>
         </table>
 

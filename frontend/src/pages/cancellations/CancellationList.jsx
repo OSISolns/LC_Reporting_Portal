@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, Filter, FileSpreadsheet, Trash2, Eye, FileText, Download } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Plus, Search, Filter, FileSpreadsheet, Trash2, Eye, FileText, Download, CheckCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
@@ -17,10 +17,12 @@ import {
   approveCancellation,
   rejectCancellation 
 } from '../../api/cancellations';
+import { getStaffList } from '../../api/users';
 
 const CancellationList = () => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const isDev = import.meta.env.DEV;
+  const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ patientName: '', pid: '', status: '' });
@@ -35,10 +37,21 @@ const CancellationList = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [staff, setStaff] = useState([]);
 
   useEffect(() => {
     fetchRequests();
+    fetchStaff();
   }, [filters]);
+
+  const fetchStaff = async () => {
+    try {
+      const res = await getStaffList();
+      setStaff(res.data.data || []);
+    } catch (err) {
+      console.error('Failed to fetch staff');
+    }
+  };
 
   const fetchRequests = async () => {
     try {
@@ -131,7 +144,7 @@ const CancellationList = () => {
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Cancellation Requests</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Workflow for patient invoice/receipt cancellations.</p>
         </div>
-          {['cashier', 'principal_cashier', 'customer_care'].includes(user?.role) && (
+          {hasPermission('cancellations', 'create') && (
             <button 
               onClick={() => setShowCreateModal(true)}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#1b669e', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(27, 102, 158, 0.2)', cursor: 'pointer' }}
@@ -180,17 +193,22 @@ const CancellationList = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--bg-color)', backgroundColor: '#f8fafc' }}>
+                <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>ID</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Patient Details</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>PID Number</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amount</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Submission Date</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Status</th>
+                {['sales_manager', 'coo', 'deputy_coo', 'admin', 'principal_cashier'].includes(user.role) && (
+                  <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rating Status</th>
+                )}
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {requests.map(r => (
                 <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                  <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--text-secondary)' }}>#{r.id}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <div style={{ fontWeight: 600, color: 'var(--primary-dark)', fontSize: '0.95rem' }}>{r.patient_full_name}</div>
                   </td>
@@ -200,6 +218,27 @@ const CancellationList = () => {
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <StatusBadge status={r.status} />
                   </td>
+                  {['sales_manager', 'coo', 'deputy_coo', 'admin', 'principal_cashier'].includes(user.role) && (
+                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                      {r.is_rated ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', backgroundColor: '#ecfdf5', color: '#10b981', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600 }}>
+                          <CheckCircle size={14} /> Rated
+                        </span>
+                      ) : (
+                        // Only show Rate Staff if the person being rated is a ratable role (cashier/customer_care)
+                        ['cashier', 'customer_care'].includes(r.billed_by_role || r.creator_role) ? (
+                          <button 
+                            onClick={() => navigate(`/performance?staffId=${r.billed_by || r.created_by}&type=cancellation&requestId=${r.id}`)}
+                            style={{ color: 'var(--primary)', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                          >
+                            Rate Staff
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }}>Not Ratable</span>
+                        )
+                      )}
+                    </td>
+                  )}
                   <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                     <button 
                       onClick={() => handleViewDetails(r.id)}
@@ -246,6 +285,7 @@ const CancellationList = () => {
           handleSubmit={handleCreateSubmit}
           loading={submitting}
           onCancel={() => setShowCreateModal(false)}
+          staff={staff}
         />
       </Modal>
 

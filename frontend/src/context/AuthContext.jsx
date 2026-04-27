@@ -45,8 +45,14 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const hasPermission = (module, action) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    return user.permissions?.[module]?.[action]?.granted === true;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, devLogin, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, devLogin, logout, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

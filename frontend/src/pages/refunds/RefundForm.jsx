@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { createRefund } from '../../api/refunds';
 import { ChevronLeft } from 'lucide-react';
 import RefundFormFields from './components/RefundFormFields';
+import { getStaffList } from '../../api/users';
+import { useEffect } from 'react';
 
 const EMPTY_FORM = {
   patientFullName: '', pidNumber: '', sidNumber: '',
@@ -10,12 +12,26 @@ const EMPTY_FORM = {
   momoCode: '', totalAmountPaid: '', amountToBeRefunded: '',
   amountPaidBy: '', originalReceiptNumber: '',
   initialTransactionDate: '', reasonForRefund: '',
+  billedBy: ''
 };
 
 const RefundForm = () => {
   const navigate  = useNavigate();
   const [loading, setLoading]   = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [staff, setStaff] = useState([]);
+
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        const res = await getStaffList();
+        setStaff(res.data.data);
+      } catch (err) {
+        console.error('Failed to fetch staff list');
+      }
+    };
+    fetchStaff();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,6 +68,7 @@ const RefundForm = () => {
         handleSubmit={handleSubmit}
         loading={loading}
         onCancel={() => navigate(-1)}
+        staff={staff}
       />
     </div>
   );

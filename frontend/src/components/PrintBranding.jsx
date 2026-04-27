@@ -3,15 +3,15 @@ import React from 'react';
 export const PrintHeader = ({ title, docType, docId }) => {
   const year = new Date().getFullYear();
   const formattedId = `LC-${docType || 'RQ'}-${year}-${String(docId || '0').padStart(5, '0')}`;
-  
+
   return (
     <div className="no-screen">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <img src="/logo.png" style={{ height: "55px", width: "auto", display: "block" }} alt="Legacy Clinics Logo" />
           <div style={{ fontSize: '7.5pt', color: '#64748b', lineHeight: '1.4', fontWeight: 500 }}>
-            Legacy Medical Center Rwanda<br/>
-            KK3 RD 134, Kicukiro, Kigali<br/>
+            Legacy Medical Center Rwanda<br />
+            KK3 RD 134, Kicukiro, Kigali<br />
             Contact: +250 788 122 100/+250 788 382 000
           </div>
         </div>
@@ -32,14 +32,14 @@ export const PrintHeader = ({ title, docType, docId }) => {
           </div>
         </div>
       </div>
-      
-      <div style={{ 
-        backgroundColor: '#003B44', 
-        color: '#ffffff', 
-        padding: '10px 20px', 
-        fontSize: '10pt', 
-        fontWeight: 700, 
-        textTransform: 'uppercase', 
+
+      <div style={{
+        backgroundColor: '#003B44',
+        color: '#ffffff',
+        padding: '10px 20px',
+        fontSize: '10pt',
+        fontWeight: 700,
+        textTransform: 'uppercase',
         letterSpacing: '0.05em',
         borderRadius: '8px 8px 0 0',
         display: 'flex',

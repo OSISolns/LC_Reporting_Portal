@@ -3,15 +3,15 @@ const express = require('express');
 const router  = express.Router();
 const refundController = require('../controllers/refundController');
 const { authMiddleware } = require('../middleware/auth');
-const authorizeRoles    = require('../middleware/role');
+const checkPermission   = require('../middleware/permission');
 const { validate, body, param, query } = require('../middleware/validation');
 
 router.use(authMiddleware);
 
-// ── Create (Cashiers only) ───────────────────────────────────────────────────
+// ── Create ───────────────────────────────────────────────────
 router.post(
   '/',
-  authorizeRoles(['cashier', 'principal_cashier', 'customer_care']),
+  checkPermission('refunds', 'create'),
   validate([
     body('patientFullName').trim().notEmpty().withMessage('Patient name is required'),
     body('pidNumber').trim().notEmpty().withMessage('PID number is required'),
@@ -21,10 +21,10 @@ router.post(
   refundController.createRequest
 );
 
-// ── List (all roles) ─────────────────────────────────────────────────────────
+// ── List ─────────────────────────────────────────────────────────
 router.get(
   '/',
-  authorizeRoles(['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo']),
+  checkPermission('refunds', 'view'),
   validate([
     query('status').optional().isString(),
     query('pid').optional().isString(),
@@ -36,14 +36,14 @@ router.get(
 // ── Export routes ────────────────────────────────────────────────────────────
 router.get(
   '/export/excel',
-  authorizeRoles(['coo', 'chairman', 'admin', 'deputy_coo', 'sales_manager']),
+  checkPermission('reports', 'download'),
   validate([]),
   refundController.exportExcel
 );
 
 router.get(
   '/:id/pdf',
-  authorizeRoles(['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo']),
+  checkPermission('refunds', 'view'),
   validate([param('id').isInt().withMessage('Invalid request ID')]),
   refundController.getPDF
 );
@@ -51,29 +51,29 @@ router.get(
 // ── Single record ────────────────────────────────────────────────────────────
 router.get(
   '/:id',
-  authorizeRoles(['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo']),
+  checkPermission('refunds', 'view'),
   validate([param('id').isInt().withMessage('Invalid request ID')]),
   refundController.getRequestById
 );
 
-// ── Workflow (same RBAC as cancellations) ────────────────────────────────────
+// ── Workflow ────────────────────────────────────
 router.patch(
   '/:id/verify',
-  authorizeRoles(['sales_manager']),
+  checkPermission('refunds', 'review'),
   validate([param('id').isInt().withMessage('Invalid request ID')]),
   refundController.verifyRequest
 );
 
 router.patch(
   '/:id/approve',
-  authorizeRoles(['coo']),
+  checkPermission('refunds', 'approve'),
   validate([param('id').isInt().withMessage('Invalid request ID')]),
   refundController.approveRequest
 );
 
 router.patch(
   '/:id/reject',
-  authorizeRoles(['coo', 'sales_manager']),
+  checkPermission('refunds', 'reject'),
   validate([
     param('id').isInt().withMessage('Invalid request ID'),
     body('comment').trim().notEmpty().withMessage('Rejection comment is required'),
@@ -83,7 +83,7 @@ router.patch(
 
 router.delete(
   '/:id',
-  authorizeRoles(['cashier', 'principal_cashier', 'customer_care', 'admin']),
+  checkPermission('refunds', 'edit'),
   validate([param('id').isInt().withMessage('Invalid request ID')]),
   refundController.deleteRequest
 );

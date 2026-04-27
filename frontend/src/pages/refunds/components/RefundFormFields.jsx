@@ -1,5 +1,6 @@
 import { INSURANCES } from '../constants';
 import { Info, Receipt, DollarSign, Save } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 
 const inputStyle = {
   padding: '10px',
@@ -29,7 +30,8 @@ const sectionIconStyle = (color) => ({
   color: `rgb(${color})`,
 });
 
-const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel }) => {
+const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel, staff }) => {
+  const { user } = useAuth();
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
@@ -57,6 +59,23 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
           <div style={fieldStyle}>
             <label style={labelStyle}>Telephone Number</label>
             <input type="text" name="telephoneNumber" value={formData.telephoneNumber} onChange={handleChange} style={inputStyle} />
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Billed by *</label>
+            <select 
+              name="billedBy" 
+              required 
+              value={formData.billedBy} 
+              onChange={handleChange} 
+              style={selectStyle}
+            >
+              <option value="">Select Staff Member</option>
+              {staff && staff.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.id === user?.id ? `Self (${s.full_name})` : `${s.full_name} (${s.role})`}
+                </option>
+              ))}
+            </select>
           </div>
           <div style={{ ...fieldStyle, gridColumn: 'span 2' }}>
             <label style={labelStyle}>Insurance / Payer *</label>

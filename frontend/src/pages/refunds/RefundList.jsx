@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, FileText, Trash2, Eye, Download } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Eye, Download, CheckCircle } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
@@ -11,6 +12,7 @@ import {
   getRefundPDF, deleteRefund,
   verifyRefund, approveRefund, rejectRefund,
 } from '../../api/refunds';
+import { getStaffList } from '../../api/users';
 
 const EMPTY_FORM = {
   patientFullName: '', pidNumber: '', sidNumber: '',
@@ -21,7 +23,8 @@ const EMPTY_FORM = {
 };
 
 const RefundList = () => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [requests,        setRequests]       = useState([]);
   const [loading,         setLoading]        = useState(true);
   const [filters,         setFilters]        = useState({ patientName: '', pid: '', status: '' });
@@ -31,8 +34,21 @@ const RefundList = () => {
   const [formData,        setFormData]        = useState(EMPTY_FORM);
   const [submitting,      setSubmitting]      = useState(false);
   const [detailLoading,   setDetailLoading]   = useState(false);
+  const [staff,           setStaff]           = useState([]);
 
-  useEffect(() => { fetchRequests(); }, [filters]);
+  useEffect(() => { 
+    fetchRequests(); 
+    fetchStaff();
+  }, [filters]);
+
+  const fetchStaff = async () => {
+    try {
+      const res = await getStaffList();
+      setStaff(res.data.data || []);
+    } catch (err) {
+      console.error('Failed to fetch staff');
+    }
+  };
 
   const fetchRequests = async () => {
     try {
@@ -107,7 +123,7 @@ const RefundList = () => {
     } catch (err) { alert('Action failed'); }
   };
 
-  const canCreate = ['cashier', 'principal_cashier', 'customer_care'].includes(user?.role);
+  const canCreate = hasPermission('refunds', 'create');
 
   return (
     <div>
@@ -161,8 +177,10 @@ const RefundList = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--bg-color)', backgroundColor: '#f8fafc' }}>
-                {['Patient Details', 'PID Number', 'Refund Amount', 'Submission Date', 'Current Status', 'Actions'].map((h, i) => (
-                  <th key={h} style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 5 ? 'right' : 'left' }}>
+                {['ID', 'Patient Details', 'PID Number', 'Refund Amount', 'Submission Date', 'Current Status', 
+                  ...(['sales_manager', 'coo', 'deputy_coo', 'admin', 'principal_cashier'].includes(user.role) ? ['Rating Status'] : []),
+                  'Actions'].map((h, i) => (
+                  <th key={h} style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: (h === 'Actions') ? 'right' : 'left' }}>
                     {h}
                   </th>
                 ))}
@@ -174,6 +192,7 @@ const RefundList = () => {
                   style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                  <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--text-secondary)' }}>#{r.id}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <div style={{ fontWeight: 600, color: 'var(--primary-dark)', fontSize: '0.95rem' }}>{r.patient_full_name}</div>
                   </td>
@@ -183,6 +202,27 @@ const RefundList = () => {
                     {new Date(r.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem' }}><StatusBadge status={r.status} /></td>
+                  {['sales_manager', 'coo', 'deputy_coo', 'admin', 'principal_cashier'].includes(user.role) && (
+                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                      {r.is_rated ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', backgroundColor: '#ecfdf5', color: '#10b981', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600 }}>
+                          <CheckCircle size={14} /> Rated
+                        </span>
+                      ) : (
+                        // Only show Rate Staff if the person being rated is a ratable role (cashier/customer_care)
+                        ['cashier', 'customer_care'].includes(r.billed_by_role || r.creator_role) ? (
+                          <button 
+                            onClick={() => navigate(`/performance?staffId=${r.billed_by || r.created_by}&type=refund&requestId=${r.id}`)}
+                            style={{ color: 'var(--primary)', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                          >
+                            Rate Staff
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }}>Not Ratable</span>
+                        )
+                      )}
+                    </td>
+                  )}
                   <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                     <button onClick={() => handleViewDetails(r.id)} title="View Details"
                       style={{ color: 'var(--primary)', background: 'none', border: 'none', display: 'inline-flex', alignItems: 'center', padding: '8px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
@@ -212,6 +252,7 @@ const RefundList = () => {
           handleSubmit={handleCreateSubmit}
           loading={submitting}
           onCancel={() => setShowCreateModal(false)}
+          staff={staff}
         />
       </Modal>
 

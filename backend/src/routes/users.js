@@ -6,6 +6,7 @@ const { authMiddleware } = require('../middleware/auth');
 const authorizeRoles = require('../middleware/role');
 
 router.use(authMiddleware);
+router.get('/staff', userController.getStaffList);
 router.use(authorizeRoles(['admin', 'it_officer'])); // Admin and IT Officer can manage users
 
 router.get('/', userController.getAllUsers);

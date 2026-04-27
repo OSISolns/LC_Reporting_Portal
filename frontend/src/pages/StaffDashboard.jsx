@@ -11,6 +11,7 @@ import {
   CheckCircle, Plus, ChevronRight, ExternalLink,
   TrendingUp, Info, RefreshCw
 } from 'lucide-react';
+import StaffScoreWidget from './performance/components/StaffScoreWidget';
 
 // ── Role labels ───────────────────────────────────────────────────────────────
 const ROLE_LABEL = {
@@ -258,6 +259,9 @@ const StaffDashboard = () => {
               <p style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>RWF {approvedAmt.toLocaleString()}</p>
               <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.9, fontWeight: 500 }}>Cumulative Approved Refunds</p>
             </div>
+          )}
+          {['cashier', 'customer_care'].includes(user?.role) && (
+            <StaffScoreWidget />
           )}
           <TipCard tips={tips} />
         </div>

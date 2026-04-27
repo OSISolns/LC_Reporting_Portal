@@ -8,7 +8,7 @@ class Refund {
       telephoneNumber, insurancePayer,
       momoCode, totalAmountPaid, amountToBeRefunded,
       amountPaidBy, originalReceiptNumber,
-      initialTransactionDate, reasonForRefund
+      initialTransactionDate, reasonForRefund, billedBy
     } = data;
 
     const cleanDate   = (d) => (d && d.trim() !== '' ? d : null);
@@ -21,8 +21,8 @@ class Refund {
         momo_code, total_amount_paid, amount_to_be_refunded,
         amount_paid_by, original_receipt_number,
         initial_transaction_date, reason_for_refund,
-        created_by, status
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending')
+        created_by, status, billed_by
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending',$14)
       RETURNING *`,
       [
         patientFullName, pidNumber, sidNumber,
@@ -30,7 +30,7 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        userId
+        userId, billedBy || null
       ]
     );
     return rows[0];
@@ -38,18 +38,22 @@ class Refund {
 
   static async getAll(filters = {}) {
     let query = `
-      SELECT r.id, r.patient_full_name, r.pid_number, r.sid_number,
-             r.telephone_number, r.insurance_payer, r.momo_code,
-             r.total_amount_paid, r.amount_to_be_refunded, r.amount_paid_by,
-             r.original_receipt_number, r.initial_transaction_date,
-             r.reason_for_refund, r.status, r.created_at, r.updated_at,
+      SELECT r.*,
              u1.full_name AS creator_name,
              u2.full_name AS verifier_name,
-             u3.full_name AS approver_name
+             u3.full_name AS approver_name,
+             u5.full_name AS billed_by_name,
+             r1.name AS creator_role,
+             r5.name AS billed_by_role,
+             CASE WHEN spr.id IS NOT NULL THEN true ELSE false END as is_rated
       FROM refund_requests r
       LEFT JOIN users u1 ON r.created_by  = u1.id
+      LEFT JOIN roles r1 ON u1.role_id    = r1.id
       LEFT JOIN users u2 ON r.verified_by = u2.id
       LEFT JOIN users u3 ON r.approved_by = u3.id
+      LEFT JOIN users u5 ON r.billed_by   = u5.id
+      LEFT JOIN roles r5 ON u5.role_id    = r5.id
+      LEFT JOIN staff_performance_ratings spr ON spr.request_type = 'refund' AND spr.request_id = r.id
       WHERE 1=1
     `;
     const params = [];
@@ -57,6 +61,10 @@ class Refund {
     if (filters.status) {
       params.push(filters.status);
       query += ` AND r.status = $${params.length}`;
+    }
+    if (filters.created_by) {
+      params.push(filters.created_by);
+      query += ` AND r.created_by = $${params.length}`;
     }
     if (filters.pid) {
       params.push(`%${filters.pid}%`);
@@ -78,12 +86,16 @@ class Refund {
               u1.full_name AS creator_name,
               u2.full_name AS verifier_name,
               u3.full_name AS approver_name,
-              u4.full_name AS rejector_name
+              u4.full_name AS rejector_name,
+              u5.full_name AS billed_by_name,
+              CASE WHEN spr.id IS NOT NULL THEN true ELSE false END as is_rated
        FROM refund_requests r
        LEFT JOIN users u1 ON r.created_by  = u1.id
        LEFT JOIN users u2 ON r.verified_by = u2.id
        LEFT JOIN users u3 ON r.approved_by = u3.id
        LEFT JOIN users u4 ON r.rejected_by = u4.id
+       LEFT JOIN users u5 ON r.billed_by   = u5.id
+       LEFT JOIN staff_performance_ratings spr ON spr.request_type = 'refund' AND spr.request_id = r.id
        WHERE r.id = $1`,
       [id]
     );

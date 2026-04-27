@@ -22,11 +22,26 @@ const getBase64Image = (relativePath) => {
   }
 };
 
+const getSVGContent = (relativePath) => {
+  try {
+    const fullPath = path.resolve(__dirname, '../assets', relativePath);
+    if (!fs.existsSync(fullPath)) {
+      console.warn(`SVG asset not found: ${fullPath}`);
+      return '';
+    }
+    return fs.readFileSync(fullPath, 'utf8');
+  } catch (err) {
+    console.error('Error reading SVG:', err);
+    return '';
+  }
+};
+
 /**
  * Generates the full HTML markup for the medical reports.
  */
 exports.getMedicalReportHTML = (type, data) => {
   const logoBase64 = getBase64Image('logo.png');
+  const footerSVG = getSVGContent('legacy_header.svg');
 
   // Determine Stamps
   let stampHtml = '';
@@ -56,7 +71,6 @@ exports.getMedicalReportHTML = (type, data) => {
       margin: 0;
       padding: 0;
       width: 210mm;
-      height: 297mm;
       font-family: 'Inter', sans-serif;
       color: #1e293b;
       line-height: 1.5;
@@ -64,10 +78,10 @@ exports.getMedicalReportHTML = (type, data) => {
     }
 
     body {
-      padding: 15mm 15mm;
+      padding: 12mm 14mm;
       display: flex;
       flex-direction: column;
-      height: 297mm;
+      min-height: 297mm;
       position: relative;
     }
 
@@ -145,10 +159,8 @@ exports.getMedicalReportHTML = (type, data) => {
       border-radius: 8px;
       background: #ffffff;
       position: relative;
-      flex: 1;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.02);
     }
 
@@ -202,12 +214,14 @@ exports.getMedicalReportHTML = (type, data) => {
 
     .medical-form-table td {
       width: 65%;
-      padding: 12px 20px;
+      padding: 10px 18px;
       color: #1e293b;
-      font-size: 9.5pt;
+      font-size: 9pt;
       font-weight: 500;
       border-bottom: 1px solid #f1f5f9;
       vertical-align: top;
+      word-break: break-word;
+      white-space: pre-wrap;
     }
 
     .important-value {
@@ -276,24 +290,14 @@ exports.getMedicalReportHTML = (type, data) => {
     /* ── Footer ── */
     .footer {
       flex-shrink: 0;
-      padding: 25px 0 0;
-      margin-top: 15px;
-      border-top: 1.5px solid #f1f5f9;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      margin-top: auto;
+      width: 100%;
     }
-
-    .clinic-contact {
-      font-size: 7.5pt;
-      color: #94a3b8;
-      font-weight: 600;
-    }
-
-    .page-of {
-      font-size: 7.5pt;
-      color: #cbd5e1;
-      font-weight: 700;
+    .footer svg,
+    .footer img {
+      width: 100%;
+      height: auto;
+      display: block;
     }
   `;
 
@@ -374,6 +378,7 @@ exports.getMedicalReportHTML = (type, data) => {
           <tr><th>Service SID</th><td>${data.sid_number || 'N/A'}</td></tr>
           <tr><th>Telephone</th><td>${data.telephone_number || 'N/A'}</td></tr>
           <tr><th>Insurance Payer</th><td>${data.insurance_payer || 'Private / Walk-in'}</td></tr>
+          ${data.billed_by_name ? `<tr><th>Billed by</th><td>${data.billed_by_name}</td></tr>` : ''}
         </table>
 
         <div class="section-head">Section 2: Financial Transaction Details</div>
@@ -484,6 +489,7 @@ exports.getMedicalReportHTML = (type, data) => {
           <tr><th>Original SID</th><td>${data.old_sid_number}</td></tr>
           <tr><th>Replacement SID</th><td>${data.new_sid_number}</td></tr>
           <tr><th>Insurance Details</th><td>${data.insurance_payer}</td></tr>
+          ${data.billed_by_name ? `<tr><th>Billed by</th><td>${data.billed_by_name}</td></tr>` : ''}
         </table>
 
         <div class="section-head">Section 2: Audit & Reason</div>
@@ -511,6 +517,13 @@ exports.getMedicalReportHTML = (type, data) => {
             <div class="sig-meta">Strategic Authorization</div>
           </div>
         </div>
+
+        ${data.status === 'rejected' ? `
+          <div style="margin:20px; padding:15px; border:1px solid #fee2e2; border-radius:8px; background:#fffcfc">
+            <div style="color:#b91c1c; font-weight:800; font-size:7pt; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.05em;">Request Rejected</div>
+            <div style="font-weight:700; font-size:9.5pt; color:#991b1b;">Reason: ${data.rejection_comment}</div>
+            <div style="font-size:7pt; margin-top:6px; color:#b91c1c; font-style:italic;">Rejected by: ${data.rejector_name}</div>
+          </div>` : ''}
       </div>
     `;
   }
@@ -553,12 +566,7 @@ exports.getMedicalReportHTML = (type, data) => {
       ${content}
 
       <div class="footer">
-        <div class="clinic-contact">
-          Legacy Clinics • Specialized Healthcare Solutions • info@legacyclinics.rw • www.legacyclinics.rw
-        </div>
-        <div class="page-of">
-          Page 1 of 1
-        </div>
+        ${footerSVG}
       </div>
     </body>
     </html>

@@ -8,6 +8,7 @@ exports.login = async (req, res, next) => {
   try {
     const { username, password } = req.body;
     const Notification = require('../models/notification');
+    const Permission = require('../models/permission');
 
     if (!username || !password) {
       return res.status(400).json({ success: false, message: 'Please provide username and password.' });
@@ -96,7 +97,8 @@ exports.login = async (req, res, next) => {
         fullName: user.full_name,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
+        permissions: await Permission.getEffectivePermissions(user.id, user.role)
       }
     });
   } catch (err) {
@@ -107,13 +109,15 @@ exports.login = async (req, res, next) => {
 
 exports.getMe = async (req, res, next) => {
   try {
+    const Permission = require('../models/permission');
     res.json({
       success: true,
       user: {
         id: req.user.id,
         fullName: req.user.full_name,
         email: req.user.email,
-        role: req.user.role
+        role: req.user.role,
+        permissions: await Permission.getEffectivePermissions(req.user.id, req.user.role)
       }
     });
   } catch (err) {
@@ -157,6 +161,7 @@ exports.devLogin = async (req, res, next) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        permissions: await require('../models/permission').getEffectivePermissions(user.id, user.role)
       },
     });
   } catch (err) {

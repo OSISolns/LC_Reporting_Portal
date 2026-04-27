@@ -3,24 +3,29 @@ const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/resultTransferController');
 const { authMiddleware } = require('../middleware/auth');
-const authorizeRoles = require('../middleware/role');
+const checkPermission = require('../middleware/permission');
 const { validate, body, param } = require('../middleware/validation');
 
 router.use(authMiddleware);
 
-// All routes require authentication (handled in app.js/router)
-
-// GET all requests (restricted to clinical and management roles)
-router.get('/', authorizeRoles('cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'), controller.getAllRequests);
+// GET all requests
+router.get(
+  '/', 
+  checkPermission('results_transfer', 'view'), 
+  controller.getAllRequests
+);
  
 // GET single request
-router.get('/:id', authorizeRoles('cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'), controller.getRequestById);
+router.get(
+  '/:id', 
+  checkPermission('results_transfer', 'view'), 
+  controller.getRequestById
+);
 
-
-// POST create request (Cashier/Customer Care only)
+// POST create request
 router.post(
   '/', 
-  authorizeRoles('cashier', 'customer_care', 'admin'), 
+  checkPermission('results_transfer', 'create'), 
   validate([
     body('transferDate').isDate().withMessage('Valid transfer date is required'),
     body('oldSid').trim().notEmpty().withMessage('Old SID number is required'),
@@ -30,18 +35,34 @@ router.post(
   controller.createRequest
 );
 
-// PUT verify request (Operations role + Principal Cashier & Deputy COO)
-router.put('/:id/review', authorizeRoles('operations_staff', 'principal_cashier', 'deputy_coo', 'admin'), controller.reviewRequest);
+// PUT review request
+router.put(
+  '/:id/review', 
+  checkPermission('results_transfer', 'review'), 
+  controller.reviewRequest
+);
 
-// PUT approve request (Lab Team Lead role)
-router.put('/:id/approve', authorizeRoles('lab_team_lead', 'admin'), controller.approveRequest);
+// PUT approve request
+router.put(
+  '/:id/approve', 
+  checkPermission('results_transfer', 'approve'), 
+  controller.approveRequest
+);
 
-// PUT reject request (Operations or Lab Lead)
-router.put('/:id/reject', authorizeRoles('operations_staff', 'lab_team_lead', 'admin'), controller.rejectRequest);
+// PUT reject request
+router.put(
+  '/:id/reject', 
+  checkPermission('results_transfer', 'reject'), 
+  controller.rejectRequest
+);
 
 // DELETE request
-router.delete('/:id', authorizeRoles('admin'), controller.deleteRequest);
+router.delete(
+  '/:id', 
+  checkPermission('results_transfer', 'edit'), 
+  controller.deleteRequest
+);
 
-router.get('/:id/pdf', controller.getPDF);
+router.get('/:id/pdf', checkPermission('results_transfer', 'view'), controller.getPDF);
 
 module.exports = router;
