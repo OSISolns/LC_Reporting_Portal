@@ -52,13 +52,57 @@ const ResultTransferFormFields = ({ formData, handleChange, handleSubmit, loadin
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+      <div style={{ display: 'flex', gap: '1.25rem', marginTop: '1rem' }}>
         <button type="button" onClick={onCancel}
-          style={{ flex: 1, padding: '1rem', backgroundColor: '#f1f5f9', color: 'var(--text-secondary)', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>
+          style={{ 
+            flex: 1, 
+            padding: '1rem', 
+            backgroundColor: 'rgba(71, 85, 105, 0.1)', 
+            color: '#475569', 
+            border: 'none', 
+            borderRadius: '14px', 
+            fontWeight: 700, 
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(71, 85, 105, 0.2)'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(71, 85, 105, 0.1)'}
+        >
           Cancel
         </button>
         <button type="submit" disabled={loading}
-          style={{ flex: 2, padding: '1rem', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', boxShadow: '0 4px 6px -1px rgba(0,123,138,0.2)', cursor: 'pointer' }}>
+          style={{ 
+            flex: 2, 
+            padding: '1rem', 
+            background: 'linear-gradient(135deg, #007B8A 0%, #0099ab 100%)', 
+            color: '#ffffff', 
+            border: 'none', 
+            borderRadius: '14px', 
+            fontWeight: 700, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            gap: '12px', 
+            boxShadow: '0 10px 15px -3px rgba(0,123,138,0.3)', 
+            cursor: loading ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+            opacity: loading ? 0.8 : 1
+          }}
+          onMouseEnter={(e) => {
+            if (!loading) {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 15px 20px -5px rgba(0,123,138,0.4)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, #008fa0 0%, #00b4c8 100%)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!loading) {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,123,138,0.3)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, #007B8A 0%, #0099ab 100%)';
+            }
+          }}
+        >
           <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           {loading ? 'Submitting...' : 'Submit Transfer Request'}
         </button>

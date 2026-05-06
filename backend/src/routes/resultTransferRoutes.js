@@ -59,7 +59,7 @@ router.put(
 // DELETE request
 router.delete(
   '/:id', 
-  checkPermission('results_transfer', 'edit'), 
+  checkPermission('results_transfer', 'delete'), 
   controller.deleteRequest
 );
 

@@ -85,6 +85,14 @@ class Incident {
     );
     return rows[0];
   }
+
+  static async delete(id) {
+    const { rows } = await db.query(
+      `DELETE FROM incident_reports WHERE id = $1 AND status = 'pending' RETURNING *`,
+      [id]
+    );
+    return rows[0];
+  }
 }
 
 module.exports = Incident;

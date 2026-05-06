@@ -62,6 +62,24 @@ exports.getPDF = async (req, res, next) => {
   }
 };
 
+exports.deleteReport = async (req, res, next) => {
+  try {
+    const existing = await Incident.findById(req.params.id);
+    if (!existing) return res.status(404).json({ success: false, message: 'Report not found.' });
+    if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending reports can be deleted.' });
+
+    if (req.user.role !== 'admin' && Number(existing.created_by) !== Number(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own reports.' });
+    }
+
+    const report = await Incident.delete(req.params.id);
+    if (!report) return res.status(400).json({ success: false, message: 'Report could not be deleted.' });
+    await logAction(req, 'DELETE', 'incident_report', req.params.id);
+    cache.invalidatePattern('incident:list');
+    res.json({ success: true, message: 'Report deleted successfully.' });
+  } catch (err) { next(err); }
+};
+
 exports.exportExcel = async (req, res, next) => {
   try {
     const reports = await Incident.getAll(req.query);

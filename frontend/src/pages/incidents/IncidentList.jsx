@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
-import { getIncidents } from '../../api/incidents';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, Filter, AlertCircle, Eye, Download } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Plus, Search, AlertCircle, Eye, Download, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
 import IncidentFormFields from './components/IncidentFormFields';
 import IncidentDetailsView from './components/IncidentDetailsView';
-import { getIncidentById, createIncident, getIncidentPDF } from '../../api/incidents';
+import { 
+  getIncidents, 
+  getIncidentById, 
+  createIncident, 
+  deleteIncident,
+  getIncidentPDF 
+} from '../../api/incidents';
 
 const IncidentList = () => {
   const { user, hasPermission } = useAuth();
@@ -23,7 +27,7 @@ const IncidentList = () => {
     immediateActions: '', preventionMeasures: ''
   });
   const [submitting, setSubmitting] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailLoading,   setDetailLoading]   = useState(false);
 
   useEffect(() => {
     fetchReports();
@@ -70,7 +74,7 @@ const IncidentList = () => {
         immediateActions: '', preventionMeasures: ''
       });
     } catch (err) {
-      alert('Failed to submit report');
+      alert(err.response?.data?.message || 'Failed to submit report');
     } finally {
       setSubmitting(false);
     }
@@ -79,22 +83,30 @@ const IncidentList = () => {
   const handleExport = async (id) => {
     try {
       const res = await getIncidentPDF(id);
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `Incident_${id}.pdf`);
       document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('PDF Export failed, falling back to browser print:', err);
-      // Fallback: If server PDF fails (e.g. on Vercel), use browser print
-      // The CSS in index.css is optimized to make this look identical to the PDF.
-      window.print();
+      console.error('PDF Export failed:', err);
+      alert('Failed to download PDF. Please check your connection or try again later.');
     }
   };
 
-
-
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this pending report?')) return;
+    try {
+      await deleteIncident(id);
+      fetchReports();
+    } catch (err) {
+      alert('Delete failed. Only pending reports you created can be deleted.');
+    }
+  };
 
   return (
     <div>
@@ -215,6 +227,33 @@ const IncidentList = () => {
                       }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Eye size={18} />
                     </button>
+                    <button 
+                      onClick={() => handleExport(r.id)}
+                      title="Download PDF"
+                      style={{ 
+                        color: 'var(--success)', 
+                        background: 'none',
+                        border: 'none',
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        padding: '8px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(40,167,69,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      <Download size={18} />
+                    </button>
+                    {r.status === 'pending' && hasPermission('incident_reports', 'delete') && (user.role === 'admin' || r.created_by === user.id) && (
+                      <button
+                        onClick={() => handleDelete(r.id)}
+                        title="Delete Report"
+                        style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '8px', transition: 'background 0.2s', display: 'inline-flex', alignItems: 'center' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(220,53,69,0.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -252,7 +291,6 @@ const IncidentList = () => {
             data={activeIncident}
             onExport={() => activeIncident && handleExport(activeIncident.id)}
             onReviewComplete={fetchReports}
-            printOnLoad={activeIncident?.printRequested}
           />
         )}
       </Modal>

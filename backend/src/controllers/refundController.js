@@ -155,13 +155,20 @@ exports.rejectRequest = async (req, res, next) => {
 
 exports.deleteRequest = async (req, res, next) => {
   try {
+    const existing = await Refund.findById(req.params.id);
+    if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending requests can be deleted.' });
+
+    if (req.user.role !== 'admin' && Number(existing.created_by) !== Number(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own requests.' });
+    }
+
     const request = await Refund.delete(req.params.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be deleted' });
     await logAction(req, 'DELETE', 'refund_request', req.params.id);
+    cache.invalidatePattern('refund:list');
     res.json({ success: true, message: 'Request deleted successfully' });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 exports.getPDF = async (req, res, next) => {

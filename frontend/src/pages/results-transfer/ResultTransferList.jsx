@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, FileText, Trash2, Eye, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw, Eye, Download, Trash2 } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
@@ -30,6 +30,7 @@ const ResultTransferList = () => {
       navigate('/unauthorized', { replace: true });
     }
   }, [user, navigate]);
+
   const [loading,         setLoading]        = useState(true);
   const [filters,         setFilters]        = useState({ sid: '', status: '' });
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -75,7 +76,7 @@ const ResultTransferList = () => {
       fetchRequests();
       setFormData(EMPTY_FORM);
     } catch (err) {
-      alert('Failed to submit transfer request');
+      alert(err.response?.data?.message || 'Failed to submit transfer request');
     } finally {
       setSubmitting(false);
     }
@@ -84,14 +85,18 @@ const ResultTransferList = () => {
   const handleExport = async (id) => {
     try {
       const res = await getResultTransferPDF(id);
-      const url  = window.URL.createObjectURL(new Blob([res.data]));
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `ResultTransfer_${id}.pdf`);
       document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('PDF Export failed');
+      console.error('PDF Export failed:', err);
+      alert('Failed to download PDF. Please check your connection or try again later.');
     }
   };
 
@@ -107,7 +112,6 @@ const ResultTransferList = () => {
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Results Transfers</h1>
@@ -115,13 +119,36 @@ const ResultTransferList = () => {
         </div>
         {canCreate && (
           <button onClick={() => setShowCreateModal(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(0,123,138,0.2)', cursor: 'pointer' }}>
-            <Plus size={18} /> New Transfer Request
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: '0.75rem 1.5rem', 
+              background: 'linear-gradient(135deg, #007B8A 0%, #0099ab 100%)', 
+              color: '#ffffff', 
+              border: 'none', 
+              borderRadius: '12px', 
+              fontWeight: 700, 
+              boxShadow: '0 10px 15px -3px rgba(0,123,138,0.3)', 
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 15px 20px -5px rgba(0,123,138,0.4)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, #008fa0 0%, #00b4c8 100%)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,123,138,0.3)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, #007B8A 0%, #0099ab 100%)';
+            }}
+          >
+            <Plus size={18} strokeWidth={3} /> New Transfer Request
           </button>
         )}
       </div>
 
-      {/* Filters */}
       <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff' }}>
         <div style={{ position: 'relative', flex: 2, minWidth: '300px' }}>
           <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
@@ -141,12 +168,24 @@ const ResultTransferList = () => {
           </select>
         </div>
         <button onClick={() => setFilters({ sid: '', status: '' })}
-          style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', padding: '0 10px' }}>
-          Reset
+          style={{ 
+            background: 'rgba(0,123,138,0.1)', 
+            border: 'none', 
+            color: '#007B8A', 
+            fontWeight: 700, 
+            fontSize: '0.85rem', 
+            cursor: 'pointer', 
+            padding: '8px 16px',
+            borderRadius: '8px',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,123,138,0.2)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,123,138,0.1)'}
+        >
+          Reset Filters
         </button>
       </div>
 
-      {/* Table */}
       <div className="glass card-shadow" style={{ overflow: 'hidden', backgroundColor: '#ffffff' }}>
         {loading ? <LoadingSpinner /> : requests.length === 0 ? (
           <div style={{ padding: '5rem 3rem', textAlign: 'center' }}>
@@ -176,18 +215,85 @@ const ResultTransferList = () => {
                     {new Date(r.created_at).toLocaleDateString()}
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem' }}><StatusBadge status={r.status} /></td>
-                  <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                     <button onClick={() => handleViewDetails(r.id)} title="View Details"
-                      style={{ color: 'var(--primary)', background: 'none', border: 'none', display: 'inline-flex', alignItems: 'center', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+                      style={{ 
+                        color: '#007B8A', 
+                        backgroundColor: 'rgba(0, 123, 138, 0.1)', 
+                        border: 'none', 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        padding: '10px', 
+                        borderRadius: '10px', 
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#007B8A';
+                        e.currentTarget.style.color = '#ffffff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(0, 123, 138, 0.1)';
+                        e.currentTarget.style.color = '#007B8A';
+                      }}
+                    >
                       <Eye size={18} />
+                    </button>
+                    <button onClick={() => handleExport(r.id)} title="Download PDF"
+                      style={{ 
+                        color: 'var(--success)', 
+                        backgroundColor: 'rgba(5, 150, 105, 0.1)', 
+                        border: 'none',
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        padding: '10px', 
+                        borderRadius: '10px', 
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--success)';
+                        e.currentTarget.style.color = '#ffffff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(5, 150, 105, 0.1)';
+                        e.currentTarget.style.color = 'var(--success)';
+                      }}
+                    >
+                      <Download size={18} />
                     </button>
                     {r.status === 'pending' && (user.role === 'admin' || r.created_by === user.id) && (
                       <button onClick={async () => {
-                        if (window.confirm('Delete this request?')) {
-                          await deleteResultTransfer(r.id);
-                          fetchRequests();
+                        if (window.confirm('Are you sure you want to delete this transfer request?')) {
+                          try {
+                            await deleteResultTransfer(r.id);
+                            fetchRequests();
+                          } catch (err) {
+                            alert('Failed to delete request');
+                          }
                         }
-                      }} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
+                      }} 
+                      title="Delete Request"
+                      style={{ 
+                        color: 'var(--danger)', 
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)', 
+                        border: 'none', 
+                        cursor: 'pointer', 
+                        padding: '10px',
+                        borderRadius: '10px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--danger)';
+                        e.currentTarget.style.color = '#ffffff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.1)';
+                        e.currentTarget.style.color = 'var(--danger)';
+                      }}
+                      >
                         <Trash2 size={18} />
                       </button>
                     )}

@@ -26,7 +26,8 @@ const transformQuery = (sql, params) => {
   // 2. Dialect translation
   transformedSql = transformedSql
     .replace(/ILIKE/gi, 'LIKE')
-    .replace(/NOW\(\)/gi, "CURRENT_TIMESTAMP")
+    .replace(/NOW\(\)/gi, "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
+    .replace(/CURRENT_TIMESTAMP/gi, "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
     .replace(/TIMESTAMPTZ/gi, 'DATETIME')
     .replace(/SERIAL/gi, 'INTEGER PRIMARY KEY AUTOINCREMENT');
 
@@ -40,9 +41,23 @@ const query = async (sql, params = []) => {
   try {
     const { sql: transformedSql, args } = transformQuery(sql, params);
     const result = await client.execute({ sql: transformedSql, args });
+    
+    // Auto-fix SQLite date strings to ISO UTC format for frontend compatibility
+    const rows = result.rows.map(row => {
+      const newRow = { ...row };
+      for (const key in newRow) {
+        const val = newRow[key];
+        // Match YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.SSS
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(val)) {
+          newRow[key] = val.replace(' ', 'T') + 'Z';
+        }
+      }
+      return newRow;
+    });
+
     return {
-      rows: result.rows,
-      rowCount: result.rowsAffected || result.rows.length
+      rows: rows,
+      rowCount: result.rowsAffected || rows.length
     };
   } catch (err) {
     console.error('💥 Turso/LibSQL Query Error:', err.message);

@@ -5,6 +5,7 @@ import { ChevronLeft } from 'lucide-react';
 import RefundFormFields from './components/RefundFormFields';
 import { getStaffList } from '../../api/users';
 import { useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 const EMPTY_FORM = {
   patientFullName: '', pidNumber: '', sidNumber: '',
@@ -21,6 +22,8 @@ const RefundForm = () => {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [staff, setStaff] = useState([]);
 
+  const { user } = useAuth();
+
   useEffect(() => {
     const fetchStaff = async () => {
       try {
@@ -32,6 +35,13 @@ const RefundForm = () => {
     };
     fetchStaff();
   }, []);
+
+  // Auto-set billedBy for cashiers
+  useEffect(() => {
+    if (user?.role === 'cashier' && !formData.billedBy) {
+      setFormData(prev => ({ ...prev, billedBy: user.id.toString() }));
+    }
+  }, [user, formData.billedBy]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

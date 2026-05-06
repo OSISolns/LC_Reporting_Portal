@@ -7,6 +7,17 @@ class ResultTransfer {
       transferDate, oldSid, newSid, reason
     } = data;
 
+    // Prevent duplicate
+    const existing = await db.query(
+      `SELECT id FROM results_transfers WHERE old_sid = $1 AND new_sid = $2 AND status != 'rejected' LIMIT 1`,
+      [oldSid, newSid]
+    );
+    if (existing.rows.length > 0) {
+      const error = new Error('A transfer request for these SIDs already exists.');
+      error.status = 400;
+      throw error;
+    }
+
     const { rows } = await db.query(
       `INSERT INTO results_transfers (
         transfer_date, old_sid, new_sid, reason,

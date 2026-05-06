@@ -10,7 +10,17 @@ class Cancellation {
       initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy
     } = data;
 
-    // Convert empty strings to null for date/numeric fields to satisfy PG constraints
+    // Prevent duplicate: Check for existing active/approved request for this SID
+    const existing = await db.query(
+      `SELECT id FROM cancellation_requests WHERE old_sid_number = $1 AND status != 'rejected' LIMIT 1`,
+      [oldSidNumber]
+    );
+    if (existing.rows.length > 0) {
+      const error = new Error('A cancellation request for this SID already exists.');
+      error.status = 400;
+      throw error;
+    }
+
     const cleanDate = (d) => (d && d.trim() !== '' ? d : null);
     const cleanAmount = (a) => (a && a.toString().trim() !== '' ? a : null);
 

@@ -24,7 +24,12 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onApprove, onReject
 
   return (
     <div className="print-body-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
-      <PrintHeader title="Cancellation Request Form" docType="CAN" docId={data.id} />
+      <PrintHeader 
+        title="Cancellation Request Form" 
+        docType="CAN" 
+        docId={data.id} 
+        issuedAt={data.approved_at || data.verified_at || data.created_at} 
+      />
       <PrintWatermark />
 
       {data.status === 'approved' && (
@@ -53,27 +58,25 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onApprove, onReject
             </tr>
             <tr>
               <th>SID Number</th>
-              <td>{data.new_sid_number || 'N/A'}</td>
+              <td>{data.old_sid_number}</td>
+            </tr>
+            <tr>
+              <th>New SID Number</th>
+              <td>{data.new_sid_number}</td>
             </tr>
             <tr>
               <th>Telephone Number</th>
-              <td>{data.telephone_number || 'N/A'}</td>
+              <td>{data.telephone_number}</td>
             </tr>
             <tr>
               <th>Insurance / Payer</th>
-              <td>{data.insurance_payer || 'Private / Walk-in'}</td>
+              <td>{data.insurance_payer}</td>
             </tr>
-            {data.billed_by_name && (
-              <tr>
-                <th>Billed by</th>
-                <td style={{ color: 'var(--primary)', fontWeight: 600 }}>{data.billed_by_name}</td>
-              </tr>
-            )}
           </tbody>
         </table>
 
         {/* Section 2 */}
-        <div className="medical-form-section-head">Section 2: TRANSACTION & REFUND DETAILS</div>
+        <div className="medical-form-section-head">Section 2: TRANSACTION DETAILS</div>
         <table className="medical-form-table">
           <tbody>
             <tr>
@@ -82,14 +85,26 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onApprove, onReject
             </tr>
             <tr>
               <th>Original Receipt / Invoice</th>
-              <td>{data.original_receipt_number || 'STUB_ATTACHED'}</td>
+              <td>{data.original_receipt_number || 'N/A'}</td>
             </tr>
+            {data.rectified_receipt_number && (
+              <tr>
+                <th>Rectified Receipt #</th>
+                <td>{data.rectified_receipt_number}</td>
+              </tr>
+            )}
             <tr>
               <th>Initial Transaction Date</th>
               <td>{data.initial_transaction_date ? new Date(data.initial_transaction_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</td>
             </tr>
+            {data.rectified_date && (
+              <tr>
+                <th>Rectified Date</th>
+                <td>{new Date(data.rectified_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+              </tr>
+            )}
             <tr>
-              <th>Reason for Refund</th>
+              <th>Reason for Cancellation</th>
               <td>{data.reason_for_cancellation}</td>
             </tr>
           </tbody>
@@ -213,4 +228,3 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onApprove, onReject
 };
 
 export default CancellationDetailsView;
-

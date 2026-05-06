@@ -23,7 +23,12 @@ const RefundDetailsView = ({ data, onExport, onVerify, onApprove, onReject }) =>
 
   return (
     <div className="print-body-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
-      <PrintHeader title="Refund Request Form" docType="REF" docId={data.id} />
+      <PrintHeader 
+        title="Refund Request Form" 
+        docType="REF" 
+        docId={data.id} 
+        issuedAt={data.approved_at || data.verified_at || data.created_at} 
+      />
       <PrintWatermark />
 
       {data.status === 'approved' && (

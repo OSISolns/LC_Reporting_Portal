@@ -8,9 +8,14 @@ import Modal from '../../components/Modal';
 import RefundFormFields from './components/RefundFormFields';
 import RefundDetailsView from './components/RefundDetailsView';
 import {
-  getRefunds, getRefundById, createRefund,
-  getRefundPDF, deleteRefund,
-  verifyRefund, approveRefund, rejectRefund,
+  getRefunds,
+  getRefundById,
+  verifyRefund,
+  approveRefund,
+  rejectRefund,
+  getRefundPDF,
+  createRefund,
+  deleteRefund
 } from '../../api/refunds';
 import { getStaffList } from '../../api/users';
 
@@ -19,7 +24,7 @@ const EMPTY_FORM = {
   telephoneNumber: '', insurancePayer: '',
   momoCode: '', totalAmountPaid: '', amountToBeRefunded: '',
   amountPaidBy: '', originalReceiptNumber: '',
-  initialTransactionDate: '', reasonForRefund: '',
+  initialTransactionDate: '', reasonForRefund: '', billedBy: ''
 };
 
 const RefundList = () => {
@@ -84,7 +89,7 @@ const RefundList = () => {
       fetchRequests();
       setFormData(EMPTY_FORM);
     } catch (err) {
-      alert('Failed to submit refund request');
+      alert(err.response?.data?.message || 'Failed to submit refund request');
     } finally {
       setSubmitting(false);
     }
@@ -93,19 +98,20 @@ const RefundList = () => {
   const handleExport = async (id) => {
     try {
       const res = await getRefundPDF(id);
-      const url  = window.URL.createObjectURL(new Blob([res.data]));
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `Refund_${id}.pdf`);
       document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('PDF Export failed, falling back to browser print:', err);
-      window.print();
+      console.error('PDF Export failed:', err);
+      alert('Failed to download PDF. Please check your connection or try again later.');
     }
   };
-
-
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this pending refund request?')) return;
@@ -127,7 +133,6 @@ const RefundList = () => {
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Refund Requests</h1>
@@ -141,7 +146,6 @@ const RefundList = () => {
         )}
       </div>
 
-      {/* Filters */}
       <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff' }}>
         <div style={{ position: 'relative', flex: 2, minWidth: '300px' }}>
           <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
@@ -166,7 +170,6 @@ const RefundList = () => {
         </button>
       </div>
 
-      {/* Table */}
       <div className="glass card-shadow" style={{ overflow: 'hidden', backgroundColor: '#ffffff' }}>
         {loading ? <LoadingSpinner /> : requests.length === 0 ? (
           <div style={{ padding: '5rem 3rem', textAlign: 'center' }}>
@@ -209,10 +212,9 @@ const RefundList = () => {
                           <CheckCircle size={14} /> Rated
                         </span>
                       ) : (
-                        // Only show Rate Staff if the person being rated is a ratable role (cashier/customer_care)
                         ['cashier', 'customer_care'].includes(r.billed_by_role || r.creator_role) ? (
                           <button 
-                            onClick={() => navigate(`/performance?staffId=${r.billed_by || r.created_by}&type=refund&requestId=${r.id}`)}
+                            onClick={() => navigate(`/performance`, { state: { staffId: r.billed_by || r.created_by, type: 'refund', requestId: r.id } })}
                             style={{ color: 'var(--primary)', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
                           >
                             Rate Staff
@@ -230,9 +232,26 @@ const RefundList = () => {
                       onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Eye size={18} />
                     </button>
-                    {r.status === 'pending' && r.created_by === user.id && canCreate && (
-                      <button onClick={() => handleDelete(r.id)} title="Delete Request"
-                        style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
+                    <button onClick={() => handleExport(r.id)} title="Download PDF"
+                      style={{ 
+                        color: 'var(--success)', 
+                        background: 'none',
+                        border: 'none',
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        padding: '8px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(40,167,69,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      <Download size={18} />
+                    </button>
+                    {r.status === 'pending' && hasPermission('refunds', 'delete') && (user.role === 'admin' || r.created_by === user.id) && (
+                      <button 
+                        onClick={() => handleDelete(r.id)}
+                        title="Delete Request"
+                        style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
+                      >
                         <Trash2 size={18} />
                       </button>
                     )}
@@ -268,7 +287,6 @@ const RefundList = () => {
             onVerify={() => activeRequest && handleAction(verifyRefund, activeRequest.id)}
             onApprove={() => activeRequest && handleAction(approveRefund, activeRequest.id)}
             onReject={(comment) => activeRequest && handleAction(rejectRefund, activeRequest.id, comment)}
-            printOnLoad={activeRequest?.printRequested}
           />
         )}
       </Modal>

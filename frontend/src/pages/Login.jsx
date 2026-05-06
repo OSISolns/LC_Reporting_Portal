@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
@@ -28,6 +28,28 @@ const Login = () => {
     }
   };
 
+  const rot13 = (s) => s.replace(/[a-zA-Z]/g, c => String.fromCharCode((c <= "Z" ? 90 : 122) >= (c = c.charCodeAt(0) + 13) ? c : c - 26));
+
+  useEffect(() => {
+    const checkSignature = () => {
+      const sigId = rot13('if-fvt');
+      // The text on screen should literally be the encoded string
+      const displayedText = 'Inyrel Fgehpgher';
+      const el = document.getElementById(sigId);
+      
+      // Verify both that the element exists and contains the encoded text, 
+      // and that decoding it yields the original author's signature
+      if (!el || el.innerText !== displayedText || rot13(el.innerText) !== 'Valery Structure') {
+        // If tampered, softly break UI by clearing out the card or showing a blank page
+        const body = document.querySelector('body');
+        if (body) body.style.display = 'none';
+      }
+    };
+    
+    const interval = setInterval(checkSignature, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
 
   return (
     <div style={{
@@ -35,8 +57,8 @@ const Login = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#f1f5f9',
-      backgroundImage: 'radial-gradient(at 0% 0%, rgba(0, 123, 138, 0.05) 0px, transparent 50%), radial-gradient(at 50% 0%, rgba(0, 59, 68, 0.05) 0px, transparent 50%)',
+      backgroundColor: '#1c69a0',
+      backgroundImage: 'linear-gradient(135deg, #1c69a0 0%, #71b647 100%)',
       padding: '1rem',
       position: 'relative',
       overflow: 'hidden'
@@ -187,6 +209,7 @@ const Login = () => {
 
       {/* Subtle Protected Signature */}
       <div 
+        id={rot13('if-fvt')}
         style={{
           position: 'fixed',
           bottom: '8px',
@@ -197,10 +220,11 @@ const Login = () => {
           userSelect: 'none',
           pointerEvents: 'none',
           zIndex: 9999,
-          letterSpacing: '0.05em'
+          letterSpacing: '0.05em',
+          opacity: 0.8
         }}
       >
-        {atob('VmFsZXJ5IFN0cnVjdHVyZQ==') === 'Valery Structure' ? 'VmFsZXJ5IFN0cnVjdHVyZQ==' : ''}
+        {rot13('Inyrel Fgehpgher') === 'Valery Structure' ? 'Inyrel Fgehpgher' : ''}
       </div>
     </div>
   );

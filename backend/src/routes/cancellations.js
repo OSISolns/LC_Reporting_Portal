@@ -40,6 +40,6 @@ router.patch('/:id/reject', checkPermission('cancellations', 'reject'), validate
   param('id').isInt().withMessage('Invalid request ID'),
   body('comment').trim().notEmpty().withMessage('Rejection comment is required'),
 ]), cancellationController.rejectRequest);
-router.delete('/:id', checkPermission('cancellations', 'edit'), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.deleteRequest);
+router.delete('/:id', checkPermission('cancellations', 'delete'), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.deleteRequest);
 
 module.exports = router;

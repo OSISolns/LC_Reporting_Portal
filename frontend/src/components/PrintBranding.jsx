@@ -1,8 +1,9 @@
 import React from 'react';
 
-export const PrintHeader = ({ title, docType, docId }) => {
+export const PrintHeader = ({ title, docType, docId, issuedAt }) => {
   const year = new Date().getFullYear();
   const formattedId = `LC-${docType || 'RQ'}-${year}-${String(docId || '0').padStart(5, '0')}`;
+  const displayDate = issuedAt ? new Date(issuedAt).toLocaleString() : new Date().toLocaleString();
 
   return (
     <div className="no-screen">
@@ -28,7 +29,7 @@ export const PrintHeader = ({ title, docType, docId }) => {
             </span>
           </div>
           <div style={{ fontSize: '6.5pt', color: '#94a3b8', marginTop: '4px', fontWeight: 600 }}>
-            ISSUED: {new Date().toLocaleString()}
+            ISSUED: {displayDate}
           </div>
         </div>
       </div>

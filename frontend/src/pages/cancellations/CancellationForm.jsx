@@ -1,22 +1,32 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createCancellation } from '../../api/cancellations';
-import { ChevronLeft, User as UserIcon } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import CancellationFormFields from './components/CancellationFormFields';
 import { getStaffList } from '../../api/users';
 import { useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 const CancellationForm = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
-    telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
-    originalReceiptNumber: '', rectifiedReceiptNumber: '',
-    initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '',
-    billedBy: ''
+    patientFullName: '', 
+    pidNumber: '', 
+    oldSidNumber: '', 
+    newSidNumber: '',
+    telephoneNumber: '', 
+    insurancePayer: '', 
+    totalAmountCancelled: '',
+    originalReceiptNumber: '', 
+    rectifiedReceiptNumber: '',
+    initialTransactionDate: '', 
+    rectifiedDate: '', 
+    reasonForCancellation: ''
   });
   const [staff, setStaff] = useState([]);
+
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchStaff = async () => {
@@ -37,7 +47,7 @@ const CancellationForm = () => {
       await createCancellation(formData);
       navigate('/cancellations');
     } catch (err) {
-      alert('Failed to submit request');
+      alert(err.response?.data?.message || 'Failed to submit request');
     } finally {
       setLoading(false);
     }

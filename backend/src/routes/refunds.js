@@ -83,7 +83,7 @@ router.patch(
 
 router.delete(
   '/:id',
-  checkPermission('refunds', 'edit'),
+  checkPermission('refunds', 'delete'),
   validate([param('id').isInt().withMessage('Invalid request ID')]),
   refundController.deleteRequest
 );

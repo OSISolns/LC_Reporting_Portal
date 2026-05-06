@@ -47,6 +47,10 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (module, action) => {
     if (!user) return false;
+    
+    // Admins should NOT be able to verify (review) any request
+    if (user.role === 'admin' && action === 'review') return false;
+    
     if (user.role === 'admin') return true;
     return user.permissions?.[module]?.[action]?.granted === true;
   };

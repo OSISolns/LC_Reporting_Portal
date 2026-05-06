@@ -42,5 +42,6 @@ router.get('/export/excel', checkPermission('reports', 'download'), incidentCont
 router.get('/:id/pdf', checkPermission('incident_reports', 'view'), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getPDF);
 
 router.get('/:id', checkPermission('incident_reports', 'view'), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getReportById);
+router.delete('/:id', checkPermission('incident_reports', 'delete'), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.deleteReport);
 
 module.exports = router;

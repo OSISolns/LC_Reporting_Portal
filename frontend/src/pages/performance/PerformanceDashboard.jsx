@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getMyScore, getAllScores, getAllRatings, getSeverityStats, submitRating, getRatingsForStaff, getUnratedRequests } from '../../api/performance';
 import { Shield, Users, AlertTriangle, TrendingDown, Star, ChevronRight, Check, Info } from 'lucide-react';
@@ -9,6 +9,8 @@ import Modal from '../../components/Modal';
 const PerformanceDashboard = () => {
   const { user, hasPermission } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const isManager = hasPermission('staff_performance', 'view') && user?.role !== 'cashier' && user?.role !== 'customer_care';
 
   const [scores, setScores] = useState([]);
@@ -59,10 +61,10 @@ const PerformanceDashboard = () => {
   useEffect(() => {
     fetchData();
     
-    // Check for query params to auto-open rate modal
-    const staffId = searchParams.get('staffId');
-    const type = searchParams.get('type');
-    const requestId = searchParams.get('requestId');
+    // Check for query params or state to auto-open rate modal
+    const staffId = searchParams.get('staffId') || location.state?.staffId;
+    const type = searchParams.get('type') || location.state?.type;
+    const requestId = searchParams.get('requestId') || location.state?.requestId;
     
     if (staffId && type && requestId) {
       setRatingForm(prev => ({
@@ -72,8 +74,13 @@ const PerformanceDashboard = () => {
         requestId: requestId
       }));
       setIsRateModalOpen(true);
-      // Clear params so it doesn't reopen on refresh
-      setSearchParams({}, { replace: true });
+      // Clear params and state so it doesn't reopen on refresh
+      if (searchParams.has('staffId')) {
+        setSearchParams({}, { replace: true });
+      }
+      if (location.state?.staffId) {
+        navigate(location.pathname, { replace: true, state: {} });
+      }
     }
   }, []);
 

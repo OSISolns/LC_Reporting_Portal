@@ -30,7 +30,12 @@ const IncidentDetailsView = ({ data, onReviewComplete, onExport }) => {
 
   return (
     <div className="print-body-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
-      <PrintHeader title="Incident & Sentinel Event Report" docType="INC" docId={data.id} />
+      <PrintHeader 
+        title="Incident & Sentinel Event Report" 
+        docType="INC" 
+        docId={data.id} 
+        issuedAt={data.reviewed_at || data.created_at} 
+      />
       <PrintWatermark />
 
       {data.status === 'reviewed' && (
@@ -111,7 +116,7 @@ const IncidentDetailsView = ({ data, onReviewComplete, onExport }) => {
               {data.creator_name}
             </div>
             <div className="medical-stamp-area">
-              Digital ID: {data.creator_id || 'REGISTERED_STAFF'}
+              Digital ID: {data.created_by || 'REGISTERED_STAFF'}
             </div>
           </div>
 

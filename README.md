@@ -1,6 +1,6 @@
 # Legacy Clinics Reporting Portal
 
-A full-stack clinical operations management platform for Legacy Clinics & Diagnostics. It centralises financial workflows, safety reporting, lab operations, and system governance under a unified, role-secured interface.
+A full-stack clinical operations management platform for Legacy Clinics & Diagnostics. It centralises financial workflows, safety reporting, lab operations, staff performance, and system governance under a unified, role-secured interface.
 
 ---
 
@@ -12,11 +12,12 @@ A full-stack clinical operations management platform for Legacy Clinics & Diagno
 | **Refunds** | Patient refund requisitions with Principal Cashier initiation and COO approval chain. |
 | **Incidents** | Safety and sentinel event reporting with QA review and audit trail. |
 | **Results Transfer** | Lab SID requisition workflow: Cashier → Operations review → Lab Team Lead approval. |
+| **Staff Performance** | Tracks staff efficiency (ratings) per workflow request. Scored by managers on accuracy, speed, and communication. |
 | **Notifications** | Real-time in-app notification system with unread counts and mark-all-read. |
-| **AI Insights** | Local AI-powered analytics for patterns, trends, and management reporting. |
-| **User Management** | Admin/IT Officer account creation and role assignment. |
+| **AI Insights** | Local AI-powered analytics for patterns, trends, and management reporting across all workflows. |
+| **User Management** | Account creation and role assignment (Admin & IT Officer). |
 | **Permission Management** | Admin-only granular RBAC matrix editor — role-level and per-user overrides. |
-| **Audit Logs** | Full, immutable system audit trail (Admin/IT Officer only). |
+| **Audit Logs** | Full, immutable system audit trail (Admin & IT Officer). |
 
 ---
 
@@ -27,7 +28,7 @@ A full-stack clinical operations management platform for Legacy Clinics & Diagno
 | **Frontend** | React 18, Vite, React Router v6, Tailwind CSS 3.4, Framer Motion, Lucide React, Axios |
 | **Backend** | Node.js, Express 4, Helmet, express-rate-limit, express-validator |
 | **Database** | Turso (LibSQL — global cloud SQLite) via `@libsql/client` |
-| **PDF Generation** | PDFKit (local) + Puppeteer Core / `@sparticuz/chromium` (serverless) |
+| **PDF Generation** | Puppeteer Core / `@sparticuz/chromium` (serverless compatible) |
 | **Excel Export** | ExcelJS |
 | **Auth** | JWT (jsonwebtoken) + bcryptjs |
 | **Deployment** | Vercel (Serverless Functions) |
@@ -35,6 +36,8 @@ A full-stack clinical operations management platform for Legacy Clinics & Diagno
 ---
 
 ## Roles & Access
+
+The system uses a granular permission matrix, configurable by Administrators. The default baseline roles are:
 
 | Role Key | Display Name | Notes |
 |---|---|---|
@@ -49,7 +52,7 @@ A full-stack clinical operations management platform for Legacy Clinics & Diagno
 | `operations_staff` | Operations Staff | Reviews results transfers, logs incidents |
 | `lab_team_lead` | Laboratory Team Lead | Final approver for results transfers |
 | `quality_assurance` | Quality & Assurance | Reviews incident reports |
-| `it_officer` | IT Officer | User management, audit logs |
+| `it_officer` | IT Officer | User management, audit logs (restricted from Permissions module) |
 | `consultant` | Consultant | Read-only access across all modules |
 
 ---
@@ -99,20 +102,12 @@ PORT=5000
 
 ### 3. Database Migrations
 
-Run migrations in order to initialise all tables:
+Run migrations to initialise all tables (the application handles most table bootstrapping automatically upon server start, but explicit migrations can be run):
 
 ```bash
-# 1. Base schema (users, cancellations, incidents, audit_logs)
-# Apply database/schema.sql via Turso CLI or the Turso web console
-
-# 2. Results Transfer table
-node run_migration.js  # or apply database/results_transfer_migration.sql
-
-# 3. Refund table
-# Apply database/refund_migration.sql
-
-# 4. Notifications table
-# Apply database/notifications_migration.sql
+# Apply schema
+cd backend
+node run_migration.js
 ```
 
 ### 4. Seed Default Users
@@ -225,6 +220,17 @@ Base URL (production): `https://<your-vercel-domain>/api`
 | `DELETE` | `/results-transfer/:id` | Admin | Delete request |
 | `GET` | `/results-transfer/:id/pdf` | All authenticated users | Download PDF |
 
+### Staff Performance
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/performance/scores` | Managers | View aggregate performance scores |
+| `GET` | `/performance/ratings` | Managers | List all individual ratings |
+| `GET` | `/performance/ratings/:userId` | Managers | Get ratings for specific user |
+| `GET` | `/performance/unrated-requests` | Managers | List pending items to rate |
+| `GET` | `/performance/stats` | Managers | Get performance statistical breakdown |
+| `POST` | `/performance/rate` | Managers | Submit performance rating |
+| `GET` | `/performance/my-score` | Authenticated | Get own performance score |
+
 ### Notifications
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
@@ -271,24 +277,21 @@ LC_Reporting_Portal/
 ├── backend/
 │   ├── server.js               # Express app entry point
 │   └── src/
-│       ├── config/             # Database client (Turso/LibSQL)
+│       ├── config/             # Database client (Turso/LibSQL), Permissions map
 │       ├── controllers/        # Route handler logic
-│       ├── middleware/         # Auth, RBAC, validation
+│       ├── middleware/         # Auth, RBAC, granular permission checks, validation
 │       ├── models/             # Database query models
 │       ├── routes/             # Express routers
 │       ├── services/           # Business logic services
 │       └── utils/
 │           ├── pdfTemplate.js  # HTML templates for PDF generation (all doc types)
-│           ├── pdf.js          # PDF rendering engine (Puppeteer/PDFKit)
+│           ├── pdf.js          # PDF rendering engine (Puppeteer)
 │           ├── excel.js        # Excel export utility
 │           ├── cache.js        # In-memory response cache
 │           ├── localAI.js      # Local NLP/AI analytics engine
 │           └── generateToken.js
 ├── database/
-│   ├── schema.sql              # Base schema (roles, users, cancellations, incidents)
-│   ├── refund_migration.sql    # Refund requests table
-│   ├── results_transfer_migration.sql  # Results transfers table
-│   └── notifications_migration.sql    # Notifications table
+│   └── schema.sql              # Database schemas
 ├── frontend/
 │   ├── index.html
 │   └── src/
@@ -297,10 +300,11 @@ LC_Reporting_Portal/
 │       ├── context/            # AuthContext, NotificationContext
 │       ├── lib/                # Utility helpers
 │       └── pages/
-│           ├── cancellations/  # CancellationList, Form, Detail
-│           ├── refunds/        # RefundList, Form, Detail
-│           ├── incidents/      # IncidentList, Form, Detail
-│           └── results-transfer/ # ResultTransferList
+│           ├── cancellations/  # Cancellation views
+│           ├── refunds/        # Refund views
+│           ├── incidents/      # Incident views
+│           ├── results-transfer/ # Result Transfer views
+│           └── performance/    # Staff Performance Appraisal module
 ├── vercel.json                 # Vercel deployment configuration
 ├── .env.example                # Root environment variable template
 └── run_migration.js            # Migration runner script
@@ -311,10 +315,11 @@ LC_Reporting_Portal/
 ## Security
 
 - **JWT Authentication**: All API routes (except `POST /auth/login`) require a valid Bearer token.
-- **RBAC Middleware**: Every route enforces role-based access with the `authorizeRoles` middleware.
+- **Account Lockout Protection**: Strict rate limiter on the `/auth/login` endpoint that tracks attempts by username (max 5 requests per 15 minutes per account). This prevents one user from locking out an entire clinic IP.
+- **Granular RBAC Middleware**: Routes enforce access using dynamic permission matrix (`checkPermission('module', 'action')`).
 - **Helmet**: HTTP security headers applied on all responses.
 - **Rate Limiting**: 200 requests / 15 minutes per IP on all `/api/*` routes.
-- **CORS**: Allows `localhost:5173`, `localhost:3000`, configured `FRONTEND_URL`, and all `*.vercel.app` subdomains. All other origins are blocked in production.
+- **CORS**: Configured for local environments and production Vercel domains.
 - **Input Validation**: All mutation routes use `express-validator` schemas.
 
 ---

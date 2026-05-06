@@ -19,6 +19,25 @@ const Layout = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const rot13 = (s) => s.replace(/[a-zA-Z]/g, c => String.fromCharCode((c <= "Z" ? 90 : 122) >= (c = c.charCodeAt(0) + 13) ? c : c - 26));
+
+  // Anti-tamper logic
+  useEffect(() => {
+    const checkSignature = () => {
+      const sigId = rot13('if-fvt');
+      const displayedText = 'Inyrel Fgehpgher';
+      const el = document.getElementById(sigId);
+      
+      if (!el || el.innerText !== displayedText || rot13(el.innerText) !== 'Valery Structure') {
+        const body = document.querySelector('body');
+        if (body) body.style.display = 'none';
+      }
+    };
+    
+    const interval = setInterval(checkSignature, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', position: 'relative' }}>
 
@@ -52,6 +71,7 @@ const Layout = () => {
 
       {/* Subtle Protected Signature */}
       <div 
+        id={rot13('if-fvt')}
         style={{
           position: 'fixed',
           bottom: '8px',
@@ -62,10 +82,11 @@ const Layout = () => {
           userSelect: 'none',
           pointerEvents: 'none',
           zIndex: 9999,
-          letterSpacing: '0.05em'
+          letterSpacing: '0.05em',
+          opacity: 0.8
         }}
       >
-        {atob('VmFsZXJ5IFN0cnVjdHVyZQ==') === 'Valery Structure' ? 'VmFsZXJ5IFN0cnVjdHVyZQ==' : ''}
+        {rot13('Inyrel Fgehpgher') === 'Valery Structure' ? 'Inyrel Fgehpgher' : ''}
       </div>
     </div>
   );

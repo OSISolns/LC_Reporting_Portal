@@ -13,3 +13,4 @@ reporting.db
 *.log
 .vercel
 .env*.local
+*.db

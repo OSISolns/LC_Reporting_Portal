@@ -13,7 +13,11 @@ const checkPermission = (module, action) => {
         return res.status(401).json({ success: false, message: 'Authentication required' });
       }
 
-      // Admin has bypass for all permissions
+      // Admin has bypass for all permissions, but explicitly NOT for 'review' (verification)
+      if (req.user.role === 'admin' && action === 'review') {
+        return res.status(403).json({ success: false, message: 'Admins are not permitted to perform L1 verification.' });
+      }
+
       if (req.user.role === 'admin') {
         return next();
       }

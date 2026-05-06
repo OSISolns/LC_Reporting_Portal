@@ -147,11 +147,12 @@ exports.getExecutiveReport = async (req, res, next) => {
     const refundPending = Number(r.pending || 0);
     const rtPending     = Number(rt.pending || 0);
 
-    // Template-based executive narrative (no AI needed — data drives the text)
+    // Template-based executive narrative
+    const BOTTLENECK_THRESHOLD = process.env.BOTTLENECK_THRESHOLD ? parseInt(process.env.BOTTLENECK_THRESHOLD) : 5;
     const bottlenecks = [];
-    if (cancPending  > 5)  bottlenecks.push(`${cancPending} cancellation requests awaiting approval`);
-    if (refundPending > 5) bottlenecks.push(`${refundPending} refund requests awaiting verification`);
-    if (rtPending > 5)     bottlenecks.push(`${rtPending} result transfers awaiting review`);
+    if (cancPending  > BOTTLENECK_THRESHOLD)  bottlenecks.push(`${cancPending} cancellation requests awaiting approval`);
+    if (refundPending > BOTTLENECK_THRESHOLD) bottlenecks.push(`${refundPending} refund requests awaiting verification`);
+    if (rtPending > BOTTLENECK_THRESHOLD)     bottlenecks.push(`${rtPending} result transfers awaiting review`);
 
     const lines = [
       `Legacy Clinics currently has ${cancTotal} cancellation, ${refundTotal} refund, and ${incTotal} incident records across all reporting modules.`,

@@ -11,6 +11,17 @@ class Refund {
       initialTransactionDate, reasonForRefund, billedBy
     } = data;
 
+    // Prevent duplicate: Check for existing active/approved request for this SID
+    const existing = await db.query(
+      `SELECT id FROM refund_requests WHERE sid_number = $1 AND status != 'rejected' LIMIT 1`,
+      [sidNumber]
+    );
+    if (existing.rows.length > 0) {
+      const error = new Error('A refund request for this SID already exists.');
+      error.status = 400;
+      throw error;
+    }
+
     const cleanDate   = (d) => (d && d.trim() !== '' ? d : null);
     const cleanAmount = (a) => (a && a.toString().trim() !== '' ? a : null);
 

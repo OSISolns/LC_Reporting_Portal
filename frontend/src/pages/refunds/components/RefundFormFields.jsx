@@ -1,6 +1,5 @@
 import { INSURANCES } from '../constants';
-import { Info, Receipt, DollarSign, Save } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
+import { Info, Receipt, Save, Phone, Calendar } from 'lucide-react';
 
 const inputStyle = {
   padding: '10px',
@@ -24,119 +23,140 @@ const selectStyle = {
 
 const fieldStyle = { display: 'flex', flexDirection: 'column', gap: '6px' };
 const labelStyle = { fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' };
-const sectionIconStyle = (color) => ({
-  padding: '8px', borderRadius: '8px',
-  backgroundColor: `rgba(${color}, 0.1)`,
-  color: `rgb(${color})`,
-});
 
-const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel, staff }) => {
-  const { user } = useAuth();
+const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel }) => {
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-      {/* Section 1 – Patient Identification */}
+      {/* ── Section 1: Patient Identification ── */}
       <div className="glass card-shadow" style={{ padding: '2rem', backgroundColor: '#ffffff', borderRadius: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.75rem' }}>
-          <div style={sectionIconStyle('0,123,138')}>
+          <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(0,123,138,0.1)', color: 'var(--primary)' }}>
             <Info size={18} />
           </div>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-dark)' }}>1. Formal Patient Identification</h2>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-dark)' }}>Section 1: Formal Patient Identification</h2>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+
           <div style={fieldStyle}>
-            <label style={labelStyle}>Patient's Full Name *</label>
-            <input type="text" name="patientFullName" required value={formData.patientFullName} onChange={handleChange} style={inputStyle} />
+            <label style={labelStyle}>Patient's full name *</label>
+            <input type="text" name="patientFullName" required
+              value={formData.patientFullName} onChange={handleChange} style={inputStyle} />
           </div>
+
           <div style={fieldStyle}>
-            <label style={labelStyle}>PID Number *</label>
-            <input type="text" name="pidNumber" required value={formData.pidNumber} onChange={handleChange} style={inputStyle} />
+            <label style={labelStyle}>PID number *</label>
+            <input type="text" name="pidNumber" required
+              value={formData.pidNumber} onChange={handleChange} style={inputStyle} />
           </div>
+
           <div style={fieldStyle}>
-            <label style={labelStyle}>SID Number</label>
-            <input type="text" name="sidNumber" value={formData.sidNumber} onChange={handleChange} style={inputStyle} />
+            <label style={labelStyle}>SID number *</label>
+            <input type="text" name="sidNumber" required
+              value={formData.sidNumber} onChange={handleChange} style={inputStyle} />
           </div>
+
           <div style={fieldStyle}>
-            <label style={labelStyle}>Telephone Number</label>
-            <input type="text" name="telephoneNumber" value={formData.telephoneNumber} onChange={handleChange} style={inputStyle} />
+            <label style={labelStyle}>Telephone Number *</label>
+            <div style={{ position: 'relative' }}>
+              <Phone size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <input type="tel" name="telephoneNumber" required
+                value={formData.telephoneNumber} onChange={handleChange}
+                style={{ ...inputStyle, paddingLeft: '36px' }} placeholder="e.g. 078XXXXXXX" />
+            </div>
           </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Billed by *</label>
-            <select 
-              name="billedBy" 
-              required 
-              value={formData.billedBy} 
-              onChange={handleChange} 
-              style={selectStyle}
-            >
-              <option value="">Select Staff Member</option>
-              {staff && staff.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.id === user?.id ? `Self (${s.full_name})` : `${s.full_name} (${s.role})`}
-                </option>
-              ))}
-            </select>
-          </div>
+
           <div style={{ ...fieldStyle, gridColumn: 'span 2' }}>
             <label style={labelStyle}>Insurance / Payer *</label>
-            <select 
-              name="insurancePayer" 
-              required 
-              value={formData.insurancePayer} 
-              onChange={handleChange} 
-              style={selectStyle}
-            >
+            <select name="insurancePayer" required value={formData.insurancePayer} onChange={handleChange} style={selectStyle}>
               <option value="">Select Insurance / Payer</option>
               {INSURANCES.map(insurance => (
                 <option key={insurance} value={insurance}>{insurance}</option>
               ))}
             </select>
           </div>
+
         </div>
       </div>
 
-      {/* Section 2 – Transaction Details */}
+      {/* ── Section 2: Transaction Details ── */}
       <div className="glass card-shadow" style={{ padding: '2rem', backgroundColor: '#ffffff', borderRadius: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.75rem' }}>
-          <div style={sectionIconStyle('23,162,184')}>
+          <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(23,162,184,0.1)', color: 'var(--info)' }}>
             <Receipt size={18} />
           </div>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-dark)' }}>2. Transaction Details</h2>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-dark)' }}>Section 2: Transaction Details</h2>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+
           <div style={fieldStyle}>
-            <label style={labelStyle}>MOMO Code</label>
-            <input type="text" name="momoCode" value={formData.momoCode} onChange={handleChange} style={inputStyle} placeholder="Mobile Money reference" />
+            <label style={labelStyle}>MOMO Code *</label>
+            <input type="text" name="momoCode" required
+              value={formData.momoCode} onChange={handleChange}
+              style={inputStyle} placeholder="Mobile Money reference" />
           </div>
+
           <div style={fieldStyle}>
-            <label style={labelStyle}>Original Receipt / Invoice #</label>
-            <input type="text" name="originalReceiptNumber" value={formData.originalReceiptNumber} onChange={handleChange} style={inputStyle} />
+            <label style={labelStyle}>Original Receipt / Invoice # *</label>
+            <input type="text" name="originalReceiptNumber" required
+              value={formData.originalReceiptNumber} onChange={handleChange} style={inputStyle} />
           </div>
+
           <div style={fieldStyle}>
             <label style={labelStyle}>Total Amount Paid (RWF) *</label>
-            <input type="number" step="0.01" name="totalAmountPaid" required value={formData.totalAmountPaid} onChange={handleChange} style={inputStyle} placeholder="e.g. 50000" />
+            <input type="number" step="0.01" name="totalAmountPaid" required
+              value={formData.totalAmountPaid} onChange={handleChange}
+              style={inputStyle} placeholder="e.g. 50000" />
           </div>
+
           <div style={fieldStyle}>
             <label style={labelStyle}>Amount to be Refunded (RWF) *</label>
-            <input type="number" step="0.01" name="amountToBeRefunded" required value={formData.amountToBeRefunded} onChange={handleChange} style={inputStyle} placeholder="e.g. 25000" />
+            <input type="number" step="0.01" name="amountToBeRefunded" required
+              value={formData.amountToBeRefunded} onChange={handleChange}
+              style={inputStyle} placeholder="e.g. 25000" />
           </div>
+
           <div style={fieldStyle}>
-            <label style={labelStyle}>Amount Paid By</label>
-            <input type="text" name="amountPaidBy" value={formData.amountPaidBy} onChange={handleChange} style={inputStyle} placeholder="e.g. Patient, Insurance" />
+            <label style={labelStyle}>Amount Paid By *</label>
+            <select name="amountPaidBy" required value={formData.amountPaidBy} onChange={handleChange} style={selectStyle}>
+              <option value="">Select payer</option>
+              <option value="Patient">Patient</option>
+              <option value="Insurance">Insurance</option>
+            </select>
           </div>
+
           <div style={fieldStyle}>
-            <label style={labelStyle}>Initial Transaction Date</label>
-            <input type="date" name="initialTransactionDate" value={formData.initialTransactionDate} onChange={handleChange} style={inputStyle} />
+            <label style={labelStyle}>Initial Transaction Date *</label>
+            <div style={{ position: 'relative' }}>
+              <Calendar size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <input type="date" name="initialTransactionDate" required
+                value={formData.initialTransactionDate} onChange={handleChange}
+                style={{ ...inputStyle, paddingLeft: '36px' }} />
+            </div>
           </div>
+
           <div style={{ ...fieldStyle, gridColumn: 'span 2' }}>
             <label style={labelStyle}>Reason for Refund (details) *</label>
-            <textarea name="reasonForRefund" required value={formData.reasonForRefund} onChange={handleChange} rows="3"
-              style={{ ...inputStyle, resize: 'none' }} placeholder="Provide full details for the refund request..." />
+            <textarea name="reasonForRefund" required
+              value={formData.reasonForRefund} onChange={handleChange}
+              rows="3" style={{ ...inputStyle, resize: 'none' }}
+              placeholder="Provide full details for the refund request..." />
           </div>
+
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Billed By (Cashier) *</label>
+            <select name="billedBy" required value={formData.billedBy || ''} onChange={handleChange} style={selectStyle}>
+              <option value="">Select Cashier</option>
+              {staff && staff.map(s => (
+                <option key={s.id} value={s.id}>{s.full_name} ({s.role_name})</option>
+              ))}
+            </select>
+          </div>
+
         </div>
       </div>
 
-      {/* Actions */}
+      {/* ── Actions ── */}
       <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
         <button type="button" onClick={onCancel}
           style={{ flex: 1, padding: '1rem', backgroundColor: '#f1f5f9', color: 'var(--text-secondary)', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>
@@ -148,6 +168,7 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
           {loading ? 'Submitting...' : 'Submit Refund Request'}
         </button>
       </div>
+
     </form>
   );
 };

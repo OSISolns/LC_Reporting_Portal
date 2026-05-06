@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, Filter, FileSpreadsheet, Trash2, Eye, FileText, Download, CheckCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Search, Trash2, Eye, FileText, Download, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
@@ -21,7 +21,6 @@ import { getStaffList } from '../../api/users';
 
 const CancellationList = () => {
   const { user, hasPermission } = useAuth();
-  const isDev = import.meta.env.DEV;
   const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +32,7 @@ const CancellationList = () => {
     patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
     telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
     originalReceiptNumber: '', rectifiedReceiptNumber: '',
-    initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: ''
+    initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '', billedBy: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -90,10 +89,10 @@ const CancellationList = () => {
         patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
         telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
         originalReceiptNumber: '', rectifiedReceiptNumber: '',
-        initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: ''
+        initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '', billedBy: ''
       });
     } catch (err) {
-      alert('Failed to submit request');
+      alert(err.response?.data?.message || 'Failed to submit request');
     } finally {
       setSubmitting(false);
     }
@@ -102,15 +101,18 @@ const CancellationList = () => {
   const handleExport = async (id) => {
     try {
       const res = await getCancellationPDF(id);
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `Cancellation_${id}.pdf`);
       document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('PDF Export failed, falling back to browser print:', err);
-      window.print();
+      console.error('PDF Export failed:', err);
+      alert('Failed to download PDF. Please check your connection or try again later.');
     }
   };
 
@@ -213,7 +215,7 @@ const CancellationList = () => {
                     <div style={{ fontWeight: 600, color: 'var(--primary-dark)', fontSize: '0.95rem' }}>{r.patient_full_name}</div>
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.9rem' }}>{r.pid_number}</td>
-                  <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--primary-dark)' }}>RWF {r.total_amount_cancelled}</td>
+                  <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--primary-dark)' }}>RWF {Number(r.total_amount_cancelled).toLocaleString()}</td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{new Date(r.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <StatusBadge status={r.status} />
@@ -225,10 +227,9 @@ const CancellationList = () => {
                           <CheckCircle size={14} /> Rated
                         </span>
                       ) : (
-                        // Only show Rate Staff if the person being rated is a ratable role (cashier/customer_care)
                         ['cashier', 'customer_care'].includes(r.billed_by_role || r.creator_role) ? (
                           <button 
-                            onClick={() => navigate(`/performance?staffId=${r.billed_by || r.created_by}&type=cancellation&requestId=${r.id}`)}
+                            onClick={() => navigate(`/performance`, { state: { staffId: r.billed_by || r.created_by, type: 'cancellation', requestId: r.id } })}
                             style={{ color: 'var(--primary)', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
                           >
                             Rate Staff
@@ -256,7 +257,23 @@ const CancellationList = () => {
                       }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Eye size={18} />
                     </button>
-                    {r.status === 'pending' && (r.created_by === user.id) && ['cashier', 'principal_cashier', 'customer_care'].includes(user.role) && (
+                    <button 
+                      onClick={() => handleExport(r.id)}
+                      title="Download PDF"
+                      style={{ 
+                        color: 'var(--success)', 
+                        background: 'none',
+                        border: 'none',
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        padding: '8px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(40,167,69,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      <Download size={18} />
+                    </button>
+                    {r.status === 'pending' && hasPermission('cancellations', 'delete') && (user.role === 'admin' || r.created_by === user.id) && (
                       <button 
                         onClick={() => handleDelete(r.id)}
                         title="Delete Request"
@@ -306,7 +323,6 @@ const CancellationList = () => {
             onVerify={() => activeRequest && handleAction(verifyCancellation, activeRequest.id)}
             onApprove={() => activeRequest && handleAction(approveCancellation, activeRequest.id)}
             onReject={(comment) => activeRequest && handleAction(rejectCancellation, activeRequest.id, comment)}
-            printOnLoad={activeRequest?.printRequested}
           />
         )}
       </Modal>

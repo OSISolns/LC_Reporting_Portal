@@ -59,8 +59,8 @@ const IncidentFormFields = ({ formData, handleChange, handleSubmit, loading, onC
             <input type="text" name="namesInvolved" required value={formData.namesInvolved} onChange={handleChange} placeholder="Comma separated names..." style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Patient PID (Optional)</label>
-            <input type="text" name="pidNumber" value={formData.pidNumber} onChange={handleChange} placeholder="P-XXXXX" style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none' }} />
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Patient PID (if applicable)</label>
+            <input type="text" name="pidNumber" value={formData.pidNumber} onChange={handleChange} placeholder="Leave blank for non-patient incidents" style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none' }} />
           </div>
         </div>
       </div>
@@ -78,17 +78,17 @@ const IncidentFormFields = ({ formData, handleChange, handleSubmit, loading, onC
             <textarea name="description" required value={formData.description} onChange={handleChange} rows="3" style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', resize: 'none' }}></textarea>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Contributing Factors</label>
-            <textarea name="contributingFactors" value={formData.contributingFactors} onChange={handleChange} rows="2" placeholder="e.g., Equipment failure, Communication gap..." style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', resize: 'none' }}></textarea>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Contributing Factors *</label>
+            <textarea name="contributingFactors" required value={formData.contributingFactors} onChange={handleChange} rows="2" placeholder="e.g., Equipment failure, Communication gap..." style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', resize: 'none' }}></textarea>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Immediate Actions Taken</label>
-              <textarea name="immediateActions" value={formData.immediateActions} onChange={handleChange} rows="2" style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', resize: 'none' }}></textarea>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Immediate Actions Taken *</label>
+              <textarea name="immediateActions" required value={formData.immediateActions} onChange={handleChange} rows="2" style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', resize: 'none' }}></textarea>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Prevention Measures</label>
-              <textarea name="preventionMeasures" value={formData.preventionMeasures} onChange={handleChange} rows="2" style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', resize: 'none' }}></textarea>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Prevention Measures *</label>
+              <textarea name="preventionMeasures" required value={formData.preventionMeasures} onChange={handleChange} rows="2" style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', resize: 'none' }}></textarea>
             </div>
           </div>
         </div>
