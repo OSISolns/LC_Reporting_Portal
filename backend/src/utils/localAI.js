@@ -505,10 +505,250 @@ function analyzeGeneric(rows, moduleName) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// SHIFT ANALYSER
+// ══════════════════════════════════════════════════════════════════════════════
+function analyzeShifts(rows) {
+  const total = rows.length;
+  if (!total) return { categories: [], cashierAttribution: [], executiveSummary: 'No shift records to analyze yet.', total: 0 };
+
+  // Flatten flag reasons into a list of "incident-like" rows for clustering
+  const flagRows = [];
+  rows.forEach(r => {
+    let reasons = [];
+    try {
+      reasons = typeof r.reason === 'string' ? JSON.parse(r.reason) : (Array.isArray(r.reason) ? r.reason : []);
+    } catch (e) {
+      if (r.reason) reasons = [r.reason];
+    }
+    reasons.forEach(text => {
+      flagRows.push({
+        reason: text,
+        cashier: r.cashier,
+        id: r.id
+      });
+    });
+  });
+
+  // If we have flags, cluster them
+  let clusters = [];
+  let categories = [];
+  if (flagRows.length > 0) {
+    const processed = flagRows.map(r => ({ reason: r.reason || '', cashier: r.cashier || 'Unknown', tokens: preprocess(r.reason) }));
+    const allRawWords = flagRows.flatMap(r => getNLP().tokenizer.tokenize((r.reason || '').toLowerCase()).filter(w => w.length > 2 && !STOPWORDS.has(w)));
+    const tfidfVecs = buildTFIDF(processed.map(p => p.tokens));
+    const items = processed.map((p, i) => ({ ...p, topKeys: topKeywords(tfidfVecs[i], 8) }));
+    clusters = clusterDocs(items);
+    clusters.sort((a, b) => b.docIndexes.length - a.docIndexes.length);
+
+    categories = clusters.map(c => {
+      const docs  = c.docIndexes.map(i => items[i]);
+      const label = labelCluster(c.centroidKeys, allRawWords);
+      const count = docs.length;
+      const pct   = Math.round((count / flagRows.length) * 100);
+      const examples = docs.map(d => d.reason).filter(Boolean).sort((a, b) => a.length - b.length).slice(0, 2).map(s => s.slice(0, 90));
+      const cashierFreq = {};
+      for (const d of docs) cashierFreq[d.cashier] = (cashierFreq[d.cashier] || 0) + 1;
+      const topCashiers = Object.entries(cashierFreq).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n]) => n);
+      return { label, count, percentage: pct, examples, severity: assessSeverity(c.centroidKeys), topCashiers };
+    });
+  }
+
+  // Shift specific metrics
+  let totalHours = 0;
+  let flaggedCount = 0;
+  const cashierMap = {};
+
+  rows.forEach(r => {
+    const name = r.cashier || 'Unknown';
+    if (!cashierMap[name]) cashierMap[name] = { cashier: name, count: 0, flagged: 0, hours: 0, catFreq: {} };
+    cashierMap[name].count++;
+    if (r.is_flagged) {
+      flaggedCount++;
+      cashierMap[name].flagged++;
+    }
+    
+    if (r.opened_at && r.closed_at) {
+      const duration = (new Date(r.closed_at) - new Date(r.opened_at)) / 3600000;
+      if (duration > 0 && duration < 24) { // filter outliers
+        totalHours += duration;
+        cashierMap[name].hours += duration;
+      }
+    }
+  });
+
+  const avgDuration = totalHours / total;
+  const flaggedRate = (flaggedCount / total) * 100;
+
+  const cashierAttribution = Object.values(cashierMap)
+    .map(row => ({
+      cashier: row.cashier,
+      count: row.count,
+      flaggedRate: Math.round((row.flagged / row.count) * 100),
+      avgDuration: Number((row.hours / row.count).toFixed(1)),
+      reasons: [] // We don't have snippets here easily without more mapping
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const topCategory = categories[0];
+  const summaryLines = [
+    `Analyzed ${total} shifts. Average shift duration is ${avgDuration.toFixed(1)} hours.`,
+    `${flaggedCount} shifts (${Math.round(flaggedRate)}%) were flagged for issues.`,
+    topCategory ? `Primary flag reason pattern: "${topCategory.label}" (${topCategory.count} occurrences).` : 'No significant flag patterns detected.',
+    flaggedRate > 20 ? '⚠ High rate of flagged shifts detected — check equipment and cash handling compliance.' : '✅ Shift compliance is within healthy parameters.'
+  ].join(' ');
+
+  return { categories, cashierAttribution, executiveSummary: summaryLines, total, stats: { avgDuration: Number(avgDuration.toFixed(1)), flaggedRate: Math.round(flaggedRate) } };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SECURITY ANALYSER
+// ══════════════════════════════════════════════════════════════════════════════
+const SECURITY_HEURISTICS = {
+  SQL_INJECTION: /UNION\s+SELECT|DROP\s+TABLE|OR\s+['"]1['"]=['"]1|--|#|xp_cmdshell/i,
+  SENSITIVE_HOURS: { start: 22, end: 5 }, // 10 PM to 5 AM
+  EXFILTRATION_THRESHOLD: 20, // actions in a short window
+};
+
+function analyzeSecurity(rows) {
+  const total = rows.length;
+  if (!total) return { categories: [], cashierAttribution: [], executiveSummary: 'No security logs to analyze yet.', total: 0 };
+
+  const threatActors = {}; // by IP or Username
+  const categories = {};
+  let criticalThreats = 0;
+
+  rows.forEach(r => {
+    const actor = r.ip_address || r.user_name || 'Unknown';
+    const action = r.action;
+    let details = {};
+    try {
+      details = typeof r.details === 'string' ? JSON.parse(r.details) : (r.details || {});
+    } catch (e) {}
+
+    if (!threatActors[actor]) {
+      threatActors[actor] = { 
+        name: actor, 
+        count: 0, 
+        actions: {}, 
+        lastSeen: r.created_at,
+        isSuspicious: false,
+        threatLevel: 'low',
+        reasons: new Set()
+      };
+    }
+
+    const ta = threatActors[actor];
+    ta.count++;
+    ta.actions[action] = (ta.actions[action] || 0) + 1;
+    
+    // 1. Brute-force & Lockout Detection
+    if (action === 'LOGIN_FAILED') {
+      if (ta.actions[action] > 5) {
+        ta.isSuspicious = true;
+        ta.threatLevel = 'high';
+        ta.reasons.add('Brute-force login attempt detected');
+      } else if (ta.actions[action] > 3) {
+        ta.threatLevel = Math.max(ta.threatLevel === 'high' ? 2 : 1, 1) === 2 ? 'high' : 'medium';
+        ta.reasons.add('Multiple failed logins');
+      }
+    }
+    
+    if (action === 'ACCOUNT_LOCKOUT') {
+      ta.threatLevel = 'high';
+      ta.reasons.add('Account successfully locked out after attacks');
+      criticalThreats++;
+    }
+
+    // 2. SQL Injection Heuristics
+    const detailStr = JSON.stringify(details);
+    if (SECURITY_HEURISTICS.SQL_INJECTION.test(detailStr)) {
+      ta.isSuspicious = true;
+      ta.threatLevel = 'high';
+      ta.reasons.add('SQL Injection pattern detected in parameters');
+    }
+
+    // 3. Unusual Activity Hours (Out-of-office)
+    const hour = new Date(r.created_at).getHours();
+    if (hour >= SECURITY_HEURISTICS.SENSITIVE_HOURS.start || hour <= SECURITY_HEURISTICS.SENSITIVE_HOURS.end) {
+      ta.threatLevel = ta.threatLevel === 'high' ? 'high' : 'medium';
+      ta.reasons.add('Activity during high-risk hours (Late Night)');
+    }
+
+    // 4. Potential Data Exfiltration (High volume of reads/exports)
+    if (ta.count > SECURITY_HEURISTICS.EXFILTRATION_THRESHOLD) {
+      ta.threatLevel = 'high';
+      ta.reasons.add('Unusual volume of activity (Potential Scraping)');
+    }
+
+    if (action === 'DEV_LOGIN_BYPASS') {
+      ta.threatLevel = 'medium';
+      ta.reasons.add('Developer bypass used in production');
+    }
+
+    if (action === 'AUTH_FAILURE') {
+      ta.threatLevel = ta.threatLevel === 'high' ? 'high' : 'medium';
+      ta.reasons.add('Automated auth scanning detected');
+    }
+
+    if (action === 'PERMISSION_DENIED') {
+      ta.isSuspicious = true;
+      ta.threatLevel = 'high';
+      ta.reasons.add('Lateral movement or Privilege escalation attempt');
+    }
+
+    // Categorize
+    const taReasons = Array.from(ta.reasons);
+    const catLabel = taReasons.length > 0 ? taReasons[taReasons.length - 1] : 'Routine Action';
+    
+    if (!categories[catLabel]) {
+      categories[catLabel] = { label: catLabel, count: 0, severity: ta.threatLevel, examples: [] };
+    }
+    categories[catLabel].count++;
+    if (categories[catLabel].examples.length < 2) {
+      categories[catLabel].examples.push(`${r.user_name || 'Unknown'} - ${action} from ${r.ip_address || 'local'}`);
+    }
+  });
+
+  const categoryList = Object.values(categories)
+    .sort((a, b) => b.count - a.count)
+    .map(c => ({
+      ...c,
+      percentage: Math.round((c.count / total) * 100)
+    }));
+
+  const topActors = Object.values(threatActors)
+    .filter(a => a.threatLevel !== 'low')
+    .sort((a, b) => b.count - a.count)
+    .map(a => ({
+      cashier: a.name,
+      count: a.count,
+      topCategory: Array.from(a.reasons).join(' | ') || 'Multiple Actions',
+      reasons: Object.entries(a.actions).map(([k, v]) => `${k}: ${v}`)
+    }));
+
+  const summaryLines = [
+    `Scanned ${total} security events. Found ${topActors.length} suspicious actor(s).`,
+    criticalThreats > 0 ? `⚠ CRITICAL: ${criticalThreats} account lockout(s) detected. Possible targeted attack.` : '✅ No active account lockouts in recent logs.',
+    topActors.some(a => a.topCategory.includes('SQL')) ? `🚨 ALERT: SQL Injection patterns detected and blocked.` : '',
+    topActors.length > 0 ? `Top threat: "${topActors[0].cashier}" (${topActors[0].topCategory}).` : 'All security events appear within normal parameters.'
+  ].filter(Boolean).join(' ');
+
+  return { 
+    categories: categoryList, 
+    cashierAttribution: topActors, 
+    executiveSummary: summaryLines, 
+    total,
+    stats: { suspiciousCount: topActors.length, criticalCount: criticalThreats }
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // EXPORTS
 // ══════════════════════════════════════════════════════════════════════════════
 function analyzeRecords(rows, moduleName) {
   if (moduleName === 'incidents') return analyzeIncidents(rows);
+  if (moduleName === 'shifts') return analyzeShifts(rows);
+  if (moduleName === 'security') return analyzeSecurity(rows);
   return analyzeGeneric(rows, moduleName);
 }
 

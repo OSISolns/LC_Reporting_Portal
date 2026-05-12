@@ -1,6 +1,6 @@
 require('dotenv').config();
-const db = require('./src/config/db');
-const { MODULES, ROLE_DEFAULTS } = require('./src/config/permissions');
+const db = require('../src/config/db');
+const { MODULES, ROLE_DEFAULTS } = require('../src/config/permissions');
 
 async function syncModules() {
   try {

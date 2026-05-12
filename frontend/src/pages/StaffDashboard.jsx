@@ -5,6 +5,7 @@ import { getCancellations } from '../api/cancellations';
 import { getRefunds } from '../api/refunds';
 import { getIncidents } from '../api/incidents';
 import { getResultTransfers } from '../api/resultTransfer';
+import { getMyActiveShift } from '../api/shifts';
 import LoadingSpinner from '../components/LoadingSpinner';
 import {
   FileText, ReceiptText, AlertTriangle, Clock,
@@ -106,6 +107,7 @@ const StaffDashboard = () => {
   const [data,    setData]    = useState({ canc: [], refunds: [], incidents: [], transfers: [] });
   const [loading, setLoading] = useState(true);
   const [now,     setNow]     = useState(new Date());
+  const [activeShift, setActiveShift] = useState(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60000);
@@ -115,11 +117,12 @@ const StaffDashboard = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [cRes, rRes, iRes, tRes] = await Promise.all([
+      const [cRes, rRes, iRes, tRes, sRes] = await Promise.all([
         !isOps ? getCancellations().catch(() => null) : Promise.resolve(null),
         !isOps ? getRefunds().catch(() => null) : Promise.resolve(null),
         getIncidents().catch(() => null),
         getResultTransfers().catch(() => null),
+        getMyActiveShift().catch(() => null),
       ]);
       setData({
         canc:      cRes?.data?.data || [],
@@ -127,6 +130,7 @@ const StaffDashboard = () => {
         incidents: iRes?.data?.data || [],
         transfers: tRes?.data?.data || [],
       });
+      setActiveShift(sRes?.data?.data || null);
     } finally { setLoading(false); }
   }, [isOps]);
 
@@ -165,9 +169,27 @@ const StaffDashboard = () => {
           {now.toLocaleDateString('en-RW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
         <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#fff' }}>{greeting}, {firstName} 👋</h1>
-        <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '1rem', fontWeight: 500 }}>
-          {ROLE_LABEL[user?.role] || user?.role} · Operational Control Center
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+          <p style={{ margin: 0, opacity: 0.8, fontSize: '1rem', fontWeight: 500 }}>
+            {ROLE_LABEL[user?.role] || user?.role} · Operational Control Center
+          </p>
+          <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(255,255,255,0.2)' }} />
+          {activeShift ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', borderRadius: '99px', backgroundColor: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.3)', color: '#34d399' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#34d399', boxShadow: '0 0 8px #34d399' }} className="animate-pulse" />
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Shift Live: {new Date(activeShift.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', borderRadius: '99px', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.15)', color: 'rgba(255,255,255,0.6)' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)' }} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Shift Ended / Offline
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Mini stats ── */}

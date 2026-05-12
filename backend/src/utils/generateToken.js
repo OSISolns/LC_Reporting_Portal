@@ -11,6 +11,7 @@ function generateToken(user) {
     {
       id: user.id,
       role: user.role,
+      username: user.username,
       full_name: user.full_name || user.fullName,
       email: user.email
     },

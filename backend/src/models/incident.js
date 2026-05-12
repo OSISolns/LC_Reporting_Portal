@@ -36,7 +36,7 @@ class Incident {
     const params = [];
 
     // Access control: regular users only see their own reports
-    if (user && !['coo', 'chairman', 'deputy_coo', 'quality_assurance', 'admin'].includes(user.role)) {
+    if (user && !['coo', 'chairman', 'deputy_coo', 'quality_assurance', 'admin', 'it_officer', 'principal_cashier', 'sales_manager'].includes(user.role)) {
       params.push(user.id);
       query += ` AND i.created_by = $${params.length}`;
     }

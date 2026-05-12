@@ -33,12 +33,21 @@ exports.login = async (req, res, next) => {
     if (!isMatch) {
       const attempts = await User.incrementFailedAttempts(user.id);
       
+      // Log Security Violation
+      try {
+        await logAction(req, 'LOGIN_FAILED', 'user', user.id, { username, attempt_count: attempts });
+      } catch (e) {}
+
       let message = 'Invalid credentials.';
       
       if (attempts >= 5) {
         await User.lockout(user.id, 5);
         message = 'Account locked for 5 minutes due to 5 failed attempts.';
         
+        try {
+          await logAction(req, 'ACCOUNT_LOCKOUT', 'user', user.id, { username, lockout_duration: '5m' });
+        } catch (e) {}
+
         // Report to Admin
         try {
           const admins = await User.findByRole('admin');
@@ -115,6 +124,7 @@ exports.getMe = async (req, res, next) => {
       user: {
         id: req.user.id,
         fullName: req.user.full_name,
+        username: req.user.username,
         email: req.user.email,
         role: req.user.role,
         permissions: await Permission.getEffectivePermissions(req.user.id, req.user.role)

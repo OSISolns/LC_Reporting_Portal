@@ -107,7 +107,9 @@ const ChangePasswordModal = ({ onClose }) => {
             <button
               type="submit"
               disabled={loading}
-              style={{ flex: 1, padding: '0.75rem', backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              style={{ flex: 1, padding: '0.75rem', backgroundColor: '#07896b', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'background-color 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#056b55'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#07896b'}
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : 'Update Password'}
             </button>

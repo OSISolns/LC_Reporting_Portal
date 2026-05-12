@@ -36,7 +36,7 @@ const Users = () => {
 
   const filteredUsers = (canEditAll
     ? users
-    : users.filter(u => ['Cashier', 'Customer Care', 'Patient Relations'].includes(u.role_name))
+    : users.filter(u => ['Cashier', 'Customer Care', 'Patient Relations', 'Staff Member'].includes(u.role_name))
   ).filter(u => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -50,7 +50,7 @@ const Users = () => {
 
   const filteredRoles = canEditAll
     ? roles
-    : roles.filter(r => ['cashier', 'customer_care'].includes(r.name));
+    : roles.filter(r => ['cashier', 'customer_care', 'staff'].includes(r.name));
 
   const fetchData = async () => {
     try {

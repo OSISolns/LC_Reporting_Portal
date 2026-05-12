@@ -9,6 +9,30 @@ exports.createReport = async (req, res, next) => {
   try {
     const report = await Incident.create(req.body, req.user.id);
     try { await logAction(req, 'CREATE', 'incident_report', report.id, { type: report.incident_type }); } catch (e) {}
+    
+    // Notify Admins, Supervisors, and IT/QA Team
+    try {
+      const User = require('../models/user');
+      const Notification = require('../models/notification');
+      
+      const rolesToNotify = ['admin', 'quality_assurance', 'it_officer', 'coo', 'deputy_coo', 'sales_manager', 'principal_cashier'];
+      for (const role of rolesToNotify) {
+        const users = await User.findByRole(role);
+        for (const user of users) {
+          if (user.id === req.user.id) continue; // Don't notify self
+          await Notification.create({
+            userId: user.id,
+            title: `New Incident Reported: ${report.incident_type}`,
+            message: `A new incident has been reported by ${req.user.full_name} in ${report.department}.`,
+            type: 'warning',
+            link: `/incidents`
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not send incident notifications:', e.message);
+    }
+
     cache.invalidatePattern('inc:list');
     cache.invalidate('ai:module_stats');
     res.status(201).json({ success: true, data: report });

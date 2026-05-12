@@ -16,11 +16,13 @@ exports.getModuleStats = async (req, res, next) => {
     const cached = cache.get(CACHE_KEY);
     if (cached) return res.json({ success: true, data: cached, cached: true });
 
-    const [cancRows, refundRows, incidentRows, rtRows] = await Promise.all([
+    const [cancRows, refundRows, incidentRows, rtRows, shiftRows, securityRows] = await Promise.all([
       queryRows(`SELECT status, COUNT(*) AS cnt FROM cancellation_requests GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM refund_requests       GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM incident_reports      GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM results_transfers     GROUP BY status`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM shift_sessions        GROUP BY status`),
+      queryRows(`SELECT action AS status, COUNT(*) AS cnt FROM audit_logs WHERE action IN ('LOGIN_FAILED', 'ACCOUNT_LOCKOUT', 'DEV_LOGIN_BYPASS', 'AUTH_FAILURE', 'PERMISSION_DENIED') GROUP BY action`),
     ]);
 
     const summarise = (rows) => {
@@ -40,11 +42,13 @@ exports.getModuleStats = async (req, res, next) => {
     ]);
 
     const since30 = `datetime('now', '-30 days')`;
-    const [cRecent, rRecent, iRecent, rtRecent] = await Promise.all([
+    const [cRecent, rRecent, iRecent, rtRecent, sRecent, secRecent] = await Promise.all([
       queryRows(`SELECT COUNT(*) AS cnt FROM cancellation_requests WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM refund_requests       WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM incident_reports      WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM results_transfers     WHERE created_at >= ${since30}`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM shift_sessions        WHERE opened_at >= ${since30}`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM audit_logs           WHERE action IN ('LOGIN_FAILED', 'ACCOUNT_LOCKOUT', 'AUTH_FAILURE', 'PERMISSION_DENIED') AND created_at >= ${since30}`),
     ]);
 
     const data = {
@@ -52,6 +56,20 @@ exports.getModuleStats = async (req, res, next) => {
       refunds:       { ...summarise(refundRows), approvedAmountRWF: Number(refundAmt[0]?.total || 0), last30Days: Number(rRecent[0]?.cnt || 0) },
       incidents:     { ...summarise(incidentRows), last30Days: Number(iRecent[0]?.cnt || 0) },
       transfers:     { ...summarise(rtRows), last30Days: Number(rtRecent[0]?.cnt || 0) },
+      shifts:        (() => {
+        const counts = { pending: 0, reviewed: 0, flagged: 0, total: 0 };
+        for (const r of shiftRows) {
+          const n = Number(r.cnt);
+          counts.total += n;
+          if (r.status === 'open' || r.status === 'draft') counts.pending += n;
+          else if (r.status === 'closed') counts.reviewed += n; // In shifts, 'closed' is the end state, though it might need 'review'
+        }
+        return { ...counts, last30Days: Number(sRecent[0]?.cnt || 0) };
+      })(),
+      security: req.user.role === 'admin' ? {
+        ...summarise(securityRows),
+        last30Days: Number(secRecent[0]?.cnt || 0)
+      } : null,
     };
 
     cache.set(CACHE_KEY, data, 30_000); // cache 30 seconds
@@ -106,8 +124,31 @@ exports.classifyReasons = async (req, res, next) => {
          LEFT JOIN users u ON t.created_by = u.id
          ORDER  BY t.created_at DESC LIMIT 500`
       );
+    } else if (module === 'shifts') {
+      rows = await queryRows(
+        `SELECT s.id,
+                s.flag_reasons AS reason,
+                s.is_flagged,
+                s.opened_at,
+                s.closed_at,
+                u.full_name AS cashier
+         FROM   shift_sessions s
+         LEFT JOIN users u ON s.user_id = u.id
+         WHERE  s.status = 'closed'
+         ORDER  BY s.closed_at DESC LIMIT 500`
+      );
+    } else if (module === 'security') {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ success: false, message: 'Access denied. Security analysis is restricted to administrators.' });
+      }
+      rows = await queryRows(
+        `SELECT id, action, details, ip_address, user_name, created_at
+         FROM   audit_logs
+         WHERE  action IN ('LOGIN_FAILED', 'ACCOUNT_LOCKOUT', 'DEV_LOGIN_BYPASS', 'PASSWORD_CHANGE', 'AUTH_FAILURE', 'PERMISSION_DENIED')
+         ORDER  BY created_at DESC LIMIT 1000`
+      );
     } else {
-      return res.status(400).json({ success: false, message: 'Invalid module. Use: cancellations | refunds | incidents | transfers' });
+      return res.status(400).json({ success: false, message: 'Invalid module. Use: cancellations | refunds | incidents | transfers | shifts | security' });
     }
 
     // Run the local AI engine (pure JS — no API call)
@@ -120,7 +161,7 @@ exports.classifyReasons = async (req, res, next) => {
 // ── Local AI: cross-module executive narrative ────────────────────────────────
 exports.getExecutiveReport = async (req, res, next) => {
   try {
-    const [cancStat, refundStat, incStat, rtStat] = await Promise.all([
+    const [cancStat, refundStat, incStat, rtStat, shiftStat, securityStat] = await Promise.all([
       queryRows(`SELECT COUNT(*) AS total,
                         SUM(CASE WHEN status='approved' THEN 1 ELSE 0 END) AS approved,
                         SUM(CASE WHEN status='pending'  THEN 1 ELSE 0 END) AS pending
@@ -137,15 +178,29 @@ exports.getExecutiveReport = async (req, res, next) => {
                         SUM(CASE WHEN status='pending'  THEN 1 ELSE 0 END) AS pending,
                         SUM(CASE WHEN status='reviewed' THEN 1 ELSE 0 END) AS reviewed
                  FROM results_transfers`),
+      queryRows(`SELECT COUNT(*) AS total,
+                        SUM(CASE WHEN is_flagged=1 THEN 1 ELSE 0 END) AS flagged,
+                        SUM(CASE WHEN status='open' OR status='draft' THEN 1 ELSE 0 END) AS active
+                 FROM shift_sessions`),
+      queryRows(`SELECT COUNT(*) AS total,
+                        SUM(CASE WHEN action='ACCOUNT_LOCKOUT' THEN 1 ELSE 0 END) AS critical,
+                        SUM(CASE WHEN action='LOGIN_FAILED' THEN 1 ELSE 0 END) AS failures
+                 FROM audit_logs WHERE created_at >= datetime('now', '-24 hours')`),
     ]);
 
     const c = cancStat[0],   cancTotal    = Number(c.total    || 0);
     const r = refundStat[0], refundTotal  = Number(r.total    || 0);
     const i = incStat[0],    incTotal     = Number(i.total    || 0);
     const rt = rtStat[0],    rtTotal      = Number(rt.total   || 0);
+    const s = shiftStat[0],  shiftTotal   = Number(s.total    || 0);
     const cancPending  = Number(c.pending  || 0);
     const refundPending = Number(r.pending || 0);
     const rtPending     = Number(rt.pending || 0);
+    const shiftFlagged  = Number(s.flagged || 0);
+    const shiftActive   = Number(s.active  || 0);
+    
+    const sec = securityStat[0], secTotal = Number(sec.total || 0);
+    const secCritical = Number(sec.critical || 0);
 
     // Template-based executive narrative
     const BOTTLENECK_THRESHOLD = process.env.BOTTLENECK_THRESHOLD ? parseInt(process.env.BOTTLENECK_THRESHOLD) : 5;
@@ -168,6 +223,12 @@ exports.getExecutiveReport = async (req, res, next) => {
       rtTotal > 0
         ? `Result Transfers: ${Number(rt.approved || 0)} approved (${Math.round(Number(rt.approved || 0) / rtTotal * 100)}%).`
         : 'No result transfer records on file yet.',
+      shiftTotal > 0
+        ? `Shifts: ${shiftActive} currently active, ${shiftFlagged} flagged for issues (${Math.round(shiftFlagged / shiftTotal * 100)}% flag rate).`
+        : 'No shift records on file yet.',
+      req.user.role === 'admin' && secTotal > 0
+        ? `Security: ${secTotal} events in last 24h, ${secCritical} critical lockouts detected.`
+        : '',
       bottlenecks.length
         ? `⚠️ Bottleneck alert: ${bottlenecks.join(' and ')} — immediate review recommended.`
         : '✅ All queues are within normal thresholds.',

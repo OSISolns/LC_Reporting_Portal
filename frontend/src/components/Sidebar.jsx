@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -22,11 +22,20 @@ const Sidebar = ({ onClose }) => {
     { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' } },
     { name: 'Insights',         icon: <Brain size={20} />,           path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' } },
     { name: 'User Management',  icon: <Users size={20} />,           path: '/users',        requiredPerm: { mod: 'user_management', act: 'view' } },
-    { name: 'Permissions',      icon: <Shield size={20} />,          path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' } }, // Re-using user_management edit for security
-    { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' } },
+    { name: 'Permissions',      icon: <Shield size={20} />,          path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, adminOnly: true }, // Restricted to admin role only
+    { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, adminOnly: true }, // Restricted to admin only
+    // Shift Module
+    { name: 'Active Shift',     icon: <Clock size={20} />,           path: '/shifts/open',  requiredPerm: null, staffOnly: true },
+    { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: null, reviewerOnly: true },
   ];
 
+  const SHIFT_STAFF_ROLES   = ['cashier', 'customer_care', 'operations_staff', 'principal_cashier'];
+  const SHIFT_REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'quality_assurance'];
+
   const filteredMenu = menuItems.filter(item => {
+    if (item.staffOnly)   return SHIFT_STAFF_ROLES.includes(user?.role);
+    if (item.reviewerOnly) return SHIFT_REVIEWER_ROLES.includes(user?.role);
+    if (item.adminOnly)    return user?.role === 'admin';
     if (!item.requiredPerm) return true;
     return hasPermission(item.requiredPerm.mod, item.requiredPerm.act);
   });

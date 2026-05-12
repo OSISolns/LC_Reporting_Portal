@@ -23,6 +23,8 @@ const MODULE_CONFIG = {
   refunds: { label: 'Refunds', icon: <ReceiptText size={18} />, color: '#7c3aed', lightColor: 'rgba(124,58,237,0.08)' },
   incidents: { label: 'Incidents', icon: <AlertTriangle size={18} />, color: '#dc2626', lightColor: 'rgba(220,38,38,0.08)' },
   transfers: { label: 'Result Transfers', icon: <RefreshCw size={18} />, color: '#059669', lightColor: 'rgba(5,150,105,0.08)' },
+  shifts: { label: 'Staff Shifts', icon: <Clock size={18} />, color: '#1b669d', lightColor: 'rgba(27,102,157,0.08)' },
+  security: { label: 'Security Operations', icon: <ShieldAlert size={18} />, color: '#9d174d', lightColor: 'rgba(157,23,77,0.08)' },
 };
 
 // ── Mini bar ──────────────────────────────────────────────────────────────────
@@ -71,23 +73,37 @@ const Donut = ({ approved = 0, pending = 0, rejected = 0, verified = 0, reviewed
 };
 
 // ── Cashier attribution table ────────────────────────────────────────────────
-const CashierTable = ({ rows = [], moduleColor }) => {
+const CashierTable = ({ rows = [], moduleColor, isShifts = false, isSecurity = false }) => {
   if (!rows.length) return null;
   const max = rows[0]?.count || 1;
   return (
     <div style={{ marginTop: '1.5rem' }}>
       <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
         <span style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: moduleColor, display: 'inline-block' }} />
-        Submission Breakdown by Cashier / Staff
+        {isShifts ? 'Shift Attribution by Personnel' : isSecurity ? 'Suspicious Threat Actors (IP/User)' : 'Submission Breakdown by Cashier / Staff'}
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
         {/* Table head */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px', padding: '0.6rem 1rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>
-          <span>Name</span><span style={{ textAlign: 'center' }}>Count</span><span>Top Category</span>
+        <div style={{ display: 'grid', gridTemplateColumns: (isShifts || isSecurity) ? '1fr 80px 100px 100px' : '1fr 80px 120px', padding: '0.6rem 1rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>
+          <span>{isSecurity ? 'Identifier' : 'Name'}</span>
+          <span style={{ textAlign: 'center' }}>{isShifts ? 'Shifts' : 'Count'}</span>
+          {isShifts ? (
+            <>
+              <span style={{ textAlign: 'center' }}>Avg Hours</span>
+              <span style={{ textAlign: 'center' }}>Flag Rate</span>
+            </>
+          ) : isSecurity ? (
+            <>
+              <span style={{ textAlign: 'center' }}>Threat</span>
+              <span style={{ textAlign: 'center' }}>Status</span>
+            </>
+          ) : (
+            <span>Top Category</span>
+          )}
         </div>
         {rows.map((row, i) => (
           <div key={i} style={{ borderBottom: i < rows.length - 1 ? '1px solid #f1f5f9' : 'none', backgroundColor: '#ffffff' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px', padding: '0.75rem 1rem', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: (isShifts || isSecurity) ? '1fr 80px 100px 100px' : '1fr 80px 120px', padding: '0.75rem 1rem', alignItems: 'center', gap: '8px' }}>
               {/* Name + bar */}
               <div>
                 <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1e293b', marginBottom: '4px' }}>{row.cashier}</div>
@@ -97,8 +113,20 @@ const CashierTable = ({ rows = [], moduleColor }) => {
               </div>
               {/* Count */}
               <div style={{ textAlign: 'center', fontWeight: 700, fontSize: '1rem', color: moduleColor }}>{row.count}</div>
-              {/* Top category */}
-              <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{row.topCategory || '—'}</div>
+              
+              {isShifts ? (
+                <>
+                  <div style={{ textAlign: 'center', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>{row.avgDuration}h</div>
+                  <div style={{ textAlign: 'center', fontSize: '0.85rem', fontWeight: 700, color: row.flaggedRate > 20 ? '#dc2626' : '#059669' }}>{row.flaggedRate}%</div>
+                </>
+              ) : isSecurity ? (
+                <>
+                  <div style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', textTransform: 'uppercase' }}>HIGH</div>
+                  <div style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#9d174d' }}>BLOCKED</div>
+                </>
+              ) : (
+                <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{row.topCategory || '—'}</div>
+              )}
             </div>
             {/* Example reasons */}
             {row.reasons?.length > 0 && (
@@ -214,9 +242,25 @@ const ModuleStatCard = ({ module, stats, config, isManagement, onAnalyze, analyz
           <Donut {...s} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <Pill label="Pending / In Progress" value={(s.pending || 0) + (s.verified || 0)} color="#f59e0b" />
-          <Pill label="Approved / Reviewed" value={(s.approved || 0) + (s.reviewed || 0)} color="#22c55e" />
-          <Pill label="Rejected" value={s.rejected || 0} color="#ef4444" />
+          {module === 'shifts' ? (
+            <>
+              <Pill label="Live / In Progress" value={s.pending || 0} color="#f59e0b" />
+              <Pill label="Sealed (Closed)" value={s.reviewed || 0} color="#22c55e" />
+            </>
+          ) : module === 'security' ? (
+            <>
+              <Pill label="Critical Alerts" value={s.ACCOUNT_LOCKOUT || 0} color="#dc2626" />
+              <Pill label="Unauthorized Access" value={s.PERMISSION_DENIED || 0} color="#dc2626" />
+              <Pill label="System Scanning" value={s.AUTH_FAILURE || 0} color="#f59e0b" />
+              <Pill label="Failed Logins" value={s.LOGIN_FAILED || 0} color="#f59e0b" />
+            </>
+          ) : (
+            <>
+              <Pill label="Pending / In Progress" value={(s.pending || 0) + (s.verified || 0)} color="#f59e0b" />
+              <Pill label="Approved / Reviewed" value={(s.approved || 0) + (s.reviewed || 0)} color="#22c55e" />
+              <Pill label="Rejected" value={s.rejected || 0} color="#ef4444" />
+            </>
+          )}
           {s.approvedAmountRWF != null && (
             <Pill label="Total Approved Value" value={fmtRWF(s.approvedAmountRWF)} color={config.color} />
           )}
@@ -241,7 +285,7 @@ const ModuleStatCard = ({ module, stats, config, isManagement, onAnalyze, analyz
         <div style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
             <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <BarChart2 size={16} style={{ color: config.color }} /> Reason Classification ({classified.total} records)
+              <BarChart2 size={16} style={{ color: config.color }} /> {module === 'shifts' ? 'Flag Reason Analysis' : 'Reason Classification'} ({classified.total} records)
             </span>
             {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
@@ -260,7 +304,31 @@ const ModuleStatCard = ({ module, stats, config, isManagement, onAnalyze, analyz
                   <CategoryCard key={i} cat={cat} moduleColor={config.color} />
                 ))}
               </div>
-              <CashierTable rows={classified.cashierAttribution || []} moduleColor={config.color} />
+              {module === 'shifts' && classified.stats && (
+                <div style={{ marginTop: '1.25rem', padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '10px', border: '1px solid #bae6fd', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>Avg Duration</p>
+                    <p style={{ margin: 0, fontSize: '1.25rem', fontBlack: 900, color: '#0c4a6e' }}>{classified.stats.avgDuration}h</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>Flag Rate</p>
+                    <p style={{ margin: 0, fontSize: '1.25rem', fontBlack: 900, color: classified.stats.flaggedRate > 20 ? '#b91c1c' : '#0c4a6e' }}>{classified.stats.flaggedRate}%</p>
+                  </div>
+                </div>
+              )}
+              {module === 'security' && classified.stats && (
+                <div style={{ marginTop: '1.25rem', padding: '1rem', backgroundColor: '#fff1f2', borderRadius: '10px', border: '1px solid #fecdd3', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 700, color: '#9f1239', textTransform: 'uppercase' }}>Critical Threats</p>
+                    <p style={{ margin: 0, fontSize: '1.25rem', fontBlack: 900, color: '#881337' }}>{classified.stats.criticalCount}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 700, color: '#9f1239', textTransform: 'uppercase' }}>Suspicious IPs</p>
+                    <p style={{ margin: 0, fontSize: '1.25rem', fontBlack: 900, color: '#881337' }}>{classified.stats.suspiciousCount}</p>
+                  </div>
+                </div>
+              )}
+              <CashierTable rows={classified.cashierAttribution || []} moduleColor={config.color} isShifts={module === 'shifts'} isSecurity={module === 'security'} />
             </>
           )}
         </div>
@@ -321,11 +389,13 @@ const AIInsights = () => {
 
   const visibleModules = isPrincipalCashier
     ? ['cancellations', 'refunds']
-    : isManagement
-      ? ['cancellations', 'refunds', 'incidents', 'transfers']
-      : user?.role === 'quality_assurance'
-        ? ['incidents']
-        : ['cancellations', 'refunds', 'incidents', 'transfers'];
+    : user?.role === 'admin'
+      ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'security']
+      : isManagement
+        ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts']
+        : user?.role === 'quality_assurance'
+          ? ['incidents', 'shifts']
+          : ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts'];
 
   return (
     <div>

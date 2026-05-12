@@ -19,6 +19,10 @@ import ResultTransferList from './pages/results-transfer/ResultTransferList';
 import PerformanceDashboard from './pages/performance/PerformanceDashboard';
 import Permissions from './pages/Permissions';
 import Unauthorized from './pages/Unauthorized';
+import OpenShift from './pages/shifts/OpenShift';
+import CloseShift from './pages/shifts/CloseShift';
+import ShiftDashboard from './pages/shifts/ShiftDashboard';
+import ShiftDetail from './pages/shifts/ShiftDetail';
 
 function App() {
   return (
@@ -33,7 +37,7 @@ function App() {
             
             <Route path="/users" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><Users /></ProtectedRoute>} />
             <Route path="/permissions" element={<ProtectedRoute allowedRoles={['admin']}><Permissions /></ProtectedRoute>} />
-            <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><AuditLogs /></ProtectedRoute>} />
+            <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['admin', 'quality_assurance', 'coo', 'deputy_coo']}><AuditLogs /></ProtectedRoute>} />
             <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'principal_cashier', 'consultant']}><AIInsights /></ProtectedRoute>} />
             
             <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><CancellationList /></ProtectedRoute>} />
@@ -46,6 +50,24 @@ function App() {
             <Route path="/performance" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care']}><PerformanceDashboard /></ProtectedRoute>} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
+
+            {/* ── Shift Module ── */}
+            <Route path="/shifts/open" element={
+              <ProtectedRoute allowedRoles={['cashier','customer_care','operations_staff','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff']}>
+                <OpenShift />
+              </ProtectedRoute>
+            } />
+            <Route path="/shifts/close/:id" element={
+              <ProtectedRoute allowedRoles={['cashier','customer_care','operations_staff','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff']}>
+                <CloseShift />
+              </ProtectedRoute>
+            } />
+            <Route path="/shifts/:id" element={<ShiftDetail />} />
+            <Route path="/shifts" element={
+              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'quality_assurance', 'it_officer']}>
+                <ShiftDashboard />
+              </ProtectedRoute>
+            } />
           </Route>
 
 

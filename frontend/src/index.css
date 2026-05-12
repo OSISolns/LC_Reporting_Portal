@@ -489,3 +489,108 @@ main { padding: var(--page-padding); }
 
 /* ── Hardware-accelerated sidebar slide ─────────────────────── */
 .sidebar-wrapper, .sidebar-wrapper aside { will-change: transform; }
+
+/* ════════════════════════════════════════════════════════════
+   SHIFT MODULE DESIGN SYSTEM (Light Theme / High Contrast)
+   ════════════════════════════════════════════════════════════ */
+
+.shift-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.shift-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+}
+
+.shift-input {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  color: #0f172a;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: 'Open Sans', sans-serif;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.shift-input:focus {
+  background: #ffffff;
+  border-color: #1b669d;
+  box-shadow: 0 0 0 4px rgba(27, 102, 157, 0.1);
+}
+
+.shift-input::placeholder {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.shift-select {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  color: #0f172a;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: 'Open Sans', sans-serif;
+  transition: all 0.2s;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1.25rem;
+}
+
+.shift-select:focus {
+  background: #ffffff;
+  border-color: #1b669d;
+  box-shadow: 0 0 0 4px rgba(27, 102, 157, 0.1);
+}
+
+.shift-select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.section-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #64748b;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #334155;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
