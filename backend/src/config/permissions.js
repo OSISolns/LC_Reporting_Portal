@@ -136,7 +136,7 @@ const ROLE_DEFAULTS = {
     user_management: { view:0, create:0, edit:0, delete:0 },
     audit_logs: { view:0 },
     reports: { view:0, download:0 },
-    staff_performance: { view:1, create:1 },
+    staff_performance: { view:1, create:0 },
   },
   staff: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
