@@ -15,7 +15,7 @@ exports.createReport = async (req, res, next) => {
       const User = require('../models/user');
       const Notification = require('../models/notification');
       
-      const rolesToNotify = ['admin', 'quality_assurance', 'it_officer', 'coo', 'deputy_coo', 'sales_manager', 'principal_cashier'];
+      const rolesToNotify = ['admin', 'it_officer', 'coo', 'deputy_coo', 'sales_manager', 'principal_cashier', 'hsfp'];
       for (const role of rolesToNotify) {
         const users = await User.findByRole(role);
         for (const user of users) {
@@ -48,18 +48,43 @@ exports.getAllReports = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-exports.reviewReport = async (req, res, next) => {
+exports.approveReport = async (req, res, next) => {
   try {
+    if (req.user.role !== 'hsfp') {
+      return res.status(403).json({ success: false, message: 'Only the Health & Safety Focal Person can approve incident reports.' });
+    }
     const { comments } = req.body;
-    const report = await Incident.review(req.params.id, req.user.id, comments);
-    
-    if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
-    
-    await logAction(req, 'REVIEW', 'incident_report', report.id, { status: 'reviewed' });
+    if (!comments || !comments.trim()) {
+      return res.status(400).json({ success: false, message: 'HSFP safety assessment and comments are required before approving.' });
+    }
+
+    const report = await Incident.approve(req.params.id, req.user.id, req.body);
+    if (!report) return res.status(404).json({ success: false, message: 'Report not found or not in pending status.' });
+
+    // Notify management
+    try {
+      const User = require('../models/user');
+      const Notification = require('../models/notification');
+      const notifyRoles = ['admin', 'coo', 'deputy_coo'];
+      for (const role of notifyRoles) {
+        const users = await User.findByRole(role);
+        for (const u of users) {
+          await Notification.create({
+            userId: u.id,
+            title: `Incident #${report.id} Approved by HSFP`,
+            message: `Report #${report.id} (${report.incident_type}) has been approved by the Health & Safety Focal Person.`,
+            type: 'success',
+            link: '/incidents'
+          });
+        }
+      }
+    } catch (e) {}
+
+    await logAction(req, 'APPROVE', 'incident_report', report.id, { status: 'approved' });
+    cache.invalidatePattern('inc:list');
+    cache.invalidate('ai:module_stats');
     res.json({ success: true, data: report });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 exports.getReportById = async (req, res, next) => {

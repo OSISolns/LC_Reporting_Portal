@@ -112,6 +112,7 @@ async function seed() {
       ['chairman', 'Chairman'],
       ['sales_manager', 'Sales Manager'],
       ['quality_assurance', 'Quality & Assurance'],
+      ['hsfp', 'Health & Safety Focal Person'],
       ['cashier', 'Cashier'],
       ['principal_cashier', 'Principal Cashier'],
       ['customer_care', 'Customer Care']

@@ -36,7 +36,7 @@ class Incident {
     const params = [];
 
     // Access control: regular users only see their own reports
-    if (user && !['coo', 'chairman', 'deputy_coo', 'quality_assurance', 'admin', 'it_officer', 'principal_cashier', 'sales_manager'].includes(user.role)) {
+    if (user && !['coo', 'chairman', 'deputy_coo', 'admin', 'it_officer', 'principal_cashier', 'sales_manager', 'hsfp'].includes(user.role)) {
       params.push(user.id);
       query += ` AND i.created_by = $${params.length}`;
     }
@@ -61,27 +61,55 @@ class Incident {
 
   static async findById(id) {
     const { rows } = await db.query(
-      `SELECT i.*, u.full_name as creator_name, r.full_name as reviewer_name
+      `SELECT i.*,
+              u.full_name as creator_name,
+              a.full_name as approver_name
        FROM incident_reports i
        LEFT JOIN users u ON i.created_by = u.id
-       LEFT JOIN users r ON i.reviewed_by = r.id
+       LEFT JOIN users a ON i.approved_by = a.id
        WHERE i.id = $1`,
       [id]
     );
     return rows[0];
   }
 
-  static async review(id, reviewerId, comments) {
+  static async approve(id, approverId, data) {
+    const { 
+      comments, 
+      rca_environment, 
+      rca_staff, 
+      rca_equipment, 
+      rca_policy, 
+      rca_verification_json, 
+      corrective_actions_json 
+    } = data;
+
     const { rows } = await db.query(
       `UPDATE incident_reports 
-       SET status = 'reviewed',
-           reviewed_by = $1,
-           reviewed_at = NOW(),
-           review_comments = $2,
+       SET status = 'approved',
+           approved_by = $1,
+           approved_at = NOW(),
+           hsfp_comments = $2,
+           rca_environment = $3,
+           rca_staff = $4,
+           rca_equipment = $5,
+           rca_policy = $6,
+           rca_verification_json = $7,
+           corrective_actions_json = $8,
            updated_at = NOW()
-       WHERE id = $3
+       WHERE id = $9 AND status = 'pending'
        RETURNING *`,
-      [reviewerId, comments, id]
+      [
+        approverId, 
+        comments, 
+        rca_environment, 
+        rca_staff, 
+        rca_equipment, 
+        rca_policy, 
+        rca_verification_json, 
+        corrective_actions_json,
+        id
+      ]
     );
     return rows[0];
   }

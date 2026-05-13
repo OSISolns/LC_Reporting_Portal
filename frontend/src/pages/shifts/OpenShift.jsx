@@ -1,21 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Briefcase,
   CheckCircle2,
-  Circle,
   Monitor,
   Smartphone,
   Printer,
   Phone,
   Headphones,
-  AlertCircle,
   ArrowRight,
-  ArrowLeft,
   ChevronRight,
-  CreditCard,
-  Lock
+  Lock,
+  BadgeCheck,
+  Clock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { openShift, getMyActiveShift } from '../../api/shifts';
@@ -424,12 +422,12 @@ export default function OpenShift() {
                 <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center border-2 border-slate-100">
                   <Clock size={28} className="text-[#1b669d] animate-spin-slow" />
                 </div>
-                <Button 
+                <button 
                   onClick={() => navigate(`/shifts/close/${newShiftId}`)}
-                  className="w-full bg-[#1b669d] hover:bg-[#124d77] py-6 rounded-2xl font-black uppercase tracking-widest text-sm"
+                  style={{ width: '100%', backgroundColor: '#1b669d', color: '#fff', border: 'none', borderRadius: '16px', padding: '1.25rem', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase' }}
                 >
                   Enter Workspace Now
-                </Button>
+                </button>
               </div>
             </motion.div>
           </div>

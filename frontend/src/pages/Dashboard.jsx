@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import ManagementDashboard from './ManagementDashboard';
 import StaffDashboard from './StaffDashboard';
-import QADashboard from './QADashboard';
+import HSFPDashboard from './HSFPDashboard';
 import ITDashboard from './ITDashboard';
 
 const MGMT_ROLES  = ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier'];
@@ -11,7 +11,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const role = user?.role;
 
-  if (role === 'quality_assurance')    return <QADashboard />;
+  if (role === 'hsfp')                 return <HSFPDashboard />;
   if (role === 'it_officer')           return <ITDashboard />;
   if (MGMT_ROLES.includes(role))       return <ManagementDashboard />;
   if (STAFF_ROLES.includes(role))      return <StaffDashboard />;

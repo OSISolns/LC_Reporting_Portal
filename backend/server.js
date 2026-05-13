@@ -28,6 +28,7 @@ const notificationRoutes   = require('./src/routes/notificationRoutes');
 const permissionRoutes      = require('./src/routes/permissions');
 const performanceRoutes     = require('./src/routes/performanceRoutes');
 const shiftRoutes           = require('./src/routes/shifts');
+const safetyRoutes          = require('./src/routes/safety');
 
 
 const app = express();
@@ -94,6 +95,7 @@ app.use('/api/notifications',     notificationRoutes);
 app.use('/api/permissions',       permissionRoutes);
 app.use('/api/performance',       performanceRoutes);
 app.use('/api/shifts',            shiftRoutes);
+app.use('/api/safety',            safetyRoutes);
 
 
 // ── Root ──────────────────────────────────────────────────────────────────────

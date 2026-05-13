@@ -7,7 +7,7 @@ const MODULES = [
   { name: 'cancellations',     display: 'Cancellation Requests', actions: ['view','create','edit','review','approve','reject','delete'] },
   { name: 'refunds',           display: 'Refund Requests',       actions: ['view','create','edit','review','approve','reject','delete'] },
   { name: 'results_transfer',  display: 'Result Transfers',      actions: ['view','create','edit','review','approve','reject','delete'] },
-  { name: 'incident_reports',  display: 'Incident Reports',      actions: ['view','create','edit','approve','delete'] },
+  { name: 'incident_reports',  display: 'Incident Reports',      actions: ['view','create','edit','review','approve','delete'] },
   { name: 'user_management',   display: 'User Management',       actions: ['view','create','edit','delete'] },
   { name: 'audit_logs',        display: 'Audit Logs',            actions: ['view'] },
   { name: 'reports',           display: 'Reports & Insights',    actions: ['view','download'] },
@@ -108,16 +108,6 @@ const ROLE_DEFAULTS = {
     reports: { view:0, download:0 },
     staff_performance: { view:1, create:0 },
   },
-  quality_assurance: {
-    cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
-    refunds: { view:1, create:0, edit:0, approve:0, reject:0 },
-    results_transfer: { view:1, create:0, edit:0, approve:0, reject:0 },
-    incident_reports: { view:1, create:1, edit:0, approve:1 },
-    user_management: { view:0, create:0, edit:0, delete:0 },
-    audit_logs: { view:1 },
-    reports: { view:1, download:1 },
-    staff_performance: { view:1, create:1 },
-  },
   lab_team_lead: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
     refunds: { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -157,6 +147,16 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:0 },
     reports: { view:0, download:0 },
     staff_performance: { view:0, create:0 },
+  },
+  hsfp: {
+    cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
+    refunds:          { view:0, create:0, edit:0, approve:0, reject:0 },
+    results_transfer: { view:0, create:0, edit:0, approve:0, reject:0 },
+    incident_reports: { view:1, create:0, edit:0, review:0, approve:1, delete:0 },
+    user_management:  { view:0, create:0, edit:0, delete:0 },
+    audit_logs:       { view:0 },
+    reports:          { view:0, download:0 },
+    staff_performance:{ view:0, create:0 },
   },
 };
 

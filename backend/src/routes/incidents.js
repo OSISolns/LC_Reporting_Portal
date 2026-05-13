@@ -27,19 +27,19 @@ router.get(
   incidentController.getAllReports
 );
 
-router.patch(
-  '/:id/review',
-  checkPermission('incident_reports', 'approve'),
-  validate([
-    param('id').isInt().withMessage('Invalid report ID'),
-    body('comments').optional().trim().isString()
-  ]),
-  incidentController.reviewReport
-);
-
 // Export routes
 router.get('/export/excel', checkPermission('reports', 'download'), incidentController.exportExcel);
 router.get('/:id/pdf', checkPermission('incident_reports', 'view'), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getPDF);
+
+router.patch(
+  '/:id/approve',
+  checkPermission('incident_reports', 'approve'),
+  validate([
+    param('id').isInt().withMessage('Invalid report ID'),
+    body('comments').trim().notEmpty().withMessage('HSFP comments are required for approval'),
+  ]),
+  incidentController.approveReport
+);
 
 router.get('/:id', checkPermission('incident_reports', 'view'), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getReportById);
 router.delete('/:id', checkPermission('incident_reports', 'delete'), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.deleteReport);

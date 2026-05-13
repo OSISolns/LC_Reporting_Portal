@@ -1,12 +1,12 @@
 import React from 'react';
 
-export const PrintHeader = ({ title, docType, docId, issuedAt }) => {
+export const PrintHeader = ({ title, docType, docId, issuedAt, alwaysVisible = false }) => {
   const year = new Date().getFullYear();
   const formattedId = `LC-${docType || 'RQ'}-${year}-${String(docId || '0').padStart(5, '0')}`;
   const displayDate = issuedAt ? new Date(issuedAt).toLocaleString() : new Date().toLocaleString();
 
   return (
-    <div className="no-screen">
+    <div className={alwaysVisible ? "" : "no-screen"}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <img src="/logo.png" style={{ height: "55px", width: "auto", display: "block" }} alt="Legacy Clinics Logo" />

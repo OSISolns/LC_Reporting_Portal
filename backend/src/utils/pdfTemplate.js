@@ -33,17 +33,25 @@ const getMedicalReportHTML = (type, data) => {
     'INCIDENT': 'Incident & Safety Report',
     'REFUND': 'Patient Refund Voucher',
     'CANCELLATION': 'Cancellation Form',
-    'RESULT_TRANSFER': 'Results Transfer Form'
+    'RESULT_TRANSFER': 'Results Transfer Form',
+    'SAFETY': 'Safety Investigation Report'
   };
 
   const getDocId = () => {
     const year = new Date().getFullYear();
-    const prefix = type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : type === 'RESULT_TRANSFER' ? 'RST' : 'CAN';
+    const prefix = type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : type === 'RESULT_TRANSFER' ? 'RST' : type === 'SAFETY' ? 'SAF' : 'CAN';
     return `LC-${prefix}-${year}-${String(data.id || '0').padStart(5, '0')}`;
   };
 
   let content = '';
   if (type === 'INCIDENT') {
+    let parsedVerification = [];
+    let parsedActions = [];
+    try {
+      if (data.rca_verification_json) parsedVerification = typeof data.rca_verification_json === 'string' ? JSON.parse(data.rca_verification_json) : data.rca_verification_json;
+      if (data.corrective_actions_json) parsedActions = typeof data.corrective_actions_json === 'string' ? JSON.parse(data.corrective_actions_json) : data.corrective_actions_json;
+    } catch(e) {}
+
     content = `
       <div class="medical-form-modern">
         <div class="medical-form-header">
@@ -62,34 +70,112 @@ const getMedicalReportHTML = (type, data) => {
           <tr><th>Associated Patient PID</th><td class="important-value">${data.pid_number || 'None Linked'}</td></tr>
         </table>
 
-        <div class="section-head">Section 2: Narrative & Analysis</div>
+        <div class="section-head">Section 2: Narrative & Initial Analysis</div>
         <table class="medical-form-table">
           <tr><th>Detailed Description</th><td>${data.description}</td></tr>
           <tr><th>Contributing Factors</th><td>${data.contributing_factors || 'No factors identified.'}</td></tr>
           <tr><th>Immediate Actions</th><td>${data.immediate_actions || 'No immediate actions recorded.'}</td></tr>
           <tr><th>Prevention Measures</th><td>${data.prevention_measures || 'Pending safety review.'}</td></tr>
+          ${data.review_comments ? `<tr><th>Historical Review Comments</th><td style="color:#64748b; font-style:italic;">"${data.review_comments}"</td></tr>` : ''}
         </table>
 
-        <div class="signature-grid">
+        ${data.status === 'approved' ? `
+          <div class="section-head">Section 3: Root Cause Analysis (Fishbone)</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px;">
+            <div style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px;">
+              <div style="font-size: 7pt; font-weight: 700; color: #64748b; margin-bottom: 4px;">ENVIRONMENT</div>
+              <div style="font-size: 8pt;">${data.rca_environment || 'N/A'}</div>
+            </div>
+            <div style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px;">
+              <div style="font-size: 7pt; font-weight: 700; color: #64748b; margin-bottom: 4px;">STAFF</div>
+              <div style="font-size: 8pt;">${data.rca_staff || 'N/A'}</div>
+            </div>
+            <div style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px;">
+              <div style="font-size: 7pt; font-weight: 700; color: #64748b; margin-bottom: 4px;">EQUIPMENT</div>
+              <div style="font-size: 8pt;">${data.rca_equipment || 'N/A'}</div>
+            </div>
+            <div style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px;">
+              <div style="font-size: 7pt; font-weight: 700; color: #64748b; margin-bottom: 4px;">POLICY</div>
+              <div style="font-size: 8pt;">${data.rca_policy || 'N/A'}</div>
+            </div>
+          </div>
+
+          ${parsedVerification.length > 0 ? `
+            <div style="padding: 0 20px 15px 20px;">
+              <div style="font-size: 8pt; font-weight: 700; color: #475569; margin-bottom: 6px;">VERIFICATION TABLE</div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt; border: 1px solid #e2e8f0;">
+                <thead>
+                  <tr style="background: #f8fafc;">
+                    <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: left;">Cause Factor</th>
+                    <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: left;">Verification Method</th>
+                    <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: left;">Acceptance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${parsedVerification.map(v => `
+                    <tr>
+                      <td style="padding: 6px; border: 1px solid #e2e8f0;">${v.factor}</td>
+                      <td style="padding: 6px; border: 1px solid #e2e8f0;">${v.test}</td>
+                      <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight:700;">${v.result}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : ''}
+
+          <div class="section-head">Section 4: Corrective Action Plan</div>
+          ${parsedActions.length > 0 ? `
+            <div style="padding: 15px 20px;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt; border: 1px solid #e2e8f0;">
+                <thead>
+                  <tr style="background: #f8fafc;">
+                    <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: left;">Objective</th>
+                    <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: left;">Activity</th>
+                    <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: left;">Timeline</th>
+                    <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: left;">Resp.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${parsedActions.map(a => `
+                    <tr>
+                      <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight:700;">${a.objective}</td>
+                      <td style="padding: 6px; border: 1px solid #e2e8f0;">${a.activity}</td>
+                      <td style="padding: 6px; border: 1px solid #e2e8f0;">${a.timeline}</td>
+                      <td style="padding: 6px; border: 1px solid #e2e8f0;">${a.resp}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : ''}
+
+          <div style="padding: 10px 20px 20px 20px;">
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px;">
+              <div style="font-size: 7pt; font-weight: 700; color: #166534; margin-bottom: 4px;">HSFP SUMMARY CONCLUSION</div>
+              <div style="font-size: 9pt; color: #14532d; font-style: italic;">"${data.hsfp_comments}"</div>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="signature-grid" style="border-top: 1px solid #e2e8f0; padding-top: 20px;">
           <div class="sig-box">
-            <span class="sig-label">Reporter Signature</span>
+            <span class="sig-label">Reported By</span>
             <div class="sig-line">${data.creator_name || '...'}</div>
-            <span class="sig-meta">${data.creator_role || 'Staff Member'} | ${new Date(data.created_at).toLocaleDateString()}</span>
+            <span class="sig-meta">Staff ID: ${data.created_by} | ${new Date(data.created_at).toLocaleDateString()}</span>
           </div>
-          <div class="sig-box">
-            <span class="sig-label">Quality Assurance</span>
-            <div class="sig-line">${data.verifier_name || ''}</div>
-            <span class="sig-meta">${data.verified_at ? new Date(data.verified_at).toLocaleDateString() : 'Pending Verification'}</span>
-          </div>
-          <div class="sig-box">
-            <span class="sig-label">Chief Operations Officer</span>
-            <div class="sig-line">${data.approver_name || ''}</div>
-            <span class="sig-meta">${data.approved_at ? new Date(data.approved_at).toLocaleDateString() : 'Pending Approval'}</span>
+          <div class="sig-box" style="flex: 2;">
+            <span class="sig-label">H.S.F.P Approval & Safety Validation</span>
+            <div class="sig-line" style="color: ${data.status === 'approved' ? '#166534' : '#94a3b8'};">
+              ${data.approver_name ? `APPROVED: ${data.approver_name}` : 'Awaiting Safety Analysis'}
+            </div>
+            <span class="sig-meta">${data.approved_at ? new Date(data.approved_at).toLocaleDateString() : 'Pending HSFP Review'}</span>
           </div>
         </div>
       </div>
     `;
-  } else if (type === 'REFUND') {
+  }
+ else if (type === 'REFUND') {
     content = `
       <div class="medical-form-modern">
         <div class="medical-form-header">
@@ -233,7 +319,53 @@ const getMedicalReportHTML = (type, data) => {
         </div>
       </div>
     `;
+  } else if (type === 'SAFETY') {
+    content = `
+      <div class="medical-form-modern">
+        <div class="medical-form-header" style="background-color: #003b44;">
+          <span>Consolidated Safety Investigation</span>
+          <span style="font-size: 8pt; opacity: 0.8;">Health & Safety Focal Office</span>
+        </div>
+        
+        <div class="section-head">Section 1: Investigation Identification</div>
+        <table class="medical-form-table">
+          <tr><th>Report Title</th><td class="important-value">${data.title}</td></tr>
+          <tr><th>Investigation Period</th><td>${new Date(data.period_start).toLocaleDateString()} — ${new Date(data.period_end).toLocaleDateString()}</td></tr>
+          <tr><th>Author / Investigator</th><td>${data.creator_name}</td></tr>
+          <tr><th>Submission Date</th><td>${new Date(data.created_at).toLocaleDateString()}</td></tr>
+        </table>
+
+        <div class="section-head">Section 2: Executive Summary</div>
+        <div style="padding: 15px 20px; font-size: 8.5pt; color: #1e293b; line-height: 1.6; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+          ${data.executive_summary}
+        </div>
+
+        <div class="section-head">Section 3: Key Findings & RCA Aggregation</div>
+        <div style="padding: 15px 20px; font-size: 8.5pt; color: #1e293b; line-height: 1.6; border-bottom: 1px solid #e2e8f0; white-space: pre-wrap;">
+          ${data.key_findings}
+        </div>
+
+        <div class="section-head">Section 4: Strategic Recommendations</div>
+        <div style="padding: 15px 20px; font-size: 8.5pt; color: #14532d; font-weight: 500; line-height: 1.6; background: #f0fdf4;">
+          ${data.recommendations}
+        </div>
+
+        <div class="signature-grid" style="border-top: 1.5px solid #003b44; padding-top: 25px;">
+          <div class="sig-box">
+            <span class="sig-label">Investigator Signature</span>
+            <div class="sig-line">${data.creator_name}</div>
+            <span class="sig-meta">Digitally Certified: ${new Date(data.created_at).toLocaleString()}</span>
+          </div>
+          <div class="sig-box" style="grid-column: span 2;">
+            <span class="sig-label">Official Approval & Clinical Board Validation</span>
+            <div class="sig-line" style="border-bottom-style: dashed; color: #94a3b8;">Awaiting Board Review</div>
+            <span class="sig-meta">Final safety certification pending board signature</span>
+          </div>
+        </div>
+      </div>
+    `;
   }
+
 
   return `
 <!DOCTYPE html>

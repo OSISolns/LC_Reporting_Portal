@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -18,6 +18,7 @@ const Sidebar = ({ onClose }) => {
     { name: 'Cancellations',    icon: <FileText size={20} />,        path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' } },
     { name: 'Refunds',          icon: <ReceiptText size={20} />,     path: '/refunds',      requiredPerm: { mod: 'refunds', act: 'view' } },
     { name: 'Incident Reports', icon: <AlertTriangle size={20} />,   path: '/incidents',    requiredPerm: { mod: 'incident_reports', act: 'view' } },
+    { name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' } },
     { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' } },
     { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' } },
     { name: 'Insights',         icon: <Brain size={20} />,           path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' } },
@@ -30,9 +31,12 @@ const Sidebar = ({ onClose }) => {
   ];
 
   const SHIFT_STAFF_ROLES   = ['cashier', 'customer_care', 'operations_staff', 'principal_cashier'];
-  const SHIFT_REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'quality_assurance'];
+  const SHIFT_REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin'];
 
   const filteredMenu = menuItems.filter(item => {
+    // Explicitly hide Insights from HSFP
+    if (item.name === 'Insights' && user?.role === 'hsfp') return false;
+    
     if (item.staffOnly)   return SHIFT_STAFF_ROLES.includes(user?.role);
     if (item.reviewerOnly) return SHIFT_REVIEWER_ROLES.includes(user?.role);
     if (item.adminOnly)    return user?.role === 'admin';

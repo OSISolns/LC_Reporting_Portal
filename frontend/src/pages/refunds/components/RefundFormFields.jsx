@@ -143,15 +143,7 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
               placeholder="Provide full details for the refund request..." />
           </div>
 
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Billed By (Cashier) *</label>
-            <select name="billedBy" required value={formData.billedBy || ''} onChange={handleChange} style={selectStyle}>
-              <option value="">Select Cashier</option>
-              {staff && staff.map(s => (
-                <option key={s.id} value={s.id}>{s.full_name} ({s.role_name})</option>
-              ))}
-            </select>
-          </div>
+
 
         </div>
       </div>
