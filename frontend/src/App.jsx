@@ -55,18 +55,18 @@ function App() {
 
             {/* ── Shift Module ── */}
             <Route path="/shifts/open" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','operations_staff','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff']}>
                 <OpenShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/close/:id" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','operations_staff','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff']}>
                 <CloseShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/:id" element={<ShiftDetail />} />
             <Route path="/shifts" element={
-              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'it_officer']}><ShiftDashboard /></ProtectedRoute>
+              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'it_officer', 'operations_staff']}><ShiftDashboard /></ProtectedRoute>
             } />
           </Route>
 
