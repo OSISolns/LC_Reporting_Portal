@@ -35,11 +35,29 @@ exports.updateUser = async (req, res, next) => {
 
 exports.deleteUser = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const { adminPassword } = req.body;
+    if (!adminPassword) {
+      return res.status(400).json({ success: false, message: 'Administrative password required to confirm deletion.' });
+    }
+
+    // Verify password of the current user performing the delete
+    const bcrypt = require('bcryptjs');
+    const currentUser = await User.findById(req.user.id);
+    const isMatch = await bcrypt.compare(adminPassword, currentUser.password_hash);
+
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid administrative password. Deletion aborted.' });
+    }
+
+    const userToDelete = await User.findById(req.params.id);
+    if (!userToDelete) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (userToDelete.id === req.user.id) {
+      return res.status(400).json({ success: false, message: 'You cannot delete your own account.' });
+    }
 
     await User.delete(req.params.id);
-    await logAction(req, 'DELETE', 'user', req.params.id, { email: user.email, fullName: user.full_name });
+    await logAction(req, 'DELETE', 'user', req.params.id, { email: userToDelete.email, fullName: userToDelete.full_name });
     res.json({ success: true, message: 'User deleted successfully' });
   } catch (err) {
     console.error('Delete User Failed:', err);

@@ -25,6 +25,10 @@ const Users = () => {
   const [newPassword, setNewPassword] = useState('');
   const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [adminPasswordForDelete, setAdminPasswordForDelete] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -32,11 +36,16 @@ const Users = () => {
 
   // Full edit access (admin-level): show all users and all roles
   // Limited access (e.g. IT Officer): show only non-privileged staff
-  const canEditAll = hasPermission('user_management', 'edit');
+  const canEditAll = currentUser?.role === 'admin';
+  const isITOfficer = currentUser?.role === 'it_officer';
+
+  // Define low-level roles that can be managed by IT Officers or other limited admins
+  const LOW_LEVEL_ROLES_DISPLAY = ['Customer Care', 'Principal Cashier', 'Cashier', 'Operations Staff', 'Staff Member', 'Health & Safety Focal Person'];
+  const LOW_LEVEL_ROLES_KEY = ['customer_care', 'principal_cashier', 'cashier', 'operations_staff', 'staff', 'hsfp'];
 
   const filteredUsers = (canEditAll
     ? users
-    : users.filter(u => ['Cashier', 'Customer Care', 'Patient Relations', 'Staff Member', 'Health & Safety Focal Person'].includes(u.role_name))
+    : users.filter(u => LOW_LEVEL_ROLES_DISPLAY.includes(u.role_name))
   ).filter(u => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -50,7 +59,7 @@ const Users = () => {
 
   const filteredRoles = canEditAll
     ? roles
-    : roles.filter(r => ['cashier', 'customer_care', 'staff', 'hsfp'].includes(r.name));
+    : roles.filter(r => LOW_LEVEL_ROLES_KEY.includes(r.name));
 
   const fetchData = async () => {
     try {
@@ -80,20 +89,33 @@ const Users = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleDelete = async (userId, userName) => {
+  const handleDeleteClick = (userId, userName) => {
     if (userId === currentUser.id) {
       showToast('Security Protocol Error: You cannot delete your own account.', 'error');
       return;
     }
-    if (window.confirm(`CRITICAL ACTION: Are you sure you want to permanently delete "${userName}"? This cannot be undone.`)) {
-      try {
-        await deleteUser(userId);
-        fetchData();
-        showToast(`Staff account "${userName}" has been permanently deleted.`, 'success');
-      } catch (err) {
-        console.error('Delete error:', err);
-        showToast(err.response?.data?.message || 'Failed to delete user.', 'error');
-      }
+    setUserToDelete({ id: userId, name: userName });
+    setAdminPasswordForDelete('');
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async (e) => {
+    e.preventDefault();
+    if (!adminPasswordForDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteUser(userToDelete.id, adminPasswordForDelete);
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+      setAdminPasswordForDelete('');
+      fetchData();
+      showToast(`Staff account "${userToDelete.name}" has been permanently deleted.`, 'success');
+    } catch (err) {
+      console.error('Delete error:', err);
+      showToast(err.response?.data?.message || 'Failed to delete user.', 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -319,7 +341,7 @@ const Users = () => {
                       <Edit size={18} />
                     </button>
                     <button 
-                      onClick={() => handleDelete(u.id, u.full_name)} 
+                      onClick={() => handleDeleteClick(u.id, u.full_name)} 
                       title="Delete User"
                       style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '8px', borderRadius: '8px', transition: 'background 0.2s' }} 
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'} 
@@ -474,6 +496,66 @@ const Users = () => {
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
               <button type="submit" style={{ flex: 1, padding: '12px', backgroundColor: '#003b44', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>Update Record</button>
               <button type="button" onClick={() => setIsModalOpen(false)} style={{ flex: 1, padding: '12px', backgroundColor: '#f1f5f9', color: 'var(--primary-dark)', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Delete User Modal */}
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="CRITICAL: Protocol Authorization Required">
+        {userToDelete && (
+          <form onSubmit={handleConfirmDelete} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ padding: '1rem', backgroundColor: '#fff1f2', border: '1px solid #fecaca', borderRadius: '8px', display: 'flex', gap: '12px' }}>
+              <AlertCircle size={24} color="#dc2626" />
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, color: '#991b1b', fontSize: '0.95rem' }}>Permanent Deletion Protocol</p>
+                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#b91c1c' }}>
+                  You are about to permanently delete the staff account for <strong>{userToDelete.name}</strong>. This action is irreversible and will be logged in the audit trail.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Confirm with Administrative Password</label>
+              <div style={{ position: 'relative' }}>
+                <Key size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                <input
+                  type="password"
+                  required
+                  autoFocus
+                  value={adminPasswordForDelete}
+                  onChange={(e) => setAdminPasswordForDelete(e.target.value)}
+                  placeholder="Enter your password to authorize"
+                  style={{ width: '100%', padding: '12px 12px 12px 40px', backgroundColor: '#f8fafc', color: 'var(--text-primary)', border: '1.5px solid var(--border-color)', borderRadius: '10px', outline: 'none' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+              <button 
+                type="submit" 
+                disabled={isDeleting || !adminPasswordForDelete}
+                style={{ 
+                  flex: 2, 
+                  padding: '12px', 
+                  backgroundColor: '#dc2626', 
+                  color: '#ffffff', 
+                  border: 'none', 
+                  borderRadius: '10px', 
+                  fontWeight: 700, 
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  opacity: isDeleting ? 0.7 : 1
+                }}
+              >
+                {isDeleting ? 'Processing...' : 'Authorize & Delete Permanently'}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setIsDeleteModalOpen(false)} 
+                style={{ flex: 1, padding: '12px', backgroundColor: '#f1f5f9', color: 'var(--primary-dark)', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
             </div>
           </form>
         )}
