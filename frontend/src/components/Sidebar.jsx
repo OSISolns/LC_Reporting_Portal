@@ -30,8 +30,8 @@ const Sidebar = ({ onClose }) => {
     { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: null, reviewerOnly: true },
   ];
 
-  const SHIFT_STAFF_ROLES   = ['cashier', 'customer_care', 'operations_staff', 'principal_cashier'];
-  const SHIFT_REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin'];
+  const SHIFT_STAFF_ROLES   = ['cashier', 'customer_care', 'principal_cashier'];
+  const SHIFT_REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff'];
 
   const filteredMenu = menuItems.filter(item => {
     // Explicitly hide Insights from HSFP
