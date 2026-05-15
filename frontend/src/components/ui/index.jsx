@@ -168,3 +168,104 @@ export function CardDescription({ className, children, ...props }) {
     </p>
   )
 }
+// ── Tabs ──────────────────────────────────────────────────────────────────
+const TabsContext = React.createContext(null)
+
+export function Tabs({ defaultValue, value, onValueChange, children, className }) {
+  const [activeTab, setActiveTab] = React.useState(value || defaultValue)
+  
+  React.useEffect(() => {
+    if (value !== undefined) setActiveTab(value)
+  }, [value])
+
+  const handleTabChange = (val) => {
+    if (value === undefined) setActiveTab(val)
+    if (onValueChange) onValueChange(val)
+  }
+
+  return (
+    <TabsContext.Provider value={{ activeTab, setActiveTab: handleTabChange }}>
+      <div className={cn("w-full", className)}>{children}</div>
+    </TabsContext.Provider>
+  )
+}
+
+export function TabsList({ className, children }) {
+  return (
+    <div className={cn("inline-flex items-center justify-center rounded-2xl bg-slate-100 p-1.5 text-slate-500", className)}>
+      {children}
+    </div>
+  )
+}
+
+export function TabsTrigger({ value, className, children }) {
+  const { activeTab, setActiveTab } = React.useContext(TabsContext)
+  const isActive = activeTab === value
+
+  return (
+    <button
+      type="button"
+      onClick={() => setActiveTab(value)}
+      className={cn(
+        "inline-flex items-center justify-center whitespace-nowrap rounded-xl px-4 py-2 text-sm font-bold ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        isActive 
+          ? "bg-white text-[#1b669d] shadow-sm" 
+          : "hover:bg-slate-50 hover:text-slate-900",
+        className
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function TabsContent({ value, className, children }) {
+  const { activeTab } = React.useContext(TabsContext)
+  if (activeTab !== value) return null
+
+  return (
+    <div className={cn("mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2", className)}>
+      {children}
+    </div>
+  )
+}
+
+// ── Dialog ────────────────────────────────────────────────────────────────
+export function Dialog({ open, onOpenChange, children }) {
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-all animate-in fade-in duration-200">
+      <div 
+        className="fixed inset-0" 
+        onClick={() => onOpenChange?.(false)} 
+      />
+      <div className="relative z-50 w-full max-w-lg scale-100 opacity-100 transition-all animate-in zoom-in-95 duration-200">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export function DialogContent({ className, children }) {
+  return (
+    <Card className={cn("relative grid w-full gap-4 p-0 overflow-hidden", className)}>
+      {children}
+    </Card>
+  )
+}
+
+export function DialogHeader({ className, children }) {
+  return (
+    <div className={cn("flex flex-col space-y-1.5 p-6 text-center sm:text-left border-b", className)}>
+      {children}
+    </div>
+  )
+}
+
+export function DialogTitle({ className, children }) {
+  return <CardTitle className={className}>{children}</CardTitle>
+}
+
+export function DialogDescription({ className, children }) {
+  return <CardDescription className={className}>{children}</CardDescription>
+}

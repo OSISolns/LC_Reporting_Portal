@@ -23,6 +23,7 @@ const EQUIPMENT_MAP = {
   cashier: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
   helpdesk: ['PC', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
   call_center: ['PC', 'Headset'],
+  nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
 };
 
 /**
@@ -110,7 +111,7 @@ exports.openShift = async (req, res, next) => {
     }
 
     // Validate shift role
-    if (!['cashier', 'helpdesk', 'call_center'].includes(shift_role)) {
+    if (!['cashier', 'helpdesk', 'call_center', 'nurse'].includes(shift_role)) {
       return res.status(400).json({ success: false, message: 'Invalid shift role.' });
     }
 
@@ -199,7 +200,7 @@ exports.saveDraft = async (req, res, next) => {
     }
 
     // Upsert role-specific close data
-    await upsertRoleCloseData(shift.shift_role, id, cashier_close, helpdesk_close, callcenter_close);
+    await upsertRoleCloseData(shift.shift_role, id, cashier_close, helpdesk_close, callcenter_close, req.body.nurse_close);
 
     res.json({ success: true, message: 'Draft saved.', data: { shiftId: id, status: 'draft' } });
   } catch (err) { next(err); }
@@ -283,7 +284,7 @@ exports.closeShift = async (req, res, next) => {
     }
 
     // Upsert role-specific data
-    await upsertRoleCloseData(shift.shift_role, id, cashier_close, helpdesk_close, callcenter_close);
+    await upsertRoleCloseData(shift.shift_role, id, cashier_close, helpdesk_close, callcenter_close, req.body.nurse_close);
 
     // Evaluate flags
     const allEquip = await q(
@@ -459,7 +460,7 @@ exports.getShiftById = async (req, res, next) => {
     if (!shift) return res.status(404).json({ success: false, message: 'Shift not found.' });
 
     // Non-reviewers can only see their own shifts
-    const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'quality_assurance', 'it_officer'];
+    const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer'];
     if (!REVIEWER_ROLES.includes(req.user.role) && shift.user_id !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
@@ -526,6 +527,8 @@ async function enrichShiftDetail(shift) {
         }
         : null,
     };
+  } else if (shift.shift_role === 'nurse') {
+    roleData = { closing: await q1(`SELECT * FROM shift_nurse_close WHERE shift_id = ?`, [shift.id]) };
   }
 
   return {
@@ -538,7 +541,7 @@ async function enrichShiftDetail(shift) {
 }
 
 // ─── Internal: upsert role-specific closing data ─────────────────────────────
-async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_close, callcenter_close) {
+async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_close, callcenter_close, nurse_close) {
   if (shift_role === 'cashier' && cashier_close) {
     const c = cashier_close;
     const discrepancy =
@@ -641,6 +644,22 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
           call_top_reasons, has_pending_followups, followup_details
         ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
         [shiftId, ...payload]
+      );
+    }
+  }
+  
+  if (shift_role === 'nurse' && nurse_close) {
+    const n = nurse_close;
+    const existing = await q1(`SELECT id FROM shift_nurse_close WHERE shift_id = ?`, [shiftId]);
+    if (existing) {
+      await db.query(
+        `UPDATE shift_nurse_close SET total_assessments = ?, total_incidents = ?, handover_sbar_sb = ?, handover_sbar_ar = ?, updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) WHERE shift_id = ?`,
+        [n.total_assessments || 0, n.total_incidents || 0, n.handover_sbar_sb || null, n.handover_sbar_ar || null, shiftId]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO shift_nurse_close (shift_id, total_assessments, total_incidents, handover_sbar_sb, handover_sbar_ar) VALUES (?,?,?,?,?)`,
+        [shiftId, n.total_assessments || 0, n.total_incidents || 0, n.handover_sbar_sb || null, n.handover_sbar_ar || null]
       );
     }
   }

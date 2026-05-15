@@ -26,7 +26,6 @@ INSERT INTO roles (name, display_name) VALUES
   ('sales_manager',    'Sales Manager'),
   ('coo',              'Chief Operations Officer'),
   ('deputy_coo',       'Deputy COO'),
-  ('quality_assurance','Quality & Assurance'),
   ('chairman',         'Chairman'),
   ('lab_team_lead',    'Laboratory Team Lead'),
   ('it_officer',       'IT Officer');

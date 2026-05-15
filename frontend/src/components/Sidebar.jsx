@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -21,17 +21,18 @@ const Sidebar = ({ onClose }) => {
     { name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' } },
     { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' } },
     { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' } },
+    { name: 'Clinical Sheets', icon: <Stethoscope size={20} />,     path: '/clinical-observation', requiredPerm: { mod: 'clinical_observation', act: 'view' } },
     { name: 'Insights',         icon: <Brain size={20} />,           path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' } },
     { name: 'User Management',  icon: <Users size={20} />,           path: '/users',        requiredPerm: { mod: 'user_management', act: 'view' } },
     { name: 'Permissions',      icon: <Shield size={20} />,          path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, adminOnly: true }, // Restricted to admin role only
     { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, adminOnly: true }, // Restricted to admin only
     // Shift Module
-    { name: 'Active Shift',     icon: <Clock size={20} />,           path: '/shifts/open',  requiredPerm: null, staffOnly: true },
+    { name: 'Shift Management', icon: <Clock size={20} />,           path: '/shifts',  requiredPerm: null, staffOnly: true },
     { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: null, reviewerOnly: true },
   ];
 
-  const SHIFT_STAFF_ROLES   = ['cashier', 'customer_care', 'principal_cashier'];
-  const SHIFT_REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff'];
+  const SHIFT_STAFF_ROLES   = ['cashier', 'customer_care', 'principal_cashier', 'nurse'];
+  const SHIFT_REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'nurse'];
 
   const filteredMenu = menuItems.filter(item => {
     // Explicitly hide Insights from HSFP

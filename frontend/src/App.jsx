@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
@@ -23,7 +23,18 @@ import OpenShift from './pages/shifts/OpenShift';
 import CloseShift from './pages/shifts/CloseShift';
 import ShiftDashboard from './pages/shifts/ShiftDashboard';
 import ShiftDetail from './pages/shifts/ShiftDetail';
+import NurseShiftDashboard from './pages/shifts/NurseShiftDashboard';
 import SafetyManagement from './pages/SafetyManagement';
+import ClinicalSheet from './pages/ClinicalSheet';
+import ClinicalObservationList from './pages/ClinicalObservationList';
+import PatientRecords from './pages/PatientRecords';
+
+
+const ShiftDashboardRedirect = () => {
+  const { user } = useAuth();
+  if (user?.role === 'nurse') return <NurseShiftDashboard />;
+  return <ShiftDashboard />;
+};
 
 function App() {
   return (
@@ -39,34 +50,40 @@ function App() {
             <Route path="/users" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><Users /></ProtectedRoute>} />
             <Route path="/permissions" element={<ProtectedRoute allowedRoles={['admin']}><Permissions /></ProtectedRoute>} />
             <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['admin', 'coo', 'deputy_coo', 'hsfp']}><AuditLogs /></ProtectedRoute>} />
-            <Route path="/safety-management" element={<ProtectedRoute allowedRoles={['hsfp', 'admin']}><SafetyManagement /></ProtectedRoute>} />
-            <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'quality_assurance', 'principal_cashier', 'consultant']}><AIInsights /></ProtectedRoute>} />
+            <Route path="/safety-management" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer']}><SafetyManagement /></ProtectedRoute>} />
+            <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer']}><AIInsights /></ProtectedRoute>} />
             
-            <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><CancellationList /></ProtectedRoute>} />
+            <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><CancellationList /></ProtectedRoute>} />
             
-            <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><RefundList /></ProtectedRoute>} />
+            <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><RefundList /></ProtectedRoute>} />
             
-            <Route path="/incidents" element={<IncidentList />} />
+            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer']}><IncidentList /></ProtectedRoute>} />
+
             
-            <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><ResultTransferList /></ProtectedRoute>} />
-            <Route path="/performance" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff']}><PerformanceDashboard /></ProtectedRoute>} />
+            <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><ResultTransferList /></ProtectedRoute>} />
+            <Route path="/performance" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer']}><PerformanceDashboard /></ProtectedRoute>} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/clinical-observation" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer']}><ClinicalObservationList /></ProtectedRoute>} />
+            <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer']}><ClinicalSheet /></ProtectedRoute>} />
+            <Route path="/patients/:patientId/records" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer']}><PatientRecords /></ProtectedRoute>} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* ── Shift Module ── */}
             <Route path="/shifts/open" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer']}>
                 <OpenShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/close/:id" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer']}>
                 <CloseShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/:id" element={<ShiftDetail />} />
             <Route path="/shifts" element={
-              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'it_officer', 'operations_staff']}><ShiftDashboard /></ProtectedRoute>
+              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'it_officer', 'operations_staff', 'nurse', 'reviewer']}>
+                <ShiftDashboardRedirect />
+              </ProtectedRoute>
             } />
           </Route>
 

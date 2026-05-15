@@ -111,11 +111,11 @@ async function seed() {
       ['deputy_coo', 'Deputy COO'],
       ['chairman', 'Chairman'],
       ['sales_manager', 'Sales Manager'],
-      ['quality_assurance', 'Quality & Assurance'],
       ['hsfp', 'Health & Safety Focal Person'],
       ['cashier', 'Cashier'],
       ['principal_cashier', 'Principal Cashier'],
-      ['customer_care', 'Customer Care']
+      ['customer_care', 'Customer Care'],
+      ['nurse', 'Clinical Nurse']
     ];
 
     for (const [name, display] of roles) {
@@ -170,8 +170,8 @@ async function seed() {
       { name: 'NIYOMUGABO Valery', username: 'lc_valery', email: 'valery@legacyclinics.rw', role: 'admin', pass: passwordHash1234 },
       { name: 'BOUHARI Linganwa Minega', username: 'lc_minega', email: 'linganwam@legacyclinics.rw', role: 'admin', pass: passwordHash1234 },
       { name: 'UMUHOZA Nadège', username: 'lc_nadege', email: 'nadege@legacyclinics.rw', role: 'principal_cashier', pass: passwordHash1234 },
-      { name: 'BISANUKURI Evergiste', username: 'lc_bisanukuri', email: 'bisanukuri@legacyclinics.rw', role: 'quality_assurance', pass: passwordHash1234 },
-      { name: 'Mr. Chairman', username: 'lc_chairman', email: 'jeanmalic@yahoo.fr', role: 'chairman', pass: passwordHashLegacy }
+      { name: 'Mr. Chairman', username: 'lc_chairman', email: 'jeanmalic@yahoo.fr', role: 'chairman', pass: passwordHashLegacy },
+      { name: 'NURSE Joyce', username: 'lc_joyce', email: 'joyce@legacyclinics.rw', role: 'nurse', pass: passwordHash1234 }
     ];
 
     for (const u of users) {

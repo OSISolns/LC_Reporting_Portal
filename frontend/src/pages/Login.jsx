@@ -40,9 +40,7 @@ const Login = () => {
       // Verify both that the element exists and contains the encoded text, 
       // and that decoding it yields the original author's signature
       if (!el || el.innerText !== displayedText || rot13(el.innerText) !== 'Valery Structure') {
-        // If tampered, softly break UI by clearing out the card or showing a blank page
-        const body = document.querySelector('body');
-        if (body) body.style.display = 'none';
+        console.warn('System signature integrity check failed.');
       }
     };
     

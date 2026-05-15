@@ -5,7 +5,7 @@ import HSFPDashboard from './HSFPDashboard';
 import ITDashboard from './ITDashboard';
 
 const MGMT_ROLES  = ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier'];
-const STAFF_ROLES = ['cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'consultant'];
+const STAFF_ROLES = ['cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'consultant', 'nurse'];
 
 const Dashboard = () => {
   const { user } = useAuth();

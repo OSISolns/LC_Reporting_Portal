@@ -34,12 +34,13 @@ const getMedicalReportHTML = (type, data) => {
     'REFUND': 'Patient Refund Voucher',
     'CANCELLATION': 'Cancellation Form',
     'RESULT_TRANSFER': 'Results Transfer Form',
-    'SAFETY': 'Safety Investigation Report'
+    'SAFETY': 'Safety Investigation Report',
+    'CLINICAL_SHEET': 'Patient Observation Records Sheet'
   };
 
   const getDocId = () => {
     const year = new Date().getFullYear();
-    const prefix = type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : type === 'RESULT_TRANSFER' ? 'RST' : type === 'SAFETY' ? 'SAF' : 'CAN';
+    const prefix = type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : type === 'RESULT_TRANSFER' ? 'RST' : type === 'SAFETY' ? 'SAF' : type === 'CLINICAL_SHEET' ? 'CLN' : 'CAN';
     return `LC-${prefix}-${year}-${String(data.id || '0').padStart(5, '0')}`;
   };
 
@@ -55,7 +56,7 @@ const getMedicalReportHTML = (type, data) => {
     content = `
       <div class="medical-form-modern">
         <div class="medical-form-header">
-          <span>Clinical Quality Assurance Report</span>
+          <span>Clinical Incident Report</span>
           <span style="font-size: 8pt; opacity: 0.8;">Legacy Medical Center</span>
         </div>
         ${stampHtml}
@@ -288,7 +289,7 @@ const getMedicalReportHTML = (type, data) => {
       <div class="medical-form-modern">
         <div class="medical-form-header">
           <span>Laboratory Result Transfer Order</span>
-          <span style="font-size: 8pt; opacity: 0.8;">Quality Assurance Unit</span>
+          <span style="font-size: 8pt; opacity: 0.8;">Laboratory Services</span>
         </div>
         ${stampHtml}
         
@@ -360,6 +361,151 @@ const getMedicalReportHTML = (type, data) => {
             <span class="sig-label">Official Approval & Clinical Board Validation</span>
             <div class="sig-line" style="border-bottom-style: dashed; color: #94a3b8;">Awaiting Board Review</div>
             <span class="sig-meta">Final safety certification pending board signature</span>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (type === 'CLINICAL_SHEET') {
+    const iden = data.identification || {};
+    const triage = data.triage || {};
+    const notes = data.progress_notes || [];
+    const mar = data.medication_mar || {};
+    const sbar = data.sbar || {};
+
+    content = `
+      <div class="medical-form-modern" style="border:none; box-shadow:none;">
+        <div style="text-align:center; margin-bottom:10px;">
+          <h2 style="margin:0; font-size:14pt; color:#1e293b;">PATIENT OBSERVATION RECORDS SHEET</h2>
+          <div style="font-size:8pt; color:#64748b;">Legacy Clinics & Diagnostics • Nurse Assessment</div>
+        </div>
+
+        <div class="section-head" style="background:#223f85; color:white;">I. Patient Identification</div>
+        <div style="padding:10px; display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+          <table class="medical-form-table" style="border:none;">
+            <tr><th style="width:40%; font-size:7pt;">Last name</th><td style="font-size:8pt; border-bottom:1px solid #ccc;">${iden.last_name || ''}</td></tr>
+            <tr><th style="width:40%; font-size:7pt;">First name</th><td style="font-size:8pt; border-bottom:1px solid #ccc;">${iden.first_name || ''}</td></tr>
+            <tr><th style="width:40%; font-size:7pt;">Occupation</th><td style="font-size:8pt; border-bottom:1px solid #ccc;">${iden.occupation || ''}</td></tr>
+            <tr><th style="width:40%; font-size:7pt;">National ID / Passport</th><td style="font-size:8pt; border-bottom:1px solid #ccc;">${iden.national_id || ''}</td></tr>
+            <tr><th style="width:40%; font-size:7pt;">Date of birth</th><td style="font-size:8pt; border-bottom:1px solid #ccc;">${iden.dob || ''}</td></tr>
+          </table>
+          <table class="medical-form-table" style="border:none;">
+            <tr><th style="width:40%; font-size:7pt;">Gender</th><td style="font-size:8pt; border-bottom:1px solid #ccc;">${iden.gender || ''}</td></tr>
+            <tr><th style="width:40%; font-size:7pt;">Patient ID (PID)</th><td style="font-size:8pt; border-bottom:1px solid #ccc; font-weight:700;">${iden.pid || ''}</td></tr>
+            <tr><th style="width:40%; font-size:7pt;">Appt. Date & No.</th><td style="font-size:8pt; border-bottom:1px solid #ccc;">${iden.appt_date_no || ''}</td></tr>
+            <tr><th style="width:40%; font-size:7pt;">Health insurance</th><td style="font-size:8pt; border-bottom:1px solid #ccc;">${iden.insurance || ''}</td></tr>
+            <tr><th style="width:40%; font-size:7pt;">Date/Time/RN</th><td style="font-size:8pt; border-bottom:1px solid #ccc;">${iden.date || ''} ${iden.time || ''} / ${iden.rn || ''}</td></tr>
+          </table>
+        </div>
+
+        <div style="padding:0 10px 10px 10px;">
+          <div style="font-size:8pt; font-weight:700; margin-bottom:5px; color:#223f85;">Nursing Assessment</div>
+          <table class="medical-form-table" style="margin-bottom:10px;">
+            <tr>
+              <th style="font-size:7pt;">Prev Illness (Med)</th><td>${triage.prev_illness_med || ''}</td>
+              <th style="font-size:7pt;">Prev Illness (Surg)</th><td>${triage.prev_illness_surg || ''}</td>
+            </tr>
+            <tr>
+              <th style="font-size:7pt;">Allergy (1)</th><td>${triage.allergy_1 || ''}</td>
+              <th style="font-size:7pt;">Allergy (2)</th><td>${triage.allergy_2 || ''}</td>
+            </tr>
+          </table>
+          <table style="width:100%; border-collapse:collapse; text-align:center; font-size:7.5pt; border:1px solid #e2e8f0;">
+            <tr style="background:#f8fafc;">
+              <th style="border:1px solid #e2e8f0; padding:4px;">Temp (°C)</th>
+              <th style="border:1px solid #e2e8f0; padding:4px;">Pulse (bpm)</th>
+              <th style="border:1px solid #e2e8f0; padding:4px;">RR (bpm)</th>
+              <th style="border:1px solid #e2e8f0; padding:4px;">BP (mmHg)</th>
+              <th style="border:1px solid #e2e8f0; padding:4px;">Weight (kg)</th>
+              <th style="border:1px solid #e2e8f0; padding:4px;">SpO2 (%)</th>
+            </tr>
+            <tr>
+              <td style="border:1px solid #e2e8f0; padding:4px;">${triage.temp || ''}</td>
+              <td style="border:1px solid #e2e8f0; padding:4px;">${triage.pulse || ''}</td>
+              <td style="border:1px solid #e2e8f0; padding:4px;">${triage.rr || ''}</td>
+              <td style="border:1px solid #e2e8f0; padding:4px;">${triage.bp || ''}</td>
+              <td style="border:1px solid #e2e8f0; padding:4px;">${triage.weight || ''}</td>
+              <td style="border:1px solid #e2e8f0; padding:4px;">${triage.spo2 || ''}</td>
+            </tr>
+          </table>
+          <div style="margin-top:5px;">
+            <div style="font-size:7pt; color:#64748b;">General Comments:</div>
+            <div style="font-size:8pt; min-height:30px; border-bottom:1px solid #eee;">${triage.general_comments || ''}</div>
+          </div>
+        </div>
+
+        <div class="section-head" style="background:#223f85; color:white;">II. Progress / Clinical Notes</div>
+        <table style="width:100%; border-collapse:collapse; font-size:7.5pt; margin-bottom:10px;">
+          <thead>
+            <tr style="background:#f1f5f9; text-align:left;">
+              <th style="padding:5px; border:1px solid #e2e8f0; width:120px;">Date & Time</th>
+              <th style="padding:5px; border:1px solid #e2e8f0;">Clinical Note</th>
+              <th style="padding:5px; border:1px solid #e2e8f0; width:150px;">Name / Signature</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${notes.length > 0 ? notes.map(n => `
+              <tr>
+                <td style="padding:5px; border:1px solid #e2e8f0;">${n.datetime || ''}</td>
+                <td style="padding:5px; border:1px solid #e2e8f0;">${n.note || ''}</td>
+                <td style="padding:5px; border:1px solid #e2e8f0;">${n.signature || ''}</td>
+              </tr>
+            `).join('') : '<tr><td colspan="3" style="padding:20px; text-align:center; color:#ccc;">No progress notes recorded.</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="section-head" style="background:#223f85; color:white;">III. Prescription and Medication Record Sheet</div>
+        <div style="padding:10px;">
+          <table style="width:100%; border-collapse:collapse; border:1px solid #e2e8f0; text-align:center; font-size:7pt;">
+            <tr style="background:#f1f5f9;">
+              <th style="border:1px solid #e2e8f0; padding:4px; text-align:left; width:80px;">Field</th>
+              <th style="border:1px solid #e2e8f0; padding:4px;">Medication 1</th>
+              <th style="border:1px solid #e2e8f0; padding:4px;">Medication 2</th>
+              <th style="border:1px solid #e2e8f0; padding:4px;">Medication 3</th>
+              <th style="border:1px solid #e2e8f0; padding:4px;">Medication 4</th>
+            </tr>
+            ${['name', 'dose', 'frequency', 'route', 'start_time', 'end_time'].map(key => `
+              <tr>
+                <td style="border:1px solid #e2e8f0; padding:4px; text-align:left; font-weight:700; background:#f8fafc;">${key.replace('_', ' ').toUpperCase()}</td>
+                ${[0, 1, 2, 3].map(i => `
+                  <td style="border:1px solid #e2e8f0; padding:4px;">${(mar.interventions && mar.interventions[i] && mar.interventions[i][key]) || ''}</td>
+                `).join('')}
+              </tr>
+            `).join('')}
+          </table>
+          <div style="margin-top:10px; font-size:8pt;">
+            <strong>Prescriber:</strong> ${mar.prescriber || '___________________________'}
+          </div>
+
+          <div style="margin-top:10px; display:flex; gap:20px;">
+            <table style="width:200px; border-collapse:collapse; border:1px solid #e2e8f0; text-align:center; font-size:7pt;">
+              <tr style="background:#f1f5f9;">
+                <th style="border:1px solid #e2e8f0; padding:2px;">Time</th>
+                <th style="border:1px solid #e2e8f0; padding:2px;">Initials</th>
+              </tr>
+              ${Array(6).fill(0).map((_, i) => `
+                <tr>
+                  <td style="border:1px solid #e2e8f0; padding:2px; height:12px;">${(mar.admin_logs && mar.admin_logs[i] && mar.admin_logs[i].time) || ''}</td>
+                  <td style="border:1px solid #e2e8f0; padding:2px; height:12px;">${(mar.admin_logs && mar.admin_logs[i] && mar.admin_logs[i].initials) || ''}</td>
+                </tr>
+              `).join('')}
+            </table>
+            <div style="font-size:7.5pt; flex:1;">
+              <div style="margin-bottom:5px;"><strong>Admin Initials:</strong> ${mar.admin_initials || '_______'}</div>
+              <div><strong>Full Names:</strong> ${mar.admin_names || '_____________________________________'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-head" style="background:#223f85; color:white;">IV. SBAR Hand Over Report</div>
+        <div style="padding:10px;">
+          <div style="font-size:8pt; border:1px solid #e2e8f0; padding:10px; min-height:80px; border-radius:4px; margin-bottom:10px;">
+            ${sbar.content || 'No hand-over report recorded.'}
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:7.5pt;">
+            <div style="border-bottom:1px solid #ccc;"><strong>Reported by:</strong> ${sbar.reported_by || ''}</div>
+            <div style="border-bottom:1px solid #ccc;"><strong>Sign/Time:</strong> ${sbar.reported_sign_time || ''}</div>
+            <div style="border-bottom:1px solid #ccc;"><strong>Received by:</strong> ${sbar.received_by || ''}</div>
+            <div style="border-bottom:1px solid #ccc;"><strong>Sign/Time:</strong> ${sbar.received_sign_time || ''}</div>
           </div>
         </div>
       </div>

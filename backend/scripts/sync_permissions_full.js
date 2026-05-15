@@ -18,19 +18,24 @@ async function syncModules() {
     console.log('Modules synced.');
 
     // 2. Sync Role Defaults (Populate missing permissions)
+    const batch = [];
     for (const [roleName, modules] of Object.entries(ROLE_DEFAULTS)) {
       for (const [moduleName, actions] of Object.entries(modules)) {
         for (const [action, granted] of Object.entries(actions)) {
-          await db.query(`
-            INSERT INTO role_permissions (role_name, module, action, granted, updated_by)
-            VALUES (?, ?, ?, ?, 90)
-            ON CONFLICT(role_name, module, action) DO UPDATE 
-            SET granted = EXCLUDED.granted
-          `, [roleName, moduleName, action, granted ? 1 : 0]);
+          batch.push({
+            sql: `
+              INSERT INTO role_permissions (role_name, module, action, granted, updated_by)
+              VALUES (?, ?, ?, ?, 1)
+              ON CONFLICT(role_name, module, action) DO UPDATE 
+              SET granted = EXCLUDED.granted
+            `,
+            args: [roleName, moduleName, action, granted ? 1 : 0]
+          });
         }
       }
     }
-    console.log('Role defaults synced.');
+    await db.batch(batch);
+    console.log(`Role defaults synced (${batch.length} rules).`);
     
     process.exit(0);
   } catch (err) {

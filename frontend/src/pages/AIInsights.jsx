@@ -350,7 +350,7 @@ const AIInsights = () => {
   const [error, setError] = useState('');
 
   const isPrincipalCashier = user?.role === 'principal_cashier';
-  const isManagement = ['sales_manager','coo','chairman','admin','deputy_coo','quality_assurance', 'consultant'].includes(user?.role) || isPrincipalCashier;
+  const isManagement = ['sales_manager','coo','chairman','admin','deputy_coo', 'consultant'].includes(user?.role) || isPrincipalCashier;
   const isExecutive  = ['sales_manager','coo','chairman','admin','deputy_coo', 'consultant'].includes(user?.role);
 
   useEffect(() => {
@@ -393,9 +393,7 @@ const AIInsights = () => {
       ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'security']
       : isManagement
         ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts']
-        : user?.role === 'quality_assurance'
-          ? ['incidents', 'shifts']
-          : ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts'];
+        : ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts'];
 
   return (
     <div>

@@ -21,15 +21,15 @@ class ResultTransfer {
     const { rows } = await db.query(
       `INSERT INTO results_transfers (
         transfer_date, old_sid, new_sid, reason,
-        created_by, status
-      ) VALUES ($1, $2, $3, $4, $5, 'pending')
+        created_by, status, is_mock
+      ) VALUES ($1, $2, $3, $4, $5, 'pending', $6)
       RETURNING *`,
-      [transferDate, oldSid, newSid, reason, userId]
+      [transferDate, oldSid, newSid, reason, userId, data.isReviewer ? 1 : 0]
     );
     return rows[0];
   }
 
-  static async getAll(filters = {}) {
+  static async getAll(filters = {}, user = null) {
     let query = `
       SELECT t.*,
              u1.full_name AS creator_name,
@@ -42,6 +42,11 @@ class ResultTransfer {
       WHERE 1=1
     `;
     const params = [];
+
+    // Reviewer Isolation
+    if (user && user.role === 'reviewer') {
+      query += ` AND t.is_mock = 1`;
+    }
 
     if (filters.status) {
       params.push(filters.status);
@@ -58,9 +63,8 @@ class ResultTransfer {
     return rows;
   }
 
-  static async findById(id) {
-    const { rows } = await db.query(
-      `SELECT t.*,
+  static async findById(id, user = null) {
+    let query = `SELECT t.*,
               u1.full_name AS creator_name,
               u2.full_name AS reviewer_name,
               u3.full_name AS approver_name,
@@ -70,9 +74,14 @@ class ResultTransfer {
        LEFT JOIN users u2 ON t.reviewed_by = u2.id
        LEFT JOIN users u3 ON t.approved_by = u3.id
        LEFT JOIN users u4 ON t.rejected_by = u4.id
-       WHERE t.id = $1`,
-      [id]
-    );
+       WHERE t.id = $1`;
+    const params = [id];
+
+    if (user && user.role === 'reviewer') {
+      query += ` AND t.is_mock = 1`;
+    }
+
+    const { rows } = await db.query(query, params);
     return rows[0];
   }
 

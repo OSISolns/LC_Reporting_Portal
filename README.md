@@ -10,9 +10,10 @@ A full-stack clinical operations management platform for Legacy Clinics & Diagno
 |---|---|
 | **Cancellations** | Multi-step financial cancellation request workflow with Sales Manager verification and COO approval. |
 | **Refunds** | Patient refund requisitions with Principal Cashier initiation and COO approval chain. |
-| **Incidents** | Safety and sentinel event reporting with QA review and audit trail. |
+| **Incidents** | Safety and sentinel event reporting with audit trail. |
 | **Results Transfer** | Lab SID requisition workflow: Cashier → Operations review → Lab Team Lead approval. |
 | **Staff Performance** | Tracks staff efficiency (ratings) per workflow request. Scored by managers on accuracy, speed, and communication. |
+| **Clinical Observation** | Patient vital signs and clinical assessment tracking (Nursing role). |
 | **Notifications** | Real-time in-app notification system with unread counts and mark-all-read. |
 | **AI Insights** | Local AI-powered analytics for patterns, trends, and management reporting across all workflows. |
 | **User Management** | Account creation and role assignment (Admin & IT Officer). |
@@ -51,8 +52,8 @@ The system uses a granular permission matrix, configurable by Administrators. Th
 | `customer_care` | Customer Care | Initiates cancellations, refunds, results transfers |
 | `operations_staff` | Operations Staff | Reviews results transfers, logs incidents |
 | `lab_team_lead` | Laboratory Team Lead | Final approver for results transfers |
-| `quality_assurance` | Quality & Assurance | Reviews incident reports |
 | `it_officer` | IT Officer | User management, audit logs (restricted from Permissions module) |
+| `nurse` | Clinical Nurse | Manages clinical observation sheets and incident reporting |
 | `consultant` | Consultant | Read-only access across all modules |
 
 ---
@@ -204,9 +205,9 @@ Base URL (production): `https://<your-vercel-domain>/api`
 | `GET` | `/incidents` | Most roles | List all incident reports |
 | `POST` | `/incidents` | Most roles | Submit new incident report |
 | `GET` | `/incidents/:id` | Most roles | Get single report |
-| `PATCH` | `/incidents/:id/review` | Quality Assurance | Mark as reviewed |
+| `PATCH` | `/incidents/:id/review` | HSFP | Mark as reviewed |
 | `GET` | `/incidents/:id/pdf` | Most roles | Download PDF |
-| `GET` | `/incidents/export/excel` | COO, Chairman, Admin, Deputy COO, QA | Export Excel |
+| `GET` | `/incidents/export/excel` | COO, Chairman, Admin, Deputy COO, HSFP | Export Excel |
 
 ### Results Transfer
 | Method | Endpoint | Access | Description |
@@ -321,6 +322,18 @@ LC_Reporting_Portal/
 - **Rate Limiting**: 200 requests / 15 minutes per IP on all `/api/*` routes.
 - **CORS**: Configured for local environments and production Vercel domains.
 - **Input Validation**: All mutation routes use `express-validator` schemas.
+- **External Review Isolation**: Dedicated reviewer accounts (`reviewer` role) are cryptographically isolated to mock data via database-level `is_mock` constraints.
+
+---
+
+## External Review Policy
+
+To maintain the highest security standards during external audits or feature reviews:
+
+1.  **Dedicated Test Accounts**: Always provision a temporary, isolated account for the review process (e.g., `lc_reviewer`).
+2.  **Mock Data Isolation**: Reviewer accounts are strictly prohibited from accessing real operational data. All records accessible to reviewers must be tagged with `is_mock = 1`.
+3.  **Audit and Revoke**: Monitor reviewer activity via `Audit Logs`. Immediately disable or delete credentials upon completion of the review session.
+4.  **Infrastructure Clearance**: Under no circumstances should direct infrastructure access (SSH, DB Root, Vercel/Turso Dashboard) be granted to external parties. Deep clearance requires a formal vetting process, supervised sessions, and explicit sign-off from leadership (**Aline** or **Mr. Chairman**).
 
 ---
 

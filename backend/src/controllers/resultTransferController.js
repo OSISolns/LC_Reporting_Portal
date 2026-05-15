@@ -9,7 +9,7 @@ const User = require('../models/user');
 
 exports.createRequest = async (req, res, next) => {
   try {
-    const request = await ResultTransfer.create(req.body, req.user.id);
+    const request = await ResultTransfer.create({ ...req.body, isReviewer: req.user.role === 'reviewer' }, req.user.id);
     if (request) {
       try { 
         await logAction(req, 'CREATE', 'result_transfer', request.id, { 
@@ -50,14 +50,14 @@ exports.createRequest = async (req, res, next) => {
 exports.getAllRequests = async (req, res, next) => {
   try {
     const cacheKey = `rt:list:${req.user.role}:${JSON.stringify(req.query)}`;
-    const data = await cache.getOrSet(cacheKey, () => ResultTransfer.getAll(req.query), 15_000);
+    const data = await cache.getOrSet(cacheKey, () => ResultTransfer.getAll(req.query, req.user), 15_000);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };
 
 exports.getRequestById = async (req, res, next) => {
   try {
-    const request = await ResultTransfer.findById(req.params.id);
+    const request = await ResultTransfer.findById(req.params.id, req.user);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
     res.json({ success: true, data: request });
   } catch (err) { next(err); }
@@ -133,7 +133,7 @@ exports.rejectRequest = async (req, res, next) => {
 
 exports.deleteRequest = async (req, res, next) => {
   try {
-    const existing = await ResultTransfer.findById(req.params.id);
+    const existing = await ResultTransfer.findById(req.params.id, req.user);
     if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
     if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending requests can be deleted.' });
 
@@ -151,7 +151,7 @@ exports.deleteRequest = async (req, res, next) => {
 
 exports.getPDF = async (req, res, next) => {
   try {
-    const request = await ResultTransfer.findById(req.params.id);
+    const request = await ResultTransfer.findById(req.params.id, req.user);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
 
     res.setHeader('Content-Type', 'application/pdf');

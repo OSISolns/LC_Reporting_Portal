@@ -14,6 +14,12 @@ import {
   Lock,
   BadgeCheck,
   Clock,
+  Thermometer,
+  Stethoscope,
+  Activity,
+  Users,
+  ShieldCheck,
+  Pill,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { openShift, getMyActiveShift } from '../../api/shifts';
@@ -30,6 +36,10 @@ const ICON_MAP = {
   'Barcode Printer': <Printer size={18} />,
   'Desk Phone': <Phone size={18} />,
   'Headset': <Headphones size={18} />,
+  'Thermometer': <Thermometer size={18} />,
+  'Stethoscope': <Stethoscope size={18} />,
+  'BP Machine': <Activity size={18} />,
+  'Pulse Oximeter': <Pill size={18} />,
 }
 
 // ─── Sub-component: Equipment Checklist ──────────────────────────────────────

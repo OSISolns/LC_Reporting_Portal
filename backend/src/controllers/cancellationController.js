@@ -10,7 +10,7 @@ const User = require('../models/user');
 
 exports.createRequest = async (req, res, next) => {
   try {
-    const request = await Cancellation.create(req.body, req.user.id);
+    const request = await Cancellation.create({ ...req.body, isReviewer: req.user.role === 'reviewer' }, req.user.id);
     try { await logAction(req, 'CREATE', 'cancellation_request', request.id, { patient: request.patient_full_name }); } catch (e) {}
     
     // Notify Operations and Management
@@ -55,14 +55,14 @@ exports.getAllRequests = async (req, res, next) => {
       filters.created_by = req.user.id;
     }
     const cacheKey = `canc:list:${req.user.role}:${req.user.id}:${JSON.stringify(filters)}`;
-    const data = await cache.getOrSet(cacheKey, () => Cancellation.getAll(filters), 15_000);
+    const data = await cache.getOrSet(cacheKey, () => Cancellation.getAll(filters, req.user), 15_000);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };
 
 exports.getRequestById = async (req, res, next) => {
   try {
-    const request = await Cancellation.findById(req.params.id);
+    const request = await Cancellation.findById(req.params.id, req.user);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
     
     const privilegedRoles = ['sales_manager', 'coo', 'deputy_coo', 'admin', 'chairman', 'principal_cashier', 'operations_staff'];
@@ -155,7 +155,7 @@ exports.rejectRequest = async (req, res, next) => {
 
 exports.deleteRequest = async (req, res, next) => {
   try {
-    const existing = await Cancellation.findById(req.params.id);
+    const existing = await Cancellation.findById(req.params.id, req.user);
     if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
     if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending requests can be deleted.' });
 
@@ -173,7 +173,7 @@ exports.deleteRequest = async (req, res, next) => {
 
 exports.getPDF = async (req, res, next) => {
   try {
-    const request = await Cancellation.findById(req.params.id);
+    const request = await Cancellation.findById(req.params.id, req.user);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
     
     res.setHeader('Content-Type', 'application/pdf');
@@ -187,7 +187,7 @@ exports.getPDF = async (req, res, next) => {
 
 exports.exportExcel = async (req, res, next) => {
   try {
-    const requests = await Cancellation.getAll(req.query);
+    const requests = await Cancellation.getAll(req.query, req.user);
     
     const columns = [
       { header: 'ID', key: 'id' },

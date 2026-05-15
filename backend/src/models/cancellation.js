@@ -30,22 +30,23 @@ class Cancellation {
         telephone_number, insurance_payer, total_amount_cancelled,
         original_receipt_number, rectified_receipt_number,
         initial_transaction_date, rectified_date, reason_for_cancellation,
-        created_by, status, billed_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending', $14)
+        created_by, status, billed_by, is_mock
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending', $14, $15)
       RETURNING *`,
       [
         patientFullName, pidNumber, oldSidNumber, newSidNumber,
         telephoneNumber, insurancePayer, cleanAmount(totalAmountCancelled),
         originalReceiptNumber, rectifiedReceiptNumber,
         cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
-        userId, billedBy || null
+        userId, billedBy || null,
+        data.isReviewer ? 1 : 0
       ]
     );
     return rows[0];
   }
 
 
-  static async getAll(filters = {}) {
+  static async getAll(filters = {}, user = null) {
     let query = `
       SELECT c.*,
              u1.full_name AS creator_name,
@@ -66,6 +67,11 @@ class Cancellation {
       WHERE 1=1
     `;
     const params = [];
+
+    // Reviewer Isolation
+    if (user && user.role === 'reviewer') {
+      query += ` AND c.is_mock = 1`;
+    }
 
     if (filters.status) {
       params.push(filters.status);
@@ -89,9 +95,8 @@ class Cancellation {
     return rows;
   }
 
-  static async findById(id) {
-    const { rows } = await db.query(
-      `SELECT c.*, 
+  static async findById(id, user = null) {
+    let query = `SELECT c.*, 
               u1.full_name as creator_name, 
               u2.full_name as verifier_name, 
               u3.full_name as approver_name,
@@ -105,9 +110,14 @@ class Cancellation {
        LEFT JOIN users u4 ON c.rejected_by = u4.id
        LEFT JOIN users u5 ON c.billed_by = u5.id
        LEFT JOIN staff_performance_ratings spr ON spr.request_type = 'cancellation' AND spr.request_id = c.id
-       WHERE c.id = $1`,
-      [id]
-    );
+       WHERE c.id = $1`;
+    const params = [id];
+
+    if (user && user.role === 'reviewer') {
+      query += ` AND c.is_mock = 1`;
+    }
+
+    const { rows } = await db.query(query, params);
     return rows[0];
   }
 

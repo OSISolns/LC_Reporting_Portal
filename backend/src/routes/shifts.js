@@ -9,7 +9,7 @@ const { validate, body, param, query } = require('../middleware/validation');
 router.use(authMiddleware);
 
 // ─── Role guard: reviewer-only endpoints ──────────────────────────────────────
-const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'quality_assurance', 'it_officer', 'operations_staff'];
+const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'operations_staff'];
 
 function requireReviewer(req, res, next) {
   if (!REVIEWER_ROLES.includes(req.user.role)) {

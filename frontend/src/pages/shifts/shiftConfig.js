@@ -3,6 +3,7 @@ export const SHIFT_ROLES = [
   { value: 'cashier', label: 'Cashier', icon: '💵' },
   { value: 'helpdesk', label: 'Helpdesk', icon: '🎧' },
   { value: 'call_center', label: 'Call Center Agent', icon: '📞' },
+  { value: 'nurse', label: 'Registered Nurse', icon: '🏥' },
 ];
 
 // ─── Equipment per role ──────────────────────────────────────────────────────
@@ -10,6 +11,7 @@ export const EQUIPMENT_BY_ROLE = {
   cashier: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
   helpdesk: ['PC', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
   call_center: ['PC', 'Headset'],
+  nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
 };
 
 export const EQUIPMENT_STATUS_OPTIONS = ['Working', 'Needs Repair', 'Broken/Missing'];
@@ -98,7 +100,7 @@ export const CALL_REASON_OPTIONS = [
 ];
 
 // ─── Reviewer roles (must match backend) ─────────────────────────────────────
-export const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'quality_assurance', 'it_officer'];
+export const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer'];
 
 // ─── Staff roles that can open shifts ────────────────────────────────────────
-export const STAFF_SHIFT_ROLES = ['cashier', 'customer_care', 'operations_staff'];
+export const STAFF_SHIFT_ROLES = ['cashier', 'customer_care', 'operations_staff', 'nurse'];

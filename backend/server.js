@@ -29,6 +29,8 @@ const permissionRoutes      = require('./src/routes/permissions');
 const performanceRoutes     = require('./src/routes/performanceRoutes');
 const shiftRoutes           = require('./src/routes/shifts');
 const safetyRoutes          = require('./src/routes/safety');
+const clinicalRoutes        = require('./src/routes/clinical');
+const patientRoutes         = require('./src/routes/patients');
 
 
 const app = express();
@@ -96,6 +98,8 @@ app.use('/api/permissions',       permissionRoutes);
 app.use('/api/performance',       performanceRoutes);
 app.use('/api/shifts',            shiftRoutes);
 app.use('/api/safety',            safetyRoutes);
+app.use('/api/clinical',          clinicalRoutes);
+app.use('/api/patients',          patientRoutes);
 
 
 // ── Root ──────────────────────────────────────────────────────────────────────

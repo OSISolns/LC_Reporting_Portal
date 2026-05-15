@@ -15,6 +15,7 @@ const MODULES = [
   { name: 'user_management',   display: 'User Management',       actions: ['view','create','edit','delete'] },
   { name: 'audit_logs',        display: 'Audit Logs',            actions: ['view'] },
   { name: 'reports',           display: 'Reports & Insights',    actions: ['view','download'] },
+  { name: 'clinical_observation', display: 'Clinical Observation', actions: ['view','create','edit','review','approve'] },
 ];
 
 // Default role permissions based on existing RBAC —— true = granted
@@ -27,6 +28,7 @@ const ROLE_DEFAULTS = {
     user_management:  { view:1, create:1, edit:1, delete:1 },
     audit_logs:       { view:1 },
     reports:          { view:1, download:1 },
+    clinical_observation: { view:1, create:1, edit:1, review:1, approve:1 },
   },
   it_officer: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -100,15 +102,6 @@ const ROLE_DEFAULTS = {
     audit_logs:       { view:0 },
     reports:          { view:0, download:0 },
   },
-  quality_assurance: {
-    cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
-    refunds:          { view:1, create:0, edit:0, approve:0, reject:0 },
-    results_transfer: { view:1, create:0, edit:0, approve:0, reject:0 },
-    incident_reports: { view:1, create:1, edit:0, approve:1 },
-    user_management:  { view:0, create:0, edit:0, delete:0 },
-    audit_logs:       { view:0 },
-    reports:          { view:1, download:1 },
-  },
   lab_team_lead: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
     refunds:          { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -135,6 +128,16 @@ const ROLE_DEFAULTS = {
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:0, download:0 },
+  },
+  nurse: {
+    cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
+    refunds:          { view:0, create:0, edit:0, approve:0, reject:0 },
+    results_transfer: { view:0, create:0, edit:0, approve:0, reject:0 },
+    incident_reports: { view:1, create:1, edit:1, approve:0 },
+    user_management:  { view:0, create:0, edit:0, delete:0 },
+    audit_logs:       { view:0 },
+    reports:          { view:0, download:0 },
+    clinical_observation: { view:1, create:1, edit:1, review:1, approve:0 },
   },
 };
 

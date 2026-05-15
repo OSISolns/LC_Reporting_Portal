@@ -27,7 +27,7 @@ class User {
 
   static async lockout(id, minutes) {
     await db.query(
-      "UPDATE users SET lockout_until = datetime('now', '?' || ' minutes'), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      "UPDATE users SET lockout_until = datetime('now', ? || ' minutes'), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       [minutes, id]
     );
   }

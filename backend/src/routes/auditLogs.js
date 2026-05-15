@@ -33,7 +33,7 @@ router.post('/report-violation', async (req, res, next) => {
   }
 });
 
-router.use(authorizeRoles(['admin', 'quality_assurance', 'coo', 'deputy_coo']));
+router.use(authorizeRoles(['admin', 'coo', 'deputy_coo']));
 
 router.get('/', async (req, res, next) => {
   try {

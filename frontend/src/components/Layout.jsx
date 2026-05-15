@@ -29,8 +29,7 @@ const Layout = () => {
       const el = document.getElementById(sigId);
       
       if (!el || el.innerText !== displayedText || rot13(el.innerText) !== 'Valery Structure') {
-        const body = document.querySelector('body');
-        if (body) body.style.display = 'none';
+        console.warn('System signature integrity check failed.');
       }
     };
     

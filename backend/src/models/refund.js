@@ -32,8 +32,8 @@ class Refund {
         momo_code, total_amount_paid, amount_to_be_refunded,
         amount_paid_by, original_receipt_number,
         initial_transaction_date, reason_for_refund,
-        created_by, status, billed_by
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending',$14)
+        created_by, status, billed_by, is_mock
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending',$14,$15)
       RETURNING *`,
       [
         patientFullName, pidNumber, sidNumber,
@@ -41,13 +41,14 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        userId, billedBy || null
+        userId, billedBy || null,
+        data.isReviewer ? 1 : 0
       ]
     );
     return rows[0];
   }
 
-  static async getAll(filters = {}) {
+  static async getAll(filters = {}, user = null) {
     let query = `
       SELECT r.*,
              u1.full_name AS creator_name,
@@ -68,6 +69,11 @@ class Refund {
       WHERE 1=1
     `;
     const params = [];
+
+    // Reviewer Isolation
+    if (user && user.role === 'reviewer') {
+      query += ` AND r.is_mock = 1`;
+    }
 
     if (filters.status) {
       params.push(filters.status);
@@ -91,9 +97,8 @@ class Refund {
     return rows;
   }
 
-  static async findById(id) {
-    const { rows } = await db.query(
-      `SELECT r.*,
+  static async findById(id, user = null) {
+    let query = `SELECT r.*,
               u1.full_name AS creator_name,
               u2.full_name AS verifier_name,
               u3.full_name AS approver_name,
@@ -107,9 +112,14 @@ class Refund {
        LEFT JOIN users u4 ON r.rejected_by = u4.id
        LEFT JOIN users u5 ON r.billed_by   = u5.id
        LEFT JOIN staff_performance_ratings spr ON spr.request_type = 'refund' AND spr.request_id = r.id
-       WHERE r.id = $1`,
-      [id]
-    );
+       WHERE r.id = $1`;
+    const params = [id];
+
+    if (user && user.role === 'reviewer') {
+      query += ` AND r.is_mock = 1`;
+    }
+
+    const { rows } = await db.query(query, params);
     return rows[0];
   }
 

@@ -7,7 +7,7 @@ const cache = require('../utils/cache');
 
 exports.createReport = async (req, res, next) => {
   try {
-    const report = await Incident.create(req.body, req.user.id);
+    const report = await Incident.create({ ...req.body, isReviewer: req.user.role === 'reviewer' }, req.user.id);
     try { await logAction(req, 'CREATE', 'incident_report', report.id, { type: report.incident_type }); } catch (e) {}
     
     // Notify Admins, Supervisors, and IT/QA Team
@@ -89,7 +89,7 @@ exports.approveReport = async (req, res, next) => {
 
 exports.getReportById = async (req, res, next) => {
   try {
-    const report = await Incident.findById(req.params.id);
+    const report = await Incident.findById(req.params.id, req.user);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
     res.json({ success: true, data: report });
   } catch (err) {
@@ -99,7 +99,7 @@ exports.getReportById = async (req, res, next) => {
 
 exports.getPDF = async (req, res, next) => {
   try {
-    const report = await Incident.findById(req.params.id);
+    const report = await Incident.findById(req.params.id, req.user);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
     
     res.setHeader('Content-Type', 'application/pdf');
@@ -113,7 +113,7 @@ exports.getPDF = async (req, res, next) => {
 
 exports.deleteReport = async (req, res, next) => {
   try {
-    const existing = await Incident.findById(req.params.id);
+    const existing = await Incident.findById(req.params.id, req.user);
     if (!existing) return res.status(404).json({ success: false, message: 'Report not found.' });
     if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending reports can be deleted.' });
 
@@ -131,7 +131,7 @@ exports.deleteReport = async (req, res, next) => {
 
 exports.exportExcel = async (req, res, next) => {
   try {
-    const reports = await Incident.getAll(req.query);
+    const reports = await Incident.getAll(req.query, req.user);
     
     const columns = [
       { header: 'ID', key: 'id' },

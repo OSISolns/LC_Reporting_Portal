@@ -51,6 +51,11 @@ const ROLE_CONFIG = {
     mission: 'Handle inbound and outbound calls with professionalism, record interaction reasons, and ensure pending follow-ups are properly documented.',
     tips: ['Answer within 3 rings where possible', 'Record all drop reasons for quality analysis', 'Document every follow-up with patient ID and notes'],
   },
+  nurse: {
+    color: 'emerald', label: 'Clinical Nurse', emoji: '🏥',
+    mission: 'Provide high-quality patient care, maintain accurate clinical observations, and ensure a safe, thorough handover of patient status.',
+    tips: ['Synchronize all clinical observations before closing', 'Double-check medication administration records', 'Report any clinical incidents immediately'],
+  },
 };
 
 // ─── Welcome Dashboard ────────────────────────────────────────────────────────
@@ -189,6 +194,13 @@ function ShiftClosingSummary({ shift, closedData, onExit }) {
       { label: 'Inbound Calls', val: cc.inbound_total || 0, icon: <PhoneCall size={18} />, color: 'blue' },
       { label: 'Calls Assisted', val: cc.inbound_assisted || 0, icon: <CheckCircle2 size={18} />, color: 'emerald' },
       { label: 'Outbound Dialed', val: cc.outbound_total || 0, icon: <PhoneForwarded size={18} />, color: 'violet' },
+    );
+  } else if (shift.shift_role === 'nurse' && closedData?.nurse) {
+    const n = closedData.nurse;
+    stats.push(
+      { label: 'Assessments', val: n.total_assessments || 0, icon: <Stethoscope size={18} />, color: 'blue' },
+      { label: 'Incidents', val: n.total_incidents || 0, icon: <AlertTriangle size={18} />, color: 'rose' },
+      { label: 'Clinical Docs', val: n.total_assessments || 0, icon: <CheckCircle2 size={18} />, color: 'emerald' },
     );
   }
 
@@ -664,6 +676,72 @@ const HelpdeskCloseForm = ({ data, onChange }) => (
   </div>
 );
 
+// ─── Nursing Close Form ────────────────────────────────────────────────────────
+const NursingCloseForm = ({ data, onChange }) => (
+  <div className="space-y-8">
+    <div className="shift-card">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-[#1b669d]/10 flex items-center justify-center text-[#1b669d]">
+          <Stethoscope size={20} />
+        </div>
+        <h3 className="text-xl font-black text-slate-900 tracking-tight">Clinical Activity Summary</h3>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div>
+          <label className="field-label text-slate-500">Patients Assessed</label>
+          <input
+            type="number"
+            min="0"
+            value={data.total_assessments || 0}
+            onChange={(e) => onChange('total_assessments', parseInt(e.target.value) || 0)}
+            className="shift-input w-full text-xl font-black border-slate-200"
+          />
+        </div>
+        <div>
+          <label className="field-label text-slate-500">Incidents Reported</label>
+          <input
+            type="number"
+            min="0"
+            value={data.total_incidents || 0}
+            onChange={(e) => onChange('total_incidents', parseInt(e.target.value) || 0)}
+            className="shift-input w-full text-xl font-black border-slate-200"
+          />
+        </div>
+      </div>
+    </div>
+    <div className="shift-card">
+       <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+          <StickyNote size={20} />
+        </div>
+        <h3 className="text-xl font-black text-slate-900 tracking-tight">SBAR Handover (Final)</h3>
+      </div>
+      <div className="space-y-4">
+        <div>
+          <label className="field-label text-slate-500 uppercase tracking-widest text-[10px]">Situation / Background</label>
+          <textarea 
+            rows={3}
+            value={data.handover_sbar_sb || ''}
+            onChange={(e) => onChange('handover_sbar_sb', e.target.value)}
+            className="shift-input w-full border-slate-200 resize-none"
+            placeholder="Key patient status at handover..."
+          />
+        </div>
+        <div>
+          <label className="field-label text-slate-500 uppercase tracking-widest text-[10px]">Assessment / Recommendation</label>
+          <textarea 
+            rows={3}
+            value={data.handover_sbar_ar || ''}
+            onChange={(e) => onChange('handover_sbar_ar', e.target.value)}
+            className="shift-input w-full border-slate-200 resize-none"
+            placeholder="Outstanding tasks or concerns..."
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 // ─── Call Center Close Form ───────────────────────────────────────────────────
 const CallCenterCloseForm = ({ data, onChange }) => {
   const toggleReason = (r) => {
@@ -864,6 +942,7 @@ export default function CloseShift() {
   const [billingClose, setBillingClose] = useState({ payments_all_successful: true, insurances_used: [], total_momo_transactions: 0, total_card_transactions: 0 });
   const [helpdeskClose, setHelpdeskClose] = useState({ patient_walkin_queries: 0, internal_staff_queries: 0 });
   const [callcenterClose, setCallcenterClose] = useState({ call_top_reasons: [], has_pending_followups: false, followup_details: [] });
+  const [nursingClose, setNursingClose] = useState({ total_assessments: 0, total_incidents: 0, handover_sbar_sb: '', handover_sbar_ar: '' });
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [incidentReported, setIncidentReported] = useState(false);
   const [incidentFormData, setIncidentFormData] = useState({
@@ -894,6 +973,7 @@ export default function CloseShift() {
         }
         if (s.shift_role === 'helpdesk' && s.role_data?.closing) setHelpdeskClose(s.role_data.closing);
         if (s.shift_role === 'call_center' && s.role_data?.closing) setCallcenterClose(s.role_data.closing);
+        if (s.shift_role === 'nurse' && s.role_data?.closing) setNursingClose(s.role_data.closing);
       })
       .catch(() => {
         toast.error('Session record inaccessible');
@@ -924,7 +1004,8 @@ export default function CloseShift() {
     ...(shift?.shift_role === 'cashier' && { cashier_close: { ...billingClose, opening_float: 0, closing_float: 0, cash_payments_total: 0 } }),
     ...(shift?.shift_role === 'helpdesk' && { helpdesk_close: helpdeskClose }),
     ...(shift?.shift_role === 'call_center' && { callcenter_close: callcenterClose }),
-  }), [handoverNotes, equipment, billingClose, helpdeskClose, callcenterClose, shift, password]);
+    ...(shift?.shift_role === 'nurse' && { nurse_close: nursingClose }),
+  }), [handoverNotes, equipment, billingClose, helpdeskClose, callcenterClose, nursingClose, shift, password]);
 
   useEffect(() => {
     if (!shift) return;
@@ -1193,6 +1274,9 @@ export default function CloseShift() {
           )}
           {shift.shift_role === 'call_center' && (
             <CallCenterCloseForm data={callcenterClose} onChange={(k, v) => setCallcenterClose((p) => ({ ...p, [k]: v }))} />
+          )}
+          {shift.shift_role === 'nurse' && (
+            <NursingCloseForm data={nursingClose} onChange={(k, v) => setNursingClose((p) => ({ ...p, [k]: v }))} />
           )}
         </div>
 

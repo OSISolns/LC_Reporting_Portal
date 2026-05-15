@@ -80,3 +80,4 @@ exports.generateIncidentPDF = async (data, stream) => generateHighFidelityPDF('I
 exports.generateRefundPDF = async (data, stream) => generateHighFidelityPDF('REFUND', data, stream);
 exports.generateResultTransferPDF = async (data, stream) => generateHighFidelityPDF('RESULT_TRANSFER', data, stream);
 exports.generateSafetyPDF = async (data, stream) => generateHighFidelityPDF('SAFETY', data, stream);
+exports.generateClinicalSheetPDF = async (data, stream) => generateHighFidelityPDF('CLINICAL_SHEET', data, stream);
