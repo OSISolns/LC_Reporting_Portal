@@ -24,6 +24,7 @@ import {
 import toast from 'react-hot-toast';
 import { openShift, getMyActiveShift } from '../../api/shifts';
 import Modal from '../../components/Modal';
+import { useAuth } from '../../context/AuthContext';
 import {
   SHIFT_ROLES, EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS,
 } from './shiftConfig';
@@ -114,11 +115,18 @@ const EquipmentChecklist = ({ items, onChange }) => (
 
 // ─── Main Component: OpenShift ──────────────────────────────────────────────
 export default function OpenShift() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState('');
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const visibleRoles = SHIFT_ROLES.filter(role => {
+    if (user?.role === 'nurse') return role.value === 'nurse';
+    if (['admin', 'it_officer'].includes(user?.role)) return true;
+    return role.value !== 'nurse';
+  });
   const [password, setPassword] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [newShiftId, setNewShiftId] = useState(null);
@@ -252,8 +260,8 @@ export default function OpenShift() {
               <p className="text-slate-500 font-bold">Your role determines the required equipment checks and reporting metrics.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {SHIFT_ROLES.map((role) => (
+            <div className={`grid grid-cols-1 gap-8 ${visibleRoles.length === 1 ? 'max-w-md mx-auto' : 'md:grid-cols-3'}`}>
+              {visibleRoles.map((role) => (
                 <button
                   key={role.value}
                   onClick={() => handleRoleSelect(role.value)}
