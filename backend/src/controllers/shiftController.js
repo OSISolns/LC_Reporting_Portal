@@ -401,7 +401,7 @@ exports.getAllShifts = async (req, res, next) => {
   try {
     const { role, date_from, date_to, employee_name, status, flagged, page = 1, limit = 25 } = req.query;
 
-    let where = '1=1';
+    let where = "s.shift_role != 'nurse'";
     const args = [];
 
     if (role) { where += ' AND s.shift_role = ?'; args.push(role); }
