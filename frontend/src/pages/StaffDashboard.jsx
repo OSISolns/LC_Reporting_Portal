@@ -24,6 +24,7 @@ const ROLE_LABEL = {
   lab_team_lead:     'Laboratory Lead',
   it_officer:        'IT Systems & Security',
   nurse:             'Clinical Nurse',
+  'chef-nurse':        'Chief Nurse Manager',
 };
 
 // ── Status pill ───────────────────────────────────────────────────────────────

@@ -15,7 +15,7 @@ const Dashboard = () => {
 
   if (role === 'hsfp')                 return <HSFPDashboard />;
   if (role === 'it_officer')           return <ITDashboard />;
-  if (role === 'reviewer')             return <ReviewerDashboard />;
+  if (role === 'reviewer' || role === 'chef-nurse')   return <ReviewerDashboard />;
   if (MGMT_ROLES.includes(role))       return <ManagementDashboard />;
   if (STAFF_ROLES.includes(role))      return <StaffDashboard />;
 

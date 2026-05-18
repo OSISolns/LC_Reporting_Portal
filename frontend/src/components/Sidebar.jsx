@@ -32,7 +32,7 @@ const Sidebar = ({ onClose }) => {
   ];
 
   const SHIFT_STAFF_ROLES   = ['cashier', 'customer_care', 'principal_cashier', 'nurse'];
-  const SHIFT_REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'nurse'];
+  const SHIFT_REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'];
 
   const filteredMenu = menuItems.filter(item => {
     // Explicitly hide Insights from HSFP

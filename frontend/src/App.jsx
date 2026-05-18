@@ -59,31 +59,31 @@ function App() {
             
             <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><RefundList /></ProtectedRoute>} />
             
-            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer']}><IncidentList /></ProtectedRoute>} />
+            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer', 'chef-nurse']}><IncidentList /></ProtectedRoute>} />
 
             
             <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><ResultTransferList /></ProtectedRoute>} />
             <Route path="/performance" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer']}><PerformanceDashboard /></ProtectedRoute>} />
             <Route path="/notifications" element={<Notifications />} />
-            <Route path="/clinical-observation" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer']}><ClinicalObservationList /></ProtectedRoute>} />
-            <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer']}><ClinicalSheet /></ProtectedRoute>} />
-            <Route path="/patients/:patientId/records" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer']}><PatientRecords /></ProtectedRoute>} />
+            <Route path="/clinical-observation" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><ClinicalObservationList /></ProtectedRoute>} />
+            <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><ClinicalSheet /></ProtectedRoute>} />
+            <Route path="/patients/:patientId/records" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><PatientRecords /></ProtectedRoute>} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* ── Shift Module ── */}
             <Route path="/shifts/open" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer', 'chef-nurse']}>
                 <OpenShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/close/:id" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer', 'chef-nurse']}>
                 <CloseShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/:id" element={<ShiftDetail />} />
             <Route path="/shifts" element={
-              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'it_officer', 'operations_staff', 'nurse', 'reviewer', 'cashier', 'customer_care']}>
+              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'it_officer', 'operations_staff', 'nurse', 'reviewer', 'cashier', 'customer_care', 'chef-nurse']}>
                 <ShiftDashboardRedirect />
               </ProtectedRoute>
             } />

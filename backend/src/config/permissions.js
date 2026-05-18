@@ -172,6 +172,17 @@ const ROLE_DEFAULTS = {
     staff_performance:{ view:1, create:0 },
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:0 },
   },
+  'chef-nurse': {
+    cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
+    refunds:          { view:0, create:0, edit:0, approve:0, reject:0 },
+    results_transfer: { view:0, create:0, edit:0, approve:0, reject:0 },
+    incident_reports: { view:1, create:1, edit:1, approve:1 },
+    user_management:  { view:0, create:0, edit:0, delete:0 },
+    audit_logs:       { view:0 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:1 },
+    clinical_observation: { view:1, create:1, edit:1, review:1, approve:1 },
+  },
   reviewer: {
     cancellations:    { view:1, create:1, edit:1, review:1, approve:1, reject:1, delete:1 },
     refunds:          { view:1, create:1, edit:1, review:1, approve:1, reject:1, delete:1 },
