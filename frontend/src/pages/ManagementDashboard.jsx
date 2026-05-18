@@ -164,34 +164,44 @@ const ManagementDashboard = () => {
 
       {/* ── 4 Stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        <BigStatCard
-          title="Total Cancellations" value={fmt(c.total)} icon={<FileText size={24} />}
-          color="var(--primary)"
-          sub={`${fmt(c.approved)} finalized · ${fmt(c.last30Days)} this month`}
-          badge={c.pending}
-        />
-        <BigStatCard
-          title="Total Refunds" value={fmt(r.total)} icon={<ReceiptText size={24} />}
-          color="#92400e"
-          sub={`${fmtRWF(r.approvedAmountRWF)} paid out · ${fmt(r.last30Days)} this month`}
-          badge={(r.pending || 0) + (r.verified || 0)}
-        />
-        <BigStatCard
-          title="Incident Reports" value={fmt(i.total)} icon={<AlertTriangle size={24} />}
-          color="#b91c1c"
-          sub={`${fmt(i.reviewed)} reviews done · ${fmt(i.last30Days)} this month`}
-        />
-        <BigStatCard
-          title="Result Transfers" value={fmt(rt.total)} icon={<RefreshCw size={24} />}
-          color="#059669"
-          sub={`${fmt(rt.approved)} finalized · ${fmt(rt.last30Days)} this month`}
-          badge={(rt.pending || 0) + (rt.reviewed || 0)}
-        />
-        <BigStatCard
-          title="Pending Action" value={fmt(totalPending)} icon={<Clock size={24} />}
-          color="#4338ca"
-          sub="Requires managerial determination"
-        />
+        {hasPermission('cancellations', 'view') && (
+          <BigStatCard
+            title="Total Cancellations" value={fmt(c.total)} icon={<FileText size={24} />}
+            color="var(--primary)"
+            sub={`${fmt(c.approved)} finalized · ${fmt(c.last30Days)} this month`}
+            badge={c.pending}
+          />
+        )}
+        {hasPermission('refunds', 'view') && (
+          <BigStatCard
+            title="Total Refunds" value={fmt(r.total)} icon={<ReceiptText size={24} />}
+            color="#92400e"
+            sub={`${fmtRWF(r.approvedAmountRWF)} paid out · ${fmt(r.last30Days)} this month`}
+            badge={(r.pending || 0) + (r.verified || 0)}
+          />
+        )}
+        {hasPermission('incident_reports', 'view') && (
+          <BigStatCard
+            title="Incident Reports" value={fmt(i.total)} icon={<AlertTriangle size={24} />}
+            color="#b91c1c"
+            sub={`${fmt(i.reviewed)} reviews done · ${fmt(i.last30Days)} this month`}
+          />
+        )}
+        {hasPermission('results_transfer', 'view') && (
+          <BigStatCard
+            title="Result Transfers" value={fmt(rt.total)} icon={<RefreshCw size={24} />}
+            color="#059669"
+            sub={`${fmt(rt.approved)} finalized · ${fmt(rt.last30Days)} this month`}
+            badge={(rt.pending || 0) + (rt.reviewed || 0)}
+          />
+        )}
+        {totalPending > 0 && (
+          <BigStatCard
+            title="Pending Action" value={fmt(totalPending)} icon={<Clock size={24} />}
+            color="#4338ca"
+            sub="Requires managerial determination"
+          />
+        )}
       </div>
 
       {/* ── Two-column middle section ── */}
@@ -236,10 +246,10 @@ const ManagementDashboard = () => {
             <h3 style={{ margin: '0 0 1.5rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <TrendingUp size={20} style={{ color: 'var(--success)' }} /> Operational Performance
             </h3>
-            <ModuleBar label="Cancellation Completion" approved={c.approved || 0} total={c.total || 0} color="var(--primary)" />
-            <ModuleBar label="Refund Processing"       approved={r.approved || 0} total={r.total || 0} color="#92400e" />
-            <ModuleBar label="Result Transfer Finalization" approved={rt.approved || 0} total={rt.total || 0} color="#059669" />
-            <ModuleBar label="Incident Review Rate"    approved={i.reviewed || 0} total={i.total || 0} color="#b91c1c" />
+            {hasPermission('cancellations', 'view') && <ModuleBar label="Cancellation Completion" approved={c.approved || 0} total={c.total || 0} color="var(--primary)" />}
+            {hasPermission('refunds', 'view') && <ModuleBar label="Refund Processing"       approved={r.approved || 0} total={r.total || 0} color="#92400e" />}
+            {hasPermission('results_transfer', 'view') && <ModuleBar label="Result Transfer Finalization" approved={rt.approved || 0} total={rt.total || 0} color="#059669" />}
+            {hasPermission('incident_reports', 'view') && <ModuleBar label="Incident Review Rate"    approved={i.reviewed || 0} total={i.total || 0} color="#b91c1c" />}
           </div>
 
         </div>

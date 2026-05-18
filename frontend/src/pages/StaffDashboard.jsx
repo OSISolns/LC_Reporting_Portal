@@ -116,7 +116,7 @@ const TipCard = ({ tips }) => (
 
 // ══════════════════════════════════════════════════════════════════════════════
 const StaffDashboard = () => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
   const isPrincipal = user?.role === 'principal_cashier';
   const isOps       = user?.role === 'operations_staff';
@@ -222,21 +222,12 @@ const StaffDashboard = () => {
 
       {/* ── Mini stats ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 mb-8">
-        {user?.role === 'nurse' ? (
-          <>
-            <MiniStat label="Active Assessments" value={data.clinical.length} color="#1b669e" icon={<Stethoscope size={24} />} />
-            <MiniStat label="My Incidents" value={data.incidents.length} color="#b91c1c" icon={<AlertTriangle size={24} />} />
-            <MiniStat label="Pending Sync" value={data.clinical.filter(c => c.status === 'Draft').length} color="#4338ca" icon={<Clock size={24} />} />
-          </>
-        ) : (
-          <>
-            {!isOps && <MiniStat label={user?.role === 'it_officer' ? "All Cancellations" : "My Cancellations"} value={data.canc.length} color="#1b669d" icon={<FileText size={24} />} />}
-            {!isOps && <MiniStat label={user?.role === 'it_officer' ? "All Refunds" : "My Refunds"} value={data.refunds.length} color="#92400e" icon={<ReceiptText size={24} />} />}
-            <MiniStat label={user?.role === 'it_officer' ? "All Incidents" : "My Incidents"} value={data.incidents.length} color="#b91c1c" icon={<AlertTriangle size={24} />} />
-            <MiniStat label={user?.role === 'it_officer' ? "All Transfers" : "My Transfers"} value={data.transfers.length} color="#059669" icon={<RefreshCw size={24} />} />
-            <MiniStat label="Pending Action" value={pendCount} color="#4338ca" icon={<Clock size={24} />} />
-          </>
-        )}
+        {hasPermission('clinical_observation', 'view') && <MiniStat label="Active Assessments" value={data.clinical.length} color="#1b669e" icon={<Stethoscope size={24} />} />}
+        {hasPermission('cancellations', 'view') && <MiniStat label={user?.role === 'it_officer' ? "All Cancellations" : "My Cancellations"} value={data.canc.length} color="#1b669d" icon={<FileText size={24} />} />}
+        {hasPermission('refunds', 'view') && <MiniStat label={user?.role === 'it_officer' ? "All Refunds" : "My Refunds"} value={data.refunds.length} color="#92400e" icon={<ReceiptText size={24} />} />}
+        {hasPermission('incident_reports', 'view') && <MiniStat label={user?.role === 'it_officer' ? "All Incidents" : "My Incidents"} value={data.incidents.length} color="#b91c1c" icon={<AlertTriangle size={24} />} />}
+        {hasPermission('results_transfer', 'view') && <MiniStat label={user?.role === 'it_officer' ? "All Transfers" : "My Transfers"} value={data.transfers.length} color="#059669" icon={<RefreshCw size={24} />} />}
+        {pendCount > 0 && <MiniStat label="Pending Action" value={pendCount} color="#4338ca" icon={<Clock size={24} />} />}
       </div>
 
       {/* ── Quick actions ── */}
@@ -244,23 +235,13 @@ const StaffDashboard = () => {
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 mb-8 shadow-sm">
           <h3 className="m-0 mb-6 text-xl font-black text-slate-800">Workflow Actions</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {(!isOps && user?.role !== 'nurse') && (
-              <QuickAction label="New Cancellation" icon={<Plus size={24} />} color="#1b669e" path="/cancellations/new" navigate={navigate} />
-            )}
-            {(!isOps && user?.role !== 'nurse') && (
-              <QuickAction label="New Refund" icon={<Plus size={24} />} color="#003b44" path="/refunds/new" navigate={navigate} />
-            )}
-            <QuickAction label="Report Incident" icon={<AlertTriangle size={24} />} color="#b91c1c" path="/incidents/new" navigate={navigate} />
-            {user?.role !== 'nurse' && (
-              <QuickAction label="Result Transfer" icon={<RefreshCw size={24} />} color="#059669" path="/results-transfer" navigate={navigate} />
-            )}
-            {user?.role === 'nurse' && (
-              <QuickAction label="Clinical Observation" icon={<Stethoscope size={24} />} color="#1b669e" path="/clinical-observation" navigate={navigate} />
-            )}
+            {hasPermission('cancellations', 'create') && <QuickAction label="New Cancellation" icon={<Plus size={24} />} color="#1b669e" path="/cancellations/new" navigate={navigate} />}
+            {hasPermission('refunds', 'create') && <QuickAction label="New Refund" icon={<Plus size={24} />} color="#003b44" path="/refunds/new" navigate={navigate} />}
+            {hasPermission('incident_reports', 'create') && <QuickAction label="Report Incident" icon={<AlertTriangle size={24} />} color="#b91c1c" path="/incidents/new" navigate={navigate} />}
+            {hasPermission('results_transfer', 'create') && <QuickAction label="Result Transfer" icon={<RefreshCw size={24} />} color="#059669" path="/results-transfer" navigate={navigate} />}
+            {hasPermission('clinical_observation', 'view') && <QuickAction label="Clinical Observation" icon={<Stethoscope size={24} />} color="#1b669e" path="/clinical-observation" navigate={navigate} />}
             <QuickAction label="View History" icon={<ExternalLink size={24} />} color="#334155" path="/incidents" navigate={navigate} />
-            {isPrincipal && (
-              <QuickAction label="AI Platform" icon={<TrendingUp size={24} />} color="#4338ca" path="/ai-insights" navigate={navigate} />
-            )}
+            {hasPermission('reports', 'view') && <QuickAction label="AI Platform" icon={<TrendingUp size={24} />} color="#4338ca" path="/ai-insights" navigate={navigate} />}
           </div>
         </div>
       )}
