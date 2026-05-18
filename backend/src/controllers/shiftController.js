@@ -226,9 +226,9 @@ exports.closeShift = async (req, res, next) => {
     const { 
       handover_notes, 
       equipment, 
-      cashier, 
-      helpdesk, 
-      callcenter, 
+      cashier_close, 
+      helpdesk_close, 
+      callcenter_close, 
       override,
       password 
     } = req.body;

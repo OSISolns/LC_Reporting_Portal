@@ -22,14 +22,14 @@ function requireReviewer(req, res, next) {
 
 /**
  * POST /api/shifts/open
- * Open a new shift. Must select role: cashier | helpdesk | call_center
+ * Open a new shift. Must select role: cashier | helpdesk | call_center | nurse
  */
 router.post(
   '/open',
   validate([
     body('shift_role')
-      .isIn(['cashier', 'helpdesk', 'call_center'])
-      .withMessage('shift_role must be cashier, helpdesk, or call_center'),
+      .isIn(['cashier', 'helpdesk', 'call_center', 'nurse'])
+      .withMessage('shift_role must be cashier, helpdesk, call_center, or nurse'),
     body('equipment')
       .isArray({ min: 1 })
       .withMessage('Equipment checklist is required'),
@@ -82,7 +82,7 @@ router.get(
   '/',
   requireReviewer,
   validate([
-    query('role').optional().isIn(['cashier', 'helpdesk', 'call_center']),
+    query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse']),
     query('status').optional().isIn(['open', 'draft', 'closed']),
     query('flagged').optional().isIn(['0', '1']),
     query('page').optional().isInt({ min: 1 }),

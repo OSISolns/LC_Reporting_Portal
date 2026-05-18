@@ -24,6 +24,7 @@ import CloseShift from './pages/shifts/CloseShift';
 import ShiftDashboard from './pages/shifts/ShiftDashboard';
 import ShiftDetail from './pages/shifts/ShiftDetail';
 import NurseShiftDashboard from './pages/shifts/NurseShiftDashboard';
+import StaffShiftDashboard from './pages/shifts/StaffShiftDashboard';
 import SafetyManagement from './pages/SafetyManagement';
 import ClinicalSheet from './pages/ClinicalSheet';
 import ClinicalObservationList from './pages/ClinicalObservationList';
@@ -33,6 +34,7 @@ import PatientRecords from './pages/PatientRecords';
 const ShiftDashboardRedirect = () => {
   const { user } = useAuth();
   if (user?.role === 'nurse') return <NurseShiftDashboard />;
+  if (['cashier', 'customer_care'].includes(user?.role)) return <StaffShiftDashboard />;
   return <ShiftDashboard />;
 };
 
@@ -81,7 +83,7 @@ function App() {
             } />
             <Route path="/shifts/:id" element={<ShiftDetail />} />
             <Route path="/shifts" element={
-              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'it_officer', 'operations_staff', 'nurse', 'reviewer']}>
+              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'it_officer', 'operations_staff', 'nurse', 'reviewer', 'cashier', 'customer_care']}>
                 <ShiftDashboardRedirect />
               </ProtectedRoute>
             } />

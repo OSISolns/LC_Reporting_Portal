@@ -1057,10 +1057,7 @@ export default function CloseShift() {
       return;
     }
     
-    if (!password.trim()) {
-      toast.error('Password authentication is required');
-      return;
-    }
+
 
     const badEquip = equipment.filter((e) => e.status !== 'Working' && !e.remarks.trim());
     if (badEquip.length) {
