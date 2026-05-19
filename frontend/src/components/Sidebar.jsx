@@ -15,32 +15,29 @@ const Sidebar = ({ onClose }) => {
 
   const menuItems = [
     { name: 'Dashboard',        icon: <LayoutDashboard size={20} />, path: '/',            requiredPerm: null },
-    { name: 'Cancellations',    icon: <FileText size={20} />,        path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' } },
-    { name: 'Refunds',          icon: <ReceiptText size={20} />,     path: '/refunds',      requiredPerm: { mod: 'refunds', act: 'view' } },
-    { name: 'Incident Reports', icon: <AlertTriangle size={20} />,   path: '/incidents',    requiredPerm: { mod: 'incident_reports', act: 'view' } },
-    { name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' } },
-    { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' } },
-    { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' } },
-    { name: 'Clinical Sheets', icon: <Stethoscope size={20} />,     path: '/clinical-observation', requiredPerm: { mod: 'clinical_observation', act: 'view' } },
-    { name: 'Insights',         icon: <Brain size={20} />,           path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' } },
-    { name: 'User Management',  icon: <Users size={20} />,           path: '/users',        requiredPerm: { mod: 'user_management', act: 'view' } },
-    { name: 'Permissions',      icon: <Shield size={20} />,          path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, adminOnly: true }, // Restricted to admin role only
-    { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, adminOnly: true }, // Restricted to admin only
+    { name: 'Cancellations',    icon: <FileText size={20} />,        path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer'] },
+    { name: 'Refunds',          icon: <ReceiptText size={20} />,     path: '/refunds',      requiredPerm: { mod: 'refunds', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer'] },
+    { name: 'Incident Reports', icon: <AlertTriangle size={20} />,   path: '/incidents',    requiredPerm: { mod: 'incident_reports', act: 'view' }, allowedRoles: ['nurse', 'admin', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer', 'chef-nurse'] },
+    { name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'reviewer'] },
+    { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer'] },
+    { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer'] },
+    { name: 'Clinical Sheets', icon: <Stethoscope size={20} />,     path: '/clinical-observation', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse'] },
+    { name: 'Insights',         icon: <Brain size={20} />,           path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer'] },
+    { name: 'User Management',  icon: <Users size={20} />,           path: '/users',        requiredPerm: { mod: 'user_management', act: 'view' }, allowedRoles: ['admin', 'it_officer'] },
+    { name: 'Permissions',      icon: <Shield size={20} />,          path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
+    { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin', 'coo', 'deputy_coo', 'hsfp'] },
     // Shift Module
-    { name: 'Shift Management', icon: <Clock size={20} />,           path: '/shifts',  requiredPerm: null, staffOnly: true },
-    { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: null, reviewerOnly: true },
+    { name: 'Shift Management', icon: <Clock size={20} />,           path: '/shifts',  requiredPerm: null, allowedRoles: ['cashier', 'customer_care', 'principal_cashier', 'nurse'] },
+    { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: null, allowedRoles: ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'] },
   ];
-
-  const SHIFT_STAFF_ROLES   = ['cashier', 'customer_care', 'principal_cashier', 'nurse'];
-  const SHIFT_REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'];
 
   const filteredMenu = menuItems.filter(item => {
     // Explicitly hide Insights from HSFP
     if (item.name === 'Insights' && user?.role === 'hsfp') return false;
     
-    if (item.staffOnly)   return SHIFT_STAFF_ROLES.includes(user?.role);
-    if (item.reviewerOnly) return SHIFT_REVIEWER_ROLES.includes(user?.role);
-    if (item.adminOnly)    return user?.role === 'admin';
+    // Explicitly hide modules if the user's role does not have route access
+    if (item.allowedRoles && !item.allowedRoles.includes(user?.role)) return false;
+    
     if (!item.requiredPerm) return true;
     return hasPermission(item.requiredPerm.mod, item.requiredPerm.act);
   });
