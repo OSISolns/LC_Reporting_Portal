@@ -318,6 +318,7 @@ LC_Reporting_Portal/
 - **JWT Authentication**: All API routes (except `POST /auth/login`) require a valid Bearer token.
 - **Account Lockout Protection**: Strict rate limiter on the `/auth/login` endpoint that tracks attempts by username (max 5 requests per 15 minutes per account). This prevents one user from locking out an entire clinic IP.
 - **Granular RBAC Middleware**: Routes enforce access using dynamic permission matrix (`checkPermission('module', 'action')`).
+- **Navigation Visibility Alignment**: The frontend `Sidebar` navigation dynamically filters visible items using both route-level role restrictions (`allowedRoles` in `App.jsx`) and granular backend-synchronized permission states (`hasPermission`). If a user is not authorized to access a route or module, it is completely hidden from their navigation bar.
 - **Helmet**: HTTP security headers applied on all responses.
 - **Rate Limiting**: 200 requests / 15 minutes per IP on all `/api/*` routes.
 - **CORS**: Configured for local environments and production Vercel domains.
