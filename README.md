@@ -54,7 +54,10 @@ The system uses a granular permission matrix, configurable by Administrators. Th
 | `lab_team_lead` | Laboratory Team Lead | Final approver for results transfers |
 | `it_officer` | IT Officer | User management, audit logs (restricted from Permissions module) |
 | `nurse` | Clinical Nurse | Manages clinical observation sheets and incident reporting |
+| `chef-nurse` | Chef Nurse | Manages nursing shifts, clinical observations, and safety reports |
+| `hsfp` | Health & Safety Focal Person | Manages clinical safety workspace, reviews/approves incident and sentinel event reports |
 | `consultant` | Consultant | Read-only access across all modules |
+| `reviewer` | External Auditor/Reviewer | Sandbox/isolated role for auditing and workflow reviews (restricted to mock data) |
 
 ---
 
