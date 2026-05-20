@@ -25,6 +25,7 @@ const AuditLogs = () => {
     dataChanges: 0,
     system: 0
   });
+  const [exporting, setExporting] = useState(false);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -62,28 +63,34 @@ const AuditLogs = () => {
     log.entity_type?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const exportToCSV = () => {
-    const headers = ['Timestamp', 'User', 'Role', 'Action', 'Entity', 'IP Address', 'Details'];
-    const rows = filteredLogs.map(l => [
-      new Date(l.created_at).toLocaleString(),
-      l.user_name,
-      l.user_role,
-      l.action,
-      l.entity_type,
-      l.ip_address,
-      JSON.stringify(l.details).replace(/"/g, '""')
-    ]);
+  const exportToExcel = async () => {
+    setExporting(true);
+    try {
+      const queryParams = new URLSearchParams();
+      if (filters.startDate) queryParams.append('startDate', filters.startDate);
+      if (filters.endDate) queryParams.append('endDate', filters.endDate);
+      if (filters.actionType) queryParams.append('action', filters.actionType);
 
-    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `system_audit_logs_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const res = await api.get(`/audit/export/excel?${queryParams.toString()}`, { responseType: 'blob' });
+      
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      let filename = `system_audit_logs_${new Date().toISOString().split('T')[0]}`;
+      link.setAttribute('download', `${filename}.xlsx`);
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to export audit logs as Excel.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const getActionColor = (action) => {
@@ -144,11 +151,29 @@ const AuditLogs = () => {
             Refresh
           </button>
           <button 
-            onClick={exportToCSV}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--primary-dark)', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+            onClick={exportToExcel}
+            disabled={exporting}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: '0.75rem 1.5rem', 
+              backgroundColor: exporting ? '#94a3b8' : 'var(--primary-dark)', 
+              color: '#ffffff', 
+              border: 'none', 
+              borderRadius: '12px', 
+              fontWeight: 700, 
+              cursor: exporting ? 'not-allowed' : 'pointer', 
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+              transition: 'all 0.2s'
+            }}
           >
-            <Download size={18} />
-            Export Logs
+            {exporting ? (
+              <RefreshCw size={18} className="animate-spin" />
+            ) : (
+              <Download size={18} />
+            )}
+            Export Excel
           </button>
         </div>
       </div>
