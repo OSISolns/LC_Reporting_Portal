@@ -2,6 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware: authenticateToken } = require('../middleware/auth');
+const authorizeRoles = require('../middleware/role');
+
+router.use(authenticateToken);
+router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']));
 
 // Mock data for demonstration
 const MOCK_PATIENTS = {
@@ -16,7 +20,7 @@ const MOCK_VITALS = {
   'P-1002': [{ temperature: '37.2', pulse: '84', respiratory_rate: '20', blood_pressure: '110/70', spo2: '99', weight: '62', created_at: new Date().toISOString() }],
 };
 
-router.get('/:id', authenticateToken, (req, res) => {
+router.get('/:id', (req, res) => {
   const patient = MOCK_PATIENTS[req.params.id] || { 
     id: req.params.id, 
     mrn: 'MRN-' + req.params.id.split('-')[1], 
@@ -30,7 +34,7 @@ router.get('/:id', authenticateToken, (req, res) => {
   res.json(patient);
 });
 
-router.get('/:id/vitals', authenticateToken, (req, res) => {
+router.get('/:id/vitals', (req, res) => {
   const vitals = MOCK_VITALS[req.params.id] || [];
   res.json(vitals);
 });

@@ -3,8 +3,10 @@ const express = require('express');
 const router = express.Router();
 const safetyController = require('../controllers/safetyController');
 const { authMiddleware } = require('../middleware/auth');
+const authorizeRoles = require('../middleware/role');
 
 router.use(authMiddleware);
+router.use(authorizeRoles(['hsfp', 'admin', 'reviewer']));
 
 router.post('/', safetyController.createReport);
 router.get('/', safetyController.getAllReports);
