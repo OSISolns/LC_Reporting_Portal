@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getUsers, createUser, updateUser, getRoles, deleteUser, resetPassword } from '../api/users';
 import { getUserEffectivePermissions, setUserOverride } from '../api/permissions';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { UserPlus, Edit, X, Shield, Mail, Trash2, Key, CheckCircle2, AlertCircle, Search } from 'lucide-react';
+import { UserPlus, Edit, X, Shield, Mail, Trash2, Key, CheckCircle2, AlertCircle, Search, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 
