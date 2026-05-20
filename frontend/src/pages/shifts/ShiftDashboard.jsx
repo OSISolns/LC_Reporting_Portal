@@ -8,7 +8,8 @@ import {
   reactivateShift,
   bulkReviewShifts,
   triggerAutoClose,
-  deleteShift
+  deleteShift,
+  exportShiftsExcel
 } from '../../api/shifts';
 import {
   Users, Clock, Filter, Calendar, Search, Flag, CheckCircle2,
@@ -98,6 +99,7 @@ export default function ShiftDashboard() {
     role: '', status: '', date_from: '', date_to: '', employee_name: '', flagged: ''
   });
   const [loading, setLoading]   = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [reviewing, setReviewing] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState(0);
@@ -125,6 +127,42 @@ export default function ShiftDashboard() {
   const handleFilter = (e) => {
     e?.preventDefault();
     fetchShifts(1);
+  };
+
+  const handleExportLogs = async () => {
+    setExporting(true);
+    const toastId = toast.loading('Generating Shift Logs Excel Extract...');
+    try {
+      const params = { ...filters };
+      Object.keys(params).forEach(k => !params[k] && delete params[k]);
+      
+      const res = await exportShiftsExcel(params);
+      
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      let filename = 'Shift_Logs';
+      if (filters.date_from || filters.date_to) {
+        filename += `_Extract_${filters.date_from || 'Start'}_to_${filters.date_to || 'End'}`;
+      } else {
+        filename += `_${new Date().toISOString().split('T')[0]}`;
+      }
+      
+      link.setAttribute('download', `${filename}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Shift logs successfully extracted!', { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to extract shift logs. Please try again.', { id: toastId });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleReview = async (id) => {
@@ -300,6 +338,21 @@ export default function ShiftDashboard() {
           </Button>
 
           <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportLogs}
+            disabled={exporting}
+            className="hover:border-[#1b669d] hover:text-[#1b669d] transition-all"
+          >
+            {exporting ? (
+              <RefreshCcw size={15} className="animate-spin mr-1.5" />
+            ) : (
+              <Download size={15} className="mr-1.5" />
+            )}
+            Extract Logs
+          </Button>
+
+          <Button
             variant="ghost"
             size="icon"
             onClick={() => fetchShifts(meta.page)}
@@ -431,6 +484,20 @@ export default function ShiftDashboard() {
                 <div className="flex gap-2 xl:col-span-full mt-1">
                   <Button type="submit" className="flex-1 lg:flex-none lg:px-10">
                     <Search size={14} /> Apply Filters
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleExportLogs}
+                    disabled={exporting}
+                    className="flex-1 lg:flex-none lg:px-10 hover:border-[#1b669d] hover:text-[#1b669d] transition-all"
+                  >
+                    {exporting ? (
+                      <RefreshCcw size={14} className="animate-spin mr-1.5" />
+                    ) : (
+                      <Download size={14} className="mr-1.5" />
+                    )}
+                    Extract Logs
                   </Button>
                   {activeFilters > 0 && (
                     <Button type="button" variant="secondary" onClick={clearFilters}>

@@ -74,3 +74,8 @@ export const triggerAutoClose = () => api.post('/shifts/admin/auto-close');
  * @param {number} id
  */
 export const deleteShift = (id) => api.delete(`/shifts/${id}`);
+
+/**
+ * Export shifts to excel (Reviewer only).
+ */
+export const exportShiftsExcel = (params = {}) => api.get('/shifts/export/excel', { params, responseType: 'blob' });

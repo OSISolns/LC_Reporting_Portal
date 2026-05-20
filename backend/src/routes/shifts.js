@@ -100,6 +100,24 @@ router.get(
 );
 
 /**
+ * GET /api/shifts/export/excel
+ * Export shifts to excel — management only.
+ */
+router.get(
+  '/export/excel',
+  requireReviewer,
+  validate([
+    query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse']),
+    query('status').optional().isIn(['open', 'draft', 'closed']),
+    query('flagged').optional().isIn(['0', '1']),
+    query('date_from').optional().isString(),
+    query('date_to').optional().isString(),
+    query('employee_name').optional().isString(),
+  ]),
+  shift.exportExcel
+);
+
+/**
  * GET /api/shifts/:id
  * Get full detail for a single shift.
  */

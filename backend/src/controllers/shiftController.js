@@ -3,6 +3,7 @@ const db           = require('../config/db');
 const User         = require('../models/user');
 const Notification = require('../models/notification');
 const bcrypt       = require('bcryptjs');
+const { exportToExcel } = require('../utils/excel');
 
 // ─── SHIFT POLICY ─────────────────────────────────────────────────────────────
 const MAX_SHIFT_HOURS  = 8;   // Auto-close threshold
@@ -863,6 +864,88 @@ exports.deleteShift = async (req, res, next) => {
     );
 
     res.json({ success: true, message: 'Shift record permanently removed.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.exportExcel = async (req, res, next) => {
+  try {
+    const { role, date_from, date_to, employee_name, status, flagged } = req.query;
+
+    let where = "s.shift_role != 'nurse'";
+    if (req.user.role === 'chef-nurse') {
+      where = "s.shift_role = 'nurse'";
+    } else if (req.user.role === 'admin' || req.user.role === 'it_officer') {
+      where = "1=1";
+    }
+    const args = [];
+
+    if (role) { where += ' AND s.shift_role = ?'; args.push(role); }
+    if (status) { where += ' AND s.status = ?'; args.push(status); }
+    if (flagged === '1') { where += ' AND s.is_flagged = 1'; }
+    if (date_from) { where += ' AND s.opened_at >= ?'; args.push(date_from); }
+    if (date_to) { where += ' AND s.opened_at <= ?'; args.push(date_to + 'T23:59:59Z'); }
+    if (employee_name) { where += ' AND u.full_name LIKE ?'; args.push(`%${employee_name}%`); }
+
+    const rows = await q(
+      `SELECT s.id, s.shift_role, s.status, s.opened_at, s.closed_at,
+              s.is_flagged, s.flag_reasons, s.handover_notes,
+              u.full_name AS user_name, u.id AS user_id,
+              rv.full_name AS reviewed_by_name, s.reviewed_at
+       FROM shift_sessions s
+       JOIN users u ON s.user_id = u.id
+       LEFT JOIN users rv ON s.reviewed_by = rv.id
+       WHERE ${where}
+       ORDER BY s.opened_at DESC`,
+      args
+    );
+
+    const formattedData = rows.map(r => {
+      let reasons = '';
+      if (r.flag_reasons) {
+        try {
+          reasons = JSON.parse(r.flag_reasons).join(', ');
+        } catch (e) {
+          reasons = r.flag_reasons;
+        }
+      }
+      return {
+        id: r.id,
+        user_name: r.user_name,
+        shift_role: r.shift_role ? r.shift_role.replace(/_/g, ' ').toUpperCase() : '',
+        status: r.status ? r.status.toUpperCase() : '',
+        opened_at: r.opened_at ? new Date(r.opened_at).toLocaleString() : '',
+        closed_at: r.closed_at ? new Date(r.closed_at).toLocaleString() : '',
+        is_flagged: r.is_flagged ? 'YES' : 'NO',
+        flag_reasons: reasons,
+        handover_notes: r.handover_notes || '',
+        reviewed_by_name: r.reviewed_by_name || 'PENDING',
+        reviewed_at: r.reviewed_at ? new Date(r.reviewed_at).toLocaleString() : ''
+      };
+    });
+
+    const columns = [
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'Personnel', key: 'user_name', width: 25 },
+      { header: 'Role', key: 'shift_role', width: 20 },
+      { header: 'Status', key: 'status', width: 15 },
+      { header: 'Opened At', key: 'opened_at', width: 25 },
+      { header: 'Closed At', key: 'closed_at', width: 25 },
+      { header: 'Flagged', key: 'is_flagged', width: 12 },
+      { header: 'Flag Reasons', key: 'flag_reasons', width: 40 },
+      { header: 'Handover Notes', key: 'handover_notes', width: 40 },
+      { header: 'Reviewed By', key: 'reviewed_by_name', width: 25 },
+      { header: 'Reviewed At', key: 'reviewed_at', width: 25 }
+    ];
+
+    const workbook = await exportToExcel('Shift Logs', columns, formattedData);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=Shift_Logs.xlsx');
+
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (err) {
     next(err);
   }
