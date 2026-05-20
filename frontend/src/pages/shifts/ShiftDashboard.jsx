@@ -88,6 +88,7 @@ function SkeletonRow() {
 export default function ShiftDashboard() {
   const { user } = useAuth();
   const isSupervisor = ['admin', 'deputy_coo'].includes(user?.role);
+  const isPrincipalCashier = user?.role === 'principal_cashier';
 
   const [shifts, setShifts] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 25 });
@@ -497,20 +498,22 @@ export default function ShiftDashboard() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-b-2 border-slate-100">
-                <TableHead className="w-[48px] px-6 py-4">
-                  <div 
-                    onClick={toggleSelectAll}
-                    className="w-5 h-5 rounded-md border-2 border-slate-200 flex items-center justify-center cursor-pointer hover:border-[#1b669d] transition-colors"
-                  >
-                    {selectedIds.length === shifts.length && shifts.length > 0 ? (
-                      <CheckSquare size={14} className="text-[#1b669d]" />
-                    ) : selectedIds.length > 0 ? (
-                      <div className="w-2 h-0.5 bg-[#1b669d]" />
-                    ) : (
-                      <Square size={14} className="text-slate-200" />
-                    )}
-                  </div>
-                </TableHead>
+                {!isPrincipalCashier && (
+                  <TableHead className="w-[48px] px-6 py-4">
+                    <div 
+                      onClick={toggleSelectAll}
+                      className="w-5 h-5 rounded-md border-2 border-slate-200 flex items-center justify-center cursor-pointer hover:border-[#1b669d] transition-colors"
+                    >
+                      {selectedIds.length === shifts.length && shifts.length > 0 ? (
+                        <CheckSquare size={14} className="text-[#1b669d]" />
+                      ) : selectedIds.length > 0 ? (
+                        <div className="w-2 h-0.5 bg-[#1b669d]" />
+                      ) : (
+                        <Square size={14} className="text-slate-200" />
+                      )}
+                    </div>
+                  </TableHead>
+                )}
                 <TableHead className="px-6 py-4 text-[0.65rem] font-black text-slate-400 uppercase tracking-[0.15em] w-[220px]">
                   <div className="flex items-center gap-2">
                     <Users size={13} /> Personnel
@@ -590,18 +593,20 @@ export default function ShiftDashboard() {
                       }`}
                     >
                       {/* Selection */}
-                      <td className="px-6 py-4">
-                        <div 
-                          onClick={(e) => { e.stopPropagation(); toggleSelect(s.id); }}
-                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all ${
-                            selectedIds.includes(s.id) 
-                              ? 'border-[#1b669d] bg-[#1b669d]/5' 
-                              : 'border-slate-200 hover:border-slate-300'
-                          }`}
-                        >
-                          {selectedIds.includes(s.id) && <CheckSquare size={14} className="text-[#1b669d]" />}
-                        </div>
-                      </td>
+                      {!isPrincipalCashier && (
+                        <td className="px-6 py-4">
+                          <div 
+                            onClick={(e) => { e.stopPropagation(); toggleSelect(s.id); }}
+                            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all ${
+                              selectedIds.includes(s.id) 
+                                ? 'border-[#1b669d] bg-[#1b669d]/5' 
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            {selectedIds.includes(s.id) && <CheckSquare size={14} className="text-[#1b669d]" />}
+                          </div>
+                        </td>
+                      )}
 
                       {/* Personnel */}
                       <td className="px-6 py-4">
@@ -731,18 +736,22 @@ export default function ShiftDashboard() {
                             </div>
                           </div>
                         ) : isSealed ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleReview(s.id)}
-                            disabled={reviewing === s.id}
-                            className="text-[0.65rem] tracking-wider"
-                          >
-                            {reviewing === s.id
-                              ? <><RefreshCcw size={11} className="animate-spin" /> Verifying…</>
-                              : <><CheckCircle2 size={11} /> Sign Off</>
-                            }
-                          </Button>
+                          isPrincipalCashier ? (
+                            <span className="text-slate-400 font-semibold text-xs">Pending Sign-off</span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleReview(s.id)}
+                              disabled={reviewing === s.id}
+                              className="text-[0.65rem] tracking-wider"
+                            >
+                              {reviewing === s.id
+                                ? <><RefreshCcw size={11} className="animate-spin" /> Verifying…</>
+                                : <><CheckCircle2 size={11} /> Sign Off</>
+                              }
+                            </Button>
+                          )
                         ) : (
                           <span className="text-slate-200 text-lg select-none">—</span>
                         )}

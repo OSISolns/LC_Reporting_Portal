@@ -91,8 +91,8 @@ const ROLE_DEFAULTS = {
     staff_performance: { view:1, create:0 },
   },
   principal_cashier: {
-    cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
-    refunds: { view:1, create:0, edit:0, approve:1, reject:1 },
+    cancellations:    { view:1, create:0, edit:0, review:1, approve:1, reject:1 },
+    refunds: { view:1, create:0, edit:0, review:1, approve:1, reject:1 },
     results_transfer: { view:1, create:0, edit:0, approve:1, reject:1 },
     incident_reports: { view:1, create:1, edit:0, approve:0 },
     user_management: { view:0, create:0, edit:0, delete:0 },

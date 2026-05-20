@@ -10,10 +10,18 @@ router.use(authMiddleware);
 
 // ─── Role guard: reviewer-only endpoints ──────────────────────────────────────
 const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'operations_staff', 'chef-nurse'];
+const REVIEW_WRITE_ROLES = ['sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'operations_staff', 'chef-nurse'];
 
 function requireReviewer(req, res, next) {
   if (!REVIEWER_ROLES.includes(req.user.role)) {
     return res.status(403).json({ success: false, message: 'Access restricted to management roles.' });
+  }
+  next();
+}
+
+function requireReviewerWrite(req, res, next) {
+  if (!REVIEW_WRITE_ROLES.includes(req.user.role)) {
+    return res.status(403).json({ success: false, message: 'Access denied: Principal cashiers have read-only access to shifts.' });
   }
   next();
 }
@@ -107,7 +115,7 @@ router.get(
  */
 router.patch(
   '/:id/review',
-  requireReviewer,
+  requireReviewerWrite,
   validate([param('id').isInt().withMessage('Invalid shift ID')]),
   shift.markReviewed
 );
@@ -117,7 +125,7 @@ router.patch(
  */
 router.post(
   '/bulk-review',
-  requireReviewer,
+  requireReviewerWrite,
   validate([body('ids').isArray({ min: 1 }).withMessage('IDs must be an array')]),
   shift.bulkReview
 );

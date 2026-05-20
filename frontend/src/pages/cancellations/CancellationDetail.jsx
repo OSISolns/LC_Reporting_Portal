@@ -175,7 +175,7 @@ const CancellationDetail = () => {
             </h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {data.status === 'pending' && user.role === 'customer_care' && (
+              {data.status === 'pending' && ['customer_care', 'principal_cashier'].includes(user.role) && (
                 <button onClick={handleVerify} style={{ padding: '14px', backgroundColor: 'var(--info)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(23, 162, 184, 0.2)' }}>
                   <CheckCircle size={18} />
                   Verify Request

@@ -72,12 +72,12 @@ function App() {
 
             {/* ── Shift Module ── */}
             <Route path="/shifts/open" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer', 'chef-nurse']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer', 'chef-nurse']}>
                 <OpenShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/close/:id" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','principal_cashier','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer', 'chef-nurse']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer', 'chef-nurse']}>
                 <CloseShift />
               </ProtectedRoute>
             } />
