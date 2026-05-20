@@ -362,7 +362,16 @@ const AuditLogs = () => {
             }}>
               {[
                 { label: 'Event Timestamp', val: new Date(selectedLog.created_at).toLocaleString(), icon: <Clock size={16} /> },
-                { label: 'Network Origin', val: selectedLog.ip_address || 'Internal System', icon: <Terminal size={16} /> },
+                { 
+                  label: 'Network Origin', 
+                  val: (() => {
+                    let ip = selectedLog.ip_address;
+                    if (ip === '::1') return '127.0.0.1';
+                    if (ip && ip.startsWith('::ffff:')) return ip.substring(7);
+                    return ip || 'Internal System';
+                  })(), 
+                  icon: <Terminal size={16} /> 
+                },
                 { label: 'Executing Officer', val: selectedLog.user_name, icon: <User size={16} /> },
                 { label: 'Impacted Module', val: selectedLog.entity_type?.toUpperCase(), icon: <Database size={16} /> }
               ].map((item, idx) => (

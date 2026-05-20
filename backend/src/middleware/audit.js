@@ -10,7 +10,22 @@ async function logAction(req, action, entityType, entityId, details = {}) {
     const userId = (req && req.user) ? req.user.id : null;
     const userName = (req && req.user) ? req.user.full_name : 'System';
     const userRole = (req && req.user) ? req.user.role : 'System';
-    const ipAddress = req?.ip || req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || 'unknown';
+    let ipAddress = req?.headers?.['x-forwarded-for'] || req?.ip || req?.socket?.remoteAddress || 'unknown';
+
+    // Extract the original client IP if x-forwarded-for contains proxy chains
+    if (ipAddress && ipAddress.includes(',')) {
+      ipAddress = ipAddress.split(',')[0].trim();
+    }
+
+    // Normalize IPv6 localhost loopback
+    if (ipAddress === '::1') {
+      ipAddress = '127.0.0.1';
+    }
+
+    // Normalize IPv6-mapped IPv4 addresses (strip the prefix ::ffff:)
+    if (ipAddress && ipAddress.startsWith('::ffff:')) {
+      ipAddress = ipAddress.substring(7);
+    }
 
     await db.query(
       `INSERT INTO audit_logs (user_id, user_name, user_role, action, entity_type, entity_id, details, ip_address)
