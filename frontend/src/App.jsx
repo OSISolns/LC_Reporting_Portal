@@ -72,18 +72,18 @@ function App() {
 
             {/* ── Shift Module ── */}
             <Route path="/shifts/open" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer', 'chef-nurse']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','lab_team_lead','admin','deputy_coo','staff', 'nurse', 'reviewer', 'chef-nurse']}>
                 <OpenShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/close/:id" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','lab_team_lead','admin','deputy_coo','it_officer','staff', 'nurse', 'reviewer', 'chef-nurse']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','lab_team_lead','admin','deputy_coo','staff', 'nurse', 'reviewer', 'chef-nurse']}>
                 <CloseShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/:id" element={<ShiftDetail />} />
             <Route path="/shifts" element={
-              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'it_officer', 'operations_staff', 'nurse', 'reviewer', 'cashier', 'customer_care', 'chef-nurse']}>
+              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'operations_staff', 'nurse', 'reviewer', 'cashier', 'customer_care', 'chef-nurse']}>
                 <ShiftDashboardRedirect />
               </ProtectedRoute>
             } />
