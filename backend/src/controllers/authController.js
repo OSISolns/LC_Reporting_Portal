@@ -107,6 +107,7 @@ exports.login = async (req, res, next) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        mustChangePassword: user.must_change_password === 1,
         permissions: await Permission.getEffectivePermissions(user.id, user.role)
       }
     });
@@ -119,15 +120,20 @@ exports.login = async (req, res, next) => {
 exports.getMe = async (req, res, next) => {
   try {
     const Permission = require('../models/permission');
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
     res.json({
       success: true,
       user: {
-        id: req.user.id,
-        fullName: req.user.full_name,
-        username: req.user.username,
-        email: req.user.email,
-        role: req.user.role,
-        permissions: await Permission.getEffectivePermissions(req.user.id, req.user.role)
+        id: user.id,
+        fullName: user.full_name,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        mustChangePassword: user.must_change_password === 1,
+        permissions: await Permission.getEffectivePermissions(user.id, user.role)
       }
     });
   } catch (err) {
@@ -171,6 +177,7 @@ exports.devLogin = async (req, res, next) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        mustChangePassword: user.must_change_password === 1,
         permissions: await require('../models/permission').getEffectivePermissions(user.id, user.role)
       },
     });
@@ -203,7 +210,7 @@ exports.changePassword = async (req, res, next) => {
     // Update DB directly
     const db = require('../config/db');
     await db.query(
-      'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [newPasswordHash, userId]
     );
 

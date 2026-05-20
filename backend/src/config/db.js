@@ -10,6 +10,18 @@ const client = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
+// Run dynamic schema migrations on start
+(async () => {
+  try {
+    await client.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0");
+    console.log('✅ SQLite Schema Migration: added must_change_password to users');
+  } catch (err) {
+    if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+      console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+    }
+  }
+})();
+
 /**
  * Compatibility Layer: Transforms Postgres-style SQL/params into LibSQL format.
  * - Converts $1, $2, etc. to ?

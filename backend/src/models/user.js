@@ -67,9 +67,9 @@ class User {
     
     // LibSQL supports RETURNING
     const { rows } = await db.query(
-      `INSERT INTO users (full_name, username, email, password_hash, role_id)
-       VALUES (?, ?, ?, ?, ?)
-       RETURNING id, full_name, username, email, role_id`,
+      `INSERT INTO users (full_name, username, email, password_hash, role_id, must_change_password)
+       VALUES (?, ?, ?, ?, ?, 1)
+       RETURNING id, full_name, username, email, role_id, must_change_password`,
       [fullName, username, email, passwordHash, roleId]
     );
     return rows[0];
@@ -137,7 +137,7 @@ class User {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(newPassword, salt);
     await db.query(
-      'UPDATE users SET password_hash = ?, failed_attempts = 0, lockout_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE users SET password_hash = ?, must_change_password = 1, failed_attempts = 0, lockout_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [passwordHash, id]
     );
   }
