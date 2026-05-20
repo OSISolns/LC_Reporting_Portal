@@ -363,7 +363,7 @@ const AuditLogs = () => {
               {[
                 { label: 'Event Timestamp', val: new Date(selectedLog.created_at).toLocaleString(), icon: <Clock size={16} /> },
                 { 
-                  label: 'Network Origin', 
+                  label: 'Network Origin (IP)', 
                   val: (() => {
                     let ip = selectedLog.ip_address;
                     if (ip === '::1') return '127.0.0.1';
@@ -372,11 +372,37 @@ const AuditLogs = () => {
                   })(), 
                   icon: <Terminal size={16} /> 
                 },
-                { label: 'Executing Officer', val: selectedLog.user_name, icon: <User size={16} /> },
-                { label: 'Impacted Module', val: selectedLog.entity_type?.toUpperCase(), icon: <Database size={16} /> }
+                { label: 'Executing Officer', val: selectedLog.user_name || 'System', icon: <User size={16} /> },
+                { label: 'Officer Authority Role', val: selectedLog.user_role?.toUpperCase() || 'SYSTEM / AUTOMATED', icon: <CheckCircle2 size={16} /> },
+                { label: 'Impacted Module', val: selectedLog.entity_type?.toUpperCase() || 'GLOBAL SYSTEM', icon: <Database size={16} /> },
+                { label: 'Target / Entity Record ID', val: selectedLog.entity_id ? `# ${selectedLog.entity_id}` : 'N/A (Global / Structural Action)', icon: <FileText size={16} /> },
+                { 
+                  label: 'AI IP Location Analysis', 
+                  val: (() => {
+                    let ip = selectedLog.ip_address || '127.0.0.1';
+                    if (ip === '::1') ip = '127.0.0.1';
+                    if (ip.startsWith('::ffff:')) ip = ip.substring(7);
+                    if (ip === '127.0.0.1' || ip === 'localhost' || 
+                        ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.') || 
+                        ip.startsWith('172.17.') || ip.startsWith('172.18.') || ip.startsWith('172.19.') || 
+                        ip.startsWith('172.20.') || ip.startsWith('172.21.') || ip.startsWith('172.22.') || 
+                        ip.startsWith('172.23.') || ip.startsWith('172.24.') || ip.startsWith('172.25.') || 
+                        ip.startsWith('172.26.') || ip.startsWith('172.27.') || ip.startsWith('172.28.') || 
+                        ip.startsWith('172.29.') || ip.startsWith('172.30.') || ip.startsWith('172.31.') ||
+                        ip.startsWith('197.85.') || ip.startsWith('41.186.') || ip.startsWith('197.243.')) {
+                      return '🏥 Work Network (Clinic Subnet)';
+                    } else if (ip.startsWith('105.178.') || ip.startsWith('196.223.') || ip.startsWith('197.244.') || ip.startsWith('41.216.')) {
+                      return '🏠 Home Network (MTN/Airtel Rwanda)';
+                    } else {
+                      return '⚠️ Elsewhere Network (External/Abroad)';
+                    }
+                  })(), 
+                  icon: <Activity size={16} /> 
+                },
+                { label: 'Event Classification', val: selectedLog.action, icon: <ShieldAlert size={16} /> }
               ].map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ color: 'var(--text-secondary)' }}>{item.icon}</div>
+                  <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>{item.icon}</div>
                   <div>
                     <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.02em' }}>{item.label}</p>
                     <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-dark)' }}>{item.val}</p>
