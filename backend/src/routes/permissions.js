@@ -37,6 +37,8 @@ router.get('/user/:userId', permissionController.getUserEffectivePermissions);
  * @route POST /api/permissions/user/:userId/override
  * @desc Set a permission override for a user
  */
+router.post('/user/:userId/override', permissionController.setUserOverride);
+
 /**
  * @route POST /api/permissions/role/:roleName/reset
  * @desc Reset permissions for a role to defaults

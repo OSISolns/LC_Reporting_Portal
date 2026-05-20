@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getUsers, createUser, updateUser, getRoles, deleteUser, resetPassword } from '../api/users';
+import { getUserEffectivePermissions, setUserOverride } from '../api/permissions';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { UserPlus, Edit, X, Shield, Mail, Trash2, Key, CheckCircle2, AlertCircle, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +30,78 @@ const Users = () => {
   const [userToDelete, setUserToDelete] = useState(null);
   const [adminPasswordForDelete, setAdminPasswordForDelete] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // User permission overrides state
+  const [overrideUser, setOverrideUser] = useState(null);
+  const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
+  const [effectivePerms, setEffectivePerms] = useState({});
+  const [loadingOverrides, setLoadingOverrides] = useState(false);
+  const [overrideSelections, setOverrideSelections] = useState({}); // { 'module:action': 'default'|'allow'|'deny' }
+  const [overrideReasons, setOverrideReasons] = useState({}); // { 'module:action': 'reason string' }
+
+  const handleOpenOverrides = async (user) => {
+    setOverrideUser(user);
+    setLoadingOverrides(true);
+    setIsOverrideModalOpen(true);
+    try {
+      const res = await getUserEffectivePermissions(user.id);
+      const data = res.data || {};
+      setEffectivePerms(data);
+      
+      const selections = {};
+      const reasons = {};
+      Object.entries(data).forEach(([modName, actions]) => {
+        Object.entries(actions).forEach(([actionName, info]) => {
+          const key = `${modName}:${actionName}`;
+          if (info.source === 'override') {
+            selections[key] = info.granted ? 'allow' : 'deny';
+            reasons[key] = info.reason || '';
+          } else {
+            selections[key] = 'default';
+            reasons[key] = '';
+          }
+        });
+      });
+      setOverrideSelections(selections);
+      setOverrideReasons(reasons);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to fetch user permissions.', 'error');
+      setIsOverrideModalOpen(false);
+    } finally {
+      setLoadingOverrides(false);
+    }
+  };
+
+  const handleSaveOverrides = async (e) => {
+    e.preventDefault();
+    setLoadingOverrides(true);
+    try {
+      for (const [key, val] of Object.entries(overrideSelections)) {
+        const [modName, actionName] = key.split(':');
+        const original = effectivePerms[modName][actionName];
+        const reason = overrideReasons[key] || '';
+
+        const originalVal = original.source === 'override' ? (original.granted ? 'allow' : 'deny') : 'default';
+        const originalReason = original.reason || '';
+
+        if (val !== originalVal || (val !== 'default' && reason !== originalReason)) {
+          let grantedVal = null;
+          if (val === 'allow') grantedVal = true;
+          if (val === 'deny') grantedVal = false;
+
+          await setUserOverride(overrideUser.id, modName, actionName, grantedVal, reason);
+        }
+      }
+      showToast(`Access overrides for "${overrideUser.full_name}" synchronized successfully.`, 'success');
+      setIsOverrideModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      showToast(err.response?.data?.message || 'Failed to save permission overrides.', 'error');
+    } finally {
+      setLoadingOverrides(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -320,8 +393,19 @@ const Users = () => {
                     {u.is_active ? 'ACTIVE' : 'INACTIVE'}
                   </span>
                 </td>
-                 <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
+                <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    {canEditAll && (
+                      <button 
+                        onClick={() => handleOpenOverrides(u)} 
+                        title="Permission Overrides"
+                        style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', padding: '8px', borderRadius: '8px', transition: 'background 0.2s' }} 
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(2,132,199,0.1)'} 
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <Shield size={18} />
+                      </button>
+                    )}
                     <button 
                       onClick={() => { setResettingUser(u); setIsResetModalOpen(true); }} 
                       title="Reset Password"
@@ -350,7 +434,7 @@ const Users = () => {
                       <Trash2 size={18} />
                     </button>
                   </div>
-                 </td>
+                </td>
               </tr>
             ))}
             {filteredUsers.length === 0 && (
@@ -585,6 +669,155 @@ const Users = () => {
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
               <button type="submit" style={{ flex: 1, padding: '12px', backgroundColor: '#f59e0b', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>Update Password</button>
               <button type="button" onClick={() => setIsResetModalOpen(false)} style={{ flex: 1, padding: '12px', backgroundColor: '#f1f5f9', color: 'var(--primary-dark)', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Manage User Overrides Modal */}
+      <Modal 
+        isOpen={isOverrideModalOpen} 
+        onClose={() => setIsOverrideModalOpen(false)} 
+        title={`Access Overrides: ${overrideUser?.full_name || ''}`}
+        maxWidth="800px"
+      >
+        {loadingOverrides ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+            <RefreshCw size={32} className="animate-spin" style={{ color: 'var(--primary)' }} />
+          </div>
+        ) : (
+          <form onSubmit={handleSaveOverrides} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ padding: '1rem', backgroundColor: 'rgba(0,123,138,0.05)', borderRadius: '10px', fontSize: '0.85rem', color: 'var(--primary-dark)' }}>
+              Configure account-specific functional exceptions for this user. Overrides supersede their default role permissions (<strong>{overrideUser?.role_name}</strong>) immediately.
+            </div>
+
+            <div style={{ maxHeight: '420px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border-color)', textAlign: 'left', position: 'sticky', top: 0, zIndex: 10 }}>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--text-secondary)' }}>Module / Operation</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--text-secondary)' }}>Default Rule</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--text-secondary)' }}>Override Selection</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--text-secondary)' }}>Justification Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(effectivePerms).flatMap(([modName, actions]) => 
+                    Object.entries(actions).map(([actionName, info]) => {
+                      const key = `${modName}:${actionName}`;
+                      const selection = overrideSelections[key] || 'default';
+                      const isOverridden = selection !== 'default';
+
+                      return (
+                        <tr key={key} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '8px 12px' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>{modName.replace(/_/g, ' ').toUpperCase()}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>action: {actionName}</div>
+                          </td>
+                          <td style={{ padding: '8px 12px' }}>
+                            {info.source === 'role' ? (
+                              <span style={{ 
+                                padding: '4px 8px', 
+                                borderRadius: '12px', 
+                                fontSize: '0.75rem', 
+                                fontWeight: 600,
+                                backgroundColor: info.granted ? 'rgba(40,167,69,0.1)' : '#f1f5f9',
+                                color: info.granted ? 'var(--success)' : 'var(--text-secondary)'
+                              }}>
+                                {info.granted ? 'Allowed (Role)' : 'Denied (Role)'}
+                              </span>
+                            ) : (
+                              <span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#fff7ed', color: '#ea580c' }}>
+                                Exception Active
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '8px 12px' }}>
+                            <select
+                              value={selection}
+                              onChange={(e) => {
+                                setOverrideSelections({ ...overrideSelections, [key]: e.target.value });
+                              }}
+                              style={{ 
+                                padding: '6px 8px', 
+                                borderRadius: '6px', 
+                                border: '1.5px solid var(--border-color)', 
+                                outline: 'none',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                backgroundColor: selection === 'allow' ? '#f0fdf4' : selection === 'deny' ? '#fef2f2' : '#ffffff',
+                                color: selection === 'allow' ? '#16a34a' : selection === 'deny' ? '#dc2626' : 'var(--text-primary)'
+                              }}
+                            >
+                              <option value="default">Use Role Default</option>
+                              <option value="allow">Override to ALLOW</option>
+                              <option value="deny">Override to DENY</option>
+                            </select>
+                          </td>
+                          <td style={{ padding: '8px 12px' }}>
+                            <input
+                              type="text"
+                              disabled={!isOverridden}
+                              value={overrideReasons[key] || ''}
+                              onChange={(e) => {
+                                setOverrideReasons({ ...overrideReasons, [key]: e.target.value });
+                              }}
+                              placeholder={isOverridden ? "Reason for exception (required)" : "N/A — Inheriting role defaults"}
+                              required={isOverridden}
+                              style={{ 
+                                width: '100%', 
+                                padding: '6px 10px', 
+                                border: '1.5px solid var(--border-color)', 
+                                borderRadius: '6px',
+                                outline: 'none',
+                                fontSize: '0.8rem',
+                                backgroundColor: isOverridden ? '#ffffff' : '#f8fafc',
+                                color: 'var(--text-primary)'
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+              <button 
+                type="submit" 
+                disabled={loadingOverrides}
+                style={{ 
+                  flex: 2, 
+                  padding: '12px', 
+                  backgroundColor: 'var(--primary)', 
+                  color: '#ffffff', 
+                  border: 'none', 
+                  borderRadius: '10px', 
+                  fontWeight: 700, 
+                  cursor: 'pointer' 
+                }}
+              >
+                {loadingOverrides ? 'Syncing...' : 'Save & Sync Overrides'}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setIsOverrideModalOpen(false)}
+                style={{ 
+                  flex: 1, 
+                  padding: '12px', 
+                  backgroundColor: '#f1f5f9', 
+                  color: 'var(--primary-dark)', 
+                  border: 'none', 
+                  borderRadius: '10px', 
+                  fontWeight: 600, 
+                  cursor: 'pointer' 
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </form>
         )}
