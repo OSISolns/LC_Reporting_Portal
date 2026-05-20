@@ -685,11 +685,6 @@ function analyzeSecurity(rows) {
       ta.reasons.add('Developer bypass used in production');
     }
 
-    if (action === 'AUTH_FAILURE') {
-      ta.threatLevel = ta.threatLevel === 'high' ? 'high' : 'medium';
-      ta.reasons.add('Automated auth scanning detected');
-    }
-
     if (action === 'PERMISSION_DENIED') {
       ta.isSuspicious = true;
       ta.threatLevel = 'high';
@@ -707,6 +702,62 @@ function analyzeSecurity(rows) {
     if (categories[catLabel].examples.length < 2) {
       categories[catLabel].examples.push(`${r.user_name || 'Unknown'} - ${action} from ${r.ip_address || 'local'}`);
     }
+  });
+
+  // 5. Network Origins (Work vs Home vs Elsewhere) Heuristics and Clustering
+  const locationAnalysis = {};
+  rows.forEach(r => {
+    const ip = r.ip_address || '127.0.0.1';
+    let location = 'Elsewhere';
+    
+    // Work network range: localhost, typical local networks, or static clinic range
+    if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' || 
+        ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.') || 
+        ip.startsWith('172.17.') || ip.startsWith('172.18.') || ip.startsWith('172.19.') || 
+        ip.startsWith('172.20.') || ip.startsWith('172.21.') || ip.startsWith('172.22.') || 
+        ip.startsWith('172.23.') || ip.startsWith('172.24.') || ip.startsWith('172.25.') || 
+        ip.startsWith('172.26.') || ip.startsWith('172.27.') || ip.startsWith('172.28.') || 
+        ip.startsWith('172.29.') || ip.startsWith('172.30.') || ip.startsWith('172.31.') ||
+        ip.startsWith('197.85.') || ip.startsWith('41.186.') || ip.startsWith('197.243.')) {
+      location = 'Work';
+    } 
+    // Dynamic / Mobile telecom network typical for residential MTN / Airtel Rwanda
+    else if (ip.startsWith('105.178.') || ip.startsWith('196.223.') || ip.startsWith('197.244.') || ip.startsWith('41.216.')) {
+      location = 'Home';
+    } 
+    // Overseas / Public Cloud / AWS / Proxy / Else
+    else {
+      location = 'Elsewhere';
+    }
+    
+    const userName = r.user_name || 'System';
+    if (!locationAnalysis[userName]) {
+      locationAnalysis[userName] = { user: userName, work: 0, home: 0, elsewhere: 0 };
+    }
+    locationAnalysis[userName][location.toLowerCase()]++;
+  });
+
+  const networkOrigins = Object.values(locationAnalysis).map(item => {
+    const totalLogins = item.work + item.home + item.elsewhere;
+    let primaryLocation = '🏥 Work Network';
+    if (item.home > item.work && item.home > item.elsewhere) primaryLocation = '🏠 Home Network';
+    else if (item.elsewhere > item.work && item.elsewhere > item.home) primaryLocation = '✈️ Elsewhere Network';
+    
+    return {
+      user: item.user,
+      work: item.work,
+      home: item.home,
+      elsewhere: item.elsewhere,
+      total: totalLogins,
+      primaryLocation
+    };
+  });
+
+  let totalWork = 0, totalHome = 0, totalElsewhere = 0;
+  networkOrigins.forEach(o => {
+    totalWork += o.work;
+    totalHome += o.home;
+    totalElsewhere += o.elsewhere;
   });
 
   const categoryList = Object.values(categories)
@@ -730,6 +781,7 @@ function analyzeSecurity(rows) {
     `Scanned ${total} security events. Found ${topActors.length} suspicious actor(s).`,
     criticalThreats > 0 ? `⚠ CRITICAL: ${criticalThreats} account lockout(s) detected. Possible targeted attack.` : '✅ No active account lockouts in recent logs.',
     topActors.some(a => a.topCategory.includes('SQL')) ? `🚨 ALERT: SQL Injection patterns detected and blocked.` : '',
+    `Location audit: ${totalWork} events from 🏥 Work Network, ${totalHome} from 🏠 Home, and ${totalElsewhere} from ✈️ elsewhere/abroad.`,
     topActors.length > 0 ? `Top threat: "${topActors[0].cashier}" (${topActors[0].topCategory}).` : 'All security events appear within normal parameters.'
   ].filter(Boolean).join(' ');
 
@@ -738,7 +790,14 @@ function analyzeSecurity(rows) {
     cashierAttribution: topActors, 
     executiveSummary: summaryLines, 
     total,
-    stats: { suspiciousCount: topActors.length, criticalCount: criticalThreats }
+    networkOrigins,
+    stats: { 
+      suspiciousCount: topActors.length, 
+      criticalCount: criticalThreats,
+      totalWork,
+      totalHome,
+      totalElsewhere
+    }
   };
 }
 

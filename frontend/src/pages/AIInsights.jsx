@@ -145,6 +145,38 @@ const CashierTable = ({ rows = [], moduleColor, isShifts = false, isSecurity = f
   );
 };
 
+const NetworkOriginsTable = ({ origins = [] }) => {
+  if (!origins || !origins.length) return null;
+  return (
+    <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
+      <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#9d174d', display: 'inline-block' }} />
+        AI Network Origins & Login Location Analysis
+      </h4>
+      <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1.5fr', padding: '0.6rem 1rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
+          <span>User Name</span>
+          <span style={{ textAlign: 'center' }}>🏥 Work</span>
+          <span style={{ textAlign: 'center' }}>🏠 Home</span>
+          <span style={{ textAlign: 'center' }}>✈️ Other</span>
+          <span style={{ textAlign: 'right' }}>Primary Origin</span>
+        </div>
+        {origins.map((row, i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1.5fr', padding: '0.75rem 1rem', alignItems: 'center', backgroundColor: '#ffffff', borderBottom: i < origins.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: '0.85rem' }}>
+            <span style={{ fontWeight: 600, color: '#1e293b' }}>{row.user}</span>
+            <span style={{ textAlign: 'center', color: '#059669', fontWeight: 700 }}>{row.work}</span>
+            <span style={{ textAlign: 'center', color: '#3b82f6', fontWeight: 700 }}>{row.home}</span>
+            <span style={{ textAlign: 'center', color: row.elsewhere > 0 ? '#dc2626' : '#64748b', fontWeight: 700 }}>{row.elsewhere}</span>
+            <span style={{ textAlign: 'right', fontWeight: 700, fontSize: '0.8rem', color: row.primaryLocation.includes('Elsewhere') ? '#dc2626' : row.primaryLocation.includes('Home') ? '#3b82f6' : '#059669' }}>
+              {row.primaryLocation}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const Pill = ({ label, value, color }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem' }}>
     <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: color, flexShrink: 0 }} />
@@ -329,6 +361,7 @@ const ModuleStatCard = ({ module, stats, config, isManagement, onAnalyze, analyz
                 </div>
               )}
               <CashierTable rows={classified.cashierAttribution || []} moduleColor={config.color} isShifts={module === 'shifts'} isSecurity={module === 'security'} />
+              {module === 'security' && <NetworkOriginsTable origins={classified.networkOrigins || []} />}
             </>
           )}
         </div>
