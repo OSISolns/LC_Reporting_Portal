@@ -102,23 +102,53 @@ const AuditLogs = () => {
   };
 
   const renderDetails = (details) => {
-    if (!details) return <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>No additional details available.</p>;
-    if (typeof details === 'string') return <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontFamily: 'monospace' }}>{details}</p>;
+    if (!details) return <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', margin: 0 }}>No additional details available.</p>;
+    
+    let parsed = details;
+    if (typeof details === 'string') {
+      try {
+        parsed = JSON.parse(details);
+      } catch (e) {
+        return <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontFamily: 'monospace', margin: 0 }}>{details}</p>;
+      }
+    }
+
+    if (typeof parsed !== 'object' || parsed === null) {
+      return <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontFamily: 'monospace', margin: 0 }}>{String(parsed)}</p>;
+    }
+
+    const renderValue = (val) => {
+      if (val === null || val === undefined) return '—';
+      if (typeof val === 'object') {
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '10px', borderLeft: '2px solid var(--border-color)', marginTop: '4px' }}>
+            {Object.entries(val).map(([subKey, subVal]) => (
+              <div key={subKey} style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
+                <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{subKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:</span>{' '}
+                <span style={{ fontWeight: 600, color: 'var(--primary-dark)' }}>{typeof subVal === 'object' ? JSON.stringify(subVal) : String(subVal)}</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+      return String(val);
+    };
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {Object.entries(details).map(([key, value]) => (
+        {Object.entries(parsed).map(([key, value]) => (
           <div key={key} style={{ 
             display: 'grid', 
-            gridTemplateColumns: '140px 1fr', 
-            padding: '8px 12px', 
+            gridTemplateColumns: '160px 1fr', 
+            padding: '10px 14px', 
             backgroundColor: '#f8fafc', 
-            borderRadius: '6px',
-            border: '1px solid #f1f5f9'
+            borderRadius: '8px',
+            border: '1px solid #f1f5f9',
+            alignItems: 'start'
           }}>
-            <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{key.replace(/_/g, ' ')}</span>
+            <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginTop: '2px' }}>{key.replace(/_/g, ' ')}</span>
             <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--primary-dark)', wordBreak: 'break-all' }}>
-              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+              {renderValue(value)}
             </span>
           </div>
         ))}

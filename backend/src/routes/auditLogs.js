@@ -34,21 +34,49 @@ router.post('/report-violation', async (req, res, next) => {
   }
 });
 
+const formatDetails = (details) => {
+  if (!details) return '';
+  let parsed = details;
+  if (typeof details === 'string') {
+    try {
+      parsed = JSON.parse(details);
+    } catch (e) {
+      return details;
+    }
+  }
+  if (typeof parsed === 'object' && parsed !== null) {
+    return Object.entries(parsed)
+      .map(([k, v]) => {
+        const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
+        return `${label}: ${val}`;
+      })
+      .join(' | ');
+  }
+  return String(details);
+};
+
 router.use(authorizeRoles(['admin', 'coo', 'deputy_coo']));
 
 router.get('/export/excel', async (req, res, next) => {
   try {
     const logs = await AuditLog.getAll(req.query);
 
-    const formattedData = logs.map(l => ({
-      created_at: l.created_at ? new Date(l.created_at).toLocaleString() : '',
-      user_name: l.user_name || 'System',
-      user_role: l.user_role ? l.user_role.replace(/_/g, ' ').toUpperCase() : 'SYSTEM',
-      action: l.action || '',
-      entity_type: l.entity_type || '',
-      ip_address: l.ip_address || '',
-      details: l.details ? JSON.stringify(l.details) : ''
-    }));
+    const formattedData = logs.map(l => {
+      let ip = l.ip_address || '';
+      if (ip === '::1') ip = '127.0.0.1';
+      if (ip.startsWith('::ffff:')) ip = ip.substring(7);
+
+      return {
+        created_at: l.created_at ? new Date(l.created_at).toLocaleString() : '',
+        user_name: l.user_name || 'System',
+        user_role: l.user_role ? l.user_role.replace(/_/g, ' ').toUpperCase() : 'SYSTEM',
+        action: l.action || '',
+        entity_type: l.entity_type ? l.entity_type.replace(/_/g, ' ').toUpperCase() : '',
+        ip_address: ip,
+        details: formatDetails(l.details)
+      };
+    });
 
     const columns = [
       { header: 'Timestamp', key: 'created_at', width: 25 },
@@ -57,7 +85,7 @@ router.get('/export/excel', async (req, res, next) => {
       { header: 'Action', key: 'action', width: 25 },
       { header: 'Entity', key: 'entity_type', width: 20 },
       { header: 'IP Address', key: 'ip_address', width: 20 },
-      { header: 'Details', key: 'details', width: 50 }
+      { header: 'Details', key: 'details', width: 60 }
     ];
 
     const workbook = await exportToExcel('Audit Logs', columns, formattedData);
