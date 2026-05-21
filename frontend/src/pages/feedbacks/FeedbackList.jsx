@@ -70,10 +70,10 @@ const FeedbackList = () => {
         <div>
           <h1 style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--primary-dark)', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
             <MessageSquare size={36} style={{ color: '#1b669d' }} />
-            Patient Feedback Central
+            Internal Feedback Central
           </h1>
           <p style={{ color: 'var(--text-secondary)', marginTop: '4px', fontSize: '0.95rem' }}>
-            Bilingual suggestions, compliments, and complaints submitted by clinical visitors.
+            Bilingual suggestions, compliments, and complaints submitted confidentially by internal clinical and administrative staff.
           </p>
         </div>
 

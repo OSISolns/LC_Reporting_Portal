@@ -88,7 +88,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Patient Feedback Form" maxWidth="750px">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Internal Feedback Form" maxWidth="750px">
       {submitted ? (
         <div style={{ textAlign: 'center', padding: '3rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
           <div style={{
@@ -108,7 +108,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-dark)' }}>Thank you for your time!</h2>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#059669', marginTop: '-0.5rem' }}>Murakoze kubwumwanya wanyu!</h3>
           <p style={{ color: 'var(--text-secondary)', maxWidth: '500px', lineHeight: '1.6', fontSize: '0.95rem' }}>
-            Welcome to Legacy Clinics & Diagnostics Ltd. Please be assured that <strong>your information remains completely confidential</strong>.<br />
+            Please be assured that <strong>your feedback remains completely confidential</strong>.<br />
             <span style={{ fontStyle: 'italic', display: 'block', marginTop: '6px' }}>
               Amakuru muduha arasigara ari ibanga rikomeye.
             </span>
@@ -146,10 +146,10 @@ const FeedbackModal = ({ isOpen, onClose }) => {
             <Shield size={20} style={{ color: '#1b669d', flexShrink: 0, marginTop: '2px' }} />
             <div>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#1e293b', fontWeight: 600, lineHeight: '1.5' }}>
-                Welcome to Legacy Clinics & Diagnostics Ltd. Please provide feedback on the service provided and be assured that your information remains confidential.
+                Please provide internal feedback on areas of improvement, compliments, or suggestions. Your details will be handled confidentially.
               </p>
               <p style={{ margin: '4px 0 0 0', fontSize: '0.825rem', color: 'var(--text-secondary)', fontStyle: 'italic', fontWeight: 500 }}>
-                Mwatanga ibitekerezo kuri serivise mwahawe. Amakuru muduha arasigara ari ibanga.
+                Tanga inyunganizi, ibyo unyuzwe nabyo, cyangwa ibikwiye gukosorwa. Ibitekerezo byanyu ni ibanga.
               </p>
             </div>
           </div>

@@ -233,7 +233,7 @@ const Login = () => {
             color: 'var(--text-secondary)',
             textTransform: 'uppercase',
             letterSpacing: '0.05em'
-          }}>Patient Care</span>
+          }}>Staff Feedback</span>
         </div>
 
         <button
@@ -265,7 +265,7 @@ const Login = () => {
           }}
         >
           <MessageSquare size={16} />
-          Patient Feedback / Ibitekerezo
+          Internal Feedback / Ibitekerezo
         </button>
       </div>
 

@@ -29,7 +29,7 @@ const Sidebar = ({ onClose }) => {
     // Shift Module
     { name: 'Shift Management', icon: <Clock size={20} />,           path: '/shifts',  requiredPerm: null, allowedRoles: ['cashier', 'customer_care', 'nurse'] },
     { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: null, allowedRoles: ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'] },
-    { name: 'Patient Feedback', icon: <MessageSquare size={20} />,   path: '/feedbacks',    requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo', 'sales_manager', 'reviewer'] },
+    { name: 'Internal Feedback', icon: <MessageSquare size={20} />,   path: '/feedbacks',    requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo', 'sales_manager', 'reviewer'] },
   ];
 
   const filteredMenu = menuItems.filter(item => {
