@@ -11,7 +11,8 @@ const checklistItems = [
   { key: 'receptionCashier', en: 'Reception / Cashier', rw: 'Aho barihira' },
   { key: 'callCenter', en: 'Call center', rw: 'Call center' },
   { key: 'tabaraService', en: 'Tabara service', rw: 'Abasunika Igare' },
-  { key: 'laboratory', en: 'Laboratory', rw: 'Aho batangira ibizami' },
+  { key: 'laboratory', en: 'Phlebotomy', rw: 'Aho batangira ibizamini' },
+  { key: 'laboratoryResults', en: 'Laboratory', rw: 'Abatanga ibisubizo' },
   { key: 'cafetaria', en: 'Cafetaria', rw: 'Muri restora' },
   { key: 'imaging', en: 'Imaging', rw: "M'ucyumba gifotora" }
 ];
@@ -27,6 +28,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
     callCenter: false,
     tabaraService: false,
     laboratory: false,
+    laboratoryResults: false,
     cafetaria: false,
     imaging: false,
     concernDescription: ''
@@ -75,6 +77,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
       callCenter: false,
       tabaraService: false,
       laboratory: false,
+      laboratoryResults: false,
       cafetaria: false,
       imaging: false,
       concernDescription: ''

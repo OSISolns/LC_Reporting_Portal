@@ -12,7 +12,8 @@ const areaLabels = {
   receptionCashier: 'Reception / Cashier',
   callCenter: 'Call center',
   tabaraService: 'Tabara service',
-  laboratory: 'Laboratory',
+  laboratory: 'Phlebotomy (Aho batangira ibizamini)',
+  laboratoryResults: 'Laboratory (Abatanga ibisubizo)',
   cafetaria: 'Cafetaria',
   imaging: 'Imaging'
 };
