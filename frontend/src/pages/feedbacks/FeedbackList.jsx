@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { Button } from '../../components/ui/index';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
-import PrintBranding from '../../components/PrintBranding';
+import { PrintHeader, PrintFooter } from '../../components/PrintBranding';
 
 const areaLabels = {
   receptionCallCenter: 'Reception/call center',
@@ -96,7 +96,7 @@ const FeedbackList = () => {
   const handlePrint = () => {
     const printContent = document.getElementById('compiled-report-print-area').innerHTML;
     const originalContent = document.body.innerHTML;
-    
+
     // Create print window style overrides
     const style = document.createElement('style');
     style.innerHTML = `
@@ -112,7 +112,7 @@ const FeedbackList = () => {
         }
       }
     `;
-    
+
     document.head.appendChild(style);
     window.print();
     document.head.removeChild(style);
@@ -120,7 +120,7 @@ const FeedbackList = () => {
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
         <div>
@@ -184,7 +184,7 @@ const FeedbackList = () => {
 
       {/* Main Grid split */}
       <div style={{ display: 'grid', gridTemplateColumns: feedbacks.length > 0 ? '1.2fr 1fr' : '1fr', gap: '2rem' }}>
-        
+
         {/* Left Side: List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {loading ? (
@@ -206,7 +206,7 @@ const FeedbackList = () => {
             feedbacks.map((item) => {
               const activeAreas = getActiveAreas(item);
               const isSelected = selectedFeedback?.id === item.id;
-              
+
               return (
                 <div
                   key={item.id}
@@ -421,7 +421,7 @@ const FeedbackList = () => {
         maxWidth="950px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
+
           {/* Action Row */}
           <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button
@@ -462,10 +462,10 @@ const FeedbackList = () => {
 
           {/* Report Print Shell */}
           <div id="compiled-report-print-area" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', padding: '1rem' }}>
-            
+
             {/* Printable Branding */}
-            <PrintBranding title="BILINGUAL INTERNAL FEEDBACK COMPILED REPORT" />
-            
+            <PrintHeader title="BILINGUAL INTERNAL FEEDBACK COMPILED REPORT" docType="FB" alwaysVisible={true} />
+
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #e2e8f0', paddingBottom: '1rem', marginTop: '1rem' }}>
               <div>
                 <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Report Parameters</span>
@@ -490,7 +490,7 @@ const FeedbackList = () => {
                 {Object.entries(areaLabels).map(([key, label]) => {
                   const count = stats[key] || 0;
                   const pct = feedbacks.length > 0 ? ((count / feedbacks.length) * 100).toFixed(0) : 0;
-                  
+
                   return (
                     <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>
@@ -513,7 +513,7 @@ const FeedbackList = () => {
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '12px' }}>
                 2. Compiled Feedback Ledger
               </h3>
-              
+
               {feedbacks.length === 0 ? (
                 <p style={{ fontStyle: 'italic', color: '#64748b', fontSize: '0.9rem' }}>No feedback submissions registered within the query parameters.</p>
               ) : (
@@ -532,7 +532,7 @@ const FeedbackList = () => {
                           <span>Entry #{feedbacks.length - index} (Anonymous)</span>
                           <span>Date Submitted: {item.feedback_date}</span>
                         </div>
-                        
+
                         <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#334155', lineHeight: '1.6', fontWeight: 500 }}>
                           "{item.concern_description}"
                         </p>
@@ -570,12 +570,14 @@ const FeedbackList = () => {
                 <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>Automated Extraction Service</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Reviewed & Authorized By:</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Received By:</div>
                 <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b', marginTop: '1.5rem', borderBottom: '1px solid #94a3b8', display: 'inline-block', width: '200px' }}></div>
                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1b669d', marginTop: '6px' }}>Chief Operating Officer (COO)</div>
                 <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Legacy Clinics & Diagnostics</div>
               </div>
             </div>
+
+            <PrintFooter />
 
           </div>
 
