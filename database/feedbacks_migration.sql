@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS patient_feedbacks (
   -- Areas of Service Checklist
   reception_call_center   INTEGER DEFAULT 0,                                    -- Reception/call center (Aho bakirira abantu)
   nursing                 INTEGER DEFAULT 0,                                    -- Nursing (Mubaforomo)
-  doctors_room            INTEGER DEFAULT 0,                                    -- Doctor's room (Icyumba cya Muganga)
+  doctors_room            INTEGER DEFAULT 0,                                    -- Doctor (Muganga)
   reception_cashier       INTEGER DEFAULT 0,                                    -- Reception / Cashier (Aho bishyurira)
   call_center             INTEGER DEFAULT 0,                                    -- Call center
   tabara_service          INTEGER DEFAULT 0,                                    -- Tabara service (Abasunika Igare)

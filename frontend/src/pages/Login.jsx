@@ -236,37 +236,39 @@ const Login = () => {
           }}>Staff Feedback</span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowFeedbackModal(true)}
-          style={{
-            width: '100%',
-            padding: '12px',
-            borderRadius: '10px',
-            border: '2px dashed #1b669d',
-            backgroundColor: 'rgba(27, 102, 157, 0.03)',
-            color: '#1b669d',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(27, 102, 157, 0.08)';
-            e.currentTarget.style.borderStyle = 'solid';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(27, 102, 157, 0.03)';
-            e.currentTarget.style.borderStyle = 'dashed';
-          }}
-        >
-          <MessageSquare size={16} />
-          Internal Feedback / Ibitekerezo
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setShowFeedbackModal(true)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: '1.5px dashed #1b669d',
+              backgroundColor: 'rgba(27, 102, 157, 0.03)',
+              color: '#1b669d',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              marginTop: '0.25rem'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(27, 102, 157, 0.08)';
+              e.currentTarget.style.borderStyle = 'solid';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(27, 102, 157, 0.03)';
+              e.currentTarget.style.borderStyle = 'dashed';
+            }}
+          >
+            <MessageSquare size={14} />
+            Internal Feedback / Ibitekerezo
+          </button>
+        </div>
       </div>
 
       <FeedbackModal isOpen={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} />

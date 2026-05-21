@@ -10,7 +10,7 @@ import { PrintHeader, PrintFooter } from '../../components/PrintBranding';
 const areaLabels = {
   receptionCallCenter: 'Reception/call center',
   nursing: 'Nursing',
-  doctorsRoom: "Doctor's room",
+  doctorsRoom: "Doctor",
   receptionCashier: 'Reception / Cashier',
   callCenter: 'Call center',
   tabaraService: 'Tabara service',

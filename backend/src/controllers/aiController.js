@@ -16,13 +16,14 @@ exports.getModuleStats = async (req, res, next) => {
     const cached = cache.get(CACHE_KEY);
     if (cached) return res.json({ success: true, data: cached, cached: true });
 
-    const [cancRows, refundRows, incidentRows, rtRows, shiftRows, securityRows] = await Promise.all([
+    const [cancRows, refundRows, incidentRows, rtRows, shiftRows, securityRows, feedRows] = await Promise.all([
       queryRows(`SELECT status, COUNT(*) AS cnt FROM cancellation_requests GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM refund_requests       GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM incident_reports      GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM results_transfers     GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM shift_sessions        GROUP BY status`),
       queryRows(`SELECT action AS status, COUNT(*) AS cnt FROM audit_logs WHERE action IN ('LOGIN_FAILED', 'ACCOUNT_LOCKOUT', 'DEV_LOGIN_BYPASS', 'AUTH_FAILURE', 'PERMISSION_DENIED') GROUP BY action`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM patient_feedbacks`),
     ]);
 
     const summarise = (rows) => {
@@ -42,13 +43,14 @@ exports.getModuleStats = async (req, res, next) => {
     ]);
 
     const since30 = `datetime('now', '-30 days')`;
-    const [cRecent, rRecent, iRecent, rtRecent, sRecent, secRecent] = await Promise.all([
+    const [cRecent, rRecent, iRecent, rtRecent, sRecent, secRecent, feedRecent] = await Promise.all([
       queryRows(`SELECT COUNT(*) AS cnt FROM cancellation_requests WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM refund_requests       WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM incident_reports      WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM results_transfers     WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM shift_sessions        WHERE opened_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM audit_logs           WHERE action IN ('LOGIN_FAILED', 'ACCOUNT_LOCKOUT', 'AUTH_FAILURE', 'PERMISSION_DENIED') AND created_at >= ${since30}`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM patient_feedbacks     WHERE created_at >= ${since30}`),
     ]);
 
     const data = {
@@ -70,6 +72,11 @@ exports.getModuleStats = async (req, res, next) => {
         ...summarise(securityRows),
         last30Days: Number(secRecent[0]?.cnt || 0)
       } : null,
+      feedbacks: {
+        total: Number(feedRows[0]?.cnt || 0),
+        reviewed: Number(feedRows[0]?.cnt || 0),
+        last30Days: Number(feedRecent[0]?.cnt || 0)
+      },
     };
 
     cache.set(CACHE_KEY, data, 30_000); // cache 30 seconds
@@ -147,8 +154,16 @@ exports.classifyReasons = async (req, res, next) => {
          WHERE  action IN ('LOGIN_FAILED', 'ACCOUNT_LOCKOUT', 'DEV_LOGIN_BYPASS', 'PASSWORD_CHANGE', 'AUTH_FAILURE', 'PERMISSION_DENIED')
          ORDER  BY created_at DESC LIMIT 1000`
       );
+    } else if (module === 'feedbacks') {
+      rows = await queryRows(
+        `SELECT id,
+                concern_description AS reason,
+                'Patient' AS cashier
+         FROM   patient_feedbacks
+         ORDER  BY created_at DESC LIMIT 500`
+      );
     } else {
-      return res.status(400).json({ success: false, message: 'Invalid module. Use: cancellations | refunds | incidents | transfers | shifts | security' });
+      return res.status(400).json({ success: false, message: 'Invalid module. Use: cancellations | refunds | incidents | transfers | shifts | security | feedbacks' });
     }
 
     // Run the local AI engine (pure JS — no API call)
@@ -161,7 +176,7 @@ exports.classifyReasons = async (req, res, next) => {
 // ── Local AI: cross-module executive narrative ────────────────────────────────
 exports.getExecutiveReport = async (req, res, next) => {
   try {
-    const [cancStat, refundStat, incStat, rtStat, shiftStat, securityStat] = await Promise.all([
+    const [cancStat, refundStat, incStat, rtStat, shiftStat, securityStat, feedStat] = await Promise.all([
       queryRows(`SELECT COUNT(*) AS total,
                         SUM(CASE WHEN status='approved' THEN 1 ELSE 0 END) AS approved,
                         SUM(CASE WHEN status='pending'  THEN 1 ELSE 0 END) AS pending
@@ -186,6 +201,7 @@ exports.getExecutiveReport = async (req, res, next) => {
                         SUM(CASE WHEN action='ACCOUNT_LOCKOUT' THEN 1 ELSE 0 END) AS critical,
                         SUM(CASE WHEN action='LOGIN_FAILED' THEN 1 ELSE 0 END) AS failures
                  FROM audit_logs WHERE created_at >= datetime('now', '-24 hours')`),
+      queryRows(`SELECT COUNT(*) AS total FROM patient_feedbacks`),
     ]);
 
     const c = cancStat[0],   cancTotal    = Number(c.total    || 0);
@@ -201,6 +217,8 @@ exports.getExecutiveReport = async (req, res, next) => {
     
     const sec = securityStat[0], secTotal = Number(sec.total || 0);
     const secCritical = Number(sec.critical || 0);
+    
+    const feedTotal = Number(feedStat[0]?.total || 0);
 
     // Template-based executive narrative
     const BOTTLENECK_THRESHOLD = process.env.BOTTLENECK_THRESHOLD ? parseInt(process.env.BOTTLENECK_THRESHOLD) : 5;
@@ -210,7 +228,7 @@ exports.getExecutiveReport = async (req, res, next) => {
     if (rtPending > BOTTLENECK_THRESHOLD)     bottlenecks.push(`${rtPending} result transfers awaiting review`);
 
     const lines = [
-      `Legacy Clinics currently has ${cancTotal} cancellation, ${refundTotal} refund, and ${incTotal} incident records across all reporting modules.`,
+      `Legacy Clinics currently has ${cancTotal} cancellation, ${refundTotal} refund, ${incTotal} incident, and ${feedTotal} internal feedback records across all reporting modules.`,
       cancTotal > 0
         ? `Cancellations: ${Number(c.approved || 0)} approved (${Math.round(Number(c.approved || 0) / cancTotal * 100)}%), ${cancPending} pending.`
         : 'No cancellation records on file yet.',
@@ -226,6 +244,9 @@ exports.getExecutiveReport = async (req, res, next) => {
       shiftTotal > 0
         ? `Shifts: ${shiftActive} currently active, ${shiftFlagged} flagged for issues (${Math.round(shiftFlagged / shiftTotal * 100)}% flag rate).`
         : 'No shift records on file yet.',
+      feedTotal > 0
+        ? `Internal Feedbacks: ${feedTotal} total submissions on service areas collected and analyzed.`
+        : 'No internal feedback records on file yet.',
       req.user.role === 'admin' && secTotal > 0
         ? `Security: ${secTotal} events in last 24h, ${secCritical} critical lockouts detected.`
         : '',

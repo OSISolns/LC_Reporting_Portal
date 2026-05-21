@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 const checklistItems = [
   { key: 'receptionCallCenter', en: 'Reception/call center', rw: 'Aho bakirira abantu' },
   { key: 'nursing', en: 'Nursing', rw: 'Mubaforomo' },
-  { key: 'doctorsRoom', en: "Doctor's room", rw: 'Icyumba cya Muganga' },
+  { key: 'doctorsRoom', en: "Doctor", rw: 'Muganga' },
   { key: 'receptionCashier', en: 'Reception / Cashier', rw: 'Aho bishyurira' },
   { key: 'callCenter', en: 'Call center', rw: 'Call center' },
   { key: 'tabaraService', en: 'Tabara service', rw: 'Abasunika Igare' },
@@ -38,6 +38,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
   });
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isCustomOther, setIsCustomOther] = useState(false);
 
   const handleCheckboxChange = (key) => {
     setFormData(prev => ({ ...prev, [key]: !prev[key] }));
@@ -46,6 +47,17 @@ const FeedbackModal = ({ isOpen, onClose }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleOtherDetailsChange = (e) => {
+    const val = e.target.value;
+    if (val === 'custom') {
+      setIsCustomOther(true);
+      setFormData(prev => ({ ...prev, otherDetails: '' }));
+    } else {
+      setIsCustomOther(false);
+      setFormData(prev => ({ ...prev, otherDetails: val }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -87,6 +99,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
       otherDetails: '',
       concernDescription: ''
     });
+    setIsCustomOther(false);
     setSubmitted(false);
   };
 
@@ -246,22 +259,54 @@ const FeedbackModal = ({ isOpen, onClose }) => {
               <span style={{ fontSize: '0.725rem', color: '#64748b', fontStyle: 'italic', marginTop: '-4px' }}>
                 Sobanura aho ariho.
               </span>
-              <input
-                type="text"
-                name="otherDetails"
+              <select
+                name="otherDetailsSelect"
                 required
-                placeholder="E.g. Orientation Services, Cleaning Services, Parking, Restrooms...Etc."
-                value={formData.otherDetails}
-                onChange={handleChange}
+                value={isCustomOther ? 'custom' : formData.otherDetails}
+                onChange={handleOtherDetailsChange}
                 style={{
                   padding: '10px 12px',
                   backgroundColor: '#ffffff',
                   border: '1.5px solid var(--border-color)',
                   borderRadius: '10px',
                   outline: 'none',
-                  fontSize: '0.9rem'
+                  fontSize: '0.9rem',
+                  appearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 1rem center',
+                  backgroundSize: '1em',
+                  cursor: 'pointer',
+                  width: '100%'
                 }}
-              />
+              >
+                <option value="">Select service area / Hitamo serivisi...</option>
+                <option value="Orientation Services">Orientation Services (Ahabanzirizwa / Aho kuyoborwa)</option>
+                <option value="Cleaning Services">Cleaning Services (Isuku cyangwa isukura)</option>
+                <option value="Parking">Parking (Aho guparika imodoka)</option>
+                <option value="Restrooms">Restrooms (Ubwiherero / Imisarani)</option>
+                <option value="Doctor's room">Doctor's room (Icyumba cya Muganga)</option>
+                <option value="custom">Other (Specify below) / Ahabonetse ahandi (Sobanura hasi)...</option>
+              </select>
+              {isCustomOther && (
+                <input
+                  type="text"
+                  name="otherDetails"
+                  required
+                  placeholder="Specify other service area / Sobanura ahandi hantu..."
+                  value={formData.otherDetails}
+                  onChange={handleChange}
+                  style={{
+                    padding: '10px 12px',
+                    backgroundColor: '#ffffff',
+                    border: '1.5px solid var(--border-color)',
+                    borderRadius: '10px',
+                    outline: 'none',
+                    fontSize: '0.9rem',
+                    marginTop: '8px'
+                  }}
+                />
+              )}
             </div>
           )}
 

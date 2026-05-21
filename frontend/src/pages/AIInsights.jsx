@@ -6,6 +6,7 @@ import {
   Brain, TrendingUp, FileText, ReceiptText, AlertTriangle,
   CheckCircle, Clock, XCircle, Sparkles, RefreshCw,
   BarChart2, ShieldAlert, Lightbulb, ChevronDown, ChevronUp,
+  MessageSquare,
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ const MODULE_CONFIG = {
   transfers: { label: 'Result Transfers', icon: <RefreshCw size={18} />, color: '#059669', lightColor: 'rgba(5,150,105,0.08)' },
   shifts: { label: 'Staff Shifts', icon: <Clock size={18} />, color: '#1b669d', lightColor: 'rgba(27,102,157,0.08)' },
   security: { label: 'Security Operations', icon: <ShieldAlert size={18} />, color: '#9d174d', lightColor: 'rgba(157,23,77,0.08)' },
+  feedbacks: { label: 'Internal Feedbacks', icon: <MessageSquare size={18} />, color: '#ec4899', lightColor: 'rgba(236,72,153,0.08)' },
 };
 
 // ── Mini bar ──────────────────────────────────────────────────────────────────
@@ -286,6 +288,11 @@ const ModuleStatCard = ({ module, stats, config, isManagement, onAnalyze, analyz
               <Pill label="System Scanning" value={s.AUTH_FAILURE || 0} color="#f59e0b" />
               <Pill label="Failed Logins" value={s.LOGIN_FAILED || 0} color="#f59e0b" />
             </>
+          ) : module === 'feedbacks' ? (
+            <>
+              <Pill label="Total Submissions" value={s.total || 0} color="#ec4899" />
+              <Pill label="Reviewed / Processed" value={s.total || 0} color="#22c55e" />
+            </>
           ) : (
             <>
               <Pill label="Pending / In Progress" value={(s.pending || 0) + (s.verified || 0)} color="#f59e0b" />
@@ -423,10 +430,10 @@ const AIInsights = () => {
   const visibleModules = isPrincipalCashier
     ? ['cancellations', 'refunds']
     : user?.role === 'admin'
-      ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'security']
+      ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'security', 'feedbacks']
       : isManagement
-        ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts']
-        : ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts'];
+        ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'feedbacks']
+        : ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'feedbacks'];
 
   return (
     <div>
