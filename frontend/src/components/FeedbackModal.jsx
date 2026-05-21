@@ -113,7 +113,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
           <p style={{ color: 'var(--text-secondary)', maxWidth: '500px', lineHeight: '1.6', fontSize: '0.95rem' }}>
             Please be assured that <strong>your feedback remains completely confidential</strong>.<br />
             <span style={{ fontStyle: 'italic', display: 'block', marginTop: '6px' }}>
-              Amakuru muduha arasigara ari ibanga rikomeye.
+              Amakuru mutanze yacyiriwe mu ibanga rikomeye.
             </span>
           </p>
           <button
@@ -135,7 +135,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
         </div>
       ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-          
+
           {/* Header Note */}
           <div style={{
             padding: '1.25rem',

@@ -261,27 +261,31 @@ const FeedbackList = () => {
                 borderRadius: '12px',
                 border: '1px solid var(--border-color)'
               }}>
-                {Object.entries(areaLabels).map(([key, label]) => {
-                  const isActive = selectedFeedback[key] === 1 || selectedFeedback[key] === true;
-                  return (
-                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: isActive ? 1 : 0.4 }}>
+                {Object.entries(areaLabels)
+                  .filter(([key]) => selectedFeedback[key] === 1 || selectedFeedback[key] === true)
+                  .map(([key, label]) => (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <div style={{
                         width: '16px',
                         height: '16px',
                         borderRadius: '4px',
-                        backgroundColor: isActive ? '#71b647' : 'transparent',
-                        border: isActive ? 'none' : '1.5px solid #94a3b8',
+                        backgroundColor: '#71b647',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#ffffff'
                       }}>
-                        {isActive && <Check size={12} strokeWidth={3} />}
+                        <Check size={12} strokeWidth={3} />
                       </div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: isActive ? 700 : 500, color: 'var(--primary-dark)' }}>{label}</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-dark)' }}>{label}</span>
                     </div>
-                  );
-                })}
+                  ))
+                }
+                {Object.entries(areaLabels).filter(([key]) => selectedFeedback[key] === 1 || selectedFeedback[key] === true).length === 0 && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', gridColumn: 'span 2', fontStyle: 'italic' }}>
+                    No specific service areas were flagged (General Feedback).
+                  </div>
+                )}
               </div>
             </div>
 
