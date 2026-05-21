@@ -25,7 +25,8 @@ import {
 } from '../../components/ui/table';
 import {
   Badge, Button, Input, Select, Label, Separator, Skeleton, Card,
-  CardHeader, CardContent, CardTitle, CardDescription
+  CardHeader, CardContent, CardTitle, CardDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from '../../components/ui/index.jsx';
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -104,6 +105,17 @@ export default function ShiftDashboard() {
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState(0);
 
+  // Custom modal states to replace blocking window.prompt / window.confirm
+  const [bulkReviewOpen, setBulkReviewOpen] = useState(false);
+  const [bulkReviewPassword, setBulkReviewPassword] = useState('');
+  
+  const [reactivateOpen, setReactivateOpen] = useState(false);
+  const [reactivateId, setReactivateId] = useState(null);
+  const [reactivatePassword, setReactivatePassword] = useState('');
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+
   // Count active filters for badge
   useEffect(() => {
     setActiveFilters(Object.values(filters).filter(Boolean).length);
@@ -181,11 +193,20 @@ export default function ShiftDashboard() {
     }
   };
 
-  const handleReactivate = async (id) => {
-    if (!window.confirm('Are you sure you want to reactivate this shift? It will be moved back to "Live" status and the agent will be notified.')) return;
+  const handleReactivateSubmit = async (e) => {
+    e?.preventDefault();
+    if (!reactivateId) return;
+    if (!reactivatePassword) {
+      toast.error('Password is required');
+      return;
+    }
     
-    const password = window.prompt('Please enter your password to authorize reactivation:');
-    if (!password) return;
+    const id = reactivateId;
+    const password = reactivatePassword;
+    
+    setReactivateOpen(false);
+    setReactivateId(null);
+    setReactivatePassword('');
 
     const tid = toast.loading('Reactivating shift session…');
     try {
@@ -199,11 +220,17 @@ export default function ShiftDashboard() {
     }
   };
 
-  const handleBulkReview = async () => {
+  const handleBulkReviewSubmit = async (e) => {
+    e?.preventDefault();
     if (selectedIds.length === 0) return;
+    if (!bulkReviewPassword) {
+      toast.error('Password is required');
+      return;
+    }
 
-    const password = window.prompt(`Authorization Required: Please enter your password to sign off ${selectedIds.length} shifts:`);
-    if (!password) return;
+    const password = bulkReviewPassword;
+    setBulkReviewOpen(false);
+    setBulkReviewPassword('');
 
     const tid = toast.loading(`Signing off ${selectedIds.length} shifts…`);
     try {
@@ -262,8 +289,12 @@ export default function ShiftDashboard() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('CRITICAL: This will permanently delete this shift record and all its associated closing data. This action cannot be undone. Proceed?')) return;
+  const handleDeleteSubmit = async () => {
+    if (!deleteId) return;
+    
+    const id = deleteId;
+    setDeleteOpen(false);
+    setDeleteId(null);
     
     const tid = toast.loading('Purging record from database…');
     try {
@@ -543,7 +574,7 @@ export default function ShiftDashboard() {
                   </span>
                   <Button
                     size="sm"
-                    onClick={handleBulkReview}
+                    onClick={() => { setBulkReviewPassword(''); setBulkReviewOpen(true); }}
                     className="h-8 text-[10px] font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700"
                   >
                     <ShieldCheck size={12} className="mr-1.5" />
@@ -834,7 +865,7 @@ export default function ShiftDashboard() {
                                   variant="ghost"
                                   size="icon"
                                   title="Reactivate Shift"
-                                  onClick={() => handleReactivate(s.id)}
+                                  onClick={() => { setReactivateId(s.id); setReactivatePassword(''); setReactivateOpen(true); }}
                                   className="w-9 h-9 rounded-xl text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                                 >
                                   <RefreshCcw size={15} />
@@ -863,7 +894,7 @@ export default function ShiftDashboard() {
                                   variant="ghost"
                                   size="icon"
                                   title="Permanently Delete"
-                                  onClick={() => handleDelete(s.id)}
+                                  onClick={() => { setDeleteId(s.id); setDeleteOpen(true); }}
                                   className="w-9 h-9 rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50"
                                 >
                                   <Trash2 size={15} />
@@ -1002,6 +1033,159 @@ export default function ShiftDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── Bulk Review Modal ────────────────────────────────────────── */}
+      <Dialog open={bulkReviewOpen} onOpenChange={setBulkReviewOpen}>
+        <DialogContent className="bg-white rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-100">
+          <DialogHeader className="px-8 py-6 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <ShieldCheck size={20} />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-xl font-black text-slate-900">Bulk Sign Off</DialogTitle>
+                <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                  Sign off {selectedIds.length} shift{selectedIds.length !== 1 ? 's' : ''}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <form onSubmit={handleBulkReviewSubmit} className="p-8 space-y-6">
+            <p className="text-sm text-slate-600 font-medium leading-relaxed text-left">
+              You are about to sign off and verify <strong>{selectedIds.length}</strong> shift sessions. This will permanently mark these records as verified.
+            </p>
+            
+            <div className="space-y-2 text-left">
+              <Label>Authorize Action</Label>
+              <Input
+                type="password"
+                placeholder="Enter your password to authorize..."
+                value={bulkReviewPassword}
+                onChange={(e) => setBulkReviewPassword(e.target.value)}
+                className="w-full"
+                required
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1 rounded-2xl py-6" 
+                onClick={() => setBulkReviewOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                className="flex-1 rounded-2xl py-6 bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                Verify &amp; Sign Off
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Reactivation Modal ───────────────────────────────────────── */}
+      <Dialog open={reactivateOpen} onOpenChange={setReactivateOpen}>
+        <DialogContent className="bg-white rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-100">
+          <DialogHeader className="px-8 py-6 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <RefreshCcw size={20} />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-xl font-black text-slate-900">Reactivate Shift Session</DialogTitle>
+                <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                  Shift ID #{reactivateId ? String(reactivateId).padStart(5, '0') : ''}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <form onSubmit={handleReactivateSubmit} className="p-8 space-y-6">
+            <p className="text-sm text-slate-600 font-medium leading-relaxed text-left">
+              Are you sure you want to reactivate this shift? It will be moved back to <strong>"Live"</strong> status and the agent will be notified to complete their closing report.
+            </p>
+            
+            <div className="space-y-2 text-left">
+              <Label>Authorize Action</Label>
+              <Input
+                type="password"
+                placeholder="Enter your password to authorize..."
+                value={reactivatePassword}
+                onChange={(e) => setReactivatePassword(e.target.value)}
+                className="w-full"
+                required
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1 rounded-2xl py-6" 
+                onClick={() => setReactivateOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                className="flex-1 rounded-2xl py-6 bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                Reactivate Session
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Modal ────────────────────────────────────────────── */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="bg-white rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-100">
+          <DialogHeader className="px-8 py-6 border-b border-slate-100 bg-rose-50/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                <Trash2 size={20} />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-xl font-black text-rose-700">Confirm Shift Deletion</DialogTitle>
+                <DialogDescription className="text-xs font-bold text-rose-400 uppercase tracking-widest mt-0.5">
+                  Shift ID #{deleteId ? String(deleteId).padStart(5, '0') : ''}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="p-8 space-y-6">
+            <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-xs text-rose-700 font-bold space-y-1 text-left">
+              <p className="uppercase tracking-widest text-[10px] font-black">CRITICAL ACTION:</p>
+              <p className="normal-case">This will permanently delete this shift record and all its associated closing data. This action cannot be undone.</p>
+            </div>
+            
+            <p className="text-sm text-slate-600 font-medium leading-relaxed text-left">
+              Are you absolutely sure you want to purge this record from the database?
+            </p>
+
+            <div className="flex gap-3 pt-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1 rounded-2xl py-6" 
+                onClick={() => setDeleteOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="button" 
+                className="flex-1 rounded-2xl py-6 bg-rose-600 hover:bg-rose-700 text-white"
+                onClick={handleDeleteSubmit}
+              >
+                Permanently Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
