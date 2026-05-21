@@ -155,46 +155,24 @@ const FeedbackModal = ({ isOpen, onClose }) => {
           </div>
 
           {/* Identification Block */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-dark)' }}>
-                Telephone/Email (Imeli)
-              </label>
-              <input
-                type="text"
-                name="contactInfo"
-                placeholder="e.g. 078XXXXXXX or email@example.com"
-                value={formData.contactInfo}
-                onChange={handleChange}
-                style={{
-                  padding: '10px 12px',
-                  backgroundColor: '#f8fafc',
-                  border: '1.5px solid var(--border-color)',
-                  borderRadius: '10px',
-                  outline: 'none',
-                  fontSize: '0.9rem'
-                }}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-dark)' }}>
-                Date (Italiki)
-              </label>
-              <input
-                type="date"
-                name="feedbackDate"
-                value={formData.feedbackDate}
-                onChange={handleChange}
-                style={{
-                  padding: '10px 12px',
-                  backgroundColor: '#f8fafc',
-                  border: '1.5px solid var(--border-color)',
-                  borderRadius: '10px',
-                  outline: 'none',
-                  fontSize: '0.9rem'
-                }}
-              />
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '300px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-dark)' }}>
+              Date (Italiki)
+            </label>
+            <input
+              type="date"
+              name="feedbackDate"
+              value={formData.feedbackDate}
+              onChange={handleChange}
+              style={{
+                padding: '10px 12px',
+                backgroundColor: '#f8fafc',
+                border: '1.5px solid var(--border-color)',
+                borderRadius: '10px',
+                outline: 'none',
+                fontSize: '0.9rem'
+              }}
+            />
           </div>
 
           {/* Improvement areas checklist */}

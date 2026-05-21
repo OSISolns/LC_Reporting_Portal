@@ -81,7 +81,7 @@ const FeedbackList = () => {
         <div style={{ display: 'flex', gap: '10px' }}>
           <input
             type="text"
-            placeholder="Search by contact info..."
+            placeholder="Search by date (YYYY-MM-DD)..."
             value={searchContact}
             onChange={(e) => setSearchContact(e.target.value)}
             style={{
@@ -140,12 +140,12 @@ const FeedbackList = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: 'var(--primary-dark)', fontSize: '1rem' }}>
-                        <PhoneCall size={14} style={{ color: '#1b669d' }} />
-                        {item.contact_info || 'Anonymous (Confidential)'}
+                        <ShieldAlert size={14} style={{ color: '#71b647' }} />
+                        Confidential Anonymous Submission
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                         <Calendar size={12} />
-                        Date of Visit: {item.feedback_date || 'N/A'}
+                        Date Submitted: {item.feedback_date || 'N/A'}
                       </div>
                     </div>
 
@@ -233,20 +233,13 @@ const FeedbackList = () => {
             </h2>
 
             {/* Contacts */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem' }}>
+            <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem' }}>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Contact Info / Imeli
+                  Date of Submission / Italiki
                 </label>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary-dark)', marginTop: '4px' }}>
-                  {selectedFeedback.contact_info || 'Anonymous (Confidential)'}
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Date of Visit / Italiki
-                </label>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary-dark)', marginTop: '4px' }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary-dark)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Calendar size={16} style={{ color: '#1b669d' }} />
                   {selectedFeedback.feedback_date || 'N/A'}
                 </div>
               </div>
