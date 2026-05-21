@@ -250,7 +250,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
                 type="text"
                 name="otherDetails"
                 required
-                placeholder="e.g. Pharmacy, Dental clinic, Security, etc."
+                placeholder="E.g. Orientation Services, Cleaning Services, Parking, Restrooms...Etc."
                 value={formData.otherDetails}
                 onChange={handleChange}
                 style={{
@@ -271,7 +271,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
               Please describe your concern (Complaint, suggestion, compliment, other..) *
             </label>
             <span style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', marginTop: '-4px', marginBottom: '4px' }}>
-              Mwaduha amakuru arambuye ku kibazo, icyifuzo cg ugushima:
+              Mwaduha amakuru arambuye ku kibazo, icyifuzo cyangwa gushima:
             </span>
             <textarea
               name="concernDescription"
@@ -330,7 +330,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
                 cursor: 'pointer'
               }}
             >
-              {loading ? 'Submitting...' : 'Submit Feedback / Tanga Igitekerezo'}
+              {loading ? 'Submitting...' : 'Submit Feedback / Ohereza '}
               <Send size={16} />
             </button>
           </div>
