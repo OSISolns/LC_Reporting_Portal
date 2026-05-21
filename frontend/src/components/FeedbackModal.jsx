@@ -8,13 +8,14 @@ const checklistItems = [
   { key: 'receptionCallCenter', en: 'Reception/call center', rw: 'Aho bakirira abantu' },
   { key: 'nursing', en: 'Nursing', rw: 'Mubaforomo' },
   { key: 'doctorsRoom', en: "Doctor's room", rw: 'Icyumba cya Muganga' },
-  { key: 'receptionCashier', en: 'Reception / Cashier', rw: 'Aho barihira' },
+  { key: 'receptionCashier', en: 'Reception / Cashier', rw: 'Aho bishyurira' },
   { key: 'callCenter', en: 'Call center', rw: 'Call center' },
   { key: 'tabaraService', en: 'Tabara service', rw: 'Abasunika Igare' },
   { key: 'laboratory', en: 'Phlebotomy', rw: 'Aho batangira ibizamini' },
   { key: 'laboratoryResults', en: 'Laboratory', rw: 'Abatanga ibisubizo' },
   { key: 'cafetaria', en: 'Cafetaria', rw: 'Muri restora' },
-  { key: 'imaging', en: 'Imaging', rw: "M'ucyumba gifotora" }
+  { key: 'imaging', en: 'Imaging', rw: "Mu cyumba gifotora" },
+  { key: 'other', en: 'Other', rw: 'Ibindi' }
 ];
 
 const FeedbackModal = ({ isOpen, onClose }) => {
@@ -31,6 +32,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
     laboratoryResults: false,
     cafetaria: false,
     imaging: false,
+    other: false,
     concernDescription: ''
   });
   const [loading, setLoading] = useState(false);
@@ -80,6 +82,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
       laboratoryResults: false,
       cafetaria: false,
       imaging: false,
+      other: false,
       concernDescription: ''
     });
     setSubmitted(false);
@@ -149,7 +152,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
             <Shield size={20} style={{ color: '#1b669d', flexShrink: 0, marginTop: '2px' }} />
             <div>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#1e293b', fontWeight: 600, lineHeight: '1.5' }}>
-                Please provide internal feedback on areas of improvement, compliments, or suggestions. Your details will be handled confidentially.
+                Please provide internal feedback on Areas of Service, compliments, or suggestions. Your details will be handled confidentially.
               </p>
               <p style={{ margin: '4px 0 0 0', fontSize: '0.825rem', color: 'var(--text-secondary)', fontStyle: 'italic', fontWeight: 500 }}>
                 Tanga inyunganizi, ibyo unyuzwe nabyo, cyangwa ibikwiye gukosorwa. Ibitekerezo byanyu ni ibanga.
@@ -181,7 +184,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
           {/* Improvement areas checklist */}
           <div>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary-dark)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Areas of improvements / <span style={{ color: '#1b669d' }}>Ahakwiriye gukosorwa</span>
+              Areas of Services / <span style={{ color: '#1b669d' }}>Ahatangirwa Serivisi</span>
             </h3>
             <p style={{ margin: '0 0 1rem 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
               Check all applicable clinical and administrative service delivery areas:

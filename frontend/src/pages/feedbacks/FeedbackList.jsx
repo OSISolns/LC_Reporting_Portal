@@ -17,7 +17,8 @@ const areaLabels = {
   laboratory: 'Phlebotomy (Aho batangira ibizamini)',
   laboratoryResults: 'Laboratory (Abatanga ibisubizo)',
   cafetaria: 'Cafetaria',
-  imaging: 'Imaging'
+  imaging: 'Imaging',
+  other: 'Other (Ibindi)'
 };
 
 const FeedbackList = () => {
@@ -330,7 +331,7 @@ const FeedbackList = () => {
               </div>
             </div>
 
-            {/* Selected Areas of Improvement Checklist */}
+            {/* Selected Areas of Service Checklist */}
             <div>
               <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
                 Areas Flagged for Improvement
