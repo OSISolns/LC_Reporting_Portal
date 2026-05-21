@@ -7,7 +7,7 @@ class Feedback {
       contactInfo, feedbackDate,
       receptionCallCenter, nursing, doctorsRoom,
       receptionCashier, callCenter, tabaraService,
-      laboratory, laboratoryResults, cafetaria, imaging, other, concernDescription
+      laboratory, laboratoryResults, cafetaria, imaging, other, otherDetails, concernDescription
     } = data;
 
     const { rows } = await db.query(
@@ -15,9 +15,9 @@ class Feedback {
         contact_info, feedback_date,
         reception_call_center, nursing, doctors_room,
         reception_cashier, call_center, tabara_service,
-        laboratory, laboratory_results, cafetaria, imaging, other,
+        laboratory, laboratory_results, cafetaria, imaging, other, other_details,
         concern_description
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
       [
         contactInfo || null,
@@ -33,6 +33,7 @@ class Feedback {
         cafetaria ? 1 : 0,
         imaging ? 1 : 0,
         other ? 1 : 0,
+        otherDetails || null,
         concernDescription
       ]
     );

@@ -15,7 +15,7 @@ const checklistItems = [
   { key: 'laboratoryResults', en: 'Laboratory', rw: 'Abatanga ibisubizo' },
   { key: 'cafetaria', en: 'Cafetaria', rw: 'Muri restora' },
   { key: 'imaging', en: 'Imaging', rw: "Mu cyumba gifotora" },
-  { key: 'other', en: 'Other', rw: 'Ibindi' }
+  { key: 'other', en: 'Other', rw: 'Ahandi' }
 ];
 
 const FeedbackModal = ({ isOpen, onClose }) => {
@@ -33,6 +33,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
     cafetaria: false,
     imaging: false,
     other: false,
+    otherDetails: '',
     concernDescription: ''
   });
   const [loading, setLoading] = useState(false);
@@ -83,6 +84,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
       cafetaria: false,
       imaging: false,
       other: false,
+      otherDetails: '',
       concernDescription: ''
     });
     setSubmitted(false);
@@ -234,6 +236,34 @@ const FeedbackModal = ({ isOpen, onClose }) => {
               ))}
             </div>
           </div>
+
+          {/* Conditional Other details input */}
+          {formData.other && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '-0.5rem', backgroundColor: 'rgba(27,102,157,0.03)', padding: '1rem', borderRadius: '12px', border: '1.5px dashed rgba(27,102,157,0.2)' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-dark)' }}>
+                Please specify the other service area *
+              </label>
+              <span style={{ fontSize: '0.725rem', color: '#64748b', fontStyle: 'italic', marginTop: '-4px' }}>
+                Sobanura aho ariho.
+              </span>
+              <input
+                type="text"
+                name="otherDetails"
+                required
+                placeholder="e.g. Pharmacy, Dental clinic, Security, etc."
+                value={formData.otherDetails}
+                onChange={handleChange}
+                style={{
+                  padding: '10px 12px',
+                  backgroundColor: '#ffffff',
+                  border: '1.5px solid var(--border-color)',
+                  borderRadius: '10px',
+                  outline: 'none',
+                  fontSize: '0.9rem'
+                }}
+              />
+            </div>
+          )}
 
           {/* Large Concern Textbox */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

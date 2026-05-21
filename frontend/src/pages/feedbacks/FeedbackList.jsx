@@ -18,7 +18,7 @@ const areaLabels = {
   laboratoryResults: 'Laboratory (Abatanga ibisubizo)',
   cafetaria: 'Cafetaria',
   imaging: 'Imaging',
-  other: 'Other (Ibindi)'
+  other: 'Other (Ahandi)'
 };
 
 const FeedbackList = () => {
@@ -287,7 +287,7 @@ const FeedbackList = () => {
                           fontSize: '0.725rem',
                           fontWeight: 600
                         }}>
-                          {areaLabels[area]}
+                          {area === 'other' && item.other_details ? `Other: ${item.other_details}` : areaLabels[area]}
                         </span>
                       ))}
                     </div>
@@ -362,7 +362,9 @@ const FeedbackList = () => {
                       }}>
                         <Check size={12} strokeWidth={3} />
                       </div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-dark)' }}>{label}</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-dark)' }}>
+                        {key === 'other' && selectedFeedback.other_details ? `Other: ${selectedFeedback.other_details}` : label}
+                      </span>
                     </div>
                   ))
                 }
@@ -549,7 +551,7 @@ const FeedbackList = () => {
                                 fontSize: '0.7rem',
                                 fontWeight: 700
                               }}>
-                                {areaLabels[area]}
+                                {area === 'other' && item.other_details ? `Other: ${item.other_details}` : areaLabels[area]}
                               </span>
                             ))}
                           </div>
