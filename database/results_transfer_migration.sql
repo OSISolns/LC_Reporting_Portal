@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS results_transfers (
     approved_by              INTEGER REFERENCES users(id) ON DELETE SET NULL,
     rejected_by              INTEGER REFERENCES users(id) ON DELETE SET NULL,
     
+    -- Meta
+    is_mock                  INTEGER DEFAULT 0,
+    
     -- Timestamps
     created_at               TIMESTAMPTZ DEFAULT NOW(),
     reviewed_at              TIMESTAMPTZ,

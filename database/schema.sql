@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS results_transfers (
     -- Meta
     edited_by_name           VARCHAR(200),
     rejection_comment        TEXT,
+    is_mock                  INTEGER DEFAULT 0,
     
     -- Timestamps
     created_at               TIMESTAMPTZ DEFAULT NOW(),
