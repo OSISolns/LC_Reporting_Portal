@@ -1,5 +1,6 @@
 import { INSURANCES } from '../constants';
 import { Info, Receipt, Save, Phone, Calendar } from 'lucide-react';
+import PatientAutocomplete from '../../../components/PatientAutocomplete';
 
 const inputStyle = {
   padding: '10px',
@@ -40,14 +41,44 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
 
           <div style={fieldStyle}>
             <label style={labelStyle}>Patient's full name *</label>
-            <input type="text" name="patientFullName" required
-              value={formData.patientFullName} onChange={handleChange} style={inputStyle} />
+            <PatientAutocomplete
+              value={formData.patientFullName}
+              onChange={(val) => handleChange({ target: { name: 'patientFullName', value: val } })}
+              onPatientSelect={(patient) => {
+                // Populate all other patient fields automatically on selection
+                handleChange({ target: { name: 'patientFullName', value: patient.full_name } });
+                handleChange({ target: { name: 'pidNumber', value: patient.pid } });
+                if (patient.phone) {
+                  handleChange({ target: { name: 'telephoneNumber', value: patient.phone } });
+                }
+                if (patient.insurance) {
+                  handleChange({ target: { name: 'insurancePayer', value: patient.insurance } });
+                }
+              }}
+              inputStyle={inputStyle}
+              placeholder="Search or enter patient name..."
+            />
           </div>
 
           <div style={fieldStyle}>
             <label style={labelStyle}>PID number *</label>
-            <input type="text" name="pidNumber" required
-              value={formData.pidNumber} onChange={handleChange} style={inputStyle} />
+            <PatientAutocomplete
+              value={formData.pidNumber}
+              onChange={(val) => handleChange({ target: { name: 'pidNumber', value: val } })}
+              onPatientSelect={(patient) => {
+                // Populate all other patient fields automatically on selection
+                handleChange({ target: { name: 'patientFullName', value: patient.full_name } });
+                handleChange({ target: { name: 'pidNumber', value: patient.pid } });
+                if (patient.phone) {
+                  handleChange({ target: { name: 'telephoneNumber', value: patient.phone } });
+                }
+                if (patient.insurance) {
+                  handleChange({ target: { name: 'insurancePayer', value: patient.insurance } });
+                }
+              }}
+              inputStyle={inputStyle}
+              placeholder="Search or enter PID..."
+            />
           </div>
 
           <div style={fieldStyle}>
