@@ -53,7 +53,17 @@ class Feedback {
       query += ` AND feedback_date = $${params.length}`;
     }
 
-    query += ` ORDER BY created_at DESC LIMIT 200`;
+    if (filters.startDate) {
+      params.push(filters.startDate);
+      query += ` AND feedback_date >= $${params.length}`;
+    }
+
+    if (filters.endDate) {
+      params.push(filters.endDate);
+      query += ` AND feedback_date <= $${params.length}`;
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT 500`;
     const { rows } = await db.query(query, params);
     return rows;
   }
