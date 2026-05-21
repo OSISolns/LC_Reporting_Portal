@@ -22,7 +22,7 @@ router.post('/', async (req, res, next) => {
 });
 
 // ── GET /api/feedbacks (Restricted Access) ───────────────────────────────────
-router.get('/', authMiddleware, authorizeRoles(['admin', 'coo', 'deputy_coo', 'sales_manager', 'reviewer']), async (req, res, next) => {
+router.get('/', authMiddleware, authorizeRoles(['coo']), async (req, res, next) => {
   try {
     const list = await Feedback.getAll(req.query);
     res.json({ success: true, data: list });
@@ -32,7 +32,7 @@ router.get('/', authMiddleware, authorizeRoles(['admin', 'coo', 'deputy_coo', 's
 });
 
 // ── DELETE /api/feedbacks/:id (Restricted Access) ────────────────────────────
-router.delete('/:id', authMiddleware, authorizeRoles(['admin', 'coo', 'deputy_coo']), async (req, res, next) => {
+router.delete('/:id', authMiddleware, authorizeRoles(['coo']), async (req, res, next) => {
   try {
     const deleted = await Feedback.delete(req.params.id);
     if (!deleted) {

@@ -150,7 +150,7 @@ const FeedbackList = () => {
                       </div>
                     </div>
 
-                    {['admin', 'coo', 'deputy_coo'].includes(user?.role) && (
+                    {user?.role === 'coo' && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
