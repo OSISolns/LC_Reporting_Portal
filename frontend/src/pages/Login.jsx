@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, AlertCircle, Eye, EyeOff, MessageSquare } from 'lucide-react';
+import FeedbackModal from '../components/FeedbackModal';
+
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -12,6 +14,8 @@ const Login = () => {
 
   const { login, devLogin } = useAuth();
   const navigate = useNavigate();
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -203,7 +207,70 @@ const Login = () => {
             {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '1.5rem 0 0.5rem 0',
+          position: 'relative'
+        }}>
+          <div style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            height: '1px',
+            backgroundColor: 'var(--border-color)',
+            zIndex: 1
+          }}></div>
+          <span style={{
+            position: 'relative',
+            zIndex: 2,
+            backgroundColor: '#ffffff',
+            padding: '0 12px',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            color: 'var(--text-secondary)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}>Patient Care</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowFeedbackModal(true)}
+          style={{
+            width: '100%',
+            padding: '12px',
+            borderRadius: '10px',
+            border: '2px dashed #1b669d',
+            backgroundColor: 'rgba(27, 102, 157, 0.03)',
+            color: '#1b669d',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(27, 102, 157, 0.08)';
+            e.currentTarget.style.borderStyle = 'solid';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(27, 102, 157, 0.03)';
+            e.currentTarget.style.borderStyle = 'dashed';
+          }}
+        >
+          <MessageSquare size={16} />
+          Patient Feedback / Ibitekerezo
+        </button>
       </div>
+
+      <FeedbackModal isOpen={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} />
+
 
       {/* Subtle Protected Signature */}
       <div 

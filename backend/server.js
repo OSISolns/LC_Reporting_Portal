@@ -31,6 +31,8 @@ const shiftRoutes           = require('./src/routes/shifts');
 const safetyRoutes          = require('./src/routes/safety');
 const clinicalRoutes        = require('./src/routes/clinical');
 const patientRoutes         = require('./src/routes/patients');
+const feedbackRoutes        = require('./src/routes/feedbacks');
+
 
 
 const app = express();
@@ -100,6 +102,8 @@ app.use('/api/shifts',            shiftRoutes);
 app.use('/api/safety',            safetyRoutes);
 app.use('/api/clinical',          clinicalRoutes);
 app.use('/api/patients',          patientRoutes);
+app.use('/api/feedbacks',         feedbackRoutes);
+
 
 
 // ── Root ──────────────────────────────────────────────────────────────────────
