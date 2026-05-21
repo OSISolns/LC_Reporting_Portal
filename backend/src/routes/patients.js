@@ -17,7 +17,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
-const { bulkPullAllPatients, bulkPullByPrefix } = require('../services/sukraaService');
+const { bulkPullAllPatients, bulkPullByPrefix, searchPatients } = require('../services/sukraaService');
 
 router.use(authMiddleware);
 
@@ -105,8 +105,8 @@ router.get('/search', async (req, res, next) => {
       return res.json({ success: true, data: [] });
     }
 
-    // Try local cache first
-    const result = await db.query(
+    // 1. Try local cache first
+    let result = await db.query(
       `SELECT pid, full_name, age, dob, gender, phone, insurance
        FROM sukraa_patients
        WHERE full_name LIKE ? OR pid LIKE ? OR phone LIKE ?
@@ -115,23 +115,62 @@ router.get('/search', async (req, res, next) => {
       [`%${q}%`, `%${q}%`, `%${q}%`, limit]
     );
 
-    res.json({ success: true, data: result.rows, source: 'cache' });
+    if (result.rows && result.rows.length > 0) {
+      return res.json({ success: true, data: result.rows, source: 'cache' });
+    }
+
+    // 2. Fallback: Search live from SUKRAA service
+    console.log(`[PatientSearch] "${q}" not found in cache. Querying live SUKRAA HIMS...`);
+    try {
+      const livePatients = await searchPatients(q, limit);
+      if (livePatients && livePatients.length > 0) {
+        // Upsert live results into local cache in the background
+        await upsertPatients(livePatients).catch(err => {
+          console.error('[PatientSearch] Failed to auto-cache live patient:', err.message);
+        });
+
+        return res.json({ success: true, data: livePatients, source: 'live' });
+      }
+    } catch (liveErr) {
+      console.warn(`[PatientSearch] Live SUKRAA service unavailable: ${liveErr.message}`);
+    }
+
+    // 3. Fallback: empty results (user can enter manually)
+    res.json({ success: true, data: [], source: 'none' });
   } catch (err) { next(err); }
 });
 
 // ── GET /api/patients/:pid ────────────────────────────────────────────────────
 router.get('/:pid', async (req, res, next) => {
   try {
-    const result = await db.query(
+    const pid = req.params.pid.trim();
+
+    // 1. Try local cache first
+    let result = await db.query(
       `SELECT * FROM sukraa_patients WHERE pid = ?`,
-      [req.params.pid.trim()]
+      [pid]
     );
 
-    if (!result.rows.length) {
-      return res.status(404).json({ success: false, message: 'Patient not found in local cache.' });
+    if (result.rows && result.rows.length > 0) {
+      return res.json({ success: true, data: result.rows[0], source: 'cache' });
     }
 
-    res.json({ success: true, data: result.rows[0] });
+    // 2. Fallback: Query live by PID
+    console.log(`[PatientGet] PID "${pid}" not found in cache. Querying live SUKRAA HIMS...`);
+    try {
+      const livePatients = await searchPatients(pid, 1);
+      const exactMatch = livePatients.find(p => p.pid === pid);
+      if (exactMatch) {
+        await upsertPatients([exactMatch]).catch(err => {
+          console.error('[PatientGet] Failed to auto-cache live patient:', err.message);
+        });
+        return res.json({ success: true, data: exactMatch, source: 'live' });
+      }
+    } catch (liveErr) {
+      console.warn(`[PatientGet] Live SUKRAA service unavailable: ${liveErr.message}`);
+    }
+
+    res.status(404).json({ success: false, message: 'Patient not found in cache or live SUKRAA.' });
   } catch (err) { next(err); }
 });
 
