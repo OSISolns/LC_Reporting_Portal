@@ -298,7 +298,7 @@ const CancellationList = () => {
       >
         <CancellationFormFields 
           formData={formData}
-          handleChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
+          handleChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))}
           handleSubmit={handleCreateSubmit}
           loading={submitting}
           onCancel={() => setShowCreateModal(false)}

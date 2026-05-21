@@ -267,7 +267,7 @@ const RefundList = () => {
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Refund Request" maxWidth="800px">
         <RefundFormFields
           formData={formData}
-          handleChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
+          handleChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))}
           handleSubmit={handleCreateSubmit}
           loading={submitting}
           onCancel={() => setShowCreateModal(false)}
