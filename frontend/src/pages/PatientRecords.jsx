@@ -25,22 +25,40 @@ export default function PatientRecords() {
   const [activeTab, setActiveTab] = useState('summary');
   const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
 
-  useEffect(() => {
-    // In a real app, you would fetch patient details using patientId
-    // For now we use the mock data structure
-    setLoading(true);
-    setTimeout(() => {
+  const [vitalsHistory, setVitalsHistory] = useState([]);
+
+  const fetchPatientAndVitals = async () => {
+    try {
+      setLoading(true);
+      const [patientRes, vitalsRes] = await Promise.all([
+        api.get(`/patients/${patientId}`),
+        api.get(`/patients/${patientId}/vitals`).catch(() => ({ data: { success: false, data: [] } }))
+      ]);
+
+      const patientData = patientRes.data?.data || patientRes.data || {};
       setSelectedPatient({
-        id: patientId,
-        name: 'KAWAYIDA JEAN BOSCO',
-        age: 34,
-        gender: 'Male',
-        dob: '1989-05-11',
-        phone: '783421111',
+        id: patientData.pid || patientId,
+        name: patientData.full_name || 'Unknown Patient',
+        age: patientData.age || '—',
+        gender: patientData.gender || '—',
+        dob: patientData.dob || '—',
+        phone: patientData.phone || '—',
         queue_id: 'Q-TEMP'
       });
+
+      if (vitalsRes.data?.success && vitalsRes.data.data) {
+        setVitalsHistory(vitalsRes.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to load patient records', err);
+      toast.error('Failed to load patient details.');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  };
+
+  useEffect(() => {
+    if (patientId) fetchPatientAndVitals();
   }, [patientId]);
 
   if (loading || !selectedPatient) {
@@ -146,12 +164,16 @@ export default function PatientRecords() {
                 </div>
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                   <h4 className="text-lg font-bold text-slate-900 mb-4">Latest Vitals</h4>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center"><span className="text-sm text-slate-500">Blood Pressure</span><span className="font-bold text-slate-900">120/80 mmHg</span></div>
-                    <div className="flex justify-between items-center"><span className="text-sm text-slate-500">Heart Rate</span><span className="font-bold text-slate-900">72 bpm</span></div>
-                    <div className="flex justify-between items-center"><span className="text-sm text-slate-500">Temperature</span><span className="font-bold text-slate-900">36.5 °C</span></div>
-                    <div className="flex justify-between items-center"><span className="text-sm text-slate-500">SpO2</span><span className="font-bold text-slate-900">98%</span></div>
-                  </div>
+                  {vitalsHistory.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center"><span className="text-sm text-slate-500">Blood Pressure</span><span className="font-bold text-slate-900">{vitalsHistory[0].blood_pressure || '—'}</span></div>
+                      <div className="flex justify-between items-center"><span className="text-sm text-slate-500">Heart Rate</span><span className="font-bold text-slate-900">{vitalsHistory[0].pulse ? `${vitalsHistory[0].pulse} bpm` : '—'}</span></div>
+                      <div className="flex justify-between items-center"><span className="text-sm text-slate-500">Temperature</span><span className="font-bold text-slate-900">{vitalsHistory[0].temperature ? `${vitalsHistory[0].temperature} °C` : '—'}</span></div>
+                      <div className="flex justify-between items-center"><span className="text-sm text-slate-500">SpO2</span><span className="font-bold text-slate-900">{vitalsHistory[0].spo2 ? `${vitalsHistory[0].spo2}%` : '—'}</span></div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center py-4">No vitals recorded</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -213,24 +235,27 @@ export default function PatientRecords() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    <tr className="hover:bg-slate-50">
-                      <td className="p-3 border-r border-slate-200 font-medium">Today, 08:00 AM</td>
-                      <td className="p-3 border-r border-slate-200 text-center">36.5</td>
-                      <td className="p-3 border-r border-slate-200 text-center">72</td>
-                      <td className="p-3 border-r border-slate-200 text-center">120/80</td>
-                      <td className="p-3 border-r border-slate-200 text-center">16</td>
-                      <td className="p-3 border-r border-slate-200 text-center">98</td>
-                      <td className="p-3 border-r border-slate-200 text-center">75.2</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="p-3 border-r border-slate-200 font-medium">Yesterday, 08:00 AM</td>
-                      <td className="p-3 border-r border-slate-200 text-center text-red-600 font-bold">38.1</td>
-                      <td className="p-3 border-r border-slate-200 text-center text-red-600 font-bold">95</td>
-                      <td className="p-3 border-r border-slate-200 text-center">125/82</td>
-                      <td className="p-3 border-r border-slate-200 text-center">18</td>
-                      <td className="p-3 border-r border-slate-200 text-center">97</td>
-                      <td className="p-3 border-r border-slate-200 text-center">75.5</td>
-                    </tr>
+                    {vitalsHistory.length > 0 ? (
+                      vitalsHistory.map((vt, idx) => (
+                        <tr key={vt.id || idx} className="hover:bg-slate-50">
+                          <td className="p-3 border-r border-slate-200 font-medium">
+                            {new Date(vt.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                          </td>
+                          <td className="p-3 border-r border-slate-200 text-center">{vt.temperature || '—'}</td>
+                          <td className="p-3 border-r border-slate-200 text-center">{vt.pulse || '—'}</td>
+                          <td className="p-3 border-r border-slate-200 text-center">{vt.blood_pressure || '—'}</td>
+                          <td className="p-3 border-r border-slate-200 text-center">{vt.respiratory_rate || '—'}</td>
+                          <td className="p-3 border-r border-slate-200 text-center">{vt.spo2 || '—'}</td>
+                          <td className="p-3 border-r border-slate-200 text-center">{vt.weight || '—'}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="p-8 text-center text-slate-400 font-bold uppercase tracking-wider text-xs bg-slate-50">
+                          No vitals logged yet for this patient.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -363,7 +388,7 @@ export default function PatientRecords() {
         patientId={patientId}
         onVitalsSaved={(data) => {
           console.log('New vitals recorded:', data);
-          // In a real app, we would refresh the vitals list here
+          fetchPatientAndVitals();
         }}
       />
     </div>
