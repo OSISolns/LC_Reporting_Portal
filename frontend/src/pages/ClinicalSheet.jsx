@@ -12,6 +12,7 @@ import {
 import { toast } from 'react-hot-toast';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { INSURANCES } from './refunds/constants';
 
 const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded }) => {
   const params = useParams();
@@ -337,7 +338,15 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded }) => {
                 <div className="row-flex"><span className="form-label w-28">Gender</span><input {...register('identification.gender')} className="form-input w-[120px]" /></div>
                 <div className="row-flex"><span className="form-label w-28">Patient ID (PID)</span><input {...register('identification.pid')} className="form-input" /></div>
                 <div className="row-flex"><span className="form-label w-28">Appt. Date & No.</span><input {...register('identification.appt_date_no')} className="form-input" /></div>
-                <div className="row-flex"><span className="form-label w-28">Health insurance</span><input {...register('identification.insurance')} className="form-input" /></div>
+                <div className="row-flex">
+                  <span className="form-label w-28">Health insurance</span>
+                  <select {...register('identification.insurance')} className="form-input">
+                    <option value="">Select Insurance / Payer</option>
+                    {INSURANCES.map(ins => (
+                      <option key={ins} value={ins}>{ins}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="px-1 mt-1">
                 <div className="form-label mb-1">Date/Time/RN</div>
