@@ -102,23 +102,30 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded }) => {
           api.get(`/clinical/observations/${patientId}?queue_id=${queue_id}`).catch(() => ({ data: null }))
         ]);
 
-        setPatient(patientRes.data);
+        const patientObj = patientRes.data?.data || patientRes.data || {};
+        setPatient(patientObj);
 
         if (sheetRes.data && sheetRes.data.data) {
           reset(sheetRes.data.data);
         } else {
-          const latestVitals = vitalsRes.data[0] || {};
+          const latestVitals = (vitalsRes.data?.data || vitalsRes.data || [])[0] || {};
+          
+          const fullName = patientObj.full_name || '';
+          const nameParts = fullName.trim().split(/\s+/);
+          const lastName = nameParts[0] || '';
+          const firstName = nameParts.slice(1).join(' ') || '';
+
           reset({
             identification: {
-              last_name: patientRes.data.last_name || '',
-              first_name: patientRes.data.first_name || '',
-              occupation: '',
-              national_id: patientRes.data.national_id || '',
-              dob: patientRes.data.dob || '',
-              gender: patientRes.data.gender || '',
+              last_name: lastName || patientObj.last_name || '',
+              first_name: firstName || patientObj.first_name || '',
+              occupation: patientObj.occupation || '',
+              national_id: patientObj.national_id || '',
+              dob: patientObj.dob || '',
+              gender: patientObj.gender || '',
               pid: patientId,
               appt_date_no: 'Walk-in / No Appointment',
-              insurance: patientRes.data.insurance_provider || '',
+              insurance: patientObj.insurance || patientObj.insurance_provider || '',
               date: new Date().toISOString().split('T')[0],
               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               rn: user?.name || ''
@@ -126,7 +133,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded }) => {
             triage: {
               prev_illness_med: '',
               prev_illness_surg: '',
-              allergy_1: patientRes.data.allergies || '',
+              allergy_1: patientObj.allergies || '',
               allergy_2: '',
               temp: latestVitals.temperature || '',
               pulse: latestVitals.pulse || '',
