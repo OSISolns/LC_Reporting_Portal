@@ -107,7 +107,7 @@ const ReviewerDashboard = () => {
     { label: 'Refunds', icon: <ReceiptText size={20} />, path: '/refunds', mod: 'refunds', act: 'view', color: '#f59e0b' },
     { label: 'Result Transfers', icon: <RefreshCw size={20} />, path: '/results-transfer', mod: 'results_transfer', act: 'view', color: '#10b981' },
     { label: 'Incident Reports', icon: <AlertTriangle size={20} />, path: '/incidents', mod: 'incident_reports', act: 'view', color: '#ef4444' },
-    { label: 'Clinical Sheet', icon: <Stethoscope size={20} />, path: '/clinical-observation', mod: 'clinical_observation', act: 'view', color: '#8b5cf6' },
+    { label: 'Nursing Hub', icon: <Stethoscope size={20} />, path: '/nursing-hub', mod: 'clinical_observation', act: 'view', color: '#8b5cf6' },
     { label: 'Performance', icon: <Activity size={20} />, path: '/performance', mod: 'staff_performance', act: 'view', color: '#ec4899' },
     { label: 'Users', icon: <Users size={20} />, path: '/users', mod: 'user_management', act: 'view', color: '#6366f1' },
     { label: 'Audit Logs', icon: <ClipboardList size={20} />, path: '/audit-logs', mod: 'audit_logs', act: 'view', color: '#475569' },

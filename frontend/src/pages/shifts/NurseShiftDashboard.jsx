@@ -120,7 +120,7 @@ export default function NurseShiftDashboard() {
               <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
                 <ClipboardList size={20} className="text-[#1b669d]" /> Recent Observations
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/clinical-observation')} className="text-[#1b669d] font-bold">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/nursing-hub')} className="text-[#1b669d] font-bold">
                 View All <ExternalLink size={14} className="ml-1" />
               </Button>
             </div>

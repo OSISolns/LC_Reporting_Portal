@@ -240,7 +240,7 @@ const StaffDashboard = () => {
             {hasPermission('refunds', 'create') && <QuickAction label="New Refund" icon={<Plus size={24} />} color="#003b44" path="/refunds/new" navigate={navigate} />}
             {hasPermission('incident_reports', 'create') && <QuickAction label="Report Incident" icon={<AlertTriangle size={24} />} color="#b91c1c" path="/incidents/new" navigate={navigate} />}
             {hasPermission('results_transfer', 'create') && <QuickAction label="Result Transfer" icon={<RefreshCw size={24} />} color="#059669" path="/results-transfer" navigate={navigate} />}
-            {hasPermission('clinical_observation', 'view') && <QuickAction label="Clinical Observation" icon={<Stethoscope size={24} />} color="#1b669e" path="/clinical-observation" navigate={navigate} />}
+            {hasPermission('clinical_observation', 'view') && <QuickAction label="Nursing Hub" icon={<Stethoscope size={24} />} color="#1b669e" path="/nursing-hub" navigate={navigate} />}
             <QuickAction label="View History" icon={<ExternalLink size={24} />} color="#334155" path="/incidents" navigate={navigate} />
             {hasPermission('reports', 'view') && <QuickAction label="AI Platform" icon={<TrendingUp size={24} />} color="#4338ca" path="/ai-insights" navigate={navigate} />}
           </div>
