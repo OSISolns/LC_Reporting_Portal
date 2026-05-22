@@ -26,14 +26,16 @@ const VitalsModal = ({ isOpen, onClose, patientId, onVitalsSaved }) => {
     e.preventDefault();
     try {
       setLoading(true);
-      // Simulating vitals recording - in a real app this would call an endpoint
-      // for this implementation we'll mock the success
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      toast.success('Vitals recorded successfully');
-      if (onVitalsSaved) onVitalsSaved(formData);
-      onClose();
+      const res = await api.post(`/patients/${patientId}/vitals`, formData);
+      if (res.data?.success) {
+        toast.success('Vitals recorded successfully');
+        if (onVitalsSaved) onVitalsSaved(res.data.data);
+        onClose();
+      } else {
+        throw new Error(res.data?.message || 'Failed to save');
+      }
     } catch (error) {
+      console.error(error);
       toast.error('Failed to record vitals');
     } finally {
       setLoading(false);

@@ -251,4 +251,33 @@ async function upsertPatients(patients) {
   return added;
 }
 
+// ── GET /api/patients/:pid/vitals ─────────────────────────────────────────────
+router.get('/:pid/vitals', async (req, res, next) => {
+  try {
+    const pid = req.params.pid.trim();
+    const result = await db.query(
+      `SELECT * FROM patient_vitals WHERE patient_id = $1 ORDER BY created_at DESC`,
+      [pid]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) { next(err); }
+});
+
+// ── POST /api/patients/:pid/vitals ────────────────────────────────────────────
+router.post('/:pid/vitals', async (req, res, next) => {
+  try {
+    const pid = req.params.pid.trim();
+    const { temperature, pulse, respiratory_rate, blood_pressure, weight, spo2, general_comments } = req.body;
+    
+    const result = await db.query(
+      `INSERT INTO patient_vitals (
+        patient_id, temperature, pulse, respiratory_rate, blood_pressure, weight, spo2, general_comments
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *`,
+      [pid, temperature, pulse, respiratory_rate, blood_pressure, weight, spo2, general_comments]
+    );
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

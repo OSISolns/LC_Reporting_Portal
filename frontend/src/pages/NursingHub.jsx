@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PatientAutocomplete from '../components/PatientAutocomplete';
+import VitalsModal from '../components/VitalsModal';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { Card, Badge, Button } from '../components/ui/index.jsx';
@@ -30,6 +31,7 @@ export default function NursingHub() {
   const [recentPatients, setRecentPatients] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(true);
   const [now, setNow] = useState(new Date());
+  const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
 
   // Greeting helper
   const getGreeting = () => {
@@ -85,6 +87,8 @@ export default function NursingHub() {
       navigate(`/patients/${selectedPatient.pid}/clinical-sheet?tab=sbar`);
     } else if (submodule === 'Patient History & Archive') {
       navigate(`/patients/${selectedPatient.pid}/records`);
+    } else if (submodule === 'Take Vitals / Triage') {
+      setIsVitalsModalOpen(true);
     }
   };
 
@@ -366,6 +370,13 @@ export default function NursingHub() {
                   bg: '#fef3c7' 
                 },
                 { 
+                  title: 'Take Vitals / Triage', 
+                  desc: 'Record patient vitals (Temp, Pulse, RR, BP, Weight, SpO2) into database.',
+                  icon: <Heart size={22} />, 
+                  color: '#ef4444', 
+                  bg: '#fee2e2' 
+                },
+                { 
                   title: 'Daily Stock Checkup', 
                   desc: 'Track and reconcile daily session checkups of medicines and consumables against stock.',
                   icon: <Activity size={22} />, 
@@ -450,6 +461,14 @@ export default function NursingHub() {
           </div>
         </div>
       </div>
+      <VitalsModal 
+        isOpen={isVitalsModalOpen} 
+        onClose={() => setIsVitalsModalOpen(false)} 
+        patientId={selectedPatient?.pid} 
+        onVitalsSaved={(savedVitals) => {
+          toast.success('Patient vitals successfully saved to active workspace!');
+        }}
+      />
     </div>
   );
 }
