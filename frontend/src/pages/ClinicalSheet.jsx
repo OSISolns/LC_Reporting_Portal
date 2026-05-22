@@ -106,7 +106,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded }) => {
         setLoading(true);
         const [patientRes, vitalsRes, sheetRes] = await Promise.all([
           api.get(`/patients/${patientId}`),
-          api.get(`/patients/${patientId}/vitals`),
+          api.get(`/patients/${patientId}/vitals`).catch(() => ({ data: null })),
           api.get(`/clinical/observations/${patientId}?queue_id=${queue_id}`).catch(() => ({ data: null }))
         ]);
 
