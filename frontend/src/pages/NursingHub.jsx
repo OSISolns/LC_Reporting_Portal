@@ -64,6 +64,11 @@ export default function NursingHub() {
   };
 
   const handleQuickAction = (submodule) => {
+    if (submodule === 'Daily Stock Checkup') {
+      navigate('/nursing-hub/inventory');
+      return;
+    }
+
     if (!selectedPatient) {
       toast.error(`Please search and select a patient first to proceed with ${submodule}!`, {
         icon: '⚠️',
@@ -359,6 +364,13 @@ export default function NursingHub() {
                   icon: <History size={22} />, 
                   color: '#f59e0b', 
                   bg: '#fef3c7' 
+                },
+                { 
+                  title: 'Daily Stock Checkup', 
+                  desc: 'Track and reconcile daily session checkups of medicines and consumables against stock.',
+                  icon: <Activity size={22} />, 
+                  color: '#ec4899', 
+                  bg: '#fce7f3' 
                 }
               ].map((sub, idx) => (
                 <div 

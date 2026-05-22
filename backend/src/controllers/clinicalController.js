@@ -70,3 +70,61 @@ exports.getPDF = async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+const db = require('../config/db');
+
+exports.getInventory = async (req, res) => {
+  try {
+    const { month_year } = req.query;
+    if (!month_year) {
+      return res.status(400).json({ success: false, message: 'month_year query parameter is required' });
+    }
+    const { rows } = await db.query(
+      `SELECT * FROM nursing_monthly_stock WHERE month_year = $1`,
+      [month_year]
+    );
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getInventory:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.saveInventoryBulk = async (req, res) => {
+  try {
+    const { month_year, items } = req.body;
+    if (!month_year || !Array.isArray(items)) {
+      return res.status(400).json({ success: false, message: 'month_year and items array are required' });
+    }
+
+    const statements = items.map(item => {
+      return {
+        sql: `INSERT INTO nursing_monthly_stock (
+          month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        ON CONFLICT(month_year, item_name, day, session) DO UPDATE SET
+          stock_in_hands = excluded.stock_in_hands,
+          consumed = excluded.consumed,
+          balance = excluded.balance,
+          responsible_name = excluded.responsible_name,
+          updated_at = NOW()`,
+        args: [
+          month_year,
+          item.item_name,
+          item.day,
+          item.session,
+          parseInt(item.stock_in_hands, 10) || 0,
+          parseInt(item.consumed, 10) || 0,
+          parseInt(item.balance, 10) || 0,
+          item.responsible_name || ''
+        ]
+      };
+    });
+
+    await db.batch(statements);
+    res.json({ success: true, message: 'Inventory saved successfully' });
+  } catch (error) {
+    console.error('Error in saveInventoryBulk:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};

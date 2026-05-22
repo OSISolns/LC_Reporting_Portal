@@ -31,6 +31,7 @@ import ClinicalObservationList from './pages/ClinicalObservationList';
 import NursingHub from './pages/NursingHub';
 import PatientRecords from './pages/PatientRecords';
 import FeedbackList from './pages/feedbacks/FeedbackList';
+import DailyInventoryCheckup from './pages/DailyInventoryCheckup';
 
 
 
@@ -70,6 +71,7 @@ function App() {
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/clinical-observation" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
             <Route path="/nursing-hub" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
+            <Route path="/nursing-hub/inventory" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><DailyInventoryCheckup /></ProtectedRoute>} />
             <Route path="/feedbacks" element={<ProtectedRoute allowedRoles={['coo']}><FeedbackList /></ProtectedRoute>} />
 
             <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><ClinicalSheet /></ProtectedRoute>} />
