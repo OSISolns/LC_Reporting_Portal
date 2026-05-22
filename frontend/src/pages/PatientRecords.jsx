@@ -22,8 +22,8 @@ export default function PatientRecords() {
   const navigate = useNavigate();
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [loading, setLoading] = useState(true);
-   const [activeTab, setActiveTab] = useState('summary');
-   const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('summary');
+  const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
 
   useEffect(() => {
     // In a real app, you would fetch patient details using patientId
@@ -90,9 +90,8 @@ export default function PatientRecords() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 pb-4 pt-2 font-semibold text-sm transition-colors relative whitespace-nowrap ${
-                  activeTab === tab.id ? 'text-[#009ee3]' : 'text-slate-500 hover:text-slate-800'
-                }`}
+                className={`flex items-center gap-2 pb-4 pt-2 font-semibold text-sm transition-colors relative whitespace-nowrap ${activeTab === tab.id ? 'text-[#009ee3]' : 'text-slate-500 hover:text-slate-800'
+                  }`}
               >
                 {tab.icon} {tab.label}
                 {activeTab === tab.id && (
@@ -105,7 +104,7 @@ export default function PatientRecords() {
 
         {/* Tab Content */}
         <div className="p-8 max-w-7xl mx-auto">
-          
+
           {/* ── SUMMARY TAB ── */}
           {activeTab === 'summary' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -163,11 +162,11 @@ export default function PatientRecords() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex justify-between items-center mb-6">
                 <h4 className="text-lg font-bold text-slate-900">Nursing Observations</h4>
-                <Button 
+                <Button
                   className="bg-[#009ee3] hover:bg-[#008bc7] text-white"
                   onClick={() => setActiveTab('clinical_sheet')}
                 >
-                  <Plus className="w-4 h-4 mr-2"/> Add Observation
+                  <Plus className="w-4 h-4 mr-2" /> Add Observation
                 </Button>
               </div>
               <table className="w-full text-left text-sm text-slate-600">
@@ -193,11 +192,11 @@ export default function PatientRecords() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex justify-between items-center mb-6">
                 <h4 className="text-lg font-bold text-slate-900">Vitals Flowsheet</h4>
-                <Button 
+                <Button
                   className="bg-[#009ee3] hover:bg-[#008bc7] text-white"
                   onClick={() => setIsVitalsModalOpen(true)}
                 >
-                  <Plus className="w-4 h-4 mr-2"/> Record Vitals
+                  <Plus className="w-4 h-4 mr-2" /> Record Vitals
                 </Button>
               </div>
               <div className="overflow-x-auto">
@@ -243,11 +242,11 @@ export default function PatientRecords() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex justify-between items-center mb-6">
                 <h4 className="text-lg font-bold text-slate-900">Current Medications</h4>
-                <Button 
+                <Button
                   className="bg-[#009ee3] hover:bg-[#008bc7] text-white"
                   onClick={() => setActiveTab('clinical_sheet')}
                 >
-                  <Plus className="w-4 h-4 mr-2"/> Prescribe
+                  <Plus className="w-4 h-4 mr-2" /> Prescribe
                 </Button>
               </div>
               <table className="w-full text-left text-sm text-slate-600">
@@ -275,14 +274,14 @@ export default function PatientRecords() {
           {/* ── CLINICAL SHEET TAB ── */}
           {activeTab === 'clinical_sheet' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <ClinicalSheet 
-                embeddedPatientId={selectedPatient.id || selectedPatient.patient_id} 
+              <ClinicalSheet
+                embeddedPatientId={selectedPatient.id || selectedPatient.patient_id}
                 embeddedQueueId={selectedPatient.queue_id || 'Q-TEMP'}
                 isEmbedded={true}
               />
             </div>
           )}
-          
+
           {/* ── CONSUMABLES TAB ── */}
           {activeTab === 'consumables' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
@@ -303,7 +302,7 @@ export default function PatientRecords() {
                   <Plus className="w-4 h-4 mr-2" /> Record Usage
                 </Button>
               </div>
-              
+
               <table className="w-full text-left text-sm text-slate-600 mb-6">
                 <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-bold text-slate-500">
                   <tr><th className="p-3">Item Name</th><th className="p-3 text-center w-24">Quantity</th><th className="p-3 w-40">Recorded By</th><th className="p-3 w-40 text-right">Time</th></tr>
@@ -325,7 +324,7 @@ export default function PatientRecords() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <h4 className="text-lg font-bold text-slate-900 mb-6">Past Encounters</h4>
               <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
-                
+
                 <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                   <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-[#009ee3] text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
                     <Clock size={16} />
@@ -358,9 +357,9 @@ export default function PatientRecords() {
 
         </div>
       </div>
-      <VitalsModal 
-        isOpen={isVitalsModalOpen} 
-        onClose={() => setIsVitalsModalOpen(false)} 
+      <VitalsModal
+        isOpen={isVitalsModalOpen}
+        onClose={() => setIsVitalsModalOpen(false)}
         patientId={patientId}
         onVitalsSaved={(data) => {
           console.log('New vitals recorded:', data);
