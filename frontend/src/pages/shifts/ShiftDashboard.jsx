@@ -29,6 +29,35 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from '../../components/ui/index.jsx';
 
+// ── Wave Configurations ──────────────────────────────────────────────────────
+function getWaveConfig(shift) {
+  if (!shift) return null;
+  if (!shift.wave && !shift.start_hour) return null;
+  
+  if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
+    return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
+  } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
+    return { schedule: "08:00 AM - 04:00 PM", duration: 8, startHourStr: "08:00" };
+  } else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') {
+    return { schedule: "09:00 AM - 05:00 PM", duration: 8, startHourStr: "09:00" };
+  } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
+    return { schedule: "03:00 PM - 09:00 PM", duration: 6, startHourStr: "15:00" };
+  }
+  return null;
+}
+
+function getWaveStartTime(shift) {
+  if (!shift?.opened_at) return null;
+  const openedDate = new Date(shift.opened_at);
+  const cfg = getWaveConfig(shift);
+  if (!cfg) return openedDate;
+  const [hStr, mStr] = cfg.startHourStr.split(':');
+  
+  const startTime = new Date(openedDate);
+  startTime.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
+  return startTime;
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────
 const ROLE_META = {
   cashier:     { label: 'Billing / Cashier',  color: 'success', dot: 'bg-emerald-500' },
@@ -747,9 +776,9 @@ export default function ShiftDashboard() {
                           <div className="flex items-center gap-2 text-xs text-slate-600 font-semibold">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
                             <span>
-                              {new Date(s.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {getWaveStartTime(s).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               <span className="text-slate-300 ml-1.5 text-[10px]">
-                                {new Date(s.opened_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                {getWaveStartTime(s).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                               </span>
                             </span>
                           </div>

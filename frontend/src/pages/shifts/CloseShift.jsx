@@ -26,6 +26,41 @@ import toast from 'react-hot-toast';
 // ─── Shift Policy ────────────────────────────────────────────────────────────
 const MAX_SHIFT_HOURS = 8;
 
+// ─── Wave Configurations ──────────────────────────────────────────────────────
+function getWaveConfig(shift) {
+  if (!shift) return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
+  
+  if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
+    return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
+  } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
+    return { schedule: "08:00 AM - 04:00 PM", duration: 8, startHourStr: "08:00" };
+  } else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') {
+    return { schedule: "09:00 AM - 05:00 PM", duration: 8, startHourStr: "09:00" };
+  } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
+    return { schedule: "03:00 PM - 09:00 PM", duration: 6, startHourStr: "15:00" };
+  } else {
+    const openedDate = new Date(shift.opened_at);
+    const hour = openedDate.getHours();
+    const isMorning = hour < 14;
+    return {
+      schedule: isMorning ? "07:00 AM - 03:00 PM" : "03:00 PM - 09:00 PM",
+      duration: isMorning ? 8 : 6,
+      startHourStr: isMorning ? "07:00" : "15:00"
+    };
+  }
+}
+
+function getWaveStartTime(shift) {
+  if (!shift?.opened_at) return null;
+  const openedDate = new Date(shift.opened_at);
+  const cfg = getWaveConfig(shift);
+  const [hStr, mStr] = cfg.startHourStr.split(':');
+  
+  const startTime = new Date(openedDate);
+  startTime.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
+  return startTime;
+}
+
 // ─── Greeting helper ─────────────────────────────────────────────────────────
 function getGreeting() {
   const h = new Date().getHours();
@@ -65,31 +100,21 @@ function WelcomeDashboard({ shift, elapsedHours, remainingMin, onDismiss }) {
   const firstName = shift.user_name?.split(' ')[0] || 'Agent';
   const h = Math.floor(elapsedHours);
   const m = Math.round((elapsedHours % 1) * 60);
-  const pct = Math.min((elapsedHours / MAX_SHIFT_HOURS) * 100, 100);
+  const waveCfg = getWaveConfig(shift);
+  const pct = Math.min((elapsedHours / waveCfg.duration) * 100, 100);
   const barColor = pct > 88 ? '#ef4444' : pct > 78 ? '#f59e0b' : '#22c55e';
 
   // Shift Window Detection
   const openedDate = new Date(shift.opened_at);
-  let shiftSchedule = "07:00 AM - 03:00 PM";
+  const shiftSchedule = waveCfg.schedule;
   let mealDeduction = "60 min (20m Breakfast, 40m Lunch)";
-  
-  if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
-    shiftSchedule = "07:00 AM - 03:00 PM";
-    mealDeduction = "60 min (20m Breakfast, 40m Lunch)";
-  } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
-    shiftSchedule = "08:00 AM - 04:00 PM";
-    mealDeduction = "60 min (20m Breakfast, 40m Lunch)";
-  } else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') {
-    shiftSchedule = "09:00 AM - 05:00 PM";
-    mealDeduction = "60 min (20m Breakfast, 40m Lunch)";
-  } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
-    shiftSchedule = "03:00 PM - 09:00 PM";
+  if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
     mealDeduction = "None (Evening Wave)";
-  } else {
+  } else if (!shift.wave && !shift.start_hour) {
     const hour = openedDate.getHours();
-    const isMorning = hour < 14;
-    shiftSchedule = isMorning ? "07:00 AM - 03:00 PM" : "03:00 PM - 09:00 PM";
-    mealDeduction = isMorning ? "60 min (20m Breakfast, 40m Lunch)" : "None";
+    if (hour >= 14) {
+      mealDeduction = "None";
+    }
   }
 
   return (
@@ -186,12 +211,12 @@ function WelcomeDashboard({ shift, elapsedHours, remainingMin, onDismiss }) {
 function ShiftClosingSummary({ shift, closedData, onExit }) {
   const cfg = ROLE_CONFIG[shift.shift_role] || ROLE_CONFIG.cashier;
   const firstName = shift.user_name?.split(' ')[0] || 'Agent';
-  const openedAt  = new Date(shift.opened_at);
+  const waveStartTime = getWaveStartTime(shift) || new Date(shift.opened_at);
   const closedAt  = new Date();
-  const durationMs = closedAt - openedAt;
+  const durationMs = closedAt - waveStartTime;
   const durH = Math.floor(durationMs / 3_600_000);
   const durM = Math.floor((durationMs % 3_600_000) / 60_000);
-  const isMorning = openedAt.getHours() < 14;
+  const isMorning = waveStartTime.getHours() < 14;
   const netH = isMorning ? Math.max(0, durH - 1) : durH;
   const isFlagged = closedData?.is_flagged;
 
@@ -1009,15 +1034,17 @@ export default function CloseShift() {
   useEffect(() => {
     if (!shift?.opened_at) return;
     const tick = () => {
-      const elapsed = (Date.now() - new Date(shift.opened_at).getTime()) / (1000 * 60 * 60);
-      const remaining = MAX_SHIFT_HOURS - elapsed;
+      const waveConfig = getWaveConfig(shift);
+      const waveStartTime = getWaveStartTime(shift) || new Date(shift.opened_at);
+      const elapsed = (Date.now() - waveStartTime.getTime()) / (1000 * 60 * 60);
+      const remaining = waveConfig.duration - elapsed;
       setElapsedHours(elapsed);
       setRemainingMin(remaining > 0 ? Math.ceil(remaining * 60) : 0);
     };
     tick();
     const t = setInterval(tick, 60_000);
     return () => clearInterval(t);
-  }, [shift?.opened_at]);
+  }, [shift]);
 
 
   const buildPayload = useCallback(() => ({
@@ -1172,7 +1199,7 @@ export default function CloseShift() {
                 <span className="px-3 py-1 rounded-xl bg-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">{roleLabel} Protocol</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                 <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest">
-                  <Clock size={16} /> Open since {new Date(shift.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <Clock size={16} /> Wave: {getWaveConfig(shift).schedule}
                 </div>
               </div>
             </div>
@@ -1219,50 +1246,50 @@ export default function CloseShift() {
 
       {/* ── Overtime Warning Banner ─────────────────────────────── */}
       <AnimatePresence>
-        {elapsedHours >= 6.5 && shift.status !== 'closed' && (
+        {elapsedHours >= getWaveConfig(shift).duration - 1.5 && shift.status !== 'closed' && (
           <motion.div
             key="overtime-banner"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className={`mb-8 rounded-2xl border-2 p-5 flex items-start gap-4 ${
-              elapsedHours >= MAX_SHIFT_HOURS
+              elapsedHours >= getWaveConfig(shift).duration
                 ? 'bg-rose-950 border-rose-700 text-white'
-                : elapsedHours >= 7.5
+                : elapsedHours >= getWaveConfig(shift).duration - 0.5
                 ? 'bg-rose-50 border-rose-300'
                 : 'bg-amber-50 border-amber-300'
             }`}
           >
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-              elapsedHours >= MAX_SHIFT_HOURS ? 'bg-rose-700 text-white' :
-              elapsedHours >= 7.5 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-700'
+              elapsedHours >= getWaveConfig(shift).duration ? 'bg-rose-700 text-white' :
+              elapsedHours >= getWaveConfig(shift).duration - 0.5 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-700'
             }`}>
-              {elapsedHours >= MAX_SHIFT_HOURS ? <AlertTriangle size={20} /> : <Timer size={20} />}
+              {elapsedHours >= getWaveConfig(shift).duration ? <AlertTriangle size={20} /> : <Timer size={20} />}
             </div>
             <div className="flex-1">
-              {elapsedHours >= MAX_SHIFT_HOURS ? (
+              {elapsedHours >= getWaveConfig(shift).duration ? (
                 <>
                   <p className="font-black text-sm uppercase tracking-widest text-rose-300">⛔ Shift Limit Exceeded</p>
                   <p className="text-sm font-semibold text-rose-100 mt-1">
-                    Your shift has exceeded the <strong>{MAX_SHIFT_HOURS}-hour</strong> policy limit.
+                    Your shift has exceeded the <strong>{getWaveConfig(shift).duration}-hour</strong> policy limit.
                     It will be <strong>automatically closed and flagged</strong> by the system. Please close it immediately and contact your supervisor.
                   </p>
                 </>
               ) : (
                 <>
                   <p className={`font-black text-sm uppercase tracking-widest ${
-                    elapsedHours >= 7.5 ? 'text-rose-700' : 'text-amber-700'
+                    elapsedHours >= getWaveConfig(shift).duration - 0.5 ? 'text-rose-700' : 'text-amber-700'
                   }`}>
-                    {elapsedHours >= 7.5 ? '🚨 Urgent: Shift Nearing Limit' : '⏱ Shift Time Warning'}
+                    {elapsedHours >= getWaveConfig(shift).duration - 0.5 ? '🚨 Urgent: Shift Nearing Limit' : '⏱ Shift Time Warning'}
                   </p>
                   <p className={`text-sm font-semibold mt-1 ${
-                    elapsedHours >= 7.5 ? 'text-rose-600' : 'text-amber-700'
+                    elapsedHours >= getWaveConfig(shift).duration - 0.5 ? 'text-rose-600' : 'text-amber-700'
                   }`}>
                     You have been on shift for <strong>{Math.floor(elapsedHours)}h {Math.round((elapsedHours % 1) * 60)}m</strong>.
                     {remainingMin !== null && remainingMin > 0 && (
                       <> Only <strong>{remainingMin} minute{remainingMin !== 1 ? 's' : ''}</strong> remaining before auto-closure.</>
                     )}
-                    {' '}Please note the <strong>6-hour minimum</strong> duration policy. Finalize your handover and close this shift now.
+                    {' '}Please note the <strong>{getWaveConfig(shift).duration}-hour</strong> duration policy. Finalize your handover and close this shift now.
                   </p>
                 </>
               )}

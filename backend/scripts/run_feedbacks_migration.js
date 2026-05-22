@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const db = createClient({
-  url:       process.env.TURSO_DATABASE_URL,
+  url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
@@ -28,7 +28,7 @@ async function main() {
     for (const stmt of statements) {
       await db.execute(stmt);
     }
-    console.log('✅ patient_feedbacks table successfully integrated.');
+    console.log('✅ internal_feedbacks table successfully integrated.');
   } catch (err) {
     console.error('❌ feedbacks migration failed:', err.message);
     process.exit(1);

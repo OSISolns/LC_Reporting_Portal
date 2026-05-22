@@ -11,7 +11,7 @@ class Feedback {
     } = data;
 
     const { rows } = await db.query(
-      `INSERT INTO patient_feedbacks (
+      `INSERT INTO internal_feedbacks (
         contact_info, feedback_date,
         reception_call_center, nursing, doctors_room,
         reception_cashier, call_center, tabara_service,
@@ -42,7 +42,7 @@ class Feedback {
   }
 
   static async getAll(filters = {}) {
-    let query = `SELECT * FROM patient_feedbacks WHERE 1=1`;
+    let query = `SELECT * FROM internal_feedbacks WHERE 1=1`;
     const params = [];
 
     if (filters.contact) {
@@ -72,7 +72,7 @@ class Feedback {
 
   static async delete(id) {
     const { rows } = await db.query(
-      `DELETE FROM patient_feedbacks WHERE id = $1 RETURNING *`,
+      `DELETE FROM internal_feedbacks WHERE id = $1 RETURNING *`,
       [id]
     );
     return rows[0];

@@ -77,14 +77,14 @@ const feedbacks = [
 ];
 
 async function seed() {
-  console.log('🌱 Seeding 5 Realistic Anonymous Feedbacks into patient_feedbacks...');
+  console.log('🌱 Seeding 5 Realistic Anonymous Feedbacks into internal_feedbacks...');
   try {
     // Clear old feedback to keep it clean
-    await db.query('DELETE FROM patient_feedbacks');
-    
+    await db.query('DELETE FROM internal_feedbacks');
+
     for (const item of feedbacks) {
       await db.query(
-        `INSERT INTO patient_feedbacks (
+        `INSERT INTO internal_feedbacks (
           contact_info, feedback_date,
           reception_call_center, nursing, doctors_room,
           reception_cashier, call_center, tabara_service,

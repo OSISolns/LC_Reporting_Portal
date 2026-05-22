@@ -3,7 +3,7 @@
 -- Creates table to capture Patient Feedback Forms locally
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS patient_feedbacks (
+CREATE TABLE IF NOT EXISTS internal_feedbacks (
   id                      INTEGER PRIMARY KEY AUTOINCREMENT,
   contact_info            TEXT,                                                 -- Telephone/Email (Imeli)
   feedback_date           TEXT,                                                 -- Date (Italiki)
@@ -23,4 +23,4 @@ CREATE TABLE IF NOT EXISTS patient_feedbacks (
   created_at              TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_feedbacks_date ON patient_feedbacks(feedback_date);
+CREATE INDEX IF NOT EXISTS idx_feedbacks_date ON internal_feedbacks(feedback_date);

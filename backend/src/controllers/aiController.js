@@ -1,6 +1,6 @@
 'use strict';
-const db       = require('../config/db');
-const cache    = require('../utils/cache');
+const db = require('../config/db');
+const cache = require('../utils/cache');
 const { analyzeRecords } = require('../utils/localAI');
 
 // ── DB helper ─────────────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ exports.getModuleStats = async (req, res, next) => {
       queryRows(`SELECT status, COUNT(*) AS cnt FROM results_transfers     GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM shift_sessions        GROUP BY status`),
       queryRows(`SELECT action AS status, COUNT(*) AS cnt FROM audit_logs WHERE action IN ('LOGIN_FAILED', 'ACCOUNT_LOCKOUT', 'DEV_LOGIN_BYPASS', 'AUTH_FAILURE', 'PERMISSION_DENIED') GROUP BY action`),
-      queryRows(`SELECT COUNT(*) AS cnt FROM patient_feedbacks`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM internal_feedbacks`),
     ]);
 
     const summarise = (rows) => {
@@ -50,15 +50,15 @@ exports.getModuleStats = async (req, res, next) => {
       queryRows(`SELECT COUNT(*) AS cnt FROM results_transfers     WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM shift_sessions        WHERE opened_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM audit_logs           WHERE action IN ('LOGIN_FAILED', 'ACCOUNT_LOCKOUT', 'AUTH_FAILURE', 'PERMISSION_DENIED') AND created_at >= ${since30}`),
-      queryRows(`SELECT COUNT(*) AS cnt FROM patient_feedbacks     WHERE created_at >= ${since30}`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM internal_feedbacks     WHERE created_at >= ${since30}`),
     ]);
 
     const data = {
-      cancellations: { ...summarise(cancRows), approvedAmountRWF: Number(cancAmt[0]?.total || 0),  last30Days: Number(cRecent[0]?.cnt || 0) },
-      refunds:       { ...summarise(refundRows), approvedAmountRWF: Number(refundAmt[0]?.total || 0), last30Days: Number(rRecent[0]?.cnt || 0) },
-      incidents:     { ...summarise(incidentRows), last30Days: Number(iRecent[0]?.cnt || 0) },
-      transfers:     { ...summarise(rtRows), last30Days: Number(rtRecent[0]?.cnt || 0) },
-      shifts:        (() => {
+      cancellations: { ...summarise(cancRows), approvedAmountRWF: Number(cancAmt[0]?.total || 0), last30Days: Number(cRecent[0]?.cnt || 0) },
+      refunds: { ...summarise(refundRows), approvedAmountRWF: Number(refundAmt[0]?.total || 0), last30Days: Number(rRecent[0]?.cnt || 0) },
+      incidents: { ...summarise(incidentRows), last30Days: Number(iRecent[0]?.cnt || 0) },
+      transfers: { ...summarise(rtRows), last30Days: Number(rtRecent[0]?.cnt || 0) },
+      shifts: (() => {
         const counts = { pending: 0, reviewed: 0, flagged: 0, total: 0 };
         for (const r of shiftRows) {
           const n = Number(r.cnt);
@@ -159,7 +159,7 @@ exports.classifyReasons = async (req, res, next) => {
         `SELECT id,
                 concern_description AS reason,
                 'Patient' AS cashier
-         FROM   patient_feedbacks
+         FROM   internal_feedbacks
          ORDER  BY created_at DESC LIMIT 500`
       );
     } else {
@@ -201,31 +201,31 @@ exports.getExecutiveReport = async (req, res, next) => {
                         SUM(CASE WHEN action='ACCOUNT_LOCKOUT' THEN 1 ELSE 0 END) AS critical,
                         SUM(CASE WHEN action='LOGIN_FAILED' THEN 1 ELSE 0 END) AS failures
                  FROM audit_logs WHERE created_at >= datetime('now', '-24 hours')`),
-      queryRows(`SELECT COUNT(*) AS total FROM patient_feedbacks`),
+      queryRows(`SELECT COUNT(*) AS total FROM internal_feedbacks`),
     ]);
 
-    const c = cancStat[0],   cancTotal    = Number(c.total    || 0);
-    const r = refundStat[0], refundTotal  = Number(r.total    || 0);
-    const i = incStat[0],    incTotal     = Number(i.total    || 0);
-    const rt = rtStat[0],    rtTotal      = Number(rt.total   || 0);
-    const s = shiftStat[0],  shiftTotal   = Number(s.total    || 0);
-    const cancPending  = Number(c.pending  || 0);
+    const c = cancStat[0], cancTotal = Number(c.total || 0);
+    const r = refundStat[0], refundTotal = Number(r.total || 0);
+    const i = incStat[0], incTotal = Number(i.total || 0);
+    const rt = rtStat[0], rtTotal = Number(rt.total || 0);
+    const s = shiftStat[0], shiftTotal = Number(s.total || 0);
+    const cancPending = Number(c.pending || 0);
     const refundPending = Number(r.pending || 0);
-    const rtPending     = Number(rt.pending || 0);
-    const shiftFlagged  = Number(s.flagged || 0);
-    const shiftActive   = Number(s.active  || 0);
-    
+    const rtPending = Number(rt.pending || 0);
+    const shiftFlagged = Number(s.flagged || 0);
+    const shiftActive = Number(s.active || 0);
+
     const sec = securityStat[0], secTotal = Number(sec.total || 0);
     const secCritical = Number(sec.critical || 0);
-    
+
     const feedTotal = Number(feedStat[0]?.total || 0);
 
     // Template-based executive narrative
     const BOTTLENECK_THRESHOLD = process.env.BOTTLENECK_THRESHOLD ? parseInt(process.env.BOTTLENECK_THRESHOLD) : 5;
     const bottlenecks = [];
-    if (cancPending  > BOTTLENECK_THRESHOLD)  bottlenecks.push(`${cancPending} cancellation requests awaiting approval`);
+    if (cancPending > BOTTLENECK_THRESHOLD) bottlenecks.push(`${cancPending} cancellation requests awaiting approval`);
     if (refundPending > BOTTLENECK_THRESHOLD) bottlenecks.push(`${refundPending} refund requests awaiting verification`);
-    if (rtPending > BOTTLENECK_THRESHOLD)     bottlenecks.push(`${rtPending} result transfers awaiting review`);
+    if (rtPending > BOTTLENECK_THRESHOLD) bottlenecks.push(`${rtPending} result transfers awaiting review`);
 
     const lines = [
       `Legacy Clinics currently has ${cancTotal} cancellation, ${refundTotal} refund, ${incTotal} incident, and ${feedTotal} internal feedback records across all reporting modules.`,

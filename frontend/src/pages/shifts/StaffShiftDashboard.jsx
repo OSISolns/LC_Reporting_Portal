@@ -21,6 +21,35 @@ import { getMyActiveShift } from '../../api/shifts';
 import { Button, Card, Badge } from '../../components/ui/index.jsx';
 import toast from 'react-hot-toast';
 
+// ── Wave Configurations ──────────────────────────────────────────────────────
+function getWaveConfig(shift) {
+  if (!shift) return null;
+  if (!shift.wave && !shift.start_hour) return null;
+  
+  if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
+    return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
+  } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
+    return { schedule: "08:00 AM - 04:00 PM", duration: 8, startHourStr: "08:00" };
+  } else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') {
+    return { schedule: "09:00 AM - 05:00 PM", duration: 8, startHourStr: "09:00" };
+  } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
+    return { schedule: "03:00 PM - 09:00 PM", duration: 6, startHourStr: "15:00" };
+  }
+  return null;
+}
+
+function getWaveStartTime(shift) {
+  if (!shift?.opened_at) return null;
+  const openedDate = new Date(shift.opened_at);
+  const cfg = getWaveConfig(shift);
+  if (!cfg) return openedDate;
+  const [hStr, mStr] = cfg.startHourStr.split(':');
+  
+  const startTime = new Date(openedDate);
+  startTime.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
+  return startTime;
+}
+
 // ─── Role Config ─────────────────────────────────────────────────────────────
 const ROLE_DETAILS = {
   cashier: {
@@ -173,12 +202,19 @@ export default function StaffShiftDashboard() {
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Shift Started</p>
                   <p className="font-black text-slate-800 text-lg">
-                    {new Date(activeShift.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {getWaveStartTime(activeShift).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                   <p className="text-xs text-slate-500 font-bold mt-0.5">
-                    {new Date(activeShift.opened_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+                    {getWaveStartTime(activeShift).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
                   </p>
                 </div>
+                {activeShift.wave && (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Allocated Wave</p>
+                    <p className="font-black text-slate-800 text-lg uppercase tracking-wider">{activeShift.wave}</p>
+                    <p className="text-xs text-slate-500 font-bold mt-0.5">{getWaveConfig(activeShift)?.schedule}</p>
+                  </div>
+                )}
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Workspace Mode</p>
                   <p className="font-black text-slate-800 text-lg uppercase tracking-wider">{activeShift.shift_role?.replace(/_/g, ' ')}</p>
