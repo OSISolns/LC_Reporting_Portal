@@ -14,7 +14,7 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { INSURANCES } from './refunds/constants';
 
-const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded }) => {
+const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embeddedTab }) => {
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState(null);
-  const activeTabParam = queryParams.get('tab') || 'all';
+  const activeTabParam = embeddedTab || queryParams.get('tab') || 'all';
   const [activeTab, setActiveTab] = useState(activeTabParam);
 
   useEffect(() => {
@@ -518,6 +518,26 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded }) => {
                 </div>
               </div>
             </>
+          )}
+          {isEmbedded && (
+            <div className="mt-8 pt-6 border-t border-slate-200 flex justify-end gap-3 no-print">
+              <button 
+                type="button"
+                onClick={handleDownloadPdf} 
+                className="flex items-center text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl shadow-sm transition-all"
+              >
+                <FileText className="h-4 w-4 mr-2 text-slate-500" /> Download PDF
+              </button>
+              <button 
+                type="button"
+                onClick={handleSubmit(onSubmit)} 
+                disabled={saving} 
+                className="flex items-center text-xs font-black uppercase tracking-widest text-white bg-[#0369a1] hover:bg-[#0284c7] px-6 py-2.5 rounded-xl shadow-lg transition-all disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Changes
+              </button>
+            </div>
           )}
         </form>
       </div>

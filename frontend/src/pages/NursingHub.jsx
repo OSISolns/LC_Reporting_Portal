@@ -19,6 +19,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import PatientAutocomplete from '../components/PatientAutocomplete';
 import VitalsModal from '../components/VitalsModal';
+import ClinicalSheet from './ClinicalSheet';
+import Modal from '../components/Modal';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { Card, Badge, Button } from '../components/ui/index.jsx';
@@ -32,6 +34,7 @@ export default function NursingHub() {
   const [loadingRecent, setLoadingRecent] = useState(true);
   const [now, setNow] = useState(new Date());
   const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
+  const [activeClinicalTab, setActiveClinicalTab] = useState(null);
 
   // Greeting helper
   const getGreeting = () => {
@@ -80,11 +83,11 @@ export default function NursingHub() {
     }
 
     if (submodule === 'Clinical Sheet') {
-      navigate(`/patients/${selectedPatient.pid}/clinical-sheet?tab=clinical`);
+      setActiveClinicalTab('clinical');
     } else if (submodule === 'Medication Record (MAR)') {
-      navigate(`/patients/${selectedPatient.pid}/clinical-sheet?tab=mar`);
+      setActiveClinicalTab('mar');
     } else if (submodule === 'SBAR Handover') {
-      navigate(`/patients/${selectedPatient.pid}/clinical-sheet?tab=sbar`);
+      setActiveClinicalTab('sbar');
     } else if (submodule === 'Patient History & Archive') {
       navigate(`/patients/${selectedPatient.pid}/records`);
     } else if (submodule === 'Take Vitals / Triage') {
@@ -223,7 +226,7 @@ export default function NursingHub() {
 
                 <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }} className="flex-col sm:flex-row">
                   <Button 
-                    onClick={() => navigate(`/patients/${selectedPatient.pid}/clinical-sheet`)}
+                    onClick={() => setActiveClinicalTab('all')}
                     className="flex-1 py-3.5 rounded-xl bg-[#0369a1] hover:bg-[#0284c7] text-white font-black text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2"
                   >
                     <FileText size={14} /> Open Clinical Sheet
@@ -469,6 +472,25 @@ export default function NursingHub() {
           toast.success('Patient vitals successfully saved to active workspace!');
         }}
       />
+      <Modal 
+        isOpen={activeClinicalTab !== null} 
+        onClose={() => setActiveClinicalTab(null)} 
+        title={`${selectedPatient?.full_name || 'Active Patient'} — ${
+          activeClinicalTab === 'clinical' ? 'Clinical Triage Sheet' :
+          activeClinicalTab === 'mar' ? 'Medication Administration Record (MAR)' :
+          activeClinicalTab === 'sbar' ? 'SBAR Handover Report' : 'Complete Observation Sheet'
+        }`}
+        maxWidth="950px"
+      >
+        {activeClinicalTab !== null && (
+          <ClinicalSheet 
+            embeddedPatientId={selectedPatient?.pid} 
+            embeddedQueueId="Q-TEMP" 
+            isEmbedded={true} 
+            embeddedTab={activeClinicalTab}
+          />
+        )}
+      </Modal>
     </div>
   );
 }
