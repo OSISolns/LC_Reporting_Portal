@@ -43,6 +43,12 @@ const ICON_MAP = {
   'Pulse Oximeter': <Pill size={18} />,
 }
 
+const WAVE_OPTIONS = [
+  { hour: '07:00', label: '7:00 A.M.', wave: 'Wave 1', schedule: '7:00 AM - 3:00 PM', desc: 'Morning Core Shift' },
+  { hour: '08:00', label: '8:00 A.M.', wave: 'Wave 2', schedule: '8:00 AM - 4:00 PM', desc: 'Morning Mid Shift' },
+  { hour: '15:00', label: '3:00 P.M.', wave: 'Wave 3', schedule: '3:00 PM - 9:00 PM', desc: 'Evening Handover Shift' },
+];
+
 // ─── Sub-component: Equipment Checklist ──────────────────────────────────────
 const EquipmentChecklist = ({ items, onChange }) => (
   <div className="grid grid-cols-1 gap-4">
@@ -121,6 +127,9 @@ export default function OpenShift() {
   const [selectedRole, setSelectedRole] = useState('');
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [startHour, setStartHour] = useState('');
+
+  const isCustomerCare = user?.role === 'customer_care' || ['helpdesk', 'call_center'].includes(selectedRole);
 
   const visibleRoles = SHIFT_ROLES.filter(role => {
     if (user?.role === 'nurse') return role.value === 'nurse';
@@ -162,6 +171,11 @@ export default function OpenShift() {
     if (loading) return;
 
     // Validation
+    if (isCustomerCare && !startHour) {
+      toast.error('Please specify your starting hour for wave allocation.');
+      return;
+    }
+
     const badEquip = equipment.filter(e => e.status !== 'Working' && !e.remarks.trim());
     if (badEquip.length) {
       toast.error(`Please provide details for the ${badEquip[0].name}`);
@@ -186,6 +200,7 @@ export default function OpenShift() {
         shift_role: selectedRole,
         equipment: equipment.map(e => ({ name: e.name, status: e.status, remarks: e.remarks || null })),
         password,
+        start_hour: isCustomerCare ? startHour : null,
         // Legacy Clinics doesn't allow cashiers to accept cash, so float is always 0
         ...(selectedRole === 'cashier' && { opening_float: 0 })
       };
@@ -318,6 +333,62 @@ export default function OpenShift() {
 
             <form onSubmit={handleSubmit} className="space-y-10">
               {/* Role-Specific Fields (No Cash Reconciliation per policy) */}
+
+              {/* Customer Care Starting Hour & Wave Selector */}
+              {isCustomerCare && (
+                <div className="shift-card bg-gradient-to-br from-slate-50 to-white border-2 border-slate-100 shadow-sm rounded-3xl p-8 animate-fadeIn">
+                  <div className="flex items-center gap-5 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center text-violet-600 shadow-inner">
+                      <Clock size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">Starting Hour & Wave Selection</h3>
+                      <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Select your starting hour to automatically allocate your wave</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {WAVE_OPTIONS.map((opt) => {
+                      const isSelected = startHour === opt.hour;
+                      return (
+                        <button
+                          key={opt.hour}
+                          type="button"
+                          onClick={() => setStartHour(opt.hour)}
+                          className={`relative flex flex-col items-start p-6 rounded-2xl border-2 transition-all duration-300 text-left ${
+                            isSelected
+                              ? 'bg-violet-50 border-violet-500 shadow-lg shadow-violet-500/5'
+                              : 'bg-white border-slate-100 hover:border-slate-200'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center w-full mb-3">
+                            <span className={`text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
+                              isSelected ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {opt.wave}
+                            </span>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                              isSelected ? 'bg-violet-600 border-violet-600' : 'bg-white border-slate-200'
+                            }`}>
+                              {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                            </div>
+                          </div>
+                          
+                          <span className="text-2xl font-black text-slate-900 mt-1 block">
+                            {opt.label}
+                          </span>
+                          <span className="text-xs font-bold text-slate-500 mt-1 block">
+                            {opt.schedule}
+                          </span>
+                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mt-4 block">
+                            {opt.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Equipment Checklist */}
               <div className="shift-card">

@@ -20,6 +20,24 @@ const client = createClient({
       console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
     }
   }
+
+  try {
+    await client.execute("ALTER TABLE shift_sessions ADD COLUMN start_hour TEXT");
+    console.log('✅ SQLite Schema Migration: added start_hour to shift_sessions');
+  } catch (err) {
+    if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+      console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+    }
+  }
+
+  try {
+    await client.execute("ALTER TABLE shift_sessions ADD COLUMN wave TEXT");
+    console.log('✅ SQLite Schema Migration: added wave to shift_sessions');
+  } catch (err) {
+    if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+      console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+    }
+  }
 })();
 
 /**

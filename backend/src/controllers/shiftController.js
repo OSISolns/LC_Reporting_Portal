@@ -62,7 +62,7 @@ exports.openShift = async (req, res, next) => {
   try {
     const userId       = req.user.id;
     const isSupervisor = SUPERVISOR_ROLES.includes(req.user.role);
-    const { shift_role, equipment, opening_float, override, password } = req.body;
+    const { shift_role, equipment, opening_float, override, password, start_hour } = req.body;
     const isOverride   = isSupervisor && override === true;
 
     // Verify Password
@@ -116,10 +116,25 @@ exports.openShift = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid shift role.' });
     }
 
+    // Customer Care Wave Allocation Validation
+    let wave = null;
+    const isCustomerCare = req.user.role === 'customer_care' || ['helpdesk', 'call_center'].includes(shift_role);
+    if (isCustomerCare) {
+      if (!start_hour) {
+        return res.status(400).json({ success: false, message: 'Starting hour is required for customer care shifts.' });
+      }
+      if (!['07:00', '08:00', '15:00'].includes(start_hour)) {
+        return res.status(400).json({ success: false, message: 'Invalid starting hour. Must be 07:00, 08:00, or 15:00.' });
+      }
+      if (start_hour === '07:00') wave = 'Wave 1';
+      else if (start_hour === '08:00') wave = 'Wave 2';
+      else if (start_hour === '15:00') wave = 'Wave 3';
+    }
+
     // Insert shift session
     const shiftResult = await db.query(
-      `INSERT INTO shift_sessions (user_id, shift_role, status) VALUES (?, ?, 'open')`,
-      [userId, shift_role]
+      `INSERT INTO shift_sessions (user_id, shift_role, status, start_hour, wave) VALUES (?, ?, 'open', ?, ?)`,
+      [userId, shift_role, start_hour || null, wave]
     );
     const shiftId = shiftResult.rows[0]?.id ?? (await q1(`SELECT last_insert_rowid() AS id`)).id;
 
@@ -154,13 +169,13 @@ exports.openShift = async (req, res, next) => {
       `INSERT INTO audit_logs (user_id, user_name, user_role, action, entity_type, entity_id, details)
        VALUES (?, ?, ?, 'SHIFT_OPEN', 'shift_sessions', ?, ?)`,
       [userId, req.user.full_name, req.user.role, resolvedId,
-       JSON.stringify({ shift_role, cooldown_overridden: isOverride })]
+       JSON.stringify({ shift_role, cooldown_overridden: isOverride, start_hour, wave })]
     );
 
     res.status(201).json({
       success: true,
       message: 'Shift opened successfully.',
-      data: { shiftId: resolvedId, shift_role, status: 'open', cooldown_overridden: isOverride },
+      data: { shiftId: resolvedId, shift_role, status: 'open', cooldown_overridden: isOverride, start_hour, wave },
     });
   } catch (err) { next(err); }
 };
@@ -421,7 +436,7 @@ exports.getAllShifts = async (req, res, next) => {
 
     const rows = await q(
       `SELECT s.id, s.shift_role, s.status, s.opened_at, s.closed_at,
-              s.is_flagged, s.flag_reasons, s.handover_notes,
+              s.is_flagged, s.flag_reasons, s.handover_notes, s.start_hour, s.wave,
               u.full_name AS user_name, u.id AS user_id,
               rv.full_name AS reviewed_by_name, s.reviewed_at
        FROM shift_sessions s

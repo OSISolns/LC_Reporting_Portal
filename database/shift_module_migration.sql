@@ -36,7 +36,11 @@ CREATE TABLE IF NOT EXISTS shift_sessions (
 
   -- Timestamps
   created_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  updated_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  updated_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+  -- Customer Care Shift Wave Allocation
+  start_hour          TEXT,                        -- e.g. '07:00', '08:00', '15:00'
+  wave                TEXT                         -- e.g. 'Wave 1', 'Wave 2', 'Wave 3'
 );
 
 -- =============================================================

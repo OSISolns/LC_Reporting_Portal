@@ -70,10 +70,24 @@ function WelcomeDashboard({ shift, elapsedHours, remainingMin, onDismiss }) {
 
   // Shift Window Detection
   const openedDate = new Date(shift.opened_at);
-  const startHour = openedDate.getHours();
-  const isMorning = startHour < 14;
-  const shiftSchedule = isMorning ? "07:00 AM - 03:00 PM" : "03:00 PM - 08:00 PM";
-  const mealDeduction = isMorning ? "60 min (20m Breakfast, 40m Lunch)" : "None";
+  let shiftSchedule = "07:00 AM - 03:00 PM";
+  let mealDeduction = "60 min (20m Breakfast, 40m Lunch)";
+  
+  if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
+    shiftSchedule = "07:00 AM - 03:00 PM";
+    mealDeduction = "60 min (20m Breakfast, 40m Lunch)";
+  } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
+    shiftSchedule = "08:00 AM - 04:00 PM";
+    mealDeduction = "60 min (20m Breakfast, 40m Lunch)";
+  } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
+    shiftSchedule = "03:00 PM - 09:00 PM";
+    mealDeduction = "None (Evening Wave)";
+  } else {
+    const hour = openedDate.getHours();
+    const isMorning = hour < 14;
+    shiftSchedule = isMorning ? "07:00 AM - 03:00 PM" : "03:00 PM - 09:00 PM";
+    mealDeduction = isMorning ? "60 min (20m Breakfast, 40m Lunch)" : "None";
+  }
 
   return (
     <motion.div
@@ -98,6 +112,12 @@ function WelcomeDashboard({ shift, elapsedHours, remainingMin, onDismiss }) {
               Welcome back, {firstName}! {cfg.emoji}
             </h2>
             <div className="mt-4 flex flex-wrap gap-3">
+              {shift.wave && (
+                <div className="px-3 py-1.5 rounded-xl bg-violet-600/30 border border-violet-400/30 backdrop-blur-sm">
+                  <p className="text-[9px] font-black uppercase text-violet-200">Allocated Wave</p>
+                  <p className="text-xs font-bold">{shift.wave}</p>
+                </div>
+              )}
               <div className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 backdrop-blur-sm">
                 <p className="text-[9px] font-black uppercase text-blue-200">Standard Window</p>
                 <p className="text-xs font-bold">{shiftSchedule}</p>

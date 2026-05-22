@@ -716,9 +716,19 @@ export default function ShiftDashboard() {
                             <p className="font-black text-slate-900 text-sm group-hover:text-[#1b669d] transition-colors leading-none">
                               {s.user_name}
                             </p>
-                            <p className="text-[10px] text-slate-400 font-bold tracking-wider uppercase mt-1">
-                              #{String(s.id).padStart(5, '0')}
-                            </p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <p className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">
+                                #{String(s.id).padStart(5, '0')}
+                              </p>
+                              {s.wave && (
+                                <>
+                                  <span className="text-slate-300 text-[10px] font-black">•</span>
+                                  <span className="text-[9px] font-black text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                                    {s.wave}
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
