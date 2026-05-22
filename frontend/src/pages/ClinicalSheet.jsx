@@ -123,13 +123,32 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded }) => {
           const lastName = nameParts[0] || '';
           const firstName = nameParts.slice(1).join(' ') || '';
 
+          const formatDobForInput = (dobVal) => {
+            if (!dobVal) return '';
+            // If it's already YYYY-MM-DD
+            if (dobVal.includes('-') && dobVal.split('-')[0].length === 4) {
+              return dobVal.substring(0, 10);
+            }
+            // If it's DD/MM/YYYY
+            if (dobVal.includes('/')) {
+              const parts = dobVal.split('/');
+              if (parts.length === 3) {
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                const year = parts[2];
+                return `${year}-${month}-${day}`;
+              }
+            }
+            return dobVal;
+          };
+
           reset({
             identification: {
               last_name: lastName || patientObj.last_name || '',
               first_name: firstName || patientObj.first_name || '',
               occupation: patientObj.occupation || '',
               national_id: patientObj.national_id || '',
-              dob: patientObj.dob || '',
+              dob: formatDobForInput(patientObj.dob),
               gender: patientObj.gender || '',
               pid: patientId,
               appt_date_no: 'Walk-in / No Appointment',
