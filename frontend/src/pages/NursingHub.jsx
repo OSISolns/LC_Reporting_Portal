@@ -72,8 +72,12 @@ export default function NursingHub() {
       return;
     }
 
-    if (submodule === 'Clinical Sheet' || submodule === 'Medication Record (MAR)' || submodule === 'SBAR Handover') {
-      navigate(`/patients/${selectedPatient.pid}/clinical-sheet`);
+    if (submodule === 'Clinical Sheet') {
+      navigate(`/patients/${selectedPatient.pid}/clinical-sheet?tab=clinical`);
+    } else if (submodule === 'Medication Record (MAR)') {
+      navigate(`/patients/${selectedPatient.pid}/clinical-sheet?tab=mar`);
+    } else if (submodule === 'SBAR Handover') {
+      navigate(`/patients/${selectedPatient.pid}/clinical-sheet?tab=sbar`);
     } else if (submodule === 'Patient History & Archive') {
       navigate(`/patients/${selectedPatient.pid}/records`);
     }
