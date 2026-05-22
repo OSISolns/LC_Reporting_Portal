@@ -372,7 +372,12 @@ export default function NursingHub() {
                   color: '#ec4899', 
                   bg: '#fce7f3' 
                 }
-              ].map((sub, idx) => (
+              ].filter(sub => {
+                if (sub.title === 'Daily Stock Checkup') {
+                  return user?.role === 'chef-nurse';
+                }
+                return true;
+              }).map((sub, idx) => (
                 <div 
                   key={idx}
                   onClick={() => handleQuickAction(sub.title)}

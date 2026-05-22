@@ -13,7 +13,7 @@ router.get('/observations/recent', clinicalController.getRecentObservations);
 router.get('/observations/:patientId', clinicalController.getObservation);
 router.get('/observations/:patientId/pdf', clinicalController.getPDF);
 
-router.get('/inventory', clinicalController.getInventory);
-router.post('/inventory/bulk', clinicalController.saveInventoryBulk);
+router.get('/inventory', authorizeRoles(['chef-nurse']), clinicalController.getInventory);
+router.post('/inventory/bulk', authorizeRoles(['chef-nurse']), clinicalController.saveInventoryBulk);
 
 module.exports = router;
