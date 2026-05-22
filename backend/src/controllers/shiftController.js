@@ -123,11 +123,12 @@ exports.openShift = async (req, res, next) => {
       if (!start_hour) {
         return res.status(400).json({ success: false, message: 'Starting hour is required for customer care shifts.' });
       }
-      if (!['07:00', '08:00', '15:00'].includes(start_hour)) {
-        return res.status(400).json({ success: false, message: 'Invalid starting hour. Must be 07:00, 08:00, or 15:00.' });
+      if (!['07:00', '08:00', '09:00', '15:00'].includes(start_hour)) {
+        return res.status(400).json({ success: false, message: 'Invalid starting hour. Must be 07:00, 08:00, 09:00, or 15:00.' });
       }
       if (start_hour === '07:00') wave = 'Wave 1';
       else if (start_hour === '08:00') wave = 'Wave 2';
+      else if (start_hour === '09:00') wave = 'Wave 4';
       else if (start_hour === '15:00') wave = 'Wave 3';
     }
 

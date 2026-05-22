@@ -46,6 +46,7 @@ const ICON_MAP = {
 const WAVE_OPTIONS = [
   { hour: '07:00', label: '7:00 A.M.', wave: 'Wave 1', schedule: '7:00 AM - 3:00 PM', desc: 'Morning Core Shift' },
   { hour: '08:00', label: '8:00 A.M.', wave: 'Wave 2', schedule: '8:00 AM - 4:00 PM', desc: 'Morning Mid Shift' },
+  { hour: '09:00', label: '9:00 A.M.', wave: 'Wave 4', schedule: '9:00 AM - 5:00 PM', desc: 'Late Morning Shift' },
   { hour: '15:00', label: '3:00 P.M.', wave: 'Wave 3', schedule: '3:00 PM - 9:00 PM', desc: 'Evening Handover Shift' },
 ];
 
@@ -347,7 +348,7 @@ export default function OpenShift() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {WAVE_OPTIONS.map((opt) => {
                       const isSelected = startHour === opt.hour;
                       return (

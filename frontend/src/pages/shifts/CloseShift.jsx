@@ -79,6 +79,9 @@ function WelcomeDashboard({ shift, elapsedHours, remainingMin, onDismiss }) {
   } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
     shiftSchedule = "08:00 AM - 04:00 PM";
     mealDeduction = "60 min (20m Breakfast, 40m Lunch)";
+  } else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') {
+    shiftSchedule = "09:00 AM - 05:00 PM";
+    mealDeduction = "60 min (20m Breakfast, 40m Lunch)";
   } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
     shiftSchedule = "03:00 PM - 09:00 PM";
     mealDeduction = "None (Evening Wave)";
