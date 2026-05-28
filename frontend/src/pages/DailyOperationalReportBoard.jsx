@@ -489,22 +489,27 @@ export default function DailyOperationalReportBoard() {
 
                 <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                   {config.defaultProcedureMetrics.map(mName => {
-                    const val = dailyLogs[mName] || '0';
+                    const val = dailyLogs[mName] || '';
+                    const isNameInput = mName.toLowerCase().includes('assistant');
                     const isZero = val === '0' || val === '';
 
                     return (
                       <div key={mName} className="flex items-center justify-between p-4 bg-slate-50/30 rounded-2xl border border-slate-100">
                         <div>
                           <span className="text-xs font-black text-slate-700 block uppercase tracking-wider">{mName}</span>
-                          <span className="text-[9px] text-slate-400 font-extrabold uppercase">DAILY METRIC</span>
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider ${isNameInput ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-500'}`}>
+                            {isNameInput ? 'Staff Name' : 'Clinical Metric'}
+                          </span>
                         </div>
                         
-                        <span className={`text-xs font-black font-mono px-3 py-1.5 rounded-xl border ${
-                          !isZero 
-                            ? 'bg-sky-50 text-sky-700 border-sky-100' 
-                            : 'bg-slate-100 text-slate-400 border-slate-250/60'
+                        <span className={`text-xs font-bold px-3 py-1.5 rounded-xl border ${
+                          isNameInput
+                            ? 'bg-purple-50 text-purple-700 border-purple-200 font-sans'
+                            : !isZero 
+                              ? 'bg-sky-50 text-sky-700 border-sky-100 font-mono' 
+                              : 'bg-slate-100 text-slate-400 border-slate-200/60 font-mono'
                         }`}>
-                          {val}
+                          {isNameInput ? (val || 'Not Assigned') : val || '0'}
                         </span>
                       </div>
                     );
@@ -708,6 +713,7 @@ export default function DailyOperationalReportBoard() {
                         .map(metricName => {
                           const daysMap = {};
                           let procedureSum = 0;
+                          const isNameInput = metricName.toLowerCase().includes('assistant');
 
                           getDaysArray().forEach(day => {
                             const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -715,18 +721,20 @@ export default function DailyOperationalReportBoard() {
                             const val = record ? record.metric_value : '0';
                             daysMap[day] = val;
                             
-                            const numVal = parseInt(val, 10);
-                            if (!isNaN(numVal)) {
-                              procedureSum += numVal;
+                            if (!isNameInput) {
+                              const numVal = parseInt(val, 10);
+                              if (!isNaN(numVal)) {
+                                procedureSum += numVal;
+                              }
                             }
                           });
 
                           return (
                             <tr key={metricName} className="border-b border-slate-100 hover:bg-slate-50/60 transition-all text-slate-650">
-                              <td className="sticky left-0 bg-white px-4 py-3.5 font-bold text-slate-800 text-xs border-r border-slate-200 z-10">
+                              <td className="sticky left-0 bg-white px-4 py-3.5 font-bold text-slate-800 text-xs border-r border-slate-200 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                                 {metricName}
                               </td>
-                              <td className="px-4 py-3.5 text-xs text-slate-400 border-r border-slate-200 font-bold">
+                              <td className="px-4 py-3.5 text-xs text-slate-400 border-r border-slate-200 font-bold uppercase">
                                 PROCEDURES
                               </td>
 
@@ -734,16 +742,24 @@ export default function DailyOperationalReportBoard() {
                                 const val = daysMap[day];
                                 const isZero = val === '0' || val === '' || val === undefined;
                                 return (
-                                  <td key={day} className={`text-center py-3.5 border-r border-slate-100 font-mono text-[11px] ${
-                                    !isZero ? 'text-sky-700 font-bold bg-sky-50/20' : 'text-slate-400'
-                                  }`}>
-                                    {val}
+                                  <td key={day} className="text-center py-3.5 border-r border-slate-100 font-mono text-[11px]">
+                                    {isZero ? (
+                                      <span className="text-slate-300 opacity-40">-</span>
+                                    ) : (
+                                      <span className={`${
+                                        isNameInput 
+                                          ? 'text-purple-750 text-[10px] font-sans truncate block max-w-[45px] hover:max-w-none hover:bg-white hover:z-30 hover:absolute px-1.5 py-0.5 rounded border border-purple-100 shadow-sm bg-purple-50' 
+                                          : 'text-sky-705 font-bold bg-sky-50/20 px-1 py-0.5 rounded'
+                                      }`}>
+                                        {val}
+                                      </span>
+                                    )}
                                   </td>
                                 );
                               })}
 
                               <td className="text-center font-bold text-sky-705 bg-sky-50 text-xs border-l border-slate-200">
-                                {procedureSum}
+                                {isNameInput ? 'N/A' : procedureSum}
                               </td>
                             </tr>
                           );
