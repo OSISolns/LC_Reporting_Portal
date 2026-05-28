@@ -101,7 +101,7 @@ const client = createClient({
   // Seed default data for nursing operational reports
   try {
     const { rows: providersCount } = await client.execute("SELECT COUNT(*) as count FROM providers");
-    if (providersCount[0].count !== 53) {
+    if (providersCount[0].count !== 52) {
       console.log('🌱 Refreshing/Seeding initial departments for nursing report matching reference image...');
       // Safely delete previous metrics to avoid foreign key conflicts
       await client.execute("DELETE FROM daily_report_metrics");
@@ -111,6 +111,7 @@ const client = createClient({
       const initialDepartments = [
         'GYNECOLOGY',
         'GENERAL MEDECINE',
+        'INT',
         'PED',
         'NEURO',
         'UROLOGY',
@@ -145,17 +146,18 @@ const client = createClient({
         { name: 'Dr Fabrice N.', title: 'Dr', dept: 'GENERAL MEDECINE' },
         { name: 'Dr Yves L. Bizimana', title: 'Dr', dept: 'GENERAL MEDECINE' },
         { name: 'Dr Gihana Jacques', title: 'Dr', dept: 'GENERAL MEDECINE' },
-        { name: 'INT', title: '', dept: 'GENERAL MEDECINE' },
-        { name: 'Dr. Masaisa florence', title: 'Dr', dept: 'GENERAL MEDECINE' },
-        { name: 'DR SHEMA NSHUTI D.', title: 'Dr', dept: 'GENERAL MEDECINE' },
-        { name: 'DR DUFATANYE DARIUS', title: 'Dr', dept: 'GENERAL MEDECINE' },
-        { name: 'Dr Ganza G. JMV', title: 'Dr', dept: 'GENERAL MEDECINE' },
-        { name: 'DR RUTAGANDA Eric', title: 'Dr', dept: 'GENERAL MEDECINE' },
-        { name: 'DR BAZATSINDA A.', title: 'Dr', dept: 'GENERAL MEDECINE' },
-        { name: 'DR MBABAZI Maguy', title: 'Dr', dept: 'GENERAL MEDECINE' },
-        { name: 'DR HABYARIMANA O.', title: 'Dr', dept: 'GENERAL MEDECINE' },
-        { name: 'KABAKAMBIRA J.Damascene', title: '', dept: 'GENERAL MEDECINE' },
-        { name: 'DR SEBATUNZI Osee', title: 'Dr', dept: 'GENERAL MEDECINE' },
+
+        // INT (Internal Medicine Section)
+        { name: 'Dr. Masaisa florence', title: 'Dr', dept: 'INT' },
+        { name: 'DR SHEMA NSHUTI D.', title: 'Dr', dept: 'INT' },
+        { name: 'DR DUFATANYE DARIUS', title: 'Dr', dept: 'INT' },
+        { name: 'Dr Ganza G. JMV', title: 'Dr', dept: 'INT' },
+        { name: 'DR RUTAGANDA Eric', title: 'Dr', dept: 'INT' },
+        { name: 'DR BAZATSINDA A.', title: 'Dr', dept: 'INT' },
+        { name: 'DR MBABAZI Maguy', title: 'Dr', dept: 'INT' },
+        { name: 'DR HABYARIMANA O.', title: 'Dr', dept: 'INT' },
+        { name: 'KABAKAMBIRA J.Damascene', title: '', dept: 'INT' },
+        { name: 'DR SEBATUNZI Osee', title: 'Dr', dept: 'INT' },
 
         // PED
         { name: 'Dr KABAYIZA JC', title: 'Dr', dept: 'PED' },
