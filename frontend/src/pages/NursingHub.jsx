@@ -78,7 +78,7 @@ export default function NursingHub() {
       return;
     }
 
-    if (submodule === 'Daily Roster Report') {
+    if (submodule === 'Daily Report') {
       navigate('/nursing-hub/daily-report');
       return;
     }
@@ -396,7 +396,7 @@ export default function NursingHub() {
                   cta: 'Open Inventory'
                 },
                 { 
-                  title: 'Daily Roster Report', 
+                  title: 'Daily Report', 
                   desc: 'Log and analyze patient volumes, staff roster metrics, and procedure assignments across all departments.',
                   icon: <BarChart3 size={22} />, 
                   color: '#0284c7', 

@@ -6,7 +6,7 @@ const { authMiddleware: authenticateToken } = require('../middleware/auth');
 const authorizeRoles = require('../middleware/role');
 
 router.use(authenticateToken);
-router.use(authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'reviewer', 'coo', 'deputy_coo', 'chairman']));
+router.use(authorizeRoles(['nurse', 'chef-nurse']));
 
 router.get('/config', dailyReportController.getConfig);
 router.get('/daily', dailyReportController.getByDate);
