@@ -100,8 +100,8 @@ const client = createClient({
 
   // Seed default data for nursing operational reports
   try {
-    const { rows: deptsCount } = await client.execute("SELECT COUNT(*) as count FROM departments");
-    if (deptsCount[0].count !== 11) {
+    const { rows: providersCount } = await client.execute("SELECT COUNT(*) as count FROM providers");
+    if (providersCount[0].count !== 53) {
       console.log('🌱 Refreshing/Seeding initial departments for nursing report matching reference image...');
       // Safely delete previous metrics to avoid foreign key conflicts
       await client.execute("DELETE FROM daily_report_metrics");
@@ -110,7 +110,7 @@ const client = createClient({
 
       const initialDepartments = [
         'GYNECOLOGY',
-        'GENERAL MEDICINE',
+        'GENERAL MEDECINE',
         'PED',
         'NEURO',
         'UROLOGY',
@@ -141,11 +141,21 @@ const client = createClient({
         { name: 'Dr NTIRUSHWA', title: 'Dr', dept: 'GYNECOLOGY' },
         { name: 'BUTOYI ALPHONSE', title: '', dept: 'GYNECOLOGY' },
 
-        // GENERAL MEDICINE
-        { name: 'Dr Fabrice N.', title: 'Dr', dept: 'GENERAL MEDICINE' },
-        { name: 'Dr Yves L. Bizimana', title: 'Dr', dept: 'GENERAL MEDICINE' },
-        { name: 'Dr Gihana Jacques', title: 'Dr', dept: 'GENERAL MEDICINE' },
-        { name: 'INT', title: '', dept: 'GENERAL MEDICINE' },
+        // GENERAL MEDECINE
+        { name: 'Dr Fabrice N.', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'Dr Yves L. Bizimana', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'Dr Gihana Jacques', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'INT', title: '', dept: 'GENERAL MEDECINE' },
+        { name: 'Dr. Masaisa florence', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'DR SHEMA NSHUTI D.', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'DR DUFATANYE DARIUS', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'Dr Ganza G. JMV', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'DR RUTAGANDA Eric', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'DR BAZATSINDA A.', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'DR MBABAZI Maguy', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'DR HABYARIMANA O.', title: 'Dr', dept: 'GENERAL MEDECINE' },
+        { name: 'KABAKAMBIRA J.Damascene', title: '', dept: 'GENERAL MEDECINE' },
+        { name: 'DR SEBATUNZI Osee', title: 'Dr', dept: 'GENERAL MEDECINE' },
 
         // PED
         { name: 'Dr KABAYIZA JC', title: 'Dr', dept: 'PED' },
@@ -156,7 +166,7 @@ const client = createClient({
 
         // NEURO
         { name: 'DR KAREKEZI CLAIRE', title: 'Dr', dept: 'NEURO' },
-        { name: 'DR MUTUNGIREHE SYLIVES', title: 'Dr', dept: 'NEURO' },
+        { name: 'DR MUTUNGIREHE SYLVES', title: 'Dr', dept: 'NEURO' },
 
         // UROLOGY
         { name: 'Dr Afrika G.', title: 'Dr', dept: 'UROLOGY' },
@@ -166,7 +176,7 @@ const client = createClient({
         { name: 'Dr KWESIGA STEPHEN', title: 'Dr', dept: 'ORTHO/GEN SURGERY' },
         { name: 'KANSAYISA MARIE GRACE', title: '', dept: 'ORTHO/GEN SURGERY' },
         { name: 'RUBANGUKA Desire', title: '', dept: 'ORTHO/GEN SURGERY' },
-        { name: 'Dr INGABIRE Allen JDC', title: 'Dr', dept: 'ORTHO/GEN SURGERY' },
+        { name: 'DR INGABIRE Allen JDC', title: 'Dr', dept: 'ORTHO/GEN SURGERY' },
 
         // ENT
         { name: 'DR HAKIZIMANA ARISTOTE', title: 'Dr', dept: 'ENT' },
@@ -180,14 +190,14 @@ const client = createClient({
 
         // DENTAL
         { name: 'Dr NYIRANEZA Esperence', title: 'Dr', dept: 'DENTAL' },
-        { name: 'Dr ANAMALI Rogers', title: 'Dr', dept: 'DENTAL' },
+        { name: 'DR ANAMALI Rogers', title: 'Dr', dept: 'DENTAL' },
         { name: 'Dr MUGESERA Ernest', title: 'Dr', dept: 'DENTAL' },
         { name: 'Dr BANA Bede', title: 'Dr', dept: 'DENTAL' },
-        { name: 'JAYAKAR G. Sargunar', title: '', dept: 'DENTAL' },
+        { name: 'JAYAKAR G.Sargunar', title: '', dept: 'DENTAL' },
         { name: 'Sanddeep Goyal', title: '', dept: 'DENTAL' },
         { name: 'DR MICONGWE Moses', title: 'Dr', dept: 'DENTAL' },
         { name: 'Mr NDAYISENGA KALISA Gilbert', title: 'Mr', dept: 'DENTAL' },
-        { name: 'Mr ERIC RUTAGENDA', title: 'Mr', dept: 'DENTAL' },
+        { name: 'Mr ERIC RUTAGANDA', title: 'Mr', dept: 'DENTAL' },
         { name: 'ISHIMWE GILBERT', title: '', dept: 'DENTAL' },
 
         // PHYSIO
