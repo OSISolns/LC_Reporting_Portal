@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import { Analytics } from '@vercel/analytics/react';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -49,6 +50,7 @@ function App() {
     <AuthProvider>
       <NotificationProvider>
         <Router>
+        <Analytics />
         <Routes>
           <Route path="/login" element={<Login />} />
           
