@@ -259,3 +259,68 @@ exports.getExecutiveReport = async (req, res, next) => {
     res.json({ success: true, data: { narrative: lines.join(' ') } });
   } catch (err) { next(err); }
 };
+
+// ── Local AI: Medication Route & Dose Suggestions ──────────────────────────────
+exports.suggestMedicationRoutes = async (req, res, next) => {
+  try {
+    const { medications } = req.body;
+    if (!medications || !Array.isArray(medications)) {
+      return res.status(400).json({ success: false, message: 'medications array is required' });
+    }
+
+    const suggestions = medications.map(med => {
+      if (!med) return { name: '', dose: '', route: '', frequency: '' };
+      
+      let route = 'IV';
+      let dose = '1 amp';
+      let frequency = 'STAT';
+
+      const nameLower = med.toLowerCase();
+      
+      // Determine Route
+      if (nameLower.includes('suppo') || nameLower.includes('cytotec')) {
+        route = 'PR';
+      } else if (nameLower.includes('crepe') || nameLower.includes('bandage') || nameLower.includes('gauze') || nameLower.includes('swab') || nameLower.includes('blade') || nameLower.includes('gloves') || nameLower.includes('catheter') || nameLower.includes('syringe') || nameLower.includes('needle') || nameLower.includes('iud') || nameLower.includes('condom')) {
+        route = 'Topical/Device';
+        dose = '1 pc';
+      } else if (nameLower.includes('ces') || nameLower.includes('tab') || nameLower.includes('cap') || nameLower.includes('oral')) {
+        route = 'PO';
+      } else if (nameLower.includes('iv') || nameLower.includes('inj') || nameLower.includes('lactate') || nameLower.includes('saline') || nameLower.includes('dextrose')) {
+        route = 'IV';
+      } else if (nameLower.includes('sayana')) {
+        route = 'SC';
+      } else if (nameLower.includes('jadelle') || nameLower.includes('microgyn')) {
+        route = 'Implant / PO';
+      } else if (nameLower.includes('neb mask') || nameLower.includes('salbutamol')) {
+        route = 'Inhalation';
+      }
+
+      // Determine Dose (extract mg/g/ml if present)
+      const doseMatch = nameLower.match(/(\d+(?:\.\d+)?\s*(?:mg|g|ml|mcg|%))/);
+      if (doseMatch) {
+        dose = doseMatch[1];
+      }
+
+      // Some common defaults
+      if (nameLower.includes('paracetamol') && !doseMatch) dose = '1g';
+      if (nameLower.includes('ceftriaxone')) frequency = 'OD';
+      if (nameLower.includes('metronidazole')) frequency = 'TDS';
+      if (nameLower.includes('diclofenac')) frequency = 'BD';
+      if (nameLower.includes('dextrose 50%')) dose = '50ml';
+      if (nameLower.includes('saline') || nameLower.includes('lactate')) {
+        dose = '500ml';
+        frequency = 'STAT';
+      }
+
+      return {
+        name: med,
+        dose,
+        route,
+        frequency
+      };
+    });
+
+    res.json({ success: true, data: suggestions });
+  } catch (err) { next(err); }
+};
+

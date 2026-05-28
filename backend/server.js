@@ -32,6 +32,7 @@ const safetyRoutes          = require('./src/routes/safety');
 const clinicalRoutes        = require('./src/routes/clinical');
 const patientRoutes         = require('./src/routes/patients');
 const feedbackRoutes        = require('./src/routes/feedbacks');
+const dailyReportRoutes     = require('./src/routes/dailyReport');
 
 
 
@@ -44,6 +45,7 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
+  'https://report.ops-legacyclinics.rw',
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
 ];
 
@@ -103,6 +105,7 @@ app.use('/api/safety',            safetyRoutes);
 app.use('/api/clinical',          clinicalRoutes);
 app.use('/api/patients',          patientRoutes);
 app.use('/api/feedbacks',         feedbackRoutes);
+app.use('/api/reports',           dailyReportRoutes);
 
 
 

@@ -135,12 +135,12 @@ const StaffDashboard = () => {
     setLoading(true);
     try {
       const [cRes, rRes, iRes, tRes, sRes, clRes] = await Promise.all([
-        (!isOps && user?.role !== 'nurse') ? getCancellations().catch(() => null) : Promise.resolve(null),
-        (!isOps && user?.role !== 'nurse') ? getRefunds().catch(() => null) : Promise.resolve(null),
+        (!isOps && !['nurse', 'chef-nurse'].includes(user?.role)) ? getCancellations().catch(() => null) : Promise.resolve(null),
+        (!isOps && !['nurse', 'chef-nurse'].includes(user?.role)) ? getRefunds().catch(() => null) : Promise.resolve(null),
         getIncidents().catch(() => null),
         getResultTransfers().catch(() => null),
         getMyActiveShift().catch(() => null),
-        user?.role === 'nurse' ? api.get('/clinical/observations/recent').catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: [] } })
+        ['nurse', 'chef-nurse'].includes(user?.role) ? api.get('/clinical/observations/recent').catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: [] } })
       ]);
       setData({
         canc:      cRes?.data?.data || [],
@@ -165,7 +165,7 @@ const StaffDashboard = () => {
   const myRef       = data.refunds.slice(0,5);
   const myInc       = data.incidents.slice(0,5);
   const myClinical  = data.clinical.slice(0,5);
-  const pendCount   = (user?.role === 'nurse' ? data.clinical.filter(c => c.status === 'Draft').length : 0) + 
+  const pendCount   = (['nurse', 'chef-nurse'].includes(user?.role) ? data.clinical.filter(c => c.status === 'Draft').length : 0) + 
                       data.canc.filter(c => c.status === 'pending').length + 
                       data.transfers.filter(t => t.status === 'pending' || t.status === 'reviewed').length;
   const approvedAmt = data.refunds.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.amount_to_be_refunded || 0), 0);
@@ -179,6 +179,7 @@ const StaffDashboard = () => {
     lab_team_lead:     ['Ensure all result transfers are approved only after verifying SID data.', 'Confirm the technician who executed the change in the lab system.', 'Rejected transfers should always include a specific reason for audit purposes.'],
     it_officer:        ['Monitor audit logs daily for unusual activity patterns.', 'Ensure staff accounts follow clinical access policy.', 'Review reported incidents to ensure system integrity and data accuracy.'],
     nurse:             ['Ensure clinical observation sheets are synchronized before shift handover.', 'Record all medication administration in real-time.', 'All patient incidents must be documented via the Incident Reporting module immediately.'],
+    'chef-nurse':      ['Review all pending clinical observation sheets before shift close.', 'Ensure nursing staff are compliant with MAR documentation standards.', 'All incidents in your department require your review and approval.'],
   };
   const tips = ROLE_TIPS[user?.role] || [];
 
@@ -265,7 +266,7 @@ const StaffDashboard = () => {
             </div>
           ) : (
             <div className="flex flex-col">
-              {user?.role === 'nurse' && myClinical.map((item, i) => (
+              {['nurse', 'chef-nurse'].includes(user?.role) && myClinical.map((item, i) => (
                 <RecentRow key={`cl-${item.id}`} item={item} i={i} navigate={navigate}
                   path={`/patients/${item.patient_id}/clinical-sheet?queue_id=${item.queue_id}`}
                   primary={item.patient_name}
@@ -273,28 +274,28 @@ const StaffDashboard = () => {
                 />
               ))}
               {myCanc.map((item, i) => (
-                <RecentRow key={`c-${item.id}`} item={item} i={i + (user?.role === 'nurse' ? myClinical.length : 0)} navigate={navigate}
+                <RecentRow key={`c-${item.id}`} item={item} i={i + (['nurse', 'chef-nurse'].includes(user?.role) ? myClinical.length : 0)} navigate={navigate}
                   path={`/cancellations/${item.id}`}
                   primary={item.patient_full_name}
                   secondary={`Invoice Cancellation · PID: ${item.pid_number}`}
                 />
               ))}
               {myRef.map((item, i) => (
-                <RecentRow key={`r-${item.id}`} item={item} i={i + myCanc.length + (user?.role === 'nurse' ? myClinical.length : 0)} navigate={navigate}
+                <RecentRow key={`r-${item.id}`} item={item} i={i + myCanc.length + (['nurse', 'chef-nurse'].includes(user?.role) ? myClinical.length : 0)} navigate={navigate}
                   path={`/refunds/${item.id}`}
                   primary={item.patient_full_name}
                   secondary={`Payment Refund · RWF ${Number(item.amount_to_be_refunded || 0).toLocaleString()}`}
                 />
               ))}
               {myInc.map((item, i) => (
-                <RecentRow key={`i-${item.id}`} item={item} i={i + myCanc.length + myRef.length + (user?.role === 'nurse' ? myClinical.length : 0)} navigate={navigate}
+                <RecentRow key={`i-${item.id}`} item={item} i={i + myCanc.length + myRef.length + (['nurse', 'chef-nurse'].includes(user?.role) ? myClinical.length : 0)} navigate={navigate}
                   path={`/incidents/${item.id}`}
                   primary={item.department || 'Clinical Incident'}
                   secondary={`${item.incident_type} Event · ${item.area_of_incident || ''}`}
                 />
               ))}
               {myTransfers.map((item, i) => (
-                <RecentRow key={`rt-${item.id}`} item={item} i={i + myCanc.length + myRef.length + myInc.length + (user?.role === 'nurse' ? myClinical.length : 0)} navigate={navigate}
+                <RecentRow key={`rt-${item.id}`} item={item} i={i + myCanc.length + myRef.length + myInc.length + (['nurse', 'chef-nurse'].includes(user?.role) ? myClinical.length : 0)} navigate={navigate}
                   path={`/results-transfer`}
                   primary={`Transfer: ${item.old_sid} ➔ ${item.new_sid}`}
                   secondary={`Result Transfer Request · ${new Date(item.created_at).toLocaleDateString()}`}

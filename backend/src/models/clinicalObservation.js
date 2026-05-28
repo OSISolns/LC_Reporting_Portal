@@ -102,6 +102,16 @@ class ClinicalObservation {
     const { rows } = await db.query(query, params);
     return rows;
   }
+  static async getAllByPatient(patient_id) {
+    const { rows } = await db.query(
+      `SELECT id, patient_id, queue_id, patient_name, ward, bed, status, created_by, created_at, updated_at
+       FROM clinical_observations
+       WHERE patient_id = $1
+       ORDER BY updated_at DESC`,
+      [patient_id]
+    );
+    return rows;
+  }
 }
 
 module.exports = ClinicalObservation;

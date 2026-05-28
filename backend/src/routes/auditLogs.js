@@ -56,7 +56,7 @@ const formatDetails = (details) => {
   return String(details);
 };
 
-router.use(authorizeRoles(['admin', 'coo', 'deputy_coo']));
+router.use(authorizeRoles(['admin']));
 
 router.get('/export/excel', async (req, res, next) => {
   try {
@@ -91,7 +91,7 @@ router.get('/export/excel', async (req, res, next) => {
     const workbook = await exportToExcel('Audit Logs', columns, formattedData);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=Audit_Logs.xlsx');
+    res.setHeader('Content-Disposition', 'attachment; filename="Audit_Logs.xlsx"');
 
     await workbook.xlsx.write(res);
     res.end();

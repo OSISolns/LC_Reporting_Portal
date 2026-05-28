@@ -177,7 +177,7 @@ exports.getPDF = async (req, res, next) => {
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=Refund_${request.pid_number}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename="Refund_${request.pid_number}.pdf"`);
 
     await generateRefundPDF(request, res);
   } catch (err) {
@@ -203,7 +203,7 @@ exports.exportExcel = async (req, res, next) => {
     const workbook = await exportToExcel('Refund Requests', columns, requests);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=Refunds.xlsx');
+    res.setHeader('Content-Disposition', 'attachment; filename="Refunds.xlsx"');
 
     await workbook.xlsx.write(res);
     res.end();

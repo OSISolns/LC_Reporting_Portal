@@ -39,6 +39,7 @@ export const INSURANCES = [
   "King Faisal Hospital",
   "La Croix du Sud",
   "LAWYERS OF HOPE",
+  "LEGACY CLINICS",
   "MAGERWA",
   "MIS/UR INSURANCE",
   "MMI",

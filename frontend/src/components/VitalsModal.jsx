@@ -5,17 +5,19 @@ import { Thermometer, Heart, Wind, Activity, Weight, Droplets, Save, Loader2 } f
 import { toast } from 'react-hot-toast';
 import api from '../api/axios';
 
+const EMPTY_VITALS = {
+  temperature: '',
+  pulse: '',
+  respiratory_rate: '',
+  blood_pressure: '',
+  weight: '',
+  spo2: '',
+  general_comments: ''
+};
+
 const VitalsModal = ({ isOpen, onClose, patientId, onVitalsSaved }) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    temperature: '',
-    pulse: '',
-    respiratory_rate: '',
-    blood_pressure: '',
-    weight: '',
-    spo2: '',
-    general_comments: ''
-  });
+  const [formData, setFormData] = useState({ ...EMPTY_VITALS });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -24,12 +26,23 @@ const VitalsModal = ({ isOpen, onClose, patientId, onVitalsSaved }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Bug #2 fix: require at least one vital field to be filled
+    const vitalFields = ['temperature', 'pulse', 'respiratory_rate', 'blood_pressure', 'weight', 'spo2'];
+    const hasAtLeastOneVital = vitalFields.some(f => formData[f]?.toString().trim() !== '');
+    if (!hasAtLeastOneVital) {
+      toast.error('Please fill in at least one vital sign before saving.', { icon: '⚠️' });
+      return;
+    }
+
     try {
       setLoading(true);
       const res = await api.post(`/patients/${patientId}/vitals`, formData);
       if (res.data?.success) {
         toast.success('Vitals recorded successfully');
         if (onVitalsSaved) onVitalsSaved(res.data.data);
+        // Bug #1 fix: reset form so next open starts clean
+        setFormData({ ...EMPTY_VITALS });
         onClose();
       } else {
         throw new Error(res.data?.message || 'Failed to save');

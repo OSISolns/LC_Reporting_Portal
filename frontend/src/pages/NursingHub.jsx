@@ -4,17 +4,16 @@ import {
   Stethoscope, 
   Activity, 
   FileText, 
-  Pill, 
-  Share2, 
-  History, 
+  History,
   User, 
-  CheckCircle2, 
-  Calendar, 
-  AlertTriangle,
+  CheckCircle2,
   ArrowRight,
-  TrendingUp,
   Clock,
-  Heart
+  Heart,
+  BookOpen,
+  Thermometer,
+  FolderArchive,
+  BarChart3
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PatientAutocomplete from '../components/PatientAutocomplete';
@@ -30,6 +29,7 @@ export default function NursingHub() {
   const navigate = useNavigate();
   
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [sessionQueueId, setSessionQueueId] = useState(null);
   const [recentPatients, setRecentPatients] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(true);
   const [now, setNow] = useState(new Date());
@@ -63,14 +63,23 @@ export default function NursingHub() {
     return () => clearInterval(interval);
   }, []);
 
-  const handlePatientSelect = (patient) => {
+  const handlePatientSelect = (patient, existingQueueId = null) => {
     setSelectedPatient(patient);
+    // Each NEW patient selection gets a fresh encounter queue ID.
+    // If we are loading from the recent list, reuse the existing queue ID so the
+    // nurse continues on the same sheet rather than creating a blank new one.
+    setSessionQueueId(existingQueueId || `Q-${Date.now()}`);
     toast.success(`Active workspace loaded for ${patient.full_name}`);
   };
 
   const handleQuickAction = (submodule) => {
     if (submodule === 'Daily Stock Checkup') {
       navigate('/nursing-hub/inventory');
+      return;
+    }
+
+    if (submodule === 'Daily Roster Report') {
+      navigate('/nursing-hub/daily-report');
       return;
     }
 
@@ -83,11 +92,7 @@ export default function NursingHub() {
     }
 
     if (submodule === 'Clinical Sheet') {
-      setActiveClinicalTab('clinical');
-    } else if (submodule === 'Medication Record (MAR)') {
-      setActiveClinicalTab('mar');
-    } else if (submodule === 'SBAR Handover') {
-      setActiveClinicalTab('sbar');
+      setActiveClinicalTab('open');
     } else if (submodule === 'Patient History & Archive') {
       navigate(`/patients/${selectedPatient.pid}/records`);
     } else if (submodule === 'Take Vitals / Triage') {
@@ -121,7 +126,7 @@ export default function NursingHub() {
           </div>
           
           <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, tracking: '-0.025em' }}>
-            {greeting.text}, Nurse {user?.name?.split(' ')[0] || 'Officer'} 👩‍⚕️
+            {greeting.text}, {user?.role === 'chef-nurse' ? 'Chief Nurse' : 'Nurse'} {user?.fullName?.split(' ')[0] || 'Officer'} 👩‍⚕️
           </h1>
           <p style={{ marginTop: '0.5rem', fontSize: '1rem', color: '#bae6fd', fontWeight: 500, maxWidth: '640px' }}>
             Welcome to the Clinical Command Center. {greeting.sub}. Reconcile and submit assessments, triage records, and patient MAR forms.
@@ -149,7 +154,12 @@ export default function NursingHub() {
               </label>
               <PatientAutocomplete 
                 value={selectedPatient?.full_name || ''} 
-                onChange={() => {}} 
+                onChange={(val) => {
+                  // Bug #3 fix: clear selected patient when user re-types
+                  if (selectedPatient && val !== selectedPatient.full_name) {
+                    setSelectedPatient(null);
+                  }
+                }} 
                 onPatientSelect={handlePatientSelect}
                 placeholder="Search by full name, PID (e.g. 23013032)..."
                 inputStyle={{
@@ -233,7 +243,7 @@ export default function NursingHub() {
                   </Button>
                   <Button 
                     variant="outline"
-                    onClick={() => setSelectedPatient(null)}
+                    onClick={() => { setSelectedPatient(null); setSessionQueueId(null); }}
                     className="py-3.5 rounded-xl border-slate-200 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-50"
                   >
                     Clear Selector
@@ -284,11 +294,14 @@ export default function NursingHub() {
                   return (
                     <div 
                       key={p.patient_id}
-                      onClick={() => handlePatientSelect({ pid: p.patient_id, full_name: patientName, dob: p.dob, gender: p.gender, insurance: p.insurance_provider })}
+                      onClick={() => handlePatientSelect(
+                        { pid: p.patient_id, full_name: patientName, dob: p.dob, gender: p.gender, insurance: p.insurance_provider, allergies: p.allergies || '' },
+                        p.queue_id  // reuse the existing queue ID from the recent observation
+                      )}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'between',
+                        justifyContent: 'space-between',
                         padding: '12px 16px',
                         border: '1px solid #f1f5f9',
                         borderRadius: '16px',
@@ -321,7 +334,12 @@ export default function NursingHub() {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="success" className="text-[10px]">Active</Badge>
+                      <Badge
+                        variant={p.status === 'Final' ? 'success' : 'outline'}
+                        className={`text-[10px] ${p.status === 'Draft' ? 'border-amber-300 text-amber-700 bg-amber-50' : p.status === 'Final' ? '' : ''}`}
+                      >
+                        {p.status || 'Draft'}
+                      </Badge>
                     </div>
                   );
                 })
@@ -346,52 +364,46 @@ export default function NursingHub() {
               {[
                 { 
                   title: 'Clinical Sheet', 
-                  desc: 'Manage clinical triage, patient history, allergies, and nursing notes.',
+                  desc: 'Fill in patient identification, nursing assessment (triage), progress / clinical notes, MAR prescriptions, and SBAR handover — all in one continuous document.',
                   icon: <Stethoscope size={22} />, 
                   color: '#0284c7', 
-                  bg: '#e0f2fe' 
-                },
-                { 
-                  title: 'Medication Record (MAR)', 
-                  desc: 'Chart scheduled medications, dosage, frequencies, routes, and logs.',
-                  icon: <Pill size={22} />, 
-                  color: '#10b981', 
-                  bg: '#d1fae5' 
-                },
-                { 
-                  title: 'SBAR Handover', 
-                  desc: 'Submit situation, background, assessment, recommendation reports.',
-                  icon: <Share2 size={22} />, 
-                  color: '#8b5cf6', 
-                  bg: '#ede9fe' 
-                },
-                { 
-                  title: 'Patient History & Archive', 
-                  desc: 'Extract historical pdf observation worksheets and previous logs.',
-                  icon: <History size={22} />, 
-                  color: '#f59e0b', 
-                  bg: '#fef3c7' 
+                  bg: '#e0f2fe',
+                  cta: 'Open Sheet'
                 },
                 { 
                   title: 'Take Vitals / Triage', 
-                  desc: 'Record patient vitals (Temp, Pulse, RR, BP, Weight, SpO2) into database.',
-                  icon: <Heart size={22} />, 
+                  desc: 'Capture Temperature, Pulse, Respiratory Rate, Blood Pressure, Weight and SpO2 directly into the patient vitals database.',
+                  icon: <Thermometer size={22} />, 
                   color: '#ef4444', 
-                  bg: '#fee2e2' 
+                  bg: '#fee2e2',
+                  cta: 'Record Vitals'
+                },
+                { 
+                  title: 'Patient History & Archive', 
+                  desc: null, // rendered specially below
+                  icon: <FolderArchive size={22} />, 
+                  color: '#f59e0b', 
+                  bg: '#fef3c7',
+                  cta: 'Open Full Archive',
+                  specialised: true
                 },
                 { 
                   title: 'Daily Stock Checkup', 
                   desc: 'Track and reconcile daily session checkups of medicines and consumables against stock.',
                   icon: <Activity size={22} />, 
                   color: '#ec4899', 
-                  bg: '#fce7f3' 
+                  bg: '#fce7f3',
+                  cta: 'Open Inventory'
+                },
+                { 
+                  title: 'Daily Roster Report', 
+                  desc: 'Log and analyze patient volumes, staff roster metrics, and procedure assignments across all departments.',
+                  icon: <BarChart3 size={22} />, 
+                  color: '#0284c7', 
+                  bg: '#e0f2fe',
+                  cta: 'Open Report'
                 }
-              ].filter(sub => {
-                if (sub.title === 'Daily Stock Checkup') {
-                  return user?.role === 'chef-nurse';
-                }
-                return true;
-              }).map((sub, idx) => (
+              ].map((sub, idx) => (
                 <div 
                   key={idx}
                   onClick={() => handleQuickAction(sub.title)}
@@ -404,7 +416,7 @@ export default function NursingHub() {
                     transition: 'all 0.25s',
                     display: 'flex',
                     flexDirection: 'column',
-                    justifyContent: 'between',
+                    justifyContent: 'space-between',
                     minHeight: '170px'
                   }}
                   className="hover:border-sky-500 hover:shadow-lg hover:-translate-y-1 transition-all group"
@@ -423,13 +435,36 @@ export default function NursingHub() {
                     <h4 style={{ margin: '0 0 6px', fontSize: '0.95rem', fontWeight: 900, color: '#1e293b' }} className="group-hover:text-sky-700 transition-colors">
                       {sub.title}
                     </h4>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', lineHeight: '1.45', fontWeight: 500 }}>
-                      {sub.desc}
-                    </p>
+
+                    {/* Specialised card for Patient History & Archive */}
+                    {sub.specialised ? (
+                      <div style={{ marginTop: '6px' }}>
+                        <p style={{ margin: '0 0 8px', fontSize: '0.72rem', color: '#64748b', lineHeight: '1.45', fontWeight: 500 }}>
+                          Full multi-tab clinical archive for this patient.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {[
+                            { icon: <BookOpen size={10} />, label: 'Summary & Active Problems' },
+                            { icon: <Thermometer size={10} />, label: 'Vitals Flowsheet (historical)' },
+                            { icon: <FileText size={10} />, label: 'Nursing Observation Logs' },
+                            { icon: <Clock size={10} />, label: 'Visit Timeline & Encounters' },
+                          ].map((feat, fi) => (
+                            <div key={fi} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
+                              <span style={{ color: '#f59e0b' }}>{feat.icon}</span>
+                              {feat.label}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', lineHeight: '1.45', fontWeight: 500 }}>
+                        {sub.desc}
+                      </p>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 800, color: sub.color, marginTop: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Open Protocol <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                    {sub.cta} <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
               ))}
@@ -475,19 +510,23 @@ export default function NursingHub() {
       <Modal 
         isOpen={activeClinicalTab !== null} 
         onClose={() => setActiveClinicalTab(null)} 
-        title={`${selectedPatient?.full_name || 'Active Patient'} — ${
-          activeClinicalTab === 'clinical' ? 'Clinical Triage Sheet' :
-          activeClinicalTab === 'mar' ? 'Medication Administration Record (MAR)' :
-          activeClinicalTab === 'sbar' ? 'SBAR Handover Report' : 'Complete Observation Sheet'
-        }`}
+        title={`${selectedPatient?.full_name || 'Active Patient'} — Patient Observation Records Sheet`}
         maxWidth="950px"
       >
-        {activeClinicalTab !== null && (
+        {activeClinicalTab !== null && sessionQueueId && (
           <ClinicalSheet 
             embeddedPatientId={selectedPatient?.pid} 
-            embeddedQueueId="Q-TEMP" 
+            embeddedQueueId={sessionQueueId} 
             isEmbedded={true} 
-            embeddedTab={activeClinicalTab}
+            embeddedTab="all"
+            onSaveSuccess={() => {
+              // Refresh recent consultations list after saving
+              api.get('/clinical/observations/recent').then(res => {
+                if (res.data.success && res.data.data) {
+                  setRecentPatients(res.data.data.slice(0, 5));
+                }
+              }).catch(() => {});
+            }}
           />
         )}
       </Modal>

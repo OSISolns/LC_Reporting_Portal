@@ -103,7 +103,7 @@ exports.getPDF = async (req, res, next) => {
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=Incident_${report.id}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename="Incident_${report.id}.pdf"`);
     
     await generateIncidentPDF(report, res);
   } catch (err) {
@@ -145,7 +145,7 @@ exports.exportExcel = async (req, res, next) => {
     const workbook = await exportToExcel('Incident Reports', columns, reports);
     
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=Incidents.xlsx');
+    res.setHeader('Content-Disposition', 'attachment; filename="Incidents.xlsx"');
     
     await workbook.xlsx.write(res);
     res.end();

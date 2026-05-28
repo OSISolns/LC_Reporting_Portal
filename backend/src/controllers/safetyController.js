@@ -49,7 +49,7 @@ exports.getPDF = async (req, res, next) => {
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=Safety_Report_${report.id}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename="Safety_Report_${report.id}.pdf"`);
     
     await generateSafetyPDF(report, res);
   } catch (err) {

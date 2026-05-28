@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -20,16 +20,18 @@ const Sidebar = ({ onClose }) => {
     { name: 'Incident Reports', icon: <AlertTriangle size={20} />,   path: '/incidents',    requiredPerm: { mod: 'incident_reports', act: 'view' }, allowedRoles: ['nurse', 'admin', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer', 'chef-nurse'] },
     { name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'reviewer'] },
     { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer'] },
-    { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer'] },
-    { name: 'Nursing Hub', icon: <Stethoscope size={20} />,     path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse'] },
+    { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer', 'chef-nurse'] },
+    { name: 'Nursing Hub', icon: <Stethoscope size={20} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse'] },
+    { name: 'Daily Roster Report', icon: <Activity size={20} />, path: '/nursing-hub/daily-report', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'admin', 'doctor', 'reviewer', 'coo', 'deputy_coo', 'chairman'] },
+    { name: 'Clinical Sheets', icon: <FileText size={20} />, path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse'] },
     { name: 'Insights',         icon: <Brain size={20} />,           path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer'] },
     { name: 'User Management',  icon: <Users size={20} />,           path: '/users',        requiredPerm: { mod: 'user_management', act: 'view' }, allowedRoles: ['admin', 'it_officer'] },
     { name: 'Permissions',      icon: <Shield size={20} />,          path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
-    { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin', 'coo', 'deputy_coo', 'hsfp'] },
+    { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin'] },
     // Shift Module
     { name: 'Shift Management', icon: <Clock size={20} />,           path: '/shifts',  requiredPerm: null, allowedRoles: ['cashier', 'customer_care', 'nurse'] },
     { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: null, allowedRoles: ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'] },
-    { name: 'Internal Feedback', icon: <MessageSquare size={20} />,   path: '/feedbacks',    requiredPerm: null, allowedRoles: ['coo'] },
+    { name: 'Internal Feedback', icon: <MessageSquare size={20} />,   path: '/feedbacks',    requiredPerm: null, allowedRoles: ['coo', 'deputy_coo', 'chef-nurse'] },
   ];
 
   const filteredMenu = menuItems.filter(item => {

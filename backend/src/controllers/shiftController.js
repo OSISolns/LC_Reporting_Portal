@@ -958,7 +958,7 @@ exports.exportExcel = async (req, res, next) => {
     const workbook = await exportToExcel('Shift Logs', columns, formattedData);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=Shift_Logs.xlsx');
+    res.setHeader('Content-Disposition', 'attachment; filename="Shift_Logs.xlsx"');
 
     await workbook.xlsx.write(res);
     res.end();

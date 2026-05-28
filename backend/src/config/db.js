@@ -38,6 +38,179 @@ const client = createClient({
       console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
     }
   }
+
+  // Daily Operational Report Tables
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS departments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created departments table');
+  } catch (err) {
+    console.warn('⚠️ SQLite Schema Migration Notice for departments:', err.message);
+  }
+
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS providers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        title TEXT,
+        department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+        is_active INTEGER DEFAULT 1
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created providers table');
+  } catch (err) {
+    console.warn('⚠️ SQLite Schema Migration Notice for providers:', err.message);
+  }
+
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS daily_report_metrics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        report_date TEXT NOT NULL,
+        provider_id INTEGER REFERENCES providers(id) ON DELETE CASCADE,
+        department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE,
+        patient_count INTEGER DEFAULT 0,
+        UNIQUE (report_date, provider_id)
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created daily_report_metrics table');
+  } catch (err) {
+    console.warn('⚠️ SQLite Schema Migration Notice for daily_report_metrics:', err.message);
+  }
+
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS daily_procedure_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        report_date TEXT NOT NULL,
+        metric_name TEXT NOT NULL,
+        metric_value TEXT DEFAULT '0',
+        UNIQUE (report_date, metric_name)
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created daily_procedure_logs table');
+  } catch (err) {
+    console.warn('⚠️ SQLite Schema Migration Notice for daily_procedure_logs:', err.message);
+  }
+
+  // Seed default data for nursing operational reports
+  try {
+    const { rows: deptsCount } = await client.execute("SELECT COUNT(*) as count FROM departments");
+    if (deptsCount[0].count !== 11) {
+      console.log('🌱 Refreshing/Seeding initial departments for nursing report matching reference image...');
+      // Safely delete previous metrics to avoid foreign key conflicts
+      await client.execute("DELETE FROM daily_report_metrics");
+      await client.execute("DELETE FROM providers");
+      await client.execute("DELETE FROM departments");
+
+      const initialDepartments = [
+        'GYNECOLOGY',
+        'GENERAL MEDICINE',
+        'PED',
+        'NEURO',
+        'UROLOGY',
+        'ORTHO/GEN SURGERY',
+        'ENT',
+        'CHIRO',
+        'Mental Health',
+        'DENTAL',
+        'PHYSIO'
+      ];
+      
+      for (const dept of initialDepartments) {
+        await client.execute({
+          sql: "INSERT INTO departments (name) VALUES (?) ON CONFLICT (name) DO NOTHING",
+          args: [dept]
+        });
+      }
+      
+      const { rows: dbDepts } = await client.execute("SELECT id, name FROM departments");
+      const deptMap = dbDepts.reduce((acc, d) => ({ ...acc, [d.name]: d.id }), {});
+      
+      console.log('🌱 Seeding initial providers for nursing report matching reference image...');
+      const initialProviders = [
+        // GYNECOLOGY
+        { name: 'Dr Gakindi', title: 'Dr', dept: 'GYNECOLOGY' },
+        { name: 'Dr SITINI BERTIN', title: 'Dr', dept: 'GYNECOLOGY' },
+        { name: 'Dr NKUBITO', title: 'Dr', dept: 'GYNECOLOGY' },
+        { name: 'Dr NTIRUSHWA', title: 'Dr', dept: 'GYNECOLOGY' },
+        { name: 'BUTOYI ALPHONSE', title: '', dept: 'GYNECOLOGY' },
+
+        // GENERAL MEDICINE
+        { name: 'Dr Fabrice N.', title: 'Dr', dept: 'GENERAL MEDICINE' },
+        { name: 'Dr Yves L. Bizimana', title: 'Dr', dept: 'GENERAL MEDICINE' },
+        { name: 'Dr Gihana Jacques', title: 'Dr', dept: 'GENERAL MEDICINE' },
+        { name: 'INT', title: '', dept: 'GENERAL MEDICINE' },
+
+        // PED
+        { name: 'Dr KABAYIZA JC', title: 'Dr', dept: 'PED' },
+        { name: 'Dr Aimable K.', title: 'Dr', dept: 'PED' },
+        { name: 'Dr Christian Muhoza', title: 'Dr', dept: 'PED' },
+        { name: 'Dr Mukaruziga Agnes', title: 'Dr', dept: 'PED' },
+        { name: 'Dr Karangwa Valens', title: 'Dr', dept: 'PED' },
+
+        // NEURO
+        { name: 'DR KAREKEZI CLAIRE', title: 'Dr', dept: 'NEURO' },
+        { name: 'DR MUTUNGIREHE SYLIVES', title: 'Dr', dept: 'NEURO' },
+
+        // UROLOGY
+        { name: 'Dr Afrika G.', title: 'Dr', dept: 'UROLOGY' },
+        { name: 'Dr NYIRIMODOKA ALEXANDRE', title: 'Dr', dept: 'UROLOGY' },
+
+        // ORTHO/GEN SURGERY
+        { name: 'Dr KWESIGA STEPHEN', title: 'Dr', dept: 'ORTHO/GEN SURGERY' },
+        { name: 'KANSAYISA MARIE GRACE', title: '', dept: 'ORTHO/GEN SURGERY' },
+        { name: 'RUBANGUKA Desire', title: '', dept: 'ORTHO/GEN SURGERY' },
+        { name: 'Dr INGABIRE Allen JDC', title: 'Dr', dept: 'ORTHO/GEN SURGERY' },
+
+        // ENT
+        { name: 'DR HAKIZIMANA ARISTOTE', title: 'Dr', dept: 'ENT' },
+        { name: 'DR Dushimiyimana jmv', title: 'Dr', dept: 'ENT' },
+
+        // CHIRO
+        { name: 'Dr Kanyabutembo Noella', title: 'Dr', dept: 'CHIRO' },
+
+        // Mental Health
+        { name: 'Innocent Nseng(Sante M.)', title: '', dept: 'Mental Health' },
+
+        // DENTAL
+        { name: 'Dr NYIRANEZA Esperence', title: 'Dr', dept: 'DENTAL' },
+        { name: 'Dr ANAMALI Rogers', title: 'Dr', dept: 'DENTAL' },
+        { name: 'Dr MUGESERA Ernest', title: 'Dr', dept: 'DENTAL' },
+        { name: 'Dr BANA Bede', title: 'Dr', dept: 'DENTAL' },
+        { name: 'JAYAKAR G. Sargunar', title: '', dept: 'DENTAL' },
+        { name: 'Sanddeep Goyal', title: '', dept: 'DENTAL' },
+        { name: 'DR MICONGWE Moses', title: 'Dr', dept: 'DENTAL' },
+        { name: 'Mr NDAYISENGA KALISA Gilbert', title: 'Mr', dept: 'DENTAL' },
+        { name: 'Mr ERIC RUTAGENDA', title: 'Mr', dept: 'DENTAL' },
+        { name: 'ISHIMWE GILBERT', title: '', dept: 'DENTAL' },
+
+        // PHYSIO
+        { name: 'Mr NAZE Thierry', title: 'Mr', dept: 'PHYSIO' },
+        { name: 'Miss FRANCINE M.', title: 'Miss', dept: 'PHYSIO' },
+        { name: 'Mr KARIMWABO Jean Claude', title: 'Mr', dept: 'PHYSIO' },
+        { name: 'Mr NSENGIMANA Emmanuel', title: 'Mr', dept: 'PHYSIO' },
+        { name: 'Miss LEAH MUTESI', title: 'Miss', dept: 'PHYSIO' },
+        { name: 'Miss UWAMAHORO Sarah', title: 'Miss', dept: 'PHYSIO' },
+        { name: 'INGABIRE J. Paul', title: '', dept: 'PHYSIO' }
+      ];
+      
+      for (const p of initialProviders) {
+        await client.execute({
+          sql: "INSERT INTO providers (name, title, department_id) VALUES (?, ?, ?)",
+          args: [p.name, p.title, deptMap[p.dept]]
+        });
+      }
+      console.log('✨ Nursing Report Seed matching spreadsheet completed successfully!');
+    }
+  } catch (err) {
+    console.error('❌ Failed to seed nursing report data:', err);
+  }
 })();
 
 /**

@@ -155,7 +155,7 @@ exports.getPDF = async (req, res, next) => {
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=ResultTransfer_${request.old_sid}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename="ResultTransfer_${request.old_sid}.pdf"`);
 
     await generateResultTransferPDF(request, res);
   } catch (err) { next(err); }

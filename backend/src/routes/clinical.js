@@ -9,11 +9,18 @@ router.use(authenticateToken);
 router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']));
 
 router.post('/observations/:patientId', clinicalController.saveObservation);
-router.get('/observations/recent', clinicalController.getRecentObservations);
-router.get('/observations/:patientId', clinicalController.getObservation);
-router.get('/observations/:patientId/pdf', clinicalController.getPDF);
+router.get('/observations',             clinicalController.getAllObservationsList);
+router.get('/observations/recent',      clinicalController.getRecentObservations);
+router.get('/observations/:patientId/all', clinicalController.getAllObservations);
+router.get('/observations/:patientId/checksum', clinicalController.getDocChecksum);
+router.get('/observations/:patientId/verify',   clinicalController.verifyDocument);
+router.get('/observations/:patientId/pdf',      clinicalController.getPDF);
+router.get('/observations/:patientId',          clinicalController.getObservation);
 
-router.get('/inventory', authorizeRoles(['chef-nurse']), clinicalController.getInventory);
-router.post('/inventory/bulk', authorizeRoles(['chef-nurse']), clinicalController.saveInventoryBulk);
+router.get('/inventory', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.getInventory);
+router.get('/inventory/export', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.exportInventoryExcel);
+router.get('/inventory/items', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant']), clinicalController.getInventoryItems);
+router.post('/inventory/bulk', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.saveInventoryBulk);
+router.post('/inventory/sync', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.triggerInventorySync);
 
 module.exports = router;

@@ -7,7 +7,7 @@ import ITDashboard from './ITDashboard';
 import ReviewerDashboard from './ReviewerDashboard';
 
 const MGMT_ROLES  = ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier'];
-const STAFF_ROLES = ['cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'consultant', 'nurse'];
+const STAFF_ROLES = ['cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'consultant', 'nurse', 'chef-nurse'];
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -15,7 +15,7 @@ const Dashboard = () => {
 
   if (role === 'hsfp')                 return <HSFPDashboard />;
   if (role === 'it_officer')           return <ITDashboard />;
-  if (role === 'reviewer' || role === 'chef-nurse')   return <ReviewerDashboard />;
+  if (role === 'reviewer')                          return <ReviewerDashboard />;
   if (MGMT_ROLES.includes(role))       return <ManagementDashboard />;
   if (STAFF_ROLES.includes(role))      return <StaffDashboard />;
 
