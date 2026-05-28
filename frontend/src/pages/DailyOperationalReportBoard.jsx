@@ -614,29 +614,34 @@ export default function DailyOperationalReportBoard() {
                     <h3 className="text-xs font-black uppercase text-slate-800 tracking-widest">Institutional Operational Matrix</h3>
                     <span className="text-[10px] text-slate-400 font-extrabold uppercase">Monthly Overview ({selectedMonth}/{selectedYear})</span>
                   </div>
-                  <div className="text-[10px] font-black text-sky-700 px-3 py-1.5 bg-sky-50 border border-sky-100 rounded-full">
-                    MONTHLY TOTALS LOGGED
+                  <div className="text-right flex items-center gap-2">
+                    <span className="text-[10px] font-black text-sky-700 px-3 py-1.5 bg-sky-50 border border-sky-100 rounded-full">
+                      MONTHLY TOTALS LOGGED
+                    </span>
+                    <span className="text-[10px] font-black bg-sky-100 text-sky-850 px-3 py-1.5 rounded-full uppercase tracking-wider border border-sky-200/50">
+                      Pivoted Row-Per-Day Layout
+                    </span>
                   </div>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="sticky left-0 bg-slate-50 text-left px-4 py-3.5 min-w-[150px] border-r border-slate-200 font-black text-slate-800 text-xs tracking-wider z-20">
+                      <tr className="bg-slate-100/90 border-b border-slate-250">
+                        <th className="sticky left-0 bg-slate-100 text-left px-4 py-3.5 min-w-[200px] border-r border-slate-200 font-extrabold text-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                           Staff Specialist
                         </th>
-                        <th className="text-left px-4 py-3.5 min-w-[120px] border-r border-slate-200 font-black text-slate-500 text-xs tracking-wider">
+                        <th className="text-left px-4 py-3.5 min-w-[120px] border-r border-slate-200 font-extrabold text-slate-800">
                           Department
                         </th>
 
                         {getDaysArray().map(day => (
-                          <th key={day} className="text-center w-10 min-w-[36px] py-3.5 border-r border-slate-200 font-bold text-[10px] text-slate-500 bg-slate-50/30">
+                          <th key={day} className="text-center w-10 min-w-[38px] py-3.5 border-r border-slate-200 font-extrabold text-slate-700 bg-slate-50/50">
                             {day}
                           </th>
                         ))}
 
-                        <th className="text-center px-4 py-3.5 min-w-[80px] font-black text-sky-700 bg-sky-50 border-l border-slate-200">
+                        <th className="text-center px-4 py-3.5 min-w-[80px] font-black text-sky-850 bg-sky-50/80">
                           TOTAL
                         </th>
                       </tr>
@@ -668,26 +673,31 @@ export default function DailyOperationalReportBoard() {
                           });
 
                           return (
-                            <tr key={provider.id} className="border-b border-slate-100 hover:bg-slate-50/60 transition-all">
-                              <td className="sticky left-0 bg-white px-4 py-3.5 font-bold text-slate-800 text-xs border-r border-slate-200 z-10">
-                                {provider.name}
+                            <tr key={provider.id} className="border-b border-slate-150 hover:bg-slate-50/65 transition-colors">
+                              <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-3 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                <span className="flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-sky-300" />
+                                  {provider.name}
+                                </span>
                               </td>
-                              <td className="px-4 py-3.5 text-xs text-slate-550 border-r border-slate-200 font-medium">
+                              <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
                                 {deptName}
                               </td>
 
                               {getDaysArray().map(day => {
                                 const val = daysMap[day];
                                 return (
-                                  <td key={day} className={`text-center py-3.5 border-r border-slate-100 font-mono text-[11px] ${
-                                    val > 0 ? 'text-emerald-700 font-bold bg-emerald-50/20' : 'text-slate-400'
-                                  }`}>
-                                    {val}
+                                  <td key={day} className="text-center py-3 border-r border-slate-100 font-mono font-bold text-xs">
+                                    {val > 0 ? (
+                                      <span className="text-sky-650 font-black">{val}</span>
+                                    ) : (
+                                      <span className="text-slate-350 opacity-40">-</span>
+                                    )}
                                   </td>
                                 );
                               })}
 
-                              <td className="text-center font-bold text-sky-705 bg-sky-50 text-xs border-l border-slate-200">
+                              <td className="text-center py-3 bg-sky-50/30 text-sky-850 font-black font-mono text-xs">
                                 {providerSum}
                               </td>
                             </tr>
@@ -730,11 +740,14 @@ export default function DailyOperationalReportBoard() {
                           });
 
                           return (
-                            <tr key={metricName} className="border-b border-slate-100 hover:bg-slate-50/60 transition-all text-slate-650">
-                              <td className="sticky left-0 bg-white px-4 py-3.5 font-bold text-slate-800 text-xs border-r border-slate-200 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                                {metricName}
+                            <tr key={metricName} className="border-b border-slate-150 hover:bg-slate-50/65 transition-colors bg-slate-50/10">
+                              <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-3 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                <span className="flex items-center gap-1.5">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${isNameInput ? 'bg-purple-300' : 'bg-slate-350'}`} />
+                                  {metricName}
+                                </span>
                               </td>
-                              <td className="px-4 py-3.5 text-xs text-slate-400 border-r border-slate-200 font-bold uppercase">
+                              <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
                                 PROCEDURES
                               </td>
 
@@ -742,14 +755,14 @@ export default function DailyOperationalReportBoard() {
                                 const val = daysMap[day];
                                 const isZero = val === '0' || val === '' || val === undefined;
                                 return (
-                                  <td key={day} className="text-center py-3.5 border-r border-slate-100 font-mono text-[11px]">
+                                  <td key={day} className="text-center py-3 border-r border-slate-100 font-mono font-bold text-xs" title={val}>
                                     {isZero ? (
-                                      <span className="text-slate-300 opacity-40">-</span>
+                                      <span className="text-slate-350 opacity-40">-</span>
                                     ) : (
                                       <span className={`${
                                         isNameInput 
-                                          ? 'text-purple-750 text-[10px] font-sans truncate block max-w-[45px] hover:max-w-none hover:bg-white hover:z-30 hover:absolute px-1.5 py-0.5 rounded border border-purple-100 shadow-sm bg-purple-50' 
-                                          : 'text-sky-705 font-bold bg-sky-50/20 px-1 py-0.5 rounded'
+                                          ? 'text-purple-650 text-[10px] font-sans truncate block max-w-[45px] hover:max-w-none hover:bg-white hover:z-30 hover:absolute px-1.5 py-0.5 rounded border border-purple-100 shadow-sm bg-purple-50' 
+                                          : 'text-slate-700 font-black'
                                       }`}>
                                         {val}
                                       </span>
@@ -758,34 +771,37 @@ export default function DailyOperationalReportBoard() {
                                 );
                               })}
 
-                              <td className="text-center font-bold text-sky-705 bg-sky-50 text-xs border-l border-slate-200">
+                              <td className="text-center py-3 bg-slate-100/50 text-slate-650 font-black font-mono text-xs">
                                 {isNameInput ? 'N/A' : procedureSum}
                               </td>
                             </tr>
                           );
                         })}
 
-                      {/* Column Total Sum row */}
-                      <tr className="bg-sky-50 text-sky-900 font-extrabold border-t border-slate-200">
-                        <td colSpan={2} className="sticky left-0 bg-sky-50 text-left px-4 py-4 border-r border-slate-200 font-black uppercase text-[10px] tracking-wider z-20">
-                          Total Provider Patients
+                      {/* Sticky Daily Calculations Column Sum Row */}
+                      <tr className="bg-gradient-to-r from-sky-900 to-sky-950 text-white font-extrabold border-t border-sky-950">
+                        <td
+                          className="sticky left-0 bg-sky-950 text-left px-4 py-4 border-r border-sky-950 font-black uppercase text-xs tracking-wider z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]"
+                          colSpan={2}
+                        >
+                          TOTAL COMPLETED PATIENTS
                         </td>
 
                         {getDaysArray().map(day => {
                           const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                           const dailySum = monthlyData.metrics
                             .filter(m => m.report_date === dateStr)
-                            .reduce((sum, m) => sum + m.patient_count, 0);
+                            .reduce((sum, m) => sum + (m.patient_count || 0), 0);
 
                           return (
-                            <td key={day} className="text-center py-4 border-r border-slate-200/50 font-mono text-xs text-sky-950">
+                            <td key={day} className="text-center py-4 border-r border-sky-950 font-mono font-black text-sm text-sky-200">
                               {dailySum}
                             </td>
                           );
                         })}
 
-                        <td className="text-center font-black bg-sky-100 py-4 text-xs text-sky-950">
-                          {monthlyData.metrics.reduce((sum, m) => sum + m.patient_count, 0)}
+                        <td className="text-center py-4 font-mono font-black text-sm bg-sky-950 text-emerald-300">
+                          {monthlyData.metrics.reduce((sum, m) => sum + (m.patient_count || 0), 0)}
                         </td>
                       </tr>
 
