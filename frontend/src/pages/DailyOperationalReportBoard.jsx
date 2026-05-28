@@ -546,7 +546,9 @@ export default function DailyOperationalReportBoard() {
                   className="bg-white text-slate-800 font-extrabold border border-slate-200 px-3 py-2 rounded-xl text-xs focus:outline-none"
                 >
                   {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                    <option key={m} value={m}>Month {String(m).padStart(2, '0')}</option>
+                    <option key={m} value={m}>
+                      {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}
+                    </option>
                   ))}
                 </select>
                 <select
