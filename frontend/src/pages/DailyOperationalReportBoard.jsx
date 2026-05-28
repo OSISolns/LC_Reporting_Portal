@@ -30,15 +30,15 @@ export default function DailyOperationalReportBoard() {
   const [config, setConfig] = useState({ departments: [], providers: [], defaultProcedureMetrics: [] });
 
   // Daily Board State
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState('2026-04-30'); // Default to latest populated data
   const [dailyMetrics, setDailyMetrics] = useState({}); // providerId -> patientCount
   const [dailyLogs, setDailyLogs] = useState({}); // metricName -> metricValue
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
 
   // Monthly Matrix State
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(2026);
+  const [selectedMonth, setSelectedMonth] = useState(4); // Default to April
   const [monthlyData, setMonthlyData] = useState(null);
   const [monthlySearchQuery, setMonthlySearchQuery] = useState('');
   const [monthlyDeptFilter, setMonthlyDeptFilter] = useState('ALL');

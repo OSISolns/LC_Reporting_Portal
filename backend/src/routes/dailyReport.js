@@ -3,14 +3,13 @@ const express = require('express');
 const router = express.Router();
 const dailyReportController = require('../controllers/dailyReportController');
 const { authMiddleware: authenticateToken } = require('../middleware/auth');
-const authorizeRoles = require('../middleware/role');
+const checkPermission = require('../middleware/permission');
 
 router.use(authenticateToken);
-router.use(authorizeRoles(['nurse', 'chef-nurse']));
 
-router.get('/config', dailyReportController.getConfig);
-router.get('/daily', dailyReportController.getByDate);
-router.post('/daily', dailyReportController.saveDaily);
-router.get('/monthly', dailyReportController.getMonthly);
+router.get('/config', checkPermission('clinical_observation', 'view'), dailyReportController.getConfig);
+router.get('/daily', checkPermission('clinical_observation', 'view'), dailyReportController.getByDate);
+router.post('/daily', checkPermission('clinical_observation', 'create'), dailyReportController.saveDaily);
+router.get('/monthly', checkPermission('clinical_observation', 'view'), dailyReportController.getMonthly);
 
 module.exports = router;
