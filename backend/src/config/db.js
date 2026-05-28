@@ -234,8 +234,19 @@ const client = createClient({
 const transformQuery = (sql, params) => {
   let transformedSql = sql;
 
-  // 1. Convert $n placeholders to ?
-  // Postgres uses $1, $2... while SQLite uses ?
+  // 1. Convert Postgres $n placeholders to SQLite ?
+  // If the same placeholder is used multiple times (e.g. $1 or $2), we rebuild the sequential args array.
+  const matches = sql.match(/\$\d+/g);
+  let args = [];
+  if (matches && params && params.length > 0) {
+    args = matches.map(m => {
+      const index = parseInt(m.substring(1), 10) - 1;
+      return params[index];
+    });
+  } else {
+    args = params || [];
+  }
+
   transformedSql = transformedSql.replace(/\$\d+/g, '?');
 
   // 2. Dialect translation
@@ -246,7 +257,7 @@ const transformQuery = (sql, params) => {
     .replace(/TIMESTAMPTZ/gi, 'DATETIME')
     .replace(/SERIAL/gi, 'INTEGER PRIMARY KEY AUTOINCREMENT');
 
-  return { sql: transformedSql, args: params || [] };
+  return { sql: transformedSql, args };
 };
 
 /**
