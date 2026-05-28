@@ -13,6 +13,8 @@ const MODULES = [
   { name: 'reports',           display: 'Reports & Insights',    actions: ['view','download'] },
   { name: 'staff_performance', display: 'Staff Performance',     actions: ['view','create'] },
   { name: 'clinical_observation', display: 'Clinical Observation', actions: ['view','create','edit','review','approve'] },
+  { name: 'shifts',              display: 'Shift Management',      actions: ['view','create','edit','review','delete'] },
+  { name: 'feedbacks',           display: 'Internal Feedback',     actions: ['view','delete'] },
 ];
 
 /**
@@ -29,6 +31,9 @@ const ROLE_DEFAULTS = {
     reports: { view:1, download:1 },
     staff_performance: { view:1, create:1 },
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:1 },
+
+    shifts:           { view:1, create:0, edit:1, review:1, delete:1 },
+    feedbacks:        { view:0, delete:0 },
   },
   it_officer: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -39,6 +44,9 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:0 },
     reports: { view:0, download:0 },
     staff_performance: { view:0, create:0 },
+
+    shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   coo: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -49,6 +57,9 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:1 },
     reports: { view:1, download:1 },
     staff_performance: { view:1, create:1 },
+
+    shifts:           { view:1, create:0, edit:0, review:1, delete:0 },
+    feedbacks:        { view:1, delete:1 },
   },
   deputy_coo: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -59,6 +70,9 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:1 },
     reports: { view:1, download:1 },
     staff_performance: { view:1, create:1 },
+
+    shifts:           { view:1, create:0, edit:1, review:1, delete:0 },
+    feedbacks:        { view:1, delete:1 },
   },
   chairman: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:0 },
@@ -69,6 +83,9 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:0 },
     reports: { view:1, download:1 },
     staff_performance: { view:1, create:0 },
+
+    shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   sales_manager: {
     cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
@@ -79,6 +96,9 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:0 },
     reports: { view:1, download:1 },
     staff_performance: { view:1, create:1 },
+
+    shifts:           { view:1, create:0, edit:0, review:1, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   cashier: {
     cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
@@ -89,6 +109,9 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:0 },
     reports: { view:0, download:0 },
     staff_performance: { view:1, create:0 },
+
+    shifts:           { view:0, create:1, edit:0, review:0, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   principal_cashier: {
     cancellations:    { view:1, create:0, edit:0, review:1, approve:1, reject:1 },
@@ -99,6 +122,9 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:0 },
     reports: { view:1, download:0 },
     staff_performance: { view:1, create:1 },
+
+    shifts:           { view:1, create:0, edit:0, review:1, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   customer_care: {
     cancellations:    { view:1, create:1, edit:0, approve:0, reject:0 },
@@ -109,6 +135,9 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:0 },
     reports: { view:0, download:0 },
     staff_performance: { view:1, create:0 },
+
+    shifts:           { view:0, create:1, edit:0, review:0, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   lab_team_lead: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -119,6 +148,9 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:0 },
     reports: { view:0, download:0 },
     staff_performance: { view:0, create:0 },
+
+    shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   consultant: {
     cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
@@ -130,6 +162,9 @@ const ROLE_DEFAULTS = {
     reports: { view:1, download:0 },
     staff_performance: { view:0, create:0 },
     clinical_observation: { view:1, create:0, edit:0, review:0, approve:0 },
+
+    shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   operations_staff: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -140,6 +175,12 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:0 },
     reports: { view:0, download:0 },
     staff_performance: { view:1, create:0 },
+
+    shifts:           { view:1, create:0, edit:0, review:1, delete:0 },
+    feedbacks:        { view:0, delete:0 },
+
+    shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   staff: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -160,6 +201,9 @@ const ROLE_DEFAULTS = {
     audit_logs:       { view:0 },
     reports:          { view:0, download:0 },
     staff_performance:{ view:0, create:0 },
+
+    shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   nurse: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -171,6 +215,9 @@ const ROLE_DEFAULTS = {
     reports:          { view:0, download:0 },
     staff_performance:{ view:1, create:0 },
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:0 },
+
+    shifts:           { view:0, create:1, edit:0, review:0, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
   'chef-nurse': {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -193,6 +240,9 @@ const ROLE_DEFAULTS = {
     reports:          { view:1, download:1 },
     staff_performance:{ view:1, create:1 },
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:1 },
+
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    feedbacks:        { view:0, delete:0 },
   },
 };
 

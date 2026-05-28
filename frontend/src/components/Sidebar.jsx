@@ -30,9 +30,9 @@ const Sidebar = ({ onClose }) => {
     { name: 'Permissions',      icon: <Shield size={20} />,          path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
     { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin'] },
     // Shift Module
-    { name: 'Shift Management', icon: <Clock size={20} />,           path: '/shifts',  requiredPerm: null, allowedRoles: ['cashier', 'customer_care', 'nurse'] },
-    { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: null, allowedRoles: ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'] },
-    { name: 'Internal Feedback', icon: <MessageSquare size={20} />,   path: '/feedbacks',    requiredPerm: null, allowedRoles: ['coo', 'deputy_coo', 'chef-nurse'] },
+    { name: 'Shift Management', icon: <Clock size={20} />,           path: '/shifts',  requiredPerm: { mod: 'shifts', act: 'create' }, allowedRoles: ['cashier', 'customer_care', 'nurse'] },
+    { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: { mod: 'shifts', act: 'view' }, allowedRoles: ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'] },
+    { name: 'Internal Feedback', icon: <MessageSquare size={20} />,   path: '/feedbacks',    requiredPerm: { mod: 'feedbacks', act: 'view' }, allowedRoles: ['coo', 'deputy_coo', 'chef-nurse'] },
   ];
 
   const filteredMenu = menuItems.filter(item => {
