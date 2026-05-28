@@ -13,30 +13,30 @@ require('dotenv').config({ path: __dirname + '/.env' });
 const db = require('./src/config/db');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const pick  = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const range = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const pad   = (n) => String(n).padStart(6, '0');
-const rwf   = (min, max) => range(min, max) * 1000;
+const pad = (n) => String(n).padStart(6, '0');
+const rwf = (min, max) => range(min, max) * 1000;
 
-const STATUSES_CANC   = ['pending','pending','pending','verified','approved','approved','rejected'];
-const STATUSES_REFUND = ['pending','pending','verified','approved','rejected'];
-const STATUSES_INC    = ['pending','pending','reviewed'];
+const STATUSES_CANC = ['pending', 'pending', 'pending', 'verified', 'approved', 'approved', 'rejected'];
+const STATUSES_REFUND = ['pending', 'pending', 'verified', 'approved', 'rejected'];
+const STATUSES_INC = ['pending', 'pending', 'reviewed'];
 
 const PATIENTS = [
   { name: 'Uwimana Jean Claude', pid: 'LC-001234' },
-  { name: 'Mutesi Claudine',     pid: 'LC-002567' },
-  { name: 'Habimana Eric',       pid: 'LC-003891' },
-  { name: 'Mukamana Solange',    pid: 'LC-004120' },
-  { name: 'Nzeyimana Patrick',   pid: 'LC-005348' },
-  { name: 'Ingabire Viviane',    pid: 'LC-006712' },
-  { name: 'Hakizimana Cedric',   pid: 'LC-007055' },
-  { name: 'Uwineza Sandrine',    pid: 'LC-008293' },
-  { name: 'Bizimana Lambert',    pid: 'LC-009467' },
-  { name: 'Mukandutiye Alice',   pid: 'LC-010831' },
+  { name: 'Mutesi Claudine', pid: 'LC-002567' },
+  { name: 'Habimana Eric', pid: 'LC-003891' },
+  { name: 'Mukamana Solange', pid: 'LC-004120' },
+  { name: 'Nzeyimana Patrick', pid: 'LC-005348' },
+  { name: 'Ingabire Viviane', pid: 'LC-006712' },
+  { name: 'Hakizimana Cedric', pid: 'LC-007055' },
+  { name: 'Uwineza Sandrine', pid: 'LC-008293' },
+  { name: 'Bizimana Lambert', pid: 'LC-009467' },
+  { name: 'Mukandutiye Alice', pid: 'LC-010831' },
 ];
 
-const PAYERS = ['RSSB-RAMA','MMI','Cogebanque','SORAS','Out-of-Pocket','Radiant','SONARWA'];
-const PAYMENT_MODES = ['MoMo','Cash','Card','Bank Transfer'];
+const PAYERS = ['RSSB-RAMA', 'MMI', 'Cogebanque', 'SORAS', 'Out-of-Pocket', 'Radiant', 'SONARWA'];
+const PAYMENT_MODES = ['MoMo', 'Cash', 'Card', 'Bank Transfer'];
 
 // ── Cancellation reasons (varied, realistic) ──────────────────────────────────
 const CANC_REASONS = [
@@ -83,28 +83,28 @@ const REFUND_REASONS = [
   'Patient deceased before service was rendered. Family requesting full refund of all pre-paid services.',
   'Insurance covered service in full after patient had already paid cash. Full refund of 45,000 RWF required.',
   'Duplicate MoMo transaction detected — patient received SMS confirmation for two transactions of 30,000 RWF each.',
-  'Treatment plan changed by specialist. Initial payment covered procedure that was later substituted with a lower-cost option.',
+  'Treatment plan changed by . Initial payment covered procedure that was later substituted with a lower-cost option.',
 ];
 
 // ── Incident data pairs [type, description] ───────────────────────────────────
 const INCIDENTS = [
-  ['Near Miss',     'Patient received medication intended for another patient with a similar name. Nurse detected the error before administration. Contributing factor: illegible prescription handwriting.'],
+  ['Near Miss', 'Patient received medication intended for another patient with a similar name. Nurse detected the error before administration. Contributing factor: illegible prescription handwriting.'],
   ['Adverse Event', 'Patient experienced allergic reaction (urticaria and mild swelling) following intramuscular injection of Amoxicillin. Not documented in allergy history. Adrenaline administered immediately.'],
-  ['Near Miss',     'Wrong PID entered during billing for a paediatric patient. Discovered during verification stage. Receipt voided and reissued correctly.'],
+  ['Near Miss', 'Wrong PID entered during billing for a paediatric patient. Discovered during verification stage. Receipt voided and reissued correctly.'],
   ['Adverse Event', 'Patient slipped and fell in the radiology corridor while walking unassisted. Superficial laceration on left palm. Dressed by nursing team on duty.'],
-  ['Near Miss',     'Laboratory released glucose results for patient LC-007055 under wrong patient ID during night shift. Results recalled and corrected before clinician acted on them.'],
+  ['Near Miss', 'Laboratory released glucose results for patient LC-007055 under wrong patient ID during night shift. Results recalled and corrected before clinician acted on them.'],
   ['Adverse Event', 'Needle stick injury sustained by a Cleaning staff member while disposing of improperly segregated sharps waste in Ward 3. PEP protocol initiated.'],
-  ['Near Miss',     'Fire extinguisher on Floor 2, Radiology Wing was found unrefilled during routine safety inspection. Tagged and escalated to Logistics for immediate replacement.'],
+  ['Near Miss', 'Fire extinguisher on Floor 2, Radiology Wing was found unrefilled during routine safety inspection. Tagged and escalated to Logistics for immediate replacement.'],
   ['Adverse Event', 'Equipment malfunction: infusion pump in ICU Unit 2 alarmed repeatedly and auto-suspended infusion. Nurse switched to manual drip while pump was sent for biomedical check.'],
-  ['Sentinel Event','Staff member was found working under visible substance influence during morning shift in the pharmacy. Immediate suspension and HR notified. Patients reviewed for dispensing errors.'],
-  ['Near Miss',     'Patient with history of seizures was left unattended in waiting area for 40 minutes due to staffing shortage. No adverse outcome but risk escalated to nursing manager.'],
+  ['Sentinel Event', 'Staff member was found working under visible substance influence during morning shift in the pharmacy. Immediate suspension and HR notified. Patients reviewed for dispensing errors.'],
+  ['Near Miss', 'Patient with history of seizures was left unattended in waiting area for 40 minutes due to staffing shortage. No adverse outcome but risk escalated to nursing manager.'],
 ];
 
-const INC_DEPARTMENTS  = ['Clinical','Pharmacy','Laboratory','Radiology','ICU','Nursing','Logistics','Human Resources','Customer Care','Cross-Cutting'];
-const INC_AREAS        = ['Ward 1','Ward 2','Ward 3','Radiology Corridor','ICU Unit 2','Pharmacy','Reception','Laboratory','Outpatient','Emergency'];
-const CONTRIBUTING     = ['Staff fatigue','Communication gap','Inadequate supervision','Equipment failure','Staffing shortage','Process deviation','Poor labelling','Inadequate training'];
-const IMMEDIATE_ACTS   = ['Incident reported to nurse in charge','Patient assessed and treated','Equipment quarantined','HR notified','Safety officer alerted','Corrective billing processed','PEP protocol initiated'];
-const PREVENTION       = ['Staff refresher training scheduled','SOP updated','Double-check process introduced','Equipment maintenance plan reviewed','Staffing levels to be reviewed','Safety walkthrough initiated'];
+const INC_DEPARTMENTS = ['Clinical', 'Pharmacy', 'Laboratory', 'Radiology', 'ICU', 'Nursing', 'Logistics', 'Human Resources', 'Customer Care', 'Cross-Cutting'];
+const INC_AREAS = ['Ward 1', 'Ward 2', 'Ward 3', 'Radiology Corridor', 'ICU Unit 2', 'Pharmacy', 'Reception', 'Laboratory', 'Outpatient', 'Emergency'];
+const CONTRIBUTING = ['Staff fatigue', 'Communication gap', 'Inadequate supervision', 'Equipment failure', 'Staffing shortage', 'Process deviation', 'Poor labelling', 'Inadequate training'];
+const IMMEDIATE_ACTS = ['Incident reported to nurse in charge', 'Patient assessed and treated', 'Equipment quarantined', 'HR notified', 'Safety officer alerted', 'Corrective billing processed', 'PEP protocol initiated'];
+const PREVENTION = ['Staff refresher training scheduled', 'SOP updated', 'Double-check process introduced', 'Equipment maintenance plan reviewed', 'Staffing levels to be reviewed', 'Safety walkthrough initiated'];
 
 // ── Main seeder ───────────────────────────────────────────────────────────────
 async function seed() {
@@ -115,10 +115,10 @@ async function seed() {
   const { rows: users } = await db.query(`SELECT id, full_name, role FROM users ORDER BY role`);
   if (!users.length) { console.error('❌  No users found. Please create users first.'); process.exit(1); }
 
-  const cashiers  = users.filter(u => ['cashier','principal_cashier'].includes(u.role));
-  const reporters = users.filter(u => ['operations_staff','customer_care','cashier','principal_cashier'].includes(u.role));
-  const managers  = users.filter(u => ['sales_manager','deputy_coo'].includes(u.role));
-  const coos      = users.filter(u => ['coo','chairman','admin'].includes(u.role));
+  const cashiers = users.filter(u => ['cashier', 'principal_cashier'].includes(u.role));
+  const reporters = users.filter(u => ['operations_staff', 'customer_care', 'cashier', 'principal_cashier'].includes(u.role));
+  const managers = users.filter(u => ['sales_manager', 'deputy_coo'].includes(u.role));
+  const coos = users.filter(u => ['coo', 'chairman', 'admin'].includes(u.role));
 
   // Fallback: use any user if roles are limited
   const anyUser = (arr) => arr.length ? arr : users;
@@ -131,14 +131,14 @@ async function seed() {
   console.log('📄  Seeding 30 cancellations...');
   let cancCount = 0;
   for (let i = 0; i < 30; i++) {
-    const patient   = pick(PATIENTS);
-    const cashier   = pick(anyUser(cashiers));
-    const manager   = pick(anyUser(managers));
-    const coo       = pick(anyUser(coos));
-    const status    = pick(STATUSES_CANC);
-    const amount    = rwf(5, 200);
-    const txDate    = `2025-${String(range(1,12)).padStart(2,'0')}-${String(range(1,28)).padStart(2,'0')}`;
-    const rectDate  = `2026-${String(range(1,4)).padStart(2,'0')}-${String(range(1,15)).padStart(2,'0')}`;
+    const patient = pick(PATIENTS);
+    const cashier = pick(anyUser(cashiers));
+    const manager = pick(anyUser(managers));
+    const coo = pick(anyUser(coos));
+    const status = pick(STATUSES_CANC);
+    const amount = rwf(5, 200);
+    const txDate = `2025-${String(range(1, 12)).padStart(2, '0')}-${String(range(1, 28)).padStart(2, '0')}`;
+    const rectDate = `2026-${String(range(1, 4)).padStart(2, '0')}-${String(range(1, 15)).padStart(2, '0')}`;
 
     const sql = `
       INSERT INTO cancellation_requests (
@@ -158,18 +158,18 @@ async function seed() {
         datetime('now', '-' || $23 || ' days')
       )`;
 
-    const verifiedBy  = ['verified','approved','rejected'].includes(status) ? manager.id : null;
-    const verifiedAt  = verifiedBy ? `datetime('now', '-5 days')` : null;
-    const approvedBy  = status === 'approved' ? coo.id : null;
-    const rejectedBy  = status === 'rejected' ? coo.id : null;
-    const rejComment  = status === 'rejected' ? 'Request reviewed and denied — insufficient justification provided.' : null;
+    const verifiedBy = ['verified', 'approved', 'rejected'].includes(status) ? manager.id : null;
+    const verifiedAt = verifiedBy ? `datetime('now', '-5 days')` : null;
+    const approvedBy = status === 'approved' ? coo.id : null;
+    const rejectedBy = status === 'rejected' ? coo.id : null;
+    const rejComment = status === 'rejected' ? 'Request reviewed and denied — insufficient justification provided.' : null;
 
     await db.query(sql, [
       patient.name, patient.pid,
-      `SID-OLD-${pad(i+1)}`, `SID-NEW-${pad(i+1)}`,
-      `07${range(20,99)}${range(100000,999999)}`,
+      `SID-OLD-${pad(i + 1)}`, `SID-NEW-${pad(i + 1)}`,
+      `07${range(20, 99)}${range(100000, 999999)}`,
       pick(PAYERS), amount,
-      `RCPT-OLD-${pad(i+1)}`, `RCPT-NEW-${pad(i+1)}`,
+      `RCPT-OLD-${pad(i + 1)}`, `RCPT-NEW-${pad(i + 1)}`,
       txDate, rectDate,
       CANC_REASONS[i % CANC_REASONS.length],
       cashier.id, status,
@@ -186,16 +186,16 @@ async function seed() {
   console.log('💰  Seeding 10 refunds...');
   let refundCount = 0;
   for (let i = 0; i < 10; i++) {
-    const patient  = pick(PATIENTS);
-    const cashier  = pick(anyUser(cashiers));
-    const manager  = pick(anyUser(managers));
-    const coo      = pick(anyUser(coos));
-    const status   = pick(STATUSES_REFUND);
-    const total    = rwf(10, 150);
-    const refund   = Math.floor(total * pick([0.5, 0.75, 1.0]));
-    const txDate   = `2026-${String(range(1,4)).padStart(2,'0')}-${String(range(1,14)).padStart(2,'0')}`;
+    const patient = pick(PATIENTS);
+    const cashier = pick(anyUser(cashiers));
+    const manager = pick(anyUser(managers));
+    const coo = pick(anyUser(coos));
+    const status = pick(STATUSES_REFUND);
+    const total = rwf(10, 150);
+    const refund = Math.floor(total * pick([0.5, 0.75, 1.0]));
+    const txDate = `2026-${String(range(1, 4)).padStart(2, '0')}-${String(range(1, 14)).padStart(2, '0')}`;
 
-    const verifiedBy = ['verified','approved','rejected'].includes(status) ? manager.id : null;
+    const verifiedBy = ['verified', 'approved', 'rejected'].includes(status) ? manager.id : null;
     const approvedBy = status === 'approved' ? coo.id : null;
     const rejectedBy = status === 'rejected' ? coo.id : null;
     const rejComment = status === 'rejected' ? 'Refund request rejected — insufficient supporting documentation.' : null;
@@ -218,10 +218,10 @@ async function seed() {
         datetime('now', '-' || $22 || ' days'),
         datetime('now', '-' || $23 || ' days')
       )`, [
-      patient.name, patient.pid, `SID-${pad(i+100)}`,
-      `07${range(20,99)}${range(100000,999999)}`, pick(PAYERS),
-      `*182*8*1*${range(100000,999999)}#`, total, refund,
-      pick(PAYMENT_MODES), `RCPT-REF-${pad(i+1)}`,
+      patient.name, patient.pid, `SID-${pad(i + 100)}`,
+      `07${range(20, 99)}${range(100000, 999999)}`, pick(PAYERS),
+      `*182*8*1*${range(100000, 999999)}#`, total, refund,
+      pick(PAYMENT_MODES), `RCPT-REF-${pad(i + 1)}`,
       txDate, REFUND_REASONS[i % REFUND_REASONS.length],
       cashier.id, status,
       verifiedBy, verifiedBy ? 'now' : null,
@@ -237,11 +237,11 @@ async function seed() {
   console.log('🚨  Seeding 10 incidents...');
   let incCount = 0;
   for (let i = 0; i < 10; i++) {
-    const reporter  = pick(anyUser(reporters));
-    const reviewer  = pick(anyUser(coos.concat(anyUser(managers))));
+    const reporter = pick(anyUser(reporters));
+    const reviewer = pick(anyUser(coos.concat(anyUser(managers))));
     const [type, description] = INCIDENTS[i % INCIDENTS.length];
-    const status    = pick(STATUSES_INC);
-    const patient   = pick(PATIENTS);
+    const status = pick(STATUSES_INC);
+    const patient = pick(PATIENTS);
 
     const reviewedBy = status === 'reviewed' ? reviewer.id : null;
     const reviewComment = reviewedBy ? 'Reviewed by QA. Corrective actions logged and communicated to department head.' : null;

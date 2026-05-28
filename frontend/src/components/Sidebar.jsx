@@ -45,8 +45,13 @@ const Sidebar = ({ onClose }) => {
     return hasPermission(item.requiredPerm.mod, item.requiredPerm.act);
   });
 
-  const isActive = (path) =>
-    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    if (path === '/nursing-hub') {
+      return location.pathname === '/nursing-hub' || location.pathname.startsWith('/nursing-hub/inventory');
+    }
+    return location.pathname.startsWith(path);
+  };
 
   const linkStyle = (path) => ({
     display: 'flex',
