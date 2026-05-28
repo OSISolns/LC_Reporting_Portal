@@ -641,7 +641,7 @@ export default function DailyOperationalReport() {
                           <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-3 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                             <span className="flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-sky-300" />
-                              {provider.title ? `${provider.title} ` : ''}{provider.name}
+                              {provider.name}
                             </span>
                           </td>
                           <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
