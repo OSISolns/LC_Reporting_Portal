@@ -122,17 +122,17 @@ const client = createClient({
         'DENTAL',
         'PHYSIO'
       ];
-      
+
       for (const dept of initialDepartments) {
         await client.execute({
           sql: "INSERT INTO departments (name) VALUES (?) ON CONFLICT (name) DO NOTHING",
           args: [dept]
         });
       }
-      
+
       const { rows: dbDepts } = await client.execute("SELECT id, name FROM departments");
       const deptMap = dbDepts.reduce((acc, d) => ({ ...acc, [d.name]: d.id }), {});
-      
+
       console.log('🌱 Seeding initial providers for nursing report matching reference image...');
       const initialProviders = [
         // GYNECOLOGY
@@ -188,7 +188,7 @@ const client = createClient({
         { name: 'Dr Kanyabutembo Noella', title: 'Dr', dept: 'CHIRO' },
 
         // Mental Health
-        { name: 'Innocent Nseng(Sante M.)', title: '', dept: 'Mental Health' },
+        { name: 'Innocent Nsengiyumva', title: '', dept: 'Mental Health' },
 
         // DENTAL
         { name: 'Dr NYIRANEZA Esperence', title: 'Dr', dept: 'DENTAL' },
@@ -211,7 +211,7 @@ const client = createClient({
         { name: 'Miss UWAMAHORO Sarah', title: 'Miss', dept: 'PHYSIO' },
         { name: 'INGABIRE J. Paul', title: '', dept: 'PHYSIO' }
       ];
-      
+
       for (const p of initialProviders) {
         await client.execute({
           sql: "INSERT INTO providers (name, title, department_id) VALUES (?, ?, ?)",
@@ -233,7 +233,7 @@ const client = createClient({
  */
 const transformQuery = (sql, params) => {
   let transformedSql = sql;
-  
+
   // 1. Convert $n placeholders to ?
   // Postgres uses $1, $2... while SQLite uses ?
   transformedSql = transformedSql.replace(/\$\d+/g, '?');
@@ -256,7 +256,7 @@ const query = async (sql, params = []) => {
   try {
     const { sql: transformedSql, args } = transformQuery(sql, params);
     const result = await client.execute({ sql: transformedSql, args });
-    
+
     // Auto-fix SQLite date strings to ISO UTC format for frontend compatibility
     const rows = result.rows.map(row => {
       const newRow = { ...row };
