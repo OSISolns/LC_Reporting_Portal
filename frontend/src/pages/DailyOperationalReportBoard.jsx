@@ -253,12 +253,10 @@ export default function DailyOperationalReportBoard() {
       sheet1.views = [{ showGridLines: true }];
       
       // Set columns widths
-      sheet1.columns = [
-        { header: '', key: 'name', width: 28 },
-        { header: '', key: 'title', width: 20 },
-        { header: '', key: 'dept', width: 24 },
-        { header: '', key: 'count', width: 18 }
-      ];
+      sheet1.getColumn(1).width = 28;
+      sheet1.getColumn(2).width = 20;
+      sheet1.getColumn(3).width = 24;
+      sheet1.getColumn(4).width = 18;
       
       // Header Block (Corporate Navy Blue Theme)
       const titleCell = sheet1.getCell('A1');
@@ -325,10 +323,14 @@ export default function DailyOperationalReportBoard() {
         }
       }
       
-      // Table Header
+      // Table Header Row 8
       const headerRow = sheet1.getRow(8);
-      headerRow.values = ['Staff Specialist', 'Title / Role', 'Specialty Department', 'Patients Consulted'];
       headerRow.height = 25;
+      headerRow.getCell(1).value = 'Staff Specialist';
+      headerRow.getCell(2).value = 'Title / Role';
+      headerRow.getCell(3).value = 'Specialty Department';
+      headerRow.getCell(4).value = 'Patients Consulted';
+      
       for (let c = 1; c <= 4; c++) {
         const cell = headerRow.getCell(c);
         cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
@@ -343,21 +345,19 @@ export default function DailyOperationalReportBoard() {
       let currentRow = 9;
       config.providers.forEach(p => {
         const count = dailyMetrics[p.id] || 0;
-        sheet1.addRow({
-          name: p.name,
-          title: p.title || 'Specialist',
-          dept: p.department_name || 'OTHER',
-          count: count
-        });
-        
         const r = sheet1.getRow(currentRow);
         r.height = 20;
+        r.getCell(1).value = p.name;
+        r.getCell(2).value = p.title || 'Specialist';
+        r.getCell(3).value = p.department_name || 'OTHER';
+        r.getCell(4).value = count;
+        
         for (let col = 1; col <= 4; col++) {
           const cell = r.getCell(col);
           cell.font = { name: 'Calibri', size: 10 };
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
           if (col === 4) {
-            cell.alignment = { horizontal: 'right' };
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
             if (count > 0) {
               cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
             }
@@ -383,17 +383,16 @@ export default function DailyOperationalReportBoard() {
           bottom: { style: 'double', color: { argb: '1B365D' } }
         };
         if (col === 4) {
-          cell.alignment = { horizontal: 'right' };
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
         }
       }
       
       // SHEET 2: Procedures & Logs
       const sheet2 = workbook.addWorksheet('Procedures & Logs');
       sheet2.views = [{ showGridLines: true }];
-      sheet2.columns = [
-        { header: 'Clinical Metric / Nursing Log', key: 'metric', width: 45 },
-        { header: 'Value / Assignee', key: 'value', width: 35 }
-      ];
+      
+      sheet2.getColumn(1).width = 45;
+      sheet2.getColumn(2).width = 35;
       
       // Title
       const titleCell2 = sheet2.getCell('A1');
@@ -416,6 +415,9 @@ export default function DailyOperationalReportBoard() {
       
       const headerRow2 = sheet2.getRow(4);
       headerRow2.height = 25;
+      headerRow2.getCell(1).value = 'Clinical Metric / Nursing Log';
+      headerRow2.getCell(2).value = 'Value / Assignee';
+      
       for (let c = 1; c <= 2; c++) {
         const cell = headerRow2.getCell(c);
         cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
@@ -433,13 +435,10 @@ export default function DailyOperationalReportBoard() {
         const isNameInput = mName.toLowerCase().includes('assistant');
         const numVal = isNameInput ? val : (parseInt(val, 10) || 0);
         
-        sheet2.addRow({
-          metric: mName,
-          value: numVal
-        });
-        
         const r = sheet2.getRow(currentRow2);
         r.height = 22;
+        r.getCell(1).value = mName;
+        r.getCell(2).value = numVal;
         
         const c1 = r.getCell(1);
         c1.font = { name: 'Calibri', size: 10, bold: true };
@@ -449,7 +448,7 @@ export default function DailyOperationalReportBoard() {
         c2.font = { name: 'Calibri', size: 10 };
         c2.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
         if (!isNameInput) {
-          c2.alignment = { horizontal: 'right' };
+          c2.alignment = { horizontal: 'right', vertical: 'middle' };
           c2.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
         } else {
           c2.font = { name: 'Calibri', size: 10, italic: true };
@@ -471,6 +470,18 @@ export default function DailyOperationalReportBoard() {
     }
   };
 
+  // Helper helper to convert numeric column index to Excel column letter
+  const getColumnLetter = (colIndex) => {
+    let temp = colIndex;
+    let letter = '';
+    while (temp > 0) {
+      let modulo = (temp - 1) % 26;
+      letter = String.fromCharCode(65 + modulo) + letter;
+      temp = Math.floor((temp - modulo) / 26);
+    }
+    return letter;
+  };
+
   // Premium Client-Side Excel Export for Monthly Matrix
   const handleExportMonthlyXlsx = async () => {
     try {
@@ -488,17 +499,15 @@ export default function DailyOperationalReportBoard() {
       
       // Configure dynamic columns
       const days = getDaysArray();
-      const columns = [
-        { header: 'Staff Specialist', key: 'name', width: 28 },
-        { header: 'Specialty / Department', key: 'dept', width: 24 }
-      ];
-      days.forEach(day => {
-        columns.push({ header: String(day), key: `day_${day}`, width: 6 });
-      });
-      columns.push({ header: 'TOTAL', key: 'total', width: 12 });
-      sheet.columns = columns;
-      
       const totalCols = 2 + days.length + 1;
+      
+      // Set Column Widths directly to prevent header offset conflicts
+      sheet.getColumn(1).width = 28;
+      sheet.getColumn(2).width = 24;
+      days.forEach(day => {
+        sheet.getColumn(2 + day).width = 6;
+      });
+      sheet.getColumn(totalCols).width = 12;
       
       // Title Block
       const titleCell = sheet.getCell('A1');
@@ -523,6 +532,13 @@ export default function DailyOperationalReportBoard() {
       const headerRow = sheet.getRow(4);
       headerRow.height = 28;
       
+      headerRow.getCell(1).value = 'Staff Specialist';
+      headerRow.getCell(2).value = 'Specialty / Department';
+      days.forEach(day => {
+        headerRow.getCell(2 + day).value = day;
+      });
+      headerRow.getCell(totalCols).value = 'TOTAL';
+      
       for (let c = 1; c <= totalCols; c++) {
         const cell = headerRow.getCell(c);
         cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
@@ -539,25 +555,32 @@ export default function DailyOperationalReportBoard() {
       let currentRow = 5;
       const startRowProviders = 5;
       
+      // Filter providers to match EXACTLY what's on the screen
+      const filteredProviders = config.providers.filter(p => {
+        if (monthlyDeptFilter !== 'ALL' && p.department_name !== monthlyDeptFilter) return false;
+        if (monthlySearchQuery.trim() !== '') {
+          const query = monthlySearchQuery.toLowerCase();
+          return p.name.toLowerCase().includes(query) || (p.department_name && p.department_name.toLowerCase().includes(query));
+        }
+        return true;
+      });
+      
       // Providers Row Insertion
-      config.providers.forEach(provider => {
+      filteredProviders.forEach(provider => {
         const deptName = provider.department_name || 'OTHER';
-        const rowData = {
-          name: provider.name,
-          dept: deptName
-        };
+        const r = sheet.getRow(currentRow);
+        r.height = 20;
+        r.getCell(1).value = provider.name;
+        r.getCell(2).value = deptName;
         
         days.forEach(day => {
           const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const record = monthlyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
-          rowData[`day_${day}`] = record ? record.patient_count : 0;
+          r.getCell(2 + day).value = record ? record.patient_count : 0;
         });
         
-        const startColLetter = sheet.getColumn(3).letter;
-        const endColLetter = sheet.getColumn(2 + days.length).letter;
-        
-        const r = sheet.addRow(rowData);
-        r.height = 20;
+        const startColLetter = getColumnLetter(3);
+        const endColLetter = getColumnLetter(2 + days.length);
         
         // Dynamic Excel Formula for Row SUM
         r.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${currentRow}:${endColLetter}${currentRow})` };
@@ -567,7 +590,7 @@ export default function DailyOperationalReportBoard() {
           cell.font = { name: 'Calibri', size: 10 };
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
           if (col > 2) {
-            cell.alignment = { horizontal: 'center' };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
             const val = cell.value;
             if (col === totalCols) {
               cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
@@ -583,7 +606,7 @@ export default function DailyOperationalReportBoard() {
         currentRow++;
       });
       
-      const endRowProviders = currentRow - 1;
+      const endRowProviders = Math.max(startRowProviders, currentRow - 1);
       
       // Divider
       const dividerRow = sheet.getRow(currentRow);
@@ -600,26 +623,32 @@ export default function DailyOperationalReportBoard() {
       
       const startRowProcedures = currentRow;
       
+      // Filter procedures to match EXACTLY what's on the screen
+      const filteredProcedures = config.defaultProcedureMetrics.filter(metricName => {
+        if (monthlyDeptFilter !== 'ALL') return false; 
+        if (monthlySearchQuery.trim() !== '') {
+          return metricName.toLowerCase().includes(monthlySearchQuery.toLowerCase());
+        }
+        return true;
+      });
+      
       // Procedure Rows Insertion
-      config.defaultProcedureMetrics.forEach(metricName => {
+      filteredProcedures.forEach(metricName => {
         const isNameInput = metricName.toLowerCase().includes('assistant');
-        const rowData = {
-          name: metricName,
-          dept: 'PROCEDURES'
-        };
+        const r = sheet.getRow(currentRow);
+        r.height = 20;
+        r.getCell(1).value = metricName;
+        r.getCell(2).value = 'PROCEDURES';
         
         days.forEach(day => {
           const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const record = monthlyData.logs.find(l => l.metric_name === metricName && l.report_date === dateStr);
           const val = record ? record.metric_value : '0';
-          rowData[`day_${day}`] = isNameInput ? val : (parseInt(val, 10) || 0);
+          r.getCell(2 + day).value = isNameInput ? val : (parseInt(val, 10) || 0);
         });
         
-        const startColLetter = sheet.getColumn(3).letter;
-        const endColLetter = sheet.getColumn(2 + days.length).letter;
-        
-        const r = sheet.addRow(rowData);
-        r.height = 20;
+        const startColLetter = getColumnLetter(3);
+        const endColLetter = getColumnLetter(2 + days.length);
         
         if (!isNameInput) {
           r.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${currentRow}:${endColLetter}${currentRow})` };
@@ -632,7 +661,7 @@ export default function DailyOperationalReportBoard() {
           cell.font = { name: 'Calibri', size: 10 };
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
           if (col > 2) {
-            cell.alignment = { horizontal: 'center' };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
             const val = cell.value;
             if (col === totalCols) {
               cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '555555' } };
@@ -654,6 +683,8 @@ export default function DailyOperationalReportBoard() {
         currentRow++;
       });
       
+      const endRowProcedures = Math.max(startRowProcedures, currentRow - 1);
+      
       // Bottom Total row using SUM columns formula dynamically
       const totalSumRow = sheet.getRow(currentRow);
       totalSumRow.height = 26;
@@ -662,11 +693,11 @@ export default function DailyOperationalReportBoard() {
       
       for (let d = 1; d <= days.length; d++) {
         const colIndex = 2 + d;
-        const colLetter = sheet.getColumn(colIndex).letter;
+        const colLetter = getColumnLetter(colIndex);
         totalSumRow.getCell(colIndex).value = { formula: `=SUM(${colLetter}${startRowProviders}:${colLetter}${endRowProviders})` };
       }
       
-      const totalColLetter = sheet.getColumn(totalCols).letter;
+      const totalColLetter = getColumnLetter(totalCols);
       totalSumRow.getCell(totalCols).value = { formula: `=SUM(${totalColLetter}${startRowProviders}:${totalColLetter}${endRowProviders})` };
       
       for (let col = 1; col <= totalCols; col++) {
@@ -678,7 +709,7 @@ export default function DailyOperationalReportBoard() {
           bottom: { style: 'double', color: { argb: '1B365D' } }
         };
         if (col > 2) {
-          cell.alignment = { horizontal: 'center' };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
           if (col === totalCols) {
             cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
           }
