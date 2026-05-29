@@ -241,6 +241,463 @@ export default function DailyOperationalReportBoard() {
     }
   };
 
+  // Premium Client-Side Excel Export for Daily Summaries
+  const handleExportDailyXlsx = async () => {
+    try {
+      toast.loading("Generating daily Excel workbook...", { id: 'excel-toast' });
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      
+      // SHEET 1: Consultations
+      const sheet1 = workbook.addWorksheet('Consultations');
+      sheet1.views = [{ showGridLines: true }];
+      
+      // Set columns widths
+      sheet1.columns = [
+        { header: '', key: 'name', width: 28 },
+        { header: '', key: 'title', width: 20 },
+        { header: '', key: 'dept', width: 24 },
+        { header: '', key: 'count', width: 18 }
+      ];
+      
+      // Header Block (Corporate Navy Blue Theme)
+      const titleCell = sheet1.getCell('A1');
+      titleCell.value = 'LEGACY CLINICS & DIAGNOSTICS';
+      sheet1.mergeCells('A1:D1');
+      titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet1.getRow(1).height = 35;
+      
+      const subCell = sheet1.getCell('A2');
+      subCell.value = 'DAILY OUTPATIENT CONSULTATION REPORT';
+      sheet1.mergeCells('A2:D2');
+      subCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4A90E2' } };
+      subCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet1.getRow(2).height = 25;
+      
+      const dateCell = sheet1.getCell('A3');
+      dateCell.value = `Report Date: ${selectedDate}`;
+      sheet1.mergeCells('A3:D3');
+      dateCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '555555' } };
+      dateCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet1.getRow(3).height = 20;
+      
+      sheet1.getRow(4).height = 15;
+      
+      // KPI Cards Block (Row 5-6)
+      sheet1.getCell('A5').value = 'Outpatients Seen';
+      sheet1.getCell('A6').value = kpis.totalPatients;
+      
+      sheet1.getCell('B5').value = 'Top Specialty Department';
+      sheet1.getCell('B6').value = `${kpis.maxDeptName} (${kpis.maxDeptCount})`;
+      
+      sheet1.getCell('C5').value = 'Total Clinical Logs';
+      sheet1.getCell('C6').value = kpis.procedureCount;
+      
+      sheet1.mergeCells('C5:D5');
+      sheet1.mergeCells('C6:D6');
+      
+      ['A5', 'B5', 'C5'].forEach(cellRef => {
+        const c = sheet1.getCell(cellRef);
+        c.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '555555' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F4F8' } };
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+      
+      ['A6', 'B6', 'C6'].forEach(cellRef => {
+        const c = sheet1.getCell(cellRef);
+        c.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '1B365D' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F4F8' } };
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+      
+      const kpiBorder = {
+        top: { style: 'thin', color: { argb: 'CCCCCC' } },
+        bottom: { style: 'thin', color: { argb: 'CCCCCC' } },
+        left: { style: 'thin', color: { argb: 'CCCCCC' } },
+        right: { style: 'thin', color: { argb: 'CCCCCC' } }
+      };
+      for (let r = 5; r <= 6; r++) {
+        for (let c = 1; c <= 4; c++) {
+          sheet1.getCell(r, c).border = kpiBorder;
+        }
+      }
+      
+      // Table Header
+      const headerRow = sheet1.getRow(8);
+      headerRow.values = ['Staff Specialist', 'Title / Role', 'Specialty Department', 'Patients Consulted'];
+      headerRow.height = 25;
+      for (let c = 1; c <= 4; c++) {
+        const cell = headerRow.getCell(c);
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+        cell.alignment = { horizontal: c === 4 ? 'right' : 'left', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '1B365D' } },
+          bottom: { style: 'medium', color: { argb: '1B365D' } }
+        };
+      }
+      
+      let currentRow = 9;
+      config.providers.forEach(p => {
+        const count = dailyMetrics[p.id] || 0;
+        sheet1.addRow({
+          name: p.name,
+          title: p.title || 'Specialist',
+          dept: p.department_name || 'OTHER',
+          count: count
+        });
+        
+        const r = sheet1.getRow(currentRow);
+        r.height = 20;
+        for (let col = 1; col <= 4; col++) {
+          const cell = r.getCell(col);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+          if (col === 4) {
+            cell.alignment = { horizontal: 'right' };
+            if (count > 0) {
+              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
+            }
+          }
+        }
+        currentRow++;
+      });
+      
+      // Total Row with dynamic SUM formula
+      const totalRow = sheet1.getRow(currentRow);
+      totalRow.height = 25;
+      totalRow.getCell(1).value = 'TOTAL OUTPATIENTS CONSULTED';
+      totalRow.getCell(4).value = { formula: `=SUM(D9:D${currentRow - 1})` };
+      
+      sheet1.mergeCells(`A${currentRow}:C${currentRow}`);
+      
+      for (let col = 1; col <= 4; col++) {
+        const cell = totalRow.getCell(col);
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '1B365D' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'ECF2F9' } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '1B365D' } },
+          bottom: { style: 'double', color: { argb: '1B365D' } }
+        };
+        if (col === 4) {
+          cell.alignment = { horizontal: 'right' };
+        }
+      }
+      
+      // SHEET 2: Procedures & Logs
+      const sheet2 = workbook.addWorksheet('Procedures & Logs');
+      sheet2.views = [{ showGridLines: true }];
+      sheet2.columns = [
+        { header: 'Clinical Metric / Nursing Log', key: 'metric', width: 45 },
+        { header: 'Value / Assignee', key: 'value', width: 35 }
+      ];
+      
+      // Title
+      const titleCell2 = sheet2.getCell('A1');
+      titleCell2.value = 'LEGACY CLINICS & DIAGNOSTICS';
+      sheet2.mergeCells('A1:B1');
+      titleCell2.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
+      titleCell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+      titleCell2.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet2.getRow(1).height = 35;
+      
+      const subCell2 = sheet2.getCell('A2');
+      subCell2.value = `DAILY OPERATIONAL PROCEDURES & LOGS (${selectedDate})`;
+      sheet2.mergeCells('A2:B2');
+      subCell2.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+      subCell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4A90E2' } };
+      subCell2.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet2.getRow(2).height = 25;
+      
+      sheet2.getRow(3).height = 15;
+      
+      const headerRow2 = sheet2.getRow(4);
+      headerRow2.height = 25;
+      for (let c = 1; c <= 2; c++) {
+        const cell = headerRow2.getCell(c);
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '1B365D' } },
+          bottom: { style: 'medium', color: { argb: '1B365D' } }
+        };
+      }
+      
+      let currentRow2 = 5;
+      config.defaultProcedureMetrics.forEach(mName => {
+        const val = dailyLogs[mName] || '';
+        const isNameInput = mName.toLowerCase().includes('assistant');
+        const numVal = isNameInput ? val : (parseInt(val, 10) || 0);
+        
+        sheet2.addRow({
+          metric: mName,
+          value: numVal
+        });
+        
+        const r = sheet2.getRow(currentRow2);
+        r.height = 22;
+        
+        const c1 = r.getCell(1);
+        c1.font = { name: 'Calibri', size: 10, bold: true };
+        c1.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+        
+        const c2 = r.getCell(2);
+        c2.font = { name: 'Calibri', size: 10 };
+        c2.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+        if (!isNameInput) {
+          c2.alignment = { horizontal: 'right' };
+          c2.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+        } else {
+          c2.font = { name: 'Calibri', size: 10, italic: true };
+        }
+        currentRow2++;
+      });
+      
+      // Save and Download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Daily_Operational_Report_${selectedDate}.xlsx`;
+      link.click();
+      toast.success("Excel exported successfully!", { id: 'excel-toast' });
+    } catch (err) {
+      console.error("Excel generation failed:", err);
+      toast.error("Failed to generate Excel workbook.", { id: 'excel-toast' });
+    }
+  };
+
+  // Premium Client-Side Excel Export for Monthly Matrix
+  const handleExportMonthlyXlsx = async () => {
+    try {
+      if (!monthlyData) {
+        toast.error("No monthly matrix dataset is loaded.");
+        return;
+      }
+      
+      toast.loading("Generating monthly Excel matrix workbook...", { id: 'excel-toast' });
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      
+      const sheet = workbook.addWorksheet('Monthly Matrix');
+      sheet.views = [{ showGridLines: true }];
+      
+      // Configure dynamic columns
+      const days = getDaysArray();
+      const columns = [
+        { header: 'Staff Specialist', key: 'name', width: 28 },
+        { header: 'Specialty / Department', key: 'dept', width: 24 }
+      ];
+      days.forEach(day => {
+        columns.push({ header: String(day), key: `day_${day}`, width: 6 });
+      });
+      columns.push({ header: 'TOTAL', key: 'total', width: 12 });
+      sheet.columns = columns;
+      
+      const totalCols = 2 + days.length + 1;
+      
+      // Title Block
+      const titleCell = sheet.getCell('A1');
+      titleCell.value = 'LEGACY CLINICS & DIAGNOSTICS';
+      sheet.mergeCells(1, 1, 1, totalCols);
+      titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(1).height = 35;
+      
+      const subCell = sheet.getCell('A2');
+      subCell.value = `INSTITUTIONAL MONTHLY OPERATIONAL MATRIX (Period: ${selectedMonth}/${selectedYear})`;
+      sheet.mergeCells(2, 1, 2, totalCols);
+      subCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4A90E2' } };
+      subCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(2).height = 25;
+      
+      sheet.getRow(3).height = 15;
+      
+      // Table Header Row 4
+      const headerRow = sheet.getRow(4);
+      headerRow.height = 28;
+      
+      for (let c = 1; c <= totalCols; c++) {
+        const cell = headerRow.getCell(c);
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+        cell.alignment = { horizontal: c > 2 ? 'center' : 'left', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '1B365D' } },
+          bottom: { style: 'medium', color: { argb: '1B365D' } },
+          left: { style: 'thin', color: { argb: '4F81BD' } },
+          right: { style: 'thin', color: { argb: '4F81BD' } }
+        };
+      }
+      
+      let currentRow = 5;
+      const startRowProviders = 5;
+      
+      // Providers Row Insertion
+      config.providers.forEach(provider => {
+        const deptName = provider.department_name || 'OTHER';
+        const rowData = {
+          name: provider.name,
+          dept: deptName
+        };
+        
+        days.forEach(day => {
+          const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const record = monthlyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
+          rowData[`day_${day}`] = record ? record.patient_count : 0;
+        });
+        
+        const startColLetter = sheet.getColumn(3).letter;
+        const endColLetter = sheet.getColumn(2 + days.length).letter;
+        
+        const r = sheet.addRow(rowData);
+        r.height = 20;
+        
+        // Dynamic Excel Formula for Row SUM
+        r.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${currentRow}:${endColLetter}${currentRow})` };
+        
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = r.getCell(col);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center' };
+            const val = cell.value;
+            if (col === totalCols) {
+              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
+            } else if (typeof val === 'number' && val > 0) {
+              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
+            } else if (val === 0) {
+              cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
+              cell.value = '-';
+            }
+          }
+        }
+        currentRow++;
+      });
+      
+      const endRowProviders = currentRow - 1;
+      
+      // Divider
+      const dividerRow = sheet.getRow(currentRow);
+      dividerRow.height = 22;
+      dividerRow.getCell(1).value = 'NURSING AND WARD PROCEDURES';
+      sheet.mergeCells(currentRow, 1, currentRow, totalCols);
+      for (let c = 1; c <= totalCols; c++) {
+        const cell = dividerRow.getCell(c);
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EBF3FD' } };
+        cell.border = { bottom: { style: 'thin', color: { argb: 'CAD9EA' } } };
+      }
+      currentRow++;
+      
+      const startRowProcedures = currentRow;
+      
+      // Procedure Rows Insertion
+      config.defaultProcedureMetrics.forEach(metricName => {
+        const isNameInput = metricName.toLowerCase().includes('assistant');
+        const rowData = {
+          name: metricName,
+          dept: 'PROCEDURES'
+        };
+        
+        days.forEach(day => {
+          const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const record = monthlyData.logs.find(l => l.metric_name === metricName && l.report_date === dateStr);
+          const val = record ? record.metric_value : '0';
+          rowData[`day_${day}`] = isNameInput ? val : (parseInt(val, 10) || 0);
+        });
+        
+        const startColLetter = sheet.getColumn(3).letter;
+        const endColLetter = sheet.getColumn(2 + days.length).letter;
+        
+        const r = sheet.addRow(rowData);
+        r.height = 20;
+        
+        if (!isNameInput) {
+          r.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${currentRow}:${endColLetter}${currentRow})` };
+        } else {
+          r.getCell(totalCols).value = 'N/A';
+        }
+        
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = r.getCell(col);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center' };
+            const val = cell.value;
+            if (col === totalCols) {
+              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '555555' } };
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F5F5F5' } };
+            } else if (isNameInput) {
+              cell.font = { name: 'Calibri', size: 9, italic: true };
+              if (val === '0' || val === '') {
+                cell.value = '-';
+                cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
+              }
+            } else if (typeof val === 'number' && val > 0) {
+              cell.font = { name: 'Calibri', size: 10, bold: true };
+            } else if (val === 0) {
+              cell.value = '-';
+              cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
+            }
+          }
+        }
+        currentRow++;
+      });
+      
+      // Bottom Total row using SUM columns formula dynamically
+      const totalSumRow = sheet.getRow(currentRow);
+      totalSumRow.height = 26;
+      totalSumRow.getCell(1).value = 'TOTAL COMPLETED PATIENTS';
+      sheet.mergeCells(currentRow, 1, currentRow, 2);
+      
+      for (let d = 1; d <= days.length; d++) {
+        const colIndex = 2 + d;
+        const colLetter = sheet.getColumn(colIndex).letter;
+        totalSumRow.getCell(colIndex).value = { formula: `=SUM(${colLetter}${startRowProviders}:${colLetter}${endRowProviders})` };
+      }
+      
+      const totalColLetter = sheet.getColumn(totalCols).letter;
+      totalSumRow.getCell(totalCols).value = { formula: `=SUM(${totalColLetter}${startRowProviders}:${totalColLetter}${endRowProviders})` };
+      
+      for (let col = 1; col <= totalCols; col++) {
+        const cell = totalSumRow.getCell(col);
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '1B365D' } },
+          bottom: { style: 'double', color: { argb: '1B365D' } }
+        };
+        if (col > 2) {
+          cell.alignment = { horizontal: 'center' };
+          if (col === totalCols) {
+            cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
+          }
+        }
+      }
+      
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Monthly_Operational_Matrix_${selectedMonth}_${selectedYear}.xlsx`;
+      link.click();
+      toast.success("Excel exported successfully!", { id: 'excel-toast' });
+    } catch (err) {
+      console.error("Excel matrix generation failed:", err);
+      toast.error("Failed to generate Excel matrix workbook.", { id: 'excel-toast' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 space-y-8 select-none">
       
@@ -339,6 +796,13 @@ export default function DailyOperationalReportBoard() {
                 className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-sky-500 to-sky-600 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-sky-500/20 active:scale-95 transition"
               >
                 <Download size={15} /> Download PDF
+              </button>
+
+              <button
+                onClick={handleExportDailyXlsx}
+                className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-emerald-500/20 active:scale-95 transition"
+              >
+                <FileSpreadsheet size={15} /> Export Excel
               </button>
             </div>
           </div>
@@ -572,6 +1036,13 @@ export default function DailyOperationalReportBoard() {
                 className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-sky-500 to-sky-600 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-sky-500/20 active:scale-95 transition w-full md:w-auto"
               >
                 <Download size={15} /> Download PDF
+              </button>
+
+              <button
+                onClick={handleExportMonthlyXlsx}
+                className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-emerald-500/20 active:scale-95 transition w-full md:w-auto"
+              >
+                <FileSpreadsheet size={15} /> Export Excel
               </button>
             </div>
           </div>
