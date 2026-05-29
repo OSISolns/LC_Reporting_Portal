@@ -212,9 +212,23 @@ exports.saveObservation = async (req, res) => {
         return res.status(403).json({ success: false, message: 'This clinical sheet is already verified and locked.' });
       }
 
-      result = await ClinicalObservation.update(patientId, queue_id, { ...req.body, isReviewer: req.user.role === 'reviewer' }, req.user);
+      const statusToSave = req.body.status || existing.status || 'Draft';
+
+      // Only Chef Nurses can verify or keep a clinical sheet in verified status
+      if (statusToSave === 'Verified' && req.user.role !== 'chef-nurse') {
+        return res.status(403).json({ success: false, message: 'Only a Chef Nurse can verify clinical sheets.' });
+      }
+
+      result = await ClinicalObservation.update(patientId, queue_id, { ...req.body, status: statusToSave, isReviewer: req.user.role === 'reviewer' }, req.user);
     } else {
-      result = await ClinicalObservation.create({ ...req.body, patient_id: patientId, isReviewer: req.user.role === 'reviewer' }, req.user.id);
+      const statusToSave = req.body.status || 'Draft';
+
+      // Only Chef Nurses can create or verify clinical sheets with Verified status
+      if (statusToSave === 'Verified' && req.user.role !== 'chef-nurse') {
+        return res.status(403).json({ success: false, message: 'Only a Chef Nurse can verify clinical sheets.' });
+      }
+
+      result = await ClinicalObservation.create({ ...req.body, status: statusToSave, patient_id: patientId, isReviewer: req.user.role === 'reviewer' }, req.user.id);
     }
 
     // Sync medicines & consumables to daily stock in background (non-blocking)

@@ -542,9 +542,15 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             <FileText className="h-5 w-5" /> Clinical Sheet
           </div>
           <div className="flex gap-2">
-            <button onClick={handleSubmit(onSubmit)} disabled={saving} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded shadow-sm">
-              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Save Draft
-            </button>
+            {!(sheetStatus === 'Verified' && user?.role !== 'chef-nurse') ? (
+              <button onClick={handleSubmit(onSubmit)} disabled={saving} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded shadow-sm">
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Save Draft
+              </button>
+            ) : (
+              <div className="flex items-center text-xs font-bold text-slate-400 bg-slate-100 px-4 py-1.5 rounded border border-slate-200 shadow-sm select-none">
+                Locked
+              </div>
+            )}
             
             {user?.role === 'chef-nurse' && sheetStatus !== 'Verified' && (
               <button onClick={handleVerifySheet} disabled={saving} className="flex items-center text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 px-4 py-1.5 rounded shadow-sm">
@@ -587,10 +593,26 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
           <h1 className="text-xl font-bold text-slate-800 tracking-wide">PATIENT OBSERVATION RECORDS SHEET</h1>
           <p className="text-xs text-slate-500">Legacy Clinics & Diagnostics • Nurse Assessment</p>
         </div>
+
+        {sheetStatus === 'Verified' && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl flex items-start gap-3 text-xs leading-normal no-print">
+            <ShieldCheck className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Verified Clinical Sheet</p>
+              <p className="text-emerald-700">
+                {user?.role === 'chef-nurse' 
+                  ? "This sheet has been verified and locked. As a Chef Nurse, you retain permission to edit."
+                  : "This sheet has been verified and is locked. Alterations are restricted to the Chef Nurse only."}
+              </p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)}>
-          {/* Section I & II: Patient Identification, Assessment & Notes */}
-          {/* Section I */}
-          <div className="section-header">I. Patient Identification</div>
+          <fieldset disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'} className="border-0 p-0 m-0 min-w-0 disabled:opacity-100">
+            {/* Section I & II: Patient Identification, Assessment & Notes */}
+            {/* Section I */}
+            <div className="section-header">I. Patient Identification</div>
           <div className="px-1 w-[400px]">
             <div className="row-flex"><span className="form-label w-28">Last name</span><input {...register('identification.last_name')} className="form-input" /></div>
             <div className="row-flex"><span className="form-label w-28">First name</span><input {...register('identification.first_name')} className="form-input" /></div>
@@ -648,7 +670,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             <div className="w-full mt-2">
               <div className="flex justify-between items-center mb-1">
                 <div className="form-label mb-0">General comments</div>
-                <button type="button" onClick={handleAIGenerateComments} disabled={aiCommentsLoading} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm">
+                <button type="button" onClick={handleAIGenerateComments} disabled={aiCommentsLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                   {aiCommentsLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
                   Assess Vitals
                 </button>
@@ -660,7 +682,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
           {/* Section II */}
           <div className="section-header flex justify-between items-center pr-2">
             <span>Progress / Clinical Notes</span>
-            <button type="button" onClick={handleAIGenerateProgressNote} disabled={aiProgressNoteLoading} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm">
+            <button type="button" onClick={handleAIGenerateProgressNote} disabled={aiProgressNoteLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
               {aiProgressNoteLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
               Generate Note
             </button>
@@ -684,15 +706,17 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 ))}
               </tbody>
             </table>
-            <button type="button" onClick={() => appendProgress({ datetime: '', note: '', signature: '' })} className="text-blue-600 text-xs font-bold flex items-center mt-1 no-print">
-              <Plus className="h-3 w-3 mr-1" /> Add Note Row
-            </button>
+            {!(sheetStatus === 'Verified' && user?.role !== 'chef-nurse') && (
+              <button type="button" onClick={() => appendProgress({ datetime: '', note: '', signature: '' })} className="text-blue-600 text-xs font-bold flex items-center mt-1 no-print">
+                <Plus className="h-3 w-3 mr-1" /> Add Note Row
+              </button>
+            )}
           </div>
 
           {/* Section III: Prescription and Medication Administration Record  (MAR)  (MAR) */}
           <div className="section-header flex justify-between items-center pr-2">
             <span>Prescription and Medication Administration Record  (MAR) </span>
-            <button type="button" onClick={handleApplyAI} disabled={aiLoading} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm">
+            <button type="button" onClick={handleApplyAI} disabled={aiLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
               {aiLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
               Suggest Doses & Routes
             </button>
@@ -775,9 +799,11 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                     <input {...register('medication_mar.admin_names')} className="form-input w-64" />
                   </div>
                 </div>
-                <button type="button" onClick={() => appendLog({ time: '', initials: '' })} className="text-blue-600 text-xs font-bold flex items-center mt-4 no-print">
-                  <Plus className="h-3 w-3 mr-1" /> Add Initials Row
-                </button>
+                {!(sheetStatus === 'Verified' && user?.role !== 'chef-nurse') && (
+                  <button type="button" onClick={() => appendLog({ time: '', initials: '' })} className="text-blue-600 text-xs font-bold flex items-center mt-4 no-print">
+                    <Plus className="h-3 w-3 mr-1" /> Add Initials Row
+                  </button>
+                )}
               </div>
             </div>
 
@@ -833,7 +859,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
           {/* Section IV: SBAR Hand Over Report */}
           <div className="section-header flex justify-between items-center pr-2">
             <span>SBAR Hand Over Report</span>
-            <button type="button" onClick={handleAIGenerateSBAR} disabled={aiSbarLoading || sheetStatus === 'Verified'} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50">
+            <button type="button" onClick={handleAIGenerateSBAR} disabled={aiSbarLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
               {aiSbarLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
               Generate SBAR
             </button>
@@ -842,7 +868,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             <div className="form-label mb-1">Situation, Background, Assessment & Recommendation</div>
             <textarea 
               {...register('sbar.content')} 
-              disabled={sheetStatus === 'Verified'}
+              disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
               className="form-input min-h-[160px] resize-none w-full disabled:bg-slate-100 disabled:text-slate-500" 
               placeholder="Click 'AI Generate SBAR' to automatically draft a hand over report based on this sheet..." 
             />
@@ -852,7 +878,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 <span className="text-[11px] text-slate-500 px-2 min-w-[70px]">Reported by</span>
                 <input 
                   {...register('sbar.reported_by')} 
-                  disabled={sheetStatus === 'Verified'}
+                  disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
                   className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500" 
                 />
               </div>
@@ -860,7 +886,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 <span className="text-[11px] text-slate-500 px-2 min-w-[120px]">Reported sign. & time</span>
                 <input 
                   {...register('sbar.reported_sign_time')} 
-                  disabled={sheetStatus === 'Verified'}
+                  disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
                   className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500" 
                 />
               </div>
@@ -870,7 +896,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 <span className="text-[11px] text-slate-500 px-2 min-w-[70px]">Received by</span>
                 <input 
                   {...register('sbar.received_by')} 
-                  disabled={sheetStatus === 'Verified'}
+                  disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
                   className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500" 
                 />
               </div>
@@ -878,12 +904,13 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 <span className="text-[11px] text-slate-500 px-2 min-w-[120px]">Received sign. & time</span>
                 <input 
                   {...register('sbar.received_sign_time')} 
-                  disabled={sheetStatus === 'Verified'}
+                  disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
                   className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500" 
                 />
               </div>
             </div>
           </div>
+          </fieldset>
 
           {isEmbedded && (
             <div className="mt-8 pt-6 border-t border-slate-200 flex justify-end gap-3 no-print">
@@ -916,15 +943,18 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                   <FileText className="h-4 w-4 mr-2 text-slate-400" /> PDF Locked
                 </button>
               )}
-              <button
-                type="button"
-                onClick={handleSubmit(onSubmit)}
-                disabled={saving}
-                className="flex items-center text-xs font-black uppercase tracking-widest text-white bg-[#0369a1] hover:bg-[#0284c7] px-6 py-2.5 rounded-xl shadow-lg transition-all disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Changes
-              </button>
+              
+              {!(sheetStatus === 'Verified' && user?.role !== 'chef-nurse') && (
+                <button
+                  type="button"
+                  onClick={handleSubmit(onSubmit)}
+                  disabled={saving}
+                  className="flex items-center text-xs font-black uppercase tracking-widest text-white bg-[#0369a1] hover:bg-[#0284c7] px-6 py-2.5 rounded-xl shadow-lg transition-all disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  Save Changes
+                </button>
+              )}
             </div>
           )}
         </form>
@@ -1058,7 +1088,8 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Quick Actions</p>
                 <div className="grid grid-cols-1 gap-2">
                   <button onClick={() => { handleAIGenerateComments(); }}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left transition-all group">
+                    disabled={aiCommentsLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left transition-all group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200">
                     <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
                       <Stethoscope className="h-4 w-4 text-amber-600" />
                     </div>
@@ -1070,7 +1101,8 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                   </button>
 
                   <button onClick={() => { handleAIGenerateProgressNote(); }}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left transition-all group">
+                    disabled={aiProgressNoteLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left transition-all group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200">
                     <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
                       <ClipboardList className="h-4 w-4 text-green-600" />
                     </div>
@@ -1082,7 +1114,8 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                   </button>
 
                   <button onClick={() => { handleAIGenerateSBAR(); }}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left transition-all group">
+                    disabled={aiSbarLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left transition-all group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200">
                     <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                       <MessageSquare className="h-4 w-4 text-blue-600" />
                     </div>
@@ -1098,8 +1131,8 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
               {/* Medication AI */}
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Medication AI</p>
-                <button onClick={handleMedSuggest} disabled={medSugLoading}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all disabled:opacity-60 mb-3">
+                <button onClick={handleMedSuggest} disabled={medSugLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
+                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all disabled:opacity-60 mb-3 disabled:cursor-not-allowed">
                   {medSugLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   Suggest Doses, Routes & Frequency
                 </button>
@@ -1114,7 +1147,8 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                             <p className="text-[10px] text-indigo-600 font-medium">{sug.category}</p>
                           </div>
                           <button onClick={() => applyMedSuggestion(sug, idx)}
-                            className="text-[10px] bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded-lg font-bold transition-all">
+                            disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
+                            className="text-[10px] bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             Apply
                           </button>
                         </div>
