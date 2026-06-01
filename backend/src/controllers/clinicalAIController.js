@@ -4,6 +4,7 @@ const {
   generateAssessmentComments,
   generateProgressNote,
   generateSBAR,
+  suggestICD10,
   FREQUENCY_LEGEND,
 } = require('../utils/clinicalAI');
 
@@ -16,6 +17,19 @@ exports.suggestMedications = (req, res, next) => {
       return res.status(400).json({ success: false, message: 'medications array is required' });
     }
     const data = suggestMedications(medications.filter(Boolean));
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
+};
+
+// POST /api/ai/clinical/icd10
+// Body: { query: string }
+exports.suggestICD10 = (req, res, next) => {
+  try {
+    const { query } = req.body;
+    if (!query) {
+      return res.status(400).json({ success: false, message: 'query is required' });
+    }
+    const data = suggestICD10(query);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };

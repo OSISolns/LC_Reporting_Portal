@@ -7,18 +7,28 @@ class Cancellation {
       patientFullName, pidNumber, oldSidNumber, newSidNumber,
       telephoneNumber, insurancePayer, totalAmountCancelled,
       originalReceiptNumber, rectifiedReceiptNumber,
+      originalReceiptAmount, rectifiedReceiptAmount,
       initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy
     } = data;
 
-    // Prevent duplicate: Check for existing active/approved request for this SID
-    const existing = await db.query(
-      `SELECT id FROM cancellation_requests WHERE old_sid_number = $1 AND status != 'rejected' LIMIT 1`,
-      [oldSidNumber]
-    );
-    if (existing.rows.length > 0) {
-      const error = new Error('A cancellation request for this SID already exists.');
+    // Validate: If old SID is present, new SID must be present
+    if (oldSidNumber && oldSidNumber.trim() !== '' && (!newSidNumber || newSidNumber.trim() === '')) {
+      const error = new Error('New SID is required when an Old SID is provided.');
       error.status = 400;
       throw error;
+    }
+
+    // Prevent duplicate: Check for existing active/approved request for this SID (only if old SID is provided)
+    if (oldSidNumber && oldSidNumber.trim() !== '') {
+      const existing = await db.query(
+        `SELECT id FROM cancellation_requests WHERE old_sid_number = $1 AND status != 'rejected' LIMIT 1`,
+        [oldSidNumber]
+      );
+      if (existing.rows.length > 0) {
+        const error = new Error('A cancellation request for this SID already exists.');
+        error.status = 400;
+        throw error;
+      }
     }
 
     const cleanDate = (d) => (d && d.trim() !== '' ? d : null);
@@ -29,14 +39,16 @@ class Cancellation {
         patient_full_name, pid_number, old_sid_number, new_sid_number,
         telephone_number, insurance_payer, total_amount_cancelled,
         original_receipt_number, rectified_receipt_number,
+        original_receipt_amount, rectified_receipt_amount,
         initial_transaction_date, rectified_date, reason_for_cancellation,
         created_by, status, billed_by, is_mock
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending', $14, $15)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending', $16, $17)
       RETURNING *`,
       [
         patientFullName, pidNumber, oldSidNumber, newSidNumber,
         telephoneNumber, insurancePayer, cleanAmount(totalAmountCancelled),
         originalReceiptNumber, rectifiedReceiptNumber,
+        cleanAmount(originalReceiptAmount), cleanAmount(rectifiedReceiptAmount),
         cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
         userId, billedBy || null,
         data.isReviewer ? 1 : 0

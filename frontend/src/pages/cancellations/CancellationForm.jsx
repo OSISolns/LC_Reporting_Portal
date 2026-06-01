@@ -20,6 +20,8 @@ const CancellationForm = () => {
     totalAmountCancelled: '',
     originalReceiptNumber: '', 
     rectifiedReceiptNumber: '',
+    originalReceiptAmount: '',
+    rectifiedReceiptAmount: '',
     initialTransactionDate: '', 
     rectifiedDate: '', 
     reasonForCancellation: ''

@@ -104,13 +104,20 @@ class ClinicalObservation {
   }
   static async getAllByPatient(patient_id) {
     const { rows } = await db.query(
-      `SELECT id, patient_id, queue_id, patient_name, ward, bed, status, created_by, created_at, updated_at
+      `SELECT *
        FROM clinical_observations
        WHERE patient_id = $1
        ORDER BY updated_at DESC`,
       [patient_id]
     );
-    return rows;
+    return rows.map(row => ({
+      ...row,
+      identification: JSON.parse(row.identification_json || '{}'),
+      triage: JSON.parse(row.triage_json || '{}'),
+      progress_notes: JSON.parse(row.progress_notes_json || '[]'),
+      medication_mar: JSON.parse(row.medication_mar_json || '{}'),
+      sbar: JSON.parse(row.sbar_json || '{}')
+    }));
   }
 }
 

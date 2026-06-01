@@ -5,13 +5,31 @@ const { createClient } = require('@libsql/client');
 /**
  * Initialize Turso (LibSQL) Client
  */
-const client = createClient({
+let client = createClient({
   url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
 // Run dynamic schema migrations on start
 (async () => {
+  // Connection Test & Offline Fallback
+  try {
+    await client.execute("SELECT 1");
+    console.log('🔌 DATABASE: Successfully connected to Turso Cloud.');
+  } catch (err) {
+    if (err.code === 'ENOTFOUND' || err.message.includes('ENOTFOUND') || err.message.includes('fetch failed')) {
+      console.warn('⚠️ Could not connect to Turso Cloud (offline or DNS failure). Falling back to local SQLite database (local.db)...');
+      client = createClient({
+        url: 'file:local.db',
+      });
+    } else {
+      console.error('⚠️ Turso Cloud connection check failed, continuing with fallback:', err.message);
+      client = createClient({
+        url: 'file:local.db',
+      });
+    }
+  }
+
   try {
     await client.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0");
     console.log('✅ SQLite Schema Migration: added must_change_password to users');
@@ -33,6 +51,24 @@ const client = createClient({
   try {
     await client.execute("ALTER TABLE shift_sessions ADD COLUMN wave TEXT");
     console.log('✅ SQLite Schema Migration: added wave to shift_sessions');
+  } catch (err) {
+    if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+      console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+    }
+  }
+
+  try {
+    await client.execute("ALTER TABLE cancellation_requests ADD COLUMN original_receipt_amount REAL");
+    console.log('✅ SQLite Schema Migration: added original_receipt_amount to cancellation_requests');
+  } catch (err) {
+    if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+      console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+    }
+  }
+
+  try {
+    await client.execute("ALTER TABLE cancellation_requests ADD COLUMN rectified_receipt_amount REAL");
+    console.log('✅ SQLite Schema Migration: added rectified_receipt_amount to cancellation_requests');
   } catch (err) {
     if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
       console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
@@ -312,5 +348,5 @@ const batch = async (statements) => {
 module.exports = {
   query,
   batch,
-  client,
+  get client() { return client; }
 };

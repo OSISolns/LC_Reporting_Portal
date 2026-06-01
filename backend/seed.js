@@ -71,6 +71,8 @@ async function seed() {
         total_amount_cancelled TEXT,
         original_receipt_number TEXT,
         rectified_receipt_number TEXT,
+        original_receipt_amount REAL,
+        rectified_receipt_amount REAL,
         initial_transaction_date DATETIME,
         rectified_date DATETIME,
         reason_for_cancellation TEXT,

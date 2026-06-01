@@ -28,7 +28,7 @@ import CancellationDetailsView from './components/CancellationDetailsView';
 const CancellationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const isDev = import.meta.env.DEV;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -175,21 +175,21 @@ const CancellationDetail = () => {
             </h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {data.status === 'pending' && ['customer_care', 'principal_cashier'].includes(user.role) && (
+              {data.status === 'pending' && hasPermission('cancellations', 'review') && (
                 <button onClick={handleVerify} style={{ padding: '14px', backgroundColor: 'var(--info)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(23, 162, 184, 0.2)' }}>
                   <CheckCircle size={18} />
                   Verify Request
                 </button>
               )}
 
-              {data.status === 'verified' && ['coo', 'sales_manager', 'principal_cashier'].includes(user.role) && (
+              {data.status === 'verified' && hasPermission('cancellations', 'approve') && (
                 <button onClick={handleApprove} style={{ padding: '14px', backgroundColor: 'var(--success)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(40, 167, 69, 0.2)' }}>
                   <CheckCircle size={18} />
                   Approve Request
                 </button>
               )}
 
-              {((data.status === 'pending' && ['sales_manager', 'chairman', 'principal_cashier'].includes(user.role)) || (data.status === 'verified' && ['coo', 'deputy_coo', 'sales_manager', 'chairman', 'principal_cashier'].includes(user.role))) && (
+              {((data.status === 'pending' || data.status === 'verified') && hasPermission('cancellations', 'reject') && !(user.role === 'coo' && data.status === 'pending')) && (
                 <button onClick={() => setRejectModal(true)} style={{ padding: '14px', backgroundColor: 'transparent', color: 'var(--danger)', border: '1.5px solid var(--danger)', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer' }}>
                   <XCircle size={18} />
                    Reject Request

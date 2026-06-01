@@ -32,6 +32,7 @@ import ClinicalObservationList from './pages/ClinicalObservationList';
 import NursingHub from './pages/NursingHub';
 import PatientRecords from './pages/PatientRecords';
 import FeedbackList from './pages/feedbacks/FeedbackList';
+import EPrescriptions from './pages/EPrescriptions';
 import DailyInventoryCheckup from './pages/DailyInventoryCheckup';
 import DailyOperationalReport from './pages/DailyOperationalReport';
 import DailyOperationalReportBoard from './pages/DailyOperationalReportBoard';
@@ -64,7 +65,7 @@ function App() {
             
             <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><RefundList /></ProtectedRoute>} />
             
-            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer', 'chef-nurse']}><IncidentList /></ProtectedRoute>} />
+            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer', 'chef-nurse']}><IncidentList /></ProtectedRoute>} />
 
             
             <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><ResultTransferList /></ProtectedRoute>} />
@@ -72,6 +73,7 @@ function App() {
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/clinical-observation" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
             <Route path="/nursing-hub" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
+            <Route path="/e-prescriptions" element={<ProtectedRoute allowedRoles={['doctor', 'consultant']}><EPrescriptions /></ProtectedRoute>} />
             <Route path="/nursing-hub/inventory" element={<ProtectedRoute allowedRoles={['nurse', 'chef-nurse', 'admin']}><DailyInventoryCheckup /></ProtectedRoute>} />
             <Route path="/nursing-hub/daily-report" element={<ProtectedRoute allowedRoles={['nurse', 'chef-nurse']}><DailyOperationalReport /></ProtectedRoute>} />
             <Route path="/daily-reports-board" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer', 'chef-nurse', 'nurse']}><DailyOperationalReportBoard /></ProtectedRoute>} />

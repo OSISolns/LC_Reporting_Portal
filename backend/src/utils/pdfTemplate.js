@@ -14,6 +14,38 @@ try {
   console.error('Failed to load local logo for PDF:', err);
 }
 
+// Pre-load stamps to base64 for high-fidelity embedding
+let approvedStampBase64 = '';
+let rejectedStampBase64 = '';
+let verifiedStampBase64 = '';
+
+try {
+  const approvedPath = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/src/assets/stamps/approved.png';
+  if (fs.existsSync(approvedPath)) {
+    approvedStampBase64 = `data:image/png;base64,${fs.readFileSync(approvedPath).toString('base64')}`;
+  }
+} catch (err) {
+  console.error('Failed to load local approved stamp:', err);
+}
+
+try {
+  const rejectedPath = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/src/assets/stamps/rejected.png';
+  if (fs.existsSync(rejectedPath)) {
+    rejectedStampBase64 = `data:image/png;base64,${fs.readFileSync(rejectedPath).toString('base64')}`;
+  }
+} catch (err) {
+  console.error('Failed to load local rejected stamp:', err);
+}
+
+try {
+  const verifiedPath = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/src/assets/stamps/verified.png';
+  if (fs.existsSync(verifiedPath)) {
+    verifiedStampBase64 = `data:image/png;base64,${fs.readFileSync(verifiedPath).toString('base64')}`;
+  }
+} catch (err) {
+  console.error('Failed to load local verified stamp:', err);
+}
+
 /**
  * Modern PDF Template Generator
  * Designed for High-Fidelity Clinical Reports
@@ -22,11 +54,14 @@ const getMedicalReportHTML = (type, data) => {
   const primaryTeal = '#007b8a';
   const primaryDark = '#1b669e';
   const brandGreen = '#71b647';
-  const approvedStamp = 'https://i.imgur.com/8QG3X8N.png'; // Placeholder for actual stamp asset
 
   let stampHtml = '';
-  if (data.status === 'approved') {
-    stampHtml = `<div class="stamp"><img src="${approvedStamp}" alt="APPROVED" /></div>`;
+  if (data.status === 'approved' && approvedStampBase64) {
+    stampHtml = `<div class="stamp"><img src="${approvedStampBase64}" alt="APPROVED" /></div>`;
+  } else if (data.status === 'rejected' && rejectedStampBase64) {
+    stampHtml = `<div class="stamp"><img src="${rejectedStampBase64}" alt="REJECTED" /></div>`;
+  } else if (data.status === 'verified' && verifiedStampBase64) {
+    stampHtml = `<div class="stamp"><img src="${verifiedStampBase64}" alt="VERIFIED" /></div>`;
   }
 
   const titleMap = {
@@ -248,19 +283,33 @@ const getMedicalReportHTML = (type, data) => {
           <tr><th>Patient's full name</th><td class="important-value">${data.patient_full_name}</td></tr>
           <tr><th>PID number</th><td>${data.pid_number}</td></tr>
           <tr><th>Telephone number</th><td>${data.telephone_number || 'N/A'}</td></tr>
-          <tr><th>SID number</th><td>${data.old_sid_number}</td></tr>
+          <tr><th>SID number</th><td>${data.old_sid_number || 'N/A'}</td></tr>
           ${data.new_sid_number ? `<tr><th>Replacement SID</th><td>${data.new_sid_number}</td></tr>` : ''}
           <tr><th>Insurance / Payer</th><td>${data.insurance_payer}</td></tr>
         </table>
 
         <div class="section-head">Section 2: TRANSACTION DETAILS</div>
         <table class="medical-form-table">
-          <tr><th>Amount to be refunded</th><td class="important-value" style="font-size: 11pt; color:${primaryTeal}">RWF ${Number(data.total_amount_cancelled).toLocaleString()}</td></tr>
-          <tr><th>Original receipt / invoice number</th><td>${data.original_receipt_number}</td></tr>
-          ${data.rectified_receipt_number ? `<tr><th>Rectified Receipt No.</th><td>${data.rectified_receipt_number}</td></tr>` : ''}
+          <tr><th>Amount to be Cancelled</th><td class="important-value" style="font-size: 11pt; color:${primaryTeal}">RWF ${Number(data.total_amount_cancelled).toLocaleString()}</td></tr>
+          <tr>
+            <th>Original Receipt / Invoice</th>
+            <td>
+              Number: <strong>${data.original_receipt_number}</strong>
+              ${data.original_receipt_amount ? ` | Amount: <strong>RWF ${Number(data.original_receipt_amount).toLocaleString()}</strong>` : ''}
+            </td>
+          </tr>
+          ${data.rectified_receipt_number ? `
+            <tr>
+              <th>Rectified Receipt #</th>
+              <td>
+                Number: <strong>${data.rectified_receipt_number}</strong>
+                ${data.rectified_receipt_amount ? ` | Amount: <strong>RWF ${Number(data.rectified_receipt_amount).toLocaleString()}</strong>` : ''}
+              </td>
+            </tr>
+          ` : ''}
           <tr><th>Initial transaction date</th><td>${data.initial_transaction_date ? new Date(data.initial_transaction_date).toLocaleDateString() : 'N/A'}</td></tr>
           ${data.rectified_date ? `<tr><th>Rectified Date</th><td>${new Date(data.rectified_date).toLocaleDateString()}</td></tr>` : ''}
-          <tr><th>Reason for refund(details)</th><td class="handwritten">${data.reason_for_cancellation}</td></tr>
+          <tr><th>Reason for cancellation</th><td class="handwritten">${data.reason_for_cancellation}</td></tr>
           ${data.notes ? `<tr><th>Staff Justification</th><td style="font-size: 8.5pt; color:#64748b; font-style:italic;" class="handwritten">"${data.notes}"</td></tr>` : ''}
         </table>
 

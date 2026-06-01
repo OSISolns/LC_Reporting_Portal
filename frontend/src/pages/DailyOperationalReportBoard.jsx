@@ -22,6 +22,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import ExcelJS from 'exceljs/dist/exceljs.min.js';
 
 export default function DailyOperationalReportBoard() {
   const { user } = useAuth();
@@ -245,7 +246,6 @@ export default function DailyOperationalReportBoard() {
   const handleExportDailyXlsx = async () => {
     try {
       toast.loading("Generating daily Excel workbook...", { id: 'excel-toast' });
-      const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
       
       // SHEET 1: Consultations
@@ -491,7 +491,6 @@ export default function DailyOperationalReportBoard() {
       }
       
       toast.loading("Generating monthly Excel matrix workbook...", { id: 'excel-toast' });
-      const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
       
       const sheet = workbook.addWorksheet('Monthly Matrix');

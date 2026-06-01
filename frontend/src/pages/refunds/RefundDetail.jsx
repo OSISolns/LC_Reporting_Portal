@@ -21,7 +21,7 @@ import RefundDetailsView from './components/RefundDetailsView';
 const RefundDetail = () => {
   const { id }      = useParams();
   const navigate    = useNavigate();
-  const { user }    = useAuth();
+  const { user, hasPermission }    = useAuth();
   const [data,         setData]        = useState(null);
   const [loading,      setLoading]     = useState(true);
   const [rejectModal,  setRejectModal] = useState(false);
@@ -136,19 +136,19 @@ const RefundDetail = () => {
               <ShieldCheck size={20} style={{ color: 'var(--primary)' }} /> Workflow Actions
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {data.status === 'pending' && ['sales_manager', 'principal_cashier'].includes(user.role) && (
+              {data.status === 'pending' && hasPermission('refunds', 'review') && (
                 <button onClick={handleVerify}
                   style={{ padding: '14px', backgroundColor: 'var(--info)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer' }}>
                   <CheckCircle size={18} /> Verify Request
                 </button>
               )}
-              {data.status === 'verified' && ['coo', 'principal_cashier'].includes(user.role) && (
+              {data.status === 'verified' && hasPermission('refunds', 'approve') && (
                 <button onClick={handleApprove}
                   style={{ padding: '14px', backgroundColor: 'var(--success)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer' }}>
                   <CheckCircle size={18} /> Approve Request
                 </button>
               )}
-              {((data.status === 'pending' && ['sales_manager', 'chairman', 'principal_cashier'].includes(user.role)) || (data.status === 'verified' && ['coo', 'deputy_coo', 'sales_manager', 'chairman', 'principal_cashier'].includes(user.role))) && (
+              {((data.status === 'pending' || data.status === 'verified') && hasPermission('refunds', 'reject') && !(user.role === 'coo' && data.status === 'pending')) && (
                 <button onClick={() => setRejectModal(true)}
                   style={{ padding: '14px', backgroundColor: 'transparent', color: 'var(--danger)', border: '1.5px solid var(--danger)', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer' }}>
                   <XCircle size={18} /> Reject Request

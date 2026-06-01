@@ -58,12 +58,14 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onApprove, onReject
             </tr>
             <tr>
               <th>SID Number</th>
-              <td>{data.old_sid_number}</td>
+              <td>{data.old_sid_number || 'N/A'}</td>
             </tr>
-            <tr>
-              <th>New SID Number</th>
-              <td>{data.new_sid_number}</td>
-            </tr>
+            {data.new_sid_number && (
+              <tr>
+                <th>New SID Number</th>
+                <td>{data.new_sid_number}</td>
+              </tr>
+            )}
             <tr>
               <th>Telephone Number</th>
               <td>{data.telephone_number}</td>
@@ -85,12 +87,18 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onApprove, onReject
             </tr>
             <tr>
               <th>Original Receipt / Invoice</th>
-              <td>{data.original_receipt_number || 'N/A'}</td>
+              <td>
+                Number: <strong>{data.original_receipt_number || 'N/A'}</strong>
+                {data.original_receipt_amount && ` | Amount: RWF ${Number(data.original_receipt_amount).toLocaleString()}`}
+              </td>
             </tr>
             {data.rectified_receipt_number && (
               <tr>
                 <th>Rectified Receipt #</th>
-                <td>{data.rectified_receipt_number}</td>
+                <td>
+                  Number: <strong>{data.rectified_receipt_number}</strong>
+                  {data.rectified_receipt_amount && ` | Amount: RWF ${Number(data.rectified_receipt_amount).toLocaleString()}`}
+                </td>
               </tr>
             )}
             <tr>

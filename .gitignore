@@ -15,3 +15,5 @@ reporting.db
 .env*.local
 *.db
 backend/scratch/
+frontend/test-excel.cjs
+frontend/test.xlsx

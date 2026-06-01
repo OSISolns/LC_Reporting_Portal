@@ -82,16 +82,17 @@ const CancellationFormFields = ({ formData, handleChange, handleSubmit, loading,
           </div>
 
           <div style={fieldStyle}>
-            <label style={labelStyle}>SID number *</label>
-            <input type="text" name="oldSidNumber" required
-              value={formData.oldSidNumber} onChange={handleChange} style={inputStyle} />
+            <label style={labelStyle}>SID number (if applicable)</label>
+            <input type="text" name="oldSidNumber"
+              value={formData.oldSidNumber} onChange={handleChange} style={inputStyle}
+              placeholder="Leave blank if no LAB/Imaging test" />
           </div>
 
           <div style={fieldStyle}>
-            <label style={labelStyle}>New SID (if applicable)</label>
-            <input type="text" name="newSidNumber"
+            <label style={labelStyle}>New SID {formData.oldSidNumber ? ' *' : '(if applicable)'}</label>
+            <input type="text" name="newSidNumber" required={!!formData.oldSidNumber}
               value={formData.newSidNumber} onChange={handleChange} style={inputStyle}
-              placeholder="Leave blank if none" />
+              placeholder={formData.oldSidNumber ? "Required because Old SID is provided" : "Leave blank if none"} />
           </div>
 
           <div style={fieldStyle}>
@@ -139,9 +140,23 @@ const CancellationFormFields = ({ formData, handleChange, handleSubmit, loading,
           </div>
 
           <div style={fieldStyle}>
+            <label style={labelStyle}>Original Receipt / Invoice Amount (RWF) *</label>
+            <input type="number" step="0.01" name="originalReceiptAmount" required
+              value={formData.originalReceiptAmount || ''} onChange={handleChange}
+              style={inputStyle} placeholder="e.g. 60000" />
+          </div>
+
+          <div style={fieldStyle}>
             <label style={labelStyle}>Rectified Receipt # (if any)</label>
             <input type="text" name="rectifiedReceiptNumber"
               value={formData.rectifiedReceiptNumber} onChange={handleChange}
+              style={inputStyle} placeholder="Leave blank if none" />
+          </div>
+
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Rectified Receipt Amount (RWF) (if any)</label>
+            <input type="number" step="0.01" name="rectifiedReceiptAmount"
+              value={formData.rectifiedReceiptAmount || ''} onChange={handleChange}
               style={inputStyle} placeholder="Leave blank if none" />
           </div>
 

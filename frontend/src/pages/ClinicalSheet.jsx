@@ -542,7 +542,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             <FileText className="h-5 w-5" /> Clinical Sheet
           </div>
           <div className="flex gap-2">
-            {!(sheetStatus === 'Verified' && user?.role !== 'chef-nurse') ? (
+            {!((sheetStatus === 'Verified') && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role)) ? (
               <button onClick={handleSubmit(onSubmit)} disabled={saving} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded shadow-sm">
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Save Draft
               </button>
@@ -600,16 +600,16 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             <div>
               <p className="font-bold">Verified Clinical Sheet</p>
               <p className="text-emerald-700">
-                {user?.role === 'chef-nurse' 
-                  ? "This sheet has been verified and locked. As a Chef Nurse, you retain permission to edit."
-                  : "This sheet has been verified and is locked. Alterations are restricted to the Chef Nurse only."}
+                {['chef-nurse', 'doctor', 'consultant'].includes(user?.role) 
+                  ? "This sheet has been verified and locked. As a medical professional or Chief Nurse, you retain permission to edit and prescribe."
+                  : "This sheet has been verified and is locked. Alterations are restricted to medical professionals only."}
               </p>
             </div>
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <fieldset disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'} className="border-0 p-0 m-0 min-w-0 disabled:opacity-100">
+          <fieldset disabled={(sheetStatus === 'Verified') && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role)} className="border-0 p-0 m-0 min-w-0 disabled:opacity-100">
             {/* Section I & II: Patient Identification, Assessment & Notes */}
             {/* Section I */}
             <div className="section-header">I. Patient Identification</div>
@@ -670,7 +670,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             <div className="w-full mt-2">
               <div className="flex justify-between items-center mb-1">
                 <div className="form-label mb-0">General comments</div>
-                <button type="button" onClick={handleAIGenerateComments} disabled={aiCommentsLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                <button type="button" onClick={handleAIGenerateComments} disabled={aiCommentsLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                   {aiCommentsLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
                   Assess Vitals
                 </button>
@@ -682,7 +682,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
           {/* Section II */}
           <div className="section-header flex justify-between items-center pr-2">
             <span>Progress / Clinical Notes</span>
-            <button type="button" onClick={handleAIGenerateProgressNote} disabled={aiProgressNoteLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+            <button type="button" onClick={handleAIGenerateProgressNote} disabled={aiProgressNoteLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
               {aiProgressNoteLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
               Generate Note
             </button>
@@ -706,7 +706,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 ))}
               </tbody>
             </table>
-            {!(sheetStatus === 'Verified' && user?.role !== 'chef-nurse') && (
+            {!(sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role)) && (
               <button type="button" onClick={() => appendProgress({ datetime: '', note: '', signature: '' })} className="text-blue-600 text-xs font-bold flex items-center mt-1 no-print">
                 <Plus className="h-3 w-3 mr-1" /> Add Note Row
               </button>
@@ -716,7 +716,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
           {/* Section III: Prescription and Medication Administration Record  (MAR)  (MAR) */}
           <div className="section-header flex justify-between items-center pr-2">
             <span>Prescription and Medication Administration Record  (MAR) </span>
-            <button type="button" onClick={handleApplyAI} disabled={aiLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+            <button type="button" onClick={handleApplyAI} disabled={aiLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
               {aiLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
               Suggest Doses & Routes
             </button>

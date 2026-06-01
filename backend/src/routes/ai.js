@@ -25,6 +25,7 @@ router.get('/executive',        authorizeRoles(MGMT_ROLES),     aiController.get
 router.post('/medications/suggest', authorizeRoles(CLINICAL_ROLES), aiController.suggestMedicationRoutes);
 
 // ── Clinical AI (rich engine) ─────────────────────────────────────────────────
+router.post('/clinical/icd10',       authorizeRoles(CLINICAL_ROLES), clinicalAIController.suggestICD10);
 router.post('/clinical/medications', authorizeRoles(CLINICAL_ROLES), clinicalAIController.suggestMedications);
 router.post('/clinical/assessment',  authorizeRoles(CLINICAL_ROLES), clinicalAIController.generateAssessment);
 router.post('/clinical/note',        authorizeRoles(CLINICAL_ROLES), clinicalAIController.generateProgressNote);

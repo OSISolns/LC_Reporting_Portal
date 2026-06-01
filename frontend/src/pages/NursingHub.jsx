@@ -121,12 +121,12 @@ export default function NursingHub() {
               <Stethoscope size={20} className="text-sky-200" />
             </div>
             <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#e0f2fe' }}>
-              Integrated Nursing Node
+              {['doctor', 'consultant'].includes(user?.role) ? 'Integrated Doctors Node' : 'Integrated Nursing Node'}
             </span>
           </div>
           
           <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, tracking: '-0.025em' }}>
-            {greeting.text}, {user?.role === 'chef-nurse' ? 'Chief Nurse' : 'Nurse'} {user?.fullName?.split(' ')[0] || 'Officer'} 👩‍⚕️
+            {greeting.text}, {['doctor', 'consultant'].includes(user?.role) ? 'Dr.' : user?.role === 'chef-nurse' ? 'Chief Nurse' : 'Nurse'} {user?.fullName?.split(' ')[0] || 'Officer'} ⚕️
           </h1>
           <p style={{ marginTop: '0.5rem', fontSize: '1rem', color: '#bae6fd', fontWeight: 500, maxWidth: '640px' }}>
             Welcome to the Clinical Command Center. {greeting.sub}. Reconcile and submit assessments, triage records, and patient MAR forms.
