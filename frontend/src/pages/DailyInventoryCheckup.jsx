@@ -8,99 +8,183 @@ import {
   Search,
   Eye,
   FileSpreadsheet,
-  Zap,
   X,
   ChevronDown,
   PackagePlus,
   RotateCw,
   Lock,
   Unlock,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 import { Card, Button, Badge } from '../components/ui/index.jsx';
 import { useAuth } from '../context/AuthContext';
+import Modal from '../components/Modal';
 
-// Categories and items mapping
+// Excel metadata source matching the provided spreadsheet
+const EXCEL_DATA = {
+  "Aquabloc 15cm": { qty: 70, expiry: "02/2028", status: "Available", category: "medical_supplies" },
+  "Adrenaline": { qty: 2, expiry: "05/2026", status: "Available", category: "medications" },
+  "Adrenaline 1mg": { qty: 10, expiry: "04/2026", status: "Expired", category: "medications" },
+  "Alcohol pads": { qty: 30, expiry: "05/2026", status: "Available", category: "medical_supplies" },
+  "Atropine 1mg": { qty: 10, expiry: "05/2026", status: "Expired", category: "medications" },
+  "Bande 15cm": { qty: 7, expiry: "10/2027", status: "Available", category: "medical_supplies" },
+  "Bande 7.5cm": { qty: 3, expiry: "06/2029", status: "Available", category: "medical_supplies" },
+  "Bupivacaine": { qty: 5, expiry: "04/2027", status: "Available", category: "anesthetics" },
+  "Buscopan": { qty: 20, expiry: "02/2028", status: "Available", category: "medications" },
+  "Buscopan 20mg": { qty: 27, expiry: "01/2028", status: "Available", category: "medications" },
+  "Catheter G16": { qty: 100, expiry: "04/2027", status: "Available", category: "medical_supplies" },
+  "Catheter G18": { qty: 200, expiry: "03/2027", status: "Available", category: "medical_supplies" },
+  "Catheter G20": { qty: 70, expiry: "06/2029", status: "Available", category: "medical_supplies" },
+  "Catheter G22": { qty: 80, expiry: "05/2028", status: "Available", category: "medical_supplies" },
+  "Catheter G24": { qty: 120, expiry: "12/2028", status: "Available", category: "medical_supplies" },
+  "Ceftriaxone 1g": { qty: 39, expiry: "11/2026", status: "Near Expiry", category: "medications" },
+  "Dexamethasone": { qty: 8, expiry: "04/2026", status: "Expired", category: "medications" },
+  "Dexamethasone 4mg": { qty: 17, expiry: "04/2028", status: "Available", category: "medications" },
+  "Dexamethasone 8mg": { qty: 25, expiry: "05/2028", status: "Available", category: "medications" },
+  "Dextrose 50%": { qty: 20, expiry: "01/2027", status: "Available", category: "antiseptics" },
+  "Diazepam 10mg": { qty: 10, expiry: "10/2026", status: "Available", category: "medications" },
+  "Diclo 100mg Supp": { qty: 33, expiry: "04/2028", status: "Available", category: "medications" },
+  "Diclofenac 75mg": { qty: 22, expiry: "05/2028", status: "Available", category: "medications" },
+  "Diclofenac IM 75mg": { qty: 40, expiry: "02/2028", status: "Available", category: "medications" },
+  "Dicynone 250mg": { qty: 8, expiry: "04/2028", status: "Available", category: "medications" },
+  "Eau oxygénée 3%": { qty: 7, expiry: "12/2027", status: "Available", category: "antiseptics" },
+  "Emitino": { qty: 54, expiry: "04/2026", status: "Expired", category: "medications" },
+  "Esomeprazole": { qty: 9, expiry: "04/2027", status: "Available", category: "medications" },
+  "Fentanyl": { qty: 7, expiry: "12/2026", status: "Near Expiry", category: "anesthetics" },
+  "Flagyl": { qty: 6, expiry: "10/2026", status: "Near Expiry", category: "medications" },
+  "Furosemide": { qty: 6, expiry: "05/2027", status: "Available", category: "medications" },
+  "Furosemide 20mg": { qty: 24, expiry: "06/2027", status: "Available", category: "medications" },
+  "Gants Sterile 8": { qty: 120, expiry: "06/2027", status: "Available", category: "medical_supplies" },
+  "Gants propre": { qty: 1500, expiry: "05/2028", status: "Available", category: "medical_supplies" },
+  "Gloves 7.5": { qty: 212, expiry: "10/2028", status: "Available", category: "medical_supplies" },
+  "Glucose 5%": { qty: 10, expiry: "10/2027", status: "Available", category: "antiseptics" },
+  "Hydralazine 20mg": { qty: 4, expiry: "10/2026", status: "Near Expiry", category: "medications" },
+  "Hydrocortisone 100mg": { qty: 34, expiry: "07/2026", status: "Near Expiry", category: "medications" },
+  "IV Paracetamol 1g": { qty: 44, expiry: "10/2027", status: "Available", category: "medications" },
+  "Ketamine 500mg": { qty: 7, expiry: "02/2027", status: "Available", category: "anesthetics" },
+  "Largactil 25mg": { qty: 10, expiry: "04/2028", status: "Available", category: "medications" },
+  "Lidocaine": { qty: 16, expiry: "05/2028", status: "Available", category: "anesthetics" },
+  "Masque Neb Adulte": { qty: 27, expiry: "11/2028", status: "Available", category: "medical_supplies" },
+  "Masque Neb Enfant": { qty: 38, expiry: "05/2028", status: "Available", category: "medical_supplies" },
+  "Metoclopramide": { qty: 18, expiry: "04/2028", status: "Available", category: "medications" },
+  "Metronidazole": { qty: 6, expiry: "11/2026", status: "Near Expiry", category: "medications" },
+  "Midazolam 5mg": { qty: 5, expiry: "06/2026", status: "Available", category: "anesthetics" },
+  "Morphine 10mg": { qty: 8, expiry: "04/2026", status: "Expired", category: "anesthetics" },
+  "NS (Normal Saline)": { qty: 40, expiry: "02/2028", status: "Available", category: "antiseptics" },
+  "Naloxone": { qty: 1, expiry: "No Expiry Listed", status: "Available", category: "antidotes" },
+  "Nasal Oxygen Masque Enfant": { qty: 28, expiry: "04/2027", status: "Available", category: "medical_supplies" },
+  "Nylon 2/0": { qty: 20, expiry: "04/2029", status: "Available", category: "sutures" },
+  "Nylon 4/0": { qty: 18, expiry: "02/2030", status: "Available", category: "sutures" },
+  "Nylon 5/0": { qty: 21, expiry: "07/2029", status: "Available", category: "sutures" },
+  "Pantoprazole 40mg": { qty: 12, expiry: "11/2027", status: "Available", category: "medications" },
+  "Pap Smear": { qty: 26, expiry: "04/2028", status: "Available", category: "medical_supplies" },
+  "Paracet 125mg Supp": { qty: 134, expiry: "06/2028", status: "Available", category: "medications" },
+  "Paracet 250mg Supp": { qty: 54, expiry: "02/2029", status: "Available", category: "medications" },
+  "Paracetamol 125mg": { qty: 18, expiry: "04/2029", status: "Available", category: "medications" },
+  "Paracetamol Ces": { qty: 40, expiry: "03/2028", status: "Available", category: "medications" },
+  "Paraffin Gauze 5cm": { qty: 5, expiry: "05/2027", status: "Available", category: "medical_supplies" },
+  "Pause": { qty: 10, expiry: "04/2026", status: "Expired", category: "medications" },
+  "Pethidine": { qty: 8, expiry: "05/2027", status: "Available", category: "anesthetics" },
+  "Phenobarbital 100mg": { qty: 10, expiry: "04/2027", status: "Available", category: "medications" },
+  "Phenytoin 250mg": { qty: 3, expiry: "02/2027", status: "Available", category: "medications" },
+  "Phytomenadione 10mg": { qty: 3, expiry: "02/2028", status: "Available", category: "medications" },
+  "Plaster": { qty: 2, expiry: "02/2026", status: "Expired", category: "medical_supplies" },
+  "Polyglactin 3/0": { qty: 38, expiry: "04/2030", status: "Available", category: "sutures" },
+  "Polyglactin 4/0": { qty: 32, expiry: "03/2030", status: "Available", category: "sutures" },
+  "Polypropylene 6/0": { qty: 8, expiry: "02/2026", status: "Expired", category: "sutures" },
+  "Povidone 10%": { qty: 8, expiry: "02/2026", status: "Expired", category: "antiseptics" },
+  "Propofol 200mg": { qty: 4, expiry: "06/2027", status: "Available", category: "anesthetics" },
+  "RL (Ringer's Lactate)": { qty: 34, expiry: "11/2028", status: "Available", category: "antiseptics" },
+  "Sac à urine": { qty: 5, expiry: "04/2027", status: "Available", category: "medical_supplies" },
+  "Salbutamol": { qty: 50, expiry: "02/2028", status: "Available", category: "medications" },
+  "Seringue 10cc": { qty: 270, expiry: "04/2030", status: "Available", category: "medical_supplies" },
+  "Seringue 1cc (Insuline)": { qty: 90, expiry: "12/2028", status: "Available", category: "medical_supplies" },
+  "Seringue 20cc": { qty: 90, expiry: "07/2030", status: "Available", category: "medical_supplies" },
+  "Seringue 2cc": { qty: 60, expiry: "12/2027", status: "Available", category: "medical_supplies" },
+  "Seringue 5cc": { qty: 340, expiry: "03/2030", status: "Available", category: "medical_supplies" },
+  "Sonde Vésicale G10": { qty: 8, expiry: "04/2027", status: "Available", category: "medical_supplies" },
+  "Sonde Vésicale G12": { qty: 5, expiry: "07/2028", status: "Available", category: "medical_supplies" },
+  "Sonde Vésicale G16": { qty: 12, expiry: "12/2029", status: "Available", category: "medical_supplies" },
+  "Spatula": { qty: 2, expiry: "No Expiry Listed", status: "Available", category: "medical_supplies" },
+  "Speculum": { qty: 7, expiry: "10/2028", status: "Available", category: "medical_supplies" },
+  "Sterile Gauze 10cm": { qty: 125, expiry: "12/2028", status: "Available", category: "medical_supplies" },
+  "Surgical Blades N15": { qty: 26, expiry: "12/2026", status: "Near Expiry", category: "sutures" },
+  "Surgical Blades N23": { qty: 150, expiry: "11/2029", status: "Available", category: "sutures" },
+  "Tongue Depressor": { qty: 4, expiry: "No Expiry Listed", status: "Available", category: "medical_supplies" },
+  "Tramadol": { qty: 10, expiry: "10/2026", status: "Near Expiry", category: "anesthetics" },
+  "Trousse": { qty: 64, expiry: "06/2029", status: "Available", category: "medical_supplies" },
+  "Vaginal Swab": { qty: 57, expiry: "04/2030", status: "Available", category: "medical_supplies" },
+  "Vicryl 2/0": { qty: 12, expiry: "02/2029", status: "Available", category: "sutures" },
+  "Vicryl 3/0": { qty: 24, expiry: "03/2029", status: "Available", category: "sutures" },
+  "Vicryl 4/0": { qty: 24, expiry: "02/2029", status: "Available", category: "sutures" },
+  "Vicryl 5/0": { qty: 12, expiry: "02/2029", status: "Available", category: "sutures" },
+  "Vit B complex": { qty: 14, expiry: "02/2027", status: "Available", category: "medications" },
+  "Water for injection": { qty: 218, expiry: "10/2026", status: "Near Expiry", category: "antiseptics" }
+};
+
+// Categories and items mapping structured exactly by spreadsheet categories
 const CATEGORIES = {
-  injectable: {
-    label: "Medications (injectable/IV)",
+  medical_supplies: {
+    label: "Medical Supplies",
     color: "bg-blue-50 text-blue-700 border-blue-200",
     items: [
-      "Dextrose 50%", "Dextrose 500mg", "Paracetamol IV 1g", "Furosemide", "Adrenaline 1mg",
-      "Dexamethasone 8mg", "Dexamethasone 4mg", "Ceftriaxone 1g", "Metronidazole 1g",
-      "Tramadol 100mg", "Diclofenac 75mg", "Esomeprazole 40mg", "Normal saline 500mL",
-      "Ringer lactate 500mL", "oxytocin inj", "Propofol", "Fentanyl", "ketamine",
-      "Pethidine", "MORPHINE", "Midazolam", "Nalaxoan", "Diazepam", "Buscopan 20mg",
-      "Marcaine%0.5", "Atropine", "Lidocaine", "Hydrocortisone 100mg", "Phenytoine 250mg",
-      "Metoclopramide", "Hydralazine 20-25mg/ml"
+      "Aquabloc 15cm", "Alcohol pads", "Bande 15cm", "Bande 7.5cm", 
+      "Catheter G16", "Catheter G18", "Catheter G20", "Catheter G22", "Catheter G24",
+      "Gants Sterile 8", "Gants propre", "Gloves 7.5", "Masque Neb Adulte", "Masque Neb Enfant",
+      "Nasal Oxygen Masque Enfant", "Pap Smear", "Paraffin Gauze 5cm", "Plaster", "Sac à urine",
+      "Seringue 10cc", "Seringue 1cc (Insuline)", "Seringue 20cc", "Seringue 2cc", "Seringue 5cc",
+      "Sonde Vésicale G10", "Sonde Vésicale G12", "Sonde Vésicale G16", "Spatula", "Speculum",
+      "Sterile Gauze 10cm", "Tongue Depressor", "Trousse", "Vaginal Swab"
     ]
   },
-  oral: {
-    label: "Oral/Suppository medications",
+  medications: {
+    label: "Medications",
     color: "bg-emerald-50 text-emerald-700 border-emerald-200",
     items: [
-      "Paracetamol 500mg ces", "Paracetamol suppo 250mg", "Paracetamol suppo 125mg",
-      "Emitino 4mg", "Vitamine B complex", "Diclofenac suppo 100mg", "Dicynone",
-      "Pause 500mg", "chlorpromazine 100mg", "cytotec", "Salbutamol 2.5mg"
+      "Adrenaline", "Adrenaline 1mg", "Atropine 1mg", "Buscopan", "Buscopan 20mg",
+      "Ceftriaxone 1g", "Dexamethasone", "Dexamethasone 4mg", "Dexamethasone 8mg",
+      "Diazepam 10mg", "Diclo 100mg Supp", "Diclofenac 75mg", "Diclofenac IM 75mg",
+      "Dicynone 250mg", "Emitino", "Esomeprazole", "Flagyl", "Furosemide", "Furosemide 20mg",
+      "Hydralazine 20mg", "Hydrocortisone 100mg", "IV Paracetamol 1g", "Largactil 25mg",
+      "Metoclopramide", "Metronidazole", "Pantoprazole 40mg", "Paracet 125mg Supp",
+      "Paracet 250mg Supp", "Paracetamol 125mg", "Paracetamol Ces", "Pause",
+      "Phenobarbital 100mg", "Phenytoin 250mg", "Phytomenadione 10mg", "Salbutamol",
+      "Vit B complex"
     ]
   },
-  consumables: {
-    label: "Consumables & Surgical supplies",
-    color: "bg-amber-50 text-amber-700 border-amber-200",
-    items: [
-      "Giving set", "Papsmear", "Vaginal swab", "Povidone iodine solution", "Eaux oxygenee",
-      "vaseline gauze", "Gauze swab", "vicryl 5/O", "vicryl 4/O", "Vicryl 3/0", "Vicryl 2/o",
-      "Ethilon 2/0", "Ethilon 3/0", "Ethilon 4/0", "Ethilon 5/0", "Ethilon 6/0", "monocryl 6/0",
-      "surgical blades N23", "Surgical blades N21", "surgical bladeN15", "surgical blade N12",
-      "crepes bandage 7.5cm", "Crepe bandage 10cm", "crepe bandage 15cm", "Aquabloc 15×10", "Aquabloc 10×10"
-    ]
-  },
-  syringes: {
-    label: "Syringes & Needles",
+  anesthetics: {
+    label: "Anesthetics & Analgesics",
     color: "bg-purple-50 text-purple-700 border-purple-200",
     items: [
-      "water for injection", "Syringe 2ml", "syringe 5ml", "syringe 10ml", "syringe 20ml",
-      "needle 23", "needle 21", "needle 18"
+      "Bupivacaine", "Fentanyl", "Ketamine 500mg", "Lidocaine", "Midazolam 5mg",
+      "Morphine 10mg", "Pethidine", "Propofol 200mg", "Tramadol"
     ]
   },
-  catheters: {
-    label: "Catheters & Drainage",
+  antiseptics: {
+    label: "Antiseptics & Fluids",
+    color: "bg-amber-50 text-amber-700 border-amber-200",
+    items: [
+      "Dextrose 50%", "Eau oxygénée 3%", "Glucose 5%", "NS (Normal Saline)",
+      "Povidone 10%", "RL (Ringer's Lactate)", "Water for injection"
+    ]
+  },
+  sutures: {
+    label: "Sutures & Blades",
     color: "bg-rose-50 text-rose-700 border-rose-200",
     items: [
-      "Urine drainage bag",
-      "Foley balloon catheter fr 10",
-      "Foley balloon catheter fr 12",
-      "Foley balloon catheter fr 16",
-      "Foley balloon catheter fr 18",
-      "Foley balloon catheter fr 20",
-      "catheter G20",
-      "Iv catheter G22",
-      "Iv catheter G24",
-      "Iv catheter G16",
-      "Iv catheter G18"
+      "Nylon 2/0", "Nylon 4/0", "Nylon 5/0", "Polyglactin 3/0", "Polyglactin 4/0",
+      "Polypropylene 6/0", "Surgical Blades N15", "Surgical Blades N23",
+      "Vicryl 2/0", "Vicryl 3/0", "Vicryl 4/0", "Vicryl 5/0"
     ]
   },
-  gloves: {
-    label: "Gloves",
+  antidotes: {
+    label: "Antidotes",
     color: "bg-teal-50 text-teal-700 border-teal-200",
     items: [
-      "sterile gloves no 8CM", "sterile gloves 8", "sterile gloves 7.5", "proper gloves"
-    ]
-  },
-  respiratory: {
-    label: "Respiratory",
-    color: "bg-cyan-50 text-cyan-700 border-cyan-200",
-    items: [
-      "neb mask adult", "Neb mask ped"
-    ]
-  },
-  family_planning: {
-    label: "Family Planning",
-    color: "bg-pink-50 text-pink-700 border-pink-200",
-    items: [
-      "IUD MIRENA", "CONDOM", "SAYANA", "JADELLE", "MICROGYN"
+      "Naloxone"
     ]
   }
 };
@@ -135,25 +219,11 @@ const getMonthLabel = (YYYY_MM) => {
   return date.toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase();
 };
 
-// Opening balances for April 1, AM session
-const APRIL_INITIAL_STOCK = {
-  "Dextrose 50%": 34,
-  "Paracetamol IV 1g": 12,
-  "Adrenaline 1mg": 43,
-  "Ceftriaxone 1g": 49,
-  "Normal saline 500mL": 46,
-  "Propofol": 9,
-  "Pethidine": 43,
-  "proper gloves": 100,
-  "water for injection": 214,
-  "syringe 5ml": 180,
-  "syringe 10ml": 144,
-  "IV catheter G24": 224,
-  "sterile gloves 7.5": 78,
-  "Salbutamol 2.5mg": 141,
-  "IUD MIRENA": 40,
-  "CONDOM": 1000
-};
+// Dynamically generate initial stock lookup
+const APRIL_INITIAL_STOCK = {};
+Object.entries(EXCEL_DATA).forEach(([item, val]) => {
+  APRIL_INITIAL_STOCK[item] = val.qty;
+});
 
 export default function DailyInventoryCheckup() {
   const navigate = useNavigate();
@@ -164,21 +234,13 @@ export default function DailyInventoryCheckup() {
   const [currentDay, setCurrentDay] = useState(() => new Date().getDate());
   const [currentSession, setCurrentSession] = useState(() => new Date().getHours() < 13 ? 'AM' : 'PM');
 
-  // Quick Stock Update panel state
-  const [quickOpen, setQuickOpen] = useState(false);
-  const [quickSearch, setQuickSearch] = useState('');
-  const [quickItem, setQuickItem] = useState(null);
-  const [quickStock, setQuickStock] = useState('');
-  const [quickConsumed, setQuickConsumed] = useState('');
-  const [quickNote, setQuickNote] = useState('');
-  const [quickSaving, setQuickSaving] = useState(false);
-  const quickSearchRef = useRef(null);
   const matrixScrollRef = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Renders modes: 'focused' (session checkup) or 'matrix' (excel spreadsheet)
-  const [viewMode, setViewMode] = useState('focused');
+  const [activeTab, setActiveTab] = useState('active_checkup'); // 'active_checkup', 'expired_inventory', 'matrix'
+  const [showToolsDropdown, setShowToolsDropdown] = useState(false);
   const [dayRange, setDayRange] = useState('1-10');
 
   // Database loaded state
@@ -192,6 +254,34 @@ export default function DailyInventoryCheckup() {
   const [lockStock, setLockStock] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportSelectedMonth, setExportSelectedMonth] = useState(monthYear);
+  const [customItems, setCustomItems] = useState([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // State for tracking custom or seeded items removed/deleted from the active roster
+  const [deletedItems, setDeletedItems] = useState([]);
+
+  const handleDeleteItem = (itemName) => {
+    setDeletedItems(prev => [...prev, itemName]);
+    toast.success(`Removed "${itemName}" from active checkup roster.`);
+  };
+
+  const handleDeleteAllExpired = () => {
+    if (lockStock) {
+      toast.error("Roster editing must be unlocked to delete expired items.");
+      return;
+    }
+    if (filteredExpiredItems.length === 0) {
+      toast.error("No expired items to delete.");
+      return;
+    }
+    setDeletedItems(prev => [...new Set([...prev, ...filteredExpiredItems])]);
+    toast.success(`Removed all ${filteredExpiredItems.length} expired items from the checkup roster.`);
+  };
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemCategory, setNewItemCategory] = useState('medications');
+  const [newItemStock, setNewItemStock] = useState('0');
+  const [newItemExpDate, setNewItemExpDate] = useState('');
+  const [newItemStatus, setNewItemStatus] = useState('Available');
 
   useEffect(() => {
     setExportSelectedMonth(monthYear);
@@ -263,11 +353,19 @@ export default function DailyInventoryCheckup() {
         });
       };
 
+      const discoveredItems = new Set();
       responses.forEach((res, i) => {
         if (res.data.success && res.data.data) {
           parseRows(res.data.data, DYNAMIC_MONTHS[i]);
+          res.data.data.forEach(row => {
+            const name = (row.item_name || '').trim();
+            if (name && !ALL_ITEMS.some(i => i.trim() === name)) {
+              discoveredItems.add(name);
+            }
+          });
         }
       });
+      setCustomItems(Array.from(discoveredItems));
 
       // Seed April 1 opening stock values if empty
       Object.entries(APRIL_INITIAL_STOCK).forEach(([item, val]) => {
@@ -301,7 +399,7 @@ export default function DailyInventoryCheckup() {
 
   // Handle cell input edits locally
   const handleCellEdit = (itemName, field, val, targetDay = currentDay, targetSession = currentSession) => {
-    const cleanVal = field === 'responsible_name' ? val : (parseInt(val, 10) || 0);
+    const cleanVal = ['responsible_name', 'expiration_date', 'status', 'category'].includes(field) ? val : (parseInt(val, 10) || 0);
 
     setAllMonthsMap(prev => {
       const monthMap = { ...(prev[monthYear] || {}) };
@@ -309,16 +407,50 @@ export default function DailyInventoryCheckup() {
       if (!monthMap[itemName][targetDay]) monthMap[itemName][targetDay] = {};
       if (!monthMap[itemName][targetDay][targetSession]) {
         const carried = getCarriedStockForMonth(monthYear, itemName, targetDay, targetSession);
+        const excelMeta = EXCEL_DATA[itemName] || {};
         monthMap[itemName][targetDay][targetSession] = {
           stock_in_hands: carried,
           consumed: 0,
           balance: carried,
-          responsible_name: ''
+          responsible_name: '',
+          expiration_date: excelMeta.expiry || '',
+          status: carried <= 0 ? 'Outstock' : (excelMeta.status || 'Available'),
+          category: excelMeta.category || ''
         };
       }
 
       const cell = { ...monthMap[itemName][targetDay][targetSession] };
       cell[field] = cleanVal;
+
+      // Auto status update when expiration_date is edited
+      if (field === 'expiration_date') {
+        const calculateStatusFromExpiry = (expiryDate) => {
+          if (!expiryDate) return 'Available';
+          const cleanExp = expiryDate.trim().toLowerCase();
+          if (cleanExp === 'no expiry listed' || cleanExp === 'no expiry' || cleanExp === '') {
+            return 'Available';
+          }
+          const parts = cleanExp.split('/');
+          if (parts.length === 2) {
+            const month = parseInt(parts[0], 10);
+            const year = parseInt(parts[1], 10);
+            if (!isNaN(month) && !isNaN(year)) {
+              const itemDate = new Date(year, month - 1, 1);
+              const expiryThreshold = new Date(2026, 5, 2); // June 2, 2026
+              const nearExpiryThreshold = new Date(2026, 11, 2); // December 2, 2026
+              if (itemDate <= expiryThreshold) {
+                return 'Expired';
+              } else if (itemDate <= nearExpiryThreshold) {
+                return 'Near Expiry';
+              } else {
+                return 'Available';
+              }
+            }
+          }
+          return 'Available';
+        };
+        cell.status = calculateStatusFromExpiry(cleanVal);
+      }
 
       // Auto balance calculation: balance = stock - consumed
       if (field === 'stock_in_hands' || field === 'consumed') {
@@ -353,7 +485,10 @@ export default function DailyInventoryCheckup() {
               stock_in_hands: cell.stock_in_hands || 0,
               consumed: cell.consumed || 0,
               balance: cell.balance || 0,
-              responsible_name: cell.responsible_name || ''
+              responsible_name: cell.responsible_name || '',
+              expiration_date: cell.expiration_date || '',
+              status: cell.status || 'Active',
+              category: cell.category || ''
             });
           });
         });
@@ -375,47 +510,42 @@ export default function DailyInventoryCheckup() {
     }
   };
 
-  // Quick Update: save a single item for today's session immediately
-  const saveQuickUpdate = async () => {
-    if (!quickItem) return toast.error('Please select an item first.');
-    const stockVal = parseInt(quickStock, 10) || 0;
-    const consumedVal = parseInt(quickConsumed, 10) || 0;
-    const balanceVal = stockVal - consumedVal;
-    const today = new Date().getDate();
-    const session = new Date().getHours() < 13 ? 'AM' : 'PM';
-    const nowMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  // Add custom item to ledger
+  const handleCreateItem = (e) => {
+    e.preventDefault();
+    if (!newItemName.trim()) return toast.error('Please enter a valid item name.');
 
-    // Update local map too
-    handleCellEdit(quickItem, 'stock_in_hands', stockVal);
-    handleCellEdit(quickItem, 'consumed', consumedVal);
-    if (quickNote) handleCellEdit(quickItem, 'responsible_name', quickNote);
+    const name = newItemName.trim();
 
-    try {
-      setQuickSaving(true);
-      await api.post('/clinical/inventory/bulk', {
-        month_year: nowMonth,
-        items: [{
-          item_name: quickItem,
-          day: today,
-          session,
-          stock_in_hands: stockVal,
-          consumed: consumedVal,
-          balance: balanceVal,
-          responsible_name: quickNote || user?.name || ''
-        }]
+    // Add to local customItems state if not exists
+    if (!ALL_ITEMS.includes(name)) {
+      setCustomItems(prev => {
+        if (prev.includes(name)) return prev;
+        return [...prev, name];
       });
-      toast.success(`✅ ${quickItem} updated — Balance: ${balanceVal}`, { duration: 3000 });
-      setQuickItem(null);
-      setQuickStock('');
-      setQuickConsumed('');
-      setQuickNote('');
-      setQuickSearch('');
-    } catch (err) {
-      toast.error('Failed to save stock update.');
-    } finally {
-      setQuickSaving(false);
     }
+
+    const stock = parseInt(newItemStock, 10) || 0;
+
+    // Initialize in allMonthsMap for current month/day/session
+    handleCellEdit(name, 'stock_in_hands', stock, currentDay, currentSession);
+    handleCellEdit(name, 'consumed', 0, currentDay, currentSession);
+    handleCellEdit(name, 'responsible_name', user?.fullName || '', currentDay, currentSession);
+    handleCellEdit(name, 'expiration_date', newItemExpDate, currentDay, currentSession);
+    handleCellEdit(name, 'status', newItemStatus, currentDay, currentSession);
+    handleCellEdit(name, 'category', newItemCategory, currentDay, currentSession);
+
+    // Reset inputs
+    setNewItemName('');
+    setNewItemStock('0');
+    setNewItemExpDate('');
+    setNewItemStatus('Available');
+    
+    setShowCreateModal(false);
+    toast.success(`Successfully added "${name}" to checkup list!`);
   };
+
+
 
   // Cache to optimize reactive cell propagation during this render pass
   const cellCache = {};
@@ -473,6 +603,39 @@ export default function DailyInventoryCheckup() {
     return 0;
   };
 
+  const calculateExcelStatus = (expiryStr, balance) => {
+    if (balance <= 0) return 'Outstock';
+    
+    const cleanExpiry = (expiryStr || '').trim();
+    if (!cleanExpiry || cleanExpiry === 'No Expiry Listed' || !cleanExpiry.includes('/')) {
+      return 'Available';
+    }
+    
+    const parts = cleanExpiry.split('/');
+    if (parts.length !== 2) return 'Available';
+    
+    const monthVal = parseInt(parts[0], 10);
+    const yearVal = parseInt(parts[1], 10);
+    if (isNaN(monthVal) || isNaN(yearVal)) return 'Available';
+    
+    // Create Date: 1st of that month
+    const expiryDate = new Date(yearVal, monthVal - 1, 1);
+    
+    // DATE(2026,6,2) -> June 2, 2026
+    const expiredThreshold = new Date(2026, 5, 2); // June is month index 5
+    
+    // DATE(2026,12,2) -> December 2, 2026
+    const nearExpiryThreshold = new Date(2026, 11, 2); // Dec is month index 11
+    
+    if (expiryDate <= expiredThreshold) {
+      return 'Expired';
+    } else if (expiryDate <= nearExpiryThreshold) {
+      return 'Near Expiry';
+    } else {
+      return 'Available';
+    }
+  };
+
   const getCellForMonth = (month, item, day, session) => {
     const cacheKey = `${month}-${item}-${day}-${session}`;
     if (cellCache[cacheKey] !== undefined) {
@@ -495,11 +658,20 @@ export default function DailyInventoryCheckup() {
     // Resolve balance: stock - consumed
     const balance = stock - consumed;
 
+    const excelMeta = EXCEL_DATA[item] || {};
+    const expiryValue = (record?.expiration_date !== undefined && record?.expiration_date !== '') ? record.expiration_date : (excelMeta.expiry || '');
+    
+    // Auto-calculate dynamic status based on Excel formula thresholds!
+    const calculatedStatus = calculateExcelStatus(expiryValue, balance);
+
     const result = {
       stock_in_hands: stock,
       consumed: consumed,
       balance: balance,
-      responsible_name: record?.responsible_name || ''
+      responsible_name: record?.responsible_name || '',
+      expiration_date: expiryValue,
+      status: (record?.status !== undefined && record?.status !== '') ? record.status : calculatedStatus,
+      category: (record?.category !== undefined && record?.category !== '') ? record.category : (excelMeta.category || '')
     };
 
     cellCache[cacheKey] = result;
@@ -526,19 +698,42 @@ export default function DailyInventoryCheckup() {
   };
   const activeDays = getDaysForRange();
 
-  // Renders the session focus checkup list
-  const filteredItems = ALL_ITEMS.filter(item => {
-    // 1. Filter by category
-    if (selectedCategory !== 'all') {
-      const match = CATEGORIES[selectedCategory]?.items.includes(item);
-      if (!match) return false;
-    }
-    // 2. Filter by search query
-    if (searchTerm) {
-      return item.toLowerCase().includes(searchTerm.toLowerCase());
-    }
-    return true;
+  // Renders the session focus checkup list — deduplicate via Set to prevent double entries
+  const filteredItems = [...new Set([...ALL_ITEMS, ...customItems])]
+    .filter(item => !deletedItems.includes(item))
+    .filter(item => {
+      // 1. Filter by category
+      if (selectedCategory !== 'all') {
+        const isSeeded = ALL_ITEMS.includes(item);
+        if (isSeeded) {
+          const match = CATEGORIES[selectedCategory]?.items.includes(item);
+          if (!match) return false;
+        } else {
+          const cell = getCell(item);
+          const itemCat = cell.category || 'medical_supplies';
+          if (itemCat !== selectedCategory) return false;
+        }
+      }
+      // 2. Filter by search query
+      if (searchTerm) {
+        return item.toLowerCase().includes(searchTerm.toLowerCase());
+      }
+      return true;
+    });
+
+  const filteredActiveItems = filteredItems.filter(item => {
+    const cell = getCell(item);
+    return cell.status !== 'Expired';
   });
+
+  const filteredExpiredItems = filteredItems.filter(item => {
+    const cell = getCell(item);
+    return cell.status === 'Expired';
+  });
+
+  // Active Checkup shows ALL filtered items (expired rows are visually grayed out inline)
+  // Expired Inventory tab shows only expired items for dedicated management/deletion
+  const displayItems = activeTab === 'expired_inventory' ? filteredExpiredItems : filteredItems;
 
   return (
     <div className="min-h-screen bg-slate-50/50 font-sans pb-12">
@@ -587,14 +782,15 @@ export default function DailyInventoryCheckup() {
           </div>
         </div>
 
-        {/* Global Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 select-none">
+        {/* Global Consolidated Toolbar */}
+        <div className="flex flex-wrap items-center gap-3 select-none">
           {/* Month Selector */}
-          <div className="flex items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
+          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1">
+            <span className="text-[10px] font-black uppercase text-slate-400 mr-2">Period</span>
             <select
               value={monthYear}
               onChange={(e) => setMonthYear(e.target.value)}
-              className="bg-transparent border-none text-xs font-black text-slate-700 outline-none px-3 py-1.5 cursor-pointer"
+              className="bg-transparent border-none text-xs font-black text-slate-800 outline-none cursor-pointer py-1"
             >
               {DYNAMIC_MONTHS.map(m => (
                 <option key={m} value={m}>{getMonthLabel(m)}</option>
@@ -602,45 +798,101 @@ export default function DailyInventoryCheckup() {
             </select>
           </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
-            <button
-              onClick={() => setViewMode('focused')}
-              className={`flex items-center text-xs font-black px-3.5 py-1.5 rounded-lg transition-all ${viewMode === 'focused' ? 'bg-[#0369a1] text-white shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+          {/* Unified Lock & Save Controls */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 p-1 rounded-xl">
+            <Button
+              disabled={loading}
+              onClick={() => {
+                setLockStock(!lockStock);
+                if (lockStock) {
+                  toast.success('Stock count editing UNLOCKED. Edit carefully!', { icon: '🔓' });
+                } else {
+                  toast.success('Stock count editing LOCKED.', { icon: '🔒' });
+                }
+              }}
+              className={`px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 border ${!lockStock ? 'bg-amber-500 hover:bg-amber-600 text-white border-transparent shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
             >
-              <Eye className="h-3.5 w-3.5 mr-1.5" /> Session Focus
-            </button>
-            <button
-              onClick={() => setViewMode('matrix')}
-              className={`flex items-center text-xs font-black px-3.5 py-1.5 rounded-lg transition-all ${viewMode === 'matrix' ? 'bg-[#0369a1] text-white shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+              {lockStock ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+              {lockStock ? 'Unlock Stock' : 'Stock Editable'}
+            </Button>
+
+            <Button
+              disabled={saving || loading}
+              onClick={handleSave}
+              className="bg-[#0369a1] hover:bg-[#075985] text-white px-3.5 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 border-0 shadow-sm"
             >
-              <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" /> Full Spreadsheet
-            </button>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              Save Changes
+            </Button>
           </div>
 
-          {/* Export Excel Button with Organic Dropdown Flyout */}
+          {/* Roster Tools Dropdown Menu */}
           <div className="relative">
             <Button
               disabled={loading}
-              onClick={() => setShowExportModal(!showExportModal)}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-2 border-0 transition-all active:scale-[0.98]"
+              onClick={() => setShowToolsDropdown(!showToolsDropdown)}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-2 border-0 transition-all active:scale-[0.98]"
             >
-              <Download className="h-4 w-4" />
-              Export Ledger
+              <RotateCw className="h-4 w-4" />
+              Roster Tools
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showToolsDropdown ? 'rotate-180' : ''}`} />
             </Button>
 
+            {showToolsDropdown && (
+              <>
+                {/* Clickaway backdrop */}
+                <div className="fixed inset-0 z-45 cursor-default" onClick={() => setShowToolsDropdown(false)} />
+                <div className="absolute right-0 top-full mt-2 w-[240px] bg-white border border-slate-200/80 shadow-2xl rounded-2xl p-2.5 z-50 origin-top-right animate-in fade-in slide-in-from-top-2 duration-150 text-left">
+                  
+                  {/* Action 1: Create Custom Item */}
+                  <button
+                    onClick={() => {
+                      setShowCreateModal(true);
+                      setShowToolsDropdown(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all border-none bg-transparent"
+                  >
+                    <span className="p-1 bg-emerald-50 text-emerald-600 rounded-lg"><PackagePlus size={14} /></span>
+                    Create Custom Item
+                  </button>
+
+                  {/* Action 2: Sync with DB */}
+                  <button
+                    onClick={() => {
+                      loadInventory(true);
+                      setShowToolsDropdown(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all border-none bg-transparent"
+                  >
+                    <span className="p-1 bg-sky-50 text-sky-600 rounded-lg"><RotateCw size={14} /></span>
+                    Synchronize Database
+                  </button>
+
+                  {/* Action 3: Export Excel */}
+                  <button
+                    onClick={() => {
+                      setShowExportModal(true);
+                      setShowToolsDropdown(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all border-none bg-transparent"
+                  >
+                    <span className="p-1 bg-purple-50 text-purple-600 rounded-lg"><FileSpreadsheet size={14} /></span>
+                    Export Excel Ledger
+                  </button>
+
+                </div>
+              </>
+            )}
+
+            {/* Nested organic Excel Export modal dialog popup */}
             {showExportModal && (
               <>
-                {/* Backdrop overlay for organic click-away closure */}
                 <div 
                   className="fixed inset-0 z-40 cursor-default" 
                   onClick={() => setShowExportModal(false)}
                 />
-                
-                {/* Expanding Option Card */}
                 <div className="absolute right-0 top-full mt-2.5 w-[360px] bg-white border border-slate-200/80 shadow-2xl rounded-3xl p-5 z-50 origin-top-right transform animate-in fade-in slide-in-from-top-4 duration-200 ease-out select-none">
                   
-                  {/* Card Header */}
                   <div className="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-4">
                     <div className="flex items-center gap-2">
                       <span className="p-1.5 bg-purple-50 text-purple-600 rounded-lg"><FileSpreadsheet size={15} /></span>
@@ -654,17 +906,15 @@ export default function DailyInventoryCheckup() {
                     </button>
                   </div>
 
-                  {/* Options */}
                   <div className="space-y-4 text-left">
                     <p className="text-[10px] text-slate-500 font-bold leading-normal">
                       Export high-fidelity spreadsheets with reactive formulas. Select a single month, or bundle every recorded period as dedicated tabs in a single workbook.
                     </p>
 
-                    {/* Option 1: Selected Month */}
-                    <div className="space-y-2 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
+                    <div className="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl">
                       <div className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Option 1: Export Specific Month</div>
                       <div className="flex items-center gap-1.5">
-                        <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200/80 shadow-sm flex items-center">
+                        <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center">
                           <select
                             value={exportSelectedMonth}
                             onChange={(e) => setExportSelectedMonth(e.target.value)}
@@ -688,7 +938,6 @@ export default function DailyInventoryCheckup() {
                       </div>
                     </div>
 
-                    {/* Option 2: Download All */}
                     <div className="space-y-2 p-3 bg-gradient-to-br from-indigo-50/30 to-purple-50/30 border border-indigo-100/50 rounded-2xl">
                       <div className="text-[9px] font-black uppercase text-indigo-600 tracking-wider">Option 2: Consolidated Ledger</div>
                       <Button
@@ -708,43 +957,6 @@ export default function DailyInventoryCheckup() {
               </>
             )}
           </div>
-
-          {/* Sync Button */}
-          <Button
-            disabled={saving || loading}
-            onClick={() => loadInventory(true)}
-            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-2 border-0 transition-all active:scale-[0.98]"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
-            Sync with DB
-          </Button>
-
-          {/* Lock Stock Toggle */}
-          <Button
-            disabled={loading}
-            onClick={() => {
-              setLockStock(!lockStock);
-              if (lockStock) {
-                toast.success('Stock in hand editing UNLOCKED. Edit carefully!');
-              } else {
-                toast.success('Stock in hand editing LOCKED.');
-              }
-            }}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-2 border transition-all active:scale-[0.98] ${!lockStock ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'}`}
-          >
-            {lockStock ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-            {lockStock ? 'Stock: Locked' : 'Stock: Editable'}
-          </Button>
-
-          {/* Save Button */}
-          <Button
-            disabled={saving || loading}
-            onClick={handleSave}
-            className="bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-2 border-0 transition-all active:scale-[0.98]"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save Changes
-          </Button>
         </div>
       </div>
 
@@ -756,38 +968,91 @@ export default function DailyInventoryCheckup() {
               <span className="text-xs font-bold text-slate-500">Querying database Inventory Logs...</span>
             </div>
           </div>
-        ) : viewMode === 'focused' ? (
-          /* ── 1. SINGLE SESSION FOCUS MODE ── */
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 align-start select-none">
+        ) : (
+          <div className="space-y-6">
+            {/* ── Beautiful Premium Persistent Tabs Navigation Bar ── */}
+            <div className="flex border-b border-slate-200 pb-0.5 select-none gap-2 mb-2 bg-white px-5 py-2.5 rounded-2xl border border-slate-200/50 shadow-sm">
+              <button
+                onClick={() => setActiveTab('active_checkup')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] ${
+                  activeTab === 'active_checkup'
+                    ? 'border-[#0369a1] text-[#0369a1]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <span>Active Checkup</span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeTab === 'active_checkup' ? 'bg-sky-100 text-[#0369a1]' : 'bg-slate-100 text-slate-550'}`}>
+                  {filteredActiveItems.length}
+                </span>
+              </button>
 
-            {/* Left Nav Pane: Session Selector */}
-            <div className="lg:col-span-1 space-y-6">
-              <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-[24px]">
-                <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-4">Audit Session Selector</h3>
+              <button
+                onClick={() => setActiveTab('expired_inventory')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] ${
+                  activeTab === 'expired_inventory'
+                    ? 'border-red-500 text-red-650'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <span>Expired Inventory</span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeTab === 'expired_inventory' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-550'}`}>
+                  {filteredExpiredItems.length}
+                </span>
+              </button>
 
-                {/* AM/PM Switcher */}
-                <div className="flex bg-slate-100/80 p-1.5 rounded-2xl mb-6">
-                  <button
-                    onClick={() => setCurrentSession('AM')}
-                    className={`flex-1 py-2.5 text-xs font-black rounded-xl uppercase transition-all ${currentSession === 'AM' ? 'bg-[#0369a1] text-white shadow-sm font-black' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    AM Session ☀️
-                  </button>
-                  <button
-                    onClick={() => setCurrentSession('PM')}
-                    className={`flex-1 py-2.5 text-xs font-black rounded-xl uppercase transition-all ${currentSession === 'PM' ? 'bg-[#0369a1] text-white shadow-sm font-black' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    PM Session 🌙
-                  </button>
+              <button
+                onClick={() => setActiveTab('matrix')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] ${
+                  activeTab === 'matrix'
+                    ? 'border-[#0369a1] text-[#0369a1]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <FileSpreadsheet size={13} />
+                <span>Spreadsheet Matrix</span>
+              </button>
+            </div>
+
+            {/* Render conditional views based on activeTab */}
+            {(activeTab === 'active_checkup' || activeTab === 'expired_inventory') ? (
+              <div className="space-y-6 select-none">
+
+            {/* Horizontal Header: Session Selector */}
+            <Card className="p-4 border border-slate-200/60 shadow-sm bg-white rounded-[24px]">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                
+                {/* Left Side: Session Toggle & Period Indicator */}
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+                  {/* Period Badge */}
+                  <div className="bg-gradient-to-br from-sky-50 to-blue-50/50 border border-sky-100/80 rounded-2xl px-4 py-2 text-center shrink-0 w-full sm:w-auto">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-sky-600 bg-sky-100/50 px-2 py-0.5 rounded border border-sky-200/40 inline-block mb-1">Selected Period</span>
+                    <h4 className="text-lg font-black text-sky-950 leading-none">Day {currentDay} {currentSession}</h4>
+                    <p className="text-[9px] text-sky-700/80 font-bold mt-0.5 uppercase tracking-widest">{getMonthLabel(monthYear)}</p>
+                  </div>
+
+                  {/* AM/PM Switcher */}
+                  <div className="flex bg-slate-100/80 p-1 rounded-2xl w-full sm:w-64 border border-slate-200/40 shadow-inner">
+                    <button
+                      onClick={() => setCurrentSession('AM')}
+                      className={`flex-1 py-2 text-xs font-black rounded-xl uppercase transition-all ${currentSession === 'AM' ? 'bg-[#0369a1] text-white shadow-sm font-black' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      AM Session
+                    </button>
+                    <button
+                      onClick={() => setCurrentSession('PM')}
+                      className={`flex-1 py-2 text-xs font-black rounded-xl uppercase transition-all ${currentSession === 'PM' ? 'bg-[#0369a1] text-white shadow-sm font-black' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      PM Session
+                    </button>
+                  </div>
                 </div>
 
-                {/* Day selector list */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center gap-1.5 border-b border-slate-100 pb-2">
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Audit Day Selector</span>
-                    
-                    {/* Week Segmented Tabs */}
-                    <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/40 text-[9px] font-black select-none shrink-0">
+                {/* Right Side: Week Selector & Day Buttons */}
+                <div className="flex flex-col md:flex-row items-center gap-4 w-full lg:w-auto lg:justify-end">
+                  {/* Week Tabs */}
+                  <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Week:</span>
+                    <div className="flex bg-slate-105 p-0.5 rounded-lg border border-slate-200/40 text-[10px] font-black select-none shrink-0 shadow-inner">
                       {[1, 2, 3, 4].map((wk) => {
                         const isCurrentWk = 
                           (wk === 1 && currentDay <= 7) ||
@@ -802,7 +1067,7 @@ export default function DailyInventoryCheckup() {
                               const targetDay = wk === 4 ? 22 : (wk - 1) * 7 + 1;
                               setCurrentDay(targetDay);
                             }}
-                            className={`px-1.5 py-0.5 rounded transition-all ${
+                            className={`px-3 py-1 rounded transition-all ${
                               isCurrentWk 
                                 ? 'bg-white text-slate-900 shadow-sm font-black' 
                                 : 'text-slate-400 hover:text-slate-650'
@@ -816,55 +1081,50 @@ export default function DailyInventoryCheckup() {
                     </div>
                   </div>
 
-                  {/* Render only active week's days */}
-                  <div className="grid grid-cols-7 gap-1">
-                    {(() => {
-                      const currentWk = 
-                        currentDay <= 7 ? 1 :
-                        currentDay <= 14 ? 2 :
-                        currentDay <= 21 ? 3 : 4;
-                      
-                      const startDay = currentWk === 4 ? 22 : (currentWk - 1) * 7 + 1;
-                      const endDay = currentWk === 4 ? 30 : currentWk * 7;
-                      
-                      const days = [];
-                      for (let d = startDay; d <= endDay; d++) {
-                        days.push(d);
-                      }
-                      
-                      return days.map((dNum) => {
-                        const isSelected = currentDay === dNum;
-                        return (
-                          <button
-                            key={dNum}
-                            onClick={() => setCurrentDay(dNum)}
-                            className={`h-8 text-xs font-bold rounded-lg transition-all border flex items-center justify-center relative active:scale-95 ${
-                              isSelected 
-                                ? 'bg-[#0369a1] border-transparent text-white font-black shadow-sm' 
-                                : 'bg-white border-slate-200/80 text-slate-650 hover:bg-slate-50 hover:border-slate-350'
-                            }`}
-                          >
-                            {dNum}
-                          </button>
-                        );
-                      });
-                    })()}
+                  {/* Day Buttons */}
+                  <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Day:</span>
+                    <div className="flex flex-wrap gap-1.5 justify-center md:justify-start">
+                      {(() => {
+                        const currentWk = 
+                          currentDay <= 7 ? 1 :
+                          currentDay <= 14 ? 2 :
+                          currentDay <= 21 ? 3 : 4;
+                        
+                        const startDay = currentWk === 4 ? 22 : (currentWk - 1) * 7 + 1;
+                        const endDay = currentWk === 4 ? 30 : currentWk * 7;
+                        
+                        const days = [];
+                        for (let d = startDay; d <= endDay; d++) {
+                          days.push(d);
+                        }
+                        
+                        return days.map((dNum) => {
+                          const isSelected = currentDay === dNum;
+                          return (
+                            <button
+                              key={dNum}
+                              onClick={() => setCurrentDay(dNum)}
+                              className={`w-8 h-8 text-xs font-black rounded-lg transition-all border flex items-center justify-center relative active:scale-95 shadow-sm ${
+                                isSelected 
+                                  ? 'bg-[#0369a1] border-transparent text-white font-black shadow-md' 
+                                  : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50 hover:border-slate-350'
+                              }`}
+                            >
+                              {dNum}
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
                 </div>
 
-                {/* Session Card Overview */}
-                <div className="mt-6 border-t border-dashed border-slate-200 pt-6">
-                  <div className="bg-gradient-to-br from-sky-50 to-blue-50/50 border border-sky-100/80 rounded-2xl p-4 text-center">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-sky-600 bg-sky-100/50 px-2 py-0.5 rounded border border-sky-200/40 inline-block mb-2">Selected Period</span>
-                    <h4 className="text-xl font-black text-sky-950 leading-none">Day {currentDay} {currentSession}</h4>
-                    <p className="text-[9px] text-sky-700/80 font-bold mt-1 uppercase tracking-widest">{getMonthLabel(monthYear)}</p>
-                  </div>
-                </div>
-              </Card>
-            </div>
+              </div>
+            </Card>
 
-            {/* Right Pane: Inventory Items Table */}
-            <div className="lg:col-span-3 space-y-6">
+            {/* Wide Expanded Inventory Items Table Container */}
+            <div className="w-full space-y-6">
               <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-[24px]">
 
                 {/* Search & Category Filter Bar */}
@@ -880,8 +1140,25 @@ export default function DailyInventoryCheckup() {
                       />
                     </div>
 
-                    <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                      {filteredItems.length} items found
+                    <div className="flex items-center gap-3">
+                      <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                        {displayItems.length} items &bull; {filteredExpiredItems.length} expired
+                      </div>
+                      {activeTab === 'expired_inventory' && filteredExpiredItems.length > 0 && (
+                        <button
+                          onClick={handleDeleteAllExpired}
+                          disabled={lockStock}
+                          title={lockStock ? "Unlock stock editing to delete expired items" : "Remove all expired items from roster"}
+                          className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1.5 active:scale-[0.97] ${
+                            lockStock
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none'
+                              : 'bg-red-50 hover:bg-red-100 border-red-200 text-red-750 hover:shadow-sm'
+                          }`}
+                        >
+                          <Trash2 size={12} />
+                          Delete All Expired
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -895,19 +1172,17 @@ export default function DailyInventoryCheckup() {
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      All Items 📋
+                      All Items
                     </button>
                     {Object.entries(CATEGORIES).map(([key, cat]) => {
                       const isSelected = selectedCategory === key;
                       const niceLabel = 
-                        key === 'injectable' ? 'Injectables 💉' :
-                        key === 'oral' ? 'Oral 💊' :
-                        key === 'consumables' ? 'Supplies 📦' :
-                        key === 'syringes' ? 'Syringes 🧪' :
-                        key === 'catheters' ? 'Catheters 🩸' :
-                        key === 'gloves' ? 'Gloves 🧤' :
-                        key === 'respiratory' ? 'Respiratory 🫁' :
-                        key === 'family_planning' ? 'Planning 🌸' : key;
+                        key === 'medical_supplies' ? 'Supplies' :
+                        key === 'medications' ? 'Meds' :
+                        key === 'anesthetics' ? 'Anesth' :
+                        key === 'antiseptics' ? 'Antisep' :
+                        key === 'antidotes' ? 'Antidotes' :
+                        key === 'sutures' ? 'Sutures' : key;
                       return (
                         <button
                           key={key}
@@ -930,39 +1205,82 @@ export default function DailyInventoryCheckup() {
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="bg-slate-50/50 text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
-                        <th className="py-3.5 px-4 w-[280px]">Items</th>
-                        <th className="py-3.5 px-4 text-center w-[120px]">Stock in hands</th>
-                        <th className="py-3.5 px-4 text-center w-[120px]">Consumed items</th>
-                        <th className="py-3.5 px-4 text-center w-[120px]">Balance</th>
+                        <th className="py-3.5 px-4 w-[240px]">Items</th>
+                        <th className="py-3.5 px-4 text-center w-[120px]">Category</th>
+                        <th className="py-3.5 px-4 text-center w-[150px]">Expiration Date</th>
+                        <th className="py-3.5 px-4 text-center w-[160px]">Status</th>
+                        <th className="py-3.5 px-4 text-center w-[110px]">Stock in hands</th>
+                        <th className="py-3.5 px-4 text-center w-[110px]">Consumed items</th>
+                        <th className="py-3.5 px-4 text-center w-[110px]">Balance</th>
                         <th className="py-3.5 px-4">Responsible Name</th>
+                        <th className="py-3.5 px-4 w-[110px] text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                      {filteredItems.length > 0 ? (
-                        filteredItems.map(item => {
+                      {displayItems.length > 0 ? (
+                        displayItems.map(item => {
                           const cell = getCell(item);
 
                           // Determine item category color
-                          const catKey = Object.keys(CATEGORIES).find(k => CATEGORIES[k].items.includes(item)) || 'injectable';
-                          
+                          const catKey = Object.keys(CATEGORIES).find(k => CATEGORIES[k].items.includes(item)) || cell.category || 'medical_supplies';
+                          const categoryLabel = CATEGORIES[catKey]?.label || cell.category || 'Medical Supplies';
+
                           // Exquisite dot indicator styles
                           const dotColor = 
-                            catKey === 'injectable' ? 'bg-blue-500 ring-blue-100' :
-                            catKey === 'oral' ? 'bg-emerald-500 ring-emerald-100' :
-                            catKey === 'consumables' ? 'bg-amber-500 ring-amber-100' :
-                            catKey === 'syringes' ? 'bg-purple-500 ring-purple-100' :
-                            catKey === 'catheters' ? 'bg-rose-500 ring-rose-100' :
-                            catKey === 'gloves' ? 'bg-teal-500 ring-teal-100' :
-                            catKey === 'respiratory' ? 'bg-cyan-500 ring-cyan-100' : 'bg-pink-500 ring-pink-100';
+                            catKey === 'medical_supplies' ? 'bg-blue-500 ring-blue-100' :
+                            catKey === 'medications' ? 'bg-emerald-500 ring-emerald-100' :
+                            catKey === 'anesthetics' ? 'bg-purple-500 ring-purple-100' :
+                            catKey === 'antiseptics' ? 'bg-amber-500 ring-amber-100' :
+                            catKey === 'sutures' ? 'bg-rose-500 ring-rose-100' :
+                            catKey === 'antidotes' ? 'bg-teal-500 ring-teal-100' : 'bg-pink-500 ring-pink-100';
+
+                          const isExpired = cell.status === 'Expired';
+                          const rowStyle = isExpired 
+                            ? 'bg-slate-100/60 opacity-60 text-slate-400 select-none' 
+                            : 'hover:bg-slate-50/40 text-slate-700';
 
                           return (
-                            <tr key={item} className="hover:bg-slate-50/40 transition-all align-center">
+                            <tr key={item} className={`transition-all align-center ${rowStyle}`}>
                               {/* Item label */}
                               <td className="py-3 px-4">
                                 <div className="flex items-center gap-2.5">
                                   <span className={`w-2 h-2 rounded-full shrink-0 ring-4 ${dotColor}`} />
                                   <div className="text-slate-900 font-black text-[13px] tracking-tight">{item}</div>
                                 </div>
+                              </td>
+
+                              {/* Category Column */}
+                              <td className="py-3 px-4 text-center">
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-slate-150 text-slate-700 border border-slate-200">
+                                  {categoryLabel}
+                                </span>
+                              </td>
+
+                              {/* Expiration Date Column */}
+                              <td className="py-3 px-4 text-center">
+                                <input
+                                  type="text"
+                                  value={cell.expiration_date || ''}
+                                  onChange={(e) => handleCellEdit(item, 'expiration_date', e.target.value)}
+                                  placeholder="MM/YYYY or No Expiry"
+                                  disabled={isExpired}
+                                  className={`w-36 text-center py-1.5 px-2 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none font-bold text-xs transition-all shadow-sm text-slate-800 ${
+                                    isExpired ? 'bg-slate-100/80 text-slate-400 cursor-not-allowed border-slate-200 hover:border-slate-200 shadow-none' : ''
+                                  }`}
+                                />
+                              </td>
+
+                              {/* Status Column (Read-Only Pill Badge) */}
+                              <td className="py-3 px-4 text-center">
+                                <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border shadow-sm ${
+                                  cell.status === 'Expired' ? 'text-red-750 bg-red-50 border-red-200 ring-1 ring-red-50' :
+                                  cell.status === 'Near Expiry' ? 'text-amber-700 bg-amber-50 border-amber-200 ring-1 ring-amber-50' :
+                                  cell.status === 'Outstock' ? 'text-slate-500 bg-slate-50 border-slate-200 ring-1 ring-slate-50' : 'text-emerald-700 bg-emerald-50 border-emerald-200 ring-1 ring-emerald-50'
+                                }`}>
+                                  {cell.status === 'Expired' ? 'EXPIRED' :
+                                   cell.status === 'Near Expiry' ? 'Near Expiry (<6mo)' :
+                                   cell.status === 'Outstock' ? 'Outstock' : 'Available'}
+                                </span>
                               </td>
 
                               {/* Stock in hands input */}
@@ -972,12 +1290,12 @@ export default function DailyInventoryCheckup() {
                                   onChange={(e) => handleCellEdit(item, 'stock_in_hands', e.target.value)}
                                   placeholder="0"
                                   className={`w-20 text-center py-1.5 px-2 border rounded-xl outline-none font-black text-xs transition-all shadow-sm ${
-                                    lockStock 
-                                      ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed select-none' 
+                                    (lockStock || isExpired)
+                                      ? 'bg-slate-55 text-slate-400 border-slate-200 cursor-not-allowed select-none' 
                                       : 'bg-white border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 text-slate-900'
                                   }`}
                                   type="number"
-                                  disabled={lockStock}
+                                  disabled={lockStock || isExpired}
                                 />
                               </td>
 
@@ -987,7 +1305,10 @@ export default function DailyInventoryCheckup() {
                                   value={cell.consumed}
                                   onChange={(e) => handleCellEdit(item, 'consumed', e.target.value)}
                                   placeholder="0"
-                                  className="w-20 text-center py-1.5 px-2 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none font-black text-xs transition-all shadow-sm"
+                                  disabled={isExpired}
+                                  className={`w-20 text-center py-1.5 px-2 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none font-black text-xs transition-all shadow-sm ${
+                                    isExpired ? 'bg-slate-100/85 text-slate-400 cursor-not-allowed border-slate-200' : ''
+                                  }`}
                                   type="number"
                                 />
                               </td>
@@ -1009,17 +1330,75 @@ export default function DailyInventoryCheckup() {
                                   value={cell.responsible_name || ''}
                                   onChange={(e) => handleCellEdit(item, 'responsible_name', e.target.value)}
                                   placeholder="RN Signature"
-                                  className="w-full max-w-[200px] py-1.5 px-3 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none text-xs font-semibold shadow-sm transition-all"
+                                  disabled={isExpired}
+                                  className={`w-full max-w-[200px] py-1.5 px-3 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none text-xs font-semibold shadow-sm transition-all ${
+                                    isExpired ? 'bg-slate-100/85 text-slate-400 cursor-not-allowed border-slate-200' : ''
+                                  }`}
                                 />
+                              </td>
+
+                              {/* Actions Column */}
+                              <td className="py-3 px-4 text-center">
+                                {isExpired ? (
+                                  <button
+                                    onClick={() => handleDeleteItem(item)}
+                                    disabled={lockStock}
+                                    title={lockStock ? "Unlock stock editing to delete expired items" : "Remove expired item from checkup roster"}
+                                    className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1 mx-auto active:scale-[0.95] ${
+                                      lockStock
+                                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none'
+                                        : 'border-red-200 bg-red-50 text-red-650 hover:bg-red-100 hover:text-red-700 hover:shadow-sm'
+                                    }`}
+                                  >
+                                    <Trash2 size={12} />
+                                    Delete
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 font-bold">—</span>
+                                )}
                               </td>
                             </tr>
                           );
                         })
                       ) : (
                         <tr>
-                          <td colSpan={5} className="py-12 text-center text-slate-400 font-bold">
+                          <td colSpan={9} className="py-12 text-center text-slate-400 font-bold">
                             No matching items found.
                           </td>
+                        </tr>
+                      )}
+                      {/* ── Total Stock Volume Footer Row ── */}
+                      {activeTab !== 'expired_inventory' && (
+                        <tr className="bg-slate-900 text-white border-t-2 border-slate-700">
+                          <td className="py-3.5 px-4 font-black text-[11px] tracking-tight" colSpan={2}>
+                            Total Stock Volume (All Purchases)
+                          </td>
+                          <td className="py-3.5 px-4 text-center" colSpan={2} />
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="text-[13px] font-black text-white">
+                              {filteredItems.reduce((sum, item) => {
+                                const cell = getCell(item);
+                                return sum + (parseInt(cell.stock_in_hands, 10) || 0);
+                              }, 0).toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="text-[13px] font-black text-white">
+                              {filteredItems.reduce((sum, item) => {
+                                const cell = getCell(item);
+                                return sum + (parseInt(cell.consumed, 10) || 0);
+                              }, 0).toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="text-[13px] font-black text-white">
+                              {filteredItems.reduce((sum, item) => {
+                                const cell = getCell(item);
+                                return sum + (parseInt(cell.balance, 10) || 0);
+                              }, 0).toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4" colSpan={2} />
                         </tr>
                       )}
                     </tbody>
@@ -1027,10 +1406,10 @@ export default function DailyInventoryCheckup() {
                 </div>
               </Card>
             </div>
-          </div>
-        ) : (
-          /* ── 2. FULL MONTH MATRIX EXCEL SPREADSHEET ── */
-          <Card className="p-6 border border-slate-200 shadow bg-white rounded-[24px] overflow-hidden">
+            </div>
+            ) : (
+              /* ── 2. FULL MONTH MATRIX EXCEL SPREADSHEET ── */
+              <Card className="p-6 border border-slate-200 shadow bg-white rounded-[24px] overflow-hidden">
             <div className="mb-4 bg-blue-50 border border-blue-100 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center gap-4">
               <div>
                 <h3 className="text-xs font-black text-blue-800 uppercase tracking-widest">Interactive Audit Grid</h3>
@@ -1054,7 +1433,7 @@ export default function DailyInventoryCheckup() {
                         { label: 'Days 1 – 10', value: '1-10' },
                         { label: 'Days 11 – 20', value: '11-20' },
                         { label: `Days 21 – ${daysInMonth}`, value: '21-30' },
-                        { label: 'Full Month (Slow ⚠️)', value: 'all' },
+                        { label: 'Full Month (Slow)', value: 'all' },
                       ].map((range) => (
                         <button
                           key={range.value}
@@ -1308,250 +1687,105 @@ export default function DailyInventoryCheckup() {
                 </tbody>
               </table>
             </div>
-          </Card>
+              </Card>
+            )}
+          </div>
         )}
       </div>
 
-      {/* ── Quick Stock Update FAB ── */}
-      <button
-        onClick={() => { setQuickOpen(true); setTimeout(() => quickSearchRef.current?.focus(), 100); }}
-        style={{
-          position: 'fixed',
-          bottom: '2rem',
-          right: '2rem',
-          zIndex: 50,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          backgroundColor: '#0369a1',
-          color: '#fff',
-          padding: '14px 22px',
-          borderRadius: '999px',
-          fontWeight: 900,
-          fontSize: '0.8rem',
-          letterSpacing: '0.04em',
-          textTransform: 'uppercase',
-          boxShadow: '0 8px 30px rgba(3,105,161,0.4)',
-          border: 'none',
-          cursor: 'pointer',
-          transition: 'all 0.2s'
-        }}
-        className="hover:scale-105 hover:shadow-2xl"
+      {/* ── Create New Item Modal ── */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create Custom Inventory Item"
+        maxWidth="500px"
       >
-        <PackagePlus size={17} />
-        Quick Stock Update
-      </button>
+        <form onSubmit={handleCreateItem} className="space-y-4 text-left p-2">
+          <p className="text-[11px] text-slate-500 font-bold leading-normal mb-4">
+            Add a new custom medication or consumable item to the active daily checkup roster. This item will be saved persistently to the monthly ledger.
+          </p>
 
-      {/* ── Quick Update Slide-in Drawer ── */}
-      {quickOpen && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, zIndex: 60,
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end'
-          }}
-        >
-          {/* Backdrop */}
-          <div
-            onClick={() => setQuickOpen(false)}
-            style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(2px)' }}
-          />
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Item Name</label>
+            <input
+              required
+              type="text"
+              value={newItemName}
+              onChange={(e) => setNewItemName(e.target.value)}
+              placeholder="e.g. Ciprofloxacin 500mg IV"
+              className="w-full px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-sm"
+            />
+          </div>
 
-          {/* Panel */}
-          <div
-            style={{
-              position: 'relative',
-              width: '420px',
-              maxWidth: '95vw',
-              height: '100vh',
-              background: '#fff',
-              boxShadow: '-20px 0 60px rgba(0,0,0,0.15)',
-              display: 'flex',
-              flexDirection: 'column',
-              animation: 'slideInRight 0.25s ease'
-            }}
-          >
-            <style>{`@keyframes slideInRight { from { transform: translateX(60px); opacity:0; } to { transform: translateX(0); opacity:1; } }`}</style>
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Category</label>
+            <select
+              value={newItemCategory}
+              onChange={(e) => setNewItemCategory(e.target.value)}
+              className="w-full px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-sm cursor-pointer"
+            >
+              {Object.entries(CATEGORIES).map(([key, cat]) => (
+                <option key={key} value={key}>{cat.label}</option>
+              ))}
+            </select>
+          </div>
 
-            {/* Header */}
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg,#075985,#0369a1)', color: '#fff' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Zap size={18} />
-                  <span style={{ fontWeight: 900, fontSize: '1rem' }}>Quick Stock Update</span>
-                </div>
-                <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: '#bae6fd', fontWeight: 600 }}>
-                  Today · Day {new Date().getDate()} · {new Date().getHours() < 13 ? 'AM' : 'PM'} Session
-                </p>
-              </div>
-              <button onClick={() => setQuickOpen(false)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', color: '#fff' }}>
-                <X size={18} />
-              </button>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Initial Stock</label>
+              <input
+                type="number"
+                min="0"
+                value={newItemStock}
+                onChange={(e) => setNewItemStock(e.target.value)}
+                className="w-full px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-sm"
+              />
             </div>
 
-            {/* Body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
-              {/* Item Search */}
-              <div>
-                <label style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                  Search Item
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    ref={quickSearchRef}
-                    value={quickSearch}
-                    onChange={e => { setQuickSearch(e.target.value); setQuickItem(null); }}
-                    placeholder="Type to search drugs or consumables..."
-                    style={{
-                      width: '100%', boxSizing: 'border-box',
-                      padding: '10px 12px 10px 36px',
-                      border: '2px solid #e2e8f0',
-                      borderRadius: '12px',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                {/* Dropdown Results */}
-                {quickSearch.length >= 2 && !quickItem && (() => {
-                  const results = ALL_ITEMS.filter(i => i.toLowerCase().includes(quickSearch.toLowerCase())).slice(0, 8);
-                  return results.length > 0 ? (
-                    <div style={{ marginTop: '6px', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
-                      {results.map(i => {
-                        const catKey = Object.keys(CATEGORIES).find(k => CATEGORIES[k].items.includes(i));
-                        const catLabel = CATEGORIES[catKey]?.label || '';
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => { setQuickItem(i); setQuickSearch(i); }}
-                            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
-                            className="hover:bg-sky-50"
-                          >
-                            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: '#1e293b' }}>{i}</div>
-                            <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, marginTop: '1px' }}>{catLabel}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div style={{ marginTop: '6px', padding: '10px 14px', background: '#f8fafc', borderRadius: '12px', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>No matching items found.</div>
-                  );
-                })()}
-              </div>
-
-              {/* Selected Item Badge */}
-              {quickItem && (
-                <div style={{ background: '#f0f9ff', border: '1.5px solid #bae6fd', borderRadius: '12px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 900, fontSize: '0.88rem', color: '#0369a1' }}>{quickItem}</div>
-                    <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>
-                      {CATEGORIES[Object.keys(CATEGORIES).find(k => CATEGORIES[k].items.includes(quickItem))]?.label}
-                    </div>
-                  </div>
-                  <button onClick={() => { setQuickItem(null); setQuickSearch(''); }} style={{ background: '#e0f2fe', border: 'none', borderRadius: '8px', padding: '5px', cursor: 'pointer', color: '#0369a1' }}>
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-
-              {/* Stock & Consumed Inputs */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', display: 'block', marginBottom: '6px' }}>Stock in Hands</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={quickStock}
-                    onChange={e => setQuickStock(e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1rem', fontWeight: 900, textAlign: 'center', outline: 'none' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', display: 'block', marginBottom: '6px' }}>Consumed</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={quickConsumed}
-                    onChange={e => setQuickConsumed(e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1rem', fontWeight: 900, textAlign: 'center', outline: 'none' }}
-                  />
-                </div>
-              </div>
-
-              {/* Live Balance Preview */}
-              {(quickStock !== '' || quickConsumed !== '') && (
-                <div style={{
-                  background: (parseInt(quickStock) || 0) - (parseInt(quickConsumed) || 0) < 0 ? '#fef2f2' : '#f0fdf4',
-                  border: `1.5px solid ${(parseInt(quickStock) || 0) - (parseInt(quickConsumed) || 0) < 0 ? '#fecaca' : '#bbf7d0'}`,
-                  borderRadius: '12px',
-                  padding: '14px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b', marginBottom: '4px' }}>Calculated Balance</div>
-                  <div style={{
-                    fontSize: '2rem',
-                    fontWeight: 900,
-                    color: (parseInt(quickStock) || 0) - (parseInt(quickConsumed) || 0) < 0 ? '#ef4444' : '#16a34a'
-                  }}>
-                    {(parseInt(quickStock) || 0) - (parseInt(quickConsumed) || 0)}
-                  </div>
-                  {(parseInt(quickStock) || 0) - (parseInt(quickConsumed) || 0) < 0 && (
-                    <div style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, marginTop: '4px' }}>⚠️ Negative balance — verify counts</div>
-                  )}
-                </div>
-              )}
-
-              {/* RN Name */}
-              <div>
-                <label style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', display: 'block', marginBottom: '6px' }}>RN Name / Initials</label>
-                <input
-                  value={quickNote}
-                  onChange={e => setQuickNote(e.target.value)}
-                  placeholder={user?.name || 'Your name or initials...'}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, outline: 'none' }}
-                />
-              </div>
-            </div>
-
-            {/* Footer CTA */}
-            <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid #f1f5f9', background: '#f8fafc' }}>
-              <button
-                onClick={saveQuickUpdate}
-                disabled={!quickItem || quickSaving}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  background: (!quickItem || quickSaving) ? '#cbd5e1' : '#0369a1',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '14px',
-                  fontWeight: 900,
-                  fontSize: '0.85rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  cursor: (!quickItem || quickSaving) ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'background 0.2s'
-                }}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Status</label>
+              <select
+                value={newItemStatus}
+                onChange={(e) => setNewItemStatus(e.target.value)}
+                className="w-full px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-sm cursor-pointer"
               >
-                {quickSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                {quickSaving ? 'Saving...' : 'Save Stock Update'}
-              </button>
-              <p style={{ margin: '8px 0 0', textAlign: 'center', fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600 }}>
-                Saves to today · Day {new Date().getDate()} · {new Date().getHours() < 13 ? 'AM' : 'PM'} session
-              </p>
+                <option value="Available">Available</option>
+                <option value="Near Expiry">Near Expiry</option>
+                <option value="Expired">Expired</option>
+                <option value="Outstock">Outstock</option>
+              </select>
             </div>
           </div>
-        </div>
-      )}
+
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Expiration Date</label>
+            <input
+              type="text"
+              value={newItemExpDate}
+              onChange={(e) => setNewItemExpDate(e.target.value)}
+              placeholder="MM/YYYY or No Expiry"
+              className="w-full px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-sm"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCreateModal(false)}
+              className="px-4 py-2 rounded-xl text-slate-500 font-bold text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-sm"
+            >
+              Create Item
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

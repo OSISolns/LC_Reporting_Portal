@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   CalendarDays,
   FileSpreadsheet,
-  Download
+  Download,
+  Database
 } from 'lucide-react';
 import { getReportConfig, getDailyReport, getMonthlyReport } from '../api/reports';
 import toast from 'react-hot-toast';
@@ -34,6 +35,7 @@ export default function DailyOperationalReportBoard() {
   const [selectedDate, setSelectedDate] = useState('2026-04-30'); // Default to latest populated data
   const [dailyMetrics, setDailyMetrics] = useState({}); // providerId -> patientCount
   const [dailyLogs, setDailyLogs] = useState({}); // metricName -> metricValue
+  const [stockLogs, setStockLogs] = useState([]); // inventory audit logs
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
 
@@ -94,6 +96,25 @@ export default function DailyOperationalReportBoard() {
         } else {
           setDailyMetrics({});
           setDailyLogs({});
+        }
+
+        // Fetch inventory stock change logs for the selected date
+        try {
+          const token = localStorage.getItem('token');
+          const logsRes = await fetch(`/api/clinical/inventory/change-logs?date=${selectedDate}`, {
+            headers: {
+              'Authorization': token ? `Bearer ${token}` : ''
+            }
+          });
+          const logsData = await logsRes.json();
+          if (logsData.success && Array.isArray(logsData.data)) {
+            setStockLogs(logsData.data);
+          } else {
+            setStockLogs([]);
+          }
+        } catch (logsErr) {
+          console.error('Failed to fetch stock change logs:', logsErr);
+          setStockLogs([]);
         }
       } catch (err) {
         console.error('Failed to fetch daily report details:', err);
@@ -1015,6 +1036,83 @@ export default function DailyOperationalReportBoard() {
                 </div>
               </div>
 
+            </div>
+
+            {/* Daily Nursing Stock Change Audit Trail Timeline */}
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 mt-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
+                <div>
+                  <h3 className="text-sm font-black text-sky-650 uppercase tracking-widest flex items-center gap-2">
+                    <Database size={16} className="text-sky-650" /> Nursing Stock Daily Audit Timeline
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-extrabold uppercase mt-0.5">
+                    Real-time stock counting updates and consumed level adjustments log
+                  </p>
+                </div>
+                <span className="text-[10px] font-black px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full">
+                  {stockLogs.length} CHANGES LOGGED
+                </span>
+              </div>
+
+              {stockLogs.length === 0 ? (
+                <div className="text-center py-8 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                  <Database size={24} className="text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs text-slate-450 font-bold">No inventory stock or consumption level modifications logged today.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-left border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                        <th className="px-4 py-3">Logged At</th>
+                        <th className="px-4 py-3">Item Name</th>
+                        <th className="px-4 py-3">Day / Session</th>
+                        <th className="px-4 py-3 text-center">Stock Change</th>
+                        <th className="px-4 py-3 text-center">Consumed Change</th>
+                        <th className="px-4 py-3">Updated By</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {stockLogs.map((log) => {
+                        const logTime = new Date(log.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        
+                        const stockDiff = log.new_stock - log.old_stock;
+                        const consumedDiff = log.new_consumed - log.old_consumed;
+
+                        return (
+                          <tr key={log.id} className="hover:bg-slate-50/40 text-xs font-bold text-slate-700">
+                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-400 font-mono text-[11px]">{logTime}</td>
+                            <td className="px-4 py-3.5 text-slate-900 font-black">{log.item_name}</td>
+                            <td className="px-4 py-3.5">
+                              <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100 uppercase">
+                                Day {log.day} - {log.session}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 text-center">
+                              <span className={`inline-flex items-center gap-1 font-mono text-[11px] font-black ${stockDiff === 0 ? 'text-slate-400' : stockDiff > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {log.old_stock} ➔ {log.new_stock}
+                                {stockDiff !== 0 && ` (${stockDiff > 0 ? '+' : ''}${stockDiff})`}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 text-center">
+                              <span className={`inline-flex items-center gap-1 font-mono text-[11px] font-black ${consumedDiff === 0 ? 'text-slate-400' : consumedDiff > 0 ? 'text-amber-600' : 'text-sky-600'}`}>
+                                {log.old_consumed} ➔ {log.new_consumed}
+                                {consumedDiff !== 0 && ` (${consumedDiff > 0 ? '+' : ''}${consumedDiff})`}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-800">
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-450" />
+                                {log.updated_by}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
 

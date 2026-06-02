@@ -22,6 +22,7 @@ const Sidebar = ({ onClose }) => {
     { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer'] },
     { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer', 'chef-nurse'] },
     { name: ['doctor', 'consultant'].includes(user?.role) ? 'Doctor Hub' : 'Nursing Hub', icon: <Stethoscope size={20} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse'] },
+    { name: 'Daily Stock Checkup', icon: <Database size={20} />, path: '/nursing-hub/inventory', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant'] },
     { name: 'E-Prescriptions', icon: <FileText size={20} />, path: '/e-prescriptions', requiredPerm: null, allowedRoles: ['doctor', 'consultant'] },
     { name: 'Daily Report', icon: <Activity size={20} />, path: '/nursing-hub/daily-report', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse'] },
     { name: 'Daily Reports Board', icon: <FileText size={20} />, path: '/daily-reports-board', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer', 'chef-nurse', 'nurse'] },
@@ -50,7 +51,7 @@ const Sidebar = ({ onClose }) => {
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/';
     if (path === '/nursing-hub') {
-      return location.pathname === '/nursing-hub' || location.pathname.startsWith('/nursing-hub/inventory');
+      return location.pathname === '/nursing-hub';
     }
     return location.pathname.startsWith(path);
   };

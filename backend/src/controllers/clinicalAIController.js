@@ -21,15 +21,15 @@ exports.suggestMedications = (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// POST /api/ai/clinical/icd10
+// POST /api/ai/clinical/icd10  (now backed by live WHO ICD-11 API)
 // Body: { query: string }
-exports.suggestICD10 = (req, res, next) => {
+exports.suggestICD10 = async (req, res, next) => {
   try {
     const { query } = req.body;
     if (!query) {
       return res.status(400).json({ success: false, message: 'query is required' });
     }
-    const data = suggestICD10(query);
+    const data = await suggestICD10(query);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };

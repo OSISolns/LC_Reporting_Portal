@@ -110,109 +110,208 @@ const FREQUENCY_LEGEND = [
   { abbr: 'Loading dose', meaning: 'Initial high dose to quickly achieve therapeutic levels' },
 ];
 
-// ── ICD-10 Knowledge Base (Privacy-focused) ──────────────────────────────────
-const ICD10_DB = [
-  { code: 'A00.0', desc: 'Cholera due to Vibrio cholerae 01, biovar cholerae', keywords: ['cholera'] },
-  { code: 'A01.00', desc: 'Typhoid fever, unspecified', keywords: ['typhoid', 'enteric fever'] },
-  { code: 'A03.9', desc: 'Shigellosis, unspecified', keywords: ['shigellosis', 'dysentery'] },
-  { code: 'A06.0', desc: 'Acute amebic dysentery', keywords: ['amebic', 'dysentery'] },
-  { code: 'A09', desc: 'Infectious gastroenteritis and colitis, unspecified', keywords: ['gastroenteritis', 'diarrhea', 'food poisoning'] },
-  { code: 'A15.0', desc: 'Tuberculosis of lung', keywords: ['tuberculosis', 'tb', 'lung'] },
-  { code: 'A30.9', desc: 'Leprosy, unspecified', keywords: ['leprosy', 'hansen'] },
-  { code: 'A33', desc: 'Tetanus neonatorum', keywords: ['tetanus', 'neonatal'] },
-  { code: 'A34', desc: 'Obstetrical tetanus', keywords: ['tetanus', 'obstetrical', 'maternal'] },
-  { code: 'A35', desc: 'Other tetanus', keywords: ['tetanus', 'lockjaw'] },
-  { code: 'A39.9', desc: 'Meningococcal infection, unspecified', keywords: ['meningitis', 'meningococcal'] },
-  { code: 'A75.9', desc: 'Typhus fever, unspecified', keywords: ['typhus'] },
-  { code: 'A82.9', desc: 'Rabies, unspecified', keywords: ['rabies', 'hydrophobia'] },
-  { code: 'A90', desc: 'Dengue fever [classical dengue]', keywords: ['dengue', 'breakbone'] },
-  { code: 'A91', desc: 'Dengue hemorrhagic fever', keywords: ['dengue', 'dengue hemorrhagic', 'dhf'] },
-  { code: 'A92.0', desc: 'Chikungunya virus disease', keywords: ['chikungunya'] },
-  { code: 'A95.9', desc: 'Yellow fever, unspecified', keywords: ['yellow fever'] },
-  { code: 'A97.0', desc: 'Dengue without warning signs', keywords: ['dengue'] },
-  { code: 'A97.1', desc: 'Dengue with warning signs', keywords: ['dengue'] },
-  { code: 'A97.2', desc: 'Severe Dengue', keywords: ['dengue', 'severe'] },
-  { code: 'B01.9', desc: 'Varicella without complication', keywords: ['chickenpox', 'varicella'] },
-  { code: 'B05.9', desc: 'Measles without complication', keywords: ['measles', 'rubeola'] },
-  { code: 'B06.9', desc: 'Rubella without complication', keywords: ['rubella', 'german measles'] },
-  { code: 'B15.9', desc: 'Hepatitis A without hepatic coma', keywords: ['hepatitis a', 'hep a'] },
-  { code: 'B16.9', desc: 'Acute hepatitis B without delta-agent and without hepatic coma', keywords: ['hepatitis b', 'hep b'] },
-  { code: 'B17.10', desc: 'Acute hepatitis C without hepatic coma', keywords: ['hepatitis c', 'hep c'] },
-  { code: 'B18.2', desc: 'Chronic viral hepatitis C', keywords: ['hepatitis c', 'hep c'] },
-  { code: 'B20', desc: 'Human immunodeficiency virus [HIV] disease', keywords: ['hiv', 'aids', 'immunodeficiency'] },
-  { code: 'B24', desc: 'Unspecified human immunodeficiency virus [HIV] disease', keywords: ['hiv', 'positive', 'immunosuppressed'] },
-  { code: 'B50.9', desc: 'Plasmodium falciparum malaria, unspecified', keywords: ['malaria', 'falciparum', 'pf'] },
-  { code: 'B51.9', desc: 'Plasmodium vivax malaria without complication', keywords: ['malaria', 'vivax', 'pv'] },
-  { code: 'B52.9', desc: 'Plasmodium malariae malaria without complication', keywords: ['malaria', 'pm'] },
-  { code: 'B53.0', desc: 'Plasmodium ovale malaria', keywords: ['malaria', 'ovale', 'po'] },
-  { code: 'B54', desc: 'Unspecified malaria', keywords: ['malaria', 'fever'] },
-  { code: 'B58.9', desc: 'Toxoplasmosis, unspecified', keywords: ['toxoplasmosis', 'toxo'] },
-  { code: 'B65.9', desc: 'Schistosomiasis, unspecified', keywords: ['schistosomiasis', 'bilharzia'] },
-  { code: 'B73.00', desc: 'Onchocerciasis, unspecified', keywords: ['onchocerciasis', 'river blindness'] },
-  { code: 'B74.9', desc: 'Filariasis, unspecified', keywords: ['filariasis', 'elephantiasis'] },
-  { code: 'B76.9', desc: 'Hookworm disease, unspecified', keywords: ['hookworm', 'ancylostomiasis'] },
-  { code: 'B77.9', desc: 'Ascariasis, unspecified', keywords: ['ascariasis', 'roundworm'] },
-  { code: 'B78.9', desc: 'Strongyloidiasis, unspecified', keywords: ['strongyloidiasis', 'threadworm'] },
-  { code: 'B79', desc: 'Trichuriasis', keywords: ['trichuriasis', 'whipworm'] },
-  { code: 'B80', desc: 'Enterobiasis', keywords: ['enterobiasis', 'pinworm'] },
-  { code: 'E11.9', desc: 'Type 2 diabetes mellitus without complications', keywords: ['diabetes', 'sugar', 'dm2', 't2dm'] },
-  { code: 'E46', desc: 'Unspecified protein-calorie malnutrition', keywords: ['malnutrition', 'kwashiorkor', 'marasmus'] },
-  { code: 'E86.0', desc: 'Dehydration', keywords: ['dehydration', 'hypovolemia'] },
-  { code: 'I10', desc: 'Essential (primary) hypertension', keywords: ['hypertension', 'blood pressure', 'htn', 'hbp'] },
-  { code: 'J02.9', desc: 'Acute pharyngitis, unspecified', keywords: ['sore throat', 'pharyngitis', 'throat pain'] },
-  { code: 'J03.9', desc: 'Acute tonsillitis, unspecified', keywords: ['tonsillitis', 'tonsils'] },
-  { code: 'J06.9', desc: 'Acute upper respiratory infection, unspecified', keywords: ['cold', 'flu', 'urti', 'cough', 'sniffles'] },
-  { code: 'J09.X2', desc: 'Influenza due to identified novel influenza A virus', keywords: ['flu', 'influenza', 'h1n1'] },
-  { code: 'J10.1', desc: 'Influenza due to other identified influenza virus with other respiratory manifestations', keywords: ['flu', 'influenza'] },
-  { code: 'J11.1', desc: 'Influenza due to unidentified influenza virus with other respiratory manifestations', keywords: ['flu', 'influenza'] },
-  { code: 'J18.9', desc: 'Pneumonia, unspecified organism', keywords: ['pneumonia', 'chest infection', 'lrti'] },
-  { code: 'J20.9', desc: 'Acute bronchitis, unspecified', keywords: ['bronchitis'] },
-  { code: 'J44.9', desc: 'Chronic obstructive pulmonary disease, unspecified', keywords: ['copd', 'emphysema', 'chronic bronchitis'] },
-  { code: 'J45.909', desc: 'Unspecified asthma, uncomplicated', keywords: ['asthma', 'wheezing', 'sob', 'shortness of breath'] },
-  { code: 'K21.9', desc: 'Gastro-esophageal reflux disease without esophagitis', keywords: ['gerd', 'heartburn', 'acid reflux', 'indigestion'] },
-  { code: 'K29.70', desc: 'Gastritis, unspecified, without bleeding', keywords: ['gastritis', 'stomach pain', 'ulcer', 'epigastric'] },
-  { code: 'K35.80', desc: 'Unspecified acute appendicitis', keywords: ['appendicitis'] },
-  { code: 'L02.91', desc: 'Cutaneous abscess, unspecified', keywords: ['abscess', 'boil'] },
-  { code: 'L03.90', desc: 'Cellulitis, unspecified', keywords: ['cellulitis'] },
-  { code: 'M54.5', desc: 'Low back pain', keywords: ['back pain', 'lumbago', 'sciatica', 'backache'] },
-  { code: 'N39.0', desc: 'Urinary tract infection, site not specified', keywords: ['uti', 'urinary', 'dysuria', 'burning urine'] },
-  { code: 'O03.9', desc: 'Spontaneous abortion, unspecified', keywords: ['abortion', 'miscarriage'] },
-  { code: 'O04.9', desc: 'Complications following (induced) termination of pregnancy', keywords: ['abortion', 'top', 'miscarriage', 'bleeding'] },
-  { code: 'O09.90', desc: 'Supervision of high risk pregnancy', keywords: ['pregnancy', 'antenatal', 'anc', 'gravida'] },
-  { code: 'O80', desc: 'Encounter for full-term uncomplicated delivery', keywords: ['delivery', 'labor', 'childbirth'] },
-  { code: 'R05', desc: 'Cough', keywords: ['cough', 'hacking', 'dry cough'] },
-  { code: 'R07.9', desc: 'Chest pain, unspecified', keywords: ['chest pain', 'angina', 'heart pain'] },
-  { code: 'R50.9', desc: 'Fever, unspecified', keywords: ['fever', 'temperature', 'hot', 'pyrexia'] },
-  { code: 'R51', desc: 'Headache', keywords: ['headache', 'migraine', 'head pain'] },
-  { code: 'T14.90', desc: 'Injury, unspecified', keywords: ['injury', 'trauma', 'wound'] },
-  { code: 'Z00.00', desc: 'Encounter for general adult medical examination', keywords: ['checkup', 'routine', 'medical', 'physical'] },
-  { code: 'Z11.3', desc: 'Encounter for screening for infections with a predominantly sexual mode of transmission', keywords: ['std screening', 'sti test', 'sexual health'] }
-];
+// ── ICD-11 Live API Client (WHO) ─────────────────────────────────────────────
+const https = require('https');
+const querystring = require('querystring');
+const db = require('../config/db');
 
-function suggestICD10(query) {
-  if (!query || query.length < 2) return [];
-  const q = query.toLowerCase().trim();
-  
-  // Scoring algorithm
-  const results = ICD10_DB.map(item => {
-    let score = 0;
-    if (item.code.toLowerCase() === q) score += 100;
-    else if (item.code.toLowerCase().includes(q)) score += 50;
-    
-    if (item.desc.toLowerCase().includes(q)) score += 30;
-    
-    item.keywords.forEach(kw => {
-      if (kw === q) score += 40;
-      else if (kw.includes(q) || q.includes(kw)) score += 20;
-    });
-    
-    return { ...item, score };
+// Token cache — avoid hammering the WHO token endpoint on every request
+let _icd11Token = null;
+let _icd11TokenExpiresAt = 0;
+
+/**
+ * Obtain (or return cached) OAuth2 bearer token from the WHO identity server.
+ * Tokens are valid for 1 hour; we refresh 60 s before expiry.
+ */
+async function getICD11Token() {
+  const now = Date.now();
+  if (_icd11Token && now < _icd11TokenExpiresAt - 60_000) return _icd11Token;
+
+  const clientId     = process.env.ICD11_CLIENT_ID;
+  const clientSecret = process.env.ICD11_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error('ICD11_CLIENT_ID / ICD11_CLIENT_SECRET are not set in environment variables.');
+  }
+
+  const body = querystring.stringify({
+    client_id:     clientId,
+    client_secret: clientSecret,
+    scope:         'icdapi_access',
+    grant_type:    'client_credentials',
   });
 
-  // Filter and sort by highest score
-  const matches = results.filter(r => r.score > 0).sort((a, b) => b.score - a.score);
-  return matches.slice(0, 10).map(m => ({ code: m.code, desc: m.desc }));
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'icdaccessmanagement.who.int',
+      path:     '/connect/token',
+      method:   'POST',
+      headers:  {
+        'Content-Type':   'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    };
+    const req = https.request(options, (res) => {
+      let raw = '';
+      res.on('data', (chunk) => { raw += chunk; });
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(raw);
+          if (!json.access_token) return reject(new Error('WHO token endpoint: no access_token in response'));
+          _icd11Token = json.access_token;
+          _icd11TokenExpiresAt = now + (json.expires_in || 3600) * 1000;
+          resolve(_icd11Token);
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
 }
+
+/**
+ * Search WHO ICD-11 MMS (Mortality & Morbidity Statistics) release.
+ * Checks the local SQLite icd11_cache table first. If a match is found,
+ * it returns the cached results instantly. Otherwise, it queries the live WHO API
+ * and caches the new results.
+ * If offline or the API fails, it does a partial match lookup in the cache table.
+ */
+async function suggestICD11(query) {
+  if (!query || query.length < 2) return [];
+
+  const needle = query.toLowerCase().trim();
+
+  // 1. Check for exact match in the local cache
+  try {
+    const cachedRow = await db.query('SELECT results FROM icd11_cache WHERE keyword = $1', [needle]);
+    if (cachedRow && cachedRow.rows.length > 0) {
+      console.log(`🎯 ICD-11 Cache HIT for: "${needle}"`);
+      return JSON.parse(cachedRow.rows[0].results);
+    }
+  } catch (err) {
+    console.error('⚠️ Error reading from icd11_cache:', err.message);
+  }
+
+  // 2. Cache Miss: Attempt to query the live WHO ICD-11 API
+  let results = [];
+  let apiSuccess = false;
+  try {
+    const token = await getICD11Token();
+    const qs = querystring.stringify({
+      q:                      query,
+      subtreeFilterUsage:     'includeDefs',
+      includeKeywordResult:   true,
+      useFlexisearch:         true,
+      flatResults:            true,
+      highlightingEnabled:    false,
+      medicalCodingMode:      true,
+      releaseId:              '2024-01',
+      linearizationname:      'mms',
+    });
+
+    results = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'id.who.int',
+        path:     `/icd/release/11/2024-01/mms/search?${qs}`,
+        method:   'GET',
+        headers:  {
+          Authorization:          `Bearer ${token}`,
+          Accept:                 'application/json',
+          'Accept-Language':      'en',
+          'API-Version':          'v2',
+        },
+        timeout: 5000,
+      };
+
+      const req = https.request(options, (res) => {
+        let raw = '';
+        res.on('data', (chunk) => { raw += chunk; });
+        res.on('end', () => {
+          try {
+            if (res.statusCode !== 200) {
+              return reject(new Error(`WHO API returned status ${res.statusCode}`));
+            }
+            const json = JSON.parse(raw);
+            const entities = json.destinationEntities || [];
+            const parsed = entities.slice(0, 10).map((e) => ({
+              code: e.theCode  || e.id || '',
+              desc: e.title?.['@value'] || e.title || 'Unknown',
+            }));
+            resolve(parsed);
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('WHO API request timeout'));
+      });
+
+      req.on('error', reject);
+      req.end();
+    });
+
+    apiSuccess = true;
+  } catch (err) {
+    console.warn(`⚠️ WHO ICD-11 API call failed or timed out: ${err.message}. Falling back to local partial cache search.`);
+  }
+
+  // 3. If API query succeeded and returned results, cache them in the SQLite db
+  if (apiSuccess && results && results.length > 0) {
+    try {
+      await db.query(
+        'INSERT OR REPLACE INTO icd11_cache (keyword, results) VALUES ($1, $2)',
+        [needle, JSON.stringify(results)]
+      );
+      console.log(`💾 Cached ${results.length} results for keyword: "${needle}"`);
+    } catch (cacheErr) {
+      console.error('⚠️ Failed to save results to icd11_cache:', cacheErr.message);
+    }
+    return results;
+  }
+
+  // 4. Fallback: If API failed or returned empty, perform a partial match inside the local cache
+  try {
+    console.log(`🔍 Searching local database cache for keywords matching: "%${needle}%"`);
+    const partialRows = await db.query(
+      'SELECT keyword, results FROM icd11_cache WHERE keyword LIKE $1 OR results LIKE $2 LIMIT 10',
+      [`%${needle}%`, `%${needle}%`]
+    );
+
+    if (partialRows && partialRows.rows.length > 0) {
+      const combinedResults = new Map();
+      for (const row of partialRows.rows) {
+        try {
+          const parsedResults = JSON.parse(row.results);
+          for (const item of parsedResults) {
+            if (item.code && item.desc) {
+              combinedResults.set(item.code, item.desc);
+            }
+          }
+        } catch (_) {}
+      }
+
+      const finalSuggestions = Array.from(combinedResults.entries()).map(([code, desc]) => ({
+        code,
+        desc
+      })).slice(0, 10);
+
+      if (finalSuggestions.length > 0) {
+        console.log(`✨ Found ${finalSuggestions.length} local suggestions matching "${needle}"`);
+        return finalSuggestions;
+      }
+    }
+  } catch (dbErr) {
+    console.error('⚠️ Database partial cache search failed:', dbErr.message);
+  }
+
+  return [];
+}
+
+// Legacy alias — controllers still import suggestICD10 by name
+const suggestICD10 = suggestICD11;
 
 // ── Medication Lookup ─────────────────────────────────────────────────────────
 function lookupMedication(medName) {
@@ -367,4 +466,4 @@ function generateSBAR({ identification, triage, progress_notes, medication_mar }
   return s + b + a + r;
 }
 
-module.exports = { suggestMedications, generateAssessmentComments, generateProgressNote, generateSBAR, suggestICD10, FREQUENCY_LEGEND, DRUG_DB, ICD10_DB };
+module.exports = { suggestMedications, generateAssessmentComments, generateProgressNote, generateSBAR, suggestICD10, suggestICD11, getICD11Token, FREQUENCY_LEGEND, DRUG_DB };

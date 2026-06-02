@@ -74,7 +74,7 @@ function App() {
             <Route path="/clinical-observation" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
             <Route path="/nursing-hub" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
             <Route path="/e-prescriptions" element={<ProtectedRoute allowedRoles={['doctor', 'consultant']}><EPrescriptions /></ProtectedRoute>} />
-            <Route path="/nursing-hub/inventory" element={<ProtectedRoute allowedRoles={['nurse', 'chef-nurse', 'admin']}><DailyInventoryCheckup /></ProtectedRoute>} />
+            <Route path="/nursing-hub/inventory" element={<ProtectedRoute allowedRoles={['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant']}><DailyInventoryCheckup /></ProtectedRoute>} />
             <Route path="/nursing-hub/daily-report" element={<ProtectedRoute allowedRoles={['nurse', 'chef-nurse']}><DailyOperationalReport /></ProtectedRoute>} />
             <Route path="/daily-reports-board" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer', 'chef-nurse', 'nurse']}><DailyOperationalReportBoard /></ProtectedRoute>} />
             <Route path="/feedbacks" element={<ProtectedRoute allowedRoles={['coo', 'deputy_coo', 'chef-nurse']}><FeedbackList /></ProtectedRoute>} />

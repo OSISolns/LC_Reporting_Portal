@@ -15,7 +15,7 @@ const EPrescriptions = () => {
   const [activeSearchField, setActiveSearchField] = useState(null);
   const [inventoryItems, setInventoryItems] = useState([]);
 
-  const [icd10Suggestions, setIcd10Suggestions] = useState([]);
+  const [icd11Suggestions, setIcd11Suggestions] = useState([]);
   const [nursingData, setNursingData] = useState(null);
 
   useEffect(() => {
@@ -24,14 +24,14 @@ const EPrescriptions = () => {
         api.post('/ai/clinical/icd10', { query: patientInfo.diagnosis })
           .then(res => {
             if (res.data?.success) {
-              setIcd10Suggestions(res.data.data);
+              setIcd11Suggestions(res.data.data);
             }
           })
-          .catch(err => console.error('Failed to get ICD10 suggestions', err));
+          .catch(err => console.error('Failed to get ICD-11 suggestions', err));
       }, 300);
       return () => clearTimeout(delay);
     } else {
-      setIcd10Suggestions([]);
+      setIcd11Suggestions([]);
     }
   }, [patientInfo.diagnosis]);
 
@@ -265,10 +265,10 @@ const EPrescriptions = () => {
             </div>
           </div>
           <div className="px-8 pb-8">
-            <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Clinical Diagnosis (ICD-10)</label>
-            <input type="text" list="icd10-codes" name="diagnosis" value={patientInfo.diagnosis} onChange={handlePatientChange} placeholder="Search conditions (e.g. malaria)... Only the ICD-10 code will be printed for privacy." className="w-full px-5 py-3.5 rounded-xl border-2 border-slate-200 focus:border-[#1B669E] focus:ring-4 focus:ring-[#1B669E]/10 outline-none text-base transition-all font-medium text-slate-800 bg-white" />
-            <datalist id="icd10-codes">
-              {icd10Suggestions.map((item, idx) => (
+            <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Clinical Diagnosis (ICD-11)</label>
+            <input type="text" list="icd11-codes" name="diagnosis" value={patientInfo.diagnosis} onChange={handlePatientChange} placeholder="Search conditions (e.g. malaria)... Only the ICD-11 code will be printed for privacy." className="w-full px-5 py-3.5 rounded-xl border-2 border-slate-200 focus:border-[#1B669E] focus:ring-4 focus:ring-[#1B669E]/10 outline-none text-base transition-all font-medium text-slate-800 bg-white" />
+            <datalist id="icd11-codes">
+              {icd11Suggestions.map((item, idx) => (
                 <option key={idx} value={item.code}>{item.desc}</option>
               ))}
             </datalist>

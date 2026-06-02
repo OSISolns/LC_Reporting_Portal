@@ -45,29 +45,104 @@ const generateDocQRCode = async (obs) => {
 
 // ─── Inventory Item Master List ───────────────────────────────────────────────
 const INVENTORY_ITEMS = [
-  "Dextrose 50%", "Dextrose 500mg", "Paracetamol IV 1g", "Furosemide", "Adrenaline 1mg",
-  "Dexamethasone 8mg", "Dexamethasone 4mg", "Ceftriaxone 1g", "Metronidazole 1g",
-  "Tramadol 100mg", "Diclofenac 75mg", "Esomeprazole 40mg", "Normal saline 500mL",
-  "Ringer lactate 500mL", "oxytocin inj", "Propofol", "Fentanyl", "ketamine",
-  "Pethidine", "MORPHINE", "Midazolam", "Nalaxoan", "Diazepam", "Buscopan 20mg",
-  "Marcaine%0.5", "Atropine", "Lidocaine", "Hydrocortisone 100mg", "Phenytoine 250mg",
-  "Metoclopramide", "Hydralazine 20-25mg/ml",
-  "Paracetamol 500mg ces", "Paracetamol suppo 250mg", "Paracetamol suppo 125mg",
-  "Emitino 4mg", "Vitamine B complex", "Diclofenac suppo 100mg", "Dicynone",
-  "Pause 500mg", "chlorpromazine 100mg", "cytotec", "Salbutamol 2.5mg",
-  "Giving set", "Papsmear", "Vaginal swab", "Povidone iodine solution", "Eaux oxygenee",
-  "vaseline gauze", "Gauze swab", "vicryl 5/O", "vicryl 4/O", "Vicryl 3/0", "Vicryl 2/o",
-  "Ethilon 2/0", "Ethilon 3/0", "Ethilon 4/0", "Ethilon 5/0", "Ethilon 6/0", "monocryl 6/0",
-  "surgical blades N23", "Surgical blades N21", "surgical bladeN15", "surgical blade N12",
-  "crepes bandage 7.5cm", "Crepe bandage 10cm", "crepe bandage 15cm", "Aquabloc 15×10", "Aquabloc 10×10",
-  "water for injection", "Syringe 2ml", "syringe 5ml", "syringe 10ml", "syringe 20ml",
-  "needle 23", "needle 21", "needle 18",
-  "Urine drainage bag", "Foley balloon catheter fr 10", "Foley balloon catheter fr 12",
-  "Foley balloon catheter fr 16", "Foley balloon catheter fr 18", "Foley balloon catheter fr 20",
-  "catheter G20", "Iv catheter G22", "Iv catheter G24", "Iv catheter G16", "Iv catheter G18",
-  "sterile gloves no 8CM", "sterile gloves 8", "sterile gloves 7.5", "proper gloves",
-  "neb mask adult", "Neb mask ped",
-  "IUD MIRENA", "CONDOM", "SAYANA", "JADELLE", "MICROGYN"
+  "Aquabloc 15cm",
+  "Adrenaline",
+  "Adrenaline 1mg",
+  "Alcohol pads",
+  "Atropine 1mg",
+  "Bande 15cm",
+  "Bande 7.5cm",
+  "Bupivacaine",
+  "Buscopan",
+  "Buscopan 20mg",
+  "Catheter G16",
+  "Catheter G18",
+  "Catheter G20",
+  "Catheter G22",
+  "Catheter G24",
+  "Ceftriaxone 1g",
+  "Dexamethasone",
+  "Dexamethasone 4mg",
+  "Dexamethasone 8mg",
+  "Dextrose 50%",
+  "Diazepam 10mg",
+  "Diclo 100mg Supp",
+  "Diclofenac 75mg",
+  "Diclofenac IM 75mg",
+  "Dicynone 250mg",
+  "Eau oxygénée 3%",
+  "Emitino",
+  "Esomeprazole",
+  "Fentanyl",
+  "Flagyl",
+  "Furosemide",
+  "Furosemide 20mg",
+  "Gants Sterile 8",
+  "Gants propre",
+  "Gloves 7.5",
+  "Glucose 5%",
+  "Hydralazine 20mg",
+  "Hydrocortisone 100mg",
+  "IV Paracetamol 1g",
+  "Ketamine 500mg",
+  "Largactil 25mg",
+  "Lidocaine",
+  "Masque Neb Adulte",
+  "Masque Neb Enfant",
+  "Metoclopramide",
+  "Metronidazole",
+  "Midazolam 5mg",
+  "Morphine 10mg",
+  "NS (Normal Saline)",
+  "Naloxone",
+  "Nasal Oxygen Masque Enfant",
+  "Nylon 2/0",
+  "Nylon 4/0",
+  "Nylon 5/0",
+  "Pantoprazole 40mg",
+  "Pap Smear",
+  "Paracet 125mg Supp",
+  "Paracet 250mg Supp",
+  "Paracetamol 125mg",
+  "Paracetamol Ces",
+  "Paraffin Gauze 5cm",
+  "Pause",
+  "Pethidine",
+  "Phenobarbital 100mg",
+  "Phenytoin 250mg",
+  "Phytomenadione 10mg",
+  "Plaster",
+  "Polyglactin 3/0",
+  "Polyglactin 4/0",
+  "Polypropylene 6/0",
+  "Povidone 10%",
+  "Propofol 200mg",
+  "RL (Ringer's Lactate)",
+  "Sac à urine",
+  "Salbutamol",
+  "Seringue 10cc",
+  "Seringue 1cc (Insuline)",
+  "Seringue 20cc",
+  "Seringue 2cc",
+  "Seringue 5cc",
+  "Sonde Vésicale G10",
+  "Sonde Vésicale G12",
+  "Sonde Vésicale G16",
+  "Spatula",
+  "Speculum",
+  "Sterile Gauze 10cm",
+  "Surgical Blades N15",
+  "Surgical Blades N23",
+  "Tongue Depressor",
+  "Tramadol",
+  "Trousse",
+  "Vaginal Swab",
+  "Vicryl 2/0",
+  "Vicryl 3/0",
+  "Vicryl 4/0",
+  "Vicryl 5/0",
+  "Vit B complex",
+  "Water for injection"
 ];
 
 // ─── Sync Engine: Clinical Sheet → Daily Stock Checkup ────────────────────────
@@ -430,32 +505,106 @@ exports.saveInventoryBulk = async (req, res) => {
       return res.status(400).json({ success: false, message: 'month_year and items array are required' });
     }
 
-    const statements = items.map(item => ({
-      sql: `INSERT INTO nursing_monthly_stock (
-          month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-        ON CONFLICT(month_year, item_name, day, session) DO UPDATE SET
-          stock_in_hands = excluded.stock_in_hands,
-          consumed = excluded.consumed,
-          balance = excluded.balance,
-          responsible_name = excluded.responsible_name,
-          updated_at = NOW()`,
-      args: [
-        month_year,
-        item.item_name,
-        item.day,
-        item.session,
-        parseInt(item.stock_in_hands, 10) || 0,
-        parseInt(item.consumed, 10) || 0,
-        parseInt(item.balance, 10) || 0,
-        item.responsible_name || ''
-      ]
-    }));
+    const updater = req.user?.fullName || req.user?.username || 'System';
 
-    await db.batch(statements);
-    res.json({ success: true, message: 'Inventory saved successfully' });
+    // Fetch existing records for this month/year to compare and log changes
+    const { rows: existingRows } = await db.query(
+      `SELECT item_name, day, session, stock_in_hands, consumed FROM nursing_monthly_stock WHERE month_year = $1`,
+      [month_year]
+    );
+
+    const existingMap = {};
+    existingRows.forEach(row => {
+      const key = `${row.item_name}-${row.day}-${row.session}`;
+      existingMap[key] = row;
+    });
+
+    const logsToInsert = [];
+
+    const statements = items.map(item => {
+      const oldStock = existingMap[`${item.item_name}-${item.day}-${item.session}`]?.stock_in_hands || 0;
+      const oldConsumed = existingMap[`${item.item_name}-${item.day}-${item.session}`]?.consumed || 0;
+      const newStock = parseInt(item.stock_in_hands, 10) || 0;
+      const newConsumed = parseInt(item.consumed, 10) || 0;
+
+      // If stock or consumed has changed, add to our logs list!
+      if (oldStock !== newStock || oldConsumed !== newConsumed) {
+        logsToInsert.push({
+          sql: `INSERT INTO nursing_stock_change_logs (
+              month_year, item_name, day, session, old_stock, new_stock, old_consumed, new_consumed, updated_by
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          args: [
+            month_year,
+            item.item_name,
+            item.day,
+            item.session,
+            oldStock,
+            newStock,
+            oldConsumed,
+            newConsumed,
+            updater
+          ]
+        });
+      }
+
+      return {
+        sql: `INSERT INTO nursing_monthly_stock (
+            month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, expiration_date, status, category, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+          ON CONFLICT(month_year, item_name, day, session) DO UPDATE SET
+            stock_in_hands = excluded.stock_in_hands,
+            consumed = excluded.consumed,
+            balance = excluded.balance,
+            responsible_name = excluded.responsible_name,
+            expiration_date = excluded.expiration_date,
+            status = excluded.status,
+            category = excluded.category,
+            updated_at = CURRENT_TIMESTAMP`,
+        args: [
+          month_year,
+          item.item_name,
+          item.day,
+          item.session,
+          newStock,
+          newConsumed,
+          parseInt(item.balance, 10) || 0,
+          item.responsible_name || '',
+          item.expiration_date || '',
+          item.status || '',
+          item.category || ''
+        ]
+      };
+    });
+
+    await db.batch([...statements, ...logsToInsert]);
+    res.json({ success: true, message: 'Inventory saved and audit logs created successfully' });
   } catch (error) {
     console.error('Error in saveInventoryBulk:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Inventory: Get audit change logs ──────────────────────────────────────────
+exports.getInventoryChangeLogs = async (req, res) => {
+  try {
+    const { date, month_year } = req.query;
+    let sql = 'SELECT * FROM nursing_stock_change_logs';
+    let params = [];
+
+    if (date) {
+      sql += ' WHERE date(updated_at) = $1';
+      params.push(date);
+    } else if (month_year) {
+      sql += ' WHERE month_year = $1';
+      params.push(month_year);
+    }
+
+    sql += ' ORDER BY updated_at DESC';
+
+    const { rows } = await db.query(sql, params);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getInventoryChangeLogs:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

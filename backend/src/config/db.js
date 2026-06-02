@@ -259,6 +259,262 @@ let client = createClient({
   } catch (err) {
     console.error('❌ Failed to seed nursing report data:', err);
   }
+
+  // ICD-11 Cache Table Migration & Seeding
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS icd11_cache (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        keyword TEXT UNIQUE NOT NULL,
+        results TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created icd11_cache table');
+
+    const { rows: cacheCount } = await client.execute("SELECT COUNT(*) as count FROM icd11_cache");
+    if (cacheCount[0].count === 0) {
+      console.log('🌱 Seeding initial ICD-11 cache for common medical conditions...');
+      const seedData = [
+        {
+          keyword: 'malaria',
+          results: [
+            { code: '1A20', desc: 'Plasmodium falciparum malaria' },
+            { code: '1A21', desc: 'Plasmodium vivax malaria' },
+            { code: '1A22', desc: 'Plasmodium malariae malaria' },
+            { code: '1A23', desc: 'Plasmodium ovale malaria' },
+            { code: '1A25', desc: 'Mixed malaria' }
+          ]
+        },
+        {
+          keyword: 'cholera',
+          results: [
+            { code: '1A00', desc: 'Cholera' },
+            { code: '1A00.0', desc: 'Cholera due to Vibrio cholerae 01, biovar cholerae' },
+            { code: '1A00.1', desc: 'Cholera due to Vibrio cholerae 01, biovar eltor' }
+          ]
+        },
+        {
+          keyword: 'typhoid',
+          results: [
+            { code: '1A07', desc: 'Typhoid fever' },
+            { code: '1A07.y', desc: 'Other specified typhoid fever' }
+          ]
+        },
+        {
+          keyword: 'hypertension',
+          results: [
+            { code: 'BA00', desc: 'Essential hypertension' },
+            { code: 'BA01', desc: 'Hypertensive heart disease' },
+            { code: 'BA02', desc: 'Hypertensive renal disease' }
+          ]
+        },
+        {
+          keyword: 'diabetes',
+          results: [
+            { code: '5A10', desc: 'Type 1 diabetes mellitus' },
+            { code: '5A11', desc: 'Type 2 diabetes mellitus' },
+            { code: '5A14', desc: 'Diabetes mellitus in pregnancy' }
+          ]
+        },
+        {
+          keyword: 'influenza',
+          results: [
+            { code: '1E30', desc: 'Influenza due to identified seasonal influenza virus' },
+            { code: '1E31', desc: 'Influenza due to identified zoonotic or pandemic influenza virus' }
+          ]
+        },
+        {
+          keyword: 'bronchitis',
+          results: [
+            { code: 'CA40', desc: 'Acute bronchitis' },
+            { code: 'CA42', desc: 'Chronic bronchitis' }
+          ]
+        },
+        {
+          keyword: 'gastroenteritis',
+          results: [
+            { code: '1A40.0', desc: 'Salmonella gastroenteritis' },
+            { code: '1A40.2', desc: 'Campylobacter gastroenteritis' },
+            { code: '1A40.5', desc: 'Viral gastroenteritis' },
+            { code: '1A44.0', desc: 'Gastroenteritis of suspected infectious origin' }
+          ]
+        },
+        {
+          keyword: 'appendicitis',
+          results: [
+            { code: 'DB10', desc: 'Acute appendicitis' },
+            { code: 'DB11', desc: 'Chronic appendicitis' }
+          ]
+        },
+        {
+          keyword: 'pregnancy',
+          results: [
+            { code: 'JA60', desc: 'Care of pregnancy' },
+            { code: 'JA61', desc: 'Pregnancy-related conditions' }
+          ]
+        },
+        {
+          keyword: 'anemia',
+          results: [
+            { code: '3A90', desc: 'Nutritional anaemia' },
+            { code: '3A90.0', desc: 'Iron deficiency anaemia' },
+            { code: '3A90.1', desc: 'Folate deficiency anaemia' },
+            { code: '3A90.2', desc: 'Vitamin B12 deficiency anaemia' }
+          ]
+        },
+        {
+          keyword: 'pneumonia',
+          results: [
+            { code: 'CA43', desc: 'Bacterial pneumonia' },
+            { code: 'CA44', desc: 'Viral pneumonia' },
+            { code: 'CA45', desc: 'Pneumonia due to other specified infectious organisms' }
+          ]
+        },
+        {
+          keyword: 'asthma',
+          results: [
+            { code: 'CA23', desc: 'Asthma' },
+            { code: 'CA23.0', desc: 'Allergic asthma' },
+            { code: 'CA23.1', desc: 'Non-allergic asthma' },
+            { code: 'CA23.3', desc: 'Mixed asthma' }
+          ]
+        },
+        {
+          keyword: 'migraine',
+          results: [
+            { code: '8A80', desc: 'Migraine' },
+            { code: '8A80.0', desc: 'Migraine without aura' },
+            { code: '8A80.1', desc: 'Migraine with aura' }
+          ]
+        },
+        {
+          keyword: 'tonsillitis',
+          results: [
+            { code: 'CA01.0', desc: 'Acute streptococcal tonsillitis' },
+            { code: 'CA01.2', desc: 'Acute tonsillitis due to other specified infectious agents' }
+          ]
+        },
+        {
+          keyword: 'dengue',
+          results: [
+            { code: '1D20', desc: 'Dengue' },
+            { code: '1D20.0', desc: 'Dengue without warning signs' },
+            { code: '1D20.1', desc: 'Dengue with warning signs' },
+            { code: '1D20.2', desc: 'Severe dengue' }
+          ]
+        },
+        {
+          keyword: 'covid',
+          results: [
+            { code: 'RA01', desc: 'COVID-19' },
+            { code: 'RA01.0', desc: 'COVID-19, virus identified' },
+            { code: 'RA01.1', desc: 'COVID-19, virus not identified' }
+          ]
+        },
+        {
+          keyword: 'uti',
+          results: [
+            { code: 'GC08', desc: 'Urinary tract infection, site not specified' },
+            { code: 'GC08.0', desc: 'Cystitis' },
+            { code: 'GC08.1', desc: 'Urethritis' },
+            { code: 'GC08.2', desc: 'Pyelonephritis' }
+          ]
+        },
+        {
+          keyword: 'urinary tract infection',
+          results: [
+            { code: 'GC08', desc: 'Urinary tract infection, site not specified' },
+            { code: 'GC08.0', desc: 'Cystitis' },
+            { code: 'GC08.1', desc: 'Urethritis' },
+            { code: 'GC08.2', desc: 'Pyelonephritis' }
+          ]
+        },
+        {
+          keyword: 'tuberculosis',
+          results: [
+            { code: '1B10', desc: 'Tuberculosis of the respiratory system' },
+            { code: '1B11', desc: 'Tuberculosis of the nervous system' },
+            { code: '1B12', desc: 'Tuberculosis of other organs' }
+          ]
+        }
+      ];
+
+      for (const item of seedData) {
+        await client.execute({
+          sql: "INSERT OR IGNORE INTO icd11_cache (keyword, results) VALUES (?, ?)",
+          args: [item.keyword, JSON.stringify(item.results)]
+        });
+      }
+      console.log('✨ Seeded common ICD-11 cache records successfully!');
+    }
+  } catch (err) {
+    console.error('❌ Failed to migrate/seed icd11_cache table:', err);
+  }
+
+  // Nursing monthly stock table creation & migration
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS nursing_monthly_stock (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month_year TEXT NOT NULL,
+        item_name TEXT NOT NULL,
+        day INTEGER NOT NULL,
+        session TEXT NOT NULL,
+        stock_in_hands INTEGER DEFAULT 0,
+        consumed INTEGER DEFAULT 0,
+        balance INTEGER DEFAULT 0,
+        responsible_name TEXT,
+        expiration_date TEXT,
+        status TEXT,
+        category TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.execute(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_nursing_stock_unique 
+      ON nursing_monthly_stock(month_year, item_name, day, session)
+    `);
+    console.log('✅ SQLite Schema Migration: created/verified nursing_monthly_stock table');
+  } catch (err) {
+    console.error('❌ Failed to initialize nursing_monthly_stock table:', err);
+  }
+
+  // Alter columns in case table was created previously without them
+  const newCols = ['expiration_date', 'status', 'category'];
+  for (const col of newCols) {
+    try {
+      await client.execute(`ALTER TABLE nursing_monthly_stock ADD COLUMN ${col} TEXT`);
+      console.log(`✅ SQLite Schema Migration: added ${col} to nursing_monthly_stock`);
+    } catch (err) {
+      if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+        console.warn(`⚠️ SQLite Schema Migration Notice for ${col}:`, err.message);
+      }
+    }
+  }
+
+  // Create nursing_stock_change_logs table for audit tracking
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS nursing_stock_change_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month_year TEXT NOT NULL,
+        item_name TEXT NOT NULL,
+        day INTEGER NOT NULL,
+        session TEXT NOT NULL,
+        old_stock INTEGER,
+        new_stock INTEGER,
+        old_consumed INTEGER,
+        new_consumed INTEGER,
+        updated_by TEXT,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created/verified nursing_stock_change_logs table');
+  } catch (err) {
+    console.error('❌ Failed to initialize nursing_stock_change_logs table:', err);
+  }
 })();
 
 /**
