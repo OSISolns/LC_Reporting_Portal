@@ -1700,3 +1700,51 @@ exports.reconcileInventory = async (req, res) => {
   }
 };
 
+exports.syncCentralStockToNursing = async (req, res) => {
+  try {
+    const { month_year, day, session } = req.body;
+    if (!month_year || day === undefined || !session) {
+      return res.status(400).json({ success: false, message: 'month_year, day, and session are required.' });
+    }
+
+    // Get the NURSING department ID
+    const { rows: deptRows } = await db.query("SELECT id FROM departments WHERE UPPER(name) = 'NURSING' LIMIT 1");
+    const deptId = deptRows[0]?.id || 121;
+
+    // Get the stock from department_stock joined with master_inventory for NURSING
+    const { rows: deptStocks } = await db.query(`
+      SELECT mi.name as item_name, COALESCE(SUM(ds.quantity), 0) as total_qty
+      FROM department_stock ds
+      JOIN master_inventory mi ON ds.item_id = mi.id
+      WHERE ds.department_id = $1
+      GROUP BY mi.id
+    `, [deptId]);
+
+    if (deptStocks.length === 0) {
+      return res.json({ success: true, message: 'No department stock found in Central Store for NURSING.', updatedCount: 0 });
+    }
+
+    const statements = [];
+    for (const stock of deptStocks) {
+      statements.push({
+        sql: `INSERT INTO nursing_monthly_stock (
+          month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, 0, $5, 'Central Store Sync', CURRENT_TIMESTAMP)
+        ON CONFLICT(month_year, item_name, day, session) DO UPDATE SET
+          stock_in_hands = $5,
+          balance = $5 - consumed,
+          updated_at = CURRENT_TIMESTAMP`,
+        args: [month_year, stock.item_name, day, session, stock.total_qty]
+      });
+    }
+
+    await db.batch(statements);
+
+    res.json({ success: true, message: `Successfully synchronized ${deptStocks.length} stock items with Central Store Hub!`, updatedCount: deptStocks.length });
+  } catch (error) {
+    console.error('Error in syncCentralStockToNursing:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+

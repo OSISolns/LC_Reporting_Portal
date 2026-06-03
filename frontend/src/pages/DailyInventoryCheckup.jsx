@@ -265,6 +265,16 @@ export default function DailyInventoryCheckup() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
+  // Requisitions State
+  const [showReqListModal, setShowReqListModal] = useState(false);
+  const [reqList, setReqList] = useState([]);
+  const [loadingReqs, setLoadingReqs] = useState(false);
+  const [showCreateReqModal, setShowCreateReqModal] = useState(false);
+  const [newReqUrgency, setNewReqUrgency] = useState('Normal');
+  const [newReqNotes, setNewReqNotes] = useState('');
+  const [newReqLines, setNewReqLines] = useState([{ item_id: '', quantity: '' }]);
+  const [masterItems, setMasterItems] = useState([]);
+
   const handleDeleteItem = (itemName) => {
     setDeletedItems(prev => [...prev, itemName]);
     toast.success(`Removed "${itemName}" from active checkup roster.`);
@@ -345,6 +355,94 @@ export default function DailyInventoryCheckup() {
       setLoadingLogs(false);
     }
   };
+
+  const handleSyncCentralStock = async () => {
+    try {
+      setLoading(true);
+      const res = await api.post('/clinical/inventory/sync-central-stock', {
+        month_year: monthYear,
+        day: currentDay,
+        session: currentSession
+      });
+      if (res.data.success) {
+        toast.success(res.data.message || 'Central stock synchronized successfully!');
+        loadInventory();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to sync central store stock');
+      setLoading(false);
+    }
+  };
+
+  const loadRequisitions = async () => {
+    setLoadingReqs(true);
+    try {
+      const res = await api.get('/clinical/inventory/requisitions');
+      if (res.data.success) {
+        const filtered = res.data.data.filter(r => r.department_name?.toUpperCase() === 'NURSING');
+        setReqList(filtered);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load requisitions');
+    } finally {
+      setLoadingReqs(false);
+    }
+  };
+
+  const handleCreateRequisition = async (e) => {
+    e.preventDefault();
+    const validLines = newReqLines.filter(l => l.item_id && Number(l.quantity) > 0);
+    if (validLines.length === 0) {
+      toast.error('Please add at least one item.');
+      return;
+    }
+    
+    let deptId = 121;
+    try {
+      const deptRes = await api.get('/clinical/inventory/departments');
+      if (deptRes.data.success) {
+        const nursingDept = deptRes.data.data.find(d => d.name?.toUpperCase() === 'NURSING');
+        if (nursingDept) deptId = nursingDept.id;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
+    setSaving(true);
+    try {
+      await api.post('/clinical/inventory/requisitions', {
+        department_id: deptId,
+        urgency: newReqUrgency,
+        notes: newReqNotes,
+        items: validLines.map(l => ({ item_id: l.item_id, quantity: Number(l.quantity) }))
+      });
+      toast.success('Requisition submitted to Central Store successfully!');
+      setShowCreateReqModal(false);
+      setNewReqUrgency('Normal');
+      setNewReqNotes('');
+      setNewReqLines([{ item_id: '', quantity: '' }]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit requisition');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchMasterItems = async () => {
+      try {
+        const res = await api.get('/clinical/inventory/master');
+        if (res.data.success) {
+          setMasterItems(res.data.data);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchMasterItems();
+  }, []);
 
   // Scroll the matrix table to the column of a given day
   const jumpToDay = (day) => {
@@ -887,6 +985,31 @@ export default function DailyInventoryCheckup() {
                   >
                     <span className="p-1 bg-sky-50 text-sky-600 rounded-lg"><RotateCw size={14} /></span>
                     Synchronize Database
+                  </button>
+
+                  {/* Action Sync Central Stock */}
+                  <button
+                    onClick={() => {
+                      handleSyncCentralStock();
+                      setShowToolsDropdown(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all border-none bg-transparent"
+                  >
+                    <span className="p-1 bg-sky-105 text-sky-700 rounded-lg"><RotateCw size={14} /></span>
+                    Sync Central Store Stock
+                  </button>
+
+                  {/* Action Requisition Stock */}
+                  <button
+                    onClick={() => {
+                      loadRequisitions();
+                      setShowReqListModal(true);
+                      setShowToolsDropdown(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all border-none bg-transparent"
+                  >
+                    <span className="p-1 bg-indigo-50 text-indigo-650 rounded-lg"><Activity size={14} /></span>
+                    Stock Requisitions
                   </button>
 
                   {/* Action 3: Export Excel */}
@@ -1852,6 +1975,216 @@ export default function DailyInventoryCheckup() {
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-sm"
             >
               Create Item
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Requisitions List Modal ── */}
+      <Modal
+        isOpen={showReqListModal}
+        onClose={() => setShowReqListModal(false)}
+        title="Nursing Stock Requisitions"
+        maxWidth="700px"
+      >
+        <div className="space-y-4 p-2 text-left">
+          <div className="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-4">
+            <p className="text-[11px] text-slate-500 font-bold leading-normal">
+              Track stock requests sent to the Central Store Hub, or request additional inventory items.
+            </p>
+            <Button
+              onClick={() => {
+                setShowCreateReqModal(true);
+                setShowReqListModal(false);
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm animate-in fade-in"
+            >
+              New Requisition
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            {loadingReqs ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="animate-spin text-[#0369a1]" size={20} />
+              </div>
+            ) : reqList.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 font-bold text-xs">
+                No requisitions found for the NURSING department.
+              </div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
+                    <th className="py-2.5 px-4 text-left">Req ID</th>
+                    <th className="py-2.5 px-4 text-left">Date</th>
+                    <th className="py-2.5 px-4 text-center">Urgency</th>
+                    <th className="py-2.5 px-4 text-center">Items count</th>
+                    <th className="py-2.5 px-4 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                  {reqList.map((req) => (
+                    <tr key={req.id} className="hover:bg-slate-50/60">
+                      <td className="py-2.5 px-4 text-slate-900 font-black">#{req.id}</td>
+                      <td className="py-2.5 px-4 text-slate-500">{new Date(req.created_at).toLocaleDateString()}</td>
+                      <td className="py-2.5 px-4 text-center">
+                        <Badge className={
+                          req.urgency === 'Critical' ? 'bg-red-100 text-red-800 border-red-300' :
+                          req.urgency === 'High'     ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                          'bg-slate-50 text-slate-600 border-slate-200'
+                        }>
+                          {req.urgency || 'Normal'}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-4 text-center">{req.items_count || 0}</td>
+                      <td className="py-2.5 px-4 text-center">
+                        <Badge className={
+                          req.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          req.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                          'bg-amber-50 text-amber-700 border-amber-200'
+                        }>
+                          {req.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── New Requisition Modal ── */}
+      <Modal
+        isOpen={showCreateReqModal}
+        onClose={() => {
+          setShowCreateReqModal(false);
+          setShowReqListModal(true);
+        }}
+        title="Create Nursing Stock Requisition"
+        maxWidth="600px"
+      >
+        <form onSubmit={handleCreateRequisition} className="space-y-4 text-left p-2">
+          <p className="text-[11px] text-slate-500 font-bold leading-normal mb-4">
+            Select items from the master catalog and request their transfer from the Central Store to the NURSING department.
+          </p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Department</label>
+              <input
+                disabled
+                type="text"
+                value="NURSING"
+                className="w-full px-4 py-2.5 text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 rounded-xl outline-none shadow-sm cursor-not-allowed"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Urgency</label>
+              <select
+                value={newReqUrgency}
+                onChange={(e) => setNewReqUrgency(e.target.value)}
+                className="w-full px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#0369a1] focus:bg-white transition-all shadow-sm cursor-pointer"
+              >
+                <option value="Normal">Normal</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Notes</label>
+            <textarea
+              value={newReqNotes}
+              onChange={(e) => setNewReqNotes(e.target.value)}
+              placeholder="e.g. Urgent need for maternity ward..."
+              className="w-full px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#0369a1] focus:bg-white transition-all shadow-sm h-16 resize-none"
+            />
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <div className="flex justify-between items-center mb-3">
+              <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Requisition Items</h4>
+              <button
+                type="button"
+                onClick={() => setNewReqLines([...newReqLines, { item_id: '', quantity: '' }])}
+                className="flex items-center gap-1 text-[10px] font-black text-indigo-650 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/70 px-2 py-1 rounded-lg border border-indigo-100 transition-all cursor-pointer"
+              >
+                + Add Item
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+              {newReqLines.map((line, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <select
+                      required
+                      value={line.item_id}
+                      onChange={(e) => {
+                        const updated = [...newReqLines];
+                        updated[idx].item_id = e.target.value;
+                        setNewReqLines(updated);
+                      }}
+                      className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#0369a1] focus:bg-white transition-all cursor-pointer"
+                    >
+                      <option value="">Select Item…</option>
+                      {masterItems.map(i => (
+                        <option key={i.id} value={i.id}>{i.name} ({i.sku || 'no SKU'})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="w-24">
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      placeholder="Qty"
+                      value={line.quantity}
+                      onChange={(e) => {
+                        const updated = [...newReqLines];
+                        updated[idx].quantity = e.target.value;
+                        setNewReqLines(updated);
+                      }}
+                      className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#0369a1] focus:bg-white transition-all shadow-sm"
+                    />
+                  </div>
+                  {newReqLines.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setNewReqLines(newReqLines.filter((_, i) => i !== idx))}
+                      className="p-2 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-105 border border-red-150 rounded-xl transition-all cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowCreateReqModal(false);
+                setShowReqListModal(true);
+              }}
+              className="px-4 py-2 rounded-xl text-slate-500 font-bold text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="bg-[#0369a1] hover:bg-[#075985] text-white px-5 py-2 rounded-xl font-bold text-xs shadow-sm flex items-center gap-1.5 border-0"
+            >
+              {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+              Submit Requisition
             </Button>
           </div>
         </form>
