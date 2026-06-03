@@ -1104,11 +1104,13 @@ exports.getmasterInventory = async (req, res) => {
         COALESCE(ds.quantity, sb.quantity, 0) as quantity,
         ds.id as dept_stock_id,
         d.name as department,
-        d.id as department_id
+        d.id as department_id,
+        v.name as vendor
       FROM master_inventory mi
       LEFT JOIN stock_batches sb ON mi.id = sb.item_id
       LEFT JOIN department_stock ds ON sb.id = ds.batch_id
       LEFT JOIN departments d ON ds.department_id = d.id
+      LEFT JOIN vendors v ON sb.vendor_id = v.id
       ORDER BY mi.id DESC
     `);
     res.json({ success: true, data: rows });

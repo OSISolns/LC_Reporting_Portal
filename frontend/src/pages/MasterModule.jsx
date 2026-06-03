@@ -107,7 +107,7 @@ export default function MasterModule() {
 
   // Form states
   const [itemForm, setItemForm] = useState({ 
-    name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'Unit',
+    name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'pc',
     batch_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
   });
   const [deptForm, setDeptForm] = useState({ name: '' });
@@ -186,7 +186,7 @@ export default function MasterModule() {
     } else {
       setEditingRecord(null);
       setItemForm({ 
-        name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'Unit',
+        name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'pc',
         batch_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
       });
     }
@@ -754,7 +754,19 @@ export default function MasterModule() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Unit of Measure</label>
-              <input required type="text" value={itemForm.unit_of_measure} onChange={e => setItemForm({...itemForm, unit_of_measure: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              <select
+                required
+                value={itemForm.unit_of_measure}
+                onChange={e => setItemForm({...itemForm, unit_of_measure: e.target.value})}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              >
+                <option value="">Select UOM...</option>
+                {uoms.map(u => (
+                  <option key={u.id} value={u.abbreviation}>
+                    {u.name} ({u.abbreviation})
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Quantity</label>

@@ -431,6 +431,7 @@ export default function CentralStoreHub() {
                         <th className="py-3 px-4">UoM</th>
                         <th className="py-3 px-4">Expiry</th>
                         <th className="py-3 px-4">Purchase Date</th>
+                        <th className="py-3 px-4">Vendor</th>
                         <th className="py-3 px-4">Department</th>
                         <th className="py-3 px-4">Category</th>
                         <th className="py-3 px-4 text-center">Qty</th>
@@ -439,7 +440,7 @@ export default function CentralStoreHub() {
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                       {filteredStock.length === 0
-                        ? <EmptyRow cols={10} message="No stock items found." />
+                        ? <EmptyRow cols={11} message="No stock items found." />
                         : filteredStock.map((item, idx) => {
                             const expStatus = getExpiryStatus(item.expiry_date);
                             return (
@@ -455,6 +456,7 @@ export default function CentralStoreHub() {
                                   }
                                 </td>
                                 <td className="py-3 px-4 text-slate-500">{fmt(item.purchase_time)}</td>
+                                <td className="py-3 px-4 text-slate-500">{item.vendor || '—'}</td>
                                 <td className="py-3 px-4 text-sky-700">{item.department || '—'}</td>
                                 <td className="py-3 px-4 capitalize text-slate-500">{item.category?.replace(/_/g, ' ') || '—'}</td>
                                 <td className="py-3 px-4 text-center text-slate-900 font-black">{fmtNum(item.quantity)}</td>
