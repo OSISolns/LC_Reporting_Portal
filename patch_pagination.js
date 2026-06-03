@@ -1,5 +1,5 @@
 const fs = require('fs');
-const file = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/MasterModule.jsx';
+const file = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal/frontend/src/pages/masterModule.jsx';
 let content = fs.readFileSync(file, 'utf8');
 
 // 1. Add ChevronLeft, ChevronRight

@@ -5,29 +5,23 @@ const { createClient } = require('@libsql/client');
 /**
  * Initialize Turso (LibSQL) Client
  */
-let client = createClient({
+if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
+  throw new Error('❌ TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set in environment variables.');
+}
+
+const client = createClient({
   url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
 // Run dynamic schema migrations on start
 (async () => {
-  // Connection Test & Offline Fallback
   try {
     await client.execute("SELECT 1");
     console.log('🔌 DATABASE: Successfully connected to Turso Cloud.');
   } catch (err) {
-    if (err.code === 'ENOTFOUND' || err.message.includes('ENOTFOUND') || err.message.includes('fetch failed')) {
-      console.warn('⚠️ Could not connect to Turso Cloud (offline or DNS failure). Falling back to local SQLite database (local.db)...');
-      client = createClient({
-        url: 'file:local.db',
-      });
-    } else {
-      console.error('⚠️ Turso Cloud connection check failed, continuing with fallback:', err.message);
-      client = createClient({
-        url: 'file:local.db',
-      });
-    }
+    console.error('❌ FATAL: Could not connect to Turso Cloud. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.', err.message);
+    process.exit(1);
   }
 
   try {
@@ -587,15 +581,117 @@ let client = createClient({
     try {
       await client.execute("ALTER TABLE stock_batches ADD COLUMN quantity INTEGER DEFAULT 0");
       console.log('✅ SQLite Schema Migration: added quantity column to stock_batches');
-    } catch (e) {
-      // Ignore error if column already exists
-    }
+    } catch (e) { /* already exists */ }
+
+    // Add notes / rejection_reason to requisitions if missing
+    try {
+      await client.execute("ALTER TABLE requisitions ADD COLUMN notes TEXT");
+      console.log('✅ SQLite Schema Migration: added notes to requisitions');
+    } catch (e) { /* already exists */ }
+    try {
+      await client.execute("ALTER TABLE requisitions ADD COLUMN rejection_reason TEXT");
+      console.log('✅ SQLite Schema Migration: added rejection_reason to requisitions');
+    } catch (e) { /* already exists */ }
 
     console.log('✅ SQLite Schema Migration: created stock management relational tables');
   } catch (err) {
     console.error('❌ Failed to initialize stock management tables:', err);
   }
+
+  // ── UOMs Table ──────────────────────────────────────────────────────────────
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS uoms (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        abbreviation TEXT NOT NULL,
+        description TEXT
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created uoms table');
+
+    // Seed default UOMs if table is empty
+    const { rows: uomCount } = await client.execute("SELECT COUNT(*) as count FROM uoms");
+    if (uomCount[0].count === 0) {
+      const defaultUoms = [
+        ['Piece',  'pc',  'Single item or piece'],
+        ['Box',    'bx',  'Box of multiple items'],
+        ['Pack',   'pk',  'Pack or package'],
+        ['Bottle', 'btl', 'Bottle of liquid or pills'],
+        ['Vial',   'vl',  'Small vial'],
+        ['Tube',   'tb',  'Tube of cream or ointment'],
+        ['Roll',   'rl',  'Roll of tape, cotton, etc.'],
+        ['Set',    'set', 'Set of instruments or tools'],
+        ['Kit',    'kit', 'Medical or surgical kit'],
+        ['Can',    'cn',  'Can or canister'],
+      ];
+      for (const [name, abbr, desc] of defaultUoms) {
+        await client.execute({
+          sql: "INSERT OR IGNORE INTO uoms (name, abbreviation, description) VALUES (?, ?, ?)",
+          args: [name, abbr, desc]
+        });
+      }
+      console.log('✅ Seeded default UOMs');
+    }
+  } catch (err) {
+    console.error('❌ Failed to initialize uoms table:', err);
+  }
+
+  // ── SKU Standardisation (lc-INITIALS-BATCH-DEPT-0001) ───────────────────────
+  try {
+    const { rows: skuCheck } = await client.execute(
+      "SELECT COUNT(*) as total, SUM(CASE WHEN sku GLOB 'lc-*-*-*-[0-9][0-9][0-9][0-9]' THEN 1 ELSE 0 END) as lc_count FROM master_inventory"
+    );
+    const total   = Number(skuCheck[0].total);
+    const lcCount = Number(skuCheck[0].lc_count);
+
+    if (total > 0 && lcCount < total) {
+      console.log(`🔧 Standardising SKUs: ${total - lcCount} items — running as single batch…`);
+
+      // Fetch all items with their batch + dept + vendor context
+      const { rows: items } = await client.execute(`
+        SELECT mi.id, mi.name, sb.batch_number, sb.vendor_id, ds.department_id, d.name AS dept_name
+        FROM master_inventory mi
+        LEFT JOIN stock_batches sb ON mi.id = sb.item_id
+        LEFT JOIN department_stock ds ON sb.id = ds.batch_id
+        LEFT JOIN departments d ON ds.department_id = d.id
+        WHERE mi.sku NOT GLOB 'lc-*-*-*-[0-9][0-9][0-9][0-9]' OR mi.sku IS NULL
+        GROUP BY mi.id
+        ORDER BY ds.department_id, sb.vendor_id, mi.id
+      `);
+
+      // Build a counter map keyed by "dept_id|vendor_id"
+      const seqMap = {};
+      const statements = items.map(item => {
+        const initials = (item.name || 'ITM').substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'ITM';
+        const batch    = item.batch_number ? item.batch_number : 'XXXX';
+        const dept     = item.dept_name
+          ? item.dept_name.substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'DEP'
+          : 'XXX';
+
+        // Unique key for dept + vendor combo
+        const groupKey = `${item.department_id || 'none'}|${item.vendor_id || 'none'}`;
+        seqMap[groupKey] = (seqMap[groupKey] || 0) + 1;
+        const seqStr = String(seqMap[groupKey]).padStart(4, '0');
+
+        return {
+          sql: "UPDATE master_inventory SET sku = ? WHERE id = ?",
+          args: [`lc-${initials}-${batch}-${dept}-${seqStr}`, item.id]
+        };
+      });
+
+      await client.batch(statements, 'write');
+      console.log(`✅ SKU standardisation complete — updated ${items.length} items in one batch.`);
+    } else {
+      console.log('✅ All SKUs already standardised.');
+    }
+  } catch (err) {
+    console.error('❌ Failed to standardise SKUs:', err);
+  }
 })();
+
+
+
 
 /**
  * Compatibility Layer: Transforms Postgres-style SQL/params into LibSQL format.
@@ -684,5 +780,6 @@ const batch = async (statements) => {
 module.exports = {
   query,
   batch,
-  get client() { return client; }
+  client
 };
+

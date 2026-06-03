@@ -81,7 +81,7 @@ function App() {
             <Route path="/daily-reports-board" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer', 'chef-nurse', 'nurse', 'pa']}><DailyOperationalReportBoard /></ProtectedRoute>} />
             <Route path="/feedbacks" element={<ProtectedRoute allowedRoles={['coo', 'deputy_coo', 'chef-nurse']}><FeedbackList /></ProtectedRoute>} />
             <Route path="/central-store" element={<ProtectedRoute allowedRoles={['admin', 'coo', 'deputy_coo', 'chef-nurse', 'nurse', 'stock-manager']}><CentralStoreHub /></ProtectedRoute>} />
-            <Route path="/master-module" element={<ProtectedRoute allowedRoles={['admin', 'stock-manager']}><MasterModule /></ProtectedRoute>} />
+            <Route path="/master" element={<ProtectedRoute allowedRoles={['admin', 'stock-manager']}><MasterModule /></ProtectedRoute>} />
 
             <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><ClinicalSheet /></ProtectedRoute>} />
             <Route path="/clinical-sheet/:patientId" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><ClinicalSheet /></ProtectedRoute>} />

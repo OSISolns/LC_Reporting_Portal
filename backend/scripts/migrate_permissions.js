@@ -162,7 +162,7 @@ const ROLE_DEFAULTS = {
 };
 
 async function migrate() {
-  console.log('🔐 Running Access Master permissions migration...');
+  console.log('🔐 Running Access master permissions migration...');
 
   await client.execute(`
     CREATE TABLE IF NOT EXISTS permission_modules (

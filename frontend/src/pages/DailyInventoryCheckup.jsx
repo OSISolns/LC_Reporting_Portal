@@ -847,7 +847,7 @@ export default function DailyInventoryCheckup() {
             </Button>
           </div>
 
-          {/* Roster Tools Dropdown Menu */}
+          {/*  UTILITY TOOLS Dropdown Menu */}
           <div className="relative">
             <Button
               disabled={loading}
@@ -855,7 +855,7 @@ export default function DailyInventoryCheckup() {
               className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-2 border-0 transition-all active:scale-[0.98]"
             >
               <RotateCw className="h-4 w-4" />
-              Roster Tools
+               UTILITY TOOLS
               <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showToolsDropdown ? 'rotate-180' : ''}`} />
             </Button>
 

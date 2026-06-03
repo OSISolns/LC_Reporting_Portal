@@ -9,17 +9,19 @@ router.use(authenticateToken);
 router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'coo', 'deputy_coo', 'stock-manager', 'pa']));
 
 // --- Stock Management Relational Routes ---
-router.get('/inventory/master', clinicalController.getMasterInventory);
-router.post('/inventory/master', clinicalController.createMasterInventory);
-router.put('/inventory/master/:id', clinicalController.updateMasterInventory);
-router.delete('/inventory/master/:id', clinicalController.deleteMasterInventory);
+router.get('/inventory/master', clinicalController.getmasterInventory);
+router.post('/inventory/master', clinicalController.createmasterInventory);
+router.put('/inventory/master/:id', clinicalController.updatemasterInventory);
+router.delete('/inventory/master/:id', clinicalController.deletemasterInventory);
 
 router.get('/inventory/batches', clinicalController.getBatches);
 router.post('/inventory/batches', clinicalController.createBatch);
 router.post('/inventory/reconcile', clinicalController.reconcileInventory);
 router.get('/inventory/requisitions/:id/items', clinicalController.getRequisitionItems);
 router.get('/inventory/requisitions', clinicalController.getRequisitions);
+router.post('/inventory/requisitions', clinicalController.createRequisition);
 router.post('/inventory/requisitions/:id/approve', clinicalController.approveRequisition);
+router.post('/inventory/requisitions/:id/reject', clinicalController.rejectRequisition);
 router.get('/inventory/vendors', clinicalController.getVendors);
 router.post('/inventory/vendors', clinicalController.createVendor);
 router.put('/inventory/vendors/:id', clinicalController.updateVendor);
@@ -29,6 +31,11 @@ router.get('/inventory/departments', clinicalController.getDepartments);
 router.post('/inventory/departments', clinicalController.createDepartment);
 router.put('/inventory/departments/:id', clinicalController.updateDepartment);
 router.delete('/inventory/departments/:id', clinicalController.deleteDepartment);
+
+router.get('/inventory/uoms', clinicalController.getUoms);
+router.post('/inventory/uoms', clinicalController.createUom);
+router.put('/inventory/uoms/:id', clinicalController.updateUom);
+router.delete('/inventory/uoms/:id', clinicalController.deleteUom);
 
 router.post('/observations/:patientId', clinicalController.saveObservation);
 router.get('/observations',             clinicalController.getAllObservationsList);

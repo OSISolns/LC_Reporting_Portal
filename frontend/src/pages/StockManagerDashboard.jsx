@@ -165,8 +165,8 @@ export default function StockManagerDashboard() {
             </p>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => navigate('/master-module')} className="bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-200 px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-sm cursor-pointer">
-              <Settings size={16} /> Master
+            <button onClick={() => navigate('/master')} className="bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-200 px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-sm cursor-pointer">
+              <Settings size={16} /> master
             </button>
             <button onClick={() => navigate('/central-store')} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-md shadow-indigo-200 cursor-pointer">
               Central Store <ArrowRight size={16} />

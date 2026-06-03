@@ -43,7 +43,7 @@ const generateDocQRCode = async (obs) => {
   }
 };
 
-// ─── Inventory Item Master List ───────────────────────────────────────────────
+// ─── Inventory Item master List ───────────────────────────────────────────────
 const INVENTORY_ITEMS = [
   "Aquabloc 15cm",
   "Adrenaline",
@@ -806,7 +806,7 @@ exports.exportInventoryExcel = async (req, res) => {
 
       // Columns definitions
       const columns = [
-        { header: 'ITEMS MASTER', key: 'item_name', width: 28 },
+        { header: 'ITEMS master', key: 'item_name', width: 28 },
         { header: 'SPC', key: 'spc', width: 6 }
       ];
 
@@ -834,7 +834,7 @@ exports.exportInventoryExcel = async (req, res) => {
 
       // Item Name and SPC headers in Row 3 (merged to row 5)
       worksheet.mergeCells('A3:A5');
-      worksheet.getCell('A3').value = "ITEMS MASTER LIST";
+      worksheet.getCell('A3').value = "ITEMS master LIST";
       worksheet.getCell('A3').font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
       worksheet.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
       worksheet.getCell('A3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
@@ -1062,7 +1062,7 @@ exports.exportInventoryExcel = async (req, res) => {
 
 // --- New Stock Management Relational Controllers ---
 
-exports.getMasterInventory = async (req, res) => {
+exports.getmasterInventory = async (req, res) => {
   try {
     // Auto-seed master_inventory from INVENTORY_ITEMS if it is empty
     const { rows: checkCount } = await db.query("SELECT COUNT(*) as count FROM master_inventory");
@@ -1090,54 +1090,177 @@ exports.getMasterInventory = async (req, res) => {
     }
 
     const { rows } = await db.query(`
-      SELECT mi.*, COALESCE(SUM(sb.quantity), 0) as stock
+      SELECT 
+        mi.id,
+        mi.name, 
+        mi.sku, 
+        mi.unit_of_measure, 
+        mi.category,
+        sb.id as batch_id,
+        sb.batch_number,
+        sb.expiry_date,
+        sb.created_at as purchase_time,
+        sb.purchase_price as price,
+        COALESCE(ds.quantity, sb.quantity, 0) as quantity,
+        ds.id as dept_stock_id,
+        d.name as department,
+        d.id as department_id
       FROM master_inventory mi
       LEFT JOIN stock_batches sb ON mi.id = sb.item_id
-      GROUP BY mi.id
+      LEFT JOIN department_stock ds ON sb.id = ds.batch_id
+      LEFT JOIN departments d ON ds.department_id = d.id
+      ORDER BY mi.id DESC
     `);
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('Error in getMasterInventory:', error);
+    console.error('Error in getmasterInventory:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+// Helper to auto-generate SKU: lc-INITIALS-BATCH-DEPT-0001
+const generateSku = async (name, batch_number, department_id, vendor_id = null, excludeItemId = null) => {
+  const itemInitials = (name || 'ITM').substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'ITM';
+  const batchStr = batch_number ? batch_number : 'XXXX';
 
-exports.createMasterInventory = async (req, res) => {
+  // Resolve department initials
+  let deptInitials = 'XXX';
+  if (department_id) {
+    try {
+      const { rows } = await db.query("SELECT name FROM departments WHERE id = $1", [department_id]);
+      if (rows.length > 0) {
+        deptInitials = rows[0].name.substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'DEP';
+      }
+    } catch (e) {
+      console.error("Error fetching department for SKU", e);
+    }
+  }
+
+  // Count existing items in same dept + vendor group to get next sequence number
+  let seq = 1;
   try {
-    const { name, sku, unit_of_measure, category } = req.body;
-    await db.query(
-      "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4)",
+    let countSql, countParams;
+    if (vendor_id) {
+      countSql = `
+        SELECT COUNT(DISTINCT mi.id) as cnt
+        FROM master_inventory mi
+        LEFT JOIN stock_batches sb ON mi.id = sb.item_id
+        LEFT JOIN department_stock ds ON sb.id = ds.batch_id
+        WHERE ds.department_id = $1 AND sb.vendor_id = $2
+        ${excludeItemId ? 'AND mi.id != $3' : ''}
+      `;
+      countParams = excludeItemId ? [department_id, vendor_id, excludeItemId] : [department_id, vendor_id];
+    } else {
+      countSql = `
+        SELECT COUNT(DISTINCT mi.id) as cnt
+        FROM master_inventory mi
+        LEFT JOIN stock_batches sb ON mi.id = sb.item_id
+        LEFT JOIN department_stock ds ON sb.id = ds.batch_id
+        WHERE ds.department_id = $1
+        ${excludeItemId ? 'AND mi.id != $2' : ''}
+      `;
+      countParams = excludeItemId ? [department_id, excludeItemId] : [department_id];
+    }
+    if (department_id) {
+      const { rows: countRows } = await db.query(countSql, countParams);
+      seq = (Number(countRows[0]?.cnt) || 0) + 1;
+    }
+  } catch (e) {
+    console.error("Error calculating SKU sequence", e);
+  }
+
+  const seqStr = String(seq).padStart(4, '0');
+  return `lc-${itemInitials}-${batchStr}-${deptInitials}-${seqStr}`;
+};
+
+
+exports.createmasterInventory = async (req, res) => {
+  try {
+    const { name, unit_of_measure, category, batch_number, expiry_date, purchase_time, department_id, quantity, price, vendor_id } = req.body;
+    let { sku } = req.body;
+    
+    sku = await generateSku(name, batch_number, department_id, vendor_id || null);
+    
+    // Insert into master_inventory
+    const { rows: itemRows } = await db.query(
+      "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4) RETURNING id",
       [name, sku, unit_of_measure, category]
     );
+    const itemId = itemRows[0].id;
+    
+    // If batch info provided, insert into stock_batches
+    if (batch_number || price || quantity || expiry_date) {
+       const { rows: batchRows } = await db.query(
+         "INSERT INTO stock_batches (item_id, vendor_id, batch_number, expiry_date, purchase_price, quantity, created_at) VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_TIMESTAMP)) RETURNING id",
+         [itemId, vendor_id || null, batch_number || null, expiry_date || null, price || 0, quantity || 0, purchase_time || null]
+       );
+       const batchId = batchRows[0].id;
+       
+       if (department_id) {
+          await db.query(
+            "INSERT INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
+            [department_id, itemId, batchId, quantity || 0]
+          );
+       }
+    }
+    
     res.json({ success: true, message: 'Item added successfully' });
   } catch (error) {
-    console.error('Error in createMasterInventory:', error);
+    console.error('Error in createmasterInventory:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
-exports.updateMasterInventory = async (req, res) => {
+exports.updatemasterInventory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, sku, unit_of_measure, category } = req.body;
+    const { 
+      name, unit_of_measure, category, 
+      batch_id, batch_number, expiry_date, purchase_time, price, 
+      dept_stock_id, department_id, quantity, vendor_id
+    } = req.body;
+    let { sku } = req.body;
+    
+    sku = await generateSku(name, batch_number, department_id, vendor_id || null, id);
+    
     await db.query(
       "UPDATE master_inventory SET name = $1, sku = $2, unit_of_measure = $3, category = $4 WHERE id = $5",
       [name, sku, unit_of_measure, category, id]
     );
+    
+    if (batch_id) {
+      await db.query(
+        "UPDATE stock_batches SET batch_number = $1, expiry_date = $2, purchase_price = $3, quantity = $4, created_at = COALESCE($5, created_at) WHERE id = $6",
+        [batch_number || null, expiry_date || null, price || 0, quantity || 0, purchase_time || null, batch_id]
+      );
+    }
+    
+    if (dept_stock_id) {
+      await db.query(
+        "UPDATE department_stock SET department_id = $1, quantity = $2 WHERE id = $3",
+        [department_id || null, quantity || 0, dept_stock_id]
+      );
+    } else if (department_id && batch_id) {
+      // Create new department stock link if it was missing
+      await db.query(
+        "INSERT INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
+        [department_id, id, batch_id, quantity || 0]
+      );
+    }
+    
     res.json({ success: true, message: 'Item updated successfully' });
   } catch (error) {
-    console.error('Error in updateMasterInventory:', error);
+    console.error('Error in updatemasterInventory:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
-exports.deleteMasterInventory = async (req, res) => {
+exports.deletemasterInventory = async (req, res) => {
   try {
     const { id } = req.params;
     await db.query("DELETE FROM master_inventory WHERE id = $1", [id]);
     res.json({ success: true, message: 'Item deleted successfully' });
   } catch (error) {
-    console.error('Error in deleteMasterInventory:', error);
+    console.error('Error in deletemasterInventory:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -1215,6 +1338,49 @@ exports.getRequisitions = async (req, res) => {
   }
 };
 
+exports.createRequisition = async (req, res) => {
+  try {
+    const { department_id, urgency, notes, items } = req.body;
+    if (!department_id || !items || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Department and at least one item are required.' });
+    }
+
+    const { rows: newReq } = await db.query(
+      "INSERT INTO requisitions (department_id, urgency, status, notes) VALUES ($1, $2, 'Pending', $3) RETURNING id",
+      [department_id, urgency || 'Normal', notes || null]
+    );
+    const reqId = newReq[0].id;
+
+    for (const item of items) {
+      await db.query(
+        "INSERT INTO requisition_items (requisition_id, item_id, requested_quantity) VALUES ($1, $2, $3)",
+        [reqId, item.item_id, item.quantity]
+      );
+    }
+
+    res.json({ success: true, message: 'Requisition submitted successfully', id: reqId });
+  } catch (error) {
+    console.error('Error in createRequisition:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.rejectRequisition = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    await db.query(
+      "UPDATE requisitions SET status = 'Rejected', rejection_reason = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+      [reason || null, id]
+    );
+    res.json({ success: true, message: 'Requisition rejected.' });
+  } catch (error) {
+    console.error('Error in rejectRequisition:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+
 exports.getRequisitionItems = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1236,6 +1402,7 @@ exports.getRequisitionItems = async (req, res) => {
 exports.approveRequisition = async (req, res) => {
   try {
     const { id } = req.params;
+    const { items: approvedItems } = req.body;
     
     // Update status to 'Approved'
     await db.query("UPDATE requisitions SET status = 'Approved', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
@@ -1247,29 +1414,63 @@ exports.approveRequisition = async (req, res) => {
     
     if (deptId && items.length > 0) {
       for (const item of items) {
-        // Find a batch for this item to deduct from
-        const { rows: batchData } = await db.query(
-          "SELECT id, quantity FROM stock_batches WHERE item_id = $1 AND quantity >= $2 ORDER BY expiry_date ASC LIMIT 1",
-          [item.item_id, item.requested_quantity]
+        // Determine approved quantity
+        let approvedQty = item.requested_quantity; // Default to full requested quantity
+        if (approvedItems && Array.isArray(approvedItems)) {
+          const match = approvedItems.find(ai => 
+            (ai.id && Number(ai.id) === Number(item.id)) || 
+            (ai.item_id && Number(ai.item_id) === Number(item.item_id))
+          );
+          if (match && match.approved_quantity !== undefined) {
+            approvedQty = Math.max(0, Number(match.approved_quantity));
+          }
+        }
+
+        // Clamp approvedQty to available central stock level of this item
+        const { rows: stockCount } = await db.query(
+          "SELECT COALESCE(SUM(quantity), 0) as total_stock FROM stock_batches WHERE item_id = $1",
+          [item.item_id]
         );
-        const batch = batchData[0];
-        const batchId = batch ? batch.id : null;
-        
-        if (batch) {
-          // Deduct from central store batch
-          await db.query("UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2", [item.requested_quantity, batch.id]);
+        const totalCentralStock = Number(stockCount[0]?.total_stock || 0);
+        approvedQty = Math.min(approvedQty, totalCentralStock);
+
+        // Only transfer and deduct if approvedQty > 0
+        if (approvedQty > 0) {
+          // Find a batch for this item to deduct from
+          const { rows: batchData } = await db.query(
+            "SELECT id, quantity FROM stock_batches WHERE item_id = $1 AND quantity >= $2 ORDER BY expiry_date ASC LIMIT 1",
+            [item.item_id, approvedQty]
+          );
+          let batch = batchData[0];
+          
+          if (!batch) {
+            // Fallback: search for first batch of this item even if it doesn't have enough quantity
+            const { rows: anyBatchData } = await db.query(
+              "SELECT id, quantity FROM stock_batches WHERE item_id = $1 ORDER BY expiry_date ASC LIMIT 1",
+              [item.item_id]
+            );
+            batch = anyBatchData[0];
+          }
+
+          const batchId = batch ? batch.id : null;
+          
+          if (batch) {
+            // Deduct from central store batch (clamp to batch quantity so it doesn't go negative)
+            const deductQty = Math.min(approvedQty, batch.quantity);
+            await db.query("UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2", [deductQty, batch.id]);
+          }
+          
+          // Upsert into department stock
+          await db.query(`
+            INSERT INTO department_stock (department_id, item_id, batch_id, quantity)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT(department_id, item_id, batch_id) DO UPDATE SET
+              quantity = department_stock.quantity + $4
+          `, [deptId, item.item_id, batchId, approvedQty]);
         }
         
-        // Upsert into department stock
-        await db.query(`
-          INSERT INTO department_stock (department_id, item_id, batch_id, quantity)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT(department_id, item_id, batch_id) DO UPDATE SET
-            quantity = department_stock.quantity + $4
-        `, [deptId, item.item_id, batchId, item.requested_quantity]);
-        
         // Mark items as approved in the requisition details
-        await db.query("UPDATE requisition_items SET approved_quantity = requested_quantity WHERE id = $1", [item.id]);
+        await db.query("UPDATE requisition_items SET approved_quantity = $1 WHERE id = $2", [approvedQty, item.id]);
       }
     }
 
@@ -1367,6 +1568,57 @@ exports.deleteDepartment = async (req, res) => {
     res.json({ success: true, message: 'Department deleted successfully' });
   } catch (error) {
     console.error('Error in deleteDepartment:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// --- UOM Management ---
+exports.getUoms = async (req, res) => {
+  try {
+    const { rows } = await db.query("SELECT * FROM uoms ORDER BY name ASC");
+    res.json(rows);
+  } catch (error) {
+    console.error('Error in getUoms:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.createUom = async (req, res) => {
+  try {
+    const { name, abbreviation, description } = req.body;
+    const { rows } = await db.query(
+      "INSERT INTO uoms (name, abbreviation, description) VALUES ($1, $2, $3) RETURNING *",
+      [name, abbreviation, description]
+    );
+    res.json({ success: true, uom: rows[0] });
+  } catch (error) {
+    console.error('Error in createUom:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.updateUom = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, abbreviation, description } = req.body;
+    const { rows } = await db.query(
+      "UPDATE uoms SET name = $1, abbreviation = $2, description = $3 WHERE id = $4 RETURNING *",
+      [name, abbreviation, description, id]
+    );
+    res.json({ success: true, uom: rows[0] });
+  } catch (error) {
+    console.error('Error in updateUom:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.deleteUom = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query("DELETE FROM uoms WHERE id = $1", [id]);
+    res.json({ success: true, message: 'UOM deleted successfully' });
+  } catch (error) {
+    console.error('Error in deleteUom:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

@@ -99,15 +99,20 @@ export default function MasterModule() {
   const [isItemModalOpen, setItemModalOpen] = useState(false);
   const [isDeptModalOpen, setDeptModalOpen] = useState(false);
   const [isVendorModalOpen, setVendorModalOpen] = useState(false);
+  const [isUomModalOpen, setUomModalOpen] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   
   const [editingRecord, setEditingRecord] = useState(null);
   const [recordToDelete, setRecordToDelete] = useState(null);
 
   // Form states
-  const [itemForm, setItemForm] = useState({ name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'Unit' });
+  const [itemForm, setItemForm] = useState({ 
+    name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'Unit',
+    batch_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
+  });
   const [deptForm, setDeptForm] = useState({ name: '' });
   const [vendorForm, setVendorForm] = useState({ name: '', contact: '', contractTerms: '' });
+  const [uomForm, setUomForm] = useState({ name: '', abbreviation: '', description: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -117,10 +122,11 @@ export default function MasterModule() {
   const loadMasterData = async () => {
     setLoading(true);
     try {
-      const [invRes, venRes, deptRes] = await Promise.allSettled([
+      const [invRes, venRes, deptRes, uomRes] = await Promise.allSettled([
         api.get('/clinical/inventory/master'),
         api.get('/clinical/inventory/vendors'),
-        api.get('/clinical/inventory/departments')
+        api.get('/clinical/inventory/departments'),
+        api.get('/clinical/inventory/uoms')
       ]);
 
       if (invRes.status === 'fulfilled' && invRes.value.data.success) {
@@ -132,14 +138,9 @@ export default function MasterModule() {
       if (deptRes.status === 'fulfilled' && deptRes.value?.data?.success) {
         setDepartments(deptRes.value.data.data);
       }
-
-      setUoms([
-        { id: 1, name: "Box", abbreviation: "bx", description: "Standard purchasing unit for bulk items" },
-        { id: 2, name: "Pack / Package", abbreviation: "pk", description: "Bundled items like sterile gauze packs" },
-        { id: 3, name: "Vial", abbreviation: "vl", description: "Individual glass or plastic vessels" },
-        { id: 4, name: "Piece", abbreviation: "pc", description: "Smallest single unit of inventory" },
-        { id: 5, name: "Roll", abbreviation: "rl", description: "Medical tape, casting material" },
-      ]);
+      if (uomRes.status === 'fulfilled' && uomRes.value?.data) {
+        setUoms(uomRes.value.data);
+      }
 
       setPrices([
         { id: 1, item_name: "Ceftriaxone 1g", base_cost: 2500, markup_percentage: 20, selling_price: 3000, effective_date: "2026-01-01" },
@@ -171,10 +172,23 @@ export default function MasterModule() {
   const openItemModal = (item = null) => {
     if (item) {
       setEditingRecord(item);
-      setItemForm({ name: item.name, sku: item.sku, category: item.category, unit_of_measure: item.unit_of_measure });
+      setItemForm({ 
+        name: item.name, sku: item.sku, category: item.category, unit_of_measure: item.unit_of_measure,
+        batch_number: item.batch_number || '',
+        expiry_date: item.expiry_date ? item.expiry_date.split('T')[0] : '',
+        purchase_time: item.purchase_time ? item.purchase_time.split('T')[0] : '',
+        department_id: item.department_id || '',
+        quantity: item.quantity || '',
+        price: item.price || '',
+        batch_id: item.batch_id,
+        dept_stock_id: item.dept_stock_id
+      });
     } else {
       setEditingRecord(null);
-      setItemForm({ name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'Unit' });
+      setItemForm({ 
+        name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'Unit',
+        batch_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
+      });
     }
     setItemModalOpen(true);
   };
@@ -199,6 +213,17 @@ export default function MasterModule() {
       setVendorForm({ name: '', contact: '', contractTerms: '' });
     }
     setVendorModalOpen(true);
+  };
+
+  const openUomModal = (uom = null) => {
+    if (uom) {
+      setEditingRecord(uom);
+      setUomForm({ name: uom.name, abbreviation: uom.abbreviation, description: uom.description || '' });
+    } else {
+      setEditingRecord(null);
+      setUomForm({ name: '', abbreviation: '', description: '' });
+    }
+    setUomModalOpen(true);
   };
 
   const confirmDelete = (record, type) => {
@@ -266,6 +291,26 @@ export default function MasterModule() {
     }
   };
 
+  const handleSaveUom = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      if (editingRecord && editingRecord.abbreviation !== undefined) {
+        await api.put(`/clinical/inventory/uoms/${editingRecord.id}`, uomForm);
+        toast.success('UOM updated successfully');
+      } else {
+        await api.post('/clinical/inventory/uoms', uomForm);
+        toast.success('UOM added successfully');
+      }
+      setUomModalOpen(false);
+      loadMasterData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save UOM');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDelete = async () => {
     setIsSubmitting(true);
     try {
@@ -276,6 +321,8 @@ export default function MasterModule() {
         await api.delete(`/clinical/inventory/departments/${id}`);
       } else if (type === 'vendor') {
         await api.delete(`/clinical/inventory/vendors/${id}`);
+      } else if (type === 'uom') {
+        await api.delete(`/clinical/inventory/uoms/${id}`);
       }
       toast.success('Record deleted successfully');
       setDeleteModalOpen(false);
@@ -344,8 +391,7 @@ export default function MasterModule() {
               { id: 'items', label: 'Items Master', icon: <Package size={14} /> },
               { id: 'departments', label: 'Department Master', icon: <Building2 size={14} /> },
               { id: 'uoms', label: 'Unit of Measure', icon: <Scale size={14} /> },
-              { id: 'vendors', label: 'Vendor Master', icon: <Truck size={14} /> },
-              { id: 'prices', label: 'Price Master', icon: <DollarSign size={14} /> }
+              { id: 'vendors', label: 'Vendor Master', icon: <Truck size={14} /> }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -406,24 +452,33 @@ export default function MasterModule() {
                         <tr className="text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200/60">
                           <th className="pb-3 px-4">Item Name</th>
                           <th className="pb-3 px-4">SKU / Code</th>
-                          <th className="pb-3 px-4">Category</th>
-                          <th className="pb-3 px-4 text-center">Status</th>
+                          <th className="pb-3 px-4">Batch</th>
+                          <th className="pb-3 px-4">Dept & Qty</th>
+                          <th className="pb-3 px-4">Price & Exp</th>
                           <th className="pb-3 px-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                         {(() => {
-                          const filtered = items.filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) || item.category?.toLowerCase().includes(searchTerm.toLowerCase()));
+                          const filtered = items.filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) || item.category?.toLowerCase().includes(searchTerm.toLowerCase()) || item.batch_number?.toLowerCase().includes(searchTerm.toLowerCase()) || item.department?.toLowerCase().includes(searchTerm.toLowerCase()));
                           const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
                           return (
                             <>
                               {paginated.map((item, idx) => (
-                          <motion.tr variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: idx * 0.05 }} key={item.id} className="hover:bg-indigo-50/30 transition-colors">
-                            <td className="py-4 px-4 text-slate-900 font-black text-[13px]">{item.name}</td>
-                            <td className="py-4 px-4 font-mono text-[11px] text-slate-500 bg-slate-50/50 rounded-md w-max inline-block mt-2 ml-4">{item.sku}</td>
-                            <td className="py-4 px-4 capitalize">{item.category?.replace(/_/g, ' ')}</td>
-                            <td className="py-4 px-4 text-center">
-                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">Active</Badge>
+                          <motion.tr variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: idx * 0.05 }} key={`${item.id}-${item.batch_id || 'new'}-${item.dept_stock_id || 'none'}`} className="hover:bg-indigo-50/30 transition-colors">
+                            <td className="py-4 px-4 text-slate-900 font-black text-[13px]">
+                              {item.name}
+                              <div className="text-[10px] text-slate-400 capitalize mt-0.5">{item.category?.replace(/_/g, ' ')} • {item.unit_of_measure}</div>
+                            </td>
+                            <td className="py-4 px-4 font-mono text-[11px] text-slate-500">{item.sku}</td>
+                            <td className="py-4 px-4 text-[12px] text-slate-700 font-bold">{item.batch_number || '-'}</td>
+                            <td className="py-4 px-4">
+                              <div className="text-[12px] text-indigo-700">{item.department || '-'}</div>
+                              <div className="text-[10px] text-slate-500 font-black">Qty: {item.quantity || 0}</div>
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="text-[12px] text-emerald-700 font-mono">{item.price ? `${Number(item.price).toLocaleString()} RWF` : '-'}</div>
+                              <div className="text-[10px] text-slate-400">{item.expiry_date ? item.expiry_date.split('T')[0] : '-'}</div>
                             </td>
                             <td className="py-4 px-4 text-right">
                               <div className="flex justify-end gap-2">
@@ -532,7 +587,7 @@ export default function MasterModule() {
                       <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Unit of Measure (UOM)</h3>
                       <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">Standardized measurement units for inventory</p>
                     </div>
-                    <button className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-xs font-bold border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-colors opacity-50 cursor-not-allowed">
+                    <button onClick={() => openUomModal()} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-xs font-bold border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-colors">
                       <Plus size={14} /> Add UOM
                     </button>
                   </div>
@@ -544,6 +599,7 @@ export default function MasterModule() {
                           <th className="pb-3 px-4">Abbreviation</th>
                           <th className="pb-3 px-4">Description</th>
                           <th className="pb-3 px-4 text-center">Status</th>
+                          <th className="pb-3 px-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
@@ -559,6 +615,12 @@ export default function MasterModule() {
                             <td className="py-4 px-4 text-slate-500">{u.description}</td>
                             <td className="py-4 px-4 text-center">
                               <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">Active</Badge>
+                            </td>
+                            <td className="py-4 px-4 text-right">
+                              <div className="flex justify-end gap-2">
+                                <button onClick={() => openUomModal(u)} className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"><Edit2 size={14} /></button>
+                                <button onClick={() => confirmDelete(u, 'uom')} className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                              </div>
                             </td>
                           </motion.tr>
                         ))}
@@ -657,70 +719,6 @@ export default function MasterModule() {
                 </div>
               )}
 
-              {/* PRICE MASTER */}
-              {activeTab === 'prices' && (
-                <div className="p-0">
-                  <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                    <div>
-                      <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Price Master</h3>
-                      <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">Base costs and selling prices (RWF)</p>
-                    </div>
-                    <button className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-xs font-bold border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-colors opacity-50 cursor-not-allowed">
-                      <Plus size={14} /> Config Price
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto p-6">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200/60">
-                          <th className="pb-3 px-4">Item Name</th>
-                          <th className="pb-3 px-4 text-right">Base Cost (RWF)</th>
-                          <th className="pb-3 px-4 text-center">Markup %</th>
-                          <th className="pb-3 px-4 text-right">Selling Price (RWF)</th>
-                          <th className="pb-3 px-4 text-center">Effective Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {(() => {
-                          const filtered = prices.filter(p => (p.item_name || p.name)?.toLowerCase().includes(searchTerm.toLowerCase()));
-                          const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-                          return (
-                            <>
-                              {paginated.map((p, idx) => (
-                          <motion.tr variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: idx * 0.05 }} key={p.id} className="hover:bg-indigo-50/30 transition-colors">
-                            <td className="py-4 px-4 text-slate-900 font-black text-[13px]">{p.item_name || p.name}</td>
-                            <td className="py-4 px-4 text-right font-mono text-slate-500">{p.base_cost.toLocaleString()} RWF</td>
-                            <td className="py-4 px-4 text-center">
-                              <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded font-black">{p.markup_percentage}%</span>
-                            </td>
-                            <td className="py-4 px-4 text-right font-mono text-indigo-700 font-black text-[14px]">{p.selling_price.toLocaleString()} RWF</td>
-                            <td className="py-4 px-4 text-center text-slate-500">{p.effective_date}</td>
-                          </motion.tr>
-                        ))}
-                            </>
-                          );
-                        })()}
-                      </tbody>
-                    </table>
-                  </div>
-                  {(() => {
-                    const dataMap = {
-                      'items': items,
-                      'departments': departments,
-                      'uoms': uoms,
-                      'vendors': vendors,
-                      'prices': prices
-                    };
-                    let filtered = dataMap[activeTab] || [];
-                    if (activeTab === 'items') filtered = filtered.filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) || item.category?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'departments') filtered = filtered.filter(dept => dept.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'uoms') filtered = filtered.filter(u => u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.abbreviation?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'vendors') filtered = filtered.filter(v => v.name?.toLowerCase().includes(searchTerm.toLowerCase()) || v.contact?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'prices') filtered = filtered.filter(p => (p.item_name || p.name)?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    return renderPagination(filtered.length);
-                  })()}
-                </div>
-              )}
 
             </motion.div>
           </AnimatePresence>
@@ -753,9 +751,44 @@ export default function MasterModule() {
               </select>
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Unit of Measure</label>
+              <input required type="text" value={itemForm.unit_of_measure} onChange={e => setItemForm({...itemForm, unit_of_measure: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Quantity</label>
+              <input type="number" value={itemForm.quantity} onChange={e => setItemForm({...itemForm, quantity: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Price (RWF)</label>
+              <input type="number" value={itemForm.price} onChange={e => setItemForm({...itemForm, price: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Batch Number</label>
+              <input type="text" value={itemForm.batch_number} onChange={e => setItemForm({...itemForm, batch_number: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Purchase Date</label>
+              <input type="date" value={itemForm.purchase_time} onChange={e => setItemForm({...itemForm, purchase_time: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Expiry Date</label>
+              <input type="date" value={itemForm.expiry_date} onChange={e => setItemForm({...itemForm, expiry_date: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            </div>
+          </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Unit of Measure</label>
-            <input required type="text" value={itemForm.unit_of_measure} onChange={e => setItemForm({...itemForm, unit_of_measure: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <label className="block text-xs font-bold text-slate-700 mb-1">Department Location</label>
+            <select value={itemForm.department_id} onChange={e => setItemForm({...itemForm, department_id: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <option value="">- No specific department -</option>
+              {departments.map(dept => (
+                <option key={dept.id} value={dept.id}>{dept.name}</option>
+              ))}
+            </select>
           </div>
           <div className="flex justify-end gap-3 pt-4">
             <button type="button" onClick={() => setItemModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
@@ -780,6 +813,30 @@ export default function MasterModule() {
           </div>
         </form>
       </Modal>
+
+      <Modal isOpen={isUomModalOpen} onClose={() => setUomModalOpen(false)} title={editingRecord ? 'Edit UOM' : 'Add New UOM'}>
+        <form onSubmit={handleSaveUom} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Unit Name</label>
+            <input required type="text" value={uomForm.name} onChange={e => setUomForm({...uomForm, name: e.target.value})} placeholder="e.g. Box" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Abbreviation</label>
+            <input required type="text" value={uomForm.abbreviation} onChange={e => setUomForm({...uomForm, abbreviation: e.target.value})} placeholder="e.g. bx" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Description</label>
+            <textarea value={uomForm.description} onChange={e => setUomForm({...uomForm, description: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[80px]"></textarea>
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <button type="button" onClick={() => setUomModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2">
+              {isSubmitting && <Loader2 size={16} className="animate-spin" />} Save UOM
+            </button>
+          </div>
+        </form>
+      </Modal>
+
 
       <Modal isOpen={isVendorModalOpen} onClose={() => setVendorModalOpen(false)} title={editingRecord ? 'Edit Vendor' : 'Add New Vendor'}>
         <form onSubmit={handleSaveVendor} className="space-y-4">
