@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -488,7 +489,7 @@ export default function OpenShift() {
       </Modal>
 
       <AnimatePresence>
-        {showSuccess && (
+        {showSuccess && createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -520,7 +521,7 @@ export default function OpenShift() {
                 </button>
               </div>
             </motion.div>
-          </div>
+          </div>, document.body
         )}
       </AnimatePresence>
     </div>

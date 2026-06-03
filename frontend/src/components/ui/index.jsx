@@ -230,10 +230,11 @@ export function TabsContent({ value, className, children }) {
   )
 }
 
-// ── Dialog ────────────────────────────────────────────────────────────────
+import { createPortal } from "react-dom"
+
 export function Dialog({ open, onOpenChange, children }) {
   if (!open) return null
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-all animate-in fade-in duration-200">
       <div 
         className="fixed inset-0" 
@@ -242,7 +243,8 @@ export function Dialog({ open, onOpenChange, children }) {
       <div className="relative z-50 w-full max-w-lg scale-100 opacity-100 transition-all animate-in zoom-in-95 duration-200">
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

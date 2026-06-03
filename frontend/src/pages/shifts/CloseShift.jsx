@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -254,7 +255,7 @@ function ShiftClosingSummary({ shift, closedData, onExit }) {
 
   const colorMap = { blue:'bg-blue-50 text-blue-600', emerald:'bg-emerald-50 text-emerald-600', violet:'bg-violet-50 text-violet-600' };
 
-  return (
+  return createPortal(
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       initial={{ opacity: 0 }}
@@ -343,7 +344,7 @@ function ShiftClosingSummary({ shift, closedData, onExit }) {
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>, document.body
   );
 }
 

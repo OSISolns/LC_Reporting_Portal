@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -1017,7 +1018,7 @@ export default function ShiftDashboard() {
 
       {/* ── Edit Modal ────────────────────────────────────────────── */}
       <AnimatePresence>
-        {editingShift && (
+        {editingShift && createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -1069,7 +1070,7 @@ export default function ShiftDashboard() {
                 </div>
               </form>
             </motion.div>
-          </div>
+          </div>, document.body
         )}
       </AnimatePresence>
 

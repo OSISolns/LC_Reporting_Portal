@@ -13,7 +13,8 @@ import {
   Package,
   Calendar,
   Loader2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Search
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
@@ -30,6 +31,7 @@ export default function CentralStoreHub() {
   const [activeDepartment, setActiveDepartment] = useState('All Departments');
   // 'stock_in_hand', 'vendors', 'requisitions', 'pos', 'expiring', 'disposals'
 
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Core Data States
@@ -173,29 +175,42 @@ export default function CentralStoreHub() {
 
       <div className="max-w-[1400px] mx-auto px-6 mt-6">
         
-        {/* Navigation Tabs (Exactly as requested) */}
-        <div className="flex overflow-x-auto border-b border-slate-200 pb-0.5 select-none gap-2 mb-6 bg-white px-5 py-2.5 rounded-2xl border border-slate-200/50 shadow-sm scrollbar-none">
-          {[
-            { id: 'stock_in_hand', label: 'Stock In Hand', icon: <Package size={14} /> },
-            { id: 'vendors', label: 'Vendors', icon: <Truck size={14} /> },
-            { id: 'requisitions', label: 'Requisitions', icon: <ArrowRightLeft size={14} /> },
-            { id: 'pos', label: 'Purchase Orders', icon: <ShoppingBag size={14} /> },
-            { id: 'expiring', label: 'Expiring Items', icon: <Calendar size={14} /> },
-            { id: 'disposals', label: 'Disposal Management', icon: <Trash2 size={14} /> }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] border-0 bg-transparent shrink-0 cursor-pointer ${
-                activeTab === tab.id
-                  ? 'border-[#0369a1] text-[#0369a1]'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
+        {/* Navigation Tabs and Search */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex overflow-x-auto border-b border-slate-200 pb-0.5 select-none gap-2 bg-white px-5 py-2.5 rounded-2xl border border-slate-200/50 shadow-sm scrollbar-none flex-1">
+            {[
+              { id: 'stock_in_hand', label: 'Stock In Hand', icon: <Package size={14} /> },
+              { id: 'vendors', label: 'Vendors', icon: <Truck size={14} /> },
+              { id: 'requisitions', label: 'Requisitions', icon: <ArrowRightLeft size={14} /> },
+              { id: 'pos', label: 'Purchase Orders', icon: <ShoppingBag size={14} /> },
+              { id: 'expiring', label: 'Expiring Items', icon: <Calendar size={14} /> },
+              { id: 'disposals', label: 'Disposal Management', icon: <Trash2 size={14} /> }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] border-0 bg-transparent shrink-0 cursor-pointer ${
+                  activeTab === tab.id
+                    ? 'border-[#0369a1] text-[#0369a1]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          
+          <div className="relative shrink-0 w-full md:w-64">
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+            <input 
+              type="text" 
+              placeholder="Search in active tab..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0369a1] shadow-sm"
+            />
+          </div>
         </div>
 
         {loading ? (
@@ -250,6 +265,7 @@ export default function CentralStoreHub() {
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                       {stockInHand
                         .filter(item => activeDepartment === 'All Departments' || item.department === activeDepartment)
+                        .filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) || item.batchNumber?.toLowerCase().includes(searchTerm.toLowerCase()))
                         .map((item, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/40">
                           <td className="py-3 px-4 text-slate-900 font-black text-[13px]">{item.name}</td>
@@ -290,7 +306,9 @@ export default function CentralStoreHub() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                      {vendors.map(v => (
+                      {vendors
+                        .filter(v => v.name?.toLowerCase().includes(searchTerm.toLowerCase()) || v.contact?.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .map(v => (
                         <tr key={v.id} className="hover:bg-slate-50/40">
                           <td className="py-3 px-4 text-slate-900 font-black text-[13px]">{v.name}</td>
                           <td className="py-3 px-4 text-slate-500">{v.contact || 'N/A'}</td>
@@ -322,7 +340,9 @@ export default function CentralStoreHub() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                      {requisitions.map(req => (
+                      {requisitions
+                        .filter(req => req.department_name?.toLowerCase().includes(searchTerm.toLowerCase()) || req.status?.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .map(req => (
                         <tr key={req.id} className="hover:bg-slate-50/40 cursor-pointer">
                           <td className="py-3 px-4 text-[#0369a1] font-black text-[13px]">{req.department_name}</td>
                           <td className="py-3 px-4">{new Date(req.created_at).toLocaleDateString()}</td>
@@ -369,7 +389,9 @@ export default function CentralStoreHub() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                      {purchaseOrders.map(po => (
+                      {purchaseOrders
+                        .filter(po => po.id?.toLowerCase().includes(searchTerm.toLowerCase()) || po.vendor_name?.toLowerCase().includes(searchTerm.toLowerCase()) || po.item_name?.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .map(po => (
                         <tr key={po.id} className="hover:bg-slate-50/40">
                           <td className="py-3 px-4 font-mono text-[#0369a1]">{po.id}</td>
                           <td className="py-3 px-4 text-slate-500">{po.date}</td>
@@ -415,6 +437,7 @@ export default function CentralStoreHub() {
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                       {stockInHand
                         .filter(item => item.expiryDate && (item.expiryDate.includes('2026') || item.expiryDate.includes('2025')))
+                        .filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.department?.toLowerCase().includes(searchTerm.toLowerCase()) || item.batchNumber?.toLowerCase().includes(searchTerm.toLowerCase()))
                         .map((item, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/40">
                           <td className="py-3 px-4 text-slate-900 font-black text-[13px]">{item.name}</td>
@@ -457,6 +480,7 @@ export default function CentralStoreHub() {
                       <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                         {stockInHand
                           .filter(item => item.expiryDate && (item.expiryDate.includes('2024') || item.expiryDate.includes('2025')))
+                          .filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.batchNumber?.toLowerCase().includes(searchTerm.toLowerCase()))
                           .map((item, idx) => (
                           <tr key={idx} className="hover:bg-slate-50/40">
                             <td className="py-3 px-4 text-slate-900 font-black text-[13px]">{item.name}</td>
@@ -495,7 +519,9 @@ export default function CentralStoreHub() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {disposals.map(disp => (
+                        {disposals
+                          .filter(disp => disp.item_name?.toLowerCase().includes(searchTerm.toLowerCase()) || disp.batch_number?.toLowerCase().includes(searchTerm.toLowerCase()) || disp.department?.toLowerCase().includes(searchTerm.toLowerCase()))
+                          .map(disp => (
                           <tr key={disp.id} className="hover:bg-slate-50/40">
                             <td className="py-3 px-4 text-slate-500">{disp.date}</td>
                             <td className="py-3 px-4 text-[#0369a1]">{disp.department}</td>

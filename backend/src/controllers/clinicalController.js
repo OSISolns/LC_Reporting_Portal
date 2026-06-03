@@ -588,18 +588,22 @@ exports.saveInventoryBulk = async (req, res) => {
 exports.getInventoryChangeLogs = async (req, res) => {
   try {
     const { date, month_year } = req.query;
-    let sql = 'SELECT * FROM nursing_stock_change_logs';
+    let sql = `
+      SELECT l.*, COALESCE(u.full_name, l.updated_by) as updated_by 
+      FROM nursing_stock_change_logs l
+      LEFT JOIN users u ON LOWER(l.updated_by) = LOWER(u.username)
+    `;
     let params = [];
 
     if (date) {
-      sql += ' WHERE date(updated_at) = $1';
+      sql += ' WHERE date(l.updated_at) = $1';
       params.push(date);
     } else if (month_year) {
-      sql += ' WHERE month_year = $1';
+      sql += ' WHERE l.month_year = $1';
       params.push(month_year);
     }
 
-    sql += ' ORDER BY updated_at DESC';
+    sql += ' ORDER BY l.updated_at DESC';
 
     const { rows } = await db.query(sql, params);
     res.json({ success: true, data: rows });
@@ -1098,6 +1102,46 @@ exports.getMasterInventory = async (req, res) => {
   }
 };
 
+exports.createMasterInventory = async (req, res) => {
+  try {
+    const { name, sku, unit_of_measure, category } = req.body;
+    await db.query(
+      "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4)",
+      [name, sku, unit_of_measure, category]
+    );
+    res.json({ success: true, message: 'Item added successfully' });
+  } catch (error) {
+    console.error('Error in createMasterInventory:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.updateMasterInventory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, sku, unit_of_measure, category } = req.body;
+    await db.query(
+      "UPDATE master_inventory SET name = $1, sku = $2, unit_of_measure = $3, category = $4 WHERE id = $5",
+      [name, sku, unit_of_measure, category, id]
+    );
+    res.json({ success: true, message: 'Item updated successfully' });
+  } catch (error) {
+    console.error('Error in updateMasterInventory:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.deleteMasterInventory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query("DELETE FROM master_inventory WHERE id = $1", [id]);
+    res.json({ success: true, message: 'Item deleted successfully' });
+  } catch (error) {
+    console.error('Error in deleteMasterInventory:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 exports.getBatches = async (req, res) => {
   try {
     const { rows } = await db.query(`
@@ -1257,12 +1301,72 @@ exports.createVendor = async (req, res) => {
   }
 };
 
+exports.updateVendor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, contact, contractTerms } = req.body;
+    await db.query(
+      "UPDATE vendors SET name = $1, contact = $2, contract_terms = $3 WHERE id = $4",
+      [name, contact, contractTerms, id]
+    );
+    res.json({ success: true, message: 'Vendor updated successfully' });
+  } catch (error) {
+    console.error('Error in updateVendor:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.deleteVendor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query("DELETE FROM vendors WHERE id = $1", [id]);
+    res.json({ success: true, message: 'Vendor deleted successfully' });
+  } catch (error) {
+    console.error('Error in deleteVendor:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 exports.getDepartments = async (req, res) => {
   try {
     const { rows } = await db.query("SELECT * FROM departments");
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error in getDepartments:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.createDepartment = async (req, res) => {
+  try {
+    const { name } = req.body;
+    await db.query("INSERT INTO departments (name) VALUES ($1)", [name]);
+    res.json({ success: true, message: 'Department added successfully' });
+  } catch (error) {
+    console.error('Error in createDepartment:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.updateDepartment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    await db.query("UPDATE departments SET name = $1 WHERE id = $2", [name, id]);
+    res.json({ success: true, message: 'Department updated successfully' });
+  } catch (error) {
+    console.error('Error in updateDepartment:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.deleteDepartment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query("DELETE FROM departments WHERE id = $1", [id]);
+    res.json({ success: true, message: 'Department deleted successfully' });
+  } catch (error) {
+    console.error('Error in deleteDepartment:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

@@ -17,7 +17,13 @@ async function addPAIncidentPermission() {
       args: ['pa', 'incident_reports', 'view', 1]
     });
     
-    console.log('✅ PA incident_reports view permission added.');
+    await client.execute({
+      sql: `INSERT INTO role_permissions (role_name, module, action, granted)
+            VALUES (?, ?, ?, ?) ON CONFLICT(role_name, module, action) DO UPDATE SET granted=excluded.granted`,
+      args: ['pa', 'incident_reports', 'create', 1]
+    });
+    
+    console.log('✅ PA incident_reports view and create permission added.');
   } catch (err) {
     console.error('❌ Failed:', err);
   } finally {

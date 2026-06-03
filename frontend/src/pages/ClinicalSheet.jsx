@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import {
@@ -1061,7 +1062,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
       </button>
 
       {/* ── AI Assistant Drawer ── */}
-      {aiDrawerOpen && (
+      {aiDrawerOpen && createPortal(
         <div className="no-print fixed inset-0 z-50 flex justify-end" onClick={() => setAiDrawerOpen(false)}>
           <div
             className="relative w-[380px] h-full bg-white shadow-2xl flex flex-col overflow-hidden border-l border-slate-200"
@@ -1204,7 +1205,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
               </p>
             </div>
           </div>
-        </div>
+        </div>, document.body
       )}
     </div>
   );

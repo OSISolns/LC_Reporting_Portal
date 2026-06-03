@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Stethoscope, 
   Activity, 
@@ -16,7 +17,8 @@ import {
   CalendarDays,
   FileSpreadsheet,
   Download,
-  Database
+  Database,
+  X
 } from 'lucide-react';
 import { getReportConfig, getDailyReport, getMonthlyReport } from '../api/reports';
 import toast from 'react-hot-toast';
@@ -39,6 +41,7 @@ export default function DailyOperationalReportBoard() {
   const [dailyMetrics, setDailyMetrics] = useState({}); // providerId -> patientCount
   const [dailyLogs, setDailyLogs] = useState({}); // metricName -> metricValue
   const [stockLogs, setStockLogs] = useState([]); // inventory audit logs
+  const [selectedLog, setSelectedLog] = useState(null); // specific log for modal
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
 
@@ -1077,7 +1080,11 @@ export default function DailyOperationalReportBoard() {
                         const consumedDiff = log.new_consumed - log.old_consumed;
 
                         return (
-                          <tr key={log.id} className="hover:bg-slate-50/40 text-xs font-bold text-slate-700">
+                          <tr 
+                            key={log.id} 
+                            className="hover:bg-slate-50/40 text-xs font-bold text-slate-700 cursor-pointer"
+                            onClick={() => setSelectedLog(log)}
+                          >
                             <td className="px-4 py-3.5 whitespace-nowrap text-slate-400 font-mono text-[11px]">{logTime}</td>
                             <td className="px-4 py-3.5 text-slate-900 font-black">{log.item_name}</td>
                             <td className="px-4 py-3.5">
@@ -1408,6 +1415,113 @@ export default function DailyOperationalReportBoard() {
           )}
 
         </div>
+      )}
+      
+      {/* ────────────────── STOCK LOG DETAILS MODAL ────────────────── */}
+      {selectedLog && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center text-sky-600">
+                  <Database size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-800">Transaction Details</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ID: #{selectedLog.id}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedLog(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto custom-scrollbar">
+              <div className="space-y-4">
+                
+                {/* Item & Session Info */}
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <div className="mb-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Item Name</span>
+                    <span className="text-sm font-black text-slate-800">{selectedLog.item_name}</span>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Month/Year</span>
+                      <span className="text-xs font-bold text-slate-700">{selectedLog.month_year}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Session</span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100 uppercase">
+                        Day {selectedLog.day} - {selectedLog.session}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Values Comparison */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">Stock Change</span>
+                    <div className="flex items-center justify-center gap-2 font-mono text-xs font-black">
+                      <span className="text-slate-500">{selectedLog.old_stock}</span>
+                      <span className="text-slate-300">➔</span>
+                      <span className="text-slate-800">{selectedLog.new_stock}</span>
+                    </div>
+                    {selectedLog.new_stock - selectedLog.old_stock !== 0 && (
+                      <div className={`mt-2 text-[10px] font-bold text-center py-1 rounded ${selectedLog.new_stock - selectedLog.old_stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                        {selectedLog.new_stock - selectedLog.old_stock > 0 ? '+' : ''}{selectedLog.new_stock - selectedLog.old_stock} items
+                      </div>
+                    )}
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">Consumed Change</span>
+                    <div className="flex items-center justify-center gap-2 font-mono text-xs font-black">
+                      <span className="text-slate-500">{selectedLog.old_consumed}</span>
+                      <span className="text-slate-300">➔</span>
+                      <span className="text-slate-800">{selectedLog.new_consumed}</span>
+                    </div>
+                    {selectedLog.new_consumed - selectedLog.old_consumed !== 0 && (
+                      <div className={`mt-2 text-[10px] font-bold text-center py-1 rounded ${selectedLog.new_consumed - selectedLog.old_consumed > 0 ? 'bg-amber-50 text-amber-600' : 'bg-sky-50 text-sky-600'}`}>
+                        {selectedLog.new_consumed - selectedLog.old_consumed > 0 ? '+' : ''}{selectedLog.new_consumed - selectedLog.old_consumed} items
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Metadata */}
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Updated By</span>
+                    <span className="text-xs font-bold text-slate-700 inline-flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-450" />
+                      {selectedLog.updated_by}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Timestamp</span>
+                    <span className="text-xs font-mono font-bold text-slate-600">
+                      {new Date(selectedLog.updated_at).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button 
+                onClick={() => setSelectedLog(null)}
+                className="px-5 py-2 rounded-lg bg-white border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>, document.body
       )}
 
     </div>

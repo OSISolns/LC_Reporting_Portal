@@ -24,7 +24,7 @@ const Sidebar = ({ onClose }) => {
     { name: ['doctor', 'consultant'].includes(user?.role) ? 'Doctor Hub' : 'Nursing Hub', icon: <Stethoscope size={20} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse'] },
     { name: 'Daily Stock Checkup', icon: <Database size={20} />, path: '/nursing-hub/inventory', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant'] },
     { name: 'Central Store Hub', icon: <Database size={20} />, path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo', 'chef-nurse', 'nurse', 'stock-manager'] },
-    { name: 'Master Data', icon: <Database size={20} />, path: '/master-module', requiredPerm: null, allowedRoles: ['admin', 'stock-manager'] },
+    { name: 'Master', icon: <Database size={20} />, path: '/master-module', requiredPerm: null, allowedRoles: ['admin', 'stock-manager'] },
     { name: 'E-Prescriptions', icon: <FileText size={20} />, path: '/e-prescriptions', requiredPerm: null, allowedRoles: ['doctor', 'consultant'] },
     { name: 'Daily Report', icon: <Activity size={20} />, path: '/nursing-hub/daily-report', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse'] },
     { name: 'Daily Reports Board', icon: <FileText size={20} />, path: '/daily-reports-board', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer', 'chef-nurse', 'nurse', 'pa'] },
