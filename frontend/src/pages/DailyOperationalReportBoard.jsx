@@ -32,7 +32,10 @@ export default function DailyOperationalReportBoard() {
   const [config, setConfig] = useState({ departments: [], providers: [], defaultProcedureMetrics: [] });
 
   // Daily Board State
-  const [selectedDate, setSelectedDate] = useState('2026-04-30'); // Default to latest populated data
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }); // Default to current date
   const [dailyMetrics, setDailyMetrics] = useState({}); // providerId -> patientCount
   const [dailyLogs, setDailyLogs] = useState({}); // metricName -> metricValue
   const [stockLogs, setStockLogs] = useState([]); // inventory audit logs
@@ -40,8 +43,8 @@ export default function DailyOperationalReportBoard() {
   const [deptFilter, setDeptFilter] = useState('ALL');
 
   // Monthly Matrix State
-  const [selectedYear, setSelectedYear] = useState(2026);
-  const [selectedMonth, setSelectedMonth] = useState(4); // Default to April
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // Default to current month
   const [monthlyData, setMonthlyData] = useState(null);
   const [monthlySearchQuery, setMonthlySearchQuery] = useState('');
   const [monthlyDeptFilter, setMonthlyDeptFilter] = useState('ALL');
@@ -842,12 +845,6 @@ export default function DailyOperationalReportBoard() {
                 </button>
               </div>
 
-              <button
-                onClick={handleDownloadPdf}
-                className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-sky-500 to-sky-600 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-sky-500/20 active:scale-95 transition"
-              >
-                <Download size={15} /> Download PDF
-              </button>
 
               <button
                 onClick={handleExportDailyXlsx}
@@ -1159,12 +1156,6 @@ export default function DailyOperationalReportBoard() {
                 </select>
               </div>
 
-              <button
-                onClick={handleDownloadPdf}
-                className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-sky-500 to-sky-600 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-sky-500/20 active:scale-95 transition w-full md:w-auto"
-              >
-                <Download size={15} /> Download PDF
-              </button>
 
               <button
                 onClick={handleExportMonthlyXlsx}
