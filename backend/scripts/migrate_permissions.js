@@ -153,7 +153,7 @@ const ROLE_DEFAULTS = {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
     refunds:          { view:0, create:0, edit:0, approve:0, reject:0 },
     results_transfer: { view:0, create:0, edit:0, approve:0, reject:0 },
-    incident_reports: { view:0, create:0, edit:0, approve:0 },
+    incident_reports: { view:1, create:0, edit:0, approve:0 },
     user_management:  { view:0, create:0, edit:0, delete:0 },
     audit_logs:       { view:0 },
     reports:          { view:1, download:0 },
