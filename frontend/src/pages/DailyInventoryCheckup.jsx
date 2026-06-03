@@ -274,6 +274,10 @@ export default function DailyInventoryCheckup() {
   const [newReqNotes, setNewReqNotes] = useState('');
   const [newReqLines, setNewReqLines] = useState([{ item_id: '', quantity: '' }]);
   const [masterItems, setMasterItems] = useState([]);
+  const [showReqDetailModal, setShowReqDetailModal] = useState(false);
+  const [selectedReq, setSelectedReq] = useState(null);
+  const [reqItems, setReqItems] = useState([]);
+  const [reqItemsLoading, setReqItemsLoading] = useState(false);
 
   const handleDeleteItem = (itemName) => {
     setDeletedItems(prev => [...prev, itemName]);
@@ -388,6 +392,23 @@ export default function DailyInventoryCheckup() {
       toast.error('Failed to load requisitions');
     } finally {
       setLoadingReqs(false);
+    }
+  };
+
+  const handleViewReq = async (req) => {
+    setSelectedReq(req);
+    setShowReqDetailModal(true);
+    setReqItems([]);
+    setReqItemsLoading(true);
+    try {
+      const res = await api.get(`/clinical/inventory/requisitions/${req.id}/items`);
+      if (res.data.success) {
+        setReqItems(res.data.data);
+      }
+    } catch {
+      toast.error('Could not load requisition items');
+    } finally {
+      setReqItemsLoading(false);
     }
   };
 
@@ -2021,6 +2042,7 @@ export default function DailyInventoryCheckup() {
                     <th className="py-2.5 px-4 text-center">Urgency</th>
                     <th className="py-2.5 px-4 text-center">Items count</th>
                     <th className="py-2.5 px-4 text-center">Status</th>
+                    <th className="py-2.5 px-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
@@ -2047,11 +2069,120 @@ export default function DailyInventoryCheckup() {
                           {req.status}
                         </Badge>
                       </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleViewReq(req);
+                            setShowReqListModal(false);
+                          }}
+                          className="px-2 py-1 text-[10px] font-black text-[#0369a1] bg-sky-50 hover:bg-sky-100 rounded border border-sky-150 cursor-pointer transition-all"
+                        >
+                          View Details
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Requisition Details Modal ── */}
+      <Modal
+        isOpen={showReqDetailModal}
+        onClose={() => {
+          setShowReqDetailModal(false);
+          setShowReqListModal(true);
+        }}
+        title={`Requisition #${selectedReq?.id} Details`}
+        maxWidth="650px"
+      >
+        <div className="space-y-4 p-2 text-left">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Status</p>
+              <Badge className={`mt-1 ${
+                selectedReq?.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                selectedReq?.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                'bg-amber-50 text-amber-700 border-amber-200'
+              }`}>{selectedReq?.status}</Badge>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Urgency</p>
+              <Badge className={`mt-1 ${selectedReq?.urgency === 'High' || selectedReq?.urgency === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                {selectedReq?.urgency || 'Normal'}
+              </Badge>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Date</p>
+              <p className="text-xs font-black text-slate-700 mt-1">{selectedReq?.created_at ? new Date(selectedReq.created_at).toLocaleDateString() : 'N/A'}</p>
+            </div>
+          </div>
+
+          {selectedReq?.notes && (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Notes / Instructions</p>
+              <p className="text-xs text-slate-700 font-bold mt-1 leading-relaxed">{selectedReq.notes}</p>
+            </div>
+          )}
+
+          {selectedReq?.rejection_reason && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <p className="text-[9px] font-black uppercase text-red-600 tracking-wider">Rejection Reason</p>
+              <p className="text-xs text-red-800 font-extrabold mt-1 leading-relaxed">{selectedReq.rejection_reason}</p>
+            </div>
+          )}
+
+          {/* Items table */}
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            {reqItemsLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="animate-spin text-[#0369a1]" size={20} />
+              </div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
+                    <th className="py-2.5 px-4 text-left">Item Name</th>
+                    <th className="py-2.5 px-4 text-left">UoM</th>
+                    <th className="py-2.5 px-4 text-center">Requested Qty</th>
+                    <th className="py-2.5 px-4 text-center">Approved Qty</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                  {reqItems.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" className="py-8 text-center text-slate-400 font-bold">No items found in this requisition.</td>
+                    </tr>
+                  ) : (
+                    reqItems.map(ri => (
+                      <tr key={ri.id} className="hover:bg-slate-50/60">
+                        <td className="py-2.5 px-4 text-slate-900 font-black">{ri.item_name}</td>
+                        <td className="py-2.5 px-4 text-slate-500">{ri.unit_of_measure || '—'}</td>
+                        <td className="py-2.5 px-4 text-center">{ri.requested_quantity}</td>
+                        <td className="py-2.5 px-4 text-center">{ri.approved_quantity ?? '—'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-slate-100 mt-4">
+            <Button
+              type="button"
+              onClick={() => {
+                setShowReqDetailModal(false);
+                setShowReqListModal(true);
+              }}
+              className="bg-[#0369a1] hover:bg-[#075985] text-white px-5 py-2 rounded-xl font-bold text-xs shadow-sm border-0"
+            >
+              Back to List
+            </Button>
           </div>
         </div>
       </Modal>
