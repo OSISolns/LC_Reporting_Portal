@@ -36,6 +36,8 @@ import EPrescriptions from './pages/EPrescriptions';
 import DailyInventoryCheckup from './pages/DailyInventoryCheckup';
 import DailyOperationalReport from './pages/DailyOperationalReport';
 import DailyOperationalReportBoard from './pages/DailyOperationalReportBoard';
+import CentralStoreHub from './pages/CentralStoreHub';
+import MasterModule from './pages/MasterModule';
 
 const ShiftDashboardRedirect = () => {
   const { user } = useAuth();
@@ -76,8 +78,10 @@ function App() {
             <Route path="/e-prescriptions" element={<ProtectedRoute allowedRoles={['doctor', 'consultant']}><EPrescriptions /></ProtectedRoute>} />
             <Route path="/nursing-hub/inventory" element={<ProtectedRoute allowedRoles={['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant']}><DailyInventoryCheckup /></ProtectedRoute>} />
             <Route path="/nursing-hub/daily-report" element={<ProtectedRoute allowedRoles={['nurse', 'chef-nurse']}><DailyOperationalReport /></ProtectedRoute>} />
-            <Route path="/daily-reports-board" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer', 'chef-nurse', 'nurse']}><DailyOperationalReportBoard /></ProtectedRoute>} />
+            <Route path="/daily-reports-board" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer', 'chef-nurse', 'nurse', 'pa']}><DailyOperationalReportBoard /></ProtectedRoute>} />
             <Route path="/feedbacks" element={<ProtectedRoute allowedRoles={['coo', 'deputy_coo', 'chef-nurse']}><FeedbackList /></ProtectedRoute>} />
+            <Route path="/central-store" element={<ProtectedRoute allowedRoles={['admin', 'coo', 'deputy_coo', 'chef-nurse', 'nurse', 'stock-manager']}><CentralStoreHub /></ProtectedRoute>} />
+            <Route path="/master-module" element={<ProtectedRoute allowedRoles={['admin', 'stock-manager']}><MasterModule /></ProtectedRoute>} />
 
             <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><ClinicalSheet /></ProtectedRoute>} />
             <Route path="/clinical-sheet/:patientId" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><ClinicalSheet /></ProtectedRoute>} />

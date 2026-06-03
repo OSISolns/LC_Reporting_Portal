@@ -25,6 +25,7 @@ const ROLE_LABEL = {
   it_officer:        'IT Systems & Security',
   nurse:             'Clinical Nurse',
   'chef-nurse':        'Chief Nurse Manager',
+  pa:                'MD Personal Assistant',
 };
 
 // ── Status pill ───────────────────────────────────────────────────────────────
@@ -180,6 +181,7 @@ const StaffDashboard = () => {
     it_officer:        ['Monitor audit logs daily for unusual activity patterns.', 'Ensure staff accounts follow clinical access policy.', 'Review reported incidents to ensure system integrity and data accuracy.'],
     nurse:             ['Ensure clinical observation sheets are synchronized before shift handover.', 'Record all medication administration in real-time.', 'All patient incidents must be documented via the Incident Reporting module immediately.'],
     'chef-nurse':      ['Review all pending clinical observation sheets before shift close.', 'Ensure nursing staff are compliant with MAR documentation standards.', 'All incidents in your department require your review and approval.'],
+    pa:                ['Monitor daily reports and clinical observations for the MD.', 'Ensure all data is reviewed before presenting to the MD.'],
   };
   const tips = ROLE_TIPS[user?.role] || [];
 

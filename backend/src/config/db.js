@@ -515,6 +515,86 @@ let client = createClient({
   } catch (err) {
     console.error('❌ Failed to initialize nursing_stock_change_logs table:', err);
   }
+  // --- New Stock Management Relational Architecture ---
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS vendors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        contact TEXT,
+        contract_terms TEXT,
+        is_active INTEGER DEFAULT 1
+      )
+    `);
+    
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS master_inventory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        sku TEXT,
+        unit_of_measure TEXT,
+        category TEXT
+      )
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS stock_batches (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER REFERENCES master_inventory(id) ON DELETE CASCADE,
+        vendor_id INTEGER REFERENCES vendors(id) ON DELETE SET NULL,
+        batch_number TEXT UNIQUE,
+        expiry_date TEXT,
+        purchase_price REAL,
+        quantity INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS department_stock (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE,
+        item_id INTEGER REFERENCES master_inventory(id) ON DELETE CASCADE,
+        batch_id INTEGER REFERENCES stock_batches(id) ON DELETE SET NULL,
+        quantity INTEGER DEFAULT 0,
+        min_stock_level INTEGER DEFAULT 10,
+        UNIQUE(department_id, item_id, batch_id)
+      )
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS requisitions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE,
+        status TEXT DEFAULT 'Pending',
+        urgency TEXT DEFAULT 'Normal',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS requisition_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        requisition_id INTEGER REFERENCES requisitions(id) ON DELETE CASCADE,
+        item_id INTEGER REFERENCES master_inventory(id) ON DELETE CASCADE,
+        requested_quantity INTEGER DEFAULT 0,
+        approved_quantity INTEGER DEFAULT 0
+      )
+    `);
+    
+    // Attempt to add quantity column if not present from previous runs
+    try {
+      await client.execute("ALTER TABLE stock_batches ADD COLUMN quantity INTEGER DEFAULT 0");
+      console.log('✅ SQLite Schema Migration: added quantity column to stock_batches');
+    } catch (e) {
+      // Ignore error if column already exists
+    }
+
+    console.log('✅ SQLite Schema Migration: created stock management relational tables');
+  } catch (err) {
+    console.error('❌ Failed to initialize stock management tables:', err);
+  }
 })();
 
 /**

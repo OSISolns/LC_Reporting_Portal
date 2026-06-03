@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS internal_feedbacks (
   call_center             INTEGER DEFAULT 0,                                    -- Call center
   tabara_service          INTEGER DEFAULT 0,                                    -- Tabara service (Abasunika Igare)
   laboratory              INTEGER DEFAULT 0,                                    -- Laboratory (Aho batangira ibizami)
-  cafetaria               INTEGER DEFAULT 0,                                    -- Cafetaria (Muri restora)
+  cafetaria               INTEGER DEFAULT 0,                                    -- Cafetaria (Muri Cantine)
   imaging                 INTEGER DEFAULT 0,                                    -- Imaging (Mu cyumba gifotora)
   
   concern_description     TEXT NOT NULL,                                        -- Description of concern (Complaint, suggestion, compliment)

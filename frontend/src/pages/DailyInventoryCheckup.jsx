@@ -260,6 +260,11 @@ export default function DailyInventoryCheckup() {
   // State for tracking custom or seeded items removed/deleted from the active roster
   const [deletedItems, setDeletedItems] = useState([]);
 
+  // Audit Logs State
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
   const handleDeleteItem = (itemName) => {
     setDeletedItems(prev => [...prev, itemName]);
     toast.success(`Removed "${itemName}" from active checkup roster.`);
@@ -322,6 +327,22 @@ export default function DailyInventoryCheckup() {
       console.error(err);
       toast.dismiss();
       toast.error('Failed to export Excel spreadsheet.');
+    }
+  };
+
+  const handleFetchLogs = async () => {
+    try {
+      setLoadingLogs(true);
+      setShowLogsModal(true);
+      const res = await api.get(`/clinical/inventory/change-logs?month_year=${monthYear}`);
+      if (res.data.success) {
+        setAuditLogs(res.data.data);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load audit logs.');
+    } finally {
+      setLoadingLogs(false);
     }
   };
 
@@ -880,6 +901,18 @@ export default function DailyInventoryCheckup() {
                     Export Excel Ledger
                   </button>
 
+                  {/* Action 4: Audit Logs */}
+                  <button
+                    onClick={() => {
+                      handleFetchLogs();
+                      setShowToolsDropdown(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all border-none bg-transparent"
+                  >
+                    <span className="p-1 bg-amber-50 text-amber-600 rounded-lg"><Activity size={14} /></span>
+                    View Audit Logs
+                  </button>
+
                 </div>
               </>
             )}
@@ -956,6 +989,37 @@ export default function DailyInventoryCheckup() {
                 </div>
               </>
             )}
+
+            {/* Audit Logs Modal */}
+            <Modal isOpen={showLogsModal} onClose={() => setShowLogsModal(false)} title={`Audit Logs - ${getMonthLabel(monthYear)}`}>
+              <div className="p-4 max-h-[60vh] overflow-y-auto">
+                {loadingLogs ? (
+                  <div className="flex justify-center items-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
+                  </div>
+                ) : auditLogs.length > 0 ? (
+                  <div className="space-y-3">
+                    {auditLogs.map((log, idx) => (
+                      <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col gap-1">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-slate-800">{log.item_name} (Day {log.day} {log.session})</span>
+                          <span className="text-[10px] text-slate-500 font-semibold">{new Date(log.updated_at).toLocaleString()}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-600">
+                          <p>Stock: <span className="font-mono text-slate-500">{log.old_stock}</span> &rarr; <span className="font-mono font-bold text-slate-800">{log.new_stock}</span></p>
+                          <p>Consumed: <span className="font-mono text-slate-500">{log.old_consumed}</span> &rarr; <span className="font-mono font-bold text-slate-800">{log.new_consumed}</span></p>
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-1">Updated by: <span className="font-bold">{log.updated_by}</span></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-500 font-semibold text-xs">
+                    No change logs found for this month.
+                  </div>
+                )}
+              </div>
+            </Modal>
           </div>
         </div>
       </div>
@@ -1207,6 +1271,7 @@ export default function DailyInventoryCheckup() {
                       <tr className="bg-slate-50/50 text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
                         <th className="py-3.5 px-4 w-[240px]">Items</th>
                         <th className="py-3.5 px-4 text-center w-[120px]">Category</th>
+                        <th className="py-3.5 px-4 text-center w-[100px]">Batch #</th>
                         <th className="py-3.5 px-4 text-center w-[150px]">Expiration Date</th>
                         <th className="py-3.5 px-4 text-center w-[160px]">Status</th>
                         <th className="py-3.5 px-4 text-center w-[110px]">Stock in hands</th>
@@ -1254,6 +1319,11 @@ export default function DailyInventoryCheckup() {
                                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-slate-150 text-slate-700 border border-slate-200">
                                   {categoryLabel}
                                 </span>
+                              </td>
+
+                              {/* Batch # Column */}
+                              <td className="py-3 px-4 text-center">
+                                <span className="text-[10px] text-slate-400 font-bold">—</span>
                               </td>
 
                               {/* Expiration Date Column */}
@@ -1373,7 +1443,7 @@ export default function DailyInventoryCheckup() {
                           <td className="py-3.5 px-4 font-black text-[11px] tracking-tight" colSpan={2}>
                             Total Stock Volume (All Purchases)
                           </td>
-                          <td className="py-3.5 px-4 text-center" colSpan={2} />
+                          <td className="py-3.5 px-4 text-center" colSpan={3} />
                           <td className="py-3.5 px-4 text-center">
                             <span className="text-[13px] font-black text-white">
                               {filteredItems.reduce((sum, item) => {
