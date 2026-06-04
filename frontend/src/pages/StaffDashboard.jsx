@@ -239,6 +239,7 @@ const StaffDashboard = () => {
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 mb-8 shadow-sm">
           <h3 className="m-0 mb-6 text-xl font-black text-slate-800">Workflow Actions</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {hasPermission('shifts', 'create') && <QuickAction label="Shift Management" icon={<Clock size={24} />} color="#0284c7" path="/shifts" navigate={navigate} />}
             {hasPermission('cancellations', 'create') && <QuickAction label="New Cancellation" icon={<Plus size={24} />} color="#1b669e" path="/cancellations/new" navigate={navigate} />}
             {hasPermission('refunds', 'create') && <QuickAction label="New Refund" icon={<Plus size={24} />} color="#003b44" path="/refunds/new" navigate={navigate} />}
             {hasPermission('incident_reports', 'create') && <QuickAction label="Report Incident" icon={<AlertTriangle size={24} />} color="#b91c1c" path="/incidents/new" navigate={navigate} />}
