@@ -1,36 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
-import { Database, Package, Scale, Truck, DollarSign, Plus, RefreshCw, Loader2, ArrowLeft, Building2, Edit2, Trash2, X, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  Database, 
+  Package, 
+  Scale, 
+  Truck, 
+  DollarSign, 
+  Plus, 
+  RefreshCw, 
+  Loader2, 
+  ArrowLeft, 
+  Building2, 
+  Edit2, 
+  Trash2, 
+  X, 
+  AlertTriangle, 
+  ChevronLeft, 
+  ChevronRight,
+  Search,
+  SlidersHorizontal,
+  Layers,
+  MapPin,
+  ClipboardList
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search } from 'lucide-react';
 
 function Badge({ children, className = '' }) {
   return <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg border ${className}`}>{children}</span>;
 }
 
-// Reusable Modal Component
+// Reusable Modal Component with Glassmorphism, Backdrop blur, and Scrollable Body
 function Modal({ isOpen, onClose, title, children }) {
   if (!isOpen) return null;
   return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200"
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          transition={{ type: 'spring', duration: 0.4 }}
+          className="bg-white/95 backdrop-blur-2xl rounded-[28px] shadow-2xl w-full max-w-lg overflow-hidden border border-white/50"
         >
           <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="text-lg font-black text-slate-800">{title}</h3>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-              <X size={20} />
+            <h3 className="text-lg font-black text-slate-800 tracking-tight">{title}</h3>
+            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border-0 bg-transparent">
+              <X size={18} />
             </button>
           </div>
-          <div className="p-6">
+          <div className="p-6 max-h-[72vh] overflow-y-auto scrollbar-thin">
             {children}
           </div>
         </motion.div>
@@ -47,46 +69,11 @@ export default function MasterModule() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, searchTerm]);
-
-  const renderPagination = (totalItems) => {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    if (totalPages <= 1) return null;
-
-    return (
-      <div className="flex justify-between items-center px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-        <span className="text-xs text-slate-500 font-bold">
-          Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} entries
-        </span>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span className="text-xs font-bold text-slate-700 px-3 py-1.5 bg-white border border-slate-200 rounded-lg">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button 
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      </div>
-    );
-  };
-
 
   // Data states
   const [items, setItems] = useState([]);
@@ -115,9 +102,24 @@ export default function MasterModule() {
   const [uomForm, setUomForm] = useState({ name: '', abbreviation: '', description: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Categories definition
+  const categoriesList = [
+    { id: 'medical_supplies', label: 'Medical Supplies' },
+    { id: 'medications', label: 'Medications' },
+    { id: 'anesthetics', label: 'Anesthetics' },
+    { id: 'antiseptics', label: 'Antiseptics' },
+    { id: 'sutures', label: 'Sutures' },
+    { id: 'antidotes', label: 'Antidotes' },
+    { id: 'stationery', label: 'Stationery' }
+  ];
+
   useEffect(() => {
     loadMasterData();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchTerm, selectedCategory, selectedDepartment]);
 
   const loadMasterData = async () => {
     setLoading(true);
@@ -167,8 +169,57 @@ export default function MasterModule() {
     }
   };
 
-  // --- CRUD Actions ---
+  // --- Filter and Search Logic ---
+  const getFilteredData = () => {
+    if (activeTab === 'items') {
+      return items.filter(item => {
+        const matchesSearch = 
+          !searchTerm ||
+          item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.batch_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.department?.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchesCategory = !selectedCategory || item.category === selectedCategory;
+        const matchesDepartment = !selectedDepartment || 
+          String(item.department_id) === String(selectedDepartment) || 
+          item.department === selectedDepartment;
+        
+        return matchesSearch && matchesCategory && matchesDepartment;
+      });
+    }
+    if (activeTab === 'departments') {
+      return departments.filter(dept => 
+        !searchTerm || dept.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    if (activeTab === 'uoms') {
+      return uoms.filter(u => 
+        !searchTerm ||
+        u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        u.abbreviation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    if (activeTab === 'vendors') {
+      return vendors.filter(v => 
+        !searchTerm ||
+        v.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        v.contact?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        v.contract_terms?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return [];
+  };
 
+  const filteredData = getFilteredData();
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const totalItemsCount = filteredData.length;
+  const totalPages = Math.ceil(totalItemsCount / itemsPerPage);
+
+  // --- CRUD Modals Setup ---
   const openItemModal = (item = null) => {
     if (item) {
       setEditingRecord(item);
@@ -231,15 +282,21 @@ export default function MasterModule() {
     setDeleteModalOpen(true);
   };
 
+  // --- CRUD Save actions ---
   const handleSaveItem = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const payload = {
+        ...itemForm,
+        quantity: 0,
+        price: 0
+      };
       if (editingRecord) {
-        await api.put(`/clinical/inventory/master/${editingRecord.id}`, itemForm);
+        await api.put(`/clinical/inventory/master/${editingRecord.id}`, payload);
         toast.success('Item updated successfully');
       } else {
-        await api.post('/clinical/inventory/master', itemForm);
+        await api.post('/clinical/inventory/master', payload);
         toast.success('Item added successfully');
       }
       setItemModalOpen(false);
@@ -335,556 +392,781 @@ export default function MasterModule() {
     }
   };
 
+  // --- Display Helpers ---
+  const getCategoryStyle = (category) => {
+    const cat = category?.toLowerCase() || '';
+    if (cat.includes('medication')) {
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+    } else if (cat.includes('supplies')) {
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200/50';
+    } else if (cat.includes('suture')) {
+      return 'bg-amber-50 text-amber-700 border-amber-200/50';
+    } else if (cat.includes('anesthetic')) {
+      return 'bg-purple-50 text-purple-700 border-purple-200/50';
+    } else if (cat.includes('antiseptic')) {
+      return 'bg-cyan-50 text-cyan-700 border-cyan-200/50';
+    } else if (cat.includes('antidote')) {
+      return 'bg-rose-50 text-rose-700 border-rose-200/50';
+    } else if (cat.includes('stationery')) {
+      return 'bg-slate-100 text-slate-700 border-slate-300/50';
+    } else {
+      return 'bg-slate-50 text-slate-600 border-slate-200/50';
+    }
+  };
 
+  const formatCategoryName = (category) => {
+    if (!category) return '-';
+    return category
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  };
+
+  const getAddAction = () => {
+    switch (activeTab) {
+      case 'items':
+        return { label: 'Add Item', action: () => openItemModal() };
+      case 'departments':
+        return { label: 'Add Department', action: () => openDeptModal() };
+      case 'uoms':
+        return { label: 'Add UOM', action: () => openUomModal() };
+      case 'vendors':
+        return { label: 'Add Vendor', action: () => openVendorModal() };
+      default:
+        return null;
+    }
+  };
+
+  const currentAddAction = getAddAction();
+
+  // --- Animation configs ---
   const tabContentVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-    exit: { opacity: 0, y: -10, transition: { duration: 0.2 } }
+    hidden: { opacity: 0, y: 15 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+    exit: { opacity: 0, y: -15, transition: { duration: 0.2 } }
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, x: -10 },
-    visible: { opacity: 1, x: 0 }
+  const tableContainerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.02
+      }
+    }
   };
+
+  const rowVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { 
+        type: 'spring', 
+        stiffness: 220, 
+        damping: 24 
+      } 
+    }
+  };
+
+  // KPI Calculations
+  const kpis = [
+    {
+      title: 'Catalog Items',
+      value: new Set(items.map(i => i.name)).size,
+      sub: `${items.length} registry batches`,
+      icon: <Package size={22} />,
+      colorBg: 'bg-indigo-50/70 border border-indigo-100/50',
+      iconBg: 'bg-indigo-100 text-indigo-700'
+    },
+    {
+      title: 'Hospital Units',
+      value: departments.length,
+      sub: 'Active cost centers',
+      icon: <Building2 size={22} />,
+      colorBg: 'bg-emerald-50/70 border border-emerald-100/50',
+      iconBg: 'bg-emerald-100 text-emerald-700'
+    },
+    {
+      title: 'Active UOMs',
+      value: uoms.length,
+      sub: 'Custom unit descriptors',
+      icon: <Scale size={22} />,
+      colorBg: 'bg-amber-50/70 border border-amber-100/50',
+      iconBg: 'bg-amber-100 text-amber-700'
+    },
+    {
+      title: 'Verified Vendors',
+      value: vendors.length,
+      sub: 'Contracted drug suppliers',
+      icon: <Truck size={22} />,
+      colorBg: 'bg-sky-50/70 border border-sky-100/50',
+      iconBg: 'bg-sky-100 text-sky-700'
+    }
+  ];
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-12 font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50/30 pb-16 font-sans relative overflow-hidden">
       
       {/* Background Blurs for Premium Feel */}
-      <div className="absolute top-0 right-0 -mr-32 -mt-32 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 -ml-32 -mb-32 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute top-0 right-0 -mr-32 -mt-32 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 -ml-32 -mb-32 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
       {/* Top Header */}
       <div className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-30 shadow-sm px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3.5">
           <button
             onClick={() => navigate('/stock-manager-dashboard')}
-            className="flex items-center text-xs font-bold text-slate-600 hover:text-slate-900 bg-white/50 hover:bg-slate-100 px-3.5 py-2 rounded-xl transition-all shadow-sm border border-slate-200 cursor-pointer"
+            className="flex items-center text-xs font-black text-slate-600 hover:text-slate-900 bg-white/70 hover:bg-slate-100 px-4 py-2.5 rounded-xl transition-all shadow-sm border border-slate-200 cursor-pointer"
           >
-            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back
+            <ArrowLeft className="h-4 w-4 mr-1.5 stroke-[2.5]" /> BACK
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-1.5 bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-inner text-white rounded-xl"><Database size={18} /></span>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">Master</h1>
+              <span className="p-2 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-100">
+                <Database size={16} className="stroke-[2.5]" />
+              </span>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">Master Reference Registry</h1>
             </div>
-            <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mt-0.5">Centralized Registry & Settings</p>
+            <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mt-0.5">Central settings database and data schemas</p>
           </div>
         </div>
 
         <button 
           onClick={handleSync}
           disabled={syncing}
-          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all flex items-center gap-2 border-0 cursor-pointer"
+          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-xs font-black tracking-wide uppercase transition-all flex items-center gap-2 border-0 cursor-pointer shadow-lg shadow-indigo-100"
         >
-          <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-          {syncing ? 'Synchronizing...' : 'Sync with Modules'}
+          <RefreshCw size={15} className={`stroke-[2.5] ${syncing ? 'animate-spin' : ''}`} />
+          {syncing ? 'Synchronizing...' : 'Sync Master Data'}
         </button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 mt-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-6 mt-8 relative z-10 space-y-6">
         
-        {/* Navigation Tabs and Search */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div className="flex overflow-x-auto border-b border-slate-200/50 pb-0.5 select-none gap-2 bg-white/60 backdrop-blur-md px-5 py-2.5 rounded-2xl border shadow-sm scrollbar-none flex-1">
-            {[
-              { id: 'items', label: 'Items Master', icon: <Package size={14} /> },
-              { id: 'departments', label: 'Department Master', icon: <Building2 size={14} /> },
-              { id: 'uoms', label: 'Unit of Measure', icon: <Scale size={14} /> },
-              { id: 'vendors', label: 'Vendor Master', icon: <Truck size={14} /> }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] border-0 bg-transparent shrink-0 cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'border-indigo-600 text-indigo-700'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <div className="relative shrink-0 w-full md:w-64">
-            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search in active tab..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-white/80 backdrop-blur-md rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-            />
-          </div>
+        {/* KPI Dashboard Analytics Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {kpis.map((kpi, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05, type: 'spring', stiffness: 200 }}
+              className={`p-5 rounded-[22px] bg-white border border-slate-200/60 shadow-sm flex items-center justify-between hover:shadow-md hover:-translate-y-0.5 transition-all`}
+            >
+              <div className="space-y-1">
+                <span className="text-[11px] text-slate-400 font-extrabold uppercase tracking-wider">{kpi.title}</span>
+                <div className="text-2xl font-black text-slate-800 tracking-tight">{loading ? '...' : kpi.value}</div>
+                <div className="text-[10px] text-slate-500 font-bold">{kpi.sub}</div>
+              </div>
+              <div className={`p-3 rounded-xl ${kpi.iconBg} flex items-center justify-center shrink-0 shadow-inner`}>
+                {kpi.icon}
+              </div>
+            </motion.div>
+          ))}
         </div>
 
-        {loading ? (
-          <div className="flex h-[40vh] items-center justify-center">
-            <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
-          </div>
-        ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              variants={tabContentVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="bg-white/80 backdrop-blur-2xl rounded-3xl border border-slate-200/50 shadow-sm overflow-hidden"
-            >
-              
-              {/* ITEMS MASTER */}
+        {/* Master Control and Tabs Container */}
+        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/50 shadow-sm p-6 space-y-6">
+          
+          {/* Tabs navigation and Search controls */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+            
+            {/* Elegant Floating Tab Selector */}
+            <div className="flex items-center p-1 bg-slate-100/80 rounded-2xl border border-slate-200/40 w-fit overflow-x-auto scrollbar-none max-w-full">
+              {[
+                { id: 'items', label: 'Items Master', icon: <Package size={14} /> },
+                { id: 'departments', label: 'Departments', icon: <Building2 size={14} /> },
+                { id: 'uoms', label: 'Units of Measure', icon: <Scale size={14} /> },
+                { id: 'vendors', label: 'Vendors Registry', icon: <Truck size={14} /> }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-0 cursor-pointer shrink-0 ${
+                    activeTab === tab.id
+                      ? 'bg-white text-indigo-700 shadow-sm'
+                      : 'bg-transparent text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Filters Section */}
+            <div className="flex flex-wrap items-center gap-3 flex-1 xl:justify-end">
+              {/* Context-aware dropdown selectors for Items tab */}
               {activeTab === 'items' && (
-                <div className="p-0">
-                  <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                    <div>
-                      <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Items Master Registry</h3>
-                      <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">Global catalog of all products and services</p>
+                <div className="flex items-center gap-2.5 flex-1 md:flex-initial">
+                  {/* Category select filter */}
+                  <div className="relative flex-1 md:w-44 md:flex-initial">
+                    <select
+                      value={selectedCategory}
+                      onChange={e => setSelectedCategory(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 text-xs font-bold text-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors appearance-none"
+                    >
+                      <option value="">All Categories</option>
+                      {categoriesList.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.label}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                      <Layers size={14} />
                     </div>
-                    <button onClick={() => openItemModal()} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-xs font-bold border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-colors">
-                      <Plus size={14} /> Add Item
-                    </button>
                   </div>
-                  <div className="overflow-x-auto p-6">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200/60">
-                          <th className="pb-3 px-4">Item Name</th>
-                          <th className="pb-3 px-4">SKU / Code</th>
-                          <th className="pb-3 px-4">Batch</th>
-                          <th className="pb-3 px-4">Dept & Qty</th>
-                          <th className="pb-3 px-4">Price & Exp</th>
-                          <th className="pb-3 px-4 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {(() => {
-                          const filtered = items.filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) || item.category?.toLowerCase().includes(searchTerm.toLowerCase()) || item.batch_number?.toLowerCase().includes(searchTerm.toLowerCase()) || item.department?.toLowerCase().includes(searchTerm.toLowerCase()));
-                          const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-                          return (
-                            <>
-                              {paginated.map((item, idx) => (
-                          <motion.tr variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: idx * 0.05 }} key={`${item.id}-${item.batch_id || 'new'}-${item.dept_stock_id || 'none'}`} className="hover:bg-indigo-50/30 transition-colors">
-                            <td className="py-4 px-4 text-slate-900 font-black text-[13px]">
-                              {item.name}
-                              <div className="text-[10px] text-slate-400 capitalize mt-0.5">{item.category?.replace(/_/g, ' ')} • {item.unit_of_measure}</div>
-                            </td>
-                            <td className="py-4 px-4 font-mono text-[11px] text-slate-500">{item.sku}</td>
-                            <td className="py-4 px-4 text-[12px] text-slate-700 font-bold">{item.batch_number || '-'}</td>
-                            <td className="py-4 px-4">
-                              <div className="text-[12px] text-indigo-700">{item.department || '-'}</div>
-                              <div className="text-[10px] text-slate-500 font-black">Qty: {item.quantity || 0}</div>
-                            </td>
-                            <td className="py-4 px-4">
-                              <div className="text-[12px] text-emerald-700 font-mono">{item.price ? `${Number(item.price).toLocaleString()} RWF` : '-'}</div>
-                              <div className="text-[10px] text-slate-400">{item.expiry_date ? item.expiry_date.split('T')[0] : '-'}</div>
-                            </td>
-                            <td className="py-4 px-4 text-right">
-                              <div className="flex justify-end gap-2">
-                                <button onClick={() => openItemModal(item)} className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"><Edit2 size={14} /></button>
-                                <button onClick={() => confirmDelete(item, 'item')} className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"><Trash2 size={14} /></button>
-                              </div>
-                            </td>
-                          </motion.tr>
-                        ))}
-                            </>
-                          );
-                        })()}
-                      </tbody>
-                    </table>
+
+                  {/* Location select filter */}
+                  <div className="relative flex-1 md:w-44 md:flex-initial">
+                    <select
+                      value={selectedDepartment}
+                      onChange={e => setSelectedDepartment(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 text-xs font-bold text-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors appearance-none"
+                    >
+                      <option value="">All Locations</option>
+                      {departments.map(dept => (
+                        <option key={dept.id} value={dept.id}>{dept.name}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                      <MapPin size={14} />
+                    </div>
                   </div>
-                  {(() => {
-                    const dataMap = {
-                      'items': items,
-                      'departments': departments,
-                      'uoms': uoms,
-                      'vendors': vendors,
-                      'prices': prices
-                    };
-                    let filtered = dataMap[activeTab] || [];
-                    if (activeTab === 'items') filtered = filtered.filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) || item.category?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'departments') filtered = filtered.filter(dept => dept.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'uoms') filtered = filtered.filter(u => u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.abbreviation?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'vendors') filtered = filtered.filter(v => v.name?.toLowerCase().includes(searchTerm.toLowerCase()) || v.contact?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'prices') filtered = filtered.filter(p => (p.item_name || p.name)?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    return renderPagination(filtered.length);
-                  })()}
                 </div>
               )}
 
-              {/* DEPARTMENT MASTER */}
-              {activeTab === 'departments' && (
-                <div className="p-0">
-                  <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                    <div>
-                      <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Department Master</h3>
-                      <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">Configuration of clinical units and cost centers</p>
-                    </div>
-                    <button onClick={() => openDeptModal()} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-xs font-bold border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-colors">
-                      <Plus size={14} /> Add Department
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto p-6">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200/60">
-                          <th className="pb-3 px-4">Department Name</th>
-                          <th className="pb-3 px-4 text-center">Status</th>
-                          <th className="pb-3 px-4 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {(() => {
-                          const filtered = departments.filter(dept => dept.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-                          const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-                          return (
-                            <>
-                              {paginated.map((dept, idx) => (
-                          <motion.tr variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: idx * 0.05 }} key={dept.id} className="hover:bg-indigo-50/30 transition-colors">
-                            <td className="py-4 px-4 text-slate-900 font-black text-[13px]">{dept.name}</td>
-                            <td className="py-4 px-4 text-center">
-                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">Active</Badge>
-                            </td>
-                            <td className="py-4 px-4 text-right">
-                              <div className="flex justify-end gap-2">
-                                <button onClick={() => openDeptModal(dept)} className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"><Edit2 size={14} /></button>
-                                <button onClick={() => confirmDelete(dept, 'department')} className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"><Trash2 size={14} /></button>
-                              </div>
-                            </td>
-                          </motion.tr>
-                        ))}
-                            </>
-                          );
-                        })()}
-                      </tbody>
-                    </table>
-                  </div>
-                  {(() => {
-                    const dataMap = {
-                      'items': items,
-                      'departments': departments,
-                      'uoms': uoms,
-                      'vendors': vendors,
-                      'prices': prices
-                    };
-                    let filtered = dataMap[activeTab] || [];
-                    if (activeTab === 'items') filtered = filtered.filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) || item.category?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'departments') filtered = filtered.filter(dept => dept.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'uoms') filtered = filtered.filter(u => u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.abbreviation?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'vendors') filtered = filtered.filter(v => v.name?.toLowerCase().includes(searchTerm.toLowerCase()) || v.contact?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'prices') filtered = filtered.filter(p => (p.item_name || p.name)?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    return renderPagination(filtered.length);
-                  })()}
-                </div>
+              {/* Text Search input */}
+              <div className="relative flex-1 md:max-w-xs md:flex-initial">
+                <Search className="absolute left-3 top-3 text-slate-400 stroke-[2.5]" size={15} />
+                <input 
+                  type="text" 
+                  placeholder={`Search ${activeTab}...`} 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 rounded-xl border border-slate-200 text-xs font-semibold placeholder-slate-400 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all focus:bg-white shadow-inner"
+                />
+              </div>
+
+              {/* Core Context Action button */}
+              {currentAddAction && (
+                <button
+                  onClick={currentAddAction.action}
+                  className="bg-indigo-55 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Plus size={15} className="stroke-[2.5]" /> {currentAddAction.label}
+                </button>
               )}
+            </div>
+          </div>
 
-              {/* UOM MASTER */}
-              {activeTab === 'uoms' && (
-                <div className="p-0">
-                  <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                    <div>
-                      <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Unit of Measure (UOM)</h3>
-                      <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">Standardized measurement units for inventory</p>
+          {/* Tab Content Display Area */}
+          {loading ? (
+            <div className="flex h-[35vh] items-center justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-9 w-9 animate-spin text-indigo-600" />
+                <span className="text-xs text-slate-400 font-extrabold tracking-widest uppercase">Loading database records...</span>
+              </div>
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                variants={tabContentVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                
+                {/* ITEMS TAB */}
+                {activeTab === 'items' && (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto rounded-2xl border border-slate-200/50">
+                      <table className="w-full text-left text-xs min-w-[700px]">
+                        <thead>
+                          <tr className="bg-slate-50/50 border-b border-slate-200/60 text-slate-400 uppercase tracking-widest text-[9px] font-black">
+                            <th className="py-4.5 px-6 rounded-l-xl">Product / Service</th>
+                            <th className="py-4.5 px-4">SKU Code</th>
+                            <th className="py-4.5 px-4">Batch Code</th>
+                            <th className="py-4.5 px-4">Storage Location</th>
+                            <th className="py-4.5 px-4">Expiration</th>
+                            <th className="py-4.5 px-6 text-right rounded-r-xl">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                          {(() => {
+                            if (paginatedData.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan="6" className="py-16 text-center text-slate-400">
+                                    <div className="flex flex-col items-center justify-center">
+                                      <Package size={44} className="stroke-[1.5] mb-2.5 text-slate-300" />
+                                      <p className="font-bold text-sm">No items found matching the search criteria</p>
+                                      <p className="text-xs text-slate-400">Try adjusting your filters or search term</p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            }
+                            return paginatedData.map((item, idx) => (
+                              <motion.tr 
+                                variants={rowVariants} 
+                                initial="hidden" 
+                                animate="visible" 
+                                key={`${item.id}-${item.batch_id || 'new'}-${item.dept_stock_id || 'none'}`}
+                                className="hover:bg-indigo-50/20 transition-all border-b border-slate-100"
+                              >
+                                <td className="py-4 px-6 text-slate-900">
+                                  <div className="font-black text-[13px]">{item.name}</div>
+                                  <div className="flex items-center gap-1.5 mt-1.5">
+                                    <span className={`px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-wider ${getCategoryStyle(item.category)}`}>
+                                      {formatCategoryName(item.category)}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-bold">UOM: {item.unit_of_measure}</span>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4 font-mono text-[11px] text-slate-500 tracking-wider">
+                                  <span className="px-2 py-1 bg-slate-100 rounded-lg border border-slate-200/50">
+                                    {item.sku}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4 text-[12px] text-slate-600 font-mono">
+                                  {item.batch_number || <span className="text-slate-300">-</span>}
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="text-[12px] text-indigo-700">{item.department || <span className="text-slate-400 font-medium">Global Store</span>}</div>
+                                </td>
+                                <td className="py-4 px-4 text-[11px] text-slate-500">
+                                  {item.expiry_date ? item.expiry_date.split('T')[0] : <span className="text-slate-300">-</span>}
+                                </td>
+                                <td className="py-4 px-6 text-right">
+                                  <div className="flex justify-end gap-1.5">
+                                    <button 
+                                      onClick={() => openItemModal(item)} 
+                                      className="p-2 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    >
+                                      <Edit2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                    <button 
+                                      onClick={() => confirmDelete(item, 'item')} 
+                                      className="p-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    >
+                                      <Trash2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            ));
+                          })()}
+                        </tbody>
+                      </table>
                     </div>
-                    <button onClick={() => openUomModal()} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-xs font-bold border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-colors">
-                      <Plus size={14} /> Add UOM
-                    </button>
                   </div>
-                  <div className="overflow-x-auto p-6">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200/60">
-                          <th className="pb-3 px-4">Unit Name</th>
-                          <th className="pb-3 px-4">Abbreviation</th>
-                          <th className="pb-3 px-4">Description</th>
-                          <th className="pb-3 px-4 text-center">Status</th>
-                          <th className="pb-3 px-4 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {(() => {
-                          const filtered = uoms.filter(u => u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.abbreviation?.toLowerCase().includes(searchTerm.toLowerCase()));
-                          const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-                          return (
-                            <>
-                              {paginated.map((u, idx) => (
-                          <motion.tr variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: idx * 0.05 }} key={u.id} className="hover:bg-indigo-50/30 transition-colors">
-                            <td className="py-4 px-4 text-slate-900 font-black text-[13px]">{u.name}</td>
-                            <td className="py-4 px-4 font-mono text-[11px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded ml-4">{u.abbreviation}</td>
-                            <td className="py-4 px-4 text-slate-500">{u.description}</td>
-                            <td className="py-4 px-4 text-center">
-                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">Active</Badge>
-                            </td>
-                            <td className="py-4 px-4 text-right">
-                              <div className="flex justify-end gap-2">
-                                <button onClick={() => openUomModal(u)} className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"><Edit2 size={14} /></button>
-                                <button onClick={() => confirmDelete(u, 'uom')} className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"><Trash2 size={14} /></button>
-                              </div>
-                            </td>
-                          </motion.tr>
-                        ))}
-                            </>
-                          );
-                        })()}
-                      </tbody>
-                    </table>
-                  </div>
-                  {(() => {
-                    const dataMap = {
-                      'items': items,
-                      'departments': departments,
-                      'uoms': uoms,
-                      'vendors': vendors,
-                      'prices': prices
-                    };
-                    let filtered = dataMap[activeTab] || [];
-                    if (activeTab === 'items') filtered = filtered.filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) || item.category?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'departments') filtered = filtered.filter(dept => dept.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'uoms') filtered = filtered.filter(u => u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.abbreviation?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'vendors') filtered = filtered.filter(v => v.name?.toLowerCase().includes(searchTerm.toLowerCase()) || v.contact?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'prices') filtered = filtered.filter(p => (p.item_name || p.name)?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    return renderPagination(filtered.length);
-                  })()}
-                </div>
-              )}
+                )}
 
-              {/* VENDOR MASTER */}
-              {activeTab === 'vendors' && (
-                <div className="p-0">
-                  <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                    <div>
-                      <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Vendor Master</h3>
-                      <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">Global list of approved suppliers</p>
+                {/* DEPARTMENTS TAB */}
+                {activeTab === 'departments' && (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto rounded-2xl border border-slate-200/50">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="bg-slate-50/50 border-b border-slate-200/60 text-slate-400 uppercase tracking-widest text-[9px] font-black">
+                            <th className="py-4.5 px-6">Department Name</th>
+                            <th className="py-4.5 px-6 text-center">Operational Status</th>
+                            <th className="py-4.5 px-6 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                          {(() => {
+                            if (paginatedData.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan="3" className="py-16 text-center text-slate-400">
+                                    <div className="flex flex-col items-center justify-center">
+                                      <Building2 size={44} className="stroke-[1.5] mb-2.5 text-slate-300" />
+                                      <p className="font-bold text-sm">No departments found matching the search criteria</p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            }
+                            return paginatedData.map((dept, idx) => (
+                              <motion.tr 
+                                variants={rowVariants} 
+                                initial="hidden" 
+                                animate="visible" 
+                                key={dept.id} 
+                                className="hover:bg-indigo-50/20 transition-all border-b border-slate-100"
+                              >
+                                <td className="py-4.5 px-6 text-slate-900 font-black text-[13px]">{dept.name}</td>
+                                <td className="py-4.5 px-6 text-center">
+                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/50">Active</Badge>
+                                </td>
+                                <td className="py-4.5 px-6 text-right">
+                                  <div className="flex justify-end gap-1.5">
+                                    <button 
+                                      onClick={() => openDeptModal(dept)} 
+                                      className="p-2 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    >
+                                      <Edit2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                    <button 
+                                      onClick={() => confirmDelete(dept, 'department')} 
+                                      className="p-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    >
+                                      <Trash2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            ));
+                          })()}
+                        </tbody>
+                      </table>
                     </div>
-                    <button onClick={() => openVendorModal()} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-xs font-bold border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-colors">
-                      <Plus size={14} /> Add Vendor
-                    </button>
                   </div>
-                  <div className="overflow-x-auto p-6">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200/60">
-                          <th className="pb-3 px-4">Vendor Name</th>
-                          <th className="pb-3 px-4">Contact</th>
-                          <th className="pb-3 px-4">Contract Terms</th>
-                          <th className="pb-3 px-4 text-center">Status</th>
-                          <th className="pb-3 px-4 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {(() => {
-                          const filtered = vendors.filter(v => v.name?.toLowerCase().includes(searchTerm.toLowerCase()) || v.contact?.toLowerCase().includes(searchTerm.toLowerCase()));
-                          const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-                          return (
-                            <>
-                              {paginated.map((v, idx) => (
-                          <motion.tr variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: idx * 0.05 }} key={v.id} className="hover:bg-indigo-50/30 transition-colors">
-                            <td className="py-4 px-4 text-slate-900 font-black text-[13px]">{v.name}</td>
-                            <td className="py-4 px-4 text-slate-500">{v.contact}</td>
-                            <td className="py-4 px-4 font-mono text-slate-500 bg-slate-50 px-2 py-0.5 rounded ml-4">{v.contract_terms}</td>
-                            <td className="py-4 px-4 text-center">
-                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">Active</Badge>
-                            </td>
-                            <td className="py-4 px-4 text-right">
-                              <div className="flex justify-end gap-2">
-                                <button onClick={() => openVendorModal(v)} className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"><Edit2 size={14} /></button>
-                                <button onClick={() => confirmDelete(v, 'vendor')} className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"><Trash2 size={14} /></button>
-                              </div>
-                            </td>
-                          </motion.tr>
-                        ))}
-                            </>
-                          );
-                        })()}
-                      </tbody>
-                    </table>
+                )}
+
+                {/* UOM TAB */}
+                {activeTab === 'uoms' && (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto rounded-2xl border border-slate-200/50">
+                      <table className="w-full text-left text-xs min-w-[600px]">
+                        <thead>
+                          <tr className="bg-slate-50/50 border-b border-slate-200/60 text-slate-400 uppercase tracking-widest text-[9px] font-black">
+                            <th className="py-4.5 px-6">Unit Name</th>
+                            <th className="py-4.5 px-4">Abbreviation</th>
+                            <th className="py-4.5 px-4">Description</th>
+                            <th className="py-4.5 px-6 text-center">Status</th>
+                            <th className="py-4.5 px-6 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                          {(() => {
+                            if (paginatedData.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan="5" className="py-16 text-center text-slate-400">
+                                    <div className="flex flex-col items-center justify-center">
+                                      <Scale size={44} className="stroke-[1.5] mb-2.5 text-slate-300" />
+                                      <p className="font-bold text-sm">No UOM definitions found</p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            }
+                            return paginatedData.map((u, idx) => (
+                              <motion.tr 
+                                variants={rowVariants} 
+                                initial="hidden" 
+                                animate="visible" 
+                                key={u.id} 
+                                className="hover:bg-indigo-50/20 transition-all border-b border-slate-100"
+                              >
+                                <td className="py-4.5 px-6 text-slate-900 font-black text-[13px]">{u.name}</td>
+                                <td className="py-4.5 px-4 font-mono text-[11px] text-indigo-700">
+                                  <span className="px-2.5 py-1 bg-indigo-50 border border-indigo-200/40 rounded-lg">
+                                    {u.abbreviation}
+                                  </span>
+                                </td>
+                                <td className="py-4.5 px-4 text-slate-500 font-medium max-w-[280px] truncate">{u.description || <span className="text-slate-300">-</span>}</td>
+                                <td className="py-4.5 px-6 text-center">
+                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/50">Active</Badge>
+                                </td>
+                                <td className="py-4.5 px-6 text-right">
+                                  <div className="flex justify-end gap-1.5">
+                                    <button 
+                                      onClick={() => openUomModal(u)} 
+                                      className="p-2 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    >
+                                      <Edit2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                    <button 
+                                      onClick={() => confirmDelete(u, 'uom')} 
+                                      className="p-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    >
+                                      <Trash2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            ));
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  {(() => {
-                    const dataMap = {
-                      'items': items,
-                      'departments': departments,
-                      'uoms': uoms,
-                      'vendors': vendors,
-                      'prices': prices
-                    };
-                    let filtered = dataMap[activeTab] || [];
-                    if (activeTab === 'items') filtered = filtered.filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) || item.category?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'departments') filtered = filtered.filter(dept => dept.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'uoms') filtered = filtered.filter(u => u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.abbreviation?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'vendors') filtered = filtered.filter(v => v.name?.toLowerCase().includes(searchTerm.toLowerCase()) || v.contact?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    else if (activeTab === 'prices') filtered = filtered.filter(p => (p.item_name || p.name)?.toLowerCase().includes(searchTerm.toLowerCase()));
-                    return renderPagination(filtered.length);
-                  })()}
-                </div>
-              )}
+                )}
 
+                {/* VENDORS TAB */}
+                {activeTab === 'vendors' && (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto rounded-2xl border border-slate-200/50">
+                      <table className="w-full text-left text-xs min-w-[600px]">
+                        <thead>
+                          <tr className="bg-slate-50/50 border-b border-slate-200/60 text-slate-400 uppercase tracking-widest text-[9px] font-black">
+                            <th className="py-4.5 px-6">Vendor Company</th>
+                            <th className="py-4.5 px-4">Contact Info</th>
+                            <th className="py-4.5 px-4">Contract Terms</th>
+                            <th className="py-4.5 px-6 text-center">Status Badge</th>
+                            <th className="py-4.5 px-6 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                          {(() => {
+                            if (paginatedData.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan="5" className="py-16 text-center text-slate-400">
+                                    <div className="flex flex-col items-center justify-center">
+                                      <Truck size={44} className="stroke-[1.5] mb-2.5 text-slate-300" />
+                                      <p className="font-bold text-sm">No suppliers registered</p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            }
+                            return paginatedData.map((v, idx) => (
+                              <motion.tr 
+                                variants={rowVariants} 
+                                initial="hidden" 
+                                animate="visible" 
+                                key={v.id} 
+                                className="hover:bg-indigo-50/20 transition-all border-b border-slate-100"
+                              >
+                                <td className="py-4.5 px-6 text-slate-900 font-black text-[13px]">{v.name}</td>
+                                <td className="py-4.5 px-4 text-slate-500 font-medium">{v.contact || <span className="text-slate-300">-</span>}</td>
+                                <td className="py-4.5 px-4 font-mono text-[11px] text-slate-600">
+                                  {v.contract_terms ? (
+                                    <span className="px-2 py-1 bg-slate-100 border border-slate-200 rounded-lg">
+                                      {v.contract_terms}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300">-</span>
+                                  )}
+                                </td>
+                                <td className="py-4.5 px-6 text-center">
+                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/50">Verified</Badge>
+                                </td>
+                                <td className="py-4.5 px-6 text-right">
+                                  <div className="flex justify-end gap-1.5">
+                                    <button 
+                                      onClick={() => openVendorModal(v)} 
+                                      className="p-2 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    >
+                                      <Edit2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                    <button 
+                                      onClick={() => confirmDelete(v, 'vendor')} 
+                                      className="p-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    >
+                                      <Trash2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            ));
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
-            </motion.div>
-          </AnimatePresence>
-        )}
+                {/* PAGINATION PANEL */}
+                {totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4.5 border border-slate-200/50 bg-slate-50/30 rounded-2xl mt-6 gap-3">
+                    <span className="text-[11px] text-slate-400 font-extrabold uppercase tracking-wider">
+                      Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItemsCount)} of {totalItemsCount} entries
+                    </span>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 cursor-pointer shadow-sm border-0 transition-colors"
+                      >
+                        <ChevronLeft size={16} className="stroke-[2.5]" />
+                      </button>
+                      <span className="text-xs font-black text-slate-700 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm border-0">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button 
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 cursor-pointer shadow-sm border-0 transition-colors"
+                      >
+                        <ChevronRight size={16} className="stroke-[2.5]" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+              </motion.div>
+            </AnimatePresence>
+          )}
+
+        </div>
       </div>
 
-      {/* --- MODALS --- */}
+      {/* --- FORM MODALS --- */}
 
-      <Modal isOpen={isItemModalOpen} onClose={() => setItemModalOpen(false)} title={editingRecord ? 'Edit Item' : 'Add New Item'}>
+      {/* ITEM FORM MODAL */}
+      <Modal isOpen={isItemModalOpen} onClose={() => setItemModalOpen(false)} title={editingRecord ? 'Edit Catalog Item Details' : 'Add New Item to Master'}>
         <form onSubmit={handleSaveItem} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Item Name</label>
-            <input required type="text" value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Item Name</label>
+            <input required placeholder="e.g. Paracetamol 500mg" type="text" value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">SKU</label>
-              <input required type="text" value={itemForm.sku} onChange={e => setItemForm({...itemForm, sku: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">SKU / Code</label>
+              <input required placeholder="e.g. MED-PAR-500" type="text" value={itemForm.sku} onChange={e => setItemForm({...itemForm, sku: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Category</label>
-              <select value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                <option value="medical_supplies">Medical Supplies</option>
-                <option value="medications">Medications</option>
-                <option value="anesthetics">Anesthetics</option>
-                <option value="antiseptics">Antiseptics</option>
-                <option value="sutures">Sutures</option>
-                <option value="antidotes">Antidotes</option>
-                <option value="stationery">Stationery</option>
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
+              <select value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
+                {categoriesList.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.label}</option>
+                ))}
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Unit of Measure</label>
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Unit of Measure (UOM)</label>
               <select
                 required
                 value={itemForm.unit_of_measure}
                 onChange={e => setItemForm({...itemForm, unit_of_measure: e.target.value})}
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer"
               >
-                <option value="">Select UOM...</option>
+                <option value="">Select abbreviation...</option>
                 {uoms.map(u => (
                   <option key={u.id} value={u.abbreviation}>
                     {u.name} ({u.abbreviation})
                   </option>
                 ))}
               </select>
+              <p className="text-[9px] text-slate-400 font-semibold mt-1">Sourced from UOM Master Registry</p>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Quantity</label>
-              <input type="number" value={itemForm.quantity} onChange={e => setItemForm({...itemForm, quantity: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Batch / Lot Code</label>
+              <input placeholder="e.g. BATCH-9941" type="text" value={itemForm.batch_number} onChange={e => setItemForm({...itemForm, batch_number: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Price (RWF)</label>
-              <input type="number" value={itemForm.price} onChange={e => setItemForm({...itemForm, price: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Purchase Date</label>
+              <input type="date" value={itemForm.purchase_time} onChange={e => setItemForm({...itemForm, purchase_time: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer shadow-inner" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Batch Number</label>
-              <input type="text" value={itemForm.batch_number} onChange={e => setItemForm({...itemForm, batch_number: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Purchase Date</label>
-              <input type="date" value={itemForm.purchase_time} onChange={e => setItemForm({...itemForm, purchase_time: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Expiry Date</label>
-              <input type="date" value={itemForm.expiry_date} onChange={e => setItemForm({...itemForm, expiry_date: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Expiry Date</label>
+              <input type="date" value={itemForm.expiry_date} onChange={e => setItemForm({...itemForm, expiry_date: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer shadow-inner" />
             </div>
           </div>
+
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Department Location</label>
-            <select value={itemForm.department_id} onChange={e => setItemForm({...itemForm, department_id: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-              <option value="">- No specific department -</option>
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Department Location</label>
+            <select value={itemForm.department_id} onChange={e => setItemForm({...itemForm, department_id: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
+              <option value="">- Central Store Hub (Global) -</option>
               {departments.map(dept => (
                 <option key={dept.id} value={dept.id}>{dept.name}</option>
               ))}
             </select>
           </div>
-          <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={() => setItemModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
-            <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2">
-              {isSubmitting && <Loader2 size={16} className="animate-spin" />} Save Item
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+            <button type="button" onClick={() => setItemModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-100 border-0">
+              {isSubmitting && <Loader2 size={14} className="animate-spin" />} {editingRecord ? 'Update Catalog Item' : 'Add Item'}
             </button>
           </div>
         </form>
       </Modal>
 
-      <Modal isOpen={isDeptModalOpen} onClose={() => setDeptModalOpen(false)} title={editingRecord ? 'Edit Department' : 'Add New Department'}>
+      {/* DEPARTMENT FORM MODAL */}
+      <Modal isOpen={isDeptModalOpen} onClose={() => setDeptModalOpen(false)} title={editingRecord ? 'Edit Hospital Department' : 'Add New Department Division'}>
         <form onSubmit={handleSaveDept} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Department Name</label>
-            <input required type="text" value={deptForm.name} onChange={e => setDeptForm({...deptForm, name: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Department Name</label>
+            <input required placeholder="e.g. Pharmacy Ward, Dental Clinic" type="text" value={deptForm.name} onChange={e => setDeptForm({...deptForm, name: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
-          <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={() => setDeptModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
-            <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2">
-              {isSubmitting && <Loader2 size={16} className="animate-spin" />} Save Department
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+            <button type="button" onClick={() => setDeptModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-100 border-0">
+              {isSubmitting && <Loader2 size={14} className="animate-spin" />} {editingRecord ? 'Save Department Details' : 'Add Department'}
             </button>
           </div>
         </form>
       </Modal>
 
-      <Modal isOpen={isUomModalOpen} onClose={() => setUomModalOpen(false)} title={editingRecord ? 'Edit UOM' : 'Add New UOM'}>
+      {/* UOM FORM MODAL */}
+      <Modal isOpen={isUomModalOpen} onClose={() => setUomModalOpen(false)} title={editingRecord ? 'Edit Unit of Measure (UOM)' : 'Configure New Unit of Measure'}>
         <form onSubmit={handleSaveUom} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Unit Name</label>
-            <input required type="text" value={uomForm.name} onChange={e => setUomForm({...uomForm, name: e.target.value})} placeholder="e.g. Box" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Unit Name</label>
+            <input required type="text" value={uomForm.name} onChange={e => setUomForm({...uomForm, name: e.target.value})} placeholder="e.g. Box, Vial, Ampoule" className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Abbreviation</label>
-            <input required type="text" value={uomForm.abbreviation} onChange={e => setUomForm({...uomForm, abbreviation: e.target.value})} placeholder="e.g. bx" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Abbreviation / Symbol</label>
+            <input required type="text" value={uomForm.abbreviation} onChange={e => setUomForm({...uomForm, abbreviation: e.target.value})} placeholder="e.g. bx, vl, amp" className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Description</label>
-            <textarea value={uomForm.description} onChange={e => setUomForm({...uomForm, description: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[80px]"></textarea>
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Description Context</label>
+            <textarea value={uomForm.description} onChange={e => setUomForm({...uomForm, description: e.target.value})} placeholder="Describe typical quantities or dimensions of this measurement unit..." className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 min-h-[90px] shadow-inner"></textarea>
           </div>
-          <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={() => setUomModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
-            <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2">
-              {isSubmitting && <Loader2 size={16} className="animate-spin" />} Save UOM
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+            <button type="button" onClick={() => setUomModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-100 border-0">
+              {isSubmitting && <Loader2 size={14} className="animate-spin" />} {editingRecord ? 'Save Unit Settings' : 'Add Unit Symbol'}
             </button>
           </div>
         </form>
       </Modal>
 
-
-      <Modal isOpen={isVendorModalOpen} onClose={() => setVendorModalOpen(false)} title={editingRecord ? 'Edit Vendor' : 'Add New Vendor'}>
+      {/* VENDOR FORM MODAL */}
+      <Modal isOpen={isVendorModalOpen} onClose={() => setVendorModalOpen(false)} title={editingRecord ? 'Edit Supplier Registry' : 'Register Approved Vendor Partner'}>
         <form onSubmit={handleSaveVendor} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Vendor Name</label>
-            <input required type="text" value={vendorForm.name} onChange={e => setVendorForm({...vendorForm, name: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Vendor Company Name</label>
+            <input required placeholder="e.g. Rwanda Pharma Ltd" type="text" value={vendorForm.name} onChange={e => setVendorForm({...vendorForm, name: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Contact Email / Phone</label>
-            <input type="text" value={vendorForm.contact} onChange={e => setVendorForm({...vendorForm, contact: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Contact Detail (Email / Tel)</label>
+            <input placeholder="e.g. orders@rwandapharma.rw or +250..." type="text" value={vendorForm.contact} onChange={e => setVendorForm({...vendorForm, contact: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Contract Terms</label>
-            <input type="text" value={vendorForm.contractTerms} onChange={e => setVendorForm({...vendorForm, contractTerms: e.target.value})} placeholder="e.g. Net 30, COD" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Payment / Contract Terms</label>
+            <input type="text" value={vendorForm.contractTerms} onChange={e => setVendorForm({...vendorForm, contractTerms: e.target.value})} placeholder="e.g. Net 30, COD, Net 60" className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
-          <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={() => setVendorModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
-            <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2">
-              {isSubmitting && <Loader2 size={16} className="animate-spin" />} Save Vendor
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+            <button type="button" onClick={() => setVendorModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-100 border-0">
+              {isSubmitting && <Loader2 size={14} className="animate-spin" />} {editingRecord ? 'Save Vendor Profile' : 'Register Supplier'}
             </button>
           </div>
         </form>
       </Modal>
 
-      <Modal isOpen={isDeleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Confirm Deletion">
-        <div className="flex items-start gap-4 p-4 bg-red-50 text-red-800 rounded-2xl mb-6">
-          <AlertTriangle className="shrink-0 mt-0.5" />
+      {/* DELETE MODAL */}
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Confirm Permanent Deletion">
+        <div className="flex items-start gap-4 p-4.5 bg-rose-50 border border-rose-100/50 text-rose-800 rounded-2xl mb-6 shadow-sm">
+          <AlertTriangle className="shrink-0 mt-0.5 text-rose-600 stroke-[2.5]" size={20} />
           <div>
-            <p className="font-bold text-sm">Are you sure you want to delete this {recordToDelete?.type}?</p>
-            <p className="text-xs mt-1 opacity-90">This action cannot be undone and may affect historical records.</p>
+            <p className="font-black text-sm tracking-tight text-rose-900">Are you sure you want to delete this {recordToDelete?.type}?</p>
+            <p className="text-xs mt-1.5 leading-relaxed font-semibold opacity-90 text-rose-800">
+              Deleting this record is permanent. This may cause historic item records or batch assignments referencing this entry to become orphaned or display warning states.
+            </p>
           </div>
         </div>
-        <div className="flex justify-end gap-3">
-          <button type="button" onClick={() => setDeleteModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
-          <button type="button" onClick={handleDelete} disabled={isSubmitting} className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2">
-            {isSubmitting && <Loader2 size={16} className="animate-spin" />} Delete Permanently
+        <div className="flex justify-end gap-3 pt-2">
+          <button type="button" onClick={() => setDeleteModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>
+          <button type="button" onClick={handleDelete} disabled={isSubmitting} className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md shadow-rose-100 border-0">
+            {isSubmitting && <Loader2 size={14} className="animate-spin" />} Delete Permanently
           </button>
         </div>
       </Modal>
@@ -892,6 +1174,10 @@ export default function MasterModule() {
       <style jsx>{`
         .scrollbar-none::-webkit-scrollbar {
           display: none;
+        }
+        .scrollbar-none {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
       `}</style>
     </div>
