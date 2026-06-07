@@ -12,6 +12,17 @@ export const openShift = (payload) => api.post('/shifts/open', payload);
 export const getMyActiveShift = () => api.get('/shifts/my-active');
 
 /**
+ * Get the current user's past closed sessions.
+ */
+export const getMyHistory = () => api.get('/shifts/my-history');
+
+/**
+ * Get the latest handover notes for a shift role.
+ * @param {string} shiftRole
+ */
+export const getLatestHandover = (shiftRole) => api.get('/shifts/latest-handover', { params: { shift_role: shiftRole } });
+
+/**
  * Auto-save draft of closing data.
  * @param {number} shiftId
  * @param {object} payload

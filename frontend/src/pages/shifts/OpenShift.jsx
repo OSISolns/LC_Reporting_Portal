@@ -21,6 +21,8 @@ import {
   Users,
   ShieldCheck,
   Pill,
+  CreditCard,
+  Crown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { openShift, getMyActiveShift } from '../../api/shifts';
@@ -31,6 +33,14 @@ import {
 } from './shiftConfig';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
+const ROLE_ICONS = {
+  cashier: <CreditCard size={36} className="text-[#1b669d]" />,
+  helpdesk: <Monitor size={36} className="text-[#1b669d]" />,
+  call_center: <Phone size={36} className="text-[#1b669d]" />,
+  nurse: <Stethoscope size={36} className="text-[#1b669d]" />,
+  vip_lounge: <Crown size={36} className="text-[#1b669d]" />,
+};
+
 const ICON_MAP = {
   'PC': <Monitor size={18} />,
   'MoMo Phone': <Smartphone size={18} />,
@@ -131,14 +141,23 @@ export default function OpenShift() {
   const [loading, setLoading] = useState(true);
   const [startHour, setStartHour] = useState('');
 
-  const isCustomerCare = user?.role === 'customer_care' || ['helpdesk', 'call_center'].includes(selectedRole);
+  const isCustomerCare = ['helpdesk', 'call_center'].includes(selectedRole);
 
   const visibleRoles = SHIFT_ROLES.filter(role => {
-    if (user?.role === 'nurse') return role.value === 'nurse';
+    // Admins and IT Officers see all roles
     if (['admin', 'it_officer'].includes(user?.role)) return true;
-    return role.value !== 'nurse';
+    
+    // Nurses only see Nurse
+    if (user?.role === 'nurse' || user?.role === 'chef-nurse') return role.value === 'nurse';
+    
+    // VIP Lounge Agents only see VIP Lounge
+    if (user?.role === 'vip_lounge') return role.value === 'vip_lounge';
+    
+    // Everyone else sees everything EXCEPT Nurse and VIP Lounge
+    return role.value !== 'nurse' && role.value !== 'vip_lounge';
   });
   const [password, setPassword] = useState('');
+  const [activationError, setActivationError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [newShiftId, setNewShiftId] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -173,7 +192,7 @@ export default function OpenShift() {
     if (loading) return;
 
     // Validation
-    if (isCustomerCare && !startHour) {
+    if (!startHour) {
       toast.error('Please specify your starting hour for wave allocation.');
       return;
     }
@@ -189,8 +208,9 @@ export default function OpenShift() {
 
   const handleFinalSubmit = async (e) => {
     if (e) e.preventDefault();
+    setActivationError('');
     if (!password) {
-      toast.error('Password is required');
+      setActivationError('Password is required');
       return;
     }
 
@@ -202,7 +222,7 @@ export default function OpenShift() {
         shift_role: selectedRole,
         equipment: equipment.map(e => ({ name: e.name, status: e.status, remarks: e.remarks || null })),
         password,
-        start_hour: isCustomerCare ? startHour : null,
+        start_hour: startHour,
         // Legacy Clinics doesn't allow cashiers to accept cash, so float is always 0
         ...(selectedRole === 'cashier' && { opening_float: 0 })
       };
@@ -215,7 +235,9 @@ export default function OpenShift() {
       setTimeout(() => navigate(`/shifts/close/${res.data.data.shiftId}`), 3000);
     } catch (err) {
       const errorData = err.response?.data;
-      toast.error(errorData?.message || 'Protocol failure', { id: tid });
+      const msg = errorData?.message || 'Protocol failure';
+      setActivationError(msg);
+      toast.error(msg, { id: tid });
 
       if (errorData?.shiftId) {
         setTimeout(() => navigate(`/shifts/close/${errorData.shiftId}`), 1500);
@@ -277,32 +299,21 @@ export default function OpenShift() {
               <p className="text-slate-500 font-bold">Your role determines the required equipment checks and reporting metrics.</p>
             </div>
 
-            <div className={`grid grid-cols-1 gap-8 ${visibleRoles.length === 1 ? 'max-w-md mx-auto' : 'md:grid-cols-3'}`}>
+            <div className="flex flex-wrap justify-center gap-3">
               {visibleRoles.map((role) => (
                 <button
                   key={role.value}
                   onClick={() => handleRoleSelect(role.value)}
-                  className="group relative flex flex-col items-center justify-center p-10 rounded-[40px] border-4 border-white bg-white hover:border-[#1b669d]/20 hover:shadow-3xl hover:-translate-y-2 transition-all duration-500 shadow-2xl shadow-slate-200/50"
+                  className="group flex items-center gap-2.5 px-5 py-3 rounded-2xl border-2 border-slate-100 bg-white hover:border-[#1b669d]/40 hover:bg-[#1b669d]/5 hover:shadow-lg hover:shadow-[#1b669d]/10 hover:-translate-y-0.5 transition-all duration-300 shadow-sm"
                 >
-                  <div className="absolute top-0 right-0 p-6 text-slate-100 group-hover:text-[#1b669d]/5 transition-colors">
-                    <ArrowRight size={80} className="-rotate-45" />
+                  <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center group-hover:bg-[#1b669d]/10 group-hover:border-[#1b669d]/20 transition-all shrink-0">
+                    {ROLE_ICONS[role.value]}
                   </div>
-
-                  <div className="mb-8 w-24 h-24 rounded-[32px] bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-6xl group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 group-hover:bg-[#1b669d]/5 group-hover:border-[#1b669d]/10">
-                    {role.icon}
-                  </div>
-
-                  <h3 className="text-2xl font-black text-slate-900 mb-2">{role.label}</h3>
-                  <div className="px-4 py-1 rounded-full bg-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:bg-[#6fb448]/10 group-hover:text-[#6fb448] transition-colors">
-                    {EQUIPMENT_BY_ROLE[role.value].length} Inventory Items
-                  </div>
-
-                  <div className="mt-8 w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-[#1b669d] to-[#6fb448]"
-                      initial={{ width: 0 }}
-                      whileHover={{ width: '100%' }}
-                    />
+                  <div className="text-left">
+                    <p className="text-sm font-black text-slate-800 leading-none">{role.label}</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                      {EQUIPMENT_BY_ROLE[role.value].length} items
+                    </p>
                   </div>
                 </button>
               ))}
@@ -316,8 +327,8 @@ export default function OpenShift() {
             {/* Context Info */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-[#1b669d]/5 border-2 border-[#1b669d]/10 p-8 rounded-[32px]">
               <div className="flex items-center gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-4xl shadow-xl shadow-[#1b669d]/10">
-                  {SHIFT_ROLES.find(r => r.value === selectedRole)?.icon}
+                <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-xl shadow-[#1b669d]/10">
+                  {ROLE_ICONS[selectedRole]}
                 </div>
                 <div>
                   <span className="text-[10px] font-black text-[#1b669d] uppercase tracking-[0.2em] block leading-none mb-1">Authenticated Role</span>
@@ -336,8 +347,8 @@ export default function OpenShift() {
             <form onSubmit={handleSubmit} className="space-y-10">
               {/* Role-Specific Fields (No Cash Reconciliation per policy) */}
 
-              {/* Customer Care Starting Hour & Wave Selector */}
-              {isCustomerCare && (
+              {/* Starting Hour & Wave Selector */}
+              {selectedRole && (
                 <div className="shift-card bg-gradient-to-br from-slate-50 to-white border-2 border-slate-100 shadow-sm rounded-3xl p-8 animate-fadeIn">
                   <div className="flex items-center gap-5 mb-8">
                     <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center text-violet-600 shadow-inner">
@@ -445,13 +456,13 @@ export default function OpenShift() {
         title="Identity Authorization"
       >
         <div className="p-6">
-          <div className="mb-8 flex items-center gap-4 p-4 bg-slate-900 rounded-2xl border border-white/10">
-            <div className="w-12 h-12 rounded-xl bg-[#1b669d]/10 flex items-center justify-center text-[#34d399]">
+          <div className="mb-8 flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
+            <div className="w-12 h-12 rounded-xl bg-[#1b669d]/10 flex items-center justify-center text-[#1b669d]">
               <Lock size={24} />
             </div>
             <div>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Authorized Access Only</p>
-              <p className="text-sm font-bold text-white">Please confirm your account password to activate this shift.</p>
+              <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Authorized Access Only</p>
+              <p className="text-sm font-bold text-slate-700">Please confirm your account password to activate this shift.</p>
             </div>
           </div>
 
@@ -462,10 +473,20 @@ export default function OpenShift() {
                 type="password"
                 autoFocus
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (activationError) setActivationError('');
+                }}
                 placeholder="••••••••••••"
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-6 text-xl font-black focus:border-[#1b669d] outline-none transition-all placeholder:text-slate-200"
+                className={`w-full bg-slate-50 border-2 rounded-2xl p-6 text-xl font-black outline-none transition-all placeholder:text-slate-200 ${
+                  activationError ? 'border-rose-500 focus:border-rose-600' : 'border-slate-100 focus:border-[#1b669d]'
+                }`}
               />
+              {activationError && (
+                <p className="text-rose-500 text-[11px] font-bold tracking-wide mt-2 ml-1">
+                  {activationError}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-4 pt-4">

@@ -9,7 +9,7 @@ const { validate, body, param, query } = require('../middleware/validation');
 router.use(authMiddleware);
 
 // ─── Role guard: reviewer-only endpoints ──────────────────────────────────────
-const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'];
+const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse', 'pa'];
 const REVIEW_WRITE_ROLES = ['sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'];
 
 function requireReviewer(req, res, next) {
@@ -36,8 +36,8 @@ router.post(
   '/open',
   validate([
     body('shift_role')
-      .isIn(['cashier', 'helpdesk', 'call_center', 'nurse'])
-      .withMessage('shift_role must be cashier, helpdesk, call_center, or nurse'),
+      .isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge'])
+      .withMessage('shift_role must be cashier, helpdesk, call_center, nurse, or vip_lounge'),
     body('equipment')
       .isArray({ min: 1 })
       .withMessage('Equipment checklist is required'),
@@ -54,6 +54,12 @@ router.post(
  * Get the current user's open/draft shift.
  */
 router.get('/my-active', shift.getMyActiveShift);
+
+/**
+ * GET /api/shifts/my-history
+ * Get the current user's past closed sessions.
+ */
+router.get('/my-history', shift.getMyHistory);
 
 /**
  * PATCH /api/shifts/:id/draft
@@ -73,7 +79,7 @@ router.patch(
   '/:id/close',
   validate([
     param('id').isInt().withMessage('Invalid shift ID'),
-    body('handover_notes').trim().notEmpty().withMessage('Handover notes are required to close a shift'),
+    body('handover_notes').optional({ nullable: true, checkFalsy: true }).trim(),
     body('equipment').isArray({ min: 1 }).withMessage('Closing equipment checklist is required'),
   ]),
   shift.closeShift
@@ -90,7 +96,7 @@ router.get(
   '/',
   requireReviewer,
   validate([
-    query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse']),
+    query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge']),
     query('status').optional().isIn(['open', 'draft', 'closed']),
     query('flagged').optional().isIn(['0', '1']),
     query('page').optional().isInt({ min: 1 }),
@@ -107,7 +113,7 @@ router.get(
   '/export/excel',
   requireReviewer,
   validate([
-    query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse']),
+    query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge']),
     query('status').optional().isIn(['open', 'draft', 'closed']),
     query('flagged').optional().isIn(['0', '1']),
     query('date_from').optional().isString(),
@@ -115,6 +121,15 @@ router.get(
     query('employee_name').optional().isString(),
   ]),
   shift.exportExcel
+);
+
+/**
+ * GET /api/shifts/latest-handover
+ * Get the latest closed shift's handover notes for a role.
+ */
+router.get(
+  '/latest-handover',
+  shift.getLatestHandover
 );
 
 /**

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -10,7 +10,8 @@ import {
   bulkReviewShifts,
   triggerAutoClose,
   deleteShift,
-  exportShiftsExcel
+  exportShiftsExcel,
+  updateShiftByAdmin
 } from '../../api/shifts';
 import {
   Users, Clock, Filter, Calendar, Search, Flag, CheckCircle2,
@@ -18,7 +19,8 @@ import {
   PhoneCall, AlertTriangle, ShieldCheck, History, TrendingUp,
   FileText, Zap, MoreHorizontal, ChevronDown, SlidersHorizontal,
   ArrowUpDown, Download, Timer, Lock, Unlock, Play, LayoutDashboard,
-  CheckSquare, Square, Trash2, Edit3
+  CheckSquare, Square, Trash2, Edit3, LayoutList, Kanban,
+  CreditCard, Phone, Monitor, Stethoscope, Crown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -61,47 +63,52 @@ function getWaveStartTime(shift) {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const ROLE_META = {
-  cashier:     { label: 'Billing / Cashier',  color: 'success', dot: 'bg-emerald-500' },
-  helpdesk:    { label: 'Helpdesk Support',   color: 'blue',    dot: 'bg-blue-500'    },
-  call_center: { label: 'Call Center',        color: 'default', dot: 'bg-[#1b669d]'   },
+  cashier:     { label: 'Billing / Cashier',  color: 'success',   dot: 'bg-emerald-500' },
+  helpdesk:    { label: 'Helpdesk Support',   color: 'blue',      dot: 'bg-blue-500'    },
+  call_center: { label: 'Call Center',        color: 'default',   dot: 'bg-[#1b669d]'  },
+  nurse:       { label: 'Clinical Nurse',     color: 'secondary', dot: 'bg-teal-500'   },
+  vip_lounge:  { label: 'VIP Lounge',         color: 'secondary', dot: 'bg-violet-500' },
 };
 
 const STATUS_META = {
-  open:   { label: 'Live',       variant: 'success',   pulse: true  },
-  draft:  { label: 'In Progress', variant: 'warning',   pulse: false },
-  closed: { label: 'Sealed',     variant: 'secondary', pulse: false },
+  open:   { label: 'Live',        variant: 'success',   pulse: true,  dot: 'bg-emerald-500' },
+  draft:  { label: 'In Progress', variant: 'warning',   pulse: false, dot: 'bg-amber-500'   },
+  closed: { label: 'Sealed',      variant: 'secondary', pulse: false, dot: 'bg-slate-400'   },
 };
 
-const SUMMARY_STATS = (shifts) => [
-  {
-    label: 'Total Records',
-    value: shifts.length,
-    icon:  <FileText size={18} />,
-    color: 'text-[#1b669d]',
-    bg:    'bg-[#1b669d]/10',
-  },
-  {
-    label: 'Live Sessions',
-    value: shifts.filter(s => s.status === 'open').length,
-    icon:  <Zap size={18} />,
-    color: 'text-emerald-600',
-    bg:    'bg-emerald-50',
-  },
-  {
-    label: 'Flagged',
-    value: shifts.filter(s => s.is_flagged).length,
-    icon:  <Flag size={18} />,
-    color: 'text-rose-600',
-    bg:    'bg-rose-50',
-  },
-  {
-    label: 'Pending Review',
-    value: shifts.filter(s => s.status === 'closed' && !s.reviewed_at).length,
-    icon:  <AlertTriangle size={18} />,
-    color: 'text-amber-600',
-    bg:    'bg-amber-50',
-  },
-];
+// Defined outside component — uses useMemo inside component for memoization
+function buildSummaryStats(shifts) {
+  return [
+    {
+      label: 'Total Records',
+      value: shifts.length,
+      icon:  <FileText size={18} />,
+      color: 'text-[#1b669d]',
+      bg:    'bg-[#1b669d]/10',
+    },
+    {
+      label: 'Live Sessions',
+      value: shifts.filter(s => s.status === 'open').length,
+      icon:  <Zap size={18} />,
+      color: 'text-emerald-600',
+      bg:    'bg-emerald-50',
+    },
+    {
+      label: 'Flagged',
+      value: shifts.filter(s => s.is_flagged).length,
+      icon:  <Flag size={18} />,
+      color: 'text-rose-600',
+      bg:    'bg-rose-50',
+    },
+    {
+      label: 'Pending Review',
+      value: shifts.filter(s => s.status === 'closed' && !s.reviewed_at).length,
+      icon:  <AlertTriangle size={18} />,
+      color: 'text-amber-600',
+      bg:    'bg-amber-50',
+    },
+  ];
+}
 
 // ── Skeleton row ──────────────────────────────────────────────────────────
 function SkeletonRow() {
@@ -116,24 +123,193 @@ function SkeletonRow() {
   );
 }
 
+// ── Role icons map ────────────────────────────────────────────────────────
+const ROLE_ICONS_MAP = {
+  cashier:     <CreditCard size={16} />,
+  helpdesk:    <Monitor size={16} />,
+  call_center: <Phone size={16} />,
+  nurse:       <Stethoscope size={16} />,
+  vip_lounge:  <Crown size={16} />,
+};
+
+// ── KanbanCard ────────────────────────────────────────────────────────────
+function KanbanCard({ shift, onView }) {
+  const role  = ROLE_META[shift.shift_role] || { label: shift.shift_role, dot: 'bg-slate-400' };
+  const status = STATUS_META[shift.status] || {};
+  const waveCfg = getWaveConfig(shift);
+  const firstName = shift.user_name?.split(' ')[0] || 'Agent';
+  const openedDate = shift.opened_at ? new Date(shift.opened_at) : null;
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      whileHover={{ y: -2, boxShadow: '0 8px 32px rgba(27,102,157,0.10)' }}
+      className={`relative bg-white rounded-2xl border-2 p-4 cursor-pointer transition-all group ${
+        shift.is_flagged ? 'border-rose-200' : 'border-slate-100 hover:border-[#1b669d]/30'
+      }`}
+      onClick={() => onView(shift.id)}
+    >
+      {/* Flag indicator */}
+      {shift.is_flagged && (
+        <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-500 flex items-center justify-center shadow-lg">
+          <Flag size={10} className="text-white" />
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className={`w-8 h-8 rounded-xl ${role.dot.replace('bg-', 'bg-').replace('-500', '-100')} flex items-center justify-center text-${role.dot.replace('bg-', '').replace('-500', '-600').replace('\\[#1b669d\\]', '[#1b669d]')}`}>
+            {ROLE_ICONS_MAP[shift.shift_role] || <Briefcase size={16} />}
+          </div>
+          <div>
+            <p className="text-xs font-black text-slate-800 leading-none">{firstName}</p>
+            <p className="text-[10px] font-bold text-slate-400 mt-0.5">{role.label}</p>
+          </div>
+        </div>
+        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
+          shift.status === 'open'   ? 'bg-emerald-50 text-emerald-700' :
+          shift.status === 'draft'  ? 'bg-amber-50 text-amber-700' :
+                                      'bg-slate-100 text-slate-500'
+        }`}>
+          {status.label || shift.status}
+          {shift.status === 'open' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 ml-1.5 animate-pulse" />}
+        </span>
+      </div>
+
+      {/* Wave + time */}
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
+        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+          {waveCfg ? waveCfg.schedule : 'No wave'}
+        </span>
+        {openedDate && (
+          <span className="text-[9px] font-bold text-slate-300">
+            {openedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
+      </div>
+
+      {/* Review badge */}
+      {shift.status === 'closed' && (
+        <div className={`mt-2 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest ${
+          shift.reviewed_at ? 'text-emerald-600' : 'text-amber-600'
+        }`}>
+          {shift.reviewed_at
+            ? <><CheckCircle2 size={10} /> Verified</>
+            : <><AlertTriangle size={10} /> Needs Review</>
+          }
+        </div>
+      )}
+
+      {/* View button on hover */}
+      <div className="absolute inset-x-4 bottom-3 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#1b669d] text-white text-[9px] font-black uppercase tracking-widest">
+          <Eye size={10} /> View
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── KanbanBoard ───────────────────────────────────────────────────────────
+function KanbanBoard({ shifts, navigate }) {
+  const columns = [
+    {
+      key: 'open',
+      label: 'Live Sessions',
+      color: 'emerald',
+      headerClass: 'bg-emerald-500',
+      items: shifts.filter(s => s.status === 'open'),
+    },
+    {
+      key: 'draft',
+      label: 'In Progress',
+      color: 'amber',
+      headerClass: 'bg-amber-500',
+      items: shifts.filter(s => s.status === 'draft'),
+    },
+    {
+      key: 'closed',
+      label: 'Sealed',
+      color: 'slate',
+      headerClass: 'bg-slate-400',
+      items: shifts.filter(s => s.status === 'closed'),
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      {columns.map(col => (
+        <div key={col.key} className="flex flex-col gap-3">
+          {/* Column header */}
+          <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-white border-2 border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-2.5 h-2.5 rounded-full ${col.headerClass}`} />
+              <span className="text-xs font-black text-slate-700 uppercase tracking-widest">{col.label}</span>
+            </div>
+            <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${
+              col.key === 'open'   ? 'bg-emerald-50 text-emerald-700' :
+              col.key === 'draft'  ? 'bg-amber-50 text-amber-700' :
+                                     'bg-slate-100 text-slate-500'
+            }`}>{col.items.length}</span>
+          </div>
+
+          {/* Cards */}
+          <div className="flex flex-col gap-3 min-h-[120px]">
+            <AnimatePresence>
+              {col.items.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center justify-center py-10 border-4 border-dashed border-slate-100 rounded-2xl text-slate-300 text-[10px] font-black uppercase tracking-widest"
+                >
+                  No records
+                </motion.div>
+              ) : (
+                col.items.map(shift => (
+                  <KanbanCard
+                    key={shift.id}
+                    shift={shift}
+                    onView={(id) => navigate(`/shifts/${id}`)}
+                  />
+                ))
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────
 export default function ShiftDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isSupervisor = ['admin', 'deputy_coo'].includes(user?.role);
   const isPrincipalCashier = user?.role === 'principal_cashier';
 
   const [shifts, setShifts] = useState([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, limit: 25 });
+  const [meta, setMeta] = useState({ total: 0, page: 1, limit: 50 });
   const [selectedIds, setSelectedIds] = useState([]);
   const [editingShift, setEditingShift] = useState(null);
   const [filters, setFilters] = useState({
     role: '', status: '', date_from: '', date_to: '', employee_name: '', flagged: ''
   });
-  const [loading, setLoading]   = useState(true);
-  const [exporting, setExporting] = useState(false);
-  const [reviewing, setReviewing] = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [exporting, setExporting]   = useState(false);
+  const [reviewing, setReviewing]   = useState(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState(0);
+  // 'table' | 'kanban'
+  const [viewMode, setViewMode] = useState('table');
+
+  // Memoised summary stats — recalculates only when shifts array changes
+  const summaryStats = useMemo(() => buildSummaryStats(shifts), [shifts]);
 
   // Custom modal states to replace blocking window.prompt / window.confirm
   const [bulkReviewOpen, setBulkReviewOpen] = useState(false);
@@ -142,6 +318,7 @@ export default function ShiftDashboard() {
   const [reactivateOpen, setReactivateOpen] = useState(false);
   const [reactivateId, setReactivateId] = useState(null);
   const [reactivatePassword, setReactivatePassword] = useState('');
+  const [reactivateError, setReactivateError] = useState('');
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -153,7 +330,7 @@ export default function ShiftDashboard() {
 
   const fetchShifts = useCallback((page = 1) => {
     setLoading(true);
-    const params = { ...filters, page, limit: 25 };
+    const params = { ...filters, page, limit: 50 };
     Object.keys(params).forEach(k => !params[k] && delete params[k]);
     getAllShifts(params)
       .then(res => {
@@ -226,18 +403,15 @@ export default function ShiftDashboard() {
   const handleReactivateSubmit = async (e) => {
     e?.preventDefault();
     if (!reactivateId) return;
+    setReactivateError('');
     if (!reactivatePassword) {
-      toast.error('Password is required');
+      setReactivateError('Password is required');
       return;
     }
     
     const id = reactivateId;
     const password = reactivatePassword;
     
-    setReactivateOpen(false);
-    setReactivateId(null);
-    setReactivatePassword('');
-
     const tid = toast.loading('Reactivating shift session…');
     try {
       await reactivateShift(id, password);
@@ -245,8 +419,13 @@ export default function ShiftDashboard() {
         s.id === id ? { ...s, status: 'open', closed_at: null, reviewed_at: null } : s
       ));
       toast.success('Shift reactivated successfully', { id: tid });
+      setReactivateOpen(false);
+      setReactivateId(null);
+      setReactivatePassword('');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Reactivation failed', { id: tid });
+      const msg = err.response?.data?.message || 'Reactivation failed';
+      setReactivateError(msg);
+      toast.error(msg, { id: tid });
     }
   };
 
@@ -259,17 +438,19 @@ export default function ShiftDashboard() {
     }
 
     const password = bulkReviewPassword;
-    setBulkReviewOpen(false);
-    setBulkReviewPassword('');
 
     const tid = toast.loading(`Signing off ${selectedIds.length} shifts…`);
     try {
       await bulkReviewShifts(selectedIds, password);
       setShifts(prev => prev.map(s => 
-        selectedIds.includes(s.id) ? { ...s, reviewed_at: new Date().toISOString(), reviewed_by_name: user.fullName } : s
+        selectedIds.includes(s.id)
+          ? { ...s, reviewed_at: new Date().toISOString(), reviewed_by_name: user?.full_name }
+          : s
       ));
       setSelectedIds([]);
       toast.success('Bulk verification complete', { id: tid });
+      setBulkReviewOpen(false);
+      setBulkReviewPassword('');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Bulk verification failed', { id: tid });
     }
@@ -300,22 +481,34 @@ export default function ShiftDashboard() {
 
   const handleUpdateShift = async (e) => {
     e.preventDefault();
+    if (editSubmitting) return;
     const formData = new FormData(e.target);
     const payload = {
       handover_notes: formData.get('handover_notes'),
       is_flagged: formData.get('is_flagged') === 'on'
     };
 
+    setEditSubmitting(true);
     const tid = toast.loading('Updating shift records…');
     try {
       await updateShiftByAdmin(editingShift.id, payload);
       setShifts(prev => prev.map(s => 
-        s.id === editingShift.id ? { ...s, ...payload } : s
+        s.id === editingShift.id
+          ? {
+              ...s,
+              ...payload,
+              // When admin unchecks the flag, clear the reasons so the tooltip
+              // badge disappears immediately without waiting for a full re-fetch.
+              flag_reasons: payload.is_flagged ? s.flag_reasons : [],
+            }
+          : s
       ));
       setEditingShift(null);
       toast.success('Shift record updated', { id: tid });
     } catch {
       toast.error('Failed to update record', { id: tid });
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -339,7 +532,13 @@ export default function ShiftDashboard() {
   const clearFilters = () => {
     const empty = { role: '', status: '', date_from: '', date_to: '', employee_name: '', flagged: '' };
     setFilters(empty);
-    setTimeout(() => fetchShifts(1), 50);
+    // Pass override directly — avoids stale-closure race condition with setTimeout
+    setLoading(true);
+    const params = { page: 1, limit: 50 };
+    getAllShifts(params)
+      .then(res => { setShifts(res.data.data); setMeta(res.data.meta); })
+      .catch(() => toast.error('Failed to synchronise shift logs'))
+      .finally(() => setLoading(false));
   };
 
   const totalPages = Math.ceil(meta.total / meta.limit);
@@ -368,6 +567,7 @@ export default function ShiftDashboard() {
           </div>
         </div>
 
+        {/* Right toolbar */}
         <div className="flex items-center gap-3">
           {isSupervisor && (
             <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl mr-2">
@@ -382,6 +582,61 @@ export default function ShiftDashboard() {
               </Button>
             </div>
           )}
+
+          {/* ─── View toggle pill ────────────────────────────── */}
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+            <button
+              onClick={() => setViewMode('table')}
+              title="Table view"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white text-[#1b669d] shadow-sm'
+                  : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              <LayoutList size={13} /> Table
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              title="Kanban board"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                viewMode === 'kanban'
+                  ? 'bg-white text-[#1b669d] shadow-sm'
+                  : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              <Kanban size={13} /> Kanban
+            </button>
+          </div>
+
+          {/* ─── Flagged quick-filter chip ───────────────────── */}
+          <button
+            onClick={() => {
+              const nextFlagged = filters.flagged === '1' ? '' : '1';
+              setFilters(p => ({ ...p, flagged: nextFlagged }));
+              // Immediately apply — pass new value directly to avoid stale closure
+              setLoading(true);
+              const params = { ...filters, flagged: nextFlagged, page: 1, limit: 50 };
+              Object.keys(params).forEach(k => !params[k] && delete params[k]);
+              getAllShifts(params)
+                .then(res => { setShifts(res.data.data); setMeta(res.data.meta); })
+                .catch(() => toast.error('Failed to filter flagged shifts'))
+                .finally(() => setLoading(false));
+            }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+              filters.flagged === '1'
+                ? 'bg-rose-500 border-rose-600 text-white shadow-lg shadow-rose-500/20'
+                : 'bg-white border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-500'
+            }`}
+          >
+            <Flag size={12} />
+            Flagged
+            {filters.flagged !== '1' && summaryStats[2]?.value > 0 && (
+              <span className="ml-0.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] flex items-center justify-center font-black">
+                {summaryStats[2].value}
+              </span>
+            )}
+          </button>
 
           <Button
             variant="outline"
@@ -442,7 +697,7 @@ export default function ShiftDashboard() {
         transition={{ delay: 0.1, duration: 0.35 }}
         className="grid grid-cols-2 lg:grid-cols-4 gap-4"
       >
-        {SUMMARY_STATS(shifts).map((stat, i) => (
+        {summaryStats.map((stat, i) => (
           <Card key={i} className="p-5 flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center shrink-0`}>
               {stat.icon}
@@ -508,6 +763,8 @@ export default function ShiftDashboard() {
                     <option value="cashier">Cashier / Billing</option>
                     <option value="helpdesk">Helpdesk</option>
                     <option value="call_center">Call Center</option>
+                    <option value="nurse">Clinical Nurse</option>
+                    <option value="vip_lounge">VIP Lounge</option>
                   </Select>
                 </div>
 
@@ -529,7 +786,14 @@ export default function ShiftDashboard() {
                   <Input
                     type="date"
                     value={filters.date_from}
-                    onChange={e => setFilters(p => ({ ...p, date_from: e.target.value }))}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (filters.date_to && val > filters.date_to) {
+                        toast.error('Start date cannot be after end date');
+                        return;
+                      }
+                      setFilters(p => ({ ...p, date_from: val }));
+                    }}
                   />
                 </div>
 
@@ -538,7 +802,14 @@ export default function ShiftDashboard() {
                   <Input
                     type="date"
                     value={filters.date_to}
-                    onChange={e => setFilters(p => ({ ...p, date_to: e.target.value }))}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (filters.date_from && val < filters.date_from) {
+                        toast.error('End date cannot be before start date');
+                        return;
+                      }
+                      setFilters(p => ({ ...p, date_to: val }));
+                    }}
                   />
                 </div>
 
@@ -572,12 +843,43 @@ export default function ShiftDashboard() {
         )}
       </AnimatePresence>
 
-      {/* ── Data Table ───────────────────────────────────────────── */}
+      {/* ── Data View (Table or Kanban) ───────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.35 }}
       >
+        {/* ── Kanban View ── */}
+        <AnimatePresence mode="wait">
+          {viewMode === 'kanban' ? (
+            <motion.div
+              key="kanban"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              {loading ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  {[0,1,2].map(i => (
+                    <div key={i} className="flex flex-col gap-3">
+                      <Skeleton className="h-12 w-full rounded-2xl" />
+                      {[0,1,2].map(j => <Skeleton key={j} className="h-28 w-full rounded-2xl" />)}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <KanbanBoard shifts={shifts} navigate={navigate} />
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="table"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
         <Card className="overflow-hidden">
 
           {/* Table toolbar */}
@@ -586,7 +888,7 @@ export default function ShiftDashboard() {
               <span className="text-sm font-black text-slate-700">Session Records</span>
               {!loading && (
                 <Badge variant="secondary">
-                  {shifts.length} shown
+                  {shifts.length} of {meta.total.toLocaleString()}
                 </Badge>
               )}
             </div>
@@ -708,12 +1010,8 @@ export default function ShiftDashboard() {
                   const isSealed   = s.status === 'closed';
 
                   return (
-                    <motion.tr
+                    <TableRow
                       key={s.id}
-                      component={TableRow}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.025 }}
                       className={`group border-b border-slate-100 transition-colors ${
                         s.is_flagged
                           ? 'bg-rose-50/30 hover:bg-rose-50/60'
@@ -774,15 +1072,23 @@ export default function ShiftDashboard() {
                       {/* Timeline */}
                       <td className="px-6 py-4">
                         <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 text-xs text-slate-600 font-semibold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                            <span>
-                              {getWaveStartTime(s).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              <span className="text-slate-300 ml-1.5 text-[10px]">
-                                {getWaveStartTime(s).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                              </span>
-                            </span>
-                          </div>
+                          {(() => {
+                            const wst = getWaveStartTime(s);
+                            if (!wst) return (
+                              <span className="text-[10px] text-slate-300 font-black uppercase tracking-widest">—</span>
+                            );
+                            return (
+                              <div className="flex items-center gap-2 text-xs text-slate-600 font-semibold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                                <span>
+                                  {wst.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  <span className="text-slate-300 ml-1.5 text-[10px]">
+                                    {wst.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                  </span>
+                                </span>
+                              </div>
+                            );
+                          })()}
                           {s.closed_at ? (
                             <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold">
                               <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" />
@@ -952,7 +1258,7 @@ export default function ShiftDashboard() {
                           </Link>
                         </div>
                       </td>
-                    </motion.tr>
+                    </TableRow>
                   );
                 })
               )}
@@ -1014,6 +1320,9 @@ export default function ShiftDashboard() {
             </div>
           )}
         </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* ── Edit Modal ────────────────────────────────────────────── */}
@@ -1154,10 +1463,18 @@ export default function ShiftDashboard() {
                 type="password"
                 placeholder="Enter your password to authorize..."
                 value={reactivatePassword}
-                onChange={(e) => setReactivatePassword(e.target.value)}
-                className="w-full"
+                onChange={(e) => {
+                  setReactivatePassword(e.target.value);
+                  if (reactivateError) setReactivateError('');
+                }}
+                className={`w-full ${reactivateError ? 'border-rose-500 focus-visible:ring-rose-500' : ''}`}
                 required
               />
+              {reactivateError && (
+                <p className="text-rose-500 text-[11px] font-bold tracking-wide mt-1">
+                  {reactivateError}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3 pt-2">

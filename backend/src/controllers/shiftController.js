@@ -17,6 +17,41 @@ const SUPERVISOR_ROLES = ['admin', 'deputy_coo'];
 const q = async (sql, args = []) => (await db.query(sql, args)).rows;
 const q1 = async (sql, args = []) => (await db.query(sql, args)).rows[0] || null;
 
+function getWaveConfig(shift) {
+  if (!shift) return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
+  
+  if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
+    return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
+  } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
+    return { schedule: "08:00 AM - 04:00 PM", duration: 8, startHourStr: "08:00" };
+  } else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') {
+    return { schedule: "09:00 AM - 05:00 PM", duration: 8, startHourStr: "09:00" };
+  } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
+    return { schedule: "03:00 PM - 09:00 PM", duration: 6, startHourStr: "15:00" };
+  } else {
+    const openedDate = new Date(shift.opened_at);
+    const hour = openedDate.getHours();
+    const isMorning = hour < 14;
+    return {
+      schedule: isMorning ? "07:00 AM - 03:00 PM" : "03:00 PM - 09:00 PM",
+      duration: isMorning ? 8 : 6,
+      startHourStr: isMorning ? "07:00" : "15:00"
+    };
+  }
+}
+
+function getWaveStartTime(shift) {
+  if (!shift || !shift.opened_at) return null;
+  const openedDate = new Date(shift.opened_at);
+  const cfg = getWaveConfig(shift);
+  const [hStr, mStr] = cfg.startHourStr.split(':');
+  
+  const startTime = new Date(openedDate);
+  startTime.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
+  return startTime;
+}
+
+
 /**
  * Determine which equipment items belong to a given shift role.
  */
@@ -25,6 +60,7 @@ const EQUIPMENT_MAP = {
   helpdesk: ['PC', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
   call_center: ['PC', 'Headset'],
   nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
+  vip_lounge: ['PC', 'Desk Phone'],
 };
 
 /**
@@ -34,9 +70,10 @@ const EQUIPMENT_MAP = {
 function evaluateFlags(equipLogs, cashierClose) {
   const reasons = [];
 
-  // Equipment flags
+  // Equipment flags — only the CLOSING snapshot reveals post-shift damage.
+  // Flagging open-snapshot issues would double-count pre-existing faults.
   const badEquip = (equipLogs || []).filter(
-    (e) => e.equipment_status !== 'Working'
+    (e) => e.snapshot === 'close' && e.equipment_status !== 'Working'
   );
   if (badEquip.length > 0) {
     reasons.push(
@@ -57,6 +94,72 @@ function evaluateFlags(equipLogs, cashierClose) {
   return { is_flagged: reasons.length > 0, flag_reasons: reasons };
 }
 
+/**
+ * Helper to verify user's password and enforce lockout policy.
+ */
+async function verifyPasswordAndCheckLockout(req, password, user) {
+  // Check if locked out
+  if (user.lockout_until && new Date(user.lockout_until) > new Date()) {
+    const waitTime = Math.ceil((new Date(user.lockout_until) - new Date()) / 60000);
+    return {
+      allowed: false,
+      status: 403,
+      message: `Account is temporarily locked due to multiple failed attempts. Please try again in ${waitTime} minutes.`
+    };
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password_hash);
+  if (!isMatch) {
+    const attempts = await User.incrementFailedAttempts(user.id);
+    
+    // Log Security Violation
+    try {
+      const { logAction } = require('../middleware/audit');
+      await logAction(req, 'AUTH_FAILURE', 'user', user.id, { username: user.username, attempt_count: attempts });
+    } catch (e) {}
+
+    if (attempts >= 5) {
+      await User.lockout(user.id, 5);
+      
+      try {
+        const { logAction } = require('../middleware/audit');
+        await logAction(req, 'ACCOUNT_LOCKOUT', 'user', user.id, { username: user.username, lockout_duration: '5m' });
+      } catch (e) {}
+
+      // Report to Admin
+      try {
+        const admins = await User.findByRole('admin');
+        for (const admin of admins) {
+          await Notification.create({
+            userId: admin.id,
+            title: 'Security Alert: Account Lockout',
+            message: `User ${user.full_name} (${user.username}) has been locked out after 5 failed verification attempts.`,
+            type: 'error',
+            link: '/audit-logs'
+          });
+        }
+      } catch (e) {}
+
+      return {
+        allowed: false,
+        status: 403,
+        message: 'Account locked for 5 minutes due to 5 failed attempts.'
+      };
+    } else {
+      const remaining = 5 - attempts;
+      return {
+        allowed: false,
+        status: 400,
+        message: `Invalid password. Warning: ${remaining} attempts remaining before account lockout.`
+      };
+    }
+  }
+
+  // Success - reset attempts
+  await User.resetAttempts(user.id);
+  return { allowed: true };
+}
+
 // ─── OPEN SHIFT ───────────────────────────────────────────────────────────────
 exports.openShift = async (req, res, next) => {
   try {
@@ -70,9 +173,9 @@ exports.openShift = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Password confirmation is required.' });
     }
     const user = await User.findById(userId);
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid password. Action denied.' });
+    const authResult = await verifyPasswordAndCheckLockout(req, password, user);
+    if (!authResult.allowed) {
+      return res.status(authResult.status).json({ success: false, message: authResult.message });
     }
 
     // Prevent opening a second shift if one is already open
@@ -112,39 +215,35 @@ exports.openShift = async (req, res, next) => {
     }
 
     // Validate shift role
-    if (!['cashier', 'helpdesk', 'call_center', 'nurse'].includes(shift_role)) {
+    if (!['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge'].includes(shift_role)) {
       return res.status(400).json({ success: false, message: 'Invalid shift role.' });
     }
 
-    // Customer Care Wave Allocation Validation
-    let wave = null;
-    const isCustomerCare = req.user.role === 'customer_care' || ['helpdesk', 'call_center'].includes(shift_role);
-    if (isCustomerCare) {
-      if (!start_hour) {
-        return res.status(400).json({ success: false, message: 'Starting hour is required for customer care shifts.' });
-      }
-      if (!['07:00', '08:00', '09:00', '15:00'].includes(start_hour)) {
-        return res.status(400).json({ success: false, message: 'Invalid starting hour. Must be 07:00, 08:00, 09:00, or 15:00.' });
-      }
-      if (start_hour === '07:00') wave = 'Wave 1';
-      else if (start_hour === '08:00') wave = 'Wave 2';
-      else if (start_hour === '09:00') wave = 'Wave 4';
-      else if (start_hour === '15:00') wave = 'Wave 3';
+    // Wave Allocation Validation for all roles
+    if (!start_hour) {
+      return res.status(400).json({ success: false, message: 'Starting hour is required for wave allocation.' });
     }
+    if (!['07:00', '08:00', '09:00', '15:00'].includes(start_hour)) {
+      return res.status(400).json({ success: false, message: 'Invalid starting hour. Must be 07:00, 08:00, 09:00, or 15:00.' });
+    }
+    let wave = null;
+    if (start_hour === '07:00') wave = 'Wave 1';
+    else if (start_hour === '08:00') wave = 'Wave 2';
+    else if (start_hour === '09:00') wave = 'Wave 4';
+    else if (start_hour === '15:00') wave = 'Wave 3';
 
     // Insert shift session
     const shiftResult = await db.query(
       `INSERT INTO shift_sessions (user_id, shift_role, status, start_hour, wave) VALUES (?, ?, 'open', ?, ?)`,
       [userId, shift_role, start_hour || null, wave]
     );
-    const shiftId = shiftResult.rows[0]?.id ?? (await q1(`SELECT last_insert_rowid() AS id`)).id;
 
-    // Resolve inserted ID reliably (LibSQL lastInsertRowid)
-    const insertedShift = await q1(
-      `SELECT id FROM shift_sessions WHERE user_id = ? ORDER BY id DESC LIMIT 1`,
-      [userId]
-    );
-    const resolvedId = insertedShift?.id;
+    // Resolve inserted ID reliably — prefer the row returned by the driver,
+    // fall back to last_insert_rowid() (SQLite/LibSQL). Do NOT do a secondary
+    // SELECT which could return a different row under concurrent inserts.
+    const resolvedId =
+      shiftResult.rows[0]?.id ??
+      (await q1(`SELECT last_insert_rowid() AS id`))?.id;
 
     // Insert equipment checklist (open snapshot)
     if (equipment && Array.isArray(equipment) && equipment.length > 0) {
@@ -196,7 +295,7 @@ exports.saveDraft = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Cannot edit a closed shift.' });
     }
 
-    const { handover_notes, equipment, cashier_close, helpdesk_close, callcenter_close } = req.body;
+    const { handover_notes, equipment, cashier_close, helpdesk_close, callcenter_close, vip_lounge_close } = req.body;
 
     // Update status to draft + handover notes
     await db.query(
@@ -217,7 +316,7 @@ exports.saveDraft = async (req, res, next) => {
     }
 
     // Upsert role-specific close data
-    await upsertRoleCloseData(shift.shift_role, id, cashier_close, helpdesk_close, callcenter_close, req.body.nurse_close);
+    await upsertRoleCloseData(shift.shift_role, id, cashier_close, helpdesk_close, callcenter_close, req.body.nurse_close, vip_lounge_close);
 
     res.json({ success: true, message: 'Draft saved.', data: { shiftId: id, status: 'draft' } });
   } catch (err) { next(err); }
@@ -246,6 +345,7 @@ exports.closeShift = async (req, res, next) => {
       cashier_close, 
       helpdesk_close, 
       callcenter_close, 
+      vip_lounge_close,
       override,
       password 
     } = req.body;
@@ -256,24 +356,23 @@ exports.closeShift = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Password confirmation is required.' });
     }
     const user = await User.findById(req.user.id);
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid password. Action denied.' });
-    }
-
-    if (!handover_notes || !handover_notes.trim()) {
-      return res.status(400).json({ success: false, message: 'Handover notes are required to close a shift.' });
+    const authResult = await verifyPasswordAndCheckLockout(req, password, user);
+    if (!authResult.allowed) {
+      return res.status(authResult.status).json({ success: false, message: authResult.message });
     }
 
     // Minimum shift duration check (skipped for supervisors with override)
     if (!isOverride) {
-      const openedAt = new Date(shift.opened_at);
-      const elapsedMs = Date.now() - openedAt.getTime();
-      const elapsedHours = elapsedMs / 3_600_000;
+      const waveStartTime = getWaveStartTime(shift) || new Date(shift.opened_at);
+      const waveCfg = getWaveConfig(shift);
+      
+      const now = Date.now();
+      let elapsedHours = 0;
+      if (now >= waveStartTime.getTime()) {
+        elapsedHours = Math.min(waveCfg.duration, (now - waveStartTime.getTime()) / 3600000);
+      }
 
-      // Detect if this is an evening shift (started between 2:00 PM and 5:00 PM)
-      const startHour = openedAt.getHours();
-      const effectiveMinHours = (startHour >= 14 && startHour <= 17) ? EVENING_MIN_HOURS : MIN_SHIFT_HOURS;
+      const effectiveMinHours = (waveCfg.startHourStr === '15:00') ? EVENING_MIN_HOURS : MIN_SHIFT_HOURS;
 
       if (elapsedHours < effectiveMinHours) {
         const remainingMins = Math.ceil((effectiveMinHours - elapsedHours) * 60);
@@ -301,7 +400,7 @@ exports.closeShift = async (req, res, next) => {
     }
 
     // Upsert role-specific data
-    await upsertRoleCloseData(shift.shift_role, id, cashier_close, helpdesk_close, callcenter_close, req.body.nurse_close);
+    await upsertRoleCloseData(shift.shift_role, id, cashier_close, helpdesk_close, callcenter_close, req.body.nurse_close, vip_lounge_close);
 
     // Evaluate flags
     const allEquip = await q(
@@ -355,9 +454,9 @@ exports.reactivateShift = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Password confirmation is required.' });
     }
     const user = await User.findById(req.user.id);
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid password. Action denied.' });
+    const authResult = await verifyPasswordAndCheckLockout(req, password, user);
+    if (!authResult.allowed) {
+      return res.status(authResult.status).json({ success: false, message: authResult.message });
     }
 
     const shift = await q1(`SELECT * FROM shift_sessions WHERE id = ?`, [id]);
@@ -365,6 +464,9 @@ exports.reactivateShift = async (req, res, next) => {
     if (shift.status !== 'closed') {
       return res.status(400).json({ success: false, message: 'Only closed shifts can be reactivated.' });
     }
+
+    // Preserve flag history in the audit trail BEFORE clearing it from the session row.
+    const previousFlags = shift.flag_reasons ? JSON.parse(shift.flag_reasons) : [];
 
     await db.query(
       `UPDATE shift_sessions
@@ -379,7 +481,11 @@ exports.reactivateShift = async (req, res, next) => {
       `INSERT INTO audit_logs (user_id, user_name, user_role, action, entity_type, entity_id, details)
        VALUES (?, ?, ?, 'SHIFT_REACTIVATED', 'shift_sessions', ?, ?)`,
       [req.user.id, req.user.full_name, req.user.role, id,
-       JSON.stringify({ reactivated_for_user_id: shift.user_id })]
+       JSON.stringify({
+         reactivated_for_user_id: shift.user_id,
+         cleared_flag_reasons: previousFlags,
+         was_flagged: !!shift.is_flagged,
+       })]
     );
 
     // Notify the agent
@@ -410,6 +516,27 @@ exports.getMyActiveShift = async (req, res, next) => {
 
     const detail = await enrichShiftDetail(shift);
     res.json({ success: true, data: detail });
+  } catch (err) { next(err); }
+};
+
+// ─── GET MY SHIFT HISTORY ────────────────────────────────────────────────────
+exports.getMyHistory = async (req, res, next) => {
+  try {
+    const shifts = await q(
+      `SELECT s.*, u.full_name AS user_name
+       FROM shift_sessions s
+       JOIN users u ON s.user_id = u.id
+       WHERE s.user_id = ? AND s.status = 'closed'
+       ORDER BY s.id DESC LIMIT 5`,
+      [req.user.id]
+    );
+
+    const data = [];
+    for (const shift of shifts) {
+      data.push(await enrichShiftDetail(shift));
+    }
+    
+    res.json({ success: true, data });
   } catch (err) { next(err); }
 };
 
@@ -482,7 +609,7 @@ exports.getShiftById = async (req, res, next) => {
     if (!shift) return res.status(404).json({ success: false, message: 'Shift not found.' });
 
     // Non-reviewers can only see their own shifts
-    const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer'];
+    const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'pa', 'operations_staff'];
     if (!REVIEWER_ROLES.includes(req.user.role) && shift.user_id !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
@@ -490,6 +617,42 @@ exports.getShiftById = async (req, res, next) => {
     const detail = await enrichShiftDetail(shift);
     res.json({ success: true, data: detail });
   } catch (err) { next(err); }
+};
+
+// ─── GET LATEST HANDOVER ───────────────────────────────────────────────────────
+exports.getLatestHandover = async (req, res, next) => {
+  try {
+    const shiftRole = req.query.shift_role || req.user.role;
+    
+    // Authorization check
+    const isSupervisor = ['admin', 'coo', 'deputy_coo'].includes(req.user.role);
+    let isAuthorized = isSupervisor;
+    if (!isAuthorized) {
+      if (req.user.role === shiftRole) {
+        isAuthorized = true;
+      } else if (req.user.role === 'customer_care' && (shiftRole === 'customer_care' || shiftRole === 'vip_lounge' || shiftRole === 'helpdesk' || shiftRole === 'call_center')) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to view handover notes for this category.' });
+    }
+
+    const shift = await q1(
+      `SELECT s.id, s.handover_notes, s.closed_at, u.full_name AS user_name, s.shift_role
+       FROM shift_sessions s
+       JOIN users u ON s.user_id = u.id
+       WHERE s.shift_role = ? AND s.status = 'closed' AND s.handover_notes IS NOT NULL AND s.handover_notes != ''
+       ORDER BY s.closed_at DESC
+       LIMIT 1`,
+      [shiftRole]
+    );
+
+    res.json({ success: true, data: shift || null });
+  } catch (err) {
+    next(err);
+  }
 };
 
 // ─── MARK AS REVIEWED ─────────────────────────────────────────────────────────
@@ -551,6 +714,16 @@ async function enrichShiftDetail(shift) {
     };
   } else if (shift.shift_role === 'nurse') {
     roleData = { closing: await q1(`SELECT * FROM shift_nurse_close WHERE shift_id = ?`, [shift.id]) };
+  } else if (shift.shift_role === 'vip_lounge') {
+    const row = await q1(`SELECT * FROM shift_viplounge_close WHERE shift_id = ?`, [shift.id]);
+    roleData = {
+      closing: row
+        ? {
+          ...row,
+          vip_logs: row.vip_logs ? JSON.parse(row.vip_logs) : [],
+        }
+        : null
+    };
   }
 
   return {
@@ -563,7 +736,7 @@ async function enrichShiftDetail(shift) {
 }
 
 // ─── Internal: upsert role-specific closing data ─────────────────────────────
-async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_close, callcenter_close, nurse_close) {
+async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_close, callcenter_close, nurse_close, vip_lounge_close) {
   if (shift_role === 'cashier' && cashier_close) {
     const c = cashier_close;
     const discrepancy =
@@ -685,6 +858,23 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
       );
     }
   }
+
+  if (shift_role === 'vip_lounge' && vip_lounge_close) {
+    const vl = vip_lounge_close;
+    const existing = await q1(`SELECT id FROM shift_viplounge_close WHERE shift_id = ?`, [shiftId]);
+    const vipLogsStr = Array.isArray(vl.vip_logs) ? JSON.stringify(vl.vip_logs) : JSON.stringify([]);
+    if (existing) {
+      await db.query(
+        `UPDATE shift_viplounge_close SET vip_logs = ?, updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) WHERE shift_id = ?`,
+        [vipLogsStr, shiftId]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO shift_viplounge_close (shift_id, vip_logs) VALUES (?, ?)`,
+        [shiftId, vipLogsStr]
+      );
+    }
+  }
 }
 
 // ─── AUTO-CLOSE EXPIRED SHIFTS ────────────────────────────────────────────────
@@ -698,13 +888,34 @@ exports.autoCloseExpiredShifts = async () => {
   try {
     const cutoff = new Date(Date.now() - MAX_SHIFT_HOURS * 60 * 60 * 1000).toISOString();
 
-    const expired = await q(
-      `SELECT s.id, s.user_id, s.shift_role, s.opened_at, u.full_name AS user_name
-       FROM shift_sessions s
-       JOIN users u ON s.user_id = u.id
-       WHERE s.status IN ('open','draft') AND s.opened_at <= ?`,
-      [cutoff]
-    );
+    // Use UTC hours so the 10 PM boundary is consistent regardless of the
+    // server's local timezone. The facility operates in UTC+2 (Kigali),
+    // so 22:00 local = 20:00 UTC. Adjust FACILITY_UTC_OFFSET as needed.
+    const FACILITY_UTC_OFFSET = 2; // hours ahead of UTC
+    const utcHour = new Date().getUTCHours();
+    const facilityHour = (utcHour + FACILITY_UTC_OFFSET) % 24;
+    const isPast10PM = facilityHour >= 22 || facilityHour < 6;
+
+    let expired;
+    if (isPast10PM) {
+      // If it's past 10 PM, close shifts that have been open for at least 1 hour, to prevent instantly closing brand new shifts during testing.
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      expired = await q(
+        `SELECT s.id, s.user_id, s.shift_role, s.opened_at, u.full_name AS user_name
+         FROM shift_sessions s
+         JOIN users u ON s.user_id = u.id
+         WHERE s.status IN ('open','draft') AND s.opened_at <= ?`,
+         [oneHourAgo]
+      );
+    } else {
+      expired = await q(
+        `SELECT s.id, s.user_id, s.shift_role, s.opened_at, u.full_name AS user_name
+         FROM shift_sessions s
+         JOIN users u ON s.user_id = u.id
+         WHERE s.status IN ('open','draft') AND s.opened_at <= ?`,
+        [cutoff]
+      );
+    }
 
     if (expired.length === 0) return 0;
 
@@ -716,7 +927,12 @@ exports.autoCloseExpiredShifts = async () => {
     const supervisors = [...admins, ...deputyCoos];
 
     for (const shift of expired) {
-      const overtimeReason = `Shift exceeded ${MAX_SHIFT_HOURS}-hour policy limit — auto-closed by system`;
+      const isOvertime = new Date(shift.opened_at) <= new Date(Date.now() - MAX_SHIFT_HOURS * 60 * 60 * 1000);
+      const reasonText = isOvertime
+        ? `Shift exceeded ${MAX_SHIFT_HOURS}-hour limit.`
+        : `Shift remained open past the 22:00 operating limit.`;
+
+      const overtimeReason = `Shift auto-closed by system: ${reasonText}`;
       const flagReasons    = [overtimeReason];
 
       // Force-close the shift
@@ -731,7 +947,7 @@ exports.autoCloseExpiredShifts = async () => {
          WHERE id = ?`,
         [
           JSON.stringify(flagReasons),
-          `AUTO-CLOSED: Shift exceeded ${MAX_SHIFT_HOURS}-hour limit. No handover submitted.`,
+          `AUTO-CLOSED: ${reasonText} No handover submitted.`,
           shift.id,
         ]
       );
@@ -757,7 +973,7 @@ exports.autoCloseExpiredShifts = async () => {
       await Notification.create({
         userId:  shift.user_id,
         title:   '⚠️ Your Shift Was Auto-Closed',
-        message: `Your shift (opened at ${openedAt}) exceeded the ${MAX_SHIFT_HOURS}-hour policy limit and has been automatically closed and flagged. Please contact your supervisor immediately.`,
+        message: `Your shift (opened at ${openedAt}) was automatically closed and flagged: ${reasonText} Please contact your supervisor immediately.`,
         type:    'error',
         link:    shiftLink,
       });
@@ -766,14 +982,14 @@ exports.autoCloseExpiredShifts = async () => {
       for (const sup of supervisors) {
         await Notification.create({
           userId:  sup.id,
-          title:   `🚨 Shift Overtime Alert — ${shift.user_name}`,
-          message: `${shift.user_name}'s ${shift.shift_role.replace('_', ' ')} shift (opened ${openedAt}) exceeded ${MAX_SHIFT_HOURS} hours without closure. It has been auto-closed and flagged for mandatory review.`,
+          title:   `🚨 Shift Auto-Closed — ${shift.user_name}`,
+          message: `${shift.user_name}'s ${shift.shift_role.replace('_', ' ')} shift (opened ${openedAt}) was auto-closed and flagged: ${reasonText}`,
           type:    'error',
           link:    shiftLink,
         });
       }
 
-      console.log(`[ShiftPolicy] Auto-closed shift #${shift.id} for ${shift.user_name}`);
+      console.log(`[ShiftPolicy] Auto-closed shift #${shift.id} for ${shift.user_name} (Reason: ${reasonText})`);
     }
 
     return expired.length;
@@ -797,21 +1013,38 @@ exports.bulkReview = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Password confirmation is required.' });
     }
     const user = await User.findById(req.user.id);
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid password. Action denied.' });
+    const authResult = await verifyPasswordAndCheckLockout(req, password, user);
+    if (!authResult.allowed) {
+      return res.status(authResult.status).json({ success: false, message: authResult.message });
     }
 
-    await db.query(
-      `UPDATE shift_sessions 
-       SET reviewed_by = ?, 
-           reviewed_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-           updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-       WHERE id IN (${ids.map(() => '?').join(',')}) AND status = 'closed' AND reviewed_at IS NULL`,
-      [req.user.id, ...ids]
+    // Count before updating so we can report the accurate number of rows affected
+    const eligibleRows = await q(
+      `SELECT id FROM shift_sessions WHERE id IN (${ids.map(() => '?').join(',')}) AND status = 'closed' AND reviewed_at IS NULL`,
+      ids
     );
+    const eligibleIds = eligibleRows.map(r => r.id);
 
-    res.json({ success: true, message: `Successfully reviewed ${ids.length} shifts.` });
+    if (eligibleIds.length > 0) {
+      await db.query(
+        `UPDATE shift_sessions 
+         SET reviewed_by = ?, 
+             reviewed_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+             updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+         WHERE id IN (${eligibleIds.map(() => '?').join(',')})`,
+        [req.user.id, ...eligibleIds]
+      );
+    }
+
+    const skipped = ids.length - eligibleIds.length;
+    res.json({
+      success: true,
+      message: eligibleIds.length > 0
+        ? `Successfully reviewed ${eligibleIds.length} shift(s).${skipped > 0 ? ` ${skipped} skipped (already reviewed or not closed).` : ''}`
+        : 'No eligible shifts to review. All selected shifts may already be reviewed or not yet closed.',
+      reviewed: eligibleIds.length,
+      skipped,
+    });
   } catch (err) {
     next(err);
   }
@@ -831,7 +1064,8 @@ exports.updateShiftByAdmin = async (req, res, next) => {
     if (status) { updates.push('status = ?'); args.push(status); }
     if (opened_at) { updates.push('opened_at = ?'); args.push(opened_at); }
     if (closed_at) { updates.push('closed_at = ?'); args.push(closed_at); }
-    if (handover_notes) { updates.push('handover_notes = ?'); args.push(handover_notes); }
+    // Use !== undefined so admins can explicitly clear handover_notes by passing ''
+    if (handover_notes !== undefined) { updates.push('handover_notes = ?'); args.push(handover_notes || null); }
     if (is_flagged !== undefined) { updates.push('is_flagged = ?'); args.push(is_flagged ? 1 : 0); }
 
     if (updates.length === 0) {
@@ -865,8 +1099,17 @@ exports.deleteShift = async (req, res, next) => {
   try {
     const { id } = req.params;
     
-    // First nullify references in related tables to avoid FK violations
-    const tables = ['shift_cashier_close', 'shift_helpdesk_close', 'shift_callcenter_close'];
+    // Delete all child records first to avoid FK violations.
+    // shift_equipment_logs and shift_cashier_open were previously missing — fixed.
+    const tables = [
+      'shift_equipment_logs',
+      'shift_cashier_open',
+      'shift_cashier_close',
+      'shift_helpdesk_close',
+      'shift_callcenter_close',
+      'shift_nurse_close',
+      'shift_viplounge_close',
+    ];
     for (const table of tables) {
       await db.query(`DELETE FROM ${table} WHERE shift_id = ?`, [id]);
     }

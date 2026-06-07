@@ -10,6 +10,15 @@ export default function ClinicalObservationList() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
+  const totalPages = Math.ceil(records.length / itemsPerPage);
+  const paginatedRecords = records.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const navigate = useNavigate();
 
@@ -122,7 +131,7 @@ export default function ClinicalObservationList() {
                 </td>
               </tr>
             ) : (
-              records.map((rec) => {
+              paginatedRecords.map((rec) => {
                 const initials = (rec.patient_name || '??').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
                 const dateStr = rec.updated_at
                   ? new Date(rec.updated_at).toLocaleDateString([], { dateStyle: 'medium' })
@@ -201,6 +210,36 @@ export default function ClinicalObservationList() {
             )}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-slate-50/50">
+            <p className="text-xs font-bold text-slate-500">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, records.length)} of {records.length} entries
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="font-bold text-xs"
+              >
+                Previous
+              </Button>
+              <span className="text-xs font-bold text-slate-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="font-bold text-xs"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -14,10 +14,14 @@ import {
   HelpCircle,
   PhoneCall,
   Wallet,
-  Play
+  Play,
+  Stethoscope,
+  Crown,
+  AlertTriangle,
+  StickyNote
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getMyActiveShift } from '../../api/shifts';
+import { getMyActiveShift, getLatestHandover, getMyHistory } from '../../api/shifts';
 import { Button, Card, Badge } from '../../components/ui/index.jsx';
 import toast from 'react-hot-toast';
 
@@ -55,7 +59,7 @@ const ROLE_DETAILS = {
   cashier: {
     title: 'Billing & Payments Agent',
     icon: <Wallet size={32} className="text-emerald-500" />,
-    mission: '💵 Process patient billing, digital payments (MoMo & Card), and reconcile digital balances.',
+    mission: 'Process patient billing, digital payments (MoMo & Card), and reconcile digital balances.',
     tips: [
       'Record all MoMo and card transactions instantly.',
       'No cash transactions allowed under system compliance rules.',
@@ -67,7 +71,7 @@ const ROLE_DETAILS = {
   customer_care: {
     title: 'Patient Relations & Support',
     icon: <PhoneCall size={32} className="text-blue-500" />,
-    mission: '🎧 Manage helpdesk triage, customer support queries, walk-ins, and incident reports.',
+    mission: 'Manage helpdesk triage, customer support queries, walk-ins, and incident reports.',
     tips: [
       'Document all patient queries and follow-up requirements accurately.',
       'Escalate complex complaints or clinical issues to supervisors.',
@@ -75,6 +79,28 @@ const ROLE_DETAILS = {
       'Help walk-in patients navigate clinic services efficiently.'
     ],
     themeColor: 'blue'
+  },
+  nurse: {
+    title: 'Registered Nurse',
+    icon: <Stethoscope size={32} className="text-emerald-500" />,
+    mission: 'Provide high-quality clinical care, execute observations, and deliver thorough handovers.',
+    tips: [
+      'Ensure all observations are updated in the records.',
+      'Log any clinical incidents immediately.',
+      'Double-check MAR administration before handover.'
+    ],
+    themeColor: 'emerald'
+  },
+  vip_lounge: {
+    title: 'VIP Lounge Host',
+    icon: <Crown size={32} className="text-amber-500" />,
+    mission: 'Provide executive lounge support, guest hospitality, and arrivals tracking.',
+    tips: [
+      'Keep the lounge environment pristine.',
+      'Log VIP patient check-ins immediately.',
+      'Ensure all lounge amenities are fully functional.'
+    ],
+    themeColor: 'amber'
   }
 };
 
@@ -90,16 +116,60 @@ export default function StaffShiftDashboard() {
   const navigate = useNavigate();
   const [activeShift, setActiveShift] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isWaveExpired, setIsWaveExpired] = useState(false);
+  const [nearingExpiration, setNearingExpiration] = useState(false);
+  const [latestHandovers, setLatestHandovers] = useState(null);
+  const [myHistory, setMyHistory] = useState([]);
 
   const greeting = getGreeting();
-  const roleCfg = ROLE_DETAILS[user?.role] || ROLE_DETAILS.customer_care;
+  const roleCfg = activeShift 
+    ? (ROLE_DETAILS[activeShift.shift_role] || ROLE_DETAILS.customer_care)
+    : (ROLE_DETAILS[user?.role] || ROLE_DETAILS.customer_care);
   const firstName = user?.fullName?.split(' ')[0] || 'Agent';
 
   useEffect(() => {
     async function init() {
       try {
         const res = await getMyActiveShift();
-        setActiveShift(res.data?.data || null);
+        const active = res.data?.data || null;
+        setActiveShift(active);
+
+        // Fetch latest handover notes
+        const rolesToFetch = [];
+        if (active) {
+          rolesToFetch.push(active.shift_role);
+        } else {
+          if (user?.role === 'cashier') {
+            rolesToFetch.push('cashier');
+          } else if (user?.role === 'customer_care') {
+            rolesToFetch.push('customer_care', 'helpdesk', 'call_center', 'vip_lounge');
+          }
+        }
+
+        const uniqueRoles = [...new Set(rolesToFetch)];
+        const handovers = {};
+        for (const role of uniqueRoles) {
+          try {
+            const handoverRes = await getLatestHandover(role);
+            if (handoverRes.data?.data) {
+              handovers[role] = handoverRes.data.data;
+            }
+          } catch (err) {
+            console.error(`Failed to fetch handover for role ${role}`, err);
+          }
+        }
+        setLatestHandovers(handovers);
+
+        // Fetch My History
+        try {
+          const histRes = await getMyHistory();
+          if (histRes.data?.data) {
+            setMyHistory(histRes.data.data);
+          }
+        } catch (err) {
+          console.error('Failed to fetch history', err);
+        }
+
       } catch (err) {
         console.error(err);
         toast.error('Failed to sync active shift status');
@@ -107,8 +177,42 @@ export default function StaffShiftDashboard() {
         setLoading(false);
       }
     }
-    init();
-  }, []);
+    if (user) {
+      init();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!activeShift) {
+      setIsWaveExpired(false);
+      setNearingExpiration(false);
+      return;
+    }
+
+    const checkExpiration = () => {
+      const waveConfig = getWaveConfig(activeShift);
+      if (!waveConfig) return;
+      const waveStartTime = getWaveStartTime(activeShift) || new Date(activeShift.opened_at);
+      const waveDurationMs = waveConfig.duration * 60 * 60 * 1000;
+      const waveEndTime = waveStartTime.getTime() + waveDurationMs;
+      
+      const now = Date.now();
+      if (now >= waveEndTime) {
+        setIsWaveExpired(true);
+        setNearingExpiration(false);
+      } else if (now >= waveEndTime - 30 * 60 * 1000) { // 30 minutes warning
+        setIsWaveExpired(false);
+        setNearingExpiration(true);
+      } else {
+        setIsWaveExpired(false);
+        setNearingExpiration(false);
+      }
+    };
+
+    checkExpiration();
+    const interval = setInterval(checkExpiration, 60_000);
+    return () => clearInterval(interval);
+  }, [activeShift]);
 
   if (loading) {
     return (
@@ -151,6 +255,59 @@ export default function StaffShiftDashboard() {
           </Button>
         )}
       </div>
+
+      {/* ── Shift Wave Expiration Warning ── */}
+      <AnimatePresence>
+        {(isWaveExpired || nearingExpiration) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, y: -10 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -10 }}
+            className={`rounded-3xl border-2 p-6 flex items-start gap-4 shadow-lg ${
+              isWaveExpired 
+                ? 'bg-rose-950 border-rose-800 text-white' 
+                : 'bg-amber-50 border-amber-300 text-slate-900'
+            }`}
+          >
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
+              isWaveExpired ? 'bg-rose-700 text-white' : 'bg-amber-100 text-amber-700'
+            }`}>
+              <AlertTriangle size={24} className={isWaveExpired ? 'animate-bounce' : 'animate-pulse'} />
+            </div>
+            <div className="flex-1">
+              {isWaveExpired ? (
+                <>
+                  <h4 className="font-black text-base uppercase tracking-widest text-rose-300 mb-1">⚠️ Shift Wave Finished</h4>
+                  <p className="text-sm font-semibold text-rose-100 leading-relaxed">
+                    Your scheduled <strong>{getWaveConfig(activeShift)?.schedule}</strong> wave has ended.
+                    Please finalize your operational checklists, balance sheets, and VIP logs, and enter the shift closure procedure now.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h4 className="font-black text-base uppercase tracking-widest text-amber-850 mb-1">⏱️ Shift Wave Ending Soon</h4>
+                  <p className="text-sm font-semibold text-slate-700 leading-relaxed">
+                    Your scheduled <strong>{getWaveConfig(activeShift)?.schedule}</strong> wave is nearing its preset end time.
+                    Please prepare to submit your operational reports and close the shift to avoid leaving the session running.
+                  </p>
+                </>
+              )}
+              <div className="mt-4 flex gap-3">
+                <Button 
+                  onClick={() => navigate(`/shifts/close/${activeShift.id}`)}
+                  className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
+                    isWaveExpired 
+                      ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-950/20' 
+                      : 'bg-amber-600 hover:bg-amber-700 text-white shadow-md'
+                  }`}
+                >
+                  Enter Close Procedure
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Welcome Header Card ── */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0f4c75] via-[#1b669d] to-[#124d77] p-8 md:p-10 text-white shadow-2xl shadow-[#1b669d]/15">
@@ -294,6 +451,72 @@ export default function StaffShiftDashboard() {
           </div>
         </Card>
       </div>
+
+      {/* ── Previous Handover Notes ── */}
+      {latestHandovers && Object.keys(latestHandovers).length > 0 && (
+        <Card className="p-8 space-y-6">
+          <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+            <StickyNote size={20} className="text-[#1b669d]" /> Previous Shift Handover Briefings
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {Object.entries(latestHandovers).map(([role, handover]) => (
+              <div key={role} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Badge variant="info" className="uppercase tracking-widest text-[9px] font-black">
+                    {role.replace(/_/g, ' ')}
+                  </Badge>
+                  <span className="text-[10px] text-slate-400 font-bold">
+                    Closed on {new Date(handover.closed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 font-black uppercase tracking-wider">
+                  Outgoing: {handover.user_name}
+                </p>
+                <div className="text-sm font-semibold text-slate-700 bg-white p-4 rounded-xl border border-slate-100 shadow-sm italic">
+                  "{handover.handover_notes}"
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ── My Past Sessions History ── */}
+      {myHistory && myHistory.length > 0 && (
+        <Card className="p-8 space-y-6">
+          <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+            <Clock size={20} className="text-[#1b669d]" /> My Past Sessions
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-100 pb-4">
+                  <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Role</th>
+                  <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Date</th>
+                  <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Wave Timing</th>
+                  <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myHistory.map((hist) => (
+                  <tr key={hist.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => navigate(`/shifts/${hist.id}`)}>
+                    <td className="py-4 text-sm font-bold text-slate-800 uppercase tracking-wider">{hist.shift_role?.replace(/_/g, ' ')}</td>
+                    <td className="py-4 text-sm text-slate-600 font-semibold">{new Date(hist.opened_at).toLocaleDateString([], { dateStyle: 'medium' })}</td>
+                    <td className="py-4 text-sm text-slate-600 font-semibold">{hist.wave} ({hist.start_hour})</td>
+                    <td className="py-4 text-sm text-right">
+                      {hist.is_flagged ? (
+                        <Badge variant="danger" className="text-[10px]">Flagged</Badge>
+                      ) : (
+                        <Badge variant="success" className="text-[10px]">Closed Clean</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

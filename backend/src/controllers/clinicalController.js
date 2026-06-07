@@ -1173,39 +1173,41 @@ const generateSku = async (name, batch_number, department_id, vendor_id = null, 
   const seqStr = String(seq).padStart(4, '0');
   return `lc-${itemInitials}-${batchStr}-${deptInitials}-${seqStr}`;
 };
-
-
 exports.createmasterInventory = async (req, res) => {
   try {
-    const { name, unit_of_measure, category, batch_number, expiry_date, purchase_time, department_id, quantity, price, vendor_id } = req.body;
-    let { sku } = req.body;
+    const items = Array.isArray(req.body) ? req.body : (req.body.items || [req.body]);
     
-    sku = await generateSku(name, batch_number, department_id, vendor_id || null);
-    
-    // Insert into master_inventory
-    const { rows: itemRows } = await db.query(
-      "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4) RETURNING id",
-      [name, sku, unit_of_measure, category]
-    );
-    const itemId = itemRows[0].id;
-    
-    // If batch info provided, insert into stock_batches
-    if (batch_number || price || quantity || expiry_date) {
-       const { rows: batchRows } = await db.query(
-         "INSERT INTO stock_batches (item_id, vendor_id, batch_number, expiry_date, purchase_price, quantity, created_at) VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_TIMESTAMP)) RETURNING id",
-         [itemId, vendor_id || null, batch_number || null, expiry_date || null, price || 0, quantity || 0, purchase_time || null]
-       );
-       const batchId = batchRows[0].id;
-       
-       if (department_id) {
-          await db.query(
-            "INSERT INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
-            [department_id, itemId, batchId, quantity || 0]
-          );
-       }
+    for (const item of items) {
+      const { name, unit_of_measure, category, batch_number, expiry_date, purchase_time, department_id, quantity, price, vendor_id } = item;
+      let { sku } = item;
+      
+      sku = await generateSku(name, batch_number, department_id, vendor_id || null);
+      
+      // Insert into master_inventory
+      const { rows: itemRows } = await db.query(
+        "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4) RETURNING id",
+        [name, sku, unit_of_measure, category]
+      );
+      const itemId = itemRows[0].id;
+      
+      // If batch info provided, insert into stock_batches
+      if (batch_number || price || quantity || expiry_date) {
+         const { rows: batchRows } = await db.query(
+           "INSERT INTO stock_batches (item_id, vendor_id, batch_number, expiry_date, purchase_price, quantity, created_at) VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_TIMESTAMP)) RETURNING id",
+           [itemId, vendor_id || null, batch_number || null, expiry_date || null, price || 0, quantity || 0, purchase_time || null]
+         );
+         const batchId = batchRows[0].id;
+         
+         if (department_id) {
+            await db.query(
+              "INSERT INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
+              [department_id, itemId, batchId, quantity || 0]
+            );
+         }
+      }
     }
     
-    res.json({ success: true, message: 'Item added successfully' });
+    res.json({ success: true, message: 'Items added successfully' });
   } catch (error) {
     console.error('Error in createmasterInventory:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -1745,6 +1747,411 @@ exports.syncCentralStockToNursing = async (req, res) => {
     res.json({ success: true, message: `Successfully synchronized ${deptStocks.length} stock items with Central Store Hub!`, updatedCount: deptStocks.length });
   } catch (error) {
     console.error('Error in syncCentralStockToNursing:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Supplier Portal Controllers (Multi-Session) ─────────────────────────────
+
+/** Public: returns true if ANY session is currently active */
+exports.getSupplierPortalPublicStatus = async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      "SELECT id FROM supplier_portal_sessions WHERE is_active = 1 LIMIT 1"
+    );
+    res.json({ success: true, active: rows.length > 0 });
+  } catch (error) {
+    console.error('Error in getSupplierPortalPublicStatus:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+/** Open a new portal session for a vendor (or close one by sessionId) */
+exports.toggleSupplierPortal = async (req, res) => {
+  try {
+    const { active, vendorId, requestedItems, sessionId } = req.body;
+
+    if (active) {
+      // ── Open a new session ──────────────────────────────────────────────────
+      if (!vendorId || !requestedItems || !Array.isArray(requestedItems) || requestedItems.length === 0) {
+        return res.status(400).json({ success: false, message: 'Vendor selection and requested items are required to open the portal.' });
+      }
+
+      // Fetch vendor name
+      const { rows: vendRows } = await db.query("SELECT name FROM vendors WHERE id = $1", [vendorId]);
+      if (!vendRows[0]) {
+        return res.status(404).json({ success: false, message: 'Vendor not found.' });
+      }
+      const vendorName = vendRows[0].name;
+
+      // Generate unique 12-char alphanumeric token (retry on collision)
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let token = '';
+      let attempts = 0;
+      while (attempts < 10) {
+        token = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        const { rows: existing } = await db.query(
+          "SELECT id FROM supplier_portal_sessions WHERE token = $1", [token]
+        );
+        if (existing.length === 0) break;
+        attempts++;
+      }
+
+      const { rows: newRows } = await db.query(
+        `INSERT INTO supplier_portal_sessions (vendor_id, vendor_name, token, items, is_active)
+         VALUES ($1, $2, $3, $4, 1) RETURNING id, created_at`,
+        [vendorId, vendorName, token, JSON.stringify(requestedItems)]
+      );
+
+      return res.json({
+        success: true,
+        message: `Supplier portal opened for ${vendorName}.`,
+        session: {
+          id: newRows[0].id,
+          vendorId,
+          vendorName,
+          token,
+          requestedItems,
+          createdAt: newRows[0].created_at,
+          isActive: true
+        }
+      });
+
+    } else {
+      // ── Close a specific session by ID ──────────────────────────────────────
+      if (!sessionId) {
+        return res.status(400).json({ success: false, message: 'sessionId is required to close a portal.' });
+      }
+      await db.query(
+        "UPDATE supplier_portal_sessions SET is_active = 0 WHERE id = $1",
+        [sessionId]
+      );
+      return res.json({ success: true, message: 'Supplier portal session closed.', sessionId });
+    }
+  } catch (error) {
+    console.error('Error in toggleSupplierPortal:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+/** Authenticated: return all currently active sessions */
+exports.getSupplierPortalSettings = async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      "SELECT id, vendor_id, vendor_name, token, items, created_at FROM supplier_portal_sessions WHERE is_active = 1 ORDER BY created_at DESC"
+    );
+
+    const sessions = rows.map(r => ({
+      id: r.id,
+      vendorId: r.vendor_id,
+      vendorName: r.vendor_name,
+      token: r.token,
+      requestedItems: (() => { try { return JSON.parse(r.items || '[]'); } catch { return []; } })(),
+      createdAt: r.created_at,
+      isActive: true
+    }));
+
+    res.json({ success: true, sessions });
+  } catch (error) {
+    console.error('Error in getSupplierPortalSettings:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+/** Public: verify a supplier token against active sessions */
+exports.verifySupplierToken = async (req, res) => {
+  try {
+    let { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Token is required.' });
+    }
+    token = token.trim().toUpperCase();
+    if (token.length !== 12) {
+      return res.status(400).json({ success: false, message: 'Invalid token format. Must be 12 characters.' });
+    }
+
+    const { rows } = await db.query(
+      "SELECT id, vendor_name, items FROM supplier_portal_sessions WHERE UPPER(token) = $1 AND is_active = 1 LIMIT 1",
+      [token]
+    );
+
+    if (!rows[0]) {
+      return res.status(401).json({ success: false, message: 'Authentication failed. Invalid or expired portal token.' });
+    }
+
+    const session = rows[0];
+    const requestedItems = (() => { try { return JSON.parse(session.items || '[]'); } catch { return []; } })();
+
+    res.json({ success: true, sessionId: session.id, vendorName: session.vendor_name, requestedItems });
+  } catch (error) {
+    console.error('Error in verifySupplierToken:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+/** Public: supplier uploads their Excel; closes their specific session on success */
+exports.supplierPortalUpload = async (req, res) => {
+  try {
+    let { token, fileData } = req.body;
+    if (!token || !fileData) {
+      return res.status(400).json({ success: false, message: 'Token and file data are required.' });
+    }
+    token = token.trim().toUpperCase();
+
+    // Validate token against active sessions
+    const { rows: sessionRows } = await db.query(
+      "SELECT id, vendor_name FROM supplier_portal_sessions WHERE UPPER(token) = $1 AND is_active = 1 LIMIT 1",
+      [token]
+    );
+    if (!sessionRows[0]) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired portal token.' });
+    }
+    const sessionId = sessionRows[0].id;
+    const supplierName = sessionRows[0].vendor_name;
+
+    // Parse base64 file data using xlsx
+    const XLSX = require('xlsx');
+    const buffer = Buffer.from(fileData, 'base64');
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+    if (jsonData.length === 0) {
+      return res.status(400).json({ success: false, message: 'The uploaded Excel sheet contains no data.' });
+    }
+
+    const items = [];
+    for (const row of jsonData) {
+      const productName = row['Product Name'] || row['product_name'] || row['Product'] || row['Name'];
+      const sku = row['SKU'] || row['sku'];
+      const category = row['Category'] || row['category'];
+      const unitOfMeasure = row['Unit of Measure'] || row['unit_of_measure'] || row['UOM'] || row['uom'];
+      const batchNumber = row['Batch Number'] || row['batch_number'] || row['Batch'] || row['batch'];
+      const expiryDate = row['Expiry Date'] || row['expiry_date'] || row['Expiry'] || row['expiry'];
+      const purchasePrice = parseFloat(row['Purchase Price'] || row['purchase_price'] || row['Price'] || row['price'] || 0);
+      const quantity = parseInt(row['Quantity'] || row['quantity'] || row['Qty'] || row['qty'] || 0, 10);
+
+      if (!productName || !category || !unitOfMeasure || !batchNumber || !expiryDate || isNaN(purchasePrice) || isNaN(quantity)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid Excel structure. Please ensure Product Name, Category, Unit of Measure, Batch Number, Expiry Date, Purchase Price, and Quantity are present and filled in all rows.'
+        });
+      }
+
+      items.push({
+        name: productName.toString().trim(),
+        sku: sku ? sku.toString().trim() : null,
+        category: category.toString().trim(),
+        unit_of_measure: unitOfMeasure.toString().trim(),
+        batch_number: batchNumber.toString().trim(),
+        expiry_date: expiryDate.toString().trim(),
+        purchase_price: purchasePrice,
+        quantity: quantity,
+        vendor_name: supplierName
+      });
+    }
+
+    // Save submission
+    const { rows: subRows } = await db.query(
+      "INSERT INTO supplier_submissions (supplier_name, status) VALUES ($1, 'pending') RETURNING id",
+      [supplierName]
+    );
+    const submissionId = subRows[0].id;
+
+    for (const item of items) {
+      await db.query(`
+        INSERT INTO supplier_submission_items
+        (submission_id, name, sku, category, unit_of_measure, batch_number, expiry_date, purchase_price, quantity, vendor_name)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `, [
+        submissionId, item.name, item.sku, item.category, item.unit_of_measure,
+        item.batch_number, item.expiry_date, item.purchase_price, item.quantity, item.vendor_name
+      ]);
+    }
+
+    // Close only this session (other vendor sessions remain open)
+    await db.query("UPDATE supplier_portal_sessions SET is_active = 0 WHERE id = $1", [sessionId]);
+
+    // Notify Stock Managers & Admins
+    const Notification = require('../models/notification');
+    const { rows: managers } = await db.query(`
+      SELECT u.id FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE r.name IN ('stock-manager', 'stock_manager', 'admin')
+    `);
+    for (const mgr of managers) {
+      try {
+        await Notification.create({
+          userId: mgr.id,
+          title: 'New Supplier Stock Submission',
+          message: `${supplierName} has uploaded a new stock delivery of ${items.length} items.`,
+          type: 'info',
+          link: '/?tab=supplier-portal'
+        });
+      } catch (err) {
+        console.error(`Error notifying manager ${mgr.id}:`, err);
+      }
+    }
+
+    res.json({ success: true, message: 'Stock list submitted successfully. The stock manager will review and accept it.' });
+  } catch (error) {
+    console.error('Error in supplierPortalUpload:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+
+exports.getSupplierSubmissions = async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT ss.*, COUNT(ssi.id) as total_items, COALESCE(SUM(ssi.quantity), 0) as total_quantity
+      FROM supplier_submissions ss
+      LEFT JOIN supplier_submission_items ssi ON ss.id = ssi.submission_id
+      GROUP BY ss.id
+      ORDER BY ss.uploaded_at DESC
+    `);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getSupplierSubmissions:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.getSupplierSubmissionItems = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(
+      "SELECT * FROM supplier_submission_items WHERE submission_id = $1",
+      [id]
+    );
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getSupplierSubmissionItems:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.receiveSupplierStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get submission metadata
+    const { rows: subRows } = await db.query(
+      "SELECT * FROM supplier_submissions WHERE id = $1 AND status = 'pending'",
+      [id]
+    );
+    if (subRows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Submission not found or already processed.' });
+    }
+    const submission = subRows[0];
+
+    // Get all items in submission
+    const { rows: items } = await db.query(
+      "SELECT * FROM supplier_submission_items WHERE submission_id = $1",
+      [id]
+    );
+
+    // Resolve Central Store department ID
+    const { rows: deptRows } = await db.query(
+      "SELECT id FROM departments WHERE name LIKE '%Central%' OR name LIKE '%Store%' LIMIT 1"
+    );
+    const centralDeptId = deptRows[0]?.id || 1; // Fallback to 1
+
+    for (const item of items) {
+      // 1. Resolve or Create Vendor
+      let vendorId = null;
+      if (item.vendor_name) {
+        const { rows: vendRows } = await db.query(
+          "SELECT id FROM vendors WHERE LOWER(name) = LOWER($1) LIMIT 1",
+          [item.vendor_name]
+        );
+        if (vendRows.length > 0) {
+          vendorId = vendRows[0].id;
+        } else {
+          const { rows: newVendRows } = await db.query(
+            "INSERT INTO vendors (name, is_active) VALUES ($1, 1) RETURNING id",
+            [item.vendor_name]
+          );
+          vendorId = newVendRows[0].id;
+        }
+      }
+
+      // 2. Resolve Master Inventory Item
+      let itemId = null;
+      const { rows: itemMatch } = await db.query(
+        "SELECT id FROM master_inventory WHERE LOWER(name) = LOWER($1) LIMIT 1",
+        [item.name]
+      );
+
+      if (itemMatch.length > 0) {
+        itemId = itemMatch[0].id;
+      } else {
+        // Insert new item in master inventory
+        // Generate SKU
+        const sku = item.sku || await generateSku(item.name, item.batch_number, centralDeptId, vendorId);
+        const { rows: newItemRows } = await db.query(
+          "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4) RETURNING id",
+          [item.name, sku, item.unit_of_measure || 'Unit', item.category || 'medical_supplies']
+        );
+        itemId = newItemRows[0].id;
+      }
+
+      // 3. Resolve Stock Batch (matching batch_number, expiry_date, purchase_price)
+      const { rows: batchMatch } = await db.query(`
+        SELECT id, quantity FROM stock_batches 
+        WHERE item_id = $1 
+          AND batch_number = $2 
+          AND expiry_date = $3 
+          AND ABS(purchase_price - $4) < 0.001
+        LIMIT 1
+      `, [itemId, item.batch_number, item.expiry_date, item.purchase_price]);
+
+      let batchId = null;
+      if (batchMatch.length > 0) {
+        batchId = batchMatch[0].id;
+        // Add to existing batch quantity
+        await db.query(
+          "UPDATE stock_batches SET quantity = quantity + $1 WHERE id = $2",
+          [item.quantity, batchId]
+        );
+      } else {
+        // Create new batch
+        const { rows: newBatchRows } = await db.query(`
+          INSERT INTO stock_batches (item_id, vendor_id, batch_number, expiry_date, purchase_price, quantity)
+          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+        `, [itemId, vendorId, item.batch_number, item.expiry_date, item.purchase_price, item.quantity]);
+        batchId = newBatchRows[0].id;
+      }
+
+      // 4. Update or Insert Department Stock for Central Store
+      const { rows: deptStockMatch } = await db.query(`
+        SELECT id, quantity FROM department_stock 
+        WHERE department_id = $1 AND item_id = $2 AND batch_id = $3
+      `, [centralDeptId, itemId, batchId]);
+
+      if (deptStockMatch.length > 0) {
+        await db.query(
+          "UPDATE department_stock SET quantity = quantity + $1 WHERE id = $2",
+          [item.quantity, deptStockMatch[0].id]
+        );
+      } else {
+        await db.query(`
+          INSERT INTO department_stock (department_id, item_id, batch_id, quantity)
+          VALUES ($1, $2, $3, $4)
+        `, [centralDeptId, itemId, batchId, item.quantity]);
+      }
+    }
+
+    // Update submission status to received
+    await db.query(
+      "UPDATE supplier_submissions SET status = 'received' WHERE id = $1",
+      [id]
+    );
+
+    res.json({ success: true, message: 'Stock received and inventory successfully updated.' });
+  } catch (error) {
+    console.error('Error in receiveSupplierStock:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

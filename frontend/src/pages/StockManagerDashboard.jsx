@@ -5,9 +5,9 @@ import {
   TrendingUp, Activity, CheckCircle, Clock, Search, 
   ArrowRightLeft, FileWarning, Calendar, Loader2, Plus,
   Eye, RefreshCw, BarChart2, ListFilter, Check, X, ClipboardList,
-  AlertCircle, Filter, ArrowUpRight, FileText, Sparkles, Building
+  AlertCircle, Filter, ArrowUpRight, FileText, Sparkles, Building, Key
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import { getIncidents, createIncident } from '../api/incidents';
@@ -16,6 +16,7 @@ import { toast } from 'react-hot-toast';
 export default function StockManagerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Tab State: 'overview' | 'requisitions' | 'stock' | 'incidents'
   const [activeTab, setActiveTab] = useState('overview');
@@ -27,6 +28,20 @@ export default function StockManagerDashboard() {
   const [requisitions, setRequisitions] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [incidents, setIncidents] = useState([]);
+
+  // Supplier Portal states — multi-session
+  const [portalSessions, setPortalSessions] = useState([]);   // array of active session objects
+  const [submissions, setSubmissions] = useState([]);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [submissionItems, setSubmissionItems] = useState([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [loadingSubItems, setLoadingSubItems] = useState(false);
+  const [processingReceive, setProcessingReceive] = useState(false);
+  // Setup form state (for opening a new session)
+  const [setupVendorId, setSetupVendorId] = useState('');
+  const [setupRequestedItems, setSetupRequestedItems] = useState([]);
+  const [tempItemName, setTempItemName] = useState('');
+  const [tempItemQty, setTempItemQty] = useState('');
 
   // Requisitions Drawer / Details Modal State
   const [selectedRequisition, setSelectedRequisition] = useState(null);
@@ -133,6 +148,23 @@ export default function StockManagerDashboard() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab && ['overview', 'requisitions', 'stock', 'incidents', 'supplier-portal'].includes(tab)) {
+      setActiveTab(tab);
+    } else if (!tab) {
+      setActiveTab('overview');
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (activeTab === 'supplier-portal') {
+      fetchSupplierPortalSettings();
+      fetchSubmissions();
+    }
+  }, [activeTab]);
+
   // Fetch requisition items when one is selected
   useEffect(() => {
     if (!selectedRequisition) {
@@ -208,6 +240,140 @@ export default function StockManagerDashboard() {
       toast.error('Error submitting report.');
     } finally {
       setSubmittingIncident(false);
+    }
+  };
+
+  const fetchSupplierPortalSettings = async () => {
+    try {
+      const res = await api.get('/clinical/inventory/supplier-portal/settings');
+      if (res.data.success) {
+        setPortalSessions(res.data.sessions || []);
+      }
+    } catch (err) {
+      console.error('Error fetching portal settings:', err);
+    }
+  };
+
+  const fetchSubmissions = async () => {
+    setLoadingSubmissions(true);
+    try {
+      const res = await api.get('/clinical/inventory/supplier-portal/submissions');
+      if (res.data.success) {
+        setSubmissions(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching submissions:', err);
+      toast.error('Failed to load supplier submissions.');
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  };
+
+  const handleOpenPortal = async (e) => {
+    e.preventDefault();
+    if (!setupVendorId) {
+      toast.error('Please select a vendor.');
+      return;
+    }
+    if (setupRequestedItems.length === 0) {
+      toast.error('Please add at least one requested item.');
+      return;
+    }
+
+    try {
+      const res = await api.post('/clinical/inventory/supplier-portal/toggle', {
+        active: true,
+        vendorId: setupVendorId,
+        requestedItems: setupRequestedItems
+      });
+      if (res.data.success) {
+        setPortalSessions(prev => [res.data.session, ...prev]);
+        setSetupVendorId('');
+        setSetupRequestedItems([]);
+        toast.success(`Portal opened for ${res.data.session.vendorName}!`);
+      }
+    } catch (err) {
+      console.error('Error opening supplier portal:', err);
+      toast.error(err.response?.data?.message || 'Failed to open supplier portal.');
+    }
+  };
+
+  const handleCloseSession = async (sessionId, vendorName) => {
+    try {
+      const res = await api.post('/clinical/inventory/supplier-portal/toggle', { active: false, sessionId });
+      if (res.data.success) {
+        setPortalSessions(prev => prev.filter(s => s.id !== sessionId));
+        toast.success(`Portal for ${vendorName} closed and token revoked.`);
+      }
+    } catch (err) {
+      console.error('Error closing supplier portal session:', err);
+      toast.error('Failed to close portal session.');
+    }
+  };
+
+  const handleAddRequestedItem = () => {
+    if (!tempItemName.trim()) {
+      toast.error('Item name is required.');
+      return;
+    }
+    const qty = parseInt(tempItemQty, 10);
+    if (isNaN(qty) || qty <= 0) {
+      toast.error('Quantity must be greater than 0.');
+      return;
+    }
+
+    // Try to find details in stockInHand
+    const existing = stockInHand.find(i => i.name.toLowerCase() === tempItemName.toLowerCase());
+    const newItem = {
+      name: tempItemName.trim(),
+      sku: existing?.sku || '',
+      category: existing?.category || 'medications',
+      unit_of_measure: existing?.unit_of_measure || 'Box',
+      quantity: qty
+    };
+
+    setSetupRequestedItems([...setupRequestedItems, newItem]);
+    setTempItemName('');
+    setTempItemQty('');
+  };
+
+  const handleRemoveRequestedItem = (index) => {
+    const updated = [...setupRequestedItems];
+    updated.splice(index, 1);
+    setSetupRequestedItems(updated);
+  };
+
+  const handleSelectSubmission = async (sub) => {
+    setSelectedSubmission(sub);
+    setLoadingSubItems(true);
+    try {
+      const res = await api.get(`/clinical/inventory/supplier-portal/submissions/${sub.id}/items`);
+      if (res.data.success) {
+        setSubmissionItems(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching submission items:', err);
+      toast.error('Failed to load submission items.');
+    } finally {
+      setLoadingSubItems(false);
+    }
+  };
+
+  const handleReceiveStock = async (subId) => {
+    setProcessingReceive(true);
+    try {
+      const res = await api.post(`/clinical/inventory/supplier-portal/submissions/${subId}/receive`);
+      if (res.data.success) {
+        toast.success(res.data.message || 'Stock successfully merged into inventory!');
+        setSelectedSubmission(null);
+        await fetchSubmissions();
+        await loadData(true);
+      }
+    } catch (err) {
+      console.error('Error receiving stock:', err);
+      toast.error(err.response?.data?.message || 'Failed to process stock intake.');
+    } finally {
+      setProcessingReceive(false);
     }
   };
 
@@ -504,7 +670,8 @@ export default function StockManagerDashboard() {
             { id: 'overview', label: 'Overview', icon: <BarChart2 size={16} /> },
             { id: 'requisitions', label: `Requisitions (${metrics.pendingRequisitions.length})`, icon: <ArrowRightLeft size={16} /> },
             { id: 'stock', label: 'Stock Lookup', icon: <Database size={16} /> },
-            { id: 'incidents', label: `Incidents (${metrics.incidentCount})`, icon: <FileWarning size={16} /> }
+            { id: 'incidents', label: `Incidents (${metrics.incidentCount})`, icon: <FileWarning size={16} /> },
+            { id: 'supplier-portal', label: 'Supplier Portal', icon: <Building size={16} /> }
           ].map(tab => (
             <button
               key={tab.id}
@@ -1340,6 +1507,257 @@ export default function StockManagerDashboard() {
                 </div>
               )}
 
+              {/* Tab 5: SUPPLIER PORTAL */}
+              {activeTab === 'supplier-portal' && (
+                <div className="space-y-6">
+
+                  {/* ── Active Sessions Grid ─────────────────────────────── */}
+                  {portalSessions.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-black">{portalSessions.length}</span>
+                          Active Supplier Sessions
+                        </h3>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-widest">
+                          {portalSessions.length} Portal{portalSessions.length > 1 ? 's' : ''} Open
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {portalSessions.map(session => (
+                          <div key={session.id} className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-xs flex flex-col gap-4 hover:border-emerald-200 transition-all">
+                            {/* Header */}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                                  <Building size={16} className="text-emerald-600" />
+                                </div>
+                                <div>
+                                  <p className="font-black text-slate-800 text-sm leading-tight">{session.vendorName}</p>
+                                  <p className="text-[10px] text-slate-400 font-mono">Session #{session.id}</p>
+                                </div>
+                              </div>
+                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">Active</span>
+                            </div>
+
+                            {/* Token */}
+                            <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 flex items-center gap-2">
+                              <code className="text-xs font-black text-indigo-700 tracking-widest font-mono flex-1 select-all">{session.token}</code>
+                              <button
+                                onClick={() => { navigator.clipboard.writeText(session.token); toast.success('Token copied!'); }}
+                                className="text-slate-400 hover:text-slate-700 text-[10px] font-bold px-2 py-1 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer transition-all flex-shrink-0"
+                              >Copy</button>
+                            </div>
+
+                            {/* Requested items */}
+                            {session.requestedItems.length > 0 && (
+                              <div className="space-y-1">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Requested Items</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {session.requestedItems.map((item, idx) => (
+                                    <span key={idx} className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
+                                      {item.name} <span className="text-indigo-600 font-black">×{item.quantity}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Close button */}
+                            <button
+                              onClick={() => handleCloseSession(session.id, session.vendorName)}
+                              className="w-full py-2 bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-500 rounded-xl font-bold text-xs cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                            >
+                              <X size={13} /> Close & Revoke Token
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Open New Session Form ────────────────────────────── */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
+                    <div className="space-y-1 border-b border-slate-100 pb-3">
+                      <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                        <Building className="text-indigo-600" size={20} />
+                        {portalSessions.length === 0 ? 'Setup & Open Supplier Portal' : 'Open Portal for Another Supplier'}
+                      </h3>
+                      <p className="text-slate-500 text-xs">
+                        Choose a vendor and specify products to generate a customized Excel template and access token.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleOpenPortal} className="space-y-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500">Select Target Vendor</label>
+                        <select
+                          value={setupVendorId}
+                          onChange={(e) => setSetupVendorId(e.target.value)}
+                          className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-800 outline-none focus:border-indigo-300 focus:bg-white transition-all cursor-pointer"
+                          required
+                        >
+                          <option value="">-- Choose Vendor --</option>
+                          {vendors.map(v => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                        <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Add Products to Requisition List</h4>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-none">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] font-bold text-slate-400">Product Name</label>
+                            <input
+                              type="text"
+                              placeholder="Select or type product name..."
+                              list="stock-items-datalist"
+                              value={tempItemName}
+                              onChange={(e) => setTempItemName(e.target.value)}
+                              className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-800 outline-none focus:border-indigo-300 transition-all animate-none"
+                            />
+                            <datalist id="stock-items-datalist">
+                              {stockInHand.map((item, idx) => (
+                                <option key={idx} value={item.name} />
+                              ))}
+                            </datalist>
+                          </div>
+
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] font-bold text-slate-400">Quantity Required</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                placeholder="e.g. 100"
+                                value={tempItemQty}
+                                onChange={(e) => setTempItemQty(e.target.value)}
+                                className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-800 outline-none focus:border-indigo-300 transition-all flex-1 animate-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleAddRequestedItem}
+                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-all"
+                              >
+                                Add Item
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {setupRequestedItems.length > 0 && (
+                          <div className="mt-3 border border-slate-150 rounded-xl overflow-hidden bg-white">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-150">
+                                  <th className="p-2.5">Product Name</th>
+                                  <th className="p-2.5">UOM</th>
+                                  <th className="p-2.5">Qty</th>
+                                  <th className="p-2.5 text-right">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {setupRequestedItems.map((item, idx) => (
+                                  <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/20 text-slate-700 transition-all">
+                                    <td className="p-2.5 font-semibold">{item.name}</td>
+                                    <td className="p-2.5 text-slate-500">{item.unit_of_measure}</td>
+                                    <td className="p-2.5 font-bold text-indigo-600">{item.quantity}</td>
+                                    <td className="p-2.5 text-right">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveRequestedItem(idx)}
+                                        className="text-rose-500 hover:text-rose-700 font-bold mr-2"
+                                      >
+                                        Remove
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2"
+                      >
+                        <Key size={14} /> Open Portal & Generate Authentication Token
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* ── Incoming Stock Lists ─────────────────────────────── */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
+                    <h4 className="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
+                      <ClipboardList size={18} className="text-slate-500" />
+                      Incoming Stock Lists
+                    </h4>
+
+                    {loadingSubmissions ? (
+                      <div className="flex justify-center py-12">
+                        <Loader2 className="animate-spin text-indigo-600" size={32} />
+                      </div>
+                    ) : submissions.length === 0 ? (
+                      <div className="text-center py-16 border-2 border-dashed border-slate-100 rounded-2xl">
+                        <FileText size={48} className="mx-auto text-slate-300 mb-3" />
+                        <p className="text-slate-500 text-sm font-semibold">No stock submissions received yet.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-150">
+                              <th className="p-4">Submission ID</th>
+                              <th className="p-4">Supplier Name</th>
+                              <th className="p-4">Uploaded At</th>
+                              <th className="p-4">Total Items</th>
+                              <th className="p-4">Total Qty</th>
+                              <th className="p-4">Status</th>
+                              <th className="p-4 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {submissions.map((sub) => (
+                              <tr key={sub.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-all">
+                                <td className="p-4 font-bold text-slate-800">#SUB-{sub.id}</td>
+                                <td className="p-4 font-semibold text-slate-700">{sub.supplier_name}</td>
+                                <td className="p-4 text-slate-500">
+                                  {new Date(sub.uploaded_at).toLocaleString()}
+                                </td>
+                                <td className="p-4 font-bold text-slate-600">{sub.total_items}</td>
+                                <td className="p-4 font-bold text-indigo-600">{sub.total_quantity}</td>
+                                <td className="p-4">
+                                  <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
+                                    sub.status === 'received'
+                                      ? 'bg-emerald-50 text-emerald-600'
+                                      : 'bg-amber-50 text-amber-600'
+                                  }`}>
+                                    {sub.status}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-right">
+                                  <button
+                                    onClick={() => handleSelectSubmission(sub)}
+                                    className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer transition-all inline-flex items-center gap-1.5"
+                                  >
+                                    <Eye size={14} /> Review Stock
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+
             </motion.div>
           </AnimatePresence>
         )}
@@ -1677,6 +2095,151 @@ export default function StockManagerDashboard() {
                     </>
                   )}
                 </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Drawer Overlay for Supplier Submissions */}
+      <AnimatePresence>
+        {selectedSubmission && (
+          <>
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.3 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedSubmission(null)}
+              className="fixed inset-0 bg-slate-900 z-40"
+            />
+            {/* Drawer */}
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="fixed right-0 top-0 bottom-0 w-full max-w-xl bg-white border-l border-slate-200 z-50 p-6 shadow-2xl flex flex-col text-slate-800"
+            >
+              <div className="flex justify-between items-center border-b border-slate-200 pb-4 mb-6">
+                <div>
+                  <span className="text-[10px] font-mono font-bold text-slate-400">SUPPLIER INTAKE LEDGER</span>
+                  <h3 className="text-lg font-black text-slate-900 mt-1">Submission #{selectedSubmission.id}</h3>
+                </div>
+                <button 
+                  onClick={() => setSelectedSubmission(null)}
+                  className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Info Details Grid */}
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 border border-slate-150 p-4 rounded-2xl mb-6 text-xs">
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase font-black">Company Name</p>
+                  <p className="font-bold text-slate-700 mt-0.5">{selectedSubmission.supplier_name}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase font-black">Submission Date</p>
+                  <p className="font-bold text-slate-700 mt-0.5">{new Date(selectedSubmission.uploaded_at).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase font-black">Submission Status</p>
+                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-block mt-0.5 ${
+                    selectedSubmission.status === 'received' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                    'bg-amber-50 text-amber-600 border border-amber-100'
+                  }`}>{selectedSubmission.status}</span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase font-black">Total Quantity</p>
+                  <p className="font-bold text-slate-700 mt-0.5">{selectedSubmission.total_quantity} units</p>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <h4 className="font-bold text-xs text-slate-400 uppercase tracking-widest mb-3">Incoming Products</h4>
+                
+                {loadingSubItems ? (
+                  <div className="flex-1 flex flex-col items-center justify-center gap-2">
+                    <Loader2 size={24} className="animate-spin text-indigo-650" />
+                    <p className="text-slate-500 text-xs font-semibold">Loading items...</p>
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+                    {submissionItems.map((item) => (
+                      <div 
+                        key={item.id}
+                        className="bg-white border border-slate-200 p-3.5 rounded-2xl flex flex-col gap-2 hover:border-slate-350 transition-all shadow-xs"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h5 className="font-bold text-slate-800 text-sm">{item.name}</h5>
+                            <div className="flex gap-2 items-center mt-1 flex-wrap">
+                              <span className="bg-slate-100 text-slate-500 font-mono text-[9px] px-1.5 py-0.5 rounded-md">
+                                SKU: {item.sku || 'Auto'}
+                              </span>
+                              <span className="bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.5 rounded-md">
+                                {item.category}
+                              </span>
+                              <span className="bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.5 rounded-md">
+                                {item.unit_of_measure}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs font-bold text-indigo-650 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                              Qty: {item.quantity}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 border-t border-slate-100 pt-2 text-[10px] text-slate-500">
+                          <div>
+                            <span className="block text-slate-400 font-bold uppercase tracking-wider text-[8px]">Batch No</span>
+                            <span className="font-semibold text-slate-700">{item.batch_number}</span>
+                          </div>
+                          <div>
+                            <span className="block text-slate-400 font-bold uppercase tracking-wider text-[8px]">Expiry Date</span>
+                            <span className="font-semibold text-slate-700">{item.expiry_date}</span>
+                          </div>
+                          <div>
+                            <span className="block text-slate-400 font-bold uppercase tracking-wider text-[8px]">Purchase Price</span>
+                            <span className="font-semibold text-slate-700">{item.purchase_price.toLocaleString()} RWF</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="border-t border-slate-200 pt-4 mt-4 flex gap-3">
+                <button
+                  onClick={() => setSelectedSubmission(null)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors"
+                >
+                  Close
+                </button>
+                {selectedSubmission.status === 'pending' && (
+                  <button
+                    onClick={() => handleReceiveStock(selectedSubmission.id)}
+                    disabled={processingReceive || loadingSubItems}
+                    className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl cursor-pointer shadow-sm transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    {processingReceive ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" /> Merging...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={16} /> Receive Stock
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </motion.div>
           </>

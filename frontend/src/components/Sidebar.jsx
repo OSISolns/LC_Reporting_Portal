@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -17,14 +17,15 @@ const Sidebar = ({ onClose }) => {
     { name: 'Dashboard',        icon: <LayoutDashboard size={20} />, path: '/',            requiredPerm: null },
     { name: 'Cancellations',    icon: <FileText size={20} />,        path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer'] },
     { name: 'Refunds',          icon: <ReceiptText size={20} />,     path: '/refunds',      requiredPerm: { mod: 'refunds', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer'] },
-    { name: 'Incident Reports', icon: <AlertTriangle size={20} />,   path: '/incidents',    requiredPerm: { mod: 'incident_reports', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer', 'chef-nurse', 'pa', 'stock-manager'] },
-    { name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'reviewer'] },
+    { name: 'Incident Reports', icon: <AlertTriangle size={20} />,   path: '/incidents',    requiredPerm: { mod: 'incident_reports', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo'] },
+    { name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo'] },
     { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer'] },
     { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer', 'chef-nurse'] },
     { name: ['doctor', 'consultant'].includes(user?.role) ? 'Doctor Hub' : 'Nursing Hub', icon: <Stethoscope size={20} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse'] },
     { name: 'Daily Stock Checkup', icon: <Database size={20} />, path: '/nursing-hub/inventory', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant'] },
-    { name: 'Central Store Hub', icon: <Database size={20} />, path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo', 'chef-nurse', 'stock-manager'] },
+    { name: 'Central Store Hub', icon: <Database size={20} />, path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'chef-nurse', 'stock-manager'] },
     { name: 'master', icon: <Database size={20} />, path: '/master', requiredPerm: null, allowedRoles: ['admin', 'stock-manager'] },
+    { name: 'Supplier Portal', icon: <Building size={20} />, path: '/?tab=supplier-portal', requiredPerm: null, allowedRoles: ['admin', 'stock-manager'] },
     { name: 'E-Prescriptions', icon: <FileText size={20} />, path: '/e-prescriptions', requiredPerm: null, allowedRoles: ['doctor', 'consultant'] },
     { name: 'Daily Report', icon: <Activity size={20} />, path: '/nursing-hub/daily-report', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse'] },
     { name: 'Daily Reports Board', icon: <FileText size={20} />, path: '/daily-reports-board', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer', 'chef-nurse', 'nurse', 'pa'] },
@@ -35,7 +36,7 @@ const Sidebar = ({ onClose }) => {
     { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin'] },
     // Shift Module
     { name: 'Shift Management', icon: <Clock size={20} />,           path: '/shifts',  requiredPerm: { mod: 'shifts', act: 'create' }, allowedRoles: ['cashier', 'customer_care', 'nurse'] },
-    { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: { mod: 'shifts', act: 'view' }, allowedRoles: ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'] },
+    { name: 'Shift Log',        icon: <Clock size={20} />,           path: '/shifts',       requiredPerm: { mod: 'shifts', act: 'view' }, allowedRoles: ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse', 'pa'] },
     { name: 'Internal Feedback', icon: <MessageSquare size={20} />,   path: '/feedbacks',    requiredPerm: { mod: 'feedbacks', act: 'view' }, allowedRoles: ['coo', 'deputy_coo', 'chef-nurse'] },
   ];
 
@@ -51,7 +52,13 @@ const Sidebar = ({ onClose }) => {
   });
 
   const isActive = (path) => {
-    if (path === '/') return location.pathname === '/';
+    if (path.includes('?tab=')) {
+      const tabParam = path.split('?')[1];
+      return location.pathname === '/' && location.search.includes(tabParam);
+    }
+    if (path === '/') {
+      return location.pathname === '/' && !location.search.includes('tab=');
+    }
     if (path === '/nursing-hub') {
       return location.pathname === '/nursing-hub';
     }

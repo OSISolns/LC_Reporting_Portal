@@ -209,7 +209,13 @@ const StaffDashboard = () => {
               <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-100 backdrop-blur-md">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" />
                 <span className="text-xs font-bold uppercase tracking-wider">
-                  Shift Live: {new Date(activeShift.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  Shift Live: {activeShift.wave || 'Active Shift'} ({
+                    activeShift.start_hour === '07:00' ? '07:00 AM - 03:00 PM' :
+                    activeShift.start_hour === '08:00' ? '08:00 AM - 04:00 PM' :
+                    activeShift.start_hour === '09:00' ? '09:00 AM - 05:00 PM' :
+                    activeShift.start_hour === '15:00' ? '03:00 PM - 09:00 PM' :
+                    new Date(activeShift.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  })
                 </span>
               </div>
             ) : (
@@ -223,6 +229,38 @@ const StaffDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Active Session Banner ── */}
+      {activeShift && (
+        <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-100 rounded-3xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-600 shrink-0">
+              <Clock size={24} />
+            </div>
+            <div>
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-[#1b669d] mb-1">Active Shift Session Running</h4>
+              <p className="text-base font-black text-slate-800">
+                {activeShift.wave || 'Custom Wave'} · {
+                  activeShift.start_hour === '07:00' ? '07:00 AM - 03:00 PM' :
+                  activeShift.start_hour === '08:00' ? '08:00 AM - 04:00 PM' :
+                  activeShift.start_hour === '09:00' ? '09:00 AM - 05:00 PM' :
+                  activeShift.start_hour === '15:00' ? '03:00 PM - 09:00 PM' :
+                  'Active'
+                }
+              </p>
+              <p className="text-xs font-bold text-slate-500 mt-1">
+                Started at {new Date(activeShift.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({activeShift.shift_role?.replace(/_/g, ' ')?.toUpperCase()})
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/shifts')}
+            className="px-6 py-3 bg-[#1b669d] hover:bg-[#124d77] text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-sm transition-all whitespace-nowrap"
+          >
+            Manage Session
+          </button>
+        </div>
+      )}
 
       {/* ── Mini stats ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 mb-8">
@@ -239,7 +277,13 @@ const StaffDashboard = () => {
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 mb-8 shadow-sm">
           <h3 className="m-0 mb-6 text-xl font-black text-slate-800">Workflow Actions</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {hasPermission('shifts', 'create') && <QuickAction label="Shift Management" icon={<Clock size={24} />} color="#0284c7" path="/shifts" navigate={navigate} />}
+            {hasPermission('shifts', 'create') && (
+              !activeShift ? (
+                <QuickAction label="Start a Shift" icon={<Clock size={24} />} color="#059669" path="/shifts/open" navigate={navigate} />
+              ) : (
+                <QuickAction label="Running Session" icon={<Clock size={24} />} color="#0284c7" path="/shifts" navigate={navigate} />
+              )
+            )}
             {hasPermission('cancellations', 'create') && <QuickAction label="New Cancellation" icon={<Plus size={24} />} color="#1b669e" path="/cancellations/new" navigate={navigate} />}
             {hasPermission('refunds', 'create') && <QuickAction label="New Refund" icon={<Plus size={24} />} color="#003b44" path="/refunds/new" navigate={navigate} />}
             {hasPermission('incident_reports', 'create') && <QuickAction label="Report Incident" icon={<AlertTriangle size={24} />} color="#b91c1c" path="/incidents/new" navigate={navigate} />}

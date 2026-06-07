@@ -26,6 +26,8 @@ const AuditLogs = () => {
     system: 0
   });
   const [exporting, setExporting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -62,6 +64,13 @@ const AuditLogs = () => {
     log.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.entity_type?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+  const paginatedLogs = filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filters.startDate, filters.endDate, filters.actionType]);
 
   const exportToExcel = async () => {
     setExporting(true);
@@ -302,7 +311,7 @@ const AuditLogs = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.map(log => {
+              {paginatedLogs.map(log => {
                 const styles = getActionColor(log.action);
                 return (
                   <tr key={log.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }} className="hover-row">
@@ -374,6 +383,59 @@ const AuditLogs = () => {
               )}
             </tbody>
           </table>
+        )}
+        {totalPages > 1 && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '1.25rem 1.5rem',
+            borderTop: '1.5px solid var(--border-color)',
+            backgroundColor: '#f8fafc',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }} className="no-print">
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLogs.length)} of {filteredLogs.length} entries
+            </span>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: '1.5px solid var(--border-color)',
+                  backgroundColor: currentPage === 1 ? '#e2e8f0' : '#ffffff',
+                  color: currentPage === 1 ? '#94a3b8' : 'var(--primary-dark)',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  fontWeight: 700,
+                  fontSize: '0.85rem'
+                }}
+              >
+                Previous
+              </button>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-dark)' }}>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: '1.5px solid var(--border-color)',
+                  backgroundColor: currentPage === totalPages ? '#e2e8f0' : '#ffffff',
+                  color: currentPage === totalPages ? '#94a3b8' : 'var(--primary-dark)',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  fontWeight: 700,
+                  fontSize: '0.85rem'
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
         )}
       </div>
       

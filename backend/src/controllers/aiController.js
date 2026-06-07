@@ -138,6 +138,8 @@ exports.classifyReasons = async (req, res, next) => {
                 s.is_flagged,
                 s.opened_at,
                 s.closed_at,
+                s.wave,
+                s.start_hour,
                 u.full_name AS cashier
          FROM   shift_sessions s
          LEFT JOIN users u ON s.user_id = u.id

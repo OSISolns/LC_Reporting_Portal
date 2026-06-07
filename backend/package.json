@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "NODE_OPTIONS=\"--max_old_space_size=4096\" nodemon server.js",
     "seed": "node seed.js",
     "sync:patients": "node scripts/sync_patients.js",
     "sync:patients:dry": "node scripts/sync_patients.js --dry-run"

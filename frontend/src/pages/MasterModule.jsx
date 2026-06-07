@@ -73,7 +73,7 @@ export default function MasterModule() {
   const [selectedDepartment, setSelectedDepartment] = useState('');
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 25;
+  const itemsPerPage = 50;
 
   // Data states
   const [items, setItems] = useState([]);
@@ -97,6 +97,7 @@ export default function MasterModule() {
     name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'pc',
     batch_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
   });
+  const [pendingItems, setPendingItems] = useState([]);
   const [deptForm, setDeptForm] = useState({ name: '' });
   const [vendorForm, setVendorForm] = useState({ name: '', contact: '', contractTerms: '' });
   const [uomForm, setUomForm] = useState({ name: '', abbreviation: '', description: '' });
@@ -221,6 +222,7 @@ export default function MasterModule() {
 
   // --- CRUD Modals Setup ---
   const openItemModal = (item = null) => {
+    setPendingItems([]);
     if (item) {
       setEditingRecord(item);
       setItemForm({ 
@@ -283,26 +285,66 @@ export default function MasterModule() {
   };
 
   // --- CRUD Save actions ---
+  const handleAddPendingItem = () => {
+    if (!itemForm.name.trim()) {
+      toast.error('Item name is required.');
+      return;
+    }
+    if (!itemForm.sku.trim()) {
+      toast.error('SKU is required.');
+      return;
+    }
+    const newItem = {
+      ...itemForm,
+      quantity: 0,
+      price: 0
+    };
+    setPendingItems(prev => [...prev, newItem]);
+    setItemForm(prev => ({
+      ...prev,
+      name: '',
+      sku: '',
+      batch_number: '',
+      expiry_date: '',
+      purchase_time: ''
+    }));
+    toast.success('Added to pending list!');
+  };
+
   const handleSaveItem = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setIsSubmitting(true);
     try {
-      const payload = {
-        ...itemForm,
-        quantity: 0,
-        price: 0
-      };
       if (editingRecord) {
+        const payload = {
+          ...itemForm,
+          quantity: 0,
+          price: 0
+        };
         await api.put(`/clinical/inventory/master/${editingRecord.id}`, payload);
         toast.success('Item updated successfully');
       } else {
-        await api.post('/clinical/inventory/master', payload);
-        toast.success('Item added successfully');
+        // Build list: any items already in pendingItems, plus currently typed form if not empty
+        const list = [...pendingItems];
+        if (itemForm.name.trim()) {
+          list.push({
+            ...itemForm,
+            quantity: 0,
+            price: 0
+          });
+        }
+        if (list.length === 0) {
+          toast.error('Please specify at least one item.');
+          setIsSubmitting(false);
+          return;
+        }
+        await api.post('/clinical/inventory/master', { items: list });
+        toast.success(`${list.length} item(s) added successfully`);
       }
       setItemModalOpen(false);
       loadMasterData();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save item');
+      toast.error(err.response?.data?.message || 'Failed to save items');
     } finally {
       setIsSubmitting(false);
     }
@@ -1079,10 +1121,48 @@ export default function MasterModule() {
             </select>
           </div>
 
+          {!editingRecord && (
+            <button
+              type="button"
+              onClick={handleAddPendingItem}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
+            >
+              <Plus size={14} /> Add to Pending List
+            </button>
+          )}
+
+          {pendingItems.length > 0 && (
+            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 p-4 space-y-2.5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Pending Items ({pendingItems.length})</p>
+              <div className="space-y-2 max-h-[160px] overflow-y-auto">
+                {pendingItems.map((item, idx) => (
+                  <div key={idx} className="bg-white border border-slate-150 rounded-xl p-2.5 flex items-center justify-between gap-3 text-xs">
+                    <div>
+                      <p className="font-black text-slate-800">{item.name}</p>
+                      <p className="text-[10px] text-slate-400 font-semibold font-mono">SKU: {item.sku} | UOM: {item.unit_of_measure}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPendingItems(prev => prev.filter((_, i) => i !== idx))}
+                      className="text-rose-500 hover:text-rose-700 font-bold px-2 py-1 text-[10px] bg-rose-50 hover:bg-rose-100 rounded-lg cursor-pointer transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
             <button type="button" onClick={() => setItemModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>
             <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-100 border-0">
-              {isSubmitting && <Loader2 size={14} className="animate-spin" />} {editingRecord ? 'Update Catalog Item' : 'Add Item'}
+              {isSubmitting && <Loader2 size={14} className="animate-spin" />}
+              {editingRecord 
+                ? 'Update Catalog Item' 
+                : pendingItems.length > 0 
+                  ? `Save All (${pendingItems.length + (itemForm.name.trim() ? 1 : 0)} items)` 
+                  : 'Add Item'}
             </button>
           </div>
         </form>

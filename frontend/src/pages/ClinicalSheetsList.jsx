@@ -42,6 +42,16 @@ const ClinicalSheetsList = () => {
   const [statusFilter, setStatus] = useState('');
   const [from, setFrom]           = useState('');
   const [to, setTo]               = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, from, to]);
+
+  const totalPages = Math.ceil(records.length / itemsPerPage);
+  const paginatedRecords = records.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
 
   const fetchRecords = useCallback(async () => {
     setLoading(true);
@@ -179,7 +189,7 @@ const ClinicalSheetsList = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {records.map((row) => (
+                {paginatedRecords.map((row) => (
                   <tr
                     key={row.id}
                     onClick={() => openSheet(row)}
@@ -245,6 +255,34 @@ const ClinicalSheetsList = () => {
                 ))}
               </tbody>
             </table>
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-slate-50/50">
+                <p className="text-xs font-semibold text-slate-500">
+                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, records.length)} of {records.length} entries
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs font-semibold text-slate-700">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

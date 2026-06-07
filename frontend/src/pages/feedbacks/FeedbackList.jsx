@@ -24,6 +24,16 @@ const areaLabels = {
 const FeedbackList = () => {
   const { user } = useAuth();
   const [feedbacks, setFeedbacks] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [startDate, endDate]);
+
+  const totalPages = Math.ceil(feedbacks.length / itemsPerPage);
+  const paginatedFeedbacks = feedbacks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -204,97 +214,157 @@ const FeedbackList = () => {
               No internal feedback entries found matching the specified date range constraints.
             </div>
           ) : (
-            feedbacks.map((item) => {
-              const activeAreas = getActiveAreas(item);
-              const isSelected = selectedFeedback?.id === item.id;
+            <>
+              {paginatedFeedbacks.map((item) => {
+                const activeAreas = getActiveAreas(item);
+                const isSelected = selectedFeedback?.id === item.id;
 
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => setSelectedFeedback(item)}
-                  style={{
-                    padding: '1.5rem',
-                    backgroundColor: '#ffffff',
-                    borderRadius: '16px',
-                    border: isSelected ? '2.5px solid #1b669d' : '1px solid var(--border-color)',
-                    boxShadow: isSelected ? '0 10px 25px -5px rgba(27,102,157,0.1)' : '0 2px 4px rgba(0,0,0,0.02)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    position: 'relative'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: 'var(--primary-dark)', fontSize: '1rem' }}>
-                        <ShieldAlert size={14} style={{ color: '#71b647' }} />
-                        Confidential Anonymous Submission
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedFeedback(item)}
+                    style={{
+                      padding: '1.5rem',
+                      backgroundColor: '#ffffff',
+                      borderRadius: '16px',
+                      border: isSelected ? '2.5px solid #1b669d' : '1px solid var(--border-color)',
+                      boxShadow: isSelected ? '0 10px 25px -5px rgba(27,102,157,0.1)' : '0 2px 4px rgba(0,0,0,0.02)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      position: 'relative'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: 'var(--primary-dark)', fontSize: '1rem' }}>
+                          <ShieldAlert size={14} style={{ color: '#71b647' }} />
+                          Confidential Anonymous Submission
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          <Calendar size={12} />
+                          Date Submitted: {item.feedback_date || 'N/A'}
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        <Calendar size={12} />
-                        Date Submitted: {item.feedback_date || 'N/A'}
-                      </div>
+
+                      {user?.role === 'coo' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item.id);
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--danger)',
+                            cursor: 'pointer',
+                            padding: '6px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 53, 69, 0.05)'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
 
-                    {user?.role === 'coo' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(item.id);
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--danger)',
-                          cursor: 'pointer',
-                          padding: '6px',
-                          borderRadius: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'background 0.2s'
-                        }}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 53, 69, 0.05)'}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    {/* Snippet */}
+                    <p style={{
+                      margin: '0 0 1rem 0',
+                      fontSize: '0.9rem',
+                      color: '#334155',
+                      lineHeight: '1.5',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}>
+                      {item.concern_description}
+                    </p>
+
+                    {/* Badges */}
+                    {activeAreas.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {activeAreas.map(area => (
+                          <span key={area} style={{
+                            padding: '4px 10px',
+                            borderRadius: '20px',
+                            backgroundColor: '#f1f5f9',
+                            color: '#475569',
+                            fontSize: '0.725rem',
+                            fontWeight: 600
+                          }}>
+                            {area === 'other' && item.other_details ? `Other: ${item.other_details}` : areaLabels[area]}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
+                );
+              })}
 
-                  {/* Snippet */}
-                  <p style={{
-                    margin: '0 0 1rem 0',
-                    fontSize: '0.9rem',
-                    color: '#334155',
-                    lineHeight: '1.5',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden'
-                  }}>
-                    {item.concern_description}
-                  </p>
-
-                  {/* Badges */}
-                  {activeAreas.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {activeAreas.map(area => (
-                        <span key={area} style={{
-                          padding: '4px 10px',
-                          borderRadius: '20px',
-                          backgroundColor: '#f1f5f9',
-                          color: '#475569',
-                          fontSize: '0.725rem',
-                          fontWeight: 600
-                        }}>
-                          {area === 'other' && item.other_details ? `Other: ${item.other_details}` : areaLabels[area]}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+              {totalPages > 1 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '1rem 1.5rem',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: '#ffffff',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  marginTop: '0.5rem'
+                }} className="no-print">
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, feedbacks.length)} of {feedbacks.length} entries
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: '1.5px solid var(--border-color)',
+                        backgroundColor: currentPage === 1 ? '#e2e8f0' : '#ffffff',
+                        color: currentPage === 1 ? '#94a3b8' : 'var(--primary-dark)',
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-dark)' }}>
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: '1.5px solid var(--border-color)',
+                        backgroundColor: currentPage === totalPages ? '#e2e8f0' : '#ffffff',
+                        color: currentPage === totalPages ? '#94a3b8' : 'var(--primary-dark)',
+                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
-              );
-            })
+              )}
+            </>
           )}
         </div>
 

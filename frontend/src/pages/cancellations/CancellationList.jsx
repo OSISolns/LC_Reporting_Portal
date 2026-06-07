@@ -23,8 +23,18 @@ const CancellationList = () => {
   const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
   const [filters, setFilters] = useState({ patientName: '', pid: '', status: '' });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  const totalPages = Math.ceil(requests.length / itemsPerPage);
+  const paginatedRequests = requests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [activeRequest, setActiveRequest] = useState(null);
@@ -208,7 +218,7 @@ const CancellationList = () => {
               </tr>
             </thead>
             <tbody>
-              {requests.map(r => (
+              {paginatedRequests.map(r => (
                 <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--text-secondary)' }}>#{r.id}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
@@ -287,6 +297,61 @@ const CancellationList = () => {
               ))}
             </tbody>
           </table>
+        )}
+        {totalPages > 1 && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '1.25rem 1.5rem',
+            borderTop: '1.5px solid var(--border-color)',
+            backgroundColor: '#f8fafc',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, requests.length)} of {requests.length} entries
+            </span>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: '1.5px solid var(--border-color)',
+                  backgroundColor: currentPage === 1 ? '#e2e8f0' : '#ffffff',
+                  color: currentPage === 1 ? '#94a3b8' : 'var(--primary-dark)',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  fontWeight: 700,
+                  fontSize: '0.85rem'
+                }}
+              >
+                Previous
+              </button>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-dark)' }}>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: '1.5px solid var(--border-color)',
+                  backgroundColor: currentPage === totalPages ? '#e2e8f0' : '#ffffff',
+                  color: currentPage === totalPages ? '#94a3b8' : 'var(--primary-dark)',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  fontWeight: 700,
+                  fontSize: '0.85rem'
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
         )}
       </div>
       {/* Form Modal */}

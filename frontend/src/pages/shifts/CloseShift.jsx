@@ -8,11 +8,13 @@ import {
   closeShift
 } from '../../api/shifts';
 import { createIncident } from '../../api/incidents';
+import { searchPatients } from '../../api/patients';
 import Modal from '../../components/Modal';
 import IncidentFormFields from '../incidents/components/IncidentFormFields';
 import {
   EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS,
   INSURANCE_OPTIONS, BANK_TERMINAL_OPTIONS, CALL_REASON_OPTIONS,
+  VIP_POSITIONS_CONFIG, PREDEFINED_VIP_POSITIONS
 } from './shiftConfig';
 import {
   Monitor, Smartphone, Printer, Phone, Headphones,
@@ -20,7 +22,7 @@ import {
   AlertCircle, AlertTriangle, CheckCircle2, Clock,
   Briefcase, Search, PhoneCall, PhoneForwarded,
   ListPlus, StickyNote, Timer, Sun, Moon, Sunrise,
-  BadgeCheck, Home
+  BadgeCheck, Home, Crown, Stethoscope
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -73,25 +75,38 @@ function getGreeting() {
 // ─── Role config ──────────────────────────────────────────────────────────────
 const ROLE_CONFIG = {
   cashier: {
-    color: 'emerald', label: 'Billing Agent', emoji: '💳',
+    color: 'emerald', label: 'Billing Agent',
     mission: 'Process patient billing accurately, reconcile digital payments, and ensure every transaction is verified before shift closure.',
     tips: ['Record all MoMo & card transactions as they happen', 'Flag any cash discrepancies immediately', 'Verify insurance codes match patient records'],
   },
   helpdesk: {
-    color: 'blue', label: 'Helpdesk Officer', emoji: '🖥️',
+    color: 'blue', label: 'Helpdesk Officer',
     mission: 'Assist walk-in patients and internal staff with queries, triage requests efficiently, and maintain an accurate count of all interactions.',
     tips: ['Log every query — walk-ins and internal', 'Escalate complex cases to the appropriate department', 'Note any recurring issues for the handover report'],
   },
   call_center: {
-    color: 'violet', label: 'Call Center Agent', emoji: '📞',
+    color: 'violet', label: 'Call Center Agent',
     mission: 'Handle inbound and outbound calls with professionalism, record interaction reasons, and ensure pending follow-ups are properly documented.',
     tips: ['Answer within 3 rings where possible', 'Record all drop reasons for quality analysis', 'Document every follow-up with patient ID and notes'],
   },
   nurse: {
-    color: 'emerald', label: 'Clinical Nurse', emoji: '🏥',
+    color: 'emerald', label: 'Clinical Nurse',
     mission: 'Provide high-quality patient care, maintain accurate clinical observations, and ensure a safe, thorough handover of patient status.',
     tips: ['Synchronize all clinical observations before closing', 'Double-check medication administration records', 'Report any clinical incidents immediately'],
   },
+  vip_lounge: {
+    color: 'emerald', label: 'VIP Lounge Host',
+    mission: 'Deliver premium service to VIP guests, ensure executive lounge standards, and log all arrivals and services provided.',
+    tips: ['Maintain a quiet and comfortable environment', 'Log VIP details in the reception log immediately', 'Verify all lounge amenities are working'],
+  },
+};
+
+const ROLE_ICONS = {
+  cashier: <CreditCard size={28} className="inline-block" />,
+  helpdesk: <Monitor size={28} className="inline-block" />,
+  call_center: <Phone size={28} className="inline-block" />,
+  nurse: <Stethoscope size={28} className="inline-block" />,
+  vip_lounge: <Crown size={28} className="inline-block" />,
 };
 
 // ─── Welcome Dashboard ────────────────────────────────────────────────────────
@@ -137,8 +152,8 @@ function WelcomeDashboard({ shift, elapsedHours, remainingMin, onDismiss }) {
               <span className="text-blue-200 text-sm">{greeting.icon}</span>
               <span className="text-blue-200 text-sm font-bold tracking-wider">{greeting.text}</span>
             </div>
-            <h2 className="text-3xl font-black tracking-tight leading-none">
-              Welcome back, {firstName}! {cfg.emoji}
+            <h2 className="text-3xl font-black tracking-tight leading-none flex items-center gap-2">
+              Welcome back, {firstName}! {ROLE_ICONS[shift.shift_role]}
             </h2>
             <div className="mt-4 flex flex-wrap gap-3">
               {shift.wave && (
@@ -251,6 +266,12 @@ function ShiftClosingSummary({ shift, closedData, onExit }) {
       { label: 'Incidents', val: n.total_incidents || 0, icon: <AlertTriangle size={18} />, color: 'rose' },
       { label: 'Clinical Docs', val: n.total_assessments || 0, icon: <CheckCircle2 size={18} />, color: 'emerald' },
     );
+  } else if (shift.shift_role === 'vip_lounge' && closedData?.vip_lounge) {
+    const vl = closedData.vip_lounge;
+    stats.push(
+      { label: 'VIPs Logged', val: vl.vip_logs?.length || 0, icon: <Crown size={18} />, color: 'emerald' },
+      { label: 'Lounge Duty', val: 'Active', icon: <CheckCircle2 size={18} />, color: 'blue' },
+    );
   }
 
   const colorMap = { blue:'bg-blue-50 text-blue-600', emerald:'bg-emerald-50 text-emerald-600', violet:'bg-violet-50 text-violet-600' };
@@ -307,7 +328,7 @@ function ShiftClosingSummary({ shift, closedData, onExit }) {
             <div className="col-span-2 flex flex-col justify-center bg-slate-50 rounded-2xl p-5 border-2 border-slate-100 space-y-2">
               {[
                 {l:'Role', v:cfg.label},
-                {l:'Opened', v:openedAt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})},
+                {l:'Opened', v:waveStartTime.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})},
                 {l:'Closed', v:closedAt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})},
                 {l:'Worked Hours', v: `${netH}h ${durM}m ${isMorning ? '(Net)' : ''}`}
               ].map(({l,v})=>(
@@ -791,6 +812,200 @@ const NursingCloseForm = ({ data, onChange }) => (
   </div>
 );
 
+// ─── VIP Lounge Close Form ────────────────────────────────────────────────────
+const VipLoungeCloseForm = ({ data, onChange }) => {
+  const [suggestions, setSuggestions] = useState({});
+  const [showDropdown, setShowDropdown] = useState({});
+  const [loadingSuggestions, setLoadingSuggestions] = useState({});
+
+  const addVip = () => {
+    onChange('vip_logs', [...(data.vip_logs || []), { name: '', position: '', doctor_service: '' }]);
+  };
+
+  const removeVip = (idx) => {
+    onChange('vip_logs', (data.vip_logs || []).filter((_, i) => i !== idx));
+  };
+
+  const updateVip = (i, field, val) => {
+    const updated = (data.vip_logs || []).map((v, idx) => idx === i ? { ...v, [field]: val } : v);
+    onChange('vip_logs', updated);
+  };
+
+  const handleNameChange = async (idx, val) => {
+    updateVip(idx, 'name', val);
+    
+    if (val.trim().length < 2) {
+      setSuggestions(prev => ({ ...prev, [idx]: [] }));
+      setShowDropdown(prev => ({ ...prev, [idx]: false }));
+      return;
+    }
+
+    setLoadingSuggestions(prev => ({ ...prev, [idx]: true }));
+    try {
+      const res = await searchPatients(val);
+      const patients = res.data.data || [];
+      setSuggestions(prev => ({ ...prev, [idx]: patients }));
+      setShowDropdown(prev => ({ ...prev, [idx]: patients.length > 0 }));
+    } catch (err) {
+      console.error('Error fetching patient suggestions:', err);
+    } finally {
+      setLoadingSuggestions(prev => ({ ...prev, [idx]: false }));
+    }
+  };
+
+  const selectPatient = (idx, patient) => {
+    updateVip(idx, 'name', patient.full_name);
+    setShowDropdown(prev => ({ ...prev, [idx]: false }));
+  };
+
+  const handleBlur = (idx) => {
+    setTimeout(() => {
+      setShowDropdown(prev => ({ ...prev, [idx]: false }));
+    }, 200);
+  };
+
+  const handleFocus = (idx, val) => {
+    if (val && val.trim().length >= 2 && suggestions[idx]?.length > 0) {
+      setShowDropdown(prev => ({ ...prev, [idx]: true }));
+    }
+  };
+
+  return (
+    <div className="shift-card">
+      <div className="flex items-center gap-5 mb-10">
+        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 shadow-inner">
+          <Crown size={24} />
+        </div>
+        <div>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">VIP Reception Log</h3>
+          <p className="text-slate-400 text-xs font-black uppercase tracking-widest">List of VIP patients received in Lounge</p>
+        </div>
+        <button
+          type="button"
+          onClick={addVip}
+          className="ml-auto px-6 py-3 rounded-2xl bg-emerald-600 text-white font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
+        >
+          Add VIP
+        </button>
+      </div>
+
+      <div className="space-y-6">
+        {(data.vip_logs || []).length === 0 ? (
+          <p className="text-slate-300 text-xs font-black uppercase tracking-widest p-12 text-center border-4 border-dashed border-slate-100 rounded-[32px]">
+            No VIP records added yet. Click "Add VIP" to log a patient.
+          </p>
+        ) : (
+          (data.vip_logs || []).map((vip, i) => (
+            <div
+              key={i}
+              className="bg-slate-50 rounded-[32px] p-8 border-2 border-slate-100 relative group flex flex-col md:flex-row gap-6 items-end"
+            >
+              <button
+                type="button"
+                onClick={() => removeVip(i)}
+                className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-2xl z-10 font-black text-xl hover:bg-rose-700"
+              >
+                ×
+              </button>
+              
+              <div className="flex-1 space-y-2 w-full relative">
+                <label className="field-label text-slate-500 uppercase tracking-widest text-[9px]">Names</label>
+                <input
+                  type="text"
+                  value={vip.name || ''}
+                  onChange={(e) => handleNameChange(i, e.target.value)}
+                  onBlur={() => handleBlur(i)}
+                  onFocus={() => handleFocus(i, vip.name)}
+                  className="shift-input w-full bg-white border-slate-200"
+                  required
+                  autoComplete="off"
+                />
+
+                {showDropdown[i] && suggestions[i] && suggestions[i].length > 0 && (
+                  <div className="absolute left-0 z-50 w-full mt-2 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-100 shadow-xl max-h-60 overflow-y-auto">
+                    {suggestions[i].map((patient) => (
+                      <button
+                        key={patient.pid}
+                        type="button"
+                        onClick={() => selectPatient(i, patient)}
+                        className="w-full text-left px-4 py-3 hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors flex flex-col border-b border-slate-50 last:border-0"
+                      >
+                        <span className="font-extrabold text-slate-900">{patient.full_name}</span>
+                        <span className="text-[10px] text-slate-400 font-medium">PID: {patient.pid} | {patient.phone || 'No phone'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-2 w-full">
+                <label className="field-label text-slate-500 uppercase tracking-widest text-[9px]">Position</label>
+                {(() => {
+                  const isPredefined = PREDEFINED_VIP_POSITIONS.includes(vip.position);
+                  const isCustom = vip.position && !isPredefined;
+                  const dropdownValue = isPredefined ? vip.position : (vip.position ? "Others" : "");
+
+                  return (
+                    <div className="space-y-2">
+                      <select
+                        value={dropdownValue}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === 'Others') {
+                            updateVip(i, 'position', 'Others');
+                          } else {
+                            updateVip(i, 'position', val);
+                          }
+                        }}
+                        className="shift-input w-full bg-white border-slate-200 cursor-pointer"
+                        required
+                      >
+                        <option value="">Select Position...</option>
+                        {Object.entries(VIP_POSITIONS_CONFIG).map(([category, positions]) => (
+                          <optgroup key={category} label={category}>
+                            {positions.map((pos) => (
+                              <option key={pos} value={pos}>
+                                {pos}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                        <option value="Others">Others (Specify)</option>
+                      </select>
+
+                      {isCustom && (
+                        <input
+                          type="text"
+                          placeholder="Specify position..."
+                          value={vip.position === 'Others' ? '' : vip.position}
+                          onChange={(e) => updateVip(i, 'position', e.target.value)}
+                          className="shift-input w-full bg-white border-slate-200 mt-2"
+                          required
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="flex-1 space-y-2 w-full">
+                <label className="field-label text-slate-500 uppercase tracking-widest text-[9px]">Doctor/Service Offered</label>
+                <input
+                  type="text"
+                  value={vip.doctor_service || ''}
+                  onChange={(e) => updateVip(i, 'doctor_service', e.target.value)}
+                  className="shift-input w-full bg-white border-slate-200"
+                  required
+                />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Call Center Close Form ───────────────────────────────────────────────────
 const CallCenterCloseForm = ({ data, onChange }) => {
   const toggleReason = (r) => {
@@ -988,10 +1203,12 @@ export default function CloseShift() {
   const [handoverNotes, setHandoverNotes] = useState('');
   const [equipment, setEquipment] = useState([]);
   const [password, setPassword] = useState('');
+  const [closingError, setClosingError] = useState('');
   const [billingClose, setBillingClose] = useState({ payments_all_successful: true, insurances_used: [], total_momo_transactions: 0, total_card_transactions: 0 });
   const [helpdeskClose, setHelpdeskClose] = useState({ patient_walkin_queries: 0, internal_staff_queries: 0 });
   const [callcenterClose, setCallcenterClose] = useState({ call_top_reasons: [], has_pending_followups: false, followup_details: [] });
   const [nursingClose, setNursingClose] = useState({ total_assessments: 0, total_incidents: 0, handover_sbar_sb: '', handover_sbar_ar: '' });
+  const [viploungeClose, setViploungeClose] = useState({ vip_logs: [] });
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [incidentReported, setIncidentReported] = useState(false);
   const [incidentFormData, setIncidentFormData] = useState({
@@ -1023,6 +1240,13 @@ export default function CloseShift() {
         if (s.shift_role === 'helpdesk' && s.role_data?.closing) setHelpdeskClose(s.role_data.closing);
         if (s.shift_role === 'call_center' && s.role_data?.closing) setCallcenterClose(s.role_data.closing);
         if (s.shift_role === 'nurse' && s.role_data?.closing) setNursingClose(s.role_data.closing);
+        if (s.shift_role === 'vip_lounge' && s.role_data?.closing) {
+          let parsedLogs = s.role_data.closing.vip_logs;
+          if (typeof parsedLogs === 'string') {
+            try { parsedLogs = JSON.parse(parsedLogs); } catch (e) { parsedLogs = []; }
+          }
+          setViploungeClose({ vip_logs: parsedLogs || [] });
+        }
       })
       .catch(() => {
         toast.error('Session record inaccessible');
@@ -1037,10 +1261,14 @@ export default function CloseShift() {
     const tick = () => {
       const waveConfig = getWaveConfig(shift);
       const waveStartTime = getWaveStartTime(shift) || new Date(shift.opened_at);
-      const elapsed = (Date.now() - waveStartTime.getTime()) / (1000 * 60 * 60);
-      const remaining = waveConfig.duration - elapsed;
+      const now = Date.now();
+      let elapsed = 0;
+      if (now >= waveStartTime.getTime()) {
+        elapsed = Math.min(waveConfig.duration, (now - waveStartTime.getTime()) / (1000 * 60 * 60));
+      }
+      const remaining = Math.max(0, waveConfig.duration - elapsed);
       setElapsedHours(elapsed);
-      setRemainingMin(remaining > 0 ? Math.ceil(remaining * 60) : 0);
+      setRemainingMin(Math.ceil(remaining * 60));
     };
     tick();
     const t = setInterval(tick, 60_000);
@@ -1056,17 +1284,26 @@ export default function CloseShift() {
     ...(shift?.shift_role === 'helpdesk' && { helpdesk_close: helpdeskClose }),
     ...(shift?.shift_role === 'call_center' && { callcenter_close: callcenterClose }),
     ...(shift?.shift_role === 'nurse' && { nurse_close: nursingClose }),
-  }), [handoverNotes, equipment, billingClose, helpdeskClose, callcenterClose, nursingClose, shift, password]);
+    ...(shift?.shift_role === 'vip_lounge' && { vip_lounge_close: viploungeClose }),
+  }), [handoverNotes, equipment, billingClose, helpdeskClose, callcenterClose, nursingClose, viploungeClose, shift, password]);
+
+  // Draft payload strips the password — it is not required for saving and
+  // should never appear in server request logs.
+  const buildDraftPayload = useCallback(() => {
+    const { password: _pwd, ...rest } = buildPayload();
+    return rest;
+  }, [buildPayload]);
 
   useEffect(() => {
     if (!shift) return;
     autoSaveRef.current = setInterval(async () => {
       setDraftSaving(true);
-      try { await saveDraft(id, buildPayload()); } catch (_) { }
+      // Use buildDraftPayload (no password) for auto-saves
+      try { await saveDraft(id, buildDraftPayload()); } catch (_) { }
       finally { setTimeout(() => setDraftSaving(false), 1000); }
     }, 60_000);
     return () => clearInterval(autoSaveRef.current);
-  }, [id, shift, buildPayload]);
+  }, [id, shift, buildDraftPayload]);
 
   const handleEquipChange = (i, field, val) =>
     setEquipment((prev) => prev.map((item, idx) => idx === i ? { ...item, [field]: val } : item));
@@ -1075,7 +1312,8 @@ export default function CloseShift() {
     setDraftSaving(true);
     const tid = toast.loading('Securing draft record...');
     try {
-      await saveDraft(id, buildPayload());
+      // Strip password from manual draft saves as well
+      await saveDraft(id, buildDraftPayload());
       toast.success('Draft Synchronized', { id: tid });
     } catch (_) {
       toast.error('Draft Sync Failure', { id: tid });
@@ -1102,11 +1340,6 @@ export default function CloseShift() {
   const handleClose = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!handoverNotes.trim()) {
-      toast.error('Handover notes are mandatory for shift closure');
-      return;
-    }
     
 
 
@@ -1141,8 +1374,9 @@ export default function CloseShift() {
 
   const handleFinalClose = async (e) => {
     if (e) e.preventDefault();
+    setClosingError('');
     if (!password) {
-      toast.error('Password is required for security seal');
+      setClosingError('Password is required for security seal');
       return;
     }
 
@@ -1157,9 +1391,12 @@ export default function CloseShift() {
         cashier: billingClose,
         helpdesk: helpdeskClose,
         callcenter: callcenterClose,
+        nurse: nursingClose,
+        vip_lounge: viploungeClose,
       });
     } catch (err) {
       const msg = err.response?.data?.message || 'Shift closure protocol failure';
+      setClosingError(msg);
       toast.error(msg, { id: tid });
     } finally {
       setSubmitting(false);
@@ -1175,7 +1412,7 @@ export default function CloseShift() {
 
   if (!shift) return null;
 
-  const roleLabel = { cashier: 'Billing Agent', helpdesk: 'Helpdesk', call_center: 'Call Center Agent' }[shift.shift_role];
+  const roleLabel = { cashier: 'Billing Agent', helpdesk: 'Helpdesk', call_center: 'Call Center Agent', nurse: 'Registered Nurse', vip_lounge: 'VIP Lounge' }[shift.shift_role];
 
   return (
     <>
@@ -1270,10 +1507,10 @@ export default function CloseShift() {
             <div className="flex-1">
               {elapsedHours >= getWaveConfig(shift).duration ? (
                 <>
-                  <p className="font-black text-sm uppercase tracking-widest text-rose-300">⛔ Shift Limit Exceeded</p>
+                  <p className="font-black text-sm uppercase tracking-widest text-rose-300">⛔ Shift Wave Completed</p>
                   <p className="text-sm font-semibold text-rose-100 mt-1">
-                    Your shift has exceeded the <strong>{getWaveConfig(shift).duration}-hour</strong> policy limit.
-                    It will be <strong>automatically closed and flagged</strong> by the system. Please close it immediately and contact your supervisor.
+                    Your scheduled <strong>{getWaveConfig(shift).duration}-hour</strong> shift wave has ended.
+                    Please finalize your operational reports and submit this handover to close your shift session immediately.
                   </p>
                 </>
               ) : (
@@ -1281,16 +1518,16 @@ export default function CloseShift() {
                   <p className={`font-black text-sm uppercase tracking-widest ${
                     elapsedHours >= getWaveConfig(shift).duration - 0.5 ? 'text-rose-700' : 'text-amber-700'
                   }`}>
-                    {elapsedHours >= getWaveConfig(shift).duration - 0.5 ? '🚨 Urgent: Shift Nearing Limit' : '⏱ Shift Time Warning'}
+                    {elapsedHours >= getWaveConfig(shift).duration - 0.5 ? '🚨 Urgent: Shift Wave Ending' : '⏱ Shift Wave Warning'}
                   </p>
                   <p className={`text-sm font-semibold mt-1 ${
                     elapsedHours >= getWaveConfig(shift).duration - 0.5 ? 'text-rose-600' : 'text-amber-700'
                   }`}>
                     You have been on shift for <strong>{Math.floor(elapsedHours)}h {Math.round((elapsedHours % 1) * 60)}m</strong>.
                     {remainingMin !== null && remainingMin > 0 && (
-                      <> Only <strong>{remainingMin} minute{remainingMin !== 1 ? 's' : ''}</strong> remaining before auto-closure.</>
+                      <> Only <strong>{remainingMin} minute{remainingMin !== 1 ? 's' : ''}</strong> remaining before shift wave completion.</>
                     )}
-                    {' '}Please note the <strong>{getWaveConfig(shift).duration}-hour</strong> duration policy. Finalize your handover and close this shift now.
+                    {' '}Please finalize your operational handover and close this shift session now.
                   </p>
                 </>
               )}
@@ -1326,6 +1563,9 @@ export default function CloseShift() {
           {shift.shift_role === 'nurse' && (
             <NursingCloseForm data={nursingClose} onChange={(k, v) => setNursingClose((p) => ({ ...p, [k]: v }))} />
           )}
+          {shift.shift_role === 'vip_lounge' && (
+            <VipLoungeCloseForm data={viploungeClose} onChange={(k, v) => setViploungeClose((p) => ({ ...p, [k]: v }))} />
+          )}
         </div>
 
         {/* Equipment checklist - Close */}
@@ -1350,7 +1590,7 @@ export default function CloseShift() {
             </div>
             <div>
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">Final Handover Notes</h3>
-              <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Mandatory Briefing for Incoming Staff</p>
+              <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Optional Briefing for Incoming Staff</p>
             </div>
           </div>
           <textarea
@@ -1359,7 +1599,6 @@ export default function CloseShift() {
             value={handoverNotes}
             onChange={(e) => setHandoverNotes(e.target.value)}
             className="shift-input w-full p-8 text-lg leading-relaxed bg-slate-50 border-slate-100 focus:bg-white resize-none rounded-[32px]"
-            required
           />
         </div>
 
@@ -1409,13 +1648,13 @@ export default function CloseShift() {
         title="Final Identity Authorization"
       >
         <div className="p-6">
-          <div className="mb-8 flex items-center gap-4 p-4 bg-slate-900 rounded-2xl border border-white/10">
-            <div className="w-12 h-12 rounded-xl bg-[#1b669d]/10 flex items-center justify-center text-[#34d399]">
+          <div className="mb-8 flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
+            <div className="w-12 h-12 rounded-xl bg-[#1b669d]/10 flex items-center justify-center text-[#1b669d]">
               <Lock size={24} />
             </div>
             <div>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Seal Security Protocol</p>
-              <p className="text-sm font-bold text-white">Please confirm your account password to seal and finalize this operational session.</p>
+              <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Seal Security Protocol</p>
+              <p className="text-sm font-bold text-slate-700">Please confirm your account password to seal and finalize this operational session.</p>
             </div>
           </div>
 
@@ -1426,10 +1665,20 @@ export default function CloseShift() {
                 type="password"
                 autoFocus
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (closingError) setClosingError('');
+                }}
                 placeholder="••••••••••••"
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-6 text-xl font-black focus:border-[#1b669d] outline-none transition-all placeholder:text-slate-200"
+                className={`w-full bg-slate-50 border-2 rounded-2xl p-6 text-xl font-black outline-none transition-all placeholder:text-slate-200 ${
+                  closingError ? 'border-rose-500 focus:border-rose-600' : 'border-slate-100 focus:border-[#1b669d]'
+                }`}
               />
+              {closingError && (
+                <p className="text-rose-500 text-[11px] font-bold tracking-wide mt-2 ml-1">
+                  {closingError}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-4 pt-4">

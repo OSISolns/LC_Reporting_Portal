@@ -24,6 +24,99 @@ const client = createClient({
     process.exit(1);
   }
 
+  // ─── Shift Sessions Role CHECK Constraint Upgrade & Related Tables ───────────────────
+  try {
+    const { rows } = await client.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='shift_sessions'");
+    if (rows.length > 0) {
+      const sql = rows[0].sql;
+      if (!sql.includes('vip_lounge')) {
+        console.log('⚙️ Migrating shift_sessions to support nurse and vip_lounge...');
+        
+        // 1. Rename table
+        await client.execute("ALTER TABLE shift_sessions RENAME TO shift_sessions_old");
+        
+        // 2. Create new table
+        await client.execute(`
+          CREATE TABLE shift_sessions (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+            shift_role          TEXT NOT NULL CHECK (shift_role IN ('cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge')),
+            status              TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'draft', 'closed')),
+            opened_at           DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            closed_at           DATETIME,
+            handover_notes      TEXT,
+            reviewed_by         INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            reviewed_at         DATETIME,
+            is_flagged          INTEGER NOT NULL DEFAULT 0,
+            flag_reasons        TEXT,
+            created_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            updated_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            start_hour          TEXT,
+            wave                TEXT
+          )
+        `);
+        
+        // 3. Copy data
+        const { rows: colRows } = await client.execute("PRAGMA table_info(shift_sessions_old)");
+        const cols = colRows.map(r => r.name);
+        const commonCols = cols.filter(c => c !== 'id');
+        const colsListStr = ['id', ...commonCols].join(', ');
+        
+        await client.execute(`
+          INSERT INTO shift_sessions (${colsListStr})
+          SELECT ${colsListStr} FROM shift_sessions_old
+        `);
+        
+        // 4. Drop old table
+        await client.execute("DROP TABLE shift_sessions_old");
+        
+        // 5. Recreate indexes
+        await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_user_id     ON shift_sessions(user_id)");
+        await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_status      ON shift_sessions(status)");
+        await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_role        ON shift_sessions(shift_role)");
+        await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_opened_at   ON shift_sessions(opened_at DESC)");
+        await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_is_flagged  ON shift_sessions(is_flagged)");
+        
+        console.log('✅ SQLite Schema Migration: upgraded shift_sessions table check constraint');
+      }
+    }
+  } catch (err) {
+    console.error('❌ Failed to migrate shift_sessions check constraint:', err);
+  }
+
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS shift_nurse_close (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        shift_id INTEGER UNIQUE NOT NULL REFERENCES shift_sessions(id) ON DELETE CASCADE,
+        total_assessments INTEGER DEFAULT 0,
+        total_incidents INTEGER DEFAULT 0,
+        handover_sbar_sb TEXT,
+        handover_sbar_ar TEXT,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created shift_nurse_close table');
+  } catch (err) {
+    console.warn('⚠️ SQLite Schema Migration Notice for shift_nurse_close:', err.message);
+  }
+
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS shift_viplounge_close (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        shift_id INTEGER UNIQUE NOT NULL REFERENCES shift_sessions(id) ON DELETE CASCADE,
+        vip_logs TEXT,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created shift_viplounge_close table');
+  } catch (err) {
+    console.warn('⚠️ SQLite Schema Migration Notice for shift_viplounge_close:', err.message);
+  }
+
   try {
     await client.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0");
     console.log('✅ SQLite Schema Migration: added must_change_password to users');
@@ -687,6 +780,72 @@ const client = createClient({
     }
   } catch (err) {
     console.error('❌ Failed to standardise SKUs:', err);
+  }
+
+  // ── Supplier Portal Relational Tables ──────────────────────────────────────
+  try {
+    // 1. system_settings
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS system_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )
+    `);
+    
+    // Seed supplier_portal_active if not present
+    await client.execute(`
+      INSERT OR IGNORE INTO system_settings (key, value)
+      VALUES ('supplier_portal_active', 'false')
+    `);
+    
+    // 2. supplier_submissions
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS supplier_submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        supplier_name TEXT NOT NULL,
+        uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'pending'
+      )
+    `);
+
+    // 3. supplier_submission_items
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS supplier_submission_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        submission_id INTEGER REFERENCES supplier_submissions(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        sku TEXT,
+        category TEXT,
+        unit_of_measure TEXT,
+        batch_number TEXT,
+        expiry_date TEXT,
+        purchase_price REAL,
+        quantity INTEGER DEFAULT 0,
+        vendor_name TEXT
+      )
+    `);
+    
+    console.log('✅ SQLite Schema Migration: created/verified Supplier Portal tables');
+  } catch (err) {
+    console.error('❌ Failed to initialize Supplier Portal tables:', err);
+  }
+
+  // ── Multi-Session Supplier Portal ───────────────────────────────────────────
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS supplier_portal_sessions (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        vendor_id   INTEGER NOT NULL,
+        vendor_name TEXT    NOT NULL,
+        token       TEXT    NOT NULL UNIQUE,
+        items       TEXT    DEFAULT '[]',
+        created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_active   INTEGER DEFAULT 1
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created/verified supplier_portal_sessions table');
+  } catch (err) {
+    console.error('❌ Failed to initialize supplier_portal_sessions table:', err);
   }
 })();
 

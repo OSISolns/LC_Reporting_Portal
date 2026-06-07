@@ -568,7 +568,39 @@ function analyzeShifts(rows) {
     }
     
     if (r.opened_at && r.closed_at) {
-      const duration = (new Date(r.closed_at) - new Date(r.opened_at)) / 3600000;
+      // Determine wave configuration
+      let waveDuration = 8;
+      let startHourStr = "07:00";
+      if (r.wave === 'Wave 1' || r.start_hour === '07:00') {
+        waveDuration = 8; startHourStr = "07:00";
+      } else if (r.wave === 'Wave 2' || r.start_hour === '08:00') {
+        waveDuration = 8; startHourStr = "08:00";
+      } else if (r.wave === 'Wave 4' || r.start_hour === '09:00') {
+        waveDuration = 8; startHourStr = "09:00";
+      } else if (r.wave === 'Wave 3' || r.start_hour === '15:00') {
+        waveDuration = 6; startHourStr = "15:00";
+      } else {
+        const openedDate = new Date(r.opened_at);
+        const hour = openedDate.getHours();
+        const isMorning = hour < 14;
+        waveDuration = isMorning ? 8 : 6;
+        startHourStr = isMorning ? "07:00" : "15:00";
+      }
+
+      const openedDate = new Date(r.opened_at);
+      const [hStr, mStr] = startHourStr.split(':');
+      const waveStartTime = new Date(openedDate);
+      waveStartTime.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
+
+      const waveEndTimeTime = waveStartTime.getTime() + waveDuration * 60 * 60 * 1000;
+      const closedTime = new Date(r.closed_at).getTime();
+
+      let duration = 0;
+      if (closedTime >= waveStartTime.getTime()) {
+        const effectiveEndMs = Math.min(closedTime, waveEndTimeTime);
+        duration = (effectiveEndMs - waveStartTime.getTime()) / 3600000;
+      }
+
       if (duration > 0 && duration < 24) { // filter outliers
         totalHours += duration;
         cashierMap[name].hours += duration;

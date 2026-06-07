@@ -5,8 +5,20 @@ const clinicalController = require('../controllers/clinicalController');
 const { authMiddleware: authenticateToken } = require('../middleware/auth');
 const authorizeRoles = require('../middleware/role');
 
+// --- Public Supplier Portal Routes (No Auth) ---
+router.get('/inventory/supplier-portal/public-status', clinicalController.getSupplierPortalPublicStatus);
+router.post('/inventory/supplier-portal/verify-token', clinicalController.verifySupplierToken);
+router.post('/inventory/supplier-portal/upload', clinicalController.supplierPortalUpload);
+
 router.use(authenticateToken);
-router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'coo', 'deputy_coo', 'stock-manager', 'pa']));
+router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'deputy_coo', 'stock-manager', 'pa']));
+
+// --- Supplier Portal Authenticated Routes ---
+router.get('/inventory/supplier-portal/settings', clinicalController.getSupplierPortalSettings);
+router.post('/inventory/supplier-portal/toggle', clinicalController.toggleSupplierPortal);
+router.get('/inventory/supplier-portal/submissions', clinicalController.getSupplierSubmissions);
+router.get('/inventory/supplier-portal/submissions/:id/items', clinicalController.getSupplierSubmissionItems);
+router.post('/inventory/supplier-portal/submissions/:id/receive', clinicalController.receiveSupplierStock);
 
 // --- Stock Management Relational Routes ---
 router.get('/inventory/master', clinicalController.getmasterInventory);

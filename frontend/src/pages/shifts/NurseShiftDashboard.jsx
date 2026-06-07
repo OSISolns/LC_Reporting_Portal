@@ -12,13 +12,32 @@ import {
   Heart,
   Thermometer,
   ShieldCheck,
-  ExternalLink
+  ExternalLink,
+  StickyNote
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getMyActiveShift } from '../../api/shifts';
+import { getMyActiveShift, getLatestHandover, getMyHistory } from '../../api/shifts';
 import { Button, Card, Badge } from '../../components/ui/index.jsx';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+
+function getWaveStartTime(shift) {
+  if (!shift?.opened_at) return null;
+  let startHour = '07:00';
+  if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') startHour = '07:00';
+  else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') startHour = '08:00';
+  else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') startHour = '09:00';
+  else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') startHour = '15:00';
+  else {
+    const openedDate = new Date(shift.opened_at);
+    const hour = openedDate.getHours();
+    startHour = hour < 14 ? '07:00' : '15:00';
+  }
+  const [hStr, mStr] = startHour.split(':');
+  const startTime = new Date(shift.opened_at);
+  startTime.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
+  return startTime;
+}
 
 export default function NurseShiftDashboard() {
   const { user } = useAuth();
@@ -26,16 +45,28 @@ export default function NurseShiftDashboard() {
   const [activeShift, setActiveShift] = useState(null);
   const [loading, setLoading] = useState(true);
   const [recentObservations, setRecentObservations] = useState([]);
+  const [latestHandover, setLatestHandover] = useState(null);
+  const [myHistory, setMyHistory] = useState([]);
 
   useEffect(() => {
     async function init() {
       try {
-        const [shiftRes, obsRes] = await Promise.all([
+        const [shiftRes, obsRes, handoverRes, histRes] = await Promise.all([
           getMyActiveShift(),
-          api.get('/clinical/observations/recent')
+          api.get('/clinical/observations/recent'),
+          getLatestHandover('nurse').catch(err => {
+            console.error('Failed to fetch nurse latest handover', err);
+            return { data: { data: null } };
+          }),
+          getMyHistory().catch(err => {
+            console.error('Failed to fetch my history', err);
+            return { data: { data: [] } };
+          })
         ]);
         setActiveShift(shiftRes.data?.data || null);
         setRecentObservations(obsRes.data?.data || []);
+        setLatestHandover(handoverRes.data?.data || null);
+        setMyHistory(histRes.data?.data || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -94,10 +125,24 @@ export default function NurseShiftDashboard() {
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Shift Started</p>
                 <p className="font-black text-slate-800 text-lg">
-                  {new Date(activeShift.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {getWaveStartTime(activeShift) ? getWaveStartTime(activeShift).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                 </p>
-                <p className="text-xs text-slate-500 font-bold">{new Date(activeShift.opened_at).toLocaleDateString()}</p>
+                <p className="text-xs text-slate-500 font-bold mt-0.5">
+                  {getWaveStartTime(activeShift) ? getWaveStartTime(activeShift).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : '—'}
+                </p>
               </div>
+              {activeShift.wave && (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Allocated Wave</p>
+                  <p className="font-black text-slate-800 text-lg uppercase tracking-wider">{activeShift.wave}</p>
+                  <p className="text-xs text-slate-500 font-bold mt-0.5">
+                    {activeShift.start_hour === '07:00' ? '07:00 AM - 03:00 PM' :
+                     activeShift.start_hour === '08:00' ? '08:00 AM - 04:00 PM' :
+                     activeShift.start_hour === '09:00' ? '09:00 AM - 05:00 PM' :
+                     activeShift.start_hour === '15:00' ? '03:00 PM - 09:00 PM' : ''}
+                  </p>
+                </div>
+              )}
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Assignment</p>
                 <p className="font-black text-slate-800 text-lg">General Ward</p>
@@ -174,6 +219,65 @@ export default function NurseShiftDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── Previous Handover Notes ── */}
+      {latestHandover && (
+        <Card className="p-8 space-y-6">
+          <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+            <StickyNote size={20} className="text-[#1b669d]" /> Handover Briefing from Previous Shift
+          </h3>
+          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-black uppercase tracking-wider">
+                Outgoing Nurse: {latestHandover.user_name}
+              </span>
+              <span className="text-[10px] text-slate-400 font-bold">
+                Closed on {new Date(latestHandover.closed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+              </span>
+            </div>
+            <div className="text-sm font-semibold text-slate-700 bg-white p-6 rounded-xl border border-slate-100 shadow-sm italic leading-relaxed">
+              "{latestHandover.handover_notes}"
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── My Past Sessions History ── */}
+      {myHistory && myHistory.length > 0 && (
+        <Card className="p-8 space-y-6">
+          <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+            <Clock size={20} className="text-[#1b669d]" /> My Past Sessions
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-100 pb-4">
+                  <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Role</th>
+                  <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Date</th>
+                  <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Wave Timing</th>
+                  <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myHistory.map((hist) => (
+                  <tr key={hist.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => navigate(`/shifts/${hist.id}`)}>
+                    <td className="py-4 text-sm font-bold text-slate-800 uppercase tracking-wider">{hist.shift_role?.replace(/_/g, ' ')}</td>
+                    <td className="py-4 text-sm text-slate-600 font-semibold">{new Date(hist.opened_at).toLocaleDateString([], { dateStyle: 'medium' })}</td>
+                    <td className="py-4 text-sm text-slate-600 font-semibold">{hist.wave} ({hist.start_hour})</td>
+                    <td className="py-4 text-sm text-right">
+                      {hist.is_flagged ? (
+                        <Badge variant="danger" className="text-[10px]">Flagged</Badge>
+                      ) : (
+                        <Badge variant="success" className="text-[10px]">Closed Clean</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

@@ -29,14 +29,19 @@ import {
   CheckCircle2,
   Lock,
   ChevronRight,
-  Coins
+  Coins,
+  Crown,
+  Stethoscope,
+  FileText
 } from 'lucide-react';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const ROLE_LABELS = {
   cashier: 'Billing Agent',
   helpdesk: 'Helpdesk',
-  call_center: 'Call Center Agent'
+  call_center: 'Call Center Agent',
+  nurse: 'Registered Nurse',
+  vip_lounge: 'VIP Lounge'
 };
 
 const ICON_MAP = {
@@ -46,6 +51,45 @@ const ICON_MAP = {
   'Barcode Printer': <Printer size={18} />,
   'Desk Phone': <Phone size={18} />,
   'Headset': <Headphones size={18} />,
+};
+
+const getWaveTemporalData = (shift) => {
+  if (!shift) return { initiation: '—', termination: '—' };
+  
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString([], { dateStyle: 'medium' });
+  };
+  
+  const openedDateStr = formatDate(shift.opened_at);
+  const closedDateStr = formatDate(shift.closed_at || shift.opened_at);
+  
+  let startStr = '';
+  let endStr = '';
+  
+  if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
+    startStr = '7:00 AM';
+    endStr = '15:00 PM';
+  } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
+    startStr = '8:00 AM';
+    endStr = '16:00 PM';
+  } else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') {
+    startStr = '9:00 AM';
+    endStr = '17:00 PM';
+  } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
+    startStr = '3:00 PM';
+    endStr = '21:00 PM';
+  } else {
+    const hour = shift.opened_at ? new Date(shift.opened_at).getHours() : 7;
+    const isMorning = hour < 14;
+    startStr = isMorning ? '7:00 AM' : '3:00 PM';
+    endStr = isMorning ? '15:00 PM' : '21:00 PM';
+  }
+  
+  return {
+    initiation: openedDateStr ? `${openedDateStr}, ${startStr}` : '—',
+    termination: shift.closed_at ? (closedDateStr ? `${closedDateStr}, ${endStr}` : `${endStr}`) : 'Running'
+  };
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -111,7 +155,120 @@ export default function ShiftDetail() {
   if (!shift) return null;
 
   const isReviewer = REVIEWER_ROLES.includes(user?.role);
+  const isPA = user?.role === 'pa';
   const cd = shift.role_data?.closing;
+
+  const handleExportDocx = () => {
+    if (!shift || !cd?.vip_logs) return;
+    
+    const shiftInfo = {
+      id: shift.id,
+      date: shift.opened_at ? new Date(shift.opened_at).toLocaleDateString() : 'N/A',
+      staff: shift.user_name || 'N/A'
+    };
+
+    const htmlContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+            xmlns:w='urn:schemas-microsoft-com:office:word' 
+            xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <title>VIP Lounge Reception Log</title>
+        <!--[if gte mso 9]>
+        <xml>
+          <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+          </w:WordDocument>
+        </xml>
+        <![endif]-->
+        <style>
+          body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 1in;
+            color: #333333;
+          }
+          h1 {
+            color: #1b669d;
+            font-size: 20pt;
+            margin-bottom: 5pt;
+            border-bottom: 2px solid #1b669d;
+            padding-bottom: 5pt;
+            font-weight: bold;
+          }
+          p {
+            font-size: 10.5pt;
+            color: #666666;
+            margin-bottom: 20pt;
+            line-height: 1.5;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15pt;
+          }
+          th {
+            background-color: #1b669d;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 10.5pt;
+            padding: 10pt;
+            border: 1px solid #1b669d;
+            text-align: left;
+          }
+          td {
+            padding: 10pt;
+            border: 1px solid #e2e8f0;
+            font-size: 10pt;
+            color: #334155;
+          }
+          tr:nth-child(even) {
+            background-color: #f8fafc;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>VIP Lounge Reception Log</h1>
+        <p>
+          <strong>Shift Date:</strong> ${shiftInfo.date}<br/>
+          <strong>Staff Member:</strong> ${shiftInfo.staff}<br/>
+          <strong>Shift Session ID:</strong> #${shiftInfo.id}
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 35%;">Names</th>
+              <th style="width: 35%;">Position</th>
+              <th style="width: 30%;">Doctor/Service Offered</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cd.vip_logs.map(vip => `
+              <tr>
+                <td><strong>${vip.name || '—'}</strong></td>
+                <td>${vip.position || '—'}</td>
+                <td>${vip.doctor_service || '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff' + htmlContent], {
+      type: 'application/msword'
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `VIP_Lounge_Log_Shift_${shiftInfo.id}.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
@@ -126,8 +283,14 @@ export default function ShiftDetail() {
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
           <div className="flex items-center gap-8">
-            <div className="w-24 h-24 rounded-[40px] bg-gradient-to-br from-[#1b669d] to-[#124d77] flex items-center justify-center text-5xl shadow-2xl shadow-[#1b669d]/30 text-white">
-              {shift.shift_role === 'cashier' ? '💳' : shift.shift_role === 'helpdesk' ? '🎧' : '📞'}
+            <div className="w-24 h-24 rounded-[40px] bg-gradient-to-br from-[#1b669d] to-[#124d77] flex items-center justify-center text-white shadow-2xl shadow-[#1b669d]/30">
+              {{
+                cashier: <CreditCard size={40} />,
+                helpdesk: <Monitor size={40} />,
+                call_center: <Phone size={40} />,
+                nurse: <Stethoscope size={40} />,
+                vip_lounge: <Crown size={40} />
+              }[shift.shift_role] || <Briefcase size={40} />}
             </div>
             <div>
               <div className="flex items-center gap-4 mb-2">
@@ -152,7 +315,7 @@ export default function ShiftDetail() {
 
       <div className="space-y-10">
         {/* Flags Banner */}
-        {shift.is_flagged && shift.flag_reasons?.length > 0 && (
+        {!isPA && shift.is_flagged && shift.flag_reasons?.length > 0 && (
           <div className="bg-rose-600 rounded-[40px] p-12 text-white relative overflow-hidden shadow-3xl shadow-rose-600/20">
             <div className="absolute top-0 right-0 p-10 opacity-10"><AlertTriangle size={150} /></div>
             <div className="relative z-10">
@@ -170,32 +333,34 @@ export default function ShiftDetail() {
         )}
 
         {/* Core Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <div className="shift-card">
-            <h3 className="section-label">
-              <Users size={16} /> Staff Identification
-            </h3>
-            <div className="space-y-1">
-              <InfoRow label="Personnel" value={shift.user_name} icon={<Users size={18} />} />
-              <InfoRow label="Access Email" value={shift.user_email} icon={<Mail size={18} />} />
-              <InfoRow label="Assigned Role" value={ROLE_LABELS[shift.shift_role]} icon={<Briefcase size={18} />} />
+        {!isPA && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <div className="shift-card">
+              <h3 className="section-label">
+                <Users size={16} /> Staff Identification
+              </h3>
+              <div className="space-y-1">
+                <InfoRow label="Personnel" value={shift.user_name} icon={<Users size={18} />} />
+                <InfoRow label="Access Email" value={shift.user_email} icon={<Mail size={18} />} />
+                <InfoRow label="Assigned Role" value={ROLE_LABELS[shift.shift_role]} icon={<Briefcase size={18} />} />
+              </div>
             </div>
-          </div>
 
-          <div className="shift-card">
-            <h3 className="section-label">
-              <Clock size={16} /> Temporal Data
-            </h3>
-            <div className="space-y-1">
-              <InfoRow label="Shift Initiation" value={shift.opened_at ? new Date(shift.opened_at).toLocaleString() : null} icon={<div className="w-2.5 h-2.5 rounded-full bg-[#6fb448]" />} />
-              <InfoRow label="Shift Termination" value={shift.closed_at ? new Date(shift.closed_at).toLocaleString() : null} icon={<div className="w-2.5 h-2.5 rounded-full bg-rose-500" />} />
-              <InfoRow label="Reviewer" value={shift.reviewed_by_name || 'Verification Pending'} icon={<ShieldCheck size={18} />} />
+            <div className="shift-card">
+              <h3 className="section-label">
+                <Clock size={16} /> Temporal Data
+              </h3>
+              <div className="space-y-1">
+                <InfoRow label="Shift Initiation" value={getWaveTemporalData(shift).initiation} icon={<div className="w-2.5 h-2.5 rounded-full bg-[#6fb448]" />} />
+                <InfoRow label="Shift Termination" value={getWaveTemporalData(shift).termination} icon={<div className="w-2.5 h-2.5 rounded-full bg-rose-500" />} />
+                <InfoRow label="Reviewer" value={shift.reviewed_by_name || 'Verification Pending'} icon={<ShieldCheck size={18} />} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Handover Notes */}
-        {shift.handover_notes && (
+        {!isPA && shift.handover_notes && (
           <div className="shift-card border-4 border-slate-50 bg-slate-50/30">
             <h3 className="section-label">
               <StickyNote size={16} /> Operational Handover Notes
@@ -207,14 +372,16 @@ export default function ShiftDetail() {
         )}
 
         {/* Equipment Snapshot */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <EquipSection title="Inventory Check (Open)" items={shift.equipment?.open} icon={<Monitor size={20} />} color="blue" />
-          {shift.status !== 'open' && <EquipSection title="Inventory Check (Close)" items={shift.equipment?.close} icon={<Lock size={20} />} color="rose" />}
-        </div>
+        {!isPA && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <EquipSection title="Inventory Check (Open)" items={shift.equipment?.open} icon={<Monitor size={20} />} color="blue" />
+            {shift.status !== 'open' && <EquipSection title="Inventory Check (Close)" items={shift.equipment?.close} icon={<Lock size={20} />} color="rose" />}
+          </div>
+        )}
 
         {/* Role-Specific Data */}
         <div className="space-y-10">
-          {shift.shift_role === 'cashier' && cd && (
+          {!isPA && shift.shift_role === 'cashier' && cd && (
             <div className="space-y-10">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                 <div className="shift-card">
@@ -247,7 +414,7 @@ export default function ShiftDetail() {
             </div>
           )}
 
-          {shift.shift_role === 'helpdesk' && cd && (
+          {!isPA && shift.shift_role === 'helpdesk' && cd && (
             <div className="shift-card">
               <h3 className="section-label">Functional Analytics</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
@@ -265,7 +432,7 @@ export default function ShiftDetail() {
             </div>
           )}
 
-          {shift.shift_role === 'call_center' && cd && (
+          {!isPA && shift.shift_role === 'call_center' && cd && (
             <div className="space-y-10">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="shift-card">
@@ -309,32 +476,107 @@ export default function ShiftDetail() {
               )}
             </div>
           )}
-        </div>
 
-        {/* Action Footer */}
-        <footer className="pt-16 flex flex-col items-center gap-6">
-          {(shift.status === 'open' || shift.status === 'draft') && !isReviewer ? (
-            <Link to={`/shifts/close/${shift.id}`}
-              className="group relative w-full overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-[#1b669d] via-[#6fb448] to-[#1b669d] opacity-90 group-hover:opacity-100 transition-opacity duration-300 shadow-3xl" />
-              <div className="relative py-8 rounded-[40px] flex items-center justify-center gap-4 text-white font-black text-2xl tracking-widest uppercase">
-                <span>Authorize Shift Closure</span>
-                <ChevronRight size={32} className="group-hover:translate-x-2 transition-transform" />
+          {!isPA && shift.shift_role === 'nurse' && cd && (
+            <div className="space-y-10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div className="shift-card">
+                  <h3 className="section-label">Clinical Activity Summary</h3>
+                  <InfoRow label="Patients Assessed" value={cd.total_assessments} icon={<Users size={18} />} />
+                  <InfoRow label="Incidents Reported" value={cd.total_incidents} icon={<AlertTriangle size={18} />} />
+                </div>
+                <div className="shift-card">
+                  <h3 className="section-label">SBAR Handover (Situation/Background)</h3>
+                  <div className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-6 rounded-2xl border border-slate-100 italic">
+                    {cd.handover_sbar_sb ? `"${cd.handover_sbar_sb}"` : "None provided"}
+                  </div>
+                </div>
               </div>
-            </Link>
-          ) : (
-            <div className="text-center space-y-3">
-              <div className="w-16 h-16 rounded-3xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-slate-200 mx-auto mb-6">
-                <ShieldCheck size={32} />
-              </div>
-              <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">Digital Forensic Log</p>
-              <div className="text-slate-400 font-black text-xs uppercase tracking-widest">
-                Sealed & Authenticated under MD-244 Compliance
+              <div className="shift-card">
+                <h3 className="section-label">SBAR Handover (Assessment/Recommendation)</h3>
+                <div className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-6 rounded-2xl border border-slate-100 italic">
+                  {cd.handover_sbar_ar ? `"${cd.handover_sbar_ar}"` : "None provided"}
+                </div>
               </div>
             </div>
           )}
-        </footer>
+
+          {shift.shift_role === 'vip_lounge' && cd && (
+            <div className="shift-card">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="section-label flex items-center gap-3 mb-0">
+                  <Crown size={18} /> VIP Lounge Reception Log
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleExportDocx}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1b669d]/10 hover:bg-[#1b669d] text-[#1b669d] hover:text-white font-black text-xs uppercase tracking-widest transition-all"
+                >
+                  <FileText size={16} /> Export to Word (.docx)
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-slate-100 pb-4">
+                      <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Names</th>
+                      <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Position</th>
+                      <th className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Doctor/Service Offered</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cd.vip_logs && cd.vip_logs.length > 0 ? (
+                      cd.vip_logs.map((vip, i) => (
+                        <tr key={i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+                          <td className="py-4 text-sm font-bold text-slate-800">{vip.name}</td>
+                          <td className="py-4 text-sm text-slate-600 font-semibold">{vip.position}</td>
+                          <td className="py-4 text-sm text-slate-600 font-semibold">{vip.doctor_service}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="py-8 text-center text-slate-300 text-xs font-black uppercase tracking-widest">No VIPs logged for this shift</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {isPA && shift.shift_role !== 'vip_lounge' && (
+            <div className="shift-card text-center p-12">
+              <p className="text-slate-400 font-bold">This shift contains no VIP Lounge logs.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Action Footer */}
+        {!isPA && (
+          <footer className="pt-16 flex flex-col items-center gap-6">
+            {(shift.status === 'open' || shift.status === 'draft') && !isReviewer ? (
+              <Link to={`/shifts/close/${shift.id}`}
+                className="group relative w-full overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-[#1b669d] via-[#6fb448] to-[#1b669d] opacity-90 group-hover:opacity-100 transition-opacity duration-300 shadow-3xl" />
+                <div className="relative py-8 rounded-[40px] flex items-center justify-center gap-4 text-white font-black text-2xl tracking-widest uppercase">
+                  <span>Authorize Shift Closure</span>
+                  <ChevronRight size={32} className="group-hover:translate-x-2 transition-transform" />
+                </div>
+              </Link>
+            ) : (
+              <div className="text-center space-y-3">
+                <div className="w-16 h-16 rounded-3xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-slate-200 mx-auto mb-6">
+                  <ShieldCheck size={32} />
+                </div>
+                <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">Digital Forensic Log</p>
+                <div className="text-slate-400 font-black text-xs uppercase tracking-widest">
+                  Sealed & Authenticated under MD-244 Compliance
+                </div>
+              </div>
+            )}
+          </footer>
+        )}
       </div>
     </div>
   );

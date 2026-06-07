@@ -6,7 +6,7 @@ const { authMiddleware } = require('../middleware/auth');
 const authorizeRoles = require('../middleware/role');
 
 router.use(authMiddleware);
-router.use(authorizeRoles(['hsfp', 'admin', 'reviewer']));
+router.use(authorizeRoles(['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo']));
 
 router.post('/', safetyController.createReport);
 router.get('/', safetyController.getAllReports);
