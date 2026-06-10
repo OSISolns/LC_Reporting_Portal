@@ -6,8 +6,8 @@ const { createClient } = require('@libsql/client');
  * Initialize Turso (LibSQL) Client
  * Prioritize PROD_ variables to allow bypassing Vercel's Turso integration preview branches (e.g. database-pink-bucket).
  */
-const tursoUrl = process.env.PROD_TURSO_DATABASE_URL || process.env.lcreporting_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL;
-const tursoAuthToken = process.env.PROD_TURSO_AUTH_TOKEN || process.env.lcreporting_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
+const tursoUrl = process.env.PROD_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.lcreporting_TURSO_DATABASE_URL;
+const tursoAuthToken = process.env.PROD_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.lcreporting_TURSO_AUTH_TOKEN;
 
 if (!tursoUrl || !tursoAuthToken) {
   throw new Error('❌ TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set in environment variables.');
