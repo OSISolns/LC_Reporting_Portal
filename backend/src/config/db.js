@@ -245,6 +245,7 @@ const client = createClient({
 
   // Seed default data for nursing operational reports
   try {
+    /*
     const { rows: providersCount } = await client.execute("SELECT COUNT(*) as count FROM providers");
     if (providersCount[0].count !== 52) {
       console.log('🌱 Refreshing/Seeding initial departments for nursing report matching reference image...');
@@ -365,6 +366,7 @@ const client = createClient({
       }
       console.log('✨ Nursing Report Seed matching spreadsheet completed successfully!');
     }
+    */
   } catch (err) {
     console.error('❌ Failed to seed nursing report data:', err);
   }
