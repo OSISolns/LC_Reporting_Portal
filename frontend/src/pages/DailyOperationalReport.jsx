@@ -233,6 +233,12 @@ export default function DailyOperationalReport() {
 
   // Submit Daily Report
   const handleSaveReport = async () => {
+    // Check if user is a nurse and selecting a past date
+    const today = new Date().toISOString().split('T')[0];
+    if (user?.role === 'nurse' && selectedDate < today) {
+      toast.error('Nurses are not authorized to modify past reports.');
+      return;
+    }
     try {
       setSaving(true);
 
@@ -864,6 +870,16 @@ export default function DailyOperationalReport() {
               </div>
             </div>
 
+            {user?.role === 'nurse' && selectedDate < new Date().toISOString().split('T')[0] && (
+              <div className="bg-amber-50 p-4 rounded-3xl border border-amber-200/60 shadow-sm flex items-center gap-3 text-amber-900 animate-fadeIn">
+                <AlertCircle className="text-amber-600 shrink-0" size={20} />
+                <div className="text-xs">
+                  <span className="font-extrabold block uppercase tracking-wider">Read-Only Mode</span>
+                  <span className="font-semibold text-amber-700/90">Nurses are only authorized to log and submit operational counts for the current day. Changes to past reports are restricted.</span>
+                </div>
+              </div>
+            )}
+
             {loading ? (
               // Loading Skeleton
               <div className="space-y-6">
@@ -922,7 +938,8 @@ export default function DailyOperationalReport() {
                                 placeholder="0"
                                 value={entryMetrics[provider.id] !== undefined ? entryMetrics[provider.id] : ''}
                                 onChange={(e) => handleMetricChange(provider.id, e.target.value)}
-                                className="w-full text-right font-black text-sm text-sky-850 border-2 border-slate-200/80 rounded-xl pl-3 pr-8 py-2 focus:border-sky-500 focus:ring-0 bg-white transition-all duration-200"
+                                disabled={user?.role === 'nurse' && selectedDate < new Date().toISOString().split('T')[0]}
+                                className="w-full text-right font-black text-sm text-sky-850 border-2 border-slate-200/80 rounded-xl pl-3 pr-8 py-2 focus:border-sky-500 focus:ring-0 bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                               />
                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">Qty</span>
                             </div>
@@ -964,7 +981,8 @@ export default function DailyOperationalReport() {
                             placeholder={isNameInput ? 'e.g. Denyse, Rachel' : '0'}
                             value={value}
                             onChange={(e) => handleLogChange(metricName, e.target.value)}
-                            className="w-full text-xs font-bold text-slate-700 border-2 border-slate-200 rounded-xl px-4 py-3 focus:border-sky-500 focus:ring-0 bg-slate-50/20 focus:bg-white transition-all duration-200"
+                            disabled={user?.role === 'nurse' && selectedDate < new Date().toISOString().split('T')[0]}
+                            className="w-full text-xs font-bold text-slate-700 border-2 border-slate-200 rounded-xl px-4 py-3 focus:border-sky-500 focus:ring-0 bg-slate-50/20 focus:bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                           />
                         </div>
                       );
@@ -1037,7 +1055,7 @@ export default function DailyOperationalReport() {
               {/* Save Trigger Button */}
               <button
                 onClick={handleSaveReport}
-                disabled={saving || loading}
+                disabled={saving || loading || (user?.role === 'nurse' && selectedDate < new Date().toISOString().split('T')[0])}
                 className="w-full bg-[#0284c7] hover:bg-[#0369a1] disabled:bg-slate-200 disabled:text-slate-400 text-white py-4 px-6 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-200 shadow-md hover:shadow-lg shadow-sky-500/10 flex items-center justify-center gap-2"
               >
                 {saving ? (

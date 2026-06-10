@@ -31,6 +31,11 @@ exports.saveDaily = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid payload. Date, metrics, and logs arrays are required.' });
     }
 
+    const today = new Date().toISOString().split('T')[0];
+    if (req.user && req.user.role === 'nurse' && report_date < today) {
+      return res.status(403).json({ success: false, message: 'Nurses are not authorized to modify past reports.' });
+    }
+
     await DailyReport.saveDaily(report_date, metrics, logs);
     await logAction(req, 'SAVE', 'daily_operational_report', null, { date: report_date, metricsCount: metrics.length, logsCount: logs.length });
 
