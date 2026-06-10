@@ -6,16 +6,16 @@
  * Service layer for interacting with the SUKRAA HIMS ASMX Web Service.
  * Provides patient search and bulk pull functionality.
  *
- * SUKRAA Service URL: http://192.168.0.149:8081/legacy/forms/Autocompleted.asmx
+ * SUKRAA Service URL: http://41.173.250.126:8081/legacy/forms/Autocompleted.asmx
  * Namespace:         http://tempuri.org/
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 const axios = require('axios');
 
-const SUKRAA_BASE_URL = process.env.SUKRAA_SERVICE_URL || 'http://192.168.0.149:8081/legacy/forms/Autocompleted.asmx';
-const NAMESPACE       = 'http://tempuri.org/';
-const TIMEOUT_MS      = 30_000; // 30 seconds
+const SUKRAA_BASE_URL = process.env.SUKRAA_SERVICE_URL || 'http://41.173.250.126:8081/legacy/forms/Autocompleted.asmx';
+const NAMESPACE = 'http://tempuri.org/';
+const TIMEOUT_MS = 30_000; // 30 seconds
 
 // ── Helper: build a SOAP 1.1 envelope ────────────────────────────────────────
 function buildSoapEnvelope(method, prefixText, count = 200, contextKey = '') {
@@ -36,24 +36,24 @@ function buildSoapEnvelope(method, prefixText, count = 200, contextKey = '') {
 // ── Helper: parse SUKRAA pipe-delimited string into structured object ─────────
 function parsePatientEntry(rawString) {
   try {
-    const parsed   = JSON.parse(rawString);
-    const first    = parsed.First || '';
-    const second   = parsed.Second || '';
+    const parsed = JSON.parse(rawString);
+    const first = parsed.First || '';
+    const second = parsed.Second || '';
 
     // Strip the leading "· " bullet character
-    const clean    = first.replace(/^[·•]\s*/, '').trim();
-    const parts    = clean.split('|');
+    const clean = first.replace(/^[·•]\s*/, '').trim();
+    const parts = clean.split('|');
 
     return {
-      pid:       second.trim() || parts[0]?.trim() || '',
+      pid: second.trim() || parts[0]?.trim() || '',
       full_name: parts[1]?.trim() || '',
-      age:       parts[2]?.trim() || '',
-      dob:       parts[3]?.trim() || '',
-      gender:    parts[4]?.trim() || '',
-      phone:     parts[5]?.trim() || '',
+      age: parts[2]?.trim() || '',
+      dob: parts[3]?.trim() || '',
+      gender: parts[4]?.trim() || '',
+      phone: parts[5]?.trim() || '',
       insurance: parts[6]?.trim() || '',
-      extra_1:   parts[7]?.trim() || '',
-      extra_2:   parts[8]?.trim() || '',
+      extra_1: parts[7]?.trim() || '',
+      extra_2: parts[8]?.trim() || '',
     };
   } catch {
     return null;
@@ -63,13 +63,13 @@ function parsePatientEntry(rawString) {
 // ── Helper: extract <string> entries from raw SOAP XML response ───────────────
 function extractStringsFromXml(xmlText, method) {
   const resultTag = `${method}Result`;
-  const regex     = /<string[^>]*>([\s\S]*?)<\/string>/g;
-  const results   = [];
+  const regex = /<string[^>]*>([\s\S]*?)<\/string>/g;
+  const results = [];
   let match;
 
   // Only search within the result element
   const resultStart = xmlText.indexOf(`<${resultTag}>`);
-  const resultEnd   = xmlText.indexOf(`</${resultTag}>`);
+  const resultEnd = xmlText.indexOf(`</${resultTag}>`);
   if (resultStart === -1 || resultEnd === -1) return results;
 
   const fragment = xmlText.slice(resultStart, resultEnd);
@@ -94,12 +94,12 @@ async function callSoapMethod(method, prefixText, count = 200, contextKey = '') 
   const response = await axios.post(SUKRAA_BASE_URL, body, {
     headers: {
       'Content-Type': 'text/xml; charset=utf-8',
-      'SOAPAction':   `"${NAMESPACE}${method}"`,
+      'SOAPAction': `"${NAMESPACE}${method}"`,
     },
     timeout: TIMEOUT_MS,
     // SUKRAA returns large XML - don't limit response size
     maxContentLength: Infinity,
-    maxBodyLength:    Infinity,
+    maxBodyLength: Infinity,
   });
 
   const strings = extractStringsFromXml(response.data, method);
@@ -141,15 +141,15 @@ async function bulkPullByPrefix(prefix, count = 500) {
 // Sweeps all aa–az, ba–bz... to stay well within SUKRAA timeout limits.
 // Falls back to single-char if 2-char sweep returns 0 for a whole letter.
 async function* bulkPullAllPatients() {
-  const letters  = 'abcdefghijklmnopqrstuvwxyz';
-  const digits   = '0123456789';
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  const digits = '0123456789';
   const alphabet = (letters + digits).split('');
 
   for (const first of alphabet) {
     // First do a 2-char sub-sweep for this letter to avoid timeouts
     let letterTotal = 0;
     for (const second of (letters + digits).split('')) {
-      const prefix   = first + second;
+      const prefix = first + second;
       const patients = await bulkPullByPrefix(prefix, 500);
       letterTotal += patients.length;
       if (patients.length > 0) yield { prefix, patients };
