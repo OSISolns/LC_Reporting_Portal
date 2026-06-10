@@ -31,8 +31,12 @@ exports.saveDaily = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid payload. Date, metrics, and logs arrays are required.' });
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    if (req.user && req.user.role === 'nurse' && report_date < today) {
+    // Get local date string YYYY-MM-DD
+    const dateObj = new Date();
+    const offset = dateObj.getTimezoneOffset() * 60000;
+    const localToday = new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
+    
+    if (req.user && ['nurse', 'chef-nurse'].includes(req.user.role) && report_date < localToday) {
       return res.status(403).json({ success: false, message: 'Nurses are not authorized to modify past reports.' });
     }
 
