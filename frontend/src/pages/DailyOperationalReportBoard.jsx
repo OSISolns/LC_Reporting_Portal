@@ -16,22 +16,43 @@ import {
   CheckCircle2,
   CalendarDays,
   FileSpreadsheet,
-  Download,
   Database,
   X
 } from 'lucide-react';
-import { getReportConfig, getDailyReport, getMonthlyReport } from '../api/reports';
+import { getReportConfig, getDailyReport, getMonthlyReport, getWeeklyReport } from '../api/reports';
+
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
+
+const getWeekRange = (dateStr) => {
+  if (!dateStr) return { start: '', end: '' };
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  
+  const dayOfWeek = date.getDay(); // 0 is Sunday, 1 is Monday, ...
+  const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust to get Monday
+  const monday = new Date(year, month - 1, diff);
+  
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  
+  const formatDate = (d) => {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  
+  return {
+    start: formatDate(monday),
+    end: formatDate(sunday)
+  };
+};
 
 export default function DailyOperationalReportBoard() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('daily'); // 'daily' or 'monthly'
+  const [activeTab, setActiveTab] = useState('daily'); // 'daily', 'weekly' or 'monthly'
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState({ departments: [], providers: [], defaultProcedureMetrics: [] });
+
 
   // Daily Board State
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -45,6 +66,15 @@ export default function DailyOperationalReportBoard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
 
+  // Weekly Board State
+  const [selectedWeekDate, setSelectedWeekDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+  const [weeklyData, setWeeklyData] = useState(null);
+  const [weeklySearchQuery, setWeeklySearchQuery] = useState('');
+  const [weeklyDeptFilter, setWeeklyDeptFilter] = useState('ALL');
+
   // Monthly Matrix State
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // Default to current month
@@ -54,7 +84,9 @@ export default function DailyOperationalReportBoard() {
 
   // Refs for PDF capturing
   const dailyReportRef = useRef();
+  const weeklyReportRef = useRef();
   const monthlyMatrixRef = useRef();
+
 
   // Load config on mount
   useEffect(() => {
@@ -155,6 +187,54 @@ export default function DailyOperationalReportBoard() {
     fetchMonthlyData();
   }, [selectedYear, selectedMonth, activeTab]);
 
+  // Fetch weekly report data
+  useEffect(() => {
+    if (activeTab !== 'weekly') return;
+
+    const fetchWeeklyData = async () => {
+      try {
+        setLoading(true);
+        const { start, end } = getWeekRange(selectedWeekDate);
+        const res = await getWeeklyReport(start, end);
+        if (res.data.success) {
+          setWeeklyData(res.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to load weekly report:', err);
+        toast.error('Failed to retrieve weekly report data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWeeklyData();
+  }, [selectedWeekDate, activeTab]);
+
+  const adjustWeek = (daysOffset) => {
+    const [year, month, day] = selectedWeekDate.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
+    d.setDate(d.getDate() + daysOffset);
+    setSelectedWeekDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+  };
+
+  const getWeeklyDaysArray = () => {
+    const { start } = getWeekRange(selectedWeekDate);
+    const [year, month, day] = start.split('-').map(Number);
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(year, month - 1, day + i);
+      days.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
+    return days;
+  };
+
+  const formatWeeklyDayHeader = (dateStr) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return `${dayNames[d.getDay()]} ${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+  };
+
   // Helper to adjust selected date
   const adjustDate = (daysOffset) => {
     const d = new Date(selectedDate);
@@ -222,52 +302,6 @@ export default function DailyOperationalReportBoard() {
     return Array.from({ length: daysInMonth }, (_, i) => i + 1);
   };
 
-  // Modern High-Fidelity Client-Side PDF Generation Handler
-  const handleDownloadPdf = async () => {
-    const element = activeTab === 'daily' ? dailyReportRef.current : monthlyMatrixRef.current;
-    if (!element) return;
-
-    try {
-      toast.loading("Compiling operational PDF document...", { id: 'pdf-toast' });
-
-      // Take a high-resolution DOM snapshot with clean CORS & light backgrounds
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#f8fafc', // standard slate-50 light background
-        logging: false
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210; // A4 page dimensions
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      // Handle multi-page pagination offset cleanly
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      const fileName = activeTab === 'daily' 
-        ? `Daily_Operational_Report_${selectedDate}.pdf`
-        : `Monthly_Operational_Matrix_${selectedMonth}_${selectedYear}.pdf`;
-
-      pdf.save(fileName);
-      toast.success("PDF exported successfully!", { id: 'pdf-toast' });
-    } catch (err) {
-      console.error("PDF generation failed:", err);
-      toast.error("Failed to generate PDF.", { id: 'pdf-toast' });
-    }
-  };
 
   // Premium Client-Side Excel Export for Daily Summaries
   const handleExportDailyXlsx = async () => {
@@ -497,7 +531,248 @@ export default function DailyOperationalReportBoard() {
     }
   };
 
+  // Premium Client-Side Excel Export for Weekly Summaries
+  const handleExportWeeklyXlsx = async () => {
+    try {
+      if (!weeklyData) {
+        toast.error("No weekly report dataset is loaded.");
+        return;
+      }
+      
+      toast.loading("Generating weekly Excel workbook...", { id: 'excel-toast' });
+      const workbook = new ExcelJS.Workbook();
+      
+      const sheet = workbook.addWorksheet('Weekly Report');
+      sheet.views = [{ showGridLines: true }];
+      
+      // Configure columns
+      const days = getWeeklyDaysArray();
+      const totalCols = 2 + days.length + 1;
+      
+      // Set Column Widths
+      sheet.getColumn(1).width = 28;
+      sheet.getColumn(2).width = 24;
+      days.forEach((day, index) => {
+        sheet.getColumn(2 + index + 1).width = 14;
+      });
+      sheet.getColumn(totalCols).width = 12;
+      
+      // Title Block
+      const titleCell = sheet.getCell('A1');
+      titleCell.value = 'LEGACY CLINICS & DIAGNOSTICS';
+      sheet.mergeCells(1, 1, 1, totalCols);
+      titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(1).height = 35;
+      
+      const subCell = sheet.getCell('A2');
+      const { start, end } = getWeekRange(selectedWeekDate);
+      subCell.value = `WEEKLY OPERATIONAL REPORT (Period: ${start} to ${end})`;
+      sheet.mergeCells(2, 1, 2, totalCols);
+      subCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4A90E2' } };
+      subCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(2).height = 25;
+      
+      sheet.getRow(3).height = 15;
+      
+      // Table Header Row 4
+      const headerRow = sheet.getRow(4);
+      headerRow.height = 28;
+      
+      headerRow.getCell(1).value = 'Staff Specialist';
+      headerRow.getCell(2).value = 'Specialty / Department';
+      days.forEach((day, index) => {
+        headerRow.getCell(2 + index + 1).value = formatWeeklyDayHeader(day);
+      });
+      headerRow.getCell(totalCols).value = 'TOTAL';
+      
+      for (let c = 1; c <= totalCols; c++) {
+        const cell = headerRow.getCell(c);
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+        cell.alignment = { horizontal: c > 2 ? 'center' : 'left', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '1B365D' } },
+          bottom: { style: 'medium', color: { argb: '1B365D' } },
+          left: { style: 'thin', color: { argb: '4F81BD' } },
+          right: { style: 'thin', color: { argb: '4F81BD' } }
+        };
+      }
+      
+      let currentRow = 5;
+      const startRowProviders = 5;
+      
+      const filteredProviders = config.providers.filter(p => {
+        if (weeklyDeptFilter !== 'ALL' && p.department_name !== weeklyDeptFilter) return false;
+        if (weeklySearchQuery.trim() !== '') {
+          const query = weeklySearchQuery.toLowerCase();
+          return p.name.toLowerCase().includes(query) || (p.department_name && p.department_name.toLowerCase().includes(query));
+        }
+        return true;
+      });
+      
+      filteredProviders.forEach(provider => {
+        const deptName = provider.department_name || 'OTHER';
+        const r = sheet.getRow(currentRow);
+        r.height = 20;
+        r.getCell(1).value = provider.name;
+        r.getCell(2).value = deptName;
+        
+        days.forEach((day, index) => {
+          const record = weeklyData.metrics.find(m => m.provider_id === provider.id && m.report_date === day);
+          r.getCell(2 + index + 1).value = record ? record.patient_count : 0;
+        });
+        
+        const startColLetter = getColumnLetter(3);
+        const endColLetter = getColumnLetter(2 + days.length);
+        
+        r.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${currentRow}:${endColLetter}${currentRow})` };
+        
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = r.getCell(col);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            const val = cell.value;
+            if (col === totalCols) {
+              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
+            } else if (typeof val === 'number' && val > 0) {
+              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
+            } else if (val === 0) {
+              cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
+              cell.value = '-';
+            }
+          }
+        }
+        currentRow++;
+      });
+      
+      const endRowProviders = Math.max(startRowProviders, currentRow - 1);
+      
+      // Divider
+      const dividerRow = sheet.getRow(currentRow);
+      dividerRow.height = 22;
+      dividerRow.getCell(1).value = 'NURSING AND WARD PROCEDURES';
+      sheet.mergeCells(currentRow, 1, currentRow, totalCols);
+      for (let c = 1; c <= totalCols; c++) {
+        const cell = dividerRow.getCell(c);
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EBF3FD' } };
+        cell.border = { bottom: { style: 'thin', color: { argb: 'CAD9EA' } } };
+      }
+      currentRow++;
+      
+      const startRowProcedures = currentRow;
+      
+      const filteredProcedures = config.defaultProcedureMetrics.filter(metricName => {
+        if (weeklyDeptFilter !== 'ALL') return false; 
+        if (weeklySearchQuery.trim() !== '') {
+          return metricName.toLowerCase().includes(weeklySearchQuery.toLowerCase());
+        }
+        return true;
+      });
+      
+      filteredProcedures.forEach(metricName => {
+        const isNameInput = metricName.toLowerCase().includes('assistant');
+        const r = sheet.getRow(currentRow);
+        r.height = 20;
+        r.getCell(1).value = metricName;
+        r.getCell(2).value = 'PROCEDURES';
+        
+        days.forEach((day, index) => {
+          const record = weeklyData.logs.find(l => l.metric_name === metricName && l.report_date === day);
+          const val = record ? record.metric_value : '0';
+          r.getCell(2 + index + 1).value = isNameInput ? val : (parseInt(val, 10) || 0);
+        });
+        
+        const startColLetter = getColumnLetter(3);
+        const endColLetter = getColumnLetter(2 + days.length);
+        
+        if (!isNameInput) {
+          r.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${currentRow}:${endColLetter}${currentRow})` };
+        } else {
+          r.getCell(totalCols).value = 'N/A';
+        }
+        
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = r.getCell(col);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            const val = cell.value;
+            if (col === totalCols) {
+              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '555555' } };
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F5F5F5' } };
+            } else if (isNameInput) {
+              cell.font = { name: 'Calibri', size: 9, italic: true };
+              if (val === '0' || val === '') {
+                cell.value = '-';
+                cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
+              }
+            } else if (typeof val === 'number' && val > 0) {
+              cell.font = { name: 'Calibri', size: 10, bold: true };
+            } else if (val === 0) {
+              cell.value = '-';
+              cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
+            }
+          }
+        }
+        currentRow++;
+      });
+      
+      const endRowProcedures = Math.max(startRowProcedures, currentRow - 1);
+      
+      // Bottom Total row
+      const totalSumRow = sheet.getRow(currentRow);
+      totalSumRow.height = 26;
+      totalSumRow.getCell(1).value = 'TOTAL COMPLETED PATIENTS';
+      sheet.mergeCells(currentRow, 1, currentRow, 2);
+      
+      for (let d = 1; d <= days.length; d++) {
+        const colIndex = 2 + d;
+        const colLetter = getColumnLetter(colIndex);
+        totalSumRow.getCell(colIndex).value = { formula: `=SUM(${colLetter}${startRowProviders}:${colLetter}${endRowProviders})` };
+      }
+      
+      const totalColLetter = getColumnLetter(totalCols);
+      totalSumRow.getCell(totalCols).value = { formula: `=SUM(${totalColLetter}${startRowProviders}:${totalColLetter}${endRowProviders})` };
+      
+      for (let col = 1; col <= totalCols; col++) {
+        const cell = totalSumRow.getCell(col);
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '1B365D' } },
+          bottom: { style: 'double', color: { argb: '1B365D' } }
+        };
+        if (col > 2) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          if (col === totalCols) {
+            cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
+          }
+        }
+      }
+      
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Weekly_Operational_Report_${start}_to_${end}.xlsx`;
+      link.click();
+      toast.success("Excel exported successfully!", { id: 'excel-toast' });
+    } catch (err) {
+      console.error("Excel weekly generation failed:", err);
+      toast.error("Failed to generate Excel weekly workbook.", { id: 'excel-toast' });
+    }
+  };
+
   // Helper helper to convert numeric column index to Excel column letter
+
   const getColumnLetter = (colIndex) => {
     let temp = colIndex;
     let letter = '';
@@ -791,11 +1066,21 @@ export default function DailyOperationalReportBoard() {
             <CalendarDays size={15} /> Daily Summaries
           </button>
           <button
+            onClick={() => setActiveTab('weekly')}
+            className={`flex-1 lg:flex-none px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
+              activeTab === 'weekly'
+                ? 'bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-md shadow-sky-500/20'
+                : 'text-slate-500 hover:text-slate-850 hover:bg-slate-200/50'
+            }`}
+          >
+            <Calendar size={15} /> Weekly Report
+          </button>
+          <button
             onClick={() => setActiveTab('monthly')}
             className={`flex-1 lg:flex-none px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
               activeTab === 'monthly'
                 ? 'bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-md shadow-sky-500/20'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+                : 'text-slate-500 hover:text-slate-850 hover:bg-slate-200/50'
             }`}
           >
             <BarChart3 size={15} /> Monthly Matrix
@@ -1119,6 +1404,298 @@ export default function DailyOperationalReportBoard() {
               )}
             </div>
           </div>
+
+        </div>
+      )}
+
+      {/* ────────────────── WEEKLY REPORT TAB ────────────────── */}
+      {!loading && activeTab === 'weekly' && (
+        <div className="space-y-8 animate-fadeIn">
+          
+          {/* Week Date Selector and Download Actions */}
+          <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-sky-50 text-sky-600 rounded-xl border border-sky-100">
+                <Calendar size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-sky-600 uppercase tracking-widest">Selected Week Range</p>
+                <span className="text-sm font-extrabold text-slate-850">
+                  {getWeekRange(selectedWeekDate).start} to {getWeekRange(selectedWeekDate).end}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-250 shadow-inner w-full md:w-auto justify-between">
+                <button
+                  onClick={() => adjustWeek(-7)}
+                  className="px-3 py-1.5 hover:bg-slate-200 rounded-xl transition font-extrabold text-slate-500 hover:text-slate-850 text-xs"
+                >
+                  ◀ Prev Week
+                </button>
+                <input
+                  type="date"
+                  value={selectedWeekDate}
+                  onChange={(e) => setSelectedWeekDate(e.target.value)}
+                  className="bg-white text-slate-800 font-extrabold border border-slate-200 px-3 py-1.5 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <button
+                  onClick={() => adjustWeek(7)}
+                  className="px-3 py-1.5 hover:bg-slate-200 rounded-xl transition font-extrabold text-slate-500 hover:text-slate-850 text-xs"
+                >
+                  Next Week ▶
+                </button>
+              </div>
+
+              <button
+                onClick={handleExportWeeklyXlsx}
+                className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-emerald-500/20 active:scale-95 transition"
+              >
+                <FileSpreadsheet size={15} /> Export Excel
+              </button>
+            </div>
+          </div>
+
+          {/* Filtering Ribbon */}
+          <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-3.5 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search staff, specialties, logs..."
+                value={weeklySearchQuery}
+                onChange={(e) => setWeeklySearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-850 placeholder-slate-450 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Filter className="text-slate-400" size={16} />
+              <select
+                value={weeklyDeptFilter}
+                onChange={(e) => setWeeklyDeptFilter(e.target.value)}
+                className="w-full sm:w-60 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-xs font-bold text-slate-850 focus:outline-none"
+              >
+                <option value="ALL">ALL SPECIALTY DEPARTMENTS</option>
+                {Object.keys(providersByDept).map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Weekly Report Pivot Matrix Table */}
+          {weeklyData ? (
+            <div ref={weeklyReportRef} className="p-4 bg-slate-50 rounded-3xl overflow-hidden">
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
+                
+                <div className="p-6 border-b border-slate-200 bg-slate-50/40 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xs font-black uppercase text-slate-800 tracking-widest">Weekly Operational Matrix</h3>
+                    <span className="text-[10px] text-slate-400 font-extrabold uppercase">
+                      Period: {getWeekRange(selectedWeekDate).start} to {getWeekRange(selectedWeekDate).end}
+                    </span>
+                  </div>
+                  <div className="text-right flex items-center gap-2">
+                    <span className="text-[10px] font-black text-sky-700 px-3 py-1.5 bg-sky-50 border border-sky-100 rounded-full">
+                      WEEKLY TOTALS LOGGED
+                    </span>
+                    <span className="text-[10px] font-black bg-sky-100 text-sky-850 px-3 py-1.5 rounded-full uppercase tracking-wider border border-sky-200/50">
+                      Pivoted Row-Per-Day Layout
+                    </span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100/90 border-b border-slate-250">
+                        <th className="sticky left-0 bg-slate-100 text-left px-4 py-3.5 min-w-[200px] border-r border-slate-200 font-extrabold text-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                          Staff Specialist
+                        </th>
+                        <th className="text-left px-4 py-3.5 min-w-[120px] border-r border-slate-200 font-extrabold text-slate-800">
+                          Department
+                        </th>
+
+                        {getWeeklyDaysArray().map(dateStr => (
+                          <th key={dateStr} className="text-center w-24 min-w-[70px] py-3.5 border-r border-slate-200 font-extrabold text-slate-700 bg-slate-50/50">
+                            {formatWeeklyDayHeader(dateStr)}
+                          </th>
+                        ))}
+
+                        <th className="text-center px-4 py-3.5 min-w-[80px] font-black text-sky-850 bg-sky-50/80">
+                          TOTAL
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      
+                      {/* Filtered Outpatients rows */}
+                      {config.providers
+                        .filter(p => {
+                          if (weeklyDeptFilter !== 'ALL' && p.department_name !== weeklyDeptFilter) return false;
+                          if (weeklySearchQuery.trim() !== '') {
+                            const query = weeklySearchQuery.toLowerCase();
+                            return p.name.toLowerCase().includes(query) || (p.department_name && p.department_name.toLowerCase().includes(query));
+                          }
+                          return true;
+                        })
+                        .map(provider => {
+                          const deptName = provider.department_name || 'OTHER';
+                          const daysMap = {};
+                          let providerSum = 0;
+
+                          getWeeklyDaysArray().forEach(dateStr => {
+                            const record = weeklyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
+                            const val = record ? record.patient_count : 0;
+                            daysMap[dateStr] = val;
+                            providerSum += val;
+                          });
+
+                          return (
+                            <tr key={provider.id} className="border-b border-slate-150 hover:bg-slate-50/65 transition-colors">
+                              <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-3 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                <span className="flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-sky-300" />
+                                  {provider.name}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
+                                {deptName}
+                              </td>
+
+                              {getWeeklyDaysArray().map(dateStr => {
+                                const val = daysMap[dateStr];
+                                return (
+                                  <td key={dateStr} className="text-center py-3 border-r border-slate-100 font-mono font-bold text-xs">
+                                    {val > 0 ? (
+                                      <span className="text-sky-650 font-black">{val}</span>
+                                    ) : (
+                                      <span className="text-slate-350 opacity-40">-</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+
+                              <td className="text-center py-3 bg-sky-50/30 text-sky-850 font-black font-mono text-xs">
+                                {providerSum}
+                              </td>
+                            </tr>
+                          );
+                        })}
+
+                      {/* Section Header for Procedures */}
+                      <tr className="bg-slate-100/80 border-t border-b border-slate-200 font-bold">
+                        <td colSpan={2 + 7 + 1} className="px-4 py-3 text-xs font-black text-sky-700 uppercase tracking-widest">
+                          Nursing and Ward Procedures
+                        </td>
+                      </tr>
+
+                      {/* Filtered Clinical Procedures rows */}
+                      {config.defaultProcedureMetrics
+                        .filter(mName => {
+                          if (weeklyDeptFilter !== 'ALL') return false; 
+                          if (weeklySearchQuery.trim() !== '') {
+                            return mName.toLowerCase().includes(weeklySearchQuery.toLowerCase());
+                          }
+                          return true;
+                        })
+                        .map(metricName => {
+                          const daysMap = {};
+                          let procedureSum = 0;
+                          const isNameInput = metricName.toLowerCase().includes('assistant');
+
+                          getWeeklyDaysArray().forEach(dateStr => {
+                            const record = weeklyData.logs.find(l => l.metric_name === metricName && l.report_date === dateStr);
+                            const val = record ? record.metric_value : '0';
+                            daysMap[dateStr] = val;
+                            
+                            if (!isNameInput) {
+                              const numVal = parseInt(val, 10);
+                              if (!isNaN(numVal)) {
+                                procedureSum += numVal;
+                              }
+                            }
+                          });
+
+                          return (
+                            <tr key={metricName} className="border-b border-slate-150 hover:bg-slate-50/65 transition-colors bg-slate-50/10">
+                              <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-3 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                <span className="flex items-center gap-1.5">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${isNameInput ? 'bg-purple-300' : 'bg-slate-350'}`} />
+                                  {metricName}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
+                                PROCEDURES
+                              </td>
+
+                              {getWeeklyDaysArray().map(dateStr => {
+                                const val = daysMap[dateStr];
+                                const isZero = val === '0' || val === '' || val === undefined;
+                                return (
+                                  <td key={dateStr} className="text-center py-3 border-r border-slate-100 font-mono font-bold text-xs" title={val}>
+                                    {isZero ? (
+                                      <span className="text-slate-350 opacity-40">-</span>
+                                    ) : (
+                                      <span className={`${
+                                        isNameInput 
+                                          ? 'text-purple-650 text-[10px] font-sans truncate block max-w-[60px] hover:max-w-none hover:bg-white hover:z-30 hover:absolute px-1.5 py-0.5 rounded border border-purple-100 shadow-sm bg-purple-50' 
+                                          : 'text-slate-700 font-black'
+                                      }`}>
+                                        {val}
+                                      </span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+
+                              <td className="text-center py-3 bg-slate-100/50 text-slate-650 font-black font-mono text-xs">
+                                {isNameInput ? 'N/A' : procedureSum}
+                              </td>
+                            </tr>
+                          );
+                        })}
+
+                      {/* Sticky Daily Calculations Column Sum Row */}
+                      <tr className="bg-gradient-to-r from-sky-900 to-sky-950 text-white font-extrabold border-t border-sky-950">
+                        <td
+                          className="sticky left-0 bg-sky-950 text-left px-4 py-4 border-r border-sky-950 font-black uppercase text-xs tracking-wider z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]"
+                          colSpan={2}
+                        >
+                          TOTAL COMPLETED PATIENTS
+                        </td>
+
+                        {getWeeklyDaysArray().map(dateStr => {
+                          const dailySum = weeklyData.metrics
+                            .filter(m => m.report_date === dateStr)
+                            .reduce((sum, m) => sum + (m.patient_count || 0), 0);
+
+                          return (
+                            <td key={dateStr} className="text-center py-4 border-r border-sky-950 font-mono font-black text-sm text-sky-200">
+                              {dailySum}
+                            </td>
+                          );
+                        })}
+
+                        <td className="text-center py-4 font-mono font-black text-sm bg-sky-950 text-emerald-300">
+                          {weeklyData.metrics.reduce((sum, m) => sum + (m.patient_count || 0), 0)}
+                        </td>
+                      </tr>
+
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center text-slate-450">
+              No weekly report dataset is loaded for the selected period.
+            </div>
+          )}
 
         </div>
       )}

@@ -52,3 +52,17 @@ exports.getMonthly = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getWeekly = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'startDate and endDate parameters are required (YYYY-MM-DD)' });
+    }
+    const report = await DailyReport.getWeeklyData(startDate, endDate);
+    res.json({ success: true, data: report });
+  } catch (err) {
+    next(err);
+  }
+};
+

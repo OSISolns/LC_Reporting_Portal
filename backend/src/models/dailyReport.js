@@ -134,6 +134,42 @@ class DailyReport {
       defaultProcedureMetrics: config.defaultProcedureMetrics
     };
   }
+
+  /**
+   * Fetch weekly report data based on start and end dates.
+   */
+  static async getWeeklyData(startDate, endDate) {
+    const { rows: metrics } = await db.query(
+      `SELECT m.id, m.report_date, m.provider_id, m.department_id, m.patient_count,
+              p.name as provider_name, p.title as provider_title, d.name as department_name
+       FROM daily_report_metrics m
+       JOIN providers p ON m.provider_id = p.id
+       JOIN departments d ON m.department_id = d.id
+       WHERE m.report_date >= $1 AND m.report_date <= $2
+       ORDER BY m.report_date ASC`,
+      [startDate, endDate]
+    );
+
+    const { rows: logs } = await db.query(
+      `SELECT id, report_date, metric_name, metric_value 
+       FROM daily_procedure_logs 
+       WHERE report_date >= $1 AND report_date <= $2
+       ORDER BY report_date ASC`,
+      [startDate, endDate]
+    );
+
+    const config = await this.getConfig();
+
+    return {
+      startDate,
+      endDate,
+      metrics,
+      logs,
+      departments: config.departments,
+      providers: config.providers,
+      defaultProcedureMetrics: config.defaultProcedureMetrics
+    };
+  }
 }
 
 module.exports = DailyReport;

@@ -11,5 +11,6 @@ router.get('/config', checkPermission('clinical_observation', 'view'), dailyRepo
 router.get('/daily', checkPermission('clinical_observation', 'view'), dailyReportController.getByDate);
 router.post('/daily', checkPermission('clinical_observation', 'create'), dailyReportController.saveDaily);
 router.get('/monthly', checkPermission('clinical_observation', 'view'), dailyReportController.getMonthly);
+router.get('/weekly', checkPermission('clinical_observation', 'view'), dailyReportController.getWeekly);
 
 module.exports = router;
