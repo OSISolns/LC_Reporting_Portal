@@ -1,14 +1,18 @@
 'use strict';
 require('dotenv').config();
 
-// ── Environment Validation ────────────────────────────────────────────────────
-const requiredEnv = ['JWT_SECRET', 'TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'];
+const tursoUrl = process.env.PROD_TURSO_DATABASE_URL || process.env.lcreporting_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL;
+const tursoAuthToken = process.env.PROD_TURSO_AUTH_TOKEN || process.env.lcreporting_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
+
+const requiredEnv = ['JWT_SECRET'];
+if (!tursoUrl) requiredEnv.push('TURSO_DATABASE_URL');
+if (!tursoAuthToken) requiredEnv.push('TURSO_AUTH_TOKEN');
+
 const missingEnv = requiredEnv.filter(k => !process.env[k]);
 if (missingEnv.length > 0) {
   console.error(`❌ Critical Environment Variables Missing: ${missingEnv.join(', ')}`);
-  if (process.env.NODE_ENV === 'production') {
-    process.exit(1);
-  }
+  // Note: We no longer process.exit(1) here because Vercel analyzes this file during build time.
+  // Exiting would crash the deployment before it even starts.
 }
 
 const express     = require('express');

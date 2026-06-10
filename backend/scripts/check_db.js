@@ -9,7 +9,7 @@ async function checkAudit() {
     const roles = await db.query('SELECT * FROM roles');
     console.log('Roles:', JSON.stringify(roles.rows, null, 2));
 
-    const admins = await db.query('SELECT id, username, role_id FROM users WHERE role_id IN (SELECT id FROM roles WHERE name = "admin")');
+    const admins = await db.query("SELECT id, username, role_id FROM users WHERE role_id IN (SELECT id FROM roles WHERE name = 'admin')");
     console.log('Admins:', JSON.stringify(admins.rows, null, 2));
     
     const modules = await db.query('SELECT * FROM permission_modules');

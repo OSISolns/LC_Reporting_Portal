@@ -4,14 +4,18 @@ const { createClient } = require('@libsql/client');
 
 /**
  * Initialize Turso (LibSQL) Client
+ * Prioritize PROD_ variables to allow bypassing Vercel's Turso integration preview branches (e.g. database-pink-bucket).
  */
-if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
+const tursoUrl = process.env.PROD_TURSO_DATABASE_URL || process.env.lcreporting_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL;
+const tursoAuthToken = process.env.PROD_TURSO_AUTH_TOKEN || process.env.lcreporting_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
+
+if (!tursoUrl || !tursoAuthToken) {
   throw new Error('❌ TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set in environment variables.');
 }
 
 const client = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
+  url: tursoUrl,
+  authToken: tursoAuthToken,
 });
 
 // Run dynamic schema migrations on start
@@ -21,7 +25,7 @@ const client = createClient({
     console.log('🔌 DATABASE: Successfully connected to Turso Cloud.');
   } catch (err) {
     console.error('❌ FATAL: Could not connect to Turso Cloud. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.', err.message);
-    process.exit(1);
+    // Note: Do not call process.exit(1) here as it will crash the Vercel build if it executes during pre-rendering.
   }
 
   // ─── Shift Sessions Role CHECK Constraint Upgrade & Related Tables ───────────────────
@@ -120,6 +124,24 @@ const client = createClient({
   try {
     await client.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0");
     console.log('✅ SQLite Schema Migration: added must_change_password to users');
+  } catch (err) {
+    if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+      console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+    }
+  }
+
+  try {
+    await client.execute("ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0");
+    console.log('✅ SQLite Schema Migration: added failed_attempts to users');
+  } catch (err) {
+    if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+      console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+    }
+  }
+
+  try {
+    await client.execute("ALTER TABLE users ADD COLUMN lockout_until DATETIME");
+    console.log('✅ SQLite Schema Migration: added lockout_until to users');
   } catch (err) {
     if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
       console.warn('⚠️ SQLite Schema Migration Notice:', err.message);

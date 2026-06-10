@@ -7,8 +7,9 @@
     "install:backend": "cd backend && npm install"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.3",
-    "bcryptjs": "^3.0.3",
-    "dotenv": "^17.4.2"
+    "@libsql/client": "^0.17.3"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
