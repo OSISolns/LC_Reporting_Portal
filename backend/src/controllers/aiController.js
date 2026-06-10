@@ -16,7 +16,7 @@ exports.getModuleStats = async (req, res, next) => {
     const cached = cache.get(CACHE_KEY);
     if (cached) return res.json({ success: true, data: cached, cached: true });
 
-    const [cancRows, refundRows, incidentRows, rtRows, shiftRows, securityRows, feedRows] = await Promise.all([
+    const [cancRows, refundRows, incidentRows, rtRows, shiftRows, securityRows, feedRows, stockRows, reportRows] = await Promise.all([
       queryRows(`SELECT status, COUNT(*) AS cnt FROM cancellation_requests GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM refund_requests       GROUP BY status`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM incident_reports      GROUP BY status`),
@@ -24,6 +24,8 @@ exports.getModuleStats = async (req, res, next) => {
       queryRows(`SELECT status, COUNT(*) AS cnt FROM shift_sessions        GROUP BY status`),
       queryRows(`SELECT action AS status, COUNT(*) AS cnt FROM audit_logs WHERE action IN ('LOGIN_FAILED', 'ACCOUNT_LOCKOUT', 'DEV_LOGIN_BYPASS', 'AUTH_FAILURE', 'PERMISSION_DENIED') GROUP BY action`),
       queryRows(`SELECT COUNT(*) AS cnt FROM internal_feedbacks`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM nursing_monthly_stock GROUP BY status`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM daily_report_metrics`),
     ]);
 
     const summarise = (rows) => {
@@ -43,7 +45,7 @@ exports.getModuleStats = async (req, res, next) => {
     ]);
 
     const since30 = `datetime('now', '-30 days')`;
-    const [cRecent, rRecent, iRecent, rtRecent, sRecent, secRecent, feedRecent] = await Promise.all([
+    const [cRecent, rRecent, iRecent, rtRecent, sRecent, secRecent, feedRecent, stockRecent, reportRecent] = await Promise.all([
       queryRows(`SELECT COUNT(*) AS cnt FROM cancellation_requests WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM refund_requests       WHERE created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM incident_reports      WHERE created_at >= ${since30}`),
@@ -51,6 +53,8 @@ exports.getModuleStats = async (req, res, next) => {
       queryRows(`SELECT COUNT(*) AS cnt FROM shift_sessions        WHERE opened_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM audit_logs           WHERE action IN ('LOGIN_FAILED', 'ACCOUNT_LOCKOUT', 'AUTH_FAILURE', 'PERMISSION_DENIED') AND created_at >= ${since30}`),
       queryRows(`SELECT COUNT(*) AS cnt FROM internal_feedbacks     WHERE created_at >= ${since30}`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM nursing_monthly_stock WHERE created_at >= ${since30}`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM daily_report_metrics   WHERE report_date >= date('now', '-30 days')`),
     ]);
 
     const data = {
@@ -76,6 +80,15 @@ exports.getModuleStats = async (req, res, next) => {
         total: Number(feedRows[0]?.cnt || 0),
         reviewed: Number(feedRows[0]?.cnt || 0),
         last30Days: Number(feedRecent[0]?.cnt || 0)
+      },
+      stock_checks: {
+        ...summarise(stockRows),
+        last30Days: Number(stockRecent[0]?.cnt || 0)
+      },
+      daily_reports: {
+        total: Number(reportRows[0]?.cnt || 0),
+        reviewed: Number(reportRows[0]?.cnt || 0), // Assumed all reviewed for now
+        last30Days: Number(reportRecent[0]?.cnt || 0)
       },
     };
 
@@ -164,8 +177,28 @@ exports.classifyReasons = async (req, res, next) => {
          FROM   internal_feedbacks
          ORDER  BY created_at DESC LIMIT 500`
       );
+    } else if (module === 'stock_checks') {
+      rows = await queryRows(
+        `SELECT id,
+                item_name AS reason,
+                status,
+                responsible_name AS cashier
+         FROM   nursing_monthly_stock
+         ORDER  BY created_at DESC LIMIT 500`
+      );
+    } else if (module === 'daily_reports') {
+      rows = await queryRows(
+        `SELECT m.id,
+                d.name AS reason,
+                'verified' AS status,
+                p.name AS cashier
+         FROM   daily_report_metrics m
+         LEFT JOIN departments d ON m.department_id = d.id
+         LEFT JOIN providers p ON m.provider_id = p.id
+         ORDER  BY m.report_date DESC LIMIT 500`
+      );
     } else {
-      return res.status(400).json({ success: false, message: 'Invalid module. Use: cancellations | refunds | incidents | transfers | shifts | security | feedbacks' });
+      return res.status(400).json({ success: false, message: 'Invalid module. Use: cancellations | refunds | incidents | transfers | shifts | security | feedbacks | stock_checks | daily_reports' });
     }
 
     // Run the local AI engine (pure JS — no API call)

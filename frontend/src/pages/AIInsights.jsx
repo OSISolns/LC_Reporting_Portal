@@ -6,7 +6,7 @@ import {
   Brain, TrendingUp, FileText, ReceiptText, AlertTriangle,
   CheckCircle, Clock, XCircle, Sparkles, RefreshCw,
   BarChart2, ShieldAlert, Lightbulb, ChevronDown, ChevronUp,
-  MessageSquare,
+  MessageSquare, Package, ClipboardList,
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -27,6 +27,8 @@ const MODULE_CONFIG = {
   shifts: { label: 'Staff Shifts', icon: <Clock size={18} />, color: '#1b669d', lightColor: 'rgba(27,102,157,0.08)' },
   security: { label: 'Security Operations', icon: <ShieldAlert size={18} />, color: '#9d174d', lightColor: 'rgba(157,23,77,0.08)' },
   feedbacks: { label: 'Internal Feedbacks', icon: <MessageSquare size={18} />, color: '#ec4899', lightColor: 'rgba(236,72,153,0.08)' },
+  stock_checks: { label: 'Stock Checks', icon: <Package size={18} />, color: '#ea580c', lightColor: 'rgba(234,88,12,0.08)' },
+  daily_reports: { label: 'Daily Reports', icon: <ClipboardList size={18} />, color: '#0284c7', lightColor: 'rgba(2,132,199,0.08)' },
 };
 
 // ── Mini bar ──────────────────────────────────────────────────────────────────
@@ -293,6 +295,11 @@ const ModuleStatCard = ({ module, stats, config, isManagement, onAnalyze, analyz
               <Pill label="Total Submissions" value={s.total || 0} color="#ec4899" />
               <Pill label="Reviewed / Processed" value={s.total || 0} color="#22c55e" />
             </>
+          ) : module === 'stock_checks' || module === 'daily_reports' ? (
+            <>
+              <Pill label="Total Records" value={s.total || 0} color={config.color} />
+              <Pill label="Processed" value={s.total || 0} color="#22c55e" />
+            </>
           ) : (
             <>
               <Pill label="Pending / In Progress" value={(s.pending || 0) + (s.verified || 0)} color="#f59e0b" />
@@ -430,10 +437,10 @@ const AIInsights = () => {
   const visibleModules = isPrincipalCashier
     ? ['cancellations', 'refunds']
     : user?.role === 'admin'
-      ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'security', 'feedbacks']
+      ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'security', 'feedbacks', 'stock_checks', 'daily_reports']
       : isManagement
-        ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'feedbacks']
-        : ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'feedbacks'];
+        ? ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'feedbacks', 'stock_checks', 'daily_reports']
+        : ['cancellations', 'refunds', 'incidents', 'transfers', 'shifts', 'feedbacks', 'stock_checks', 'daily_reports'];
 
   return (
     <div>
