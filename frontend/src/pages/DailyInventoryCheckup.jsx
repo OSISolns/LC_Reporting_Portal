@@ -228,6 +228,33 @@ Object.entries(EXCEL_DATA).forEach(([item, val]) => {
 export default function DailyInventoryCheckup() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isNurse = user?.role?.toLowerCase() === 'nurse' || user?.role?.toLowerCase() === 'chef_nurse';
+
+  const checkIsPast = (mYear, day, session) => {
+    if (!mYear) return false;
+    const now = new Date();
+    const [y, m] = mYear.split('-');
+    const recordYear = parseInt(y, 10);
+    const recordMonth = parseInt(m, 10);
+    
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-indexed
+    
+    if (recordYear < currentYear) return true;
+    if (recordYear > currentYear) return false;
+    
+    if (recordMonth < currentMonth) return true;
+    if (recordMonth > currentMonth) return false;
+    
+    const currentDayNum = now.getDate();
+    if (day < currentDayNum) return true;
+    if (day > currentDayNum) return false;
+    
+    const currentRealSession = now.getHours() < 13 ? 'AM' : 'PM';
+    if (session === 'AM' && currentRealSession === 'PM') return true;
+    
+    return false;
+  };
 
   // Active state
   const [monthYear, setMonthYear] = useState(CURRENT_MONTH_STR);
@@ -1472,16 +1499,16 @@ export default function DailyInventoryCheckup() {
 
                               {/* Expiration Date Column */}
                               <td className="py-3 px-4 text-center">
-                                <input
-                                  type="text"
-                                  value={cell.expiration_date || ''}
-                                  onChange={(e) => handleCellEdit(item, 'expiration_date', e.target.value)}
-                                  placeholder="MM/YYYY or No Expiry"
-                                  disabled={isExpired}
-                                  className={`w-36 text-center py-1.5 px-2 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none font-bold text-xs transition-all shadow-sm text-slate-800 ${
-                                    isExpired ? 'bg-slate-100/80 text-slate-400 cursor-not-allowed border-slate-200 hover:border-slate-200 shadow-none' : ''
-                                  }`}
-                                />
+                                  <input
+                                    type="text"
+                                    value={cell.expiration_date || ''}
+                                    onChange={(e) => handleCellEdit(item, 'expiration_date', e.target.value)}
+                                    placeholder="MM/YYYY or No Expiry"
+                                    disabled={isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))}
+                                    className={`w-36 text-center py-1.5 px-2 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none font-bold text-xs transition-all shadow-sm text-slate-800 ${
+                                      (isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))) ? 'bg-slate-100/80 text-slate-400 cursor-not-allowed border-slate-200 hover:border-slate-200 shadow-none' : ''
+                                    }`}
+                                  />
                               </td>
 
                               {/* Status Column (Read-Only Pill Badge) */}
@@ -1504,12 +1531,12 @@ export default function DailyInventoryCheckup() {
                                   onChange={(e) => handleCellEdit(item, 'stock_in_hands', e.target.value)}
                                   placeholder="0"
                                   className={`w-20 text-center py-1.5 px-2 border rounded-xl outline-none font-black text-xs transition-all shadow-sm ${
-                                    (lockStock || isExpired)
+                                    (lockStock || isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession)))
                                       ? 'bg-slate-55 text-slate-400 border-slate-200 cursor-not-allowed select-none' 
                                       : 'bg-white border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 text-slate-900'
                                   }`}
                                   type="number"
-                                  disabled={lockStock || isExpired}
+                                  disabled={lockStock || isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))}
                                 />
                               </td>
 
@@ -1519,9 +1546,9 @@ export default function DailyInventoryCheckup() {
                                   value={cell.consumed}
                                   onChange={(e) => handleCellEdit(item, 'consumed', e.target.value)}
                                   placeholder="0"
-                                  disabled={isExpired}
+                                  disabled={isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))}
                                   className={`w-20 text-center py-1.5 px-2 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none font-black text-xs transition-all shadow-sm ${
-                                    isExpired ? 'bg-slate-100/85 text-slate-400 cursor-not-allowed border-slate-200' : ''
+                                    (isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))) ? 'bg-slate-100/85 text-slate-400 cursor-not-allowed border-slate-200' : ''
                                   }`}
                                   type="number"
                                 />
@@ -1823,7 +1850,10 @@ export default function DailyInventoryCheckup() {
                                     handleCellEdit(item, 'consumed', e.target.value, d, 'AM');
                                   }}
                                   placeholder="0"
-                                  className="w-full text-center h-8 bg-transparent border-none outline-none text-[10px] font-extrabold focus:bg-sky-50"
+                                  disabled={isNurse && checkIsPast(monthYear, d, 'AM')}
+                                  className={`w-full text-center h-8 bg-transparent border-none outline-none text-[10px] font-extrabold focus:bg-sky-50 ${
+                                    (isNurse && checkIsPast(monthYear, d, 'AM')) ? 'text-slate-400 cursor-not-allowed select-none' : ''
+                                  }`}
                                 />
                               </td>
                               <td className={`border-r border-slate-200 px-1 text-center font-mono select-none ${cellAM.balance < 0 ? 'text-red-600 bg-red-50' : 'text-slate-500 bg-slate-50/50'}`}>
@@ -1865,7 +1895,10 @@ export default function DailyInventoryCheckup() {
                                     handleCellEdit(item, 'consumed', e.target.value, d, 'PM');
                                   }}
                                   placeholder="0"
-                                  className="w-full text-center h-8 bg-transparent border-none outline-none text-[10px] font-extrabold focus:bg-sky-50"
+                                  disabled={isNurse && checkIsPast(monthYear, d, 'PM')}
+                                  className={`w-full text-center h-8 bg-transparent border-none outline-none text-[10px] font-extrabold focus:bg-sky-50 ${
+                                    (isNurse && checkIsPast(monthYear, d, 'PM')) ? 'text-slate-400 cursor-not-allowed select-none' : ''
+                                  }`}
                                 />
                               </td>
                               <td className={`border-r border-slate-200 px-1 text-center font-mono select-none ${cellPM.balance < 0 ? 'text-red-600 bg-red-50' : 'text-slate-500 bg-slate-50/50'}`}>
