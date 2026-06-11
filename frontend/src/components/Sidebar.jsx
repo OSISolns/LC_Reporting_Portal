@@ -23,7 +23,7 @@ const Sidebar = ({ onClose }) => {
     { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer', 'chef-nurse'] },
     { name: ['doctor', 'consultant'].includes(user?.role) ? 'Doctor Hub' : 'Nursing Hub', icon: <Stethoscope size={20} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse'] },
     { name: 'Daily Stock Checkup', icon: <Database size={20} />, path: '/nursing-hub/inventory', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant'] },
-    { name: 'Central Store Hub', icon: <Database size={20} />, path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'chef-nurse', 'stock-manager'] },
+    { name: 'Central Store Hub', icon: <Database size={20} />, path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'stock-manager'] },
     { name: 'master', icon: <Database size={20} />, path: '/master', requiredPerm: null, allowedRoles: ['admin', 'stock-manager'] },
     { name: 'Supplier Portal', icon: <Building size={20} />, path: '/?tab=supplier-portal', requiredPerm: null, allowedRoles: ['admin', 'stock-manager'] },
     { name: 'E-Prescriptions', icon: <FileText size={20} />, path: '/e-prescriptions', requiredPerm: null, allowedRoles: ['doctor', 'consultant'] },
