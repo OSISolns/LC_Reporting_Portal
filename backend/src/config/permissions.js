@@ -240,6 +240,8 @@ const ROLE_DEFAULTS = {
     reports:          { view:1, download:1 },
     staff_performance:{ view:1, create:1 },
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:1 },
+    shifts:           { view:1, create:0, edit:0, review:1, delete:0 },
+    feedbacks:        { view:1, delete:0 },
   },
   reviewer: {
     cancellations:    { view:1, create:1, edit:1, review:1, approve:1, reject:1, delete:1 },
