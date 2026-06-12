@@ -276,7 +276,138 @@ router.post('/:pid/vitals', async (req, res, next) => {
       RETURNING *`,
       [pid, temperature, pulse, respiratory_rate, blood_pressure, weight, spo2, general_comments]
     );
+
+    // Update ongoing clinical sheet with these vitals
+    const { rows: drafts } = await db.query(
+      `SELECT * FROM clinical_observations WHERE patient_id = $1 AND status != 'Verified' ORDER BY updated_at DESC LIMIT 1`,
+      [pid]
+    );
+
+    if (drafts.length > 0) {
+      const draft = drafts[0];
+      const triage = JSON.parse(draft.triage_json || '{}');
+      if (temperature) triage.temp = temperature;
+      if (pulse) triage.pulse = pulse;
+      if (respiratory_rate) triage.rr = respiratory_rate;
+      if (blood_pressure) triage.bp = blood_pressure;
+      if (weight) triage.weight = weight;
+      if (spo2) triage.spo2 = spo2;
+      
+      if (general_comments) {
+        triage.general_comments = triage.general_comments 
+          ? triage.general_comments + '\\n' + general_comments 
+          : general_comments;
+      }
+
+      await db.query(
+        `UPDATE clinical_observations SET triage_json = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+        [JSON.stringify(triage), draft.id]
+      );
+    }
+
     res.json({ success: true, data: result.rows[0] });
+  } catch (err) { next(err); }
+});
+
+// ── POST /api/patients/:pid/prescription ──────────────────────────────────────
+router.post('/:pid/prescription', async (req, res, next) => {
+  try {
+    const pid = req.params.pid.trim();
+    const { medications, diagnosis } = req.body;
+
+    if (!medications || !Array.isArray(medications)) {
+      return res.status(400).json({ success: false, message: 'Invalid medications format' });
+    }
+
+    // Get ongoing clinical sheet
+    const { rows: drafts } = await db.query(
+      `SELECT * FROM clinical_observations WHERE patient_id = $1 ORDER BY updated_at DESC LIMIT 1`,
+      [pid]
+    );
+
+    if (drafts.length > 0) {
+      const draft = drafts[0];
+      let medMar = JSON.parse(draft.medication_mar_json || '{}');
+      if (Array.isArray(medMar)) {
+        medMar = { interventions: medMar };
+      }
+      if (!medMar.interventions) medMar.interventions = [];
+      
+      // Append the new medications (only if they have a name)
+      medications.forEach(med => {
+        if (med.name && med.name.trim()) {
+          // Replace the first empty row if there is one
+          const emptyIdx = medMar.interventions.findIndex(m => !m.name?.trim());
+          const newIntervention = {
+            name: med.name,
+            dose: med.dosage || '',
+            route: med.route || '',
+            frequency: med.frequency || '',
+            duration: med.duration || '',
+            instructions: med.instructions || '',
+            start_time: '',
+            end_time: ''
+          };
+          if (emptyIdx >= 0) {
+            medMar.interventions[emptyIdx] = newIntervention;
+          } else {
+            medMar.interventions.push(newIntervention);
+          }
+        }
+      });
+
+      // Optionally update diagnosis in identification if provided
+      let ident = JSON.parse(draft.identification_json || '{}');
+      if (diagnosis && diagnosis.trim()) {
+        ident.diagnosis = diagnosis;
+      }
+
+      await db.query(
+        `UPDATE clinical_observations SET medication_mar_json = $1, identification_json = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+        [JSON.stringify(medMar), JSON.stringify(ident), draft.id]
+      );
+    } else {
+      // Create new draft
+      const patientRes = await db.query(`SELECT full_name FROM sukraa_patients WHERE pid = $1`, [pid]);
+      const patientName = patientRes.rows[0] ? patientRes.rows[0].full_name : 'Unknown Patient';
+      
+      const newMedMar = {
+        interventions: medications.filter(m => m.name && m.name.trim()).map(med => ({
+          name: med.name,
+          dose: med.dosage || '',
+          route: med.route || '',
+          frequency: med.frequency || '',
+          duration: med.duration || '',
+          instructions: med.instructions || '',
+          start_time: '',
+          end_time: ''
+        }))
+      };
+
+      const newIdent = diagnosis && diagnosis.trim() ? { diagnosis } : {};
+
+      await db.query(
+        `INSERT INTO clinical_observations (
+          patient_id, queue_id, patient_name,
+          identification_json, triage_json, progress_notes_json, 
+          medication_mar_json, sbar_json, status, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          pid,
+          `EP-${Date.now()}`,
+          patientName,
+          JSON.stringify(newIdent),
+          '{}',
+          '[]',
+          JSON.stringify(newMedMar),
+          '{}',
+          'Draft',
+          req.user?.id || 1
+        ]
+      );
+    }
+
+    res.json({ success: true, message: 'Prescription added to clinical sheet' });
   } catch (err) { next(err); }
 });
 

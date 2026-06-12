@@ -31,6 +31,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isNurse = ['nurse', 'chef-nurse'].includes(user?.role);
   const queryParams = new URLSearchParams(location.search);
 
   const patientId = embeddedPatientId || params.patientId;
@@ -58,7 +59,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
   const [verifyResult, setVerifyResult] = useState(null); // result from API
   const [verifying, setVerifying] = useState(false);
   const [copied, setCopied] = useState(false);
-  
+
   const [sheetStatus, setSheetStatus] = useState('Draft');
   const [hasReported, setHasReported] = useState(false);
   const [hasReceived, setHasReceived] = useState(false);
@@ -75,6 +76,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
         pid: '',
         appt_date_no: 'Walk-in / No Appointment',
         insurance: '',
+        diagnosis: '',
         date: new Date().toISOString().split('T')[0],
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         rn: ''
@@ -147,83 +149,148 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
         }
 
         if (sheetRes.data && sheetRes.data.data) {
-          reset(sheetRes.data.data);
-          setSheetStatus(sheetRes.data.data.status || 'Draft');
-          setHasReported(!!sheetRes.data.data.sbar?.reported_by);
-          setHasReceived(!!sheetRes.data.data.sbar?.received_by);
-        } else {
-          const latestVitals = (vitalsRes.data?.data || vitalsRes.data || [])[0] || {};
-
-          const fullName = patientObj.full_name || '';
-          const nameParts = fullName.trim().split(/\s+/);
-          const lastName = nameParts[0] || '';
-          const firstName = nameParts.slice(1).join(' ') || '';
-
-          const formatDobForInput = (dobVal) => {
-            if (!dobVal) return '';
-            // If it's already YYYY-MM-DD
-            if (dobVal.includes('-') && dobVal.split('-')[0].length === 4) {
-              return dobVal.substring(0, 10);
-            }
-            // If it's DD/MM/YYYY
-            if (dobVal.includes('/')) {
-              const parts = dobVal.split('/');
-              if (parts.length === 3) {
-                const day = parts[0].padStart(2, '0');
-                const month = parts[1].padStart(2, '0');
-                const year = parts[2];
-                return `${year}-${month}-${day}`;
-              }
-            }
-            return dobVal;
-          };
-
+          // Sheet found for the exact queue_id — load it directly
+          const sheet = sheetRes.data.data;
+          const emptyI = { name: '', dose: '', frequency: '', route: '', start_time: '', end_time: '' };
+          const emptyL = { time: '', initials: '' };
+          const sInterventions = sheet.medication_mar?.interventions || [];
+          const sLogs = sheet.medication_mar?.admin_logs || [];
           reset({
-            identification: {
-              last_name: lastName || patientObj.last_name || '',
-              first_name: firstName || patientObj.first_name || '',
-              occupation: patientObj.occupation || '',
-              national_id: patientObj.national_id || '',
-              dob: formatDobForInput(patientObj.dob),
-              gender: patientObj.gender || '',
-              pid: patientId,
-              appt_date_no: 'Walk-in / No Appointment',
-              insurance: patientObj.insurance || patientObj.insurance_provider || '',
-              date: new Date().toISOString().split('T')[0],
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              rn: user?.name || ''
-            },
-            triage: {
-              prev_illness_med: '',
-              prev_illness_surg: '',
-              allergy_1: patientObj.allergies || '',
-              allergy_2: '',
-              temp: latestVitals.temperature || '',
-              pulse: latestVitals.pulse || '',
-              rr: latestVitals.respiratory_rate || '',
-              bp: latestVitals.blood_pressure || '',
-              weight: latestVitals.weight || '',
-              spo2: latestVitals.spo2 || '',
-              general_comments: ''
-            },
-            progress_notes: [
-              { datetime: '', note: '', signature: '' }
-            ],
+            ...sheet,
             medication_mar: {
-              interventions: Array(4).fill({ name: '', dose: '', frequency: '', route: '', start_time: '', end_time: '' }),
-              prescriber: '',
-              admin_logs: Array(8).fill({ time: '', initials: '' }),
-              admin_initials: '',
-              admin_names: ''
-            },
-            sbar: {
-              content: '',
-              reported_by: '',
-              reported_sign_time: '',
-              received_by: '',
-              received_sign_time: ''
+              ...sheet.medication_mar,
+              interventions: [
+                ...sInterventions,
+                ...Array(Math.max(0, 4 - sInterventions.length)).fill(emptyI)
+              ].slice(0, Math.max(4, sInterventions.length)),
+              admin_logs: [
+                ...sLogs,
+                ...Array(Math.max(0, 8 - sLogs.length)).fill(emptyL)
+              ]
             }
           });
+          setSheetStatus(sheet.status || 'Draft');
+          setHasReported(!!sheet.sbar?.reported_by);
+          setHasReceived(!!sheet.sbar?.received_by);
+        } else {
+          // No sheet found for the queue_id — try the patient's most recent sheet
+          // (covers the case where the queue_id was freshly generated but prescriptions
+          //  were already saved via the E-Prescription Pad with a different queue_id)
+          let latestSheet = null;
+          try {
+            const allRes = await api.get(`/clinical/observations/${patientId}/all`);
+            if (allRes.data?.success && allRes.data.data?.length > 0) {
+              const sorted = allRes.data.data.sort(
+                (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
+              );
+              latestSheet = sorted[0];
+            }
+          } catch {
+            // ignore — will fall back to blank form
+          }
+
+          if (latestSheet) {
+            // Pad medication_mar.interventions to at least 4 so the fixed-column table renders
+            const emptyIntervention = { name: '', dose: '', frequency: '', route: '', start_time: '', end_time: '' };
+            const emptyLog = { time: '', initials: '' };
+            const interventions = latestSheet.medication_mar?.interventions || [];
+            const paddedInterventions = [
+              ...interventions,
+              ...Array(Math.max(0, 4 - interventions.length)).fill(emptyIntervention)
+            ].slice(0, Math.max(4, interventions.length));
+            const logs = latestSheet.medication_mar?.admin_logs || [];
+            const paddedLogs = [
+              ...logs,
+              ...Array(Math.max(0, 8 - logs.length)).fill(emptyLog)
+            ];
+
+            reset({
+              ...latestSheet,
+              medication_mar: {
+                ...latestSheet.medication_mar,
+                interventions: paddedInterventions,
+                admin_logs: paddedLogs,
+              }
+            });
+            setSheetStatus(latestSheet.status || 'Draft');
+            setHasReported(!!latestSheet.sbar?.reported_by);
+            setHasReceived(!!latestSheet.sbar?.received_by);
+          } else {
+            // Truly no data — build defaults from patient demographics & latest vitals
+            const latestVitals = (vitalsRes.data?.data || vitalsRes.data || [])[0] || {};
+
+            const fullName = patientObj.full_name || '';
+            const nameParts = fullName.trim().split(/\s+/);
+            const lastName = nameParts[0] || '';
+            const firstName = nameParts.slice(1).join(' ') || '';
+
+            const formatDobForInput = (dobVal) => {
+              if (!dobVal) return '';
+              // If it's already YYYY-MM-DD
+              if (dobVal.includes('-') && dobVal.split('-')[0].length === 4) {
+                return dobVal.substring(0, 10);
+              }
+              // If it's DD/MM/YYYY
+              if (dobVal.includes('/')) {
+                const parts = dobVal.split('/');
+                if (parts.length === 3) {
+                  const day = parts[0].padStart(2, '0');
+                  const month = parts[1].padStart(2, '0');
+                  const year = parts[2];
+                  return `${year}-${month}-${day}`;
+                }
+              }
+              return dobVal;
+            };
+
+            reset({
+              identification: {
+                last_name: lastName || patientObj.last_name || '',
+                first_name: firstName || patientObj.first_name || '',
+                occupation: patientObj.occupation || '',
+                national_id: patientObj.national_id || '',
+                dob: formatDobForInput(patientObj.dob),
+                gender: patientObj.gender || '',
+                pid: patientId,
+                appt_date_no: 'Walk-in / No Appointment',
+                insurance: patientObj.insurance || patientObj.insurance_provider || '',
+                diagnosis: '',
+                date: new Date().toISOString().split('T')[0],
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                rn: user?.name || ''
+              },
+              triage: {
+                prev_illness_med: '',
+                prev_illness_surg: '',
+                allergy_1: patientObj.allergies || '',
+                allergy_2: '',
+                temp: latestVitals.temperature || '',
+                pulse: latestVitals.pulse || '',
+                rr: latestVitals.respiratory_rate || '',
+                bp: latestVitals.blood_pressure || '',
+                weight: latestVitals.weight || '',
+                spo2: latestVitals.spo2 || '',
+                general_comments: ''
+              },
+              progress_notes: [
+                { datetime: '', note: '', signature: '' }
+              ],
+              medication_mar: {
+                interventions: Array(4).fill({ name: '', dose: '', frequency: '', route: '', start_time: '', end_time: '' }),
+                prescriber: '',
+                admin_logs: Array(8).fill({ time: '', initials: '' }),
+                admin_initials: '',
+                admin_names: ''
+              },
+              sbar: {
+                content: '',
+                reported_by: '',
+                reported_sign_time: '',
+                received_by: '',
+                received_sign_time: ''
+              }
+            });
+          }
         }
       } catch (error) {
         toast.error("Failed to load patient data.");
@@ -281,12 +348,12 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
 
       const currentValues = control._formValues;
       if (!currentValues.sbar) currentValues.sbar = {};
-      
+
       const baseReported = currentValues.sbar.reported_by || user?.fullName || user?.name || '';
       // Only append if it doesn't already contain a timestamp
       const reportedBy = baseReported && !baseReported.includes('(') ? `${baseReported} (${nowStr})` : baseReported;
       const reportedSignTime = currentValues.sbar.reported_sign_time || nowStr;
-      
+
       const baseReceived = user?.fullName || user?.name || 'Chef Nurse';
       const receivedBy = `${baseReceived} (${nowStr})`;
       const receivedSignTime = nowStr;
@@ -552,7 +619,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 Locked
               </div>
             )}
-            
+
             {user?.role === 'chef-nurse' && sheetStatus !== 'Verified' && (
               <button onClick={handleVerifySheet} disabled={saving} className="flex items-center text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 px-4 py-1.5 rounded shadow-sm">
                 <CheckCircle className="h-4 w-4 mr-2" /> Verify Sheet
@@ -601,7 +668,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             <div>
               <p className="font-bold">Verified Clinical Sheet</p>
               <p className="text-emerald-700">
-                {['chef-nurse', 'doctor', 'consultant'].includes(user?.role) 
+                {['chef-nurse', 'doctor', 'consultant'].includes(user?.role)
                   ? "This sheet has been verified and locked. As a medical professional or Chief Nurse, you retain permission to edit and prescribe."
                   : "This sheet has been verified and is locked. Alterations are restricted to medical professionals only."}
               </p>
@@ -614,303 +681,307 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             {/* Section I & II: Patient Identification, Assessment & Notes */}
             {/* Section I */}
             <div className="section-header">I. Patient Identification</div>
-          <div className="px-1 w-[400px]">
-            <div className="row-flex"><span className="form-label w-28">Last name</span><input {...register('identification.last_name')} className="form-input" /></div>
-            <div className="row-flex"><span className="form-label w-28">First name</span><input {...register('identification.first_name')} className="form-input" /></div>
-            <div className="row-flex"><span className="form-label w-28">Occupation</span><input {...register('identification.occupation')} className="form-input" /></div>
-            <div className="row-flex"><span className="form-label w-28">National ID / Passport</span><input {...register('identification.national_id')} className="form-input" /></div>
-            <div className="row-flex"><span className="form-label w-28">Date of birth</span><input {...register('identification.dob')} type="date" className="form-input w-[150px]" /></div>
-            <div className="row-flex"><span className="form-label w-28">Gender</span><input {...register('identification.gender')} className="form-input w-[120px]" /></div>
-            <div className="row-flex"><span className="form-label w-28">Patient ID (PID)</span><input {...register('identification.pid')} className="form-input" /></div>
-            <div className="row-flex"><span className="form-label w-28">Appt. Date & No.</span><input {...register('identification.appt_date_no')} className="form-input" /></div>
-            <div className="row-flex">
-              <span className="form-label w-28">Health insurance</span>
-              <select {...register('identification.insurance')} className="form-input">
-                <option value="">Select Insurance / Payer</option>
-                {INSURANCES.map(ins => (
-                  <option key={ins} value={ins}>{ins}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="px-1 mt-1">
-            <div className="form-label mb-1">Date/Time/RN</div>
-            <div className="flex gap-2 w-full max-w-md">
-              <input type="date" {...register('identification.date')} className="form-input flex-1" />
-              <select {...register('identification.time')} className="form-input flex-1">
-                {TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="mt-1 w-[200px]">
-              <input {...register('identification.rn')} placeholder="RN" className="form-input" />
-            </div>
-          </div>
-
-          <div className="px-1 mt-3">
-            <div className="form-label font-bold mb-1">Nursing Assessment</div>
-            <div className="flex gap-4 mb-1">
-              <div className="flex-1"><input {...register('triage.prev_illness_med')} placeholder="Previous illness (Medical)" className="form-input" /></div>
-              <div className="flex-1"><input {...register('triage.prev_illness_surg')} placeholder="Previous illness (Surgical)" className="form-input" /></div>
-            </div>
-            <div className="flex gap-4 mb-2">
-              <div className="flex-1"><input {...register('triage.allergy_1')} placeholder="Allergy (1)" className="form-input" /></div>
-              <div className="flex-1"><input {...register('triage.allergy_2')} placeholder="Allergy (2)" className="form-input" /></div>
-            </div>
-
-            <div className="flex gap-4 mb-1">
-              <div className="flex-1 row-flex"><span className="form-label w-24">Temp</span><input {...register('triage.temp')} className="form-input" /></div>
-              <div className="flex-1 row-flex"><span className="form-label w-24">Pulse</span><input {...register('triage.pulse')} className="form-input" /></div>
-              <div className="flex-1 row-flex"><span className="form-label w-24">Respiratory Rate</span><input {...register('triage.rr')} className="form-input" /></div>
-            </div>
-            <div className="flex gap-4 mb-2">
-              <div className="flex-1 row-flex"><span className="form-label w-24">Blood Pressure</span><input {...register('triage.bp')} className="form-input" /></div>
-              <div className="flex-1 row-flex"><span className="form-label w-24">Weight (Kg)</span><input {...register('triage.weight')} className="form-input" /></div>
-              <div className="flex-1 row-flex"><span className="form-label w-24">SpO2</span><input {...register('triage.spo2')} className="form-input" /></div>
-            </div>
-
-            <div className="w-full mt-2">
-              <div className="flex justify-between items-center mb-1">
-                <div className="form-label mb-0">General comments</div>
-                <button type="button" onClick={handleAIGenerateComments} disabled={aiCommentsLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                  {aiCommentsLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
-                  Assess Vitals
-                </button>
+            <div className="px-1 w-[400px]">
+              <div className="row-flex"><span className="form-label w-28">Last name</span><input {...register('identification.last_name')} className="form-input" /></div>
+              <div className="row-flex"><span className="form-label w-28">First name</span><input {...register('identification.first_name')} className="form-input" /></div>
+              <div className="row-flex"><span className="form-label w-28">Occupation</span><input {...register('identification.occupation')} className="form-input" /></div>
+              <div className="row-flex"><span className="form-label w-28">National ID / Passport</span><input {...register('identification.national_id')} className="form-input" /></div>
+              <div className="row-flex"><span className="form-label w-28">Date of birth</span><input {...register('identification.dob')} type="date" className="form-input w-[150px]" /></div>
+              <div className="row-flex"><span className="form-label w-28">Gender</span><input {...register('identification.gender')} className="form-input w-[120px]" /></div>
+              <div className="row-flex"><span className="form-label w-28">Patient ID (PID)</span><input {...register('identification.pid')} className="form-input" /></div>
+              <div className="row-flex"><span className="form-label w-28">Appt. Date & No.</span><input {...register('identification.appt_date_no')} className="form-input" /></div>
+              <div className="row-flex">
+                <span className="form-label w-28">Health insurance</span>
+                <select {...register('identification.insurance')} className="form-input">
+                  <option value="">Select Insurance / Payer</option>
+                  {INSURANCES.map(ins => (
+                    <option key={ins} value={ins}>{ins}</option>
+                  ))}
+                </select>
               </div>
-              <textarea {...register('triage.general_comments')} className="form-input min-h-[60px] resize-none" placeholder="Enter comments or use AI to generate based on the vitals above..." />
+              <div className="row-flex">
+                <span className="form-label w-28">Clinical Diagnosis (ICD-11)</span>
+                <input {...register('identification.diagnosis')} className="form-input" placeholder="e.g. Malaria (B50.0)" />
+              </div>
             </div>
-          </div>
+            <div className="px-1 mt-1">
+              <div className="form-label mb-1">Date/Time/RN</div>
+              <div className="flex gap-2 w-full max-w-md">
+                <input type="date" {...register('identification.date')} className="form-input flex-1" />
+                <select {...register('identification.time')} className="form-input flex-1">
+                  {TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div className="mt-1 w-[200px]">
+                <input {...register('identification.rn')} placeholder="RN" className="form-input" />
+              </div>
+            </div>
 
-          {/* Section II */}
-          <div className="section-header flex justify-between items-center pr-2">
-            <span>Progress / Clinical Notes</span>
-            <button type="button" onClick={handleAIGenerateProgressNote} disabled={aiProgressNoteLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-              {aiProgressNoteLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
-              Generate Note
-            </button>
-          </div>
-          <div className="px-1">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="text-left text-xs font-bold p-1 w-40">Date & Time</th>
-                  <th className="text-left text-xs font-bold p-1">Clinical Note</th>
-                  <th className="text-left text-xs font-bold p-1 w-48">Name / Signature</th>
-                </tr>
-              </thead>
-              <tbody>
-                {progressFields.map((field, idx) => (
-                  <tr key={field.id} className="align-top">
-                    <td className="p-1"><input {...register(`progress_notes.${idx}.datetime`)} type="datetime-local" className="form-input text-[11px]" /></td>
-                    <td className="p-1"><textarea {...register(`progress_notes.${idx}.note`)} className="form-input min-h-[40px] resize-none" /></td>
-                    <td className="p-1"><input {...register(`progress_notes.${idx}.signature`)} className="form-input" /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!(sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role)) && (
-              <button type="button" onClick={() => appendProgress({ datetime: '', note: '', signature: '' })} className="text-blue-600 text-xs font-bold flex items-center mt-1 no-print">
-                <Plus className="h-3 w-3 mr-1" /> Add Note Row
+            <div className="px-1 mt-3">
+              <div className="form-label font-bold mb-1">Nursing Assessment</div>
+              <div className="flex gap-4 mb-1">
+                <div className="flex-1"><input {...register('triage.prev_illness_med')} placeholder="Previous illness (Medical)" className="form-input" /></div>
+                <div className="flex-1"><input {...register('triage.prev_illness_surg')} placeholder="Previous illness (Surgical)" className="form-input" /></div>
+              </div>
+              <div className="flex gap-4 mb-2">
+                <div className="flex-1"><input {...register('triage.allergy_1')} placeholder="Allergy (1)" className="form-input" /></div>
+                <div className="flex-1"><input {...register('triage.allergy_2')} placeholder="Allergy (2)" className="form-input" /></div>
+              </div>
+
+              <div className="flex gap-4 mb-1">
+                <div className="flex-1 row-flex"><span className="form-label w-24">Temp</span><input {...register('triage.temp')} className="form-input" /></div>
+                <div className="flex-1 row-flex"><span className="form-label w-24">Pulse</span><input {...register('triage.pulse')} className="form-input" /></div>
+                <div className="flex-1 row-flex"><span className="form-label w-24">Respiratory Rate</span><input {...register('triage.rr')} className="form-input" /></div>
+              </div>
+              <div className="flex gap-4 mb-2">
+                <div className="flex-1 row-flex"><span className="form-label w-24">Blood Pressure</span><input {...register('triage.bp')} className="form-input" /></div>
+                <div className="flex-1 row-flex"><span className="form-label w-24">Weight (Kg)</span><input {...register('triage.weight')} className="form-input" /></div>
+                <div className="flex-1 row-flex"><span className="form-label w-24">SpO2</span><input {...register('triage.spo2')} className="form-input" /></div>
+              </div>
+
+              <div className="w-full mt-2">
+                <div className="flex justify-between items-center mb-1">
+                  <div className="form-label mb-0">General comments</div>
+                  <button type="button" onClick={handleAIGenerateComments} disabled={aiCommentsLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    {aiCommentsLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
+                    Assess Vitals
+                  </button>
+                </div>
+                <textarea {...register('triage.general_comments')} className="form-input min-h-[60px] resize-none" placeholder="Enter comments or use AI to generate based on the vitals above..." />
+              </div>
+            </div>
+
+            {/* Section II */}
+            <div className="section-header flex justify-between items-center pr-2">
+              <span>Progress / Clinical Notes</span>
+              <button type="button" onClick={handleAIGenerateProgressNote} disabled={aiProgressNoteLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                {aiProgressNoteLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
+                Generate Note
               </button>
-            )}
-          </div>
-
-          {/* Section III: Prescription and Medication Administration Record  (MAR)  (MAR) */}
-          <div className="section-header flex justify-between items-center pr-2">
-            <span>Prescription and Medication Administration Record  (MAR) </span>
-            <button type="button" onClick={handleApplyAI} disabled={aiLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-              {aiLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
-              Suggest Doses & Routes
-            </button>
-          </div>
-          <div className="px-1">
-            <datalist id="inventory-list">
-              {inventoryItems.map((item, i) => (
-                <option key={i} value={item} />
-              ))}
-            </datalist>
-            <table className="w-full border-collapse border border-slate-300 text-xs text-center">
-              <thead>
-                <tr>
-                  <th className="border border-slate-300 p-1 w-24 bg-slate-50">Field</th>
-                  <th className="border border-slate-300 p-1">Medication 1</th>
-                  <th className="border border-slate-300 p-1">Medication 2</th>
-                  <th className="border border-slate-300 p-1">Medication 3</th>
-                  <th className="border border-slate-300 p-1">Medication 4</th>
-                </tr>
-              </thead>
-              <tbody>
-                {['Name', 'Dose', 'Frequency', 'Route', 'Start Time', 'End Time'].map((rowLabel, rIdx) => {
-                  const keys = ['name', 'dose', 'frequency', 'route', 'start_time', 'end_time'];
-                  const isTimeRow = rIdx === 4 || rIdx === 5;
-                  return (
-                    <tr key={rowLabel}>
-                      <td className="border border-slate-300 p-1 font-bold bg-slate-50 text-left">{rowLabel}</td>
-                      {[0, 1, 2, 3].map((colIdx) => (
-                        <td key={colIdx} className="border border-slate-300 p-1">
-                          {rIdx === 0 ? (
-                            <input {...register(`medication_mar.interventions.${colIdx}.${keys[rIdx]}`)} list="inventory-list" className="w-full border-none outline-none text-center bg-transparent" placeholder="Type..." />
-                          ) : isTimeRow ? (
-                            <select {...register(`medication_mar.interventions.${colIdx}.${keys[rIdx]}`)} className="w-full border-none outline-none text-center bg-transparent text-[11px] cursor-pointer">
-                              {TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
-                          ) : (
-                            <input {...register(`medication_mar.interventions.${colIdx}.${keys[rIdx]}`)} className="w-full border-none outline-none text-center bg-transparent" />
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            <div className="mt-1">
-              <input {...register('medication_mar.prescriber')} placeholder="Prescriber Name & Signature" className="form-input w-80" />
             </div>
-
-            <div className="mt-4 flex gap-8">
-              <table className="border-collapse border border-slate-300 text-xs text-center w-[250px]">
+            <div className="px-1">
+              <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="border border-slate-300 p-1 bg-slate-50 w-20">Time</th>
-                    <th className="border border-slate-300 p-1 bg-slate-50">Administered by (Initials)</th>
+                    <th className="text-left text-xs font-bold p-1 w-40">Date & Time</th>
+                    <th className="text-left text-xs font-bold p-1">Clinical Note</th>
+                    <th className="text-left text-xs font-bold p-1 w-48">Name / Signature</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {logFields.map((field, idx) => (
-                    <tr key={field.id}>
-                      <td className="border border-slate-300 p-0">
-                        <select {...register(`medication_mar.admin_logs.${idx}.time`)} className="w-full border-none outline-none text-center h-5 text-[10px] bg-transparent cursor-pointer">
-                          {TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                      </td>
-                      <td className="border border-slate-300 p-0"><input {...register(`medication_mar.admin_logs.${idx}.initials`)} placeholder="Initials" className="w-full border-none outline-none text-center h-5 text-[10px]" /></td>
+                  {progressFields.map((field, idx) => (
+                    <tr key={field.id} className="align-top">
+                      <td className="p-1"><input {...register(`progress_notes.${idx}.datetime`)} type="datetime-local" className="form-input text-[11px]" /></td>
+                      <td className="p-1"><textarea {...register(`progress_notes.${idx}.note`)} className="form-input min-h-[40px] resize-none" /></td>
+                      <td className="p-1"><input {...register(`progress_notes.${idx}.signature`)} className="form-input" /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              {!(sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role)) && (
+                <button type="button" onClick={() => appendProgress({ datetime: '', note: '', signature: '' })} className="text-blue-600 text-xs font-bold flex items-center mt-1 no-print">
+                  <Plus className="h-3 w-3 mr-1" /> Add Note Row
+                </button>
+              )}
+            </div>
 
-              <div className="flex-1 pt-4">
-                <div className="flex gap-4">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold mb-1">Initials</span>
-                    <input {...register('medication_mar.admin_initials')} className="form-input w-24" />
+            {/* Section III: Prescription and Medication Administration Record  (MAR)  (MAR) */}
+            <div className="section-header flex justify-between items-center pr-2">
+              <span>Prescription and Medication Administration Record  (MAR) </span>
+              <button type="button" onClick={handleApplyAI} disabled={aiLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                {aiLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
+                Suggest Doses & Routes
+              </button>
+            </div>
+            <div className="px-1">
+              <datalist id="inventory-list">
+                {inventoryItems.map((item, i) => (
+                  <option key={i} value={item} />
+                ))}
+              </datalist>
+              <table className="w-full border-collapse border border-slate-300 text-xs text-center">
+                <thead>
+                  <tr>
+                    <th className="border border-slate-300 p-1 w-24 bg-slate-50">Field</th>
+                    <th className="border border-slate-300 p-1">Medication 1</th>
+                    <th className="border border-slate-300 p-1">Medication 2</th>
+                    <th className="border border-slate-300 p-1">Medication 3</th>
+                    <th className="border border-slate-300 p-1">Medication 4</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {['Name', 'Dose', 'Frequency', 'Route', 'Start Time', 'End Time'].map((rowLabel, rIdx) => {
+                    const keys = ['name', 'dose', 'frequency', 'route', 'start_time', 'end_time'];
+                    const isTimeRow = rIdx === 4 || rIdx === 5;
+                    return (
+                      <tr key={rowLabel}>
+                        <td className="border border-slate-300 p-1 font-bold bg-slate-50 text-left">{rowLabel}</td>
+                        {[0, 1, 2, 3].map((colIdx) => (
+                          <td key={colIdx} className="border border-slate-300 p-1">
+                            {rIdx === 0 ? (
+                              <input disabled={isNurse} {...register(`medication_mar.interventions.${colIdx}.${keys[rIdx]}`)} list="inventory-list" className="w-full border-none outline-none text-center bg-transparent disabled:opacity-75 disabled:text-slate-500" placeholder={isNurse ? "N/A" : "Type..."} />
+                            ) : isTimeRow ? (
+                              <select disabled={isNurse} {...register(`medication_mar.interventions.${colIdx}.${keys[rIdx]}`)} className="w-full border-none outline-none text-center bg-transparent text-[11px] cursor-pointer disabled:opacity-75 disabled:text-slate-500">
+                                {TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                              </select>
+                            ) : (
+                              <input disabled={isNurse} {...register(`medication_mar.interventions.${colIdx}.${keys[rIdx]}`)} className="w-full border-none outline-none text-center bg-transparent disabled:opacity-75 disabled:text-slate-500" />
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              <div className="mt-1">
+                <input disabled={isNurse} {...register('medication_mar.prescriber')} placeholder={isNurse ? "Prescriber signature (read-only for nurses)" : "Prescriber Name & Signature"} className="form-input w-80 disabled:bg-slate-100 disabled:text-slate-500" />
+              </div>
+
+              <div className="mt-4 flex gap-8">
+                <table className="border-collapse border border-slate-300 text-xs text-center w-[250px]">
+                  <thead>
+                    <tr>
+                      <th className="border border-slate-300 p-1 bg-slate-50 w-20">Time</th>
+                      <th className="border border-slate-300 p-1 bg-slate-50">Administered by (Initials)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logFields.map((field, idx) => (
+                      <tr key={field.id}>
+                        <td className="border border-slate-300 p-0">
+                          <select {...register(`medication_mar.admin_logs.${idx}.time`)} className="w-full border-none outline-none text-center h-5 text-[10px] bg-transparent cursor-pointer">
+                            {TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        </td>
+                        <td className="border border-slate-300 p-0"><input {...register(`medication_mar.admin_logs.${idx}.initials`)} placeholder="Initials" className="w-full border-none outline-none text-center h-5 text-[10px]" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="flex-1 pt-4">
+                  <div className="flex gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold mb-1">Initials</span>
+                      <input {...register('medication_mar.admin_initials')} className="form-input w-24" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold mb-1">Initials Interpretation (Full Names)</span>
+                      <input {...register('medication_mar.admin_names')} className="form-input w-64" />
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold mb-1">Initials Interpretation (Full Names)</span>
-                    <input {...register('medication_mar.admin_names')} className="form-input w-64" />
-                  </div>
+                  {!(sheetStatus === 'Verified' && user?.role !== 'chef-nurse') && (
+                    <button type="button" onClick={() => appendLog({ time: '', initials: '' })} className="text-blue-600 text-xs font-bold flex items-center mt-4 no-print">
+                      <Plus className="h-3 w-3 mr-1" /> Add Initials Row
+                    </button>
+                  )}
                 </div>
-                {!(sheetStatus === 'Verified' && user?.role !== 'chef-nurse') && (
-                  <button type="button" onClick={() => appendLog({ time: '', initials: '' })} className="text-blue-600 text-xs font-bold flex items-center mt-4 no-print">
-                    <Plus className="h-3 w-3 mr-1" /> Add Initials Row
-                  </button>
-                )}
+              </div>
+
+              <div className="mt-6 bg-blue-50 border border-blue-100 p-3 rounded text-[10px] text-slate-700">
+                <p className="font-bold mb-2 text-blue-800">Drug Administration Frequency Legend:</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-0.5">
+
+                  <div className="col-span-2 text-[9px] font-bold text-blue-700 uppercase tracking-widest mt-1 mb-0.5 border-b border-blue-200 pb-0.5">Frequency Abbreviations</div>
+                  <div><span className="font-bold">STAT:</span> Immediately — single urgent dose, given at once.</div>
+                  <div><span className="font-bold">OD / QD / Daily:</span> Once every 24 hours (e.g., 08:00).</div>
+                  <div><span className="font-bold">BD / BID:</span> Twice daily — 12 h apart (e.g., 08:00 &amp; 20:00).</div>
+                  <div><span className="font-bold">TDS / TID:</span> Three times daily — 8 h apart (e.g., 08:00, 14:00, 20:00).</div>
+                  <div><span className="font-bold">QID / QDS:</span> Four times daily — 6 h apart (e.g., 06:00, 12:00, 18:00, 00:00).</div>
+                  <div><span className="font-bold">Q4H:</span> Every 4 hours — 6 doses per day (e.g., antibiotics, analgesics).</div>
+                  <div><span className="font-bold">Q6H:</span> Every 6 hours — 4 doses per day.</div>
+                  <div><span className="font-bold">Q8H:</span> Every 8 hours — 3 doses per day.</div>
+                  <div><span className="font-bold">Q12H:</span> Every 12 hours — equivalent to BD.</div>
+                  <div><span className="font-bold">PRN / SOS:</span> As needed / when required — only when symptom occurs.</div>
+                  <div><span className="font-bold">AC:</span> Before meals (ante cibum) — usually 30 min before eating.</div>
+                  <div><span className="font-bold">PC:</span> After meals (post cibum) — reduces GI upset.</div>
+                  <div><span className="font-bold">HS / QHS:</span> At bedtime / hour of sleep (hora somni).</div>
+                  <div><span className="font-bold">Loading Dose:</span> Initial high dose to rapidly achieve therapeutic levels.</div>
+                  <div><span className="font-bold">Maintenance Dose:</span> Regular dose to sustain therapeutic level after loading.</div>
+                  <div><span className="font-bold">Alternate Days (QOD):</span> Every other day (e.g., methotrexate).</div>
+                  <div><span className="font-bold">Weekly (Q1W):</span> Once per week (e.g., methotrexate, some vitamins).</div>
+                  <div><span className="font-bold">Single Dose:</span> One-time dose only — no repeat (e.g., fluconazole 150mg).</div>
+
+                  <div className="col-span-2 text-[9px] font-bold text-blue-700 uppercase tracking-widest mt-2 mb-0.5 border-b border-blue-200 pb-0.5">Route Abbreviations</div>
+                  <div><span className="font-bold">PO (Per Os):</span> By mouth / oral — tablets, capsules, syrups.</div>
+                  <div><span className="font-bold">IV (Intravenous):</span> Directly into a vein — fastest onset.</div>
+                  <div><span className="font-bold">IVI:</span> Intravenous infusion — slow drip over a set time.</div>
+                  <div><span className="font-bold">IM (Intramuscular):</span> Injected into muscle (e.g., deltoid, gluteal).</div>
+                  <div><span className="font-bold">SC / SQ (Subcutaneous):</span> Under the skin (e.g., insulin, heparin).</div>
+                  <div><span className="font-bold">SL (Sublingual):</span> Under the tongue for rapid absorption (e.g., GTN).</div>
+                  <div><span className="font-bold">PR (Per Rectum):</span> Via the rectum — suppositories or enemas.</div>
+                  <div><span className="font-bold">PV (Per Vaginum):</span> Vaginally — pessaries or gels.</div>
+                  <div><span className="font-bold">Neb (Nebulisation):</span> Inhaled via nebuliser (e.g., salbutamol, ipratropium).</div>
+                  <div><span className="font-bold">Top (Topical):</span> Applied on skin — creams, ointments, patches.</div>
+                  <div><span className="font-bold">ID (Intradermal):</span> Into skin layers — used for skin tests (e.g., PPD/Mantoux).</div>
+                  <div><span className="font-bold">NG (Nasogastric):</span> Via nasogastric tube directly into stomach.</div>
+
+                  <div className="col-span-2 text-[9px] font-bold text-blue-700 uppercase tracking-widest mt-2 mb-0.5 border-b border-blue-200 pb-0.5">Common Clinical Notes</div>
+                  <div><span className="font-bold">NKA:</span> No Known Allergies — confirm before administering.</div>
+                  <div><span className="font-bold">NKDA:</span> No Known Drug Allergies — document clearly.</div>
+                  <div><span className="font-bold">MAR:</span> Medication Administration Record — this form.</div>
+                  <div><span className="font-bold">Max Dose:</span> The highest safe single or daily amount — do not exceed.</div>
+                  <div><span className="font-bold">Titrate:</span> Gradually adjust dose up or down based on patient response.</div>
+                  <div><span className="font-bold">Taper:</span> Gradually reduce dose before stopping (e.g., steroids).</div>
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 bg-blue-50 border border-blue-100 p-3 rounded text-[10px] text-slate-700">
-              <p className="font-bold mb-2 text-blue-800">Drug Administration Frequency Legend:</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-0.5">
+            {/* Section IV: SBAR Hand Over Report */}
+            <div className="section-header flex justify-between items-center pr-2">
+              <span>SBAR Hand Over Report</span>
+              <button type="button" onClick={handleAIGenerateSBAR} disabled={aiSbarLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                {aiSbarLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
+                Generate SBAR
+              </button>
+            </div>
+            <div className="px-1">
+              <div className="form-label mb-1">Situation, Background, Assessment & Recommendation</div>
+              <textarea
+                {...register('sbar.content')}
+                disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
+                className="form-input min-h-[160px] resize-none w-full disabled:bg-slate-100 disabled:text-slate-500"
+                placeholder="Click 'AI Generate SBAR' to automatically draft a hand over report based on this sheet..."
+              />
 
-                <div className="col-span-2 text-[9px] font-bold text-blue-700 uppercase tracking-widest mt-1 mb-0.5 border-b border-blue-200 pb-0.5">Frequency Abbreviations</div>
-                <div><span className="font-bold">STAT:</span> Immediately — single urgent dose, given at once.</div>
-                <div><span className="font-bold">OD / QD / Daily:</span> Once every 24 hours (e.g., 08:00).</div>
-                <div><span className="font-bold">BD / BID:</span> Twice daily — 12 h apart (e.g., 08:00 &amp; 20:00).</div>
-                <div><span className="font-bold">TDS / TID:</span> Three times daily — 8 h apart (e.g., 08:00, 14:00, 20:00).</div>
-                <div><span className="font-bold">QID / QDS:</span> Four times daily — 6 h apart (e.g., 06:00, 12:00, 18:00, 00:00).</div>
-                <div><span className="font-bold">Q4H:</span> Every 4 hours — 6 doses per day (e.g., antibiotics, analgesics).</div>
-                <div><span className="font-bold">Q6H:</span> Every 6 hours — 4 doses per day.</div>
-                <div><span className="font-bold">Q8H:</span> Every 8 hours — 3 doses per day.</div>
-                <div><span className="font-bold">Q12H:</span> Every 12 hours — equivalent to BD.</div>
-                <div><span className="font-bold">PRN / SOS:</span> As needed / when required — only when symptom occurs.</div>
-                <div><span className="font-bold">AC:</span> Before meals (ante cibum) — usually 30 min before eating.</div>
-                <div><span className="font-bold">PC:</span> After meals (post cibum) — reduces GI upset.</div>
-                <div><span className="font-bold">HS / QHS:</span> At bedtime / hour of sleep (hora somni).</div>
-                <div><span className="font-bold">Loading Dose:</span> Initial high dose to rapidly achieve therapeutic levels.</div>
-                <div><span className="font-bold">Maintenance Dose:</span> Regular dose to sustain therapeutic level after loading.</div>
-                <div><span className="font-bold">Alternate Days (QOD):</span> Every other day (e.g., methotrexate).</div>
-                <div><span className="font-bold">Weekly (Q1W):</span> Once per week (e.g., methotrexate, some vitamins).</div>
-                <div><span className="font-bold">Single Dose:</span> One-time dose only — no repeat (e.g., fluconazole 150mg).</div>
-
-                <div className="col-span-2 text-[9px] font-bold text-blue-700 uppercase tracking-widest mt-2 mb-0.5 border-b border-blue-200 pb-0.5">Route Abbreviations</div>
-                <div><span className="font-bold">PO (Per Os):</span> By mouth / oral — tablets, capsules, syrups.</div>
-                <div><span className="font-bold">IV (Intravenous):</span> Directly into a vein — fastest onset.</div>
-                <div><span className="font-bold">IVI:</span> Intravenous infusion — slow drip over a set time.</div>
-                <div><span className="font-bold">IM (Intramuscular):</span> Injected into muscle (e.g., deltoid, gluteal).</div>
-                <div><span className="font-bold">SC / SQ (Subcutaneous):</span> Under the skin (e.g., insulin, heparin).</div>
-                <div><span className="font-bold">SL (Sublingual):</span> Under the tongue for rapid absorption (e.g., GTN).</div>
-                <div><span className="font-bold">PR (Per Rectum):</span> Via the rectum — suppositories or enemas.</div>
-                <div><span className="font-bold">PV (Per Vaginum):</span> Vaginally — pessaries or gels.</div>
-                <div><span className="font-bold">Neb (Nebulisation):</span> Inhaled via nebuliser (e.g., salbutamol, ipratropium).</div>
-                <div><span className="font-bold">Top (Topical):</span> Applied on skin — creams, ointments, patches.</div>
-                <div><span className="font-bold">ID (Intradermal):</span> Into skin layers — used for skin tests (e.g., PPD/Mantoux).</div>
-                <div><span className="font-bold">NG (Nasogastric):</span> Via nasogastric tube directly into stomach.</div>
-
-                <div className="col-span-2 text-[9px] font-bold text-blue-700 uppercase tracking-widest mt-2 mb-0.5 border-b border-blue-200 pb-0.5">Common Clinical Notes</div>
-                <div><span className="font-bold">NKA:</span> No Known Allergies — confirm before administering.</div>
-                <div><span className="font-bold">NKDA:</span> No Known Drug Allergies — document clearly.</div>
-                <div><span className="font-bold">MAR:</span> Medication Administration Record — this form.</div>
-                <div><span className="font-bold">Max Dose:</span> The highest safe single or daily amount — do not exceed.</div>
-                <div><span className="font-bold">Titrate:</span> Gradually adjust dose up or down based on patient response.</div>
-                <div><span className="font-bold">Taper:</span> Gradually reduce dose before stopping (e.g., steroids).</div>
+              <div className="flex gap-4 mt-2">
+                <div className="flex-1 flex items-center border border-slate-300 bg-slate-50/50">
+                  <span className="text-[11px] text-slate-500 px-2 min-w-[70px]">Reported by</span>
+                  <input
+                    {...register('sbar.reported_by')}
+                    disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
+                    className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </div>
+                <div className="flex-1 flex items-center border border-slate-300 bg-slate-50/50">
+                  <span className="text-[11px] text-slate-500 px-2 min-w-[120px]">Reported sign. & time</span>
+                  <input
+                    {...register('sbar.reported_sign_time')}
+                    disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
+                    className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4 mt-1">
+                <div className="flex-1 flex items-center border border-slate-300 bg-slate-50/50">
+                  <span className="text-[11px] text-slate-500 px-2 min-w-[70px]">Received by</span>
+                  <input
+                    {...register('sbar.received_by')}
+                    disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
+                    className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </div>
+                <div className="flex-1 flex items-center border border-slate-300 bg-slate-50/50">
+                  <span className="text-[11px] text-slate-500 px-2 min-w-[120px]">Received sign. & time</span>
+                  <input
+                    {...register('sbar.received_sign_time')}
+                    disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
+                    className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Section IV: SBAR Hand Over Report */}
-          <div className="section-header flex justify-between items-center pr-2">
-            <span>SBAR Hand Over Report</span>
-            <button type="button" onClick={handleAIGenerateSBAR} disabled={aiSbarLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-              {aiSbarLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
-              Generate SBAR
-            </button>
-          </div>
-          <div className="px-1">
-            <div className="form-label mb-1">Situation, Background, Assessment & Recommendation</div>
-            <textarea 
-              {...register('sbar.content')} 
-              disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
-              className="form-input min-h-[160px] resize-none w-full disabled:bg-slate-100 disabled:text-slate-500" 
-              placeholder="Click 'AI Generate SBAR' to automatically draft a hand over report based on this sheet..." 
-            />
-
-             <div className="flex gap-4 mt-2">
-              <div className="flex-1 flex items-center border border-slate-300 bg-slate-50/50">
-                <span className="text-[11px] text-slate-500 px-2 min-w-[70px]">Reported by</span>
-                <input 
-                  {...register('sbar.reported_by')} 
-                  disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
-                  className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500" 
-                />
-              </div>
-              <div className="flex-1 flex items-center border border-slate-300 bg-slate-50/50">
-                <span className="text-[11px] text-slate-500 px-2 min-w-[120px]">Reported sign. & time</span>
-                <input 
-                  {...register('sbar.reported_sign_time')} 
-                  disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
-                  className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500" 
-                />
-              </div>
-            </div>
-            <div className="flex gap-4 mt-1">
-              <div className="flex-1 flex items-center border border-slate-300 bg-slate-50/50">
-                <span className="text-[11px] text-slate-500 px-2 min-w-[70px]">Received by</span>
-                <input 
-                  {...register('sbar.received_by')} 
-                  disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
-                  className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500" 
-                />
-              </div>
-              <div className="flex-1 flex items-center border border-slate-300 bg-slate-50/50">
-                <span className="text-[11px] text-slate-500 px-2 min-w-[120px]">Received sign. & time</span>
-                <input 
-                  {...register('sbar.received_sign_time')} 
-                  disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
-                  className="flex-1 border-none outline-none py-1 px-2 text-[11px] disabled:bg-slate-100 disabled:text-slate-500" 
-                />
-              </div>
-            </div>
-          </div>
           </fieldset>
 
           {isEmbedded && (
@@ -944,7 +1015,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                   <FileText className="h-4 w-4 mr-2 text-slate-400" /> PDF Locked
                 </button>
               )}
-              
+
               {!(sheetStatus === 'Verified' && user?.role !== 'chef-nurse') && (
                 <button
                   type="button"
@@ -1051,17 +1122,17 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
         </Modal>
       )}
 
-      {/* ── Floating AI Assistant Button ── */}
+      {/* ── Floating Assistant Button ── */}
       <button
         onClick={openAiDrawer}
         className="no-print fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-4 py-3 rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95"
         title="AI Clinical Assistant"
       >
         <Sparkles className="h-5 w-5" />
-        <span className="text-sm font-bold">AI Assistant</span>
+        <span className="text-sm font-bold">Assistant</span>
       </button>
 
-      {/* ── AI Assistant Drawer ── */}
+      {/* ── Assistant Drawer ── */}
       {aiDrawerOpen && createPortal(
         <div className="no-print fixed inset-0 z-50 flex justify-end" onClick={() => setAiDrawerOpen(false)}>
           <div
@@ -1132,7 +1203,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
               {/* Medication AI */}
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Medication AI</p>
-                <button onClick={handleMedSuggest} disabled={medSugLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
+                <button onClick={handleMedSuggest} disabled={medSugLoading || isNurse || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
                   className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all disabled:opacity-60 mb-3 disabled:cursor-not-allowed">
                   {medSugLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   Suggest Doses, Routes & Frequency
@@ -1148,7 +1219,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                             <p className="text-[10px] text-indigo-600 font-medium">{sug.category}</p>
                           </div>
                           <button onClick={() => applyMedSuggestion(sug, idx)}
-                            disabled={sheetStatus === 'Verified' && user?.role !== 'chef-nurse'}
+                            disabled={isNurse || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
                             className="text-[10px] bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             Apply
                           </button>

@@ -30,6 +30,7 @@ import ClinicalSheet from './pages/ClinicalSheet';
 import ClinicalSheetsList from './pages/ClinicalSheetsList';
 import ClinicalObservationList from './pages/ClinicalObservationList';
 import NursingHub from './pages/NursingHub';
+import DoctorHub from './pages/DoctorHub';
 import PatientRecords from './pages/PatientRecords';
 import FeedbackList from './pages/feedbacks/FeedbackList';
 import EPrescriptions from './pages/EPrescriptions';
@@ -75,8 +76,9 @@ function App() {
             <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><ResultTransferList /></ProtectedRoute>} />
             <Route path="/performance" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer', 'chef-nurse']}><PerformanceDashboard /></ProtectedRoute>} />
             <Route path="/notifications" element={<Notifications />} />
-            <Route path="/clinical-observation" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
-            <Route path="/nursing-hub" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
+            <Route path="/clinical-observation" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
+            <Route path="/nursing-hub" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
+            <Route path="/doctor-hub" element={<ProtectedRoute allowedRoles={['doctor', 'consultant', 'admin']}><DoctorHub /></ProtectedRoute>} />
             <Route path="/e-prescriptions" element={<ProtectedRoute allowedRoles={['doctor', 'consultant']}><EPrescriptions /></ProtectedRoute>} />
             <Route path="/nursing-hub/inventory" element={<ProtectedRoute allowedRoles={['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant']}><DailyInventoryCheckup /></ProtectedRoute>} />
             <Route path="/nursing-hub/daily-report" element={<ProtectedRoute allowedRoles={['nurse', 'chef-nurse']}><DailyOperationalReport /></ProtectedRoute>} />

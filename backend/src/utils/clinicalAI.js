@@ -464,6 +464,58 @@ function generateSBAR({ identification, triage, progress_notes, medication_mar }
     'Monitor vitals Q1-4H as per acuity. Document all changes. Escalate if deterioration noted.';
 
   return s + b + a + r;
+  return s + b + a + r;
 }
 
-module.exports = { suggestMedications, generateAssessmentComments, generateProgressNote, generateSBAR, suggestICD10, suggestICD11, getICD11Token, FREQUENCY_LEGEND, DRUG_DB };
+// ── Generate Special Instructions / Dispense ───────────────────────────────────
+function generateInstructions(medications) {
+  return medications.map((med, index) => {
+    if (!med.name) return { index, instructions: '' };
+    
+    let instructions = '';
+    const found = lookupMedication(med.name);
+    
+    if (found && found.notes) {
+      instructions += found.notes + ' ';
+    } else {
+      // General heuristic
+      const n = med.name.toLowerCase();
+      if (n.includes('syrup') || n.includes('susp')) instructions += 'Shake well before use. ';
+      else if (n.includes('cream') || n.includes('ointment')) instructions += 'Apply thinly to affected area. For external use only. ';
+      else if (n.includes('drop') && (n.includes('eye') || n.includes('ear'))) instructions += 'Discard 28 days after opening. ';
+    }
+
+    // Try to calculate dispense quantity
+    if (med.frequency && med.duration) {
+      const f = med.frequency.toUpperCase();
+      const d = med.duration.toLowerCase();
+      
+      let timesPerDay = 1;
+      if (f.includes('BD') || f.includes('BID')) timesPerDay = 2;
+      else if (f.includes('TDS') || f.includes('TID')) timesPerDay = 3;
+      else if (f.includes('QID') || f.includes('QDS')) timesPerDay = 4;
+      else if (f.includes('Q4H')) timesPerDay = 6;
+      else if (f.includes('Q6H')) timesPerDay = 4;
+      else if (f.includes('Q8H')) timesPerDay = 3;
+      
+      let days = 0;
+      const dayMatch = d.match(/(\d+)\s*day/);
+      if (dayMatch) days = parseInt(dayMatch[1]);
+      else if (d.includes('1 month')) days = 30;
+      else if (d.includes('3 month')) days = 90;
+      
+      if (days > 0 && timesPerDay > 0) {
+        // Only append dispense if it's likely a tablet/capsule (PO route)
+        const route = (med.route || '').toUpperCase();
+        if (route.includes('PO') && !med.name.toLowerCase().includes('syrup') && !med.name.toLowerCase().includes('susp')) {
+          const total = timesPerDay * days;
+          instructions += `Dispense ${total} tabs/caps.`;
+        }
+      }
+    }
+
+    return { index, instructions: instructions.trim() };
+  });
+}
+
+module.exports = { suggestMedications, generateAssessmentComments, generateProgressNote, generateSBAR, generateInstructions, suggestICD10, suggestICD11, getICD11Token, FREQUENCY_LEGEND, DRUG_DB };

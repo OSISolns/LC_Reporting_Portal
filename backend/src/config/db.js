@@ -871,6 +871,58 @@ const client = createClient({
   } catch (err) {
     console.error('❌ Failed to initialize supplier_portal_sessions table:', err);
   }
+
+  // ── Clinical Observations (Clinical Sheets) ──────────────────────────────────
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS clinical_observations (
+        id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+        patient_id            TEXT NOT NULL,
+        queue_id              TEXT,
+        patient_name          TEXT,
+        ward                  TEXT,
+        bed                   TEXT,
+        identification_json   TEXT DEFAULT '{}',
+        triage_json           TEXT DEFAULT '{}',
+        progress_notes_json   TEXT DEFAULT '[]',
+        medication_mar_json   TEXT DEFAULT '{}',
+        sbar_json             TEXT DEFAULT '{}',
+        status                TEXT DEFAULT 'Draft',
+        created_by            INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        is_mock               INTEGER DEFAULT 0,
+        created_at            DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at            DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    await client.execute(`CREATE INDEX IF NOT EXISTS idx_co_patient_id ON clinical_observations(patient_id)`);
+    await client.execute(`CREATE INDEX IF NOT EXISTS idx_co_status ON clinical_observations(status)`);
+    await client.execute(`CREATE INDEX IF NOT EXISTS idx_co_updated_at ON clinical_observations(updated_at DESC)`);
+    console.log('✅ SQLite Schema Migration: created/verified clinical_observations table');
+  } catch (err) {
+    console.error('❌ Failed to initialize clinical_observations table:', err);
+  }
+
+  // ── Patient Vitals ───────────────────────────────────────────────────────────
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS patient_vitals (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        patient_id        TEXT NOT NULL,
+        temperature       REAL,
+        pulse             INTEGER,
+        respiratory_rate  INTEGER,
+        blood_pressure    TEXT,
+        weight            REAL,
+        spo2              REAL,
+        general_comments  TEXT,
+        created_at        DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    await client.execute(`CREATE INDEX IF NOT EXISTS idx_vitals_patient_id ON patient_vitals(patient_id)`);
+    console.log('✅ SQLite Schema Migration: created/verified patient_vitals table');
+  } catch (err) {
+    console.error('❌ Failed to initialize patient_vitals table:', err);
+  }
 })();
 
 
