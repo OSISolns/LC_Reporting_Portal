@@ -282,28 +282,41 @@ exports.saveObservation = async (req, res) => {
         }
       }
 
-      // Restrict modifying verified sheets to Chef Nurses only
-      if (existing.status === 'Verified' && req.user.role !== 'chef-nurse') {
+      // Restrict modifying verified sheets to Chef Nurses, Doctors, and Consultants
+      if (existing.status === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(req.user.role)) {
         return res.status(403).json({ success: false, message: 'This clinical sheet is already verified and locked.' });
       }
 
       const statusToSave = req.body.status || existing.status || 'Draft';
 
       // Only Chef Nurses can verify or keep a clinical sheet in verified status
-      if (statusToSave === 'Verified' && req.user.role !== 'chef-nurse') {
-        return res.status(403).json({ success: false, message: 'Only a Chef Nurse can verify clinical sheets.' });
+      if (statusToSave === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Only authorized personnel can verify clinical sheets.' });
       }
 
-      result = await ClinicalObservation.update(patientId, queue_id, { ...req.body, status: statusToSave, isReviewer: req.user.role === 'reviewer' }, req.user);
+      if (!existing.patient_name) {
+        const patientRes = await db.query(`SELECT full_name FROM sukraa_patients WHERE pid = $1`, [patientId]);
+        const pName = patientRes.rows[0] ? patientRes.rows[0].full_name : 'Unknown Patient';
+        await db.query(`UPDATE clinical_observations SET patient_name = $1 WHERE id = $2`, [pName, existing.id]);
+        existing.patient_name = pName;
+      }
+
+      result = await ClinicalObservation.update(patientId, queue_id, { ...req.body, patient_name: existing.patient_name, status: statusToSave, isReviewer: req.user.role === 'reviewer' }, req.user);
     } else {
       const statusToSave = req.body.status || 'Draft';
 
-      // Only Chef Nurses can create or verify clinical sheets with Verified status
-      if (statusToSave === 'Verified' && req.user.role !== 'chef-nurse') {
-        return res.status(403).json({ success: false, message: 'Only a Chef Nurse can verify clinical sheets.' });
+      // Only Chef Nurses, Doctors, and Consultants can create or verify clinical sheets with Verified status
+      if (statusToSave === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Only authorized personnel can verify clinical sheets.' });
       }
 
-      result = await ClinicalObservation.create({ ...req.body, status: statusToSave, patient_id: patientId, isReviewer: req.user.role === 'reviewer' }, req.user.id);
+      let patientName = req.body.patient_name;
+      if (!patientName) {
+        const patientRes = await db.query(`SELECT full_name FROM sukraa_patients WHERE pid = $1`, [patientId]);
+        patientName = patientRes.rows[0] ? patientRes.rows[0].full_name : 'Unknown Patient';
+      }
+
+      result = await ClinicalObservation.create({ ...req.body, patient_name: patientName, status: statusToSave, patient_id: patientId, isReviewer: req.user.role === 'reviewer' }, req.user.id);
     }
 
     // Sync medicines & consumables to daily stock in background (non-blocking)
@@ -693,6 +706,69 @@ exports.getAllObservationsList = async (req, res) => {
     res.json({ success: true, data });
   } catch (error) {
     console.error('Error in getAllObservationsList:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── E-Prescriptions: Get completed prescriptions ──────────────────────────────
+exports.getCompletedPrescriptions = async (req, res) => {
+  try {
+    // Return all clinical sheets that have prescriptions (medication_mar_json->>'interventions' has data)
+    let sql = `
+      SELECT
+        co.id, co.patient_id, co.patient_name, co.status, co.created_at, co.updated_at,
+        u.full_name AS doctor_name,
+        co.medication_mar_json, co.identification_json
+      FROM clinical_observations co
+      LEFT JOIN users u ON co.created_by = u.id
+      WHERE co.medication_mar_json IS NOT NULL 
+        AND co.medication_mar_json != '{}'
+      ORDER BY co.updated_at DESC LIMIT 100
+    `;
+    const { rows } = await db.query(sql);
+
+    // Filter to those that actually have valid medications
+    const data = [];
+    for (const row of rows) {
+      let medMar = {};
+      try { medMar = typeof row.medication_mar_json === 'string' ? JSON.parse(row.medication_mar_json) : (row.medication_mar_json || {}); } catch (_) {}
+      
+      let ident = {};
+      try { ident = typeof row.identification_json === 'string' ? JSON.parse(row.identification_json) : (row.identification_json || {}); } catch (_) {}
+
+      let fallbackName = row.patient_name;
+      if (!fallbackName) {
+        const first = ident.first_name || '';
+        const last = ident.last_name || '';
+        fallbackName = `${last} ${first}`.trim();
+      }
+      if (!fallbackName) {
+        fallbackName = 'Unknown Patient';
+      }
+
+      const interventions = Array.isArray(medMar) ? medMar : (medMar.interventions || []);
+
+      if (interventions && Array.isArray(interventions)) {
+        const validMeds = interventions.filter(m => m && m.name && m.name.trim());
+        if (validMeds.length > 0) {
+          data.push({
+            id: row.id,
+            patient_id: row.patient_id,
+            patient_name: fallbackName,
+            doctor_name: row.doctor_name,
+            status: row.status,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            diagnosis: ident.diagnosis || '',
+            medications: validMeds
+          });
+        }
+      }
+    }
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error in getCompletedPrescriptions:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

@@ -51,6 +51,7 @@ router.delete('/inventory/uoms/:id', clinicalController.deleteUom);
 
 router.post('/observations/:patientId', clinicalController.saveObservation);
 router.get('/observations',             clinicalController.getAllObservationsList);
+router.get('/prescriptions/completed',  clinicalController.getCompletedPrescriptions);
 router.get('/observations/recent',      clinicalController.getRecentObservations);
 router.get('/observations/:patientId/all', clinicalController.getAllObservations);
 router.get('/observations/:patientId/checksum', clinicalController.getDocChecksum);

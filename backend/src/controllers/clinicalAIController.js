@@ -5,6 +5,7 @@ const {
   generateProgressNote,
   generateSBAR,
   suggestICD10,
+  generateInstructions,
   FREQUENCY_LEGEND,
 } = require('../utils/clinicalAI');
 
@@ -20,7 +21,18 @@ exports.suggestMedications = (req, res, next) => {
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };
-
+// POST /api/ai/clinical/instructions
+// Body: { medications: [{ name, route, frequency, duration }, ...] }
+exports.generateInstructions = (req, res, next) => {
+  try {
+    const { medications } = req.body;
+    if (!Array.isArray(medications) || !medications.length) {
+      return res.status(400).json({ success: false, message: 'medications array is required' });
+    }
+    const data = generateInstructions(medications);
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
+};
 // POST /api/ai/clinical/icd10  (now backed by live WHO ICD-11 API)
 // Body: { query: string }
 exports.suggestICD10 = async (req, res, next) => {

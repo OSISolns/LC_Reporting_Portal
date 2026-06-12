@@ -16,14 +16,18 @@ class ClinicalObservation {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *`,
       [
-        patient_id, queue_id, patient_name, ward, bed,
-        JSON.stringify(identification),
-        JSON.stringify(triage),
-        JSON.stringify(progress_notes),
-        JSON.stringify(medication_mar),
-        JSON.stringify(sbar),
+        patient_id || null,
+        queue_id || null,
+        patient_name || null,
+        ward || null,
+        bed || null,
+        JSON.stringify(identification || {}),
+        JSON.stringify(triage || {}),
+        JSON.stringify(progress_notes || []),
+        JSON.stringify(medication_mar || {}),
+        JSON.stringify(sbar || {}),
         status || 'Draft',
-        userId,
+        userId || null,
         data.isReviewer ? 1 : 0
       ]
     );
@@ -46,14 +50,14 @@ class ClinicalObservation {
        WHERE patient_id = $7 AND queue_id = $8`;
     
     const params = [
-      JSON.stringify(identification),
-      JSON.stringify(triage),
-      JSON.stringify(progress_notes),
-      JSON.stringify(medication_mar),
-      JSON.stringify(sbar),
-      status,
-      patient_id,
-      queue_id
+      JSON.stringify(identification || {}),
+      JSON.stringify(triage || {}),
+      JSON.stringify(progress_notes || []),
+      JSON.stringify(medication_mar || {}),
+      JSON.stringify(sbar || {}),
+      status || 'Draft',
+      patient_id || null,
+      queue_id || null
     ];
 
     if (user && user.role === 'reviewer') {

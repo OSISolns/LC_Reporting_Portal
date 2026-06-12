@@ -194,11 +194,10 @@ const DoctorDashboard = () => {
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 mb-8 shadow-sm">
         <h3 className="m-0 mb-6 text-xl font-black text-slate-800">Clinical Workflow Actions</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          <QuickAction label="Doctor Hub" icon={<Stethoscope size={24} />} color="#4338ca" path="/nursing-hub" navigate={navigate} />
-          <QuickAction label="E-Prescriptions" icon={<FileText size={24} />} color="#0ea5e9" path="/e-prescriptions" navigate={navigate} />
+          <QuickAction label="Doctor Hub" icon={<Stethoscope size={24} />} color="#4338ca" path="/doctor-hub" navigate={navigate} />
           {hasPermission('incident_reports', 'create') && <QuickAction label="Report Incident" icon={<AlertTriangle size={24} />} color="#b91c1c" path="/incidents/new" navigate={navigate} />}
           <QuickAction label="Clinical Sheets" icon={<FileText size={24} />} color="#059669" path="/clinical-sheets" navigate={navigate} />
-          <QuickAction label="Patient Records" icon={<Users size={24} />} color="#1b669e" path="/nursing-hub" navigate={navigate} />
+          <QuickAction label="Patient Records" icon={<Users size={24} />} color="#1b669e" path="/doctor-hub" navigate={navigate} />
           {hasPermission('reports', 'view') && <QuickAction label="AI Insights" icon={<TrendingUp size={24} />} color="#4c1d95" path="/ai-insights" navigate={navigate} />}
         </div>
       </div>

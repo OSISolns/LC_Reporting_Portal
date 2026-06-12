@@ -24,7 +24,8 @@ import {
   Filter,
   Check,
   ChevronDown,
-  Edit2
+  Edit2,
+  CornerUpLeft
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
@@ -159,6 +160,10 @@ export default function CentralStoreHub() {
   const [rectifyingItem, setRectifyingItem]     = useState(null);
   const [rectifyForm, setRectifyForm]           = useState({ quantity: '', price: '' });
 
+  const [returnOpen, setReturnOpen]             = useState(false);
+  const [returningItem, setReturningItem]       = useState(null);
+  const [returnForm, setReturnForm]             = useState({ quantity: '', reason: '' });
+
   const openRectifyModal = (item) => {
     setRectifyingItem(item);
     setRectifyForm({
@@ -193,6 +198,48 @@ export default function CentralStoreHub() {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Failed to rectify stock');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openReturnModal = (item) => {
+    setReturningItem(item);
+    setReturnForm({ quantity: '', reason: '' });
+    setReturnOpen(true);
+  };
+
+  const handleReturnSubmit = async (e) => {
+    e.preventDefault();
+    const returnQty = Number(returnForm.quantity);
+    if (returnQty <= 0 || returnQty > returningItem.quantity) {
+      toast.error('Invalid return quantity');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        name: returningItem.name,
+        sku: returningItem.sku,
+        unit_of_measure: returningItem.unit_of_measure,
+        category: returningItem.category,
+        batch_id: returningItem.batch_id,
+        batch_number: returningItem.batch_number,
+        expiry_date: returningItem.expiry_date,
+        purchase_time: returningItem.purchase_time,
+        price: Number(returningItem.price),
+        dept_stock_id: returningItem.dept_stock_id,
+        department_id: returningItem.department_id,
+        quantity: returningItem.quantity - returnQty
+      };
+      // We update the master inventory to reduce stock.
+      await api.put(`/clinical/inventory/master/${returningItem.id}`, payload);
+      toast.success('Stock returned to supplier successfully');
+      setReturnOpen(false);
+      loadData(true); // reload silently
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to return stock');
     } finally {
       setIsSubmitting(false);
     }
@@ -777,13 +824,22 @@ export default function CentralStoreHub() {
                                 <td className="py-3 px-4 text-right font-mono text-slate-800 font-black">{fmtNum(item.quantity * item.price)} RWF</td>
                                 {canRectify && (
                                   <td className="py-3 px-4 text-center">
-                                    <button 
-                                      onClick={() => openRectifyModal(item)}
-                                      className="p-1.5 text-slate-400 hover:text-sky-700 bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-200 rounded-lg transition-colors cursor-pointer border-0 shadow-xs"
-                                      title="Rectify stock balance & price"
-                                    >
-                                      <Edit2 size={13} className="stroke-[2.5]" />
-                                    </button>
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button 
+                                        onClick={() => openRectifyModal(item)}
+                                        className="p-1.5 text-slate-400 hover:text-sky-700 bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-200 rounded-lg transition-colors cursor-pointer shadow-xs"
+                                        title="Rectify stock balance & price"
+                                      >
+                                        <Edit2 size={13} className="stroke-[2.5]" />
+                                      </button>
+                                      <button 
+                                        onClick={() => openReturnModal(item)}
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition-colors cursor-pointer shadow-xs"
+                                        title="Return to Supplier"
+                                      >
+                                        <CornerUpLeft size={13} className="stroke-[2.5]" />
+                                      </button>
+                                    </div>
                                   </td>
                                 )}
                               </tr>
@@ -1503,6 +1559,61 @@ export default function CentralStoreHub() {
             >
               {isSubmitting && <Loader2 size={14} className="animate-spin" />}
               Save Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ══ MODAL: Return to Supplier ══ */}
+      <Modal isOpen={returnOpen} onClose={() => setReturnOpen(false)} title="Return Stock to Supplier">
+        <form onSubmit={handleReturnSubmit} className="space-y-4">
+          <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl space-y-1.5 text-xs text-rose-800">
+            <div><strong className="text-rose-950">Item:</strong> {returningItem?.name}</div>
+            <div><strong className="text-rose-950">SKU:</strong> {returningItem?.sku || '—'}</div>
+            <div><strong className="text-rose-950">Batch Code:</strong> {returningItem?.batch_number || '—'}</div>
+            <div><strong className="text-rose-950">Current Stock:</strong> {returningItem?.quantity || '0'}</div>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className={labelCls}>Quantity to Return *</label>
+              <input
+                required 
+                type="number" 
+                min="1"
+                max={returningItem?.quantity || 1}
+                value={returnForm.quantity}
+                onChange={e => setReturnForm({ ...returnForm, quantity: e.target.value })}
+                className={inputCls}
+                placeholder="Enter quantity"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Reason for Return (Optional)</label>
+              <textarea
+                value={returnForm.reason}
+                onChange={e => setReturnForm({ ...returnForm, reason: e.target.value })}
+                className={`${inputCls} min-h-[80px] resize-none`}
+                placeholder="Expired, damaged, etc."
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+            <button
+              type="button"
+              onClick={() => setReturnOpen(false)}
+              className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md shadow-rose-100 border-0"
+            >
+              {isSubmitting && <Loader2 size={14} className="animate-spin" />}
+              Confirm Return
             </button>
           </div>
         </form>

@@ -27,6 +27,7 @@ router.post('/medications/suggest', authorizeRoles(CLINICAL_ROLES), aiController
 // ── Clinical AI (ICD-11 live + medication engine) ─────────────────────────────
 router.post('/clinical/icd10',       authorizeRoles(CLINICAL_ROLES), clinicalAIController.suggestICD10); // path kept for compat; now queries WHO ICD-11
 router.post('/clinical/medications', authorizeRoles(CLINICAL_ROLES), clinicalAIController.suggestMedications);
+router.post('/clinical/instructions', authorizeRoles(CLINICAL_ROLES), clinicalAIController.generateInstructions);
 router.post('/clinical/assessment',  authorizeRoles(CLINICAL_ROLES), clinicalAIController.generateAssessment);
 router.post('/clinical/note',        authorizeRoles(CLINICAL_ROLES), clinicalAIController.generateProgressNote);
 router.post('/clinical/sbar',        authorizeRoles(CLINICAL_ROLES), clinicalAIController.generateSBAR);
