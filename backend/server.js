@@ -11,7 +11,6 @@ if (!tursoAuthToken) requiredEnv.push('TURSO_AUTH_TOKEN');
 const missingEnv = requiredEnv.filter(k => !process.env[k]);
 if (missingEnv.length > 0) {
   console.error(`❌ Critical Environment Variables Missing: ${missingEnv.join(', ')}`);
-  console.log('🔍 Available Env Keys:', Object.keys(process.env).filter(k => k.includes('TURSO') || k.includes('JWT') || k.includes('VERCEL')));
   // Note: We no longer process.exit(1) here because Vercel analyzes this file during build time.
   // Exiting would crash the deployment before it even starts.
 }
