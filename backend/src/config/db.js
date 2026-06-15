@@ -709,6 +709,10 @@ const client = createClient({
       await client.execute("ALTER TABLE requisitions ADD COLUMN rejection_reason TEXT");
       console.log('✅ SQLite Schema Migration: added rejection_reason to requisitions');
     } catch (e) { /* already exists */ }
+    try {
+      await client.execute("ALTER TABLE stock_batches ADD COLUMN lot_number TEXT");
+      console.log('✅ SQLite Schema Migration: added lot_number column to stock_batches');
+    } catch (e) { /* already exists */ }
 
     console.log('✅ SQLite Schema Migration: created stock management relational tables');
   } catch (err) {

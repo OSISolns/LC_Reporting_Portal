@@ -1158,10 +1158,18 @@ exports.getmasterInventory = async (req, res) => {
         } else if (lower.includes('naloxone')) {
           category = 'antidotes';
         }
-        await db.query(
-          "INSERT OR IGNORE INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4)",
-          [item, 'SKU-' + item.substring(0, 5).toUpperCase().replace(/\s/g, ''), 'Unit', category]
+        const prefix = generateSkuPrefix(item);
+        const { rows: inserted } = await db.query(
+          "INSERT OR IGNORE INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4) RETURNING id",
+          [item, prefix, 'Unit', category]
         );
+        if (inserted && inserted.length > 0) {
+          const itemId = inserted[0].id;
+          await db.query(
+            "INSERT OR IGNORE INTO stock_batches (item_id, lot_number, quantity) VALUES ($1, '01', 0)",
+            [itemId]
+          );
+        }
       }
     }
 
@@ -1169,11 +1177,12 @@ exports.getmasterInventory = async (req, res) => {
       SELECT 
         mi.id,
         mi.name, 
-        mi.sku, 
+        COALESCE(mi.sku, '') || COALESCE(sb.lot_number, '01') as sku, 
         mi.unit_of_measure, 
         mi.category,
         sb.id as batch_id,
         sb.batch_number,
+        sb.lot_number,
         sb.expiry_date,
         sb.created_at as purchase_time,
         sb.purchase_price as price,
@@ -1195,13 +1204,11 @@ exports.getmasterInventory = async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
-// Helper to auto-generate SKU based on item name consonants + lot sequence
-// Algorithm: For each word, take first letter. If word > 4 chars AND ends in a consonant, also take that last consonant.
-// Then append a 4-digit sequence number tracking how many items already share the same prefix.
-// Examples: "Black Pens" lot 1 → BKP0001 | "Blue Pens" lot 1 → BP0001
-const generateSku = async (name, _batch_number, _department_id, _vendor_id = null, excludeItemId = null) => {
-  const VOWELS = new Set(['A','E','I','O','U']);
 
+// Helper to auto-generate SKU Prefix based on item name consonants
+// e.g. "Black Pens" -> BKP, "Blue Pens" -> BP
+const generateSkuPrefix = (name) => {
+  const VOWELS = new Set(['A','E','I','O','U']);
   const words = (name || 'ITM').toUpperCase().trim().split(/\s+/);
   let code = '';
   for (const word of words) {
@@ -1213,52 +1220,58 @@ const generateSku = async (name, _batch_number, _department_id, _vendor_id = nul
       code += lastChar;
     }
   }
-  if (!code) code = 'ITM';
-
-  // Count existing items whose SKU starts with the same code to derive the next lot number
-  let seq = 1;
-  try {
-    const params = excludeItemId ? [`${code}%`, String(excludeItemId)] : [`${code}%`];
-    const sql = `SELECT COUNT(*) as cnt FROM master_inventory WHERE sku LIKE $1${excludeItemId ? ' AND id != $2' : ''}`;
-    const { rows } = await db.query(sql, params);
-    seq = (Number(rows[0]?.cnt) || 0) + 1;
-  } catch (e) {
-    console.error('Error calculating SKU sequence:', e);
-  }
-
-  return `${code}${String(seq).padStart(4, '0')}`;
+  return code || 'ITM';
 };
+
 exports.createmasterInventory = async (req, res) => {
   try {
     const items = Array.isArray(req.body) ? req.body : (req.body.items || [req.body]);
     
     for (const item of items) {
       const { name, unit_of_measure, category, batch_number, expiry_date, purchase_time, department_id, quantity, price, vendor_id } = item;
-      let { sku } = item;
       
-      sku = await generateSku(name, batch_number, department_id, vendor_id || null);
-      
-      // Insert into master_inventory
-      const { rows: itemRows } = await db.query(
-        "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4) RETURNING id",
-        [name, sku, unit_of_measure, category]
+      // 1. Check if name already exists in master_inventory
+      const { rows: existingItems } = await db.query(
+        "SELECT id, sku FROM master_inventory WHERE name = $1",
+        [name]
       );
-      const itemId = itemRows[0].id;
       
-      // If batch info provided, insert into stock_batches
-      if (batch_number || price || quantity || expiry_date) {
-         const { rows: batchRows } = await db.query(
-           "INSERT INTO stock_batches (item_id, vendor_id, batch_number, expiry_date, purchase_price, quantity, created_at) VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_TIMESTAMP)) RETURNING id",
-           [itemId, vendor_id || null, batch_number || null, expiry_date || null, price || 0, quantity || 0, purchase_time || null]
-         );
-         const batchId = batchRows[0].id;
-         
-         if (department_id) {
-            await db.query(
-              "INSERT INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
-              [department_id, itemId, batchId, quantity || 0]
-            );
-         }
+      let itemId;
+      let skuPrefix;
+      
+      if (existingItems.length > 0) {
+        itemId = existingItems[0].id;
+        skuPrefix = existingItems[0].sku;
+      } else {
+        skuPrefix = generateSkuPrefix(name);
+        // Insert into master_inventory
+        const { rows: itemRows } = await db.query(
+          "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4) RETURNING id",
+          [name, skuPrefix, unit_of_measure, category]
+        );
+        itemId = itemRows[0].id;
+      }
+      
+      // 2. Count existing batches to assign lot_number
+      const { rows: batchCount } = await db.query(
+        "SELECT COUNT(*) as cnt FROM stock_batches WHERE item_id = $1",
+        [itemId]
+      );
+      const nextLotInt = (Number(batchCount[0]?.cnt) || 0) + 1;
+      const lotNumber = String(nextLotInt).padStart(2, '0'); // minimalist e.g. "01", "02"
+      
+      // 3. Insert into stock_batches
+      const { rows: batchRows } = await db.query(
+        "INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, expiry_date, purchase_price, quantity, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, CURRENT_TIMESTAMP)) RETURNING id",
+        [itemId, vendor_id || null, batch_number || null, lotNumber, expiry_date || null, price || 0, quantity || 0, purchase_time || null]
+      );
+      const batchId = batchRows[0].id;
+      
+      if (department_id) {
+        await db.query(
+          "INSERT INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
+          [department_id, itemId, batchId, quantity || 0]
+        );
       }
     }
     
@@ -1274,22 +1287,31 @@ exports.updatemasterInventory = async (req, res) => {
     const { id } = req.params;
     const { 
       name, unit_of_measure, category, 
-      batch_id, batch_number, expiry_date, purchase_time, price, 
+      batch_id, batch_number, lot_number, expiry_date, purchase_time, price, 
       dept_stock_id, department_id, quantity, vendor_id
     } = req.body;
-    let { sku } = req.body;
     
-    sku = await generateSku(name, batch_number, department_id, vendor_id || null, id);
+    const skuPrefix = generateSkuPrefix(name);
     
     await db.query(
       "UPDATE master_inventory SET name = $1, sku = $2, unit_of_measure = $3, category = $4 WHERE id = $5",
-      [name, sku, unit_of_measure, category, id]
+      [name, skuPrefix, unit_of_measure, category, id]
     );
     
     if (batch_id) {
+      let lotToSave = lot_number;
+      if (!lotToSave) {
+        const { rows: batchCount } = await db.query(
+          "SELECT COUNT(*) as cnt FROM stock_batches WHERE item_id = $1 AND id != $2",
+          [id, batch_id]
+        );
+        const nextLotInt = (Number(batchCount[0]?.cnt) || 0) + 1;
+        lotToSave = String(nextLotInt).padStart(2, '0');
+      }
+      
       await db.query(
-        "UPDATE stock_batches SET batch_number = $1, expiry_date = $2, purchase_price = $3, quantity = $4, created_at = COALESCE($5, created_at) WHERE id = $6",
-        [batch_number || null, expiry_date || null, price || 0, quantity || 0, purchase_time || null, batch_id]
+        "UPDATE stock_batches SET batch_number = $1, lot_number = $2, expiry_date = $3, purchase_price = $4, quantity = $5, created_at = COALESCE($6, created_at) WHERE id = $7",
+        [batch_number || null, lotToSave, expiry_date || null, price || 0, quantity || 0, purchase_time || null, batch_id]
       );
     }
     
