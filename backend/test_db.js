@@ -1,23 +1,17 @@
-const db = require('./src/config/db');
+const { createClient } = require('@libsql/client');
+require('dotenv').config({ path: '.env' });
 
-(async () => {
+const tursoUrl = process.env.PROD_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.lcreporting_TURSO_DATABASE_URL;
+const tursoAuthToken = process.env.PROD_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.lcreporting_TURSO_AUTH_TOKEN;
+
+const client = createClient({ url: tursoUrl, authToken: tursoAuthToken });
+
+async function run() {
   try {
-    const { rows } = await db.query(`
-      SELECT l.*, COALESCE(u.full_name, l.updated_by) as updated_by 
-      FROM nursing_stock_change_logs l
-      LEFT JOIN users u ON LOWER(l.updated_by) = LOWER(u.username)
-      LIMIT 5
-    `);
-    console.log("Joined Logs:", rows);
-
-    const { rows: logs } = await db.query(`SELECT * FROM nursing_stock_change_logs LIMIT 5`);
-    console.log("Raw Logs:", logs);
-    
-    const { rows: users } = await db.query(`SELECT * FROM users LIMIT 5`);
-    console.log("Users:", users);
-
+    const res = await client.execute("SELECT 1");
+    console.log("DB connection OK:", res);
   } catch (e) {
-    console.error(e);
+    console.error("DB connection error:", e);
   }
-  process.exit(0);
-})();
+}
+run();

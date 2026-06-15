@@ -272,6 +272,8 @@ const QADashboard = () => {
           { label: 'Incident Registry', icon: <AlertTriangle size={24} />, color: '#b91c1c', path: '/incidents' },
           { label: 'AI Risk Platform', icon: <Brain size={24} />, color: '#4338ca', path: '/ai-insights' },
           { label: 'Audit Workspace', icon: <Layers size={24} />, color: 'var(--primary)', path: '/incidents?status=pending' },
+          { label: 'Risk Register', icon: <ShieldCheck size={24} />, color: '#ea580c', path: '/risk-register' },
+          { label: 'Infection Control', icon: <Activity size={24} />, color: '#16a34a', path: '/infection-control' },
         ].map(btn => (
           <button key={btn.label} onClick={() => navigate(btn.path)}
             style={{ padding: '1.75rem', borderRadius: '20px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}

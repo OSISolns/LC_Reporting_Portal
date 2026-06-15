@@ -108,7 +108,7 @@
 |-----|------------------|
 | 109 | GYNECOLOGY       |
 | 110 | GENERAL MEDECINE |
-| 111 | INT              |
+| 111 | INTERNAL MEDECINE|
 
 ## Table: providers (52 rows)
 | id  |       name       | title | department_id | is_active |

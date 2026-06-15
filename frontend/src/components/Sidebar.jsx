@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -19,6 +19,8 @@ const Sidebar = ({ onClose }) => {
     { name: 'Refunds',          icon: <ReceiptText size={20} />,     path: '/refunds',      requiredPerm: { mod: 'refunds', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer'] },
     { name: 'Incident Reports', icon: <AlertTriangle size={20} />,   path: '/incidents',    requiredPerm: { mod: 'incident_reports', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo'] },
     { name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo'] },
+    { name: 'Risk Register', icon: <ShieldAlert size={20} />,         path: '/risk-register', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo', 'chef-nurse'] },
+    { name: 'Infection Control', icon: <Activity size={20} />,         path: '/infection-control', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo', 'chef-nurse', 'nurse'] },
     { name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer'] },
     { name: 'Performance',      icon: <Award size={20} />,           path: '/performance',      requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer', 'chef-nurse'] },
     { name: 'Nursing Hub', icon: <Stethoscope size={20} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'reviewer', 'chef-nurse'] },
@@ -31,6 +33,9 @@ const Sidebar = ({ onClose }) => {
     { name: 'Daily Reports Board', icon: <FileText size={20} />, path: '/daily-reports-board', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer', 'chef-nurse', 'pa'] },
     { name: 'Clinical Sheets', icon: <FileText size={20} />, path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse'] },
     { name: 'Insights',         icon: <Brain size={20} />,           path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer'] },
+    { name: 'Revenue Tracker', icon: <TrendingDown size={20} />, path: '/revenue-tracker', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'principal_cashier', 'deputy_coo'] },
+    { name: 'Compliance Portal', icon: <ShieldCheck size={20} />, path: '/compliance', requiredPerm: null, allowedRoles: ['admin', 'coo', 'hsfp', 'reviewer'] },
+    { name: 'IT Support Hub', icon: <Server size={20} />, path: '/it-ticketing', requiredPerm: null, allowedRoles: ['admin', 'it_officer', 'nurse', 'doctor', 'cashier', 'customer_care', 'sales_manager', 'coo', 'chairman', 'deputy_coo', 'consultant', 'reviewer', 'operations_staff', 'chef-nurse', 'pa', 'stock-manager'] },
     { name: 'User Management',  icon: <Users size={20} />,           path: '/users',        requiredPerm: { mod: 'user_management', act: 'view' }, allowedRoles: ['admin', 'it_officer'] },
     { name: 'Permissions',      icon: <Shield size={20} />,          path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
     { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin'] },

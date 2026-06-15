@@ -9,7 +9,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import {
   FileText, ReceiptText, AlertTriangle, Clock,
   CheckCircle, TrendingUp, Brain, RefreshCw,
-  ChevronRight, Users2, Activity, Zap,
+  ChevronRight, Users2, Activity, Zap, TrendingDown, ShieldCheck
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -263,6 +263,8 @@ const ManagementDashboard = () => {
           { label: 'Refunds',       icon: <ReceiptText size={24} />, color: '#92400e', path: '/refunds', perm: { mod: 'refunds', act: 'view' } },
           { label: 'Transfers',     icon: <RefreshCw size={24} />, color: '#059669', path: '/results-transfer', perm: { mod: 'results_transfer', act: 'view' } },
           { label: 'Incidents',     icon: <AlertTriangle size={24} />, color: '#b91c1c', path: '/incidents', perm: { mod: 'incident_reports', act: 'view' } },
+          { label: 'Revenue Tracker', icon: <TrendingDown size={24} />, color: '#b91c1c', path: '/revenue-tracker', perm: { mod: 'reports', act: 'view' } },
+          { label: 'Compliance', icon: <ShieldCheck size={24} />, color: '#0ea5e9', path: '/compliance', perm: { mod: 'incident_reports', act: 'view' } },
           { label: 'Users',         icon: <Users2 size={24} />,  color: '#0369a1', path: '/users', perm: { mod: 'user_management', act: 'view' } },
           { label: 'Audit Logs',    icon: <Activity size={24} />, color: '#047857', path: '/audit-logs', perm: { mod: 'audit_logs', act: 'view' } },
         ].filter(btn => hasPermission(btn.perm.mod, btn.perm.act)).map(btn => (

@@ -212,6 +212,15 @@ const ITDashboard = () => {
                 <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Trace Events</span>
               </button>
               <button 
+                onClick={() => navigate('/it-ticketing')}
+                style={{ padding: '1.25rem', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#0ea5e9'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
+              >
+                <div style={{ padding: '10px', backgroundColor: '#e0f2fe', color: '#0ea5e9', borderRadius: '10px' }}><Server size={20} /></div>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Asset & Tickets</span>
+              </button>
+              <button 
                 onClick={() => navigate('/incidents')}
                 style={{ padding: '1.25rem', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = '#f43f5e'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
