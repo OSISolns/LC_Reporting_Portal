@@ -1345,6 +1345,22 @@ exports.deletemasterInventory = async (req, res) => {
   }
 };
 
+exports.bulkDeleteMasterInventory = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No IDs provided for bulk delete.' });
+    }
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
+    await db.query(`DELETE FROM master_inventory WHERE id IN (${placeholders})`, ids);
+    res.json({ success: true, message: `${ids.length} item(s) deleted successfully` });
+  } catch (error) {
+    console.error('Error in bulkDeleteMasterInventory:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+
 exports.getBatches = async (req, res) => {
   try {
     const { rows } = await db.query(`

@@ -91,6 +91,8 @@ export default function MasterModule() {
   
   const [editingRecord, setEditingRecord] = useState(null);
   const [recordToDelete, setRecordToDelete] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Form states
   const [itemForm, setItemForm] = useState({ 
@@ -410,6 +412,35 @@ export default function MasterModule() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      await api.post('/clinical/inventory/master/bulk-delete', { ids: selectedIds });
+      toast.success(`${selectedIds.length} item(s) deleted successfully`);
+      setSelectedIds([]);
+      loadMasterData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Bulk delete failed');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const toggleSelectItem = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    const allIds = paginatedData.map(item => item.id);
+    const allSelected = allIds.every(id => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !allIds.includes(id)));
+    } else {
+      setSelectedIds(prev => [...new Set([...prev, ...allIds])]);
+    }
+  };
+
   const handleDelete = async () => {
     setIsSubmitting(true);
     try {
@@ -723,17 +754,47 @@ export default function MasterModule() {
                 
                 {/* ITEMS TAB */}
                 {activeTab === 'items' && (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
+                    {/* ── Bulk Action Toolbar ── */}
+                    {selectedIds.length > 0 && (
+                      <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-2xl px-5 py-3 shadow-sm">
+                        <span className="text-xs font-black text-indigo-700">{selectedIds.length} item(s) selected</span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSelectedIds([])}
+                            className="px-3 py-2 text-xs font-black text-slate-500 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl cursor-pointer transition-colors"
+                          >
+                            Clear Selection
+                          </button>
+                          <button
+                            onClick={handleBulkDelete}
+                            disabled={isBulkDeleting}
+                            className="px-4 py-2 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 rounded-xl cursor-pointer flex items-center gap-1.5 transition-colors border-0"
+                          >
+                            {isBulkDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                            Delete Selected ({selectedIds.length})
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="overflow-x-auto rounded-2xl border border-slate-200/50">
-                      <table className="w-full text-left text-xs min-w-[700px]">
+                      <table className="w-full text-left text-xs min-w-[750px]">
                         <thead>
                           <tr className="bg-slate-50/50 border-b border-slate-200/60 text-slate-400 uppercase tracking-widest text-[9px] font-black">
-                            <th className="py-4.5 px-6 rounded-l-xl">Product / Service</th>
-                            <th className="py-4.5 px-4">SKU Code</th>
-                            <th className="py-4.5 px-4">Batch Code</th>
-                            <th className="py-4.5 px-4">Storage Location</th>
-                            <th className="py-4.5 px-4">Expiration</th>
-                            <th className="py-4.5 px-6 text-right rounded-r-xl">Actions</th>
+                            <th className="py-4 px-4 w-10">
+                              <input
+                                type="checkbox"
+                                onChange={toggleSelectAll}
+                                checked={paginatedData.length > 0 && paginatedData.every(item => selectedIds.includes(item.id))}
+                                className="w-4 h-4 rounded accent-indigo-600 cursor-pointer"
+                              />
+                            </th>
+                            <th className="py-4 px-4 rounded-l-xl">Product / Service</th>
+                            <th className="py-4 px-4">SKU Code</th>
+                            <th className="py-4 px-4">Batch Code</th>
+                            <th className="py-4 px-4">Storage Location</th>
+                            <th className="py-4 px-4">Expiration</th>
+                            <th className="py-4 px-6 text-right rounded-r-xl">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
@@ -741,7 +802,7 @@ export default function MasterModule() {
                             if (paginatedData.length === 0) {
                               return (
                                 <tr>
-                                  <td colSpan="6" className="py-16 text-center text-slate-400">
+                                  <td colSpan="7" className="py-16 text-center text-slate-400">
                                     <div className="flex flex-col items-center justify-center">
                                       <Package size={44} className="stroke-[1.5] mb-2.5 text-slate-300" />
                                       <p className="font-bold text-sm">No items found matching the search criteria</p>
@@ -751,15 +812,25 @@ export default function MasterModule() {
                                 </tr>
                               );
                             }
-                            return paginatedData.map((item, idx) => (
-                              <motion.tr 
-                                variants={rowVariants} 
-                                initial="hidden" 
-                                animate="visible" 
+                            return paginatedData.map((item) => (
+                              <motion.tr
+                                variants={rowVariants}
+                                initial="hidden"
+                                animate="visible"
                                 key={`${item.id}-${item.batch_id || 'new'}-${item.dept_stock_id || 'none'}`}
-                                className="hover:bg-indigo-50/20 transition-all border-b border-slate-100"
+                                className={`transition-all border-b border-slate-100 ${
+                                  selectedIds.includes(item.id) ? 'bg-indigo-50/40' : 'hover:bg-indigo-50/20'
+                                }`}
                               >
-                                <td className="py-4 px-6 text-slate-900">
+                                <td className="py-4 px-4">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedIds.includes(item.id)}
+                                    onChange={() => toggleSelectItem(item.id)}
+                                    className="w-4 h-4 rounded accent-indigo-600 cursor-pointer"
+                                  />
+                                </td>
+                                <td className="py-4 px-4 text-slate-900">
                                   <div className="font-black text-[13px]">{item.name}</div>
                                   <div className="flex items-center gap-1.5 mt-1.5">
                                     <span className={`px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-wider ${getCategoryStyle(item.category)}`}>
@@ -769,9 +840,7 @@ export default function MasterModule() {
                                   </div>
                                 </td>
                                 <td className="py-4 px-4 font-mono text-[11px] text-slate-500 tracking-wider">
-                                  <span className="px-2 py-1 bg-slate-100 rounded-lg border border-slate-200/50">
-                                    {item.sku}
-                                  </span>
+                                  <span className="px-2 py-1 bg-slate-100 rounded-lg border border-slate-200/50">{item.sku}</span>
                                 </td>
                                 <td className="py-4 px-4 text-[12px] text-slate-600 font-mono">
                                   {item.batch_number || <span className="text-slate-300">-</span>}
@@ -784,15 +853,17 @@ export default function MasterModule() {
                                 </td>
                                 <td className="py-4 px-6 text-right">
                                   <div className="flex justify-end gap-1.5">
-                                    <button 
-                                      onClick={() => openItemModal(item)} 
-                                      className="p-2 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    <button
+                                      onClick={() => openItemModal(item)}
+                                      className="p-2 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl transition-colors cursor-pointer shadow-sm"
+                                      title="Edit item"
                                     >
                                       <Edit2 size={13} className="stroke-[2.5]" />
                                     </button>
-                                    <button 
-                                      onClick={() => confirmDelete(item, 'item')} 
-                                      className="p-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    <button
+                                      onClick={() => confirmDelete(item, 'item')}
+                                      className="p-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer shadow-sm"
+                                      title="Delete item"
                                     >
                                       <Trash2 size={13} className="stroke-[2.5]" />
                                     </button>
