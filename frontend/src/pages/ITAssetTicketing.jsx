@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { 
   Monitor, LifeBuoy, Server, Wrench, 
-  CheckCircle, Clock, AlertTriangle, Plus,
-  Search
+  CheckCircle, AlertTriangle, Plus
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 
 const MOCK_TICKETS = [
   { id: 'TKT-901', title: 'Printer in Ward B not working', reporter: 'Nurse Alice', category: 'Hardware', status: 'Open', priority: 'Medium', date: '2026-06-15' },
@@ -18,7 +16,6 @@ const MOCK_ASSETS = [
 ];
 
 const ITAssetTicketing = () => {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('tickets'); // 'tickets' or 'assets'
 
   return (
