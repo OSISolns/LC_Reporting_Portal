@@ -116,6 +116,21 @@ export default function MasterModule() {
     { id: 'stationery', label: 'Stationery' }
   ];
 
+  // Mirrors the backend SKU algorithm for live preview
+  // Rule: for each word take first letter; if word > 4 chars and ends in a consonant, also take the last letter
+  const previewSku = (name) => {
+    const VOWELS = new Set(['A','E','I','O','U']);
+    const words = (name || '').toUpperCase().trim().split(/\s+/);
+    let code = '';
+    for (const word of words) {
+      if (!word) continue;
+      code += word[0];
+      const last = word[word.length - 1];
+      if (word.length > 4 && !VOWELS.has(last)) code += last;
+    }
+    return code ? `${code}XXXX` : '—';
+  };
+
   useEffect(() => {
     loadMasterData();
   }, []);
@@ -1134,8 +1149,11 @@ export default function MasterModule() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">SKU / Code</label>
-              <input required placeholder="e.g. MED-PAR-500" type="text" value={itemForm.sku} onChange={e => setItemForm({...itemForm, sku: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">SKU Preview <span className="text-indigo-400 normal-case font-semibold">(auto-generated)</span></label>
+              <div className="w-full px-3.5 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-sm font-black text-indigo-700 tracking-widest font-mono flex items-center gap-2">
+                <span>{editingRecord ? itemForm.sku : previewSku(itemForm.name)}</span>
+                {!editingRecord && <span className="text-[9px] font-bold text-indigo-400 normal-case tracking-normal">(lot # assigned on save)</span>}
+              </div>
             </div>
             <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
