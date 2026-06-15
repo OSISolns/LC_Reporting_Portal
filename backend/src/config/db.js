@@ -975,6 +975,99 @@ const client = createClient({
   } catch (err) {
     console.error('❌ Failed to initialize IT Support Hub tables:', err);
   }
+
+  // --- Compliance & Audit Portal Tables ---
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS compliance_licenses (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        staff_name    TEXT NOT NULL,
+        role          TEXT NOT NULL,
+        license_type  TEXT NOT NULL,
+        expiry_date   TEXT NOT NULL,
+        status        TEXT NOT NULL
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created/verified compliance_licenses table');
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS compliance_facility_certs (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        name          TEXT NOT NULL,
+        issuer        TEXT NOT NULL,
+        expiry_date   TEXT NOT NULL,
+        status        TEXT NOT NULL
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created/verified compliance_facility_certs table');
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS compliance_audits (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        title         TEXT NOT NULL,
+        scheduled_date TEXT NOT NULL,
+        readiness_score INTEGER DEFAULT 0,
+        description   TEXT
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created/verified compliance_audits table');
+
+    // Seed compliance audits if empty
+    const { rows: auditCheck } = await client.execute("SELECT COUNT(*) as cnt FROM compliance_audits");
+    if (Number(auditCheck[0].cnt) === 0) {
+      await client.execute(`INSERT INTO compliance_audits (title, scheduled_date, readiness_score, description) 
+        VALUES ('MOH Annual Facility Inspection', '2026-07-05', 75, 'Annual MOH standard check')`);
+      console.log('🌱 Seeded initial compliance audits.');
+    }
+
+    // Seed compliance licenses if empty
+    const { rows: licCheck } = await client.execute("SELECT COUNT(*) as cnt FROM compliance_licenses");
+    if (Number(licCheck[0].cnt) === 0) {
+      await client.execute("INSERT INTO compliance_licenses (staff_name, role, license_type, expiry_date, status) VALUES ('Dr. Jane Smith', 'Consultant', 'Medical Council Reg', '2026-07-15', 'Expiring Soon')");
+      await client.execute("INSERT INTO compliance_licenses (staff_name, role, license_type, expiry_date, status) VALUES ('Nurse John Doe', 'RN', 'Nursing Board Cert', '2026-11-20', 'Valid')");
+      await client.execute("INSERT INTO compliance_licenses (staff_name, role, license_type, expiry_date, status) VALUES ('Dr. Alan Wake', 'Surgeon', 'Medical Council Reg', '2026-06-18', 'Critical')");
+      console.log('🌱 Seeded initial compliance licenses.');
+    }
+
+    // Seed facility certs if empty
+    const { rows: certCheck } = await client.execute("SELECT COUNT(*) as cnt FROM compliance_facility_certs");
+    if (Number(certCheck[0].cnt) === 0) {
+      await client.execute("INSERT INTO compliance_facility_certs (name, issuer, expiry_date, status) VALUES ('Fire Safety Certificate', 'National Police', '2027-01-10', 'Valid')");
+      await client.execute("INSERT INTO compliance_facility_certs (name, issuer, expiry_date, status) VALUES ('Radiation Safety (X-Ray)', 'MOH', '2026-08-05', 'Expiring Soon')");
+      console.log('🌱 Seeded initial compliance facility certs.');
+    }
+  } catch (err) {
+    console.error('❌ Failed to initialize Compliance tables:', err);
+  }
+
+  // --- Revenue Leakage Tracker Tables ---
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS revenue_leakages (
+        id            TEXT PRIMARY KEY,
+        patient       TEXT NOT NULL,
+        service       TEXT NOT NULL,
+        date          TEXT NOT NULL,
+        clinical_log  TEXT NOT NULL,
+        billing_log   TEXT NOT NULL,
+        value         INTEGER NOT NULL,
+        status        TEXT NOT NULL DEFAULT 'Unresolved'
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created/verified revenue_leakages table');
+
+    // Seed revenue leakages if empty
+    const { rows: leakageCheck } = await client.execute("SELECT COUNT(*) as cnt FROM revenue_leakages");
+    if (Number(leakageCheck[0].cnt) === 0) {
+      await client.execute("INSERT INTO revenue_leakages (id, patient, service, date, clinical_log, billing_log, value, status) VALUES ('LKG-201', 'John Doe', 'MRI Brain', '2026-06-14', 'Radiology Report Generated', 'Missing Invoice', 150000, 'Unresolved')");
+      await client.execute("INSERT INTO revenue_leakages (id, patient, service, date, clinical_log, billing_log, value, status) VALUES ('LKG-202', 'Jane Smith', 'CBC Blood Test', '2026-06-13', 'Lab Results Uploaded', 'Missing Invoice', 25000, 'Unresolved')");
+      await client.execute("INSERT INTO revenue_leakages (id, patient, service, date, clinical_log, billing_log, value, status) VALUES ('LKG-203', 'Alice Johnson', 'Physiotherapy Session', '2026-06-12', 'Session Notes Logged', 'Billed 10,000 (Expected 15,000)', 5000, 'Unresolved')");
+      await client.execute("INSERT INTO revenue_leakages (id, patient, service, date, clinical_log, billing_log, value, status) VALUES ('LKG-204', 'Robert Brown', 'Emergency Consultation', '2026-06-10', 'Vitals & Doctor Notes', 'Invoice Paid', 20000, 'Recovered')");
+      console.log('🌱 Seeded initial revenue leakages.');
+    }
+  } catch (err) {
+    console.error('❌ Failed to initialize Revenue Leakages table:', err);
+  }
 })();
 
 

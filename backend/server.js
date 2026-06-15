@@ -38,6 +38,8 @@ const patientRoutes         = require('./src/routes/patients');
 const feedbackRoutes        = require('./src/routes/feedbacks');
 const dailyReportRoutes     = require('./src/routes/dailyReport');
 const itSupportRoutes       = require('./src/routes/itSupport');
+const complianceRoutes      = require('./src/routes/compliance');
+const revenueLeakageRoutes  = require('./src/routes/revenueLeakage');
 
 const app = express();
 
@@ -110,6 +112,8 @@ app.use('/api/patients',          patientRoutes);
 app.use('/api/feedbacks',         feedbackRoutes);
 app.use('/api/reports',           dailyReportRoutes);
 app.use('/api/it-support',        itSupportRoutes);
+app.use('/api/compliance',        complianceRoutes);
+app.use('/api/revenue-leakage',   revenueLeakageRoutes);
 
 
 
