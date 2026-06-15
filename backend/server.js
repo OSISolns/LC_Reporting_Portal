@@ -44,6 +44,9 @@ const revenueLeakageRoutes  = require('./src/routes/revenueLeakage');
 
 const app = express();
 
+// Trust proxy for Vercel/proxies to make express-rate-limit happy
+app.set('trust proxy', 1);
+
 // ── Security ────────────────────────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
