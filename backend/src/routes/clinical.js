@@ -25,6 +25,7 @@ router.get('/inventory/master', clinicalController.getmasterInventory);
 router.post('/inventory/master', clinicalController.createmasterInventory);
 router.put('/inventory/master/:id', clinicalController.updatemasterInventory);
 router.delete('/inventory/master/:id', clinicalController.deletemasterInventory);
+router.post('/inventory/master/bulk-delete', clinicalController.bulkDeleteMasterInventory);
 
 router.get('/inventory/batches', clinicalController.getBatches);
 router.post('/inventory/batches', clinicalController.createBatch);
