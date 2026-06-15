@@ -35,7 +35,7 @@ const Sidebar = ({ onClose }) => {
     { name: 'Insights',         icon: <Brain size={20} />,           path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer'] },
     { name: 'Revenue Tracker', icon: <TrendingDown size={20} />, path: '/revenue-tracker', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'principal_cashier', 'deputy_coo'] },
     { name: 'Compliance Portal', icon: <ShieldCheck size={20} />, path: '/compliance', requiredPerm: null, allowedRoles: ['admin', 'coo', 'hsfp', 'reviewer'] },
-    { name: 'IT Support Hub', icon: <Server size={20} />, path: '/it-ticketing', requiredPerm: null, allowedRoles: ['admin', 'it_officer', 'nurse', 'doctor', 'cashier', 'customer_care', 'sales_manager', 'coo', 'chairman', 'deputy_coo', 'consultant', 'reviewer', 'operations_staff', 'chef-nurse', 'pa', 'stock-manager'] },
+    { name: 'IT Support Hub', icon: <Server size={20} />, path: '/it-ticketing', requiredPerm: null, allowedRoles: ['admin', 'it_officer'] },
     { name: 'User Management',  icon: <Users size={20} />,           path: '/users',        requiredPerm: { mod: 'user_management', act: 'view' }, allowedRoles: ['admin', 'it_officer'] },
     { name: 'Permissions',      icon: <Shield size={20} />,          path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
     { name: 'Audit Logs',       icon: <History size={20} />,         path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin'] },
