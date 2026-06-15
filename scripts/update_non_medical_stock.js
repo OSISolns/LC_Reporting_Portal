@@ -175,7 +175,7 @@ async function run() {
       // Insert into stock_batches
       const { rows: batchRows } = await db.query(
         "INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, purchase_price, quantity) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-        [itemId, vendorId, `BATCH-OP-${skuPrefix}-${lotNumber}`, lotNumber, item.price, item.quantity]
+        [itemId, vendorId, null, lotNumber, item.price, item.quantity]
       );
       const batchId = batchRows[0].id;
 

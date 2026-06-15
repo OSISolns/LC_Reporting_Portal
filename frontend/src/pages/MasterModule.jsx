@@ -857,7 +857,7 @@ export default function MasterModule() {
                                   <span className="px-2 py-1 bg-slate-100 rounded-lg border border-slate-200/50">{item.sku}</span>
                                 </td>
                                 <td className="py-4 px-4 text-[12px] text-slate-600 font-mono">
-                                  {item.batch_number || <span className="text-slate-300">-</span>}
+                                  {item.batch_number || ''}
                                 </td>
                                 <td className="py-4 px-4 text-[12px] text-slate-700 font-black">
                                   {item.lot_number ? `LOT-${item.lot_number}` : <span className="text-slate-300">LOT-01</span>}
