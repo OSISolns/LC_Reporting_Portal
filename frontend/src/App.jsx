@@ -73,7 +73,7 @@ function App() {
             <Route path="/infection-control" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo', 'chef-nurse', 'nurse']}><InfectionControlTracker /></ProtectedRoute>} />
             <Route path="/revenue-tracker" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'principal_cashier', 'deputy_coo']}><RevenueLeakageTracker /></ProtectedRoute>} />
             <Route path="/compliance" element={<ProtectedRoute allowedRoles={['admin', 'coo', 'hsfp', 'reviewer']}><CompliancePortal /></ProtectedRoute>} />
-            <Route path="/it-ticketing" element={<ProtectedRoute><ITAssetTicketing /></ProtectedRoute>} />
+            <Route path="/it-ticketing" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><ITAssetTicketing /></ProtectedRoute>} />
             <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer']}><AIInsights /></ProtectedRoute>} />
             
             <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><CancellationList /></ProtectedRoute>} />
