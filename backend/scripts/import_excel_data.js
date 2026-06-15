@@ -110,7 +110,7 @@ async function run() {
     console.log("🚀 Starting Legacy Clinics Excel Data Import...");
 
     // 1. Ensure required departments exist
-    const deptsToEnsure = ['LABORATORY', 'IMAGING', 'NURSING', 'DENTAL', 'OPERATIONS'];
+    const deptsToEnsure = ['LABORATORY', 'IMAGING', 'NURSING', 'DENTAL', 'OPERATIONS', 'PHYSIO'];
     for (const d of deptsToEnsure) {
       await db.query("INSERT OR IGNORE INTO departments (name) VALUES ($1)", [d]);
     }
