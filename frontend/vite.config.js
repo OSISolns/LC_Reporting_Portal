@@ -32,6 +32,15 @@ export default defineConfig(({ command }) => {
           changeOrigin: true,
         }
       }
+    },
+    preview: {
+      port: 4173,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:5000',
+          changeOrigin: true,
+        }
+      }
     }
   };
 })

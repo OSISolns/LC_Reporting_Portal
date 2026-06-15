@@ -2,7 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const leakage = require('../controllers/revenueLeakageController');
-const { authMiddleware, authorizeRoles } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
+const authorizeRoles = require('../middleware/role');
+
 
 router.use(authMiddleware);
 router.use(authorizeRoles(['sales_manager', 'coo', 'chairman', 'admin', 'principal_cashier', 'deputy_coo']));

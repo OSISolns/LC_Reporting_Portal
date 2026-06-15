@@ -18,9 +18,10 @@ const client = createClient({
   authToken: tursoAuthToken,
 });
 
-// Run dynamic schema migrations on start
-(async () => {
-  try {
+// Run dynamic schema migrations on start (Only in development or if explicitly forced, to prevent Vercel cold-start timeouts)
+if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'true') {
+  (async () => {
+    try {
     await client.execute("SELECT 1");
     console.log('🔌 DATABASE: Successfully connected to Turso Cloud.');
   } catch (err) {
@@ -178,6 +179,24 @@ const client = createClient({
   try {
     await client.execute("ALTER TABLE cancellation_requests ADD COLUMN rectified_receipt_amount REAL");
     console.log('✅ SQLite Schema Migration: added rectified_receipt_amount to cancellation_requests');
+  } catch (err) {
+    if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+      console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+    }
+  }
+
+  try {
+    await client.execute("ALTER TABLE cancellation_requests ADD COLUMN billed_by INTEGER REFERENCES users(id) ON DELETE SET NULL");
+    console.log('✅ SQLite Schema Migration: added billed_by to cancellation_requests');
+  } catch (err) {
+    if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+      console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+    }
+  }
+
+  try {
+    await client.execute("ALTER TABLE refund_requests ADD COLUMN billed_by INTEGER REFERENCES users(id) ON DELETE SET NULL");
+    console.log('✅ SQLite Schema Migration: added billed_by to refund_requests');
   } catch (err) {
     if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
       console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
@@ -1068,7 +1087,8 @@ const client = createClient({
   } catch (err) {
     console.error('❌ Failed to initialize Revenue Leakages table:', err);
   }
-})();
+  })();
+}
 
 
 

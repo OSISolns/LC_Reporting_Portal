@@ -2,7 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const compliance = require('../controllers/complianceController');
-const { authMiddleware, authorizeRoles } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
+const authorizeRoles = require('../middleware/role');
+
 
 // All compliance routes require authentication and proper roles
 router.use(authMiddleware);
