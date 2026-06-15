@@ -32,8 +32,8 @@ async function run() {
   try {
     console.log('🔄 Starting import of non-medical stock into Operations department...');
 
-    // 1. Ensure "Operations" department exists
-    const deptName = 'Operations';
+    // 1. Ensure "OPERATIONS" department exists
+    const deptName = 'OPERATIONS';
     const { rows: deptRows } = await db.query("SELECT id FROM departments WHERE name = $1", [deptName]);
     let departmentId;
     if (deptRows.length > 0) {

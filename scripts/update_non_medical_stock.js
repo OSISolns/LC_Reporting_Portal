@@ -32,8 +32,8 @@ async function run() {
   try {
     console.log('🔄 Starting import of non-medical stock into Operations department...');
 
-    // 1. Ensure "Operations" department exists
-    const deptName = 'Operations';
+    // 1. Ensure "OPERATIONS" department exists
+    const deptName = 'OPERATIONS';
     const { rows: deptRows } = await db.query("SELECT id FROM departments WHERE name = $1", [deptName]);
     let departmentId;
     if (deptRows.length > 0) {
@@ -175,7 +175,7 @@ async function run() {
       // Insert into stock_batches
       const { rows: batchRows } = await db.query(
         "INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, purchase_price, quantity) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-        [itemId, vendorId, `BATCH-OP-${lotNumber}`, lotNumber, item.price, item.quantity]
+        [itemId, vendorId, `BATCH-OP-${skuPrefix}-${lotNumber}`, lotNumber, item.price, item.quantity]
       );
       const batchId = batchRows[0].id;
 
