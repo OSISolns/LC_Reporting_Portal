@@ -927,6 +927,54 @@ const client = createClient({
   } catch (err) {
     console.error('❌ Failed to initialize patient_vitals table:', err);
   }
+
+  // --- IT Support Hub Tables ---
+  try {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS it_assets (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        asset_tag     TEXT UNIQUE NOT NULL,
+        name          TEXT NOT NULL,
+        assigned_to   TEXT,
+        department    TEXT,
+        status        TEXT DEFAULT 'Active'
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created/verified it_assets table');
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS it_tickets (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_number TEXT UNIQUE NOT NULL,
+        title         TEXT NOT NULL,
+        description   TEXT,
+        reporter      TEXT NOT NULL,
+        category      TEXT NOT NULL,
+        status        TEXT DEFAULT 'Open',
+        priority      TEXT DEFAULT 'Medium',
+        created_at    TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    console.log('✅ SQLite Schema Migration: created/verified it_tickets table');
+
+    // Seed initial dummy data if empty
+    const { rows: assetCheck } = await client.execute("SELECT COUNT(*) as cnt FROM it_assets");
+    if (Number(assetCheck[0].cnt) === 0) {
+      await client.execute("INSERT INTO it_assets (asset_tag, name, assigned_to, department, status) VALUES ('AST-LTP-01', 'Dell Latitude 5520', 'Dr. Alan', 'Clinical', 'Active')");
+      await client.execute("INSERT INTO it_assets (asset_tag, name, assigned_to, department, status) VALUES ('AST-PRN-05', 'HP LaserJet Pro', 'Reception Desk', 'Operations', 'Needs Repair')");
+      console.log('🌱 Seeded initial IT assets.');
+    }
+
+    const { rows: ticketCheck } = await client.execute("SELECT COUNT(*) as cnt FROM it_tickets");
+    if (Number(ticketCheck[0].cnt) === 0) {
+      await client.execute("INSERT INTO it_tickets (ticket_number, title, reporter, category, status, priority, created_at) VALUES ('TKT-901', 'Printer in Ward B not working', 'Nurse Alice', 'Hardware', 'Open', 'Medium', '2026-06-15')");
+      await client.execute("INSERT INTO it_tickets (ticket_number, title, reporter, category, status, priority, created_at) VALUES ('TKT-902', 'Cannot access E-Prescriptions module', 'Dr. Smith', 'Software', 'In Progress', 'High', '2026-06-15')");
+      await client.execute("INSERT INTO it_tickets (ticket_number, title, reporter, category, status, priority, created_at) VALUES ('TKT-903', 'New laptop setup for HR', 'HR Admin', 'Provisioning', 'Resolved', 'Low', '2026-06-13')");
+      console.log('🌱 Seeded initial IT tickets.');
+    }
+  } catch (err) {
+    console.error('❌ Failed to initialize IT Support Hub tables:', err);
+  }
 })();
 
 

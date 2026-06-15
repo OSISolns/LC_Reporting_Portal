@@ -37,8 +37,7 @@ const clinicalRoutes        = require('./src/routes/clinical');
 const patientRoutes         = require('./src/routes/patients');
 const feedbackRoutes        = require('./src/routes/feedbacks');
 const dailyReportRoutes     = require('./src/routes/dailyReport');
-
-
+const itSupportRoutes       = require('./src/routes/itSupport');
 
 const app = express();
 
@@ -110,6 +109,7 @@ app.use('/api/clinical',          clinicalRoutes);
 app.use('/api/patients',          patientRoutes);
 app.use('/api/feedbacks',         feedbackRoutes);
 app.use('/api/reports',           dailyReportRoutes);
+app.use('/api/it-support',        itSupportRoutes);
 
 
 
