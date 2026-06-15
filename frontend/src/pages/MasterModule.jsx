@@ -97,7 +97,7 @@ export default function MasterModule() {
   // Form states
   const [itemForm, setItemForm] = useState({ 
     name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'pc',
-    batch_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
+    batch_number: '', lot_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
   });
   const [pendingItems, setPendingItems] = useState([]);
   const [deptForm, setDeptForm] = useState({ name: '' });
@@ -128,7 +128,7 @@ export default function MasterModule() {
       const last = word[word.length - 1];
       if (word.length > 4 && !VOWELS.has(last)) code += last;
     }
-    return code ? `${code}XXXX` : '—';
+    return code ? `${code}01` : '—';
   };
 
   useEffect(() => {
@@ -245,6 +245,7 @@ export default function MasterModule() {
       setItemForm({ 
         name: item.name, sku: item.sku, category: item.category, unit_of_measure: item.unit_of_measure,
         batch_number: item.batch_number || '',
+        lot_number: item.lot_number || '',
         expiry_date: item.expiry_date ? item.expiry_date.split('T')[0] : '',
         purchase_time: item.purchase_time ? item.purchase_time.split('T')[0] : '',
         department_id: item.department_id || '',
@@ -257,7 +258,7 @@ export default function MasterModule() {
       setEditingRecord(null);
       setItemForm({ 
         name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'pc',
-        batch_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
+        batch_number: '', lot_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
       });
     }
     setItemModalOpen(true);
@@ -307,10 +308,6 @@ export default function MasterModule() {
       toast.error('Item name is required.');
       return;
     }
-    if (!itemForm.sku.trim()) {
-      toast.error('SKU is required.');
-      return;
-    }
     const newItem = {
       ...itemForm,
       quantity: 0,
@@ -322,6 +319,7 @@ export default function MasterModule() {
       name: '',
       sku: '',
       batch_number: '',
+      lot_number: '',
       expiry_date: '',
       purchase_time: ''
     }));
@@ -806,7 +804,8 @@ export default function MasterModule() {
                             </th>
                             <th className="py-4 px-4 rounded-l-xl">Product / Service</th>
                             <th className="py-4 px-4">SKU Code</th>
-                            <th className="py-4 px-4">Batch Code</th>
+                            <th className="py-4 px-4">Mfg Batch</th>
+                            <th className="py-4 px-4">System Lot</th>
                             <th className="py-4 px-4">Storage Location</th>
                             <th className="py-4 px-4">Expiration</th>
                             <th className="py-4 px-6 text-right rounded-r-xl">Actions</th>
@@ -859,6 +858,9 @@ export default function MasterModule() {
                                 </td>
                                 <td className="py-4 px-4 text-[12px] text-slate-600 font-mono">
                                   {item.batch_number || <span className="text-slate-300">-</span>}
+                                </td>
+                                <td className="py-4 px-4 text-[12px] text-slate-700 font-black">
+                                  {item.lot_number ? `LOT-${item.lot_number}` : <span className="text-slate-300">LOT-01</span>}
                                 </td>
                                 <td className="py-4 px-4">
                                   <div className="text-[12px] text-indigo-700">{item.department || <span className="text-slate-400 font-medium">Global Store</span>}</div>
@@ -1184,30 +1186,38 @@ export default function MasterModule() {
               <p className="text-[9px] text-slate-400 font-semibold mt-1">Sourced from UOM Master Registry</p>
             </div>
             <div>
-              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Batch / Lot Code</label>
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Manufacturer Batch</label>
               <input placeholder="e.g. BATCH-9941" type="text" value={itemForm.batch_number} onChange={e => setItemForm({...itemForm, batch_number: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">System Lot Number <span className="text-indigo-400 normal-case font-semibold">(auto-generated)</span></label>
+              <div className="w-full px-3.5 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-sm font-black text-indigo-700 tracking-widest font-mono">
+                {editingRecord ? `LOT-${itemForm.lot_number || '01'}` : 'LOT-01 (or next sequential)'}
+              </div>
+            </div>
+            <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Purchase Date</label>
               <input type="date" value={itemForm.purchase_time} onChange={e => setItemForm({...itemForm, purchase_time: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer shadow-inner" />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Expiry Date</label>
               <input type="date" value={itemForm.expiry_date} onChange={e => setItemForm({...itemForm, expiry_date: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer shadow-inner" />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Department Location</label>
-            <select value={itemForm.department_id} onChange={e => setItemForm({...itemForm, department_id: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
-              <option value="">- Central Store Hub (Global) -</option>
-              {departments.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Department Location</label>
+              <select value={itemForm.department_id} onChange={e => setItemForm({...itemForm, department_id: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
+                <option value="">- Central Store Hub (Global) -</option>
+                {departments.map(dept => (
+                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {!editingRecord && (
