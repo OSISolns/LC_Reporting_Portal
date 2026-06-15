@@ -13,7 +13,8 @@ import {
   BookOpen,
   Thermometer,
   FolderArchive,
-  BarChart3
+  BarChart3,
+  Pill
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PatientAutocomplete from '../components/PatientAutocomplete';
@@ -443,7 +444,7 @@ export default function DoctorHub() {
                           {[
                             { icon: <BookOpen size={10} />, label: 'Summary & Active Problems' },
                             { icon: <Thermometer size={10} />, label: 'Vitals Flowsheet (historical)' },
-                            { icon: <FileText size={10} />, label: 'Nursing Observation Logs' },
+                            { icon: <FileText size={10} />, label: 'Doctor Consultation Notes' },
                             { icon: <Clock size={10} />, label: 'Visit Timeline & Encounters' },
                           ].map((feat, fi) => (
                             <div key={fi} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>

@@ -26,6 +26,11 @@ import ShiftDetail from './pages/shifts/ShiftDetail';
 import NurseShiftDashboard from './pages/shifts/NurseShiftDashboard';
 import StaffShiftDashboard from './pages/shifts/StaffShiftDashboard';
 import SafetyManagement from './pages/SafetyManagement';
+import RiskRegister from './pages/RiskRegister';
+import InfectionControlTracker from './pages/InfectionControlTracker';
+import RevenueLeakageTracker from './pages/RevenueLeakageTracker';
+import CompliancePortal from './pages/CompliancePortal';
+import ITAssetTicketing from './pages/ITAssetTicketing';
 import ClinicalSheet from './pages/ClinicalSheet';
 import ClinicalSheetsList from './pages/ClinicalSheetsList';
 import ClinicalObservationList from './pages/ClinicalObservationList';
@@ -64,6 +69,11 @@ function App() {
             <Route path="/permissions" element={<ProtectedRoute allowedRoles={['admin']}><Permissions /></ProtectedRoute>} />
             <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['admin']}><AuditLogs /></ProtectedRoute>} />
             <Route path="/safety-management" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo']}><SafetyManagement /></ProtectedRoute>} />
+            <Route path="/risk-register" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo', 'chef-nurse']}><RiskRegister /></ProtectedRoute>} />
+            <Route path="/infection-control" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo', 'chef-nurse', 'nurse']}><InfectionControlTracker /></ProtectedRoute>} />
+            <Route path="/revenue-tracker" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'principal_cashier', 'deputy_coo']}><RevenueLeakageTracker /></ProtectedRoute>} />
+            <Route path="/compliance" element={<ProtectedRoute allowedRoles={['admin', 'coo', 'hsfp', 'reviewer']}><CompliancePortal /></ProtectedRoute>} />
+            <Route path="/it-ticketing" element={<ProtectedRoute><ITAssetTicketing /></ProtectedRoute>} />
             <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer']}><AIInsights /></ProtectedRoute>} />
             
             <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><CancellationList /></ProtectedRoute>} />
