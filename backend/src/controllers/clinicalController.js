@@ -1195,59 +1195,38 @@ exports.getmasterInventory = async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
-// Helper to auto-generate SKU: lc-INITIALS-BATCH-DEPT-0001
-const generateSku = async (name, batch_number, department_id, vendor_id = null, excludeItemId = null) => {
-  const itemInitials = (name || 'ITM').substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'ITM';
-  const batchStr = batch_number ? batch_number : 'XXXX';
+// Helper to auto-generate SKU based on item name consonants + lot sequence
+// Algorithm: For each word, take first letter. If word > 4 chars AND ends in a consonant, also take that last consonant.
+// Then append a 4-digit sequence number tracking how many items already share the same prefix.
+// Examples: "Black Pens" lot 1 → BKP0001 | "Blue Pens" lot 1 → BP0001
+const generateSku = async (name, _batch_number, _department_id, _vendor_id = null, excludeItemId = null) => {
+  const VOWELS = new Set(['A','E','I','O','U']);
 
-  // Resolve department initials
-  let deptInitials = 'XXX';
-  if (department_id) {
-    try {
-      const { rows } = await db.query("SELECT name FROM departments WHERE id = $1", [department_id]);
-      if (rows.length > 0) {
-        deptInitials = rows[0].name.substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'DEP';
-      }
-    } catch (e) {
-      console.error("Error fetching department for SKU", e);
+  const words = (name || 'ITM').toUpperCase().trim().split(/\s+/);
+  let code = '';
+  for (const word of words) {
+    if (!word) continue;
+    code += word[0]; // always take first letter
+    const lastChar = word[word.length - 1];
+    // if word is longer than 4 chars and ends in a consonant, append the last letter too
+    if (word.length > 4 && !VOWELS.has(lastChar)) {
+      code += lastChar;
     }
   }
+  if (!code) code = 'ITM';
 
-  // Count existing items in same dept + vendor group to get next sequence number
+  // Count existing items whose SKU starts with the same code to derive the next lot number
   let seq = 1;
   try {
-    let countSql, countParams;
-    if (vendor_id) {
-      countSql = `
-        SELECT COUNT(DISTINCT mi.id) as cnt
-        FROM master_inventory mi
-        LEFT JOIN stock_batches sb ON mi.id = sb.item_id
-        LEFT JOIN department_stock ds ON sb.id = ds.batch_id
-        WHERE ds.department_id = $1 AND sb.vendor_id = $2
-        ${excludeItemId ? 'AND mi.id != $3' : ''}
-      `;
-      countParams = excludeItemId ? [department_id, vendor_id, excludeItemId] : [department_id, vendor_id];
-    } else {
-      countSql = `
-        SELECT COUNT(DISTINCT mi.id) as cnt
-        FROM master_inventory mi
-        LEFT JOIN stock_batches sb ON mi.id = sb.item_id
-        LEFT JOIN department_stock ds ON sb.id = ds.batch_id
-        WHERE ds.department_id = $1
-        ${excludeItemId ? 'AND mi.id != $2' : ''}
-      `;
-      countParams = excludeItemId ? [department_id, excludeItemId] : [department_id];
-    }
-    if (department_id) {
-      const { rows: countRows } = await db.query(countSql, countParams);
-      seq = (Number(countRows[0]?.cnt) || 0) + 1;
-    }
+    const params = excludeItemId ? [`${code}%`, String(excludeItemId)] : [`${code}%`];
+    const sql = `SELECT COUNT(*) as cnt FROM master_inventory WHERE sku LIKE $1${excludeItemId ? ' AND id != $2' : ''}`;
+    const { rows } = await db.query(sql, params);
+    seq = (Number(rows[0]?.cnt) || 0) + 1;
   } catch (e) {
-    console.error("Error calculating SKU sequence", e);
+    console.error('Error calculating SKU sequence:', e);
   }
 
-  const seqStr = String(seq).padStart(4, '0');
-  return `lc-${itemInitials}-${batchStr}-${deptInitials}-${seqStr}`;
+  return `${code}${String(seq).padStart(4, '0')}`;
 };
 exports.createmasterInventory = async (req, res) => {
   try {
