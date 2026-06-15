@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { 
   TrendingDown, DollarSign, AlertCircle, FileSearch, 
-  CheckCircle, Filter, ArrowRight, Activity
+  CheckCircle, ArrowRight, Activity
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 
 const MOCK_LEAKAGE_DATA = [
   { id: 'LKG-201', patient: 'John Doe', service: 'MRI Brain', date: '2026-06-14', clinicalLog: 'Radiology Report Generated', billingLog: 'Missing Invoice', value: 150000, status: 'Unresolved' },
@@ -13,7 +12,6 @@ const MOCK_LEAKAGE_DATA = [
 ];
 
 const RevenueLeakageTracker = () => {
-  const { user } = useAuth();
   const [data, setData] = useState(MOCK_LEAKAGE_DATA);
   const [filter, setFilter] = useState('All');
 

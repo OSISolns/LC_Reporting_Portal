@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { 
-  ShieldCheck, FileCheck, CheckCircle, AlertTriangle, 
+  ShieldCheck, CheckCircle, AlertTriangle, 
   Calendar, Award, Building, User
 } from 'lucide-react';
 
