@@ -267,8 +267,14 @@ export default function CentralStoreHub() {
   }, [requisitions]);
 
   const stockDepts = useMemo(() => {
-    return ['All Departments', ...new Set(stockItems.map(i => i.department).filter(Boolean))];
-  }, [stockItems]);
+    const order = ['OPERATIONS', 'DENTAL', 'IMAGING', 'LABORATORY', 'NURSING', 'PHYSIO', 'GLOBAL'];
+    if (departments && departments.length > 0) {
+      const dbDepts = departments.map(d => d.name.toUpperCase()).filter(name => order.includes(name));
+      dbDepts.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      return ['All Departments', ...dbDepts];
+    }
+    return ['All Departments', ...order];
+  }, [departments]);
 
   const stockCategories = useMemo(() => {
     return ['All', ...new Set(stockItems.map(i => i.category).filter(Boolean))];
@@ -317,6 +323,8 @@ export default function CentralStoreHub() {
     if (lower.includes('imag')) return 'bg-violet-500';
     if (lower.includes('dent')) return 'bg-amber-500';
     if (lower.includes('admin')) return 'bg-rose-500';
+    if (lower.includes('physio')) return 'bg-orange-500';
+    if (lower.includes('global')) return 'bg-teal-500';
     return 'bg-slate-400';
   };
 
@@ -329,6 +337,8 @@ export default function CentralStoreHub() {
     if (lower.includes('imag')) return 'text-violet-600';
     if (lower.includes('dent')) return 'text-amber-600';
     if (lower.includes('admin')) return 'text-rose-600';
+    if (lower.includes('physio')) return 'text-orange-600';
+    if (lower.includes('global')) return 'text-teal-600';
     return 'text-slate-500';
   };
 
@@ -339,8 +349,10 @@ export default function CentralStoreHub() {
     if (lower.includes('nurs')) return 'bg-emerald-50 border-emerald-100';
     if (lower.includes('lab')) return 'bg-cyan-50 border-cyan-100';
     if (lower.includes('imag')) return 'bg-violet-50 border-violet-100';
-    if (lower.includes('dent')) return 'bg-amber-50 border-amber-100';
+    if (lower.includes('dent')) return 'bg-amber-50 border-amber-105';
     if (lower.includes('admin')) return 'bg-rose-50 border-rose-100';
+    if (lower.includes('physio')) return 'bg-orange-50 border-orange-100';
+    if (lower.includes('global')) return 'bg-teal-50 border-teal-100';
     return 'bg-slate-50 border-slate-100';
   };
 
