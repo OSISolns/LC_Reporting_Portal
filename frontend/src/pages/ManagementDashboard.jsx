@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const fmt   = (n) => Number(n || 0).toLocaleString();
+const fmt = (n) => Number(n || 0).toLocaleString();
 const fmtRWF = (n) => `RWF ${Number(n || 0).toLocaleString()}`;
 
 // ── Muted stat card ────────────────────────────────────────────────────────
@@ -37,14 +37,14 @@ const BigStatCard = ({ title, value, sub, icon, color, badge }) => (
 
 // ── Pending item row ──────────────────────────────────────────────────────────
 const PendingRow = ({ item, type, navigate }) => {
-  const path = type === 'cancellation' ? `/cancellations/${item.id}` : 
-               type === 'refund' ? `/refunds/${item.id}` : '/results-transfer';
-  const age  = Math.floor((Date.now() - new Date(item.created_at || Date.now())) / 86400000);
-  const typeColor = type === 'cancellation' ? 'var(--primary)' : 
-                    type === 'refund' ? '#92400e' : '#059669';
-  
-  const icon = type === 'cancellation' ? <FileText size={18} /> : 
-               type === 'refund' ? <ReceiptText size={18} /> : <RefreshCw size={18} />;
+  const path = type === 'cancellation' ? `/cancellations/${item.id}` :
+    type === 'refund' ? `/refunds/${item.id}` : '/results-transfer';
+  const age = Math.floor((Date.now() - new Date(item.created_at || Date.now())) / 86400000);
+  const typeColor = type === 'cancellation' ? 'var(--primary)' :
+    type === 'refund' ? '#92400e' : '#059669';
+
+  const icon = type === 'cancellation' ? <FileText size={18} /> :
+    type === 'refund' ? <ReceiptText size={18} /> : <RefreshCw size={18} />;
 
   const title = type === 'transfer' ? `Transfer: ${item.old_sid} ➔ ${item.new_sid}` : item.patient_full_name;
   const subtitle = type === 'transfer' ? `Result Transfer · ${item.creator_name}` : `${item.pid_number} · ${age === 0 ? 'Today' : `${age} days ago`} · ${item.creator_name}`;
@@ -91,13 +91,13 @@ const ModuleBar = ({ label, approved, total, color }) => {
 const ManagementDashboard = () => {
   const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
-  const [stats,      setStats]      = useState(null);
-  const [narrative,  setNarrative]  = useState('');
-  const [pendingCanc,setPendingCanc] = useState([]);
-  const [pendingRef, setPendingRef]  = useState([]);
-  const [pendingRt,  setPendingRt]   = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [now,        setNow]        = useState(new Date());
+  const [stats, setStats] = useState(null);
+  const [narrative, setNarrative] = useState('');
+  const [pendingCanc, setPendingCanc] = useState([]);
+  const [pendingRef, setPendingRef] = useState([]);
+  const [pendingRt, setPendingRt] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(new Date());
 
   // Live clock
   useEffect(() => {
@@ -130,10 +130,10 @@ const ManagementDashboard = () => {
 
   if (loading) return <LoadingSpinner />;
 
-  const c  = stats?.cancellations || {};
-  const r  = stats?.refunds       || {};
-  const i  = stats?.incidents     || {};
-  const rt = stats?.transfers     || {};
+  const c = stats?.cancellations || {};
+  const r = stats?.refunds || {};
+  const i = stats?.incidents || {};
+  const rt = stats?.transfers || {};
   const totalPending = (c.pending || 0) + (r.pending || 0) + (r.verified || 0) + (rt.pending || 0) + (rt.reviewed || 0);
   const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
 
@@ -143,14 +143,14 @@ const ManagementDashboard = () => {
       <div style={{ background: 'var(--primary-dark)', borderRadius: '24px', padding: '2.5rem', color: '#fff', marginBottom: '2rem', position: 'relative', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,59,68,0.1)' }}>
         <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '240px', height: '240px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)' }} />
         <div style={{ position: 'absolute', bottom: '-20px', right: '100px', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(255,255,255,0.02)' }} />
-        
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', position: 'relative' }}>
           <div>
             <p style={{ margin: '0 0 6px', fontSize: '0.85rem', opacity: 0.7, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               {now.toLocaleDateString('en-RW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
             <h1 style={{ margin: 0, fontSize: '2.25rem', fontWeight: 800, color: '#fff' }}>
-              {greeting}, {user?.fullName?.split(' ')[0]} 👋
+              {greeting}, {user?.fullName?.split(' ')[0]}
             </h1>
             <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '1rem', fontWeight: 500 }}>
               Legacy Clinics Operational Intelligence Dashboard
@@ -247,9 +247,9 @@ const ManagementDashboard = () => {
               <TrendingUp size={20} style={{ color: 'var(--success)' }} /> Operational Performance
             </h3>
             {hasPermission('cancellations', 'view') && <ModuleBar label="Cancellation Completion" approved={c.approved || 0} total={c.total || 0} color="var(--primary)" />}
-            {hasPermission('refunds', 'view') && <ModuleBar label="Refund Processing"       approved={r.approved || 0} total={r.total || 0} color="#92400e" />}
+            {hasPermission('refunds', 'view') && <ModuleBar label="Refund Processing" approved={r.approved || 0} total={r.total || 0} color="#92400e" />}
             {hasPermission('results_transfer', 'view') && <ModuleBar label="Result Transfer Finalization" approved={rt.approved || 0} total={rt.total || 0} color="#059669" />}
-            {hasPermission('incident_reports', 'view') && <ModuleBar label="Incident Review Rate"    approved={i.reviewed || 0} total={i.total || 0} color="#b91c1c" />}
+            {hasPermission('incident_reports', 'view') && <ModuleBar label="Incident Review Rate" approved={i.reviewed || 0} total={i.total || 0} color="#b91c1c" />}
           </div>
 
         </div>
@@ -260,13 +260,13 @@ const ManagementDashboard = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem' }}>
         {[
           { label: 'Cancellations', icon: <FileText size={24} />, color: 'var(--primary)', path: '/cancellations', perm: { mod: 'cancellations', act: 'view' } },
-          { label: 'Refunds',       icon: <ReceiptText size={24} />, color: '#92400e', path: '/refunds', perm: { mod: 'refunds', act: 'view' } },
-          { label: 'Transfers',     icon: <RefreshCw size={24} />, color: '#059669', path: '/results-transfer', perm: { mod: 'results_transfer', act: 'view' } },
-          { label: 'Incidents',     icon: <AlertTriangle size={24} />, color: '#b91c1c', path: '/incidents', perm: { mod: 'incident_reports', act: 'view' } },
+          { label: 'Refunds', icon: <ReceiptText size={24} />, color: '#92400e', path: '/refunds', perm: { mod: 'refunds', act: 'view' } },
+          { label: 'Transfers', icon: <RefreshCw size={24} />, color: '#059669', path: '/results-transfer', perm: { mod: 'results_transfer', act: 'view' } },
+          { label: 'Incidents', icon: <AlertTriangle size={24} />, color: '#b91c1c', path: '/incidents', perm: { mod: 'incident_reports', act: 'view' } },
           { label: 'Revenue Tracker', icon: <TrendingDown size={24} />, color: '#b91c1c', path: '/revenue-tracker', perm: { mod: 'reports', act: 'view' } },
           { label: 'Compliance', icon: <ShieldCheck size={24} />, color: '#0ea5e9', path: '/compliance', perm: { mod: 'incident_reports', act: 'view' } },
-          { label: 'Users',         icon: <Users2 size={24} />,  color: '#0369a1', path: '/users', perm: { mod: 'user_management', act: 'view' } },
-          { label: 'Audit Logs',    icon: <Activity size={24} />, color: '#047857', path: '/audit-logs', perm: { mod: 'audit_logs', act: 'view' } },
+          { label: 'Users', icon: <Users2 size={24} />, color: '#0369a1', path: '/users', perm: { mod: 'user_management', act: 'view' } },
+          { label: 'Audit Logs', icon: <Activity size={24} />, color: '#047857', path: '/audit-logs', perm: { mod: 'audit_logs', act: 'view' } },
         ].filter(btn => hasPermission(btn.perm.mod, btn.perm.act)).map(btn => (
           <button key={btn.label} onClick={() => navigate(btn.path)}
             style={{ padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
