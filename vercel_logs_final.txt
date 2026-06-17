@@ -1,0 +1,5 @@
+Resolving deployment "lc-reporting-portal-7ltdqs3if-legacy-clinics.vercel.app"
+Fetching project "prj_sv0aC8WlzVTCinqlZKiAJ3FSsB4B"
+Fetching logs...
+{"id":"tj4wj-1781526694660-4b0d1b74e3d9","timestamp":1781526694660,"deploymentId":"dpl_BMUjKkwrqRFBnXmmoG8dVu168Fz4","projectId":"prj_sv0aC8WlzVTCinqlZKiAJ3FSsB4B","level":"info","message":"","source":"serverless","domain":"report.ops-legacyclinics.rw","requestMethod":"GET","requestPath":"/api/notifications","responseStatusCode":0,"environment":"production","branch":"","cache":"","traceId":"","logs":[]}
+{"id":"f755f-1781526693349-3409ba012bf3","timestamp":1781526693349,"deploymentId":"dpl_BMUjKkwrqRFBnXmmoG8dVu168Fz4","projectId":"prj_sv0aC8WlzVTCinqlZKiAJ3FSsB4B","level":"info","message":"","source":"serverless","domain":"report.ops-legacyclinics.rw","requestMethod":"HEAD","requestPath":"/api/notifications","responseStatusCode":0,"environment":"production","branch":"","cache":"","traceId":"","logs":[]}

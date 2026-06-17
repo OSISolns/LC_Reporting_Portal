@@ -17,20 +17,20 @@ import StaffScoreWidget from './performance/components/StaffScoreWidget';
 
 // ── Role labels ───────────────────────────────────────────────────────────────
 const ROLE_LABEL = {
-  cashier:           'Member of Finance',
+  cashier: 'Member of Finance',
   principal_cashier: 'Principal Cashier',
-  customer_care:     'Patient Relations',
-  operations_staff:  'Operations Staff',
-  lab_team_lead:     'Laboratory Lead',
-  it_officer:        'IT Systems & Security',
-  nurse:             'Clinical Nurse',
-  'chef-nurse':        'Chief Nurse Manager',
-  pa:                'MD Personal Assistant',
+  customer_care: 'Patient Relations',
+  operations_staff: 'Operations Staff',
+  lab_team_lead: 'Laboratory Lead',
+  it_officer: 'IT Systems & Security',
+  nurse: 'Clinical Nurse',
+  'chef-nurse': 'Chief Nurse Manager',
+  pa: 'MD Personal Assistant',
 };
 
 // ── Status pill ───────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
-  pending:  { bg: 'bg-[#fff7ed]', text: 'text-[#9a3412]', border: 'border-[#9a3412]/20', label: 'Pending' },
+  pending: { bg: 'bg-[#fff7ed]', text: 'text-[#9a3412]', border: 'border-[#9a3412]/20', label: 'Pending' },
   verified: { bg: 'bg-[#eff6ff]', text: 'text-[#1e40af]', border: 'border-[#1e40af]/20', label: 'Verified' },
   approved: { bg: 'bg-[#f0fdf4]', text: 'text-[#166534]', border: 'border-[#166534]/20', label: 'Finalized' },
   rejected: { bg: 'bg-[#fef2f2]', text: 'text-[#991b1b]', border: 'border-[#991b1b]/20', label: 'Rejected' },
@@ -49,7 +49,7 @@ const StatusPill = ({ status }) => {
 // ── Small stat card ───────────────────────────────────────────────────────────
 const MiniStat = ({ label, value, color, icon }) => (
   <div className="bg-white rounded-2xl p-5 border border-slate-200 flex items-center gap-4 hover:-translate-y-1 hover:shadow-xl hover:border-slate-300 transition-all duration-300 shadow-sm group">
-    <div 
+    <div
       className="p-3 rounded-xl shrink-0 group-hover:scale-110 transition-transform duration-300"
       style={{ backgroundColor: `${color}15`, color }}
     >
@@ -82,14 +82,14 @@ const RecentRow = ({ item, path, primary, secondary, navigate, i }) => (
 
 // ── Quick action button ───────────────────────────────────────────────────────
 const QuickAction = ({ label, icon, color, path, navigate }) => (
-  <button 
+  <button
     onClick={() => navigate(path)}
     className="p-5 rounded-2xl border border-slate-200 bg-white flex flex-col items-center gap-3 cursor-pointer transition-all duration-300 flex-1 min-w-[140px] hover:-translate-y-1 hover:shadow-lg group"
     style={{ '--hover-border': color }}
     onMouseEnter={e => e.currentTarget.style.borderColor = color}
     onMouseLeave={e => e.currentTarget.style.borderColor = '#e2e8f0'}
   >
-    <div 
+    <div
       className="p-3 rounded-xl shadow-sm group-hover:scale-110 transition-transform duration-300"
       style={{ backgroundColor: `${color}15`, color }}
     >
@@ -121,10 +121,10 @@ const StaffDashboard = () => {
   const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
   const isPrincipal = user?.role === 'principal_cashier';
-  const isOps       = user?.role === 'operations_staff';
-  const [data,    setData]    = useState({ canc: [], refunds: [], incidents: [], transfers: [], clinical: [] });
+  const isOps = user?.role === 'operations_staff';
+  const [data, setData] = useState({ canc: [], refunds: [], incidents: [], transfers: [], clinical: [] });
   const [loading, setLoading] = useState(true);
-  const [now,     setNow]     = useState(new Date());
+  const [now, setNow] = useState(new Date());
   const [activeShift, setActiveShift] = useState(null);
 
   useEffect(() => {
@@ -144,11 +144,11 @@ const StaffDashboard = () => {
         ['nurse', 'chef-nurse'].includes(user?.role) ? api.get('/clinical/observations/recent').catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: [] } })
       ]);
       setData({
-        canc:      cRes?.data?.data || [],
-        refunds:   rRes?.data?.data || [],
+        canc: cRes?.data?.data || [],
+        refunds: rRes?.data?.data || [],
         incidents: iRes?.data?.data || [],
         transfers: tRes?.data?.data || [],
-        clinical:  clRes?.data?.data || []
+        clinical: clRes?.data?.data || []
       });
       setActiveShift(sRes?.data?.data || null);
     } finally { setLoading(false); }
@@ -162,26 +162,26 @@ const StaffDashboard = () => {
   const firstName = user?.fullName?.split(' ').slice(-1)[0] || user?.fullName;
 
   // Compute simple counts
-  const myCanc      = data.canc.slice(0,5);
-  const myRef       = data.refunds.slice(0,5);
-  const myInc       = data.incidents.slice(0,5);
-  const myClinical  = data.clinical.slice(0,5);
-  const pendCount   = (['nurse', 'chef-nurse'].includes(user?.role) ? data.clinical.filter(c => c.status === 'Draft').length : 0) + 
-                      data.canc.filter(c => c.status === 'pending').length + 
-                      data.transfers.filter(t => t.status === 'pending' || t.status === 'reviewed').length;
+  const myCanc = data.canc.slice(0, 5);
+  const myRef = data.refunds.slice(0, 5);
+  const myInc = data.incidents.slice(0, 5);
+  const myClinical = data.clinical.slice(0, 5);
+  const pendCount = (['nurse', 'chef-nurse'].includes(user?.role) ? data.clinical.filter(c => c.status === 'Draft').length : 0) +
+    data.canc.filter(c => c.status === 'pending').length +
+    data.transfers.filter(t => t.status === 'pending' || t.status === 'reviewed').length;
   const approvedAmt = data.refunds.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.amount_to_be_refunded || 0), 0);
   const myTransfers = data.transfers.slice(0, 5);
 
   const ROLE_TIPS = {
-    cashier:           ['Always verify PID before creating a cancellation.', 'Double-check amounts before submitting — corrections must go through full workflow.', 'Attach the correct receipt numbers to every request.'],
+    cashier: ['Always verify PID before creating a cancellation.', 'Double-check amounts before submitting — corrections must go through full workflow.', 'Attach the correct receipt numbers to every request.'],
     principal_cashier: ['You can now view AI Insights for cancellations and refunds.', 'Review pending submissions from your team promptly.', 'Ensure all cashier submissions are accurate before they reach management.'],
-    customer_care:     ['Complete all patient information fields accurately.', 'If in doubt, escalate to your supervisor before submitting.', "Incident reports must be filed within 24 hours of the event."],
-    operations_staff:  ['Report incidents immediately — time-stamping matters.', 'Include all contributing factors for review.', 'Use "Near Miss" for events that were caught before harm occurred.'],
-    lab_team_lead:     ['Ensure all result transfers are approved only after verifying SID data.', 'Confirm the technician who executed the change in the lab system.', 'Rejected transfers should always include a specific reason for audit purposes.'],
-    it_officer:        ['Monitor audit logs daily for unusual activity patterns.', 'Ensure staff accounts follow clinical access policy.', 'Review reported incidents to ensure system integrity and data accuracy.'],
-    nurse:             ['Ensure clinical observation sheets are synchronized before shift handover.', 'Record all medication administration in real-time.', 'All patient incidents must be documented via the Incident Reporting module immediately.'],
-    'chef-nurse':      ['Review all pending clinical observation sheets before shift close.', 'Ensure nursing staff are compliant with MAR documentation standards.', 'All incidents in your department require your review and approval.'],
-    pa:                ['Monitor daily reports and clinical observations for the MD.', 'Ensure all data is reviewed before presenting to the MD.'],
+    customer_care: ['Complete all patient information fields accurately.', 'If in doubt, escalate to your supervisor before submitting.', "Incident reports must be filed within 24 hours of the event."],
+    operations_staff: ['Report incidents immediately — time-stamping matters.', 'Include all contributing factors for review.', 'Use "Near Miss" for events that were caught before harm occurred.'],
+    lab_team_lead: ['Ensure all result transfers are approved only after verifying SID data.', 'Confirm the technician who executed the change in the lab system.', 'Rejected transfers should always include a specific reason for audit purposes.'],
+    it_officer: ['Monitor audit logs daily for unusual activity patterns.', 'Ensure staff accounts follow clinical access policy.', 'Review reported incidents to ensure system integrity and data accuracy.'],
+    nurse: ['Ensure clinical observation sheets are synchronized before shift handover.', 'Record all medication administration in real-time.', 'All patient incidents must be documented via the Incident Reporting module immediately.'],
+    'chef-nurse': ['Review all pending clinical observation sheets before shift close.', 'Ensure nursing staff are compliant with MAR documentation standards.', 'All incidents in your department require your review and approval.'],
+    pa: ['Monitor daily reports and clinical observations for the MD.', 'Ensure all data is reviewed before presenting to the MD.'],
   };
   const tips = ROLE_TIPS[user?.role] || [];
 
@@ -191,15 +191,15 @@ const StaffDashboard = () => {
       <div className="bg-[#1b669d] rounded-3xl p-8 lg:p-10 mb-8 text-white relative overflow-hidden shadow-[0_10px_30px_rgba(27,102,157,0.2)]">
         <div className="absolute -top-10 -right-10 w-64 h-64 rounded-full bg-white/5 backdrop-blur-3xl" />
         <div className="absolute top-20 right-40 w-32 h-32 rounded-full bg-white/5 backdrop-blur-3xl" />
-        
+
         <div className="relative z-10">
           <p className="m-0 mb-2 text-sm text-blue-100 font-bold uppercase tracking-widest">
             {now.toLocaleDateString('en-RW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
           <h1 className="m-0 text-3xl md:text-4xl font-black text-white drop-shadow-sm mb-4">
-            {greeting}, {firstName} 👋
+            {greeting}, {firstName}
           </h1>
-          
+
           <div className="flex flex-wrap items-center gap-3 mt-4">
             <span className="bg-white/10 border border-white/20 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm backdrop-blur-md">
               {ROLE_LABEL[user?.role] || user?.role}
@@ -211,10 +211,10 @@ const StaffDashboard = () => {
                 <span className="text-xs font-bold uppercase tracking-wider">
                   Shift Live: {activeShift.wave || 'Active Shift'} ({
                     activeShift.start_hour === '07:00' ? '07:00 AM - 03:00 PM' :
-                    activeShift.start_hour === '08:00' ? '08:00 AM - 04:00 PM' :
-                    activeShift.start_hour === '09:00' ? '09:00 AM - 05:00 PM' :
-                    activeShift.start_hour === '15:00' ? '03:00 PM - 09:00 PM' :
-                    new Date(activeShift.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      activeShift.start_hour === '08:00' ? '08:00 AM - 04:00 PM' :
+                        activeShift.start_hour === '09:00' ? '09:00 AM - 05:00 PM' :
+                          activeShift.start_hour === '15:00' ? '03:00 PM - 09:00 PM' :
+                            new Date(activeShift.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                   })
                 </span>
               </div>
@@ -242,10 +242,10 @@ const StaffDashboard = () => {
               <p className="text-base font-black text-slate-800">
                 {activeShift.wave || 'Custom Wave'} · {
                   activeShift.start_hour === '07:00' ? '07:00 AM - 03:00 PM' :
-                  activeShift.start_hour === '08:00' ? '08:00 AM - 04:00 PM' :
-                  activeShift.start_hour === '09:00' ? '09:00 AM - 05:00 PM' :
-                  activeShift.start_hour === '15:00' ? '03:00 PM - 09:00 PM' :
-                  'Active'
+                    activeShift.start_hour === '08:00' ? '08:00 AM - 04:00 PM' :
+                      activeShift.start_hour === '09:00' ? '09:00 AM - 05:00 PM' :
+                        activeShift.start_hour === '15:00' ? '03:00 PM - 09:00 PM' :
+                          'Active'
                 }
               </p>
               <p className="text-xs font-bold text-slate-500 mt-1">
@@ -302,7 +302,7 @@ const StaffDashboard = () => {
           <div className="p-6 border-b border-slate-100 bg-slate-50/50">
             <h3 className="m-0 text-xl font-black text-slate-800">My Recent Submissions</h3>
           </div>
-          
+
           {myCanc.length + myRef.length + myInc.length + myTransfers.length + myClinical.length === 0 ? (
             <div className="py-20 px-8 text-center text-slate-500">
               <div className="inline-flex p-6 rounded-full bg-slate-50 mb-4">

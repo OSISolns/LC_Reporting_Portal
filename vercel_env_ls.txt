@@ -1,0 +1,19 @@
+Retrieving project…
+> Environment Variables found for legacy-clinics/lc-reporting-portal [661ms]
+
+ name                               value                       environments                created    
+ TURSO_AUTH_TOKEN                   Encrypted                   Production                  2m ago     
+ TURSO_DATABASE_URL                 Encrypted                   Production                  2m ago     
+ TURSO_AUTH_TOKEN                   Encrypted                   Development                 24m ago    
+ TURSO_DATABASE_URL                 Encrypted                   Development                 24m ago    
+ lcreporting_TURSO_DATABASE_URL     Encrypted                   Development                 5d ago     
+ lcreporting_TURSO_AUTH_TOKEN       Encrypted                   Development                 5d ago     
+ JWT_SECRET                         Encrypted                   Preview                     28d ago    
+ JWT_SECRET                         Encrypted                   Development                 28d ago    
+ JWT_SECRET                         Encrypted                   Production                  28d ago    
+ VERCEL_OIDC_TOKEN                  VERCEL_OIDC_TOKEN           Production, Preview         33d ago    
+
+Common next commands:
+- `vercel env add`
+- `vercel env rm`
+- `vercel env pull`
