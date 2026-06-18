@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { 
-  Activity, CheckCircle, AlertTriangle, Syringe, 
+import {
+  Activity, CheckCircle, AlertTriangle, Syringe,
   Droplets, ShieldCheck, Bug, Search, UserCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +12,7 @@ const MOCK_HAIS = [
 
 const InfectionControlTracker = () => {
   const { user } = useAuth();
-  
+
   // KPI Stats
   const stats = {
     haisThisMonth: 4,
@@ -26,7 +26,7 @@ const InfectionControlTracker = () => {
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
-          <p style={{ margin: '0 0 4px', fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Safety & Quality Assurance</p>
+          <p style={{ margin: '0 0 4px', fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Safety & Health</p>
           <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Activity size={32} style={{ color: 'var(--primary)' }} /> Infection Control Tracker
           </h1>
@@ -38,7 +38,7 @@ const InfectionControlTracker = () => {
 
       {/* ── KPI Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        
+
         <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
             <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#fef2f2', color: '#b91c1c' }}><Bug size={24} /></div>
@@ -74,7 +74,7 @@ const InfectionControlTracker = () => {
 
       {/* ── Two Column Layout ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
-        
+
         {/* Left Col: Recent HAIs */}
         <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
           <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -107,13 +107,13 @@ const InfectionControlTracker = () => {
 
         {/* Right Col: Active Alerts & Protocols */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
+
           {/* Active Alerts */}
           <div style={{ backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
             <h3 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 800, color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertTriangle size={18} style={{ color: '#ea580c' }} /> Active Protocol Alerts
             </h3>
-            
+
             <div style={{ padding: '1rem', backgroundColor: '#fff7ed', borderLeft: '4px solid #ea580c', borderRadius: '8px', marginBottom: '1rem' }}>
               <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#9a3412', marginBottom: '4px' }}>Autoclave Maintenance Required</p>
               <p style={{ margin: 0, fontSize: '0.8rem', color: '#ea580c' }}>Unit B failed biological indicator test. Switched to backup.</p>
