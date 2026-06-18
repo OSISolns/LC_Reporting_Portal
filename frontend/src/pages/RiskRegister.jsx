@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { 
-  ShieldAlert, Plus, Shield, ShieldCheck, 
+import {
+  ShieldAlert, Plus, Shield, ShieldCheck,
   AlertOctagon, X, Search, Filter,
   Activity, ArrowUpRight, TrendingDown
 } from 'lucide-react';
@@ -28,7 +28,7 @@ const RiskRegister = () => {
   const [risks, setRisks] = useState(MOCK_RISKS);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filter, setFilter] = useState('All');
-  
+
   // Form State
   const [formData, setFormData] = useState({
     title: '', category: 'Clinical', likelihood: 3, impact: 3, owner: '', mitigation: ''
@@ -61,7 +61,7 @@ const RiskRegister = () => {
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
-          <p style={{ margin: '0 0 4px', fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Safety & Quality Assurance</p>
+          <p style={{ margin: '0 0 4px', fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Safety & Health</p>
           <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <ShieldAlert size={32} style={{ color: 'var(--primary)' }} /> Enterprise Risk Register
           </h1>
@@ -162,37 +162,37 @@ const RiskRegister = () => {
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}><Shield size={20} /> Identify New Risk</h2>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '4px' }}><X size={24} /></button>
             </div>
-            
+
             <form onSubmit={handleSubmit} style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#475569', marginBottom: '8px' }}>RISK TITLE</label>
-                <input required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="Describe the risk..." style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }} />
+                <input required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="Describe the risk..." style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }} />
               </div>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#475569', marginBottom: '8px' }}>CATEGORY</label>
-                  <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.95rem', backgroundColor: '#fff' }}>
+                  <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.95rem', backgroundColor: '#fff' }}>
                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#475569', marginBottom: '8px' }}>RISK OWNER</label>
-                  <input required value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Responsible person/role..." style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }} />
+                  <input required value={formData.owner} onChange={e => setFormData({ ...formData, owner: e.target.value })} placeholder="Responsible person/role..." style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }} />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-dark)', marginBottom: '8px' }}>LIKELIHOOD (1-5)</label>
-                  <input type="range" min="1" max="5" value={formData.likelihood} onChange={e => setFormData({...formData, likelihood: e.target.value})} style={{ width: '100%' }} />
+                  <input type="range" min="1" max="5" value={formData.likelihood} onChange={e => setFormData({ ...formData, likelihood: e.target.value })} style={{ width: '100%' }} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginTop: '4px' }}>
                     <span>Rare (1)</span><span>Almost Certain (5)</span>
                   </div>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-dark)', marginBottom: '8px' }}>IMPACT (1-5)</label>
-                  <input type="range" min="1" max="5" value={formData.impact} onChange={e => setFormData({...formData, impact: e.target.value})} style={{ width: '100%' }} />
+                  <input type="range" min="1" max="5" value={formData.impact} onChange={e => setFormData({ ...formData, impact: e.target.value })} style={{ width: '100%' }} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginTop: '4px' }}>
                     <span>Negligible (1)</span><span>Catastrophic (5)</span>
                   </div>
@@ -201,7 +201,7 @@ const RiskRegister = () => {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#475569', marginBottom: '8px' }}>PROPOSED MITIGATION STRATEGY</label>
-                <textarea rows="3" value={formData.mitigation} onChange={e => setFormData({...formData, mitigation: e.target.value})} placeholder="What controls will be implemented?" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.95rem', fontFamily: 'inherit' }} />
+                <textarea rows="3" value={formData.mitigation} onChange={e => setFormData({ ...formData, mitigation: e.target.value })} placeholder="What controls will be implemented?" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.95rem', fontFamily: 'inherit' }} />
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
