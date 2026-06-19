@@ -62,6 +62,7 @@ export default function DailyOperationalReport() {
   // Daily Entry state
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [entryMetrics, setEntryMetrics] = useState({}); // providerId -> patientCount
+  const [entryFollowUps, setEntryFollowUps] = useState({}); // providerId -> followUpCount
   const [entryLogs, setEntryLogs] = useState({}); // metricName -> metricValue
   const [saving, setSaving] = useState(false);
 
@@ -108,11 +109,13 @@ export default function DailyOperationalReport() {
 
           // Reset
           const metricsObj = {};
+          const followUpsObj = {};
           const logsObj = {};
 
           // Map loaded metrics
           metrics.forEach(m => {
             metricsObj[m.provider_id] = m.patient_count;
+            followUpsObj[m.provider_id] = m.follow_up_count || 0;
           });
 
           // Map loaded logs
@@ -121,10 +124,12 @@ export default function DailyOperationalReport() {
           });
 
           setEntryMetrics(metricsObj);
+          setEntryFollowUps(followUpsObj);
           setEntryLogs(logsObj);
         } else {
           // Reset if no data exists
           setEntryMetrics({});
+          setEntryFollowUps({});
           setEntryLogs({});
         }
       } catch (err) {
@@ -224,6 +229,14 @@ export default function DailyOperationalReport() {
     }));
   };
 
+  const handleFollowUpChange = (providerId, val) => {
+    const intVal = val === '' ? '' : parseInt(val, 10);
+    setEntryFollowUps(prev => ({
+      ...prev,
+      [providerId]: isNaN(intVal) ? '' : intVal
+    }));
+  };
+
   const handleLogChange = (metricName, val) => {
     setEntryLogs(prev => ({
       ...prev,
@@ -247,7 +260,8 @@ export default function DailyOperationalReport() {
       const payloadMetrics = config.providers.map(p => ({
         provider_id: p.id,
         department_id: p.department_id,
-        patient_count: entryMetrics[p.id] || 0
+        patient_count: entryMetrics[p.id] || 0,
+        follow_up_count: entryFollowUps[p.id] || 0
       }));
 
       const payloadLogs = config.defaultProcedureMetrics.map(mName => ({
@@ -910,9 +924,13 @@ export default function DailyOperationalReport() {
                             {deptName}
                           </h3>
                         </div>
-                        <span className="text-[10px] font-black px-3 py-1 bg-slate-200/50 text-slate-600 rounded-full tracking-wider">
-                          {providersByDept[deptName].length} PROVIDERS
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black px-3 py-1 bg-slate-200/50 text-slate-600 rounded-full tracking-wider">
+                            {providersByDept[deptName].length} PROVIDERS
+                          </span>
+                          <span className="text-[9px] font-black px-2 py-1 bg-sky-50 text-sky-500 rounded-full border border-sky-100 tracking-wider">C = Consult.</span>
+                          <span className="text-[9px] font-black px-2 py-1 bg-teal-50 text-teal-500 rounded-full border border-teal-100 tracking-wider">F = Follow-up</span>
+                        </div>
                       </div>
 
                       {/* Providers List Grid */}
@@ -932,18 +950,34 @@ export default function DailyOperationalReport() {
                               </div>
                             </div>
 
-                            {/* Patient Volume Input */}
-                            <div className="w-28 relative">
-                              <input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                value={entryMetrics[provider.id] !== undefined ? entryMetrics[provider.id] : ''}
-                                onChange={(e) => handleMetricChange(provider.id, e.target.value)}
-                                disabled={['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
-                                className="w-full text-right font-black text-sm text-sky-850 border-2 border-slate-200/80 rounded-xl pl-3 pr-8 py-2 focus:border-sky-500 focus:ring-0 bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">Qty</span>
+                            {/* Patient Volume + Follow-up Inputs */}
+                            <div className="flex flex-col gap-1.5">
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  value={entryMetrics[provider.id] !== undefined ? entryMetrics[provider.id] : ''}
+                                  onChange={(e) => handleMetricChange(provider.id, e.target.value)}
+                                  disabled={['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                                  className="w-24 text-right font-black text-sm text-sky-850 border-2 border-sky-200/80 rounded-xl pl-2 pr-7 py-1.5 focus:border-sky-500 focus:ring-0 bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
+                                  title="Consultations"
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-sky-400 uppercase">C</span>
+                              </div>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  value={entryFollowUps[provider.id] !== undefined ? entryFollowUps[provider.id] : ''}
+                                  onChange={(e) => handleFollowUpChange(provider.id, e.target.value)}
+                                  disabled={['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                                  className="w-24 text-right font-black text-sm text-teal-700 border-2 border-teal-200/80 rounded-xl pl-2 pr-7 py-1.5 focus:border-teal-400 focus:ring-0 bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
+                                  title="Follow-ups"
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-teal-400 uppercase">F</span>
+                              </div>
                             </div>
                           </div>
                         ))}

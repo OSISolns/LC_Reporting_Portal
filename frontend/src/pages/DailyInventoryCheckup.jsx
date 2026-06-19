@@ -7,6 +7,7 @@ import {
   Loader2,
   Search,
   Eye,
+  EyeOff,
   FileSpreadsheet,
   X,
   ChevronDown,
@@ -15,7 +16,13 @@ import {
   Lock,
   Unlock,
   Download,
-  Trash2
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Check,
+  KeyRound,
+  RefreshCw
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
@@ -131,7 +138,7 @@ const CATEGORIES = {
     label: "Medical Supplies",
     color: "bg-blue-50 text-blue-700 border-blue-200",
     items: [
-      "Aquabloc 15cm", "Alcohol pads", "Bande 15cm", "Bande 7.5cm", 
+      "Aquabloc 15cm", "Alcohol pads", "Bande 15cm", "Bande 7.5cm",
       "Catheter G16", "Catheter G18", "Catheter G20", "Catheter G22", "Catheter G24",
       "Gants Sterile 8", "Gants propre", "Gloves 7.5", "Masque Neb Adulte", "Masque Neb Enfant",
       "Nasal Oxygen Masque Enfant", "Pap Smear", "Paraffin Gauze 5cm", "Plaster", "Sac à urine",
@@ -199,7 +206,7 @@ const generateMonths = () => {
   const start = new Date(2026, 2, 1); // March 2026
   const now = new Date();
   const end = new Date(now.getFullYear(), now.getMonth(), 1);
-  
+
   let current = new Date(start);
   while (current <= end) {
     const yr = current.getFullYear();
@@ -236,23 +243,23 @@ export default function DailyInventoryCheckup() {
     const [y, m] = mYear.split('-');
     const recordYear = parseInt(y, 10);
     const recordMonth = parseInt(m, 10);
-    
+
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1; // 1-indexed
-    
+
     if (recordYear < currentYear) return true;
     if (recordYear > currentYear) return false;
-    
+
     if (recordMonth < currentMonth) return true;
     if (recordMonth > currentMonth) return false;
-    
+
     const currentDayNum = now.getDate();
     if (day < currentDayNum) return true;
     if (day > currentDayNum) return false;
-    
+
     const currentRealSession = now.getHours() < 13 ? 'AM' : 'PM';
     if (session === 'AM' && currentRealSession === 'PM') return true;
-    
+
     return false;
   };
 
@@ -263,6 +270,7 @@ export default function DailyInventoryCheckup() {
 
   const matrixScrollRef = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedWard, setSelectedWard] = useState('STN1'); // 'STN1' or 'MINOR'
   const [searchTerm, setSearchTerm] = useState('');
 
   // Renders modes: 'focused' (session checkup) or 'matrix' (excel spreadsheet)
@@ -279,10 +287,23 @@ export default function DailyInventoryCheckup() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [lockStock, setLockStock] = useState(true);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [unlockPassword, setUnlockPassword] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportSelectedMonth, setExportSelectedMonth] = useState(monthYear);
   const [customItems, setCustomItems] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Admin Stock Password state
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [stockPassword, setStockPassword] = useState(null);
+  const [stockPasswordLoading, setStockPasswordLoading] = useState(false);
+  const [stockPasswordCopied, setStockPasswordCopied] = useState(false);
+  const [stockPasswordVisible, setStockPasswordVisible] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [passwordMonth, setPasswordMonth] = useState(CURRENT_MONTH_STR);
 
   // State for tracking custom or seeded items removed/deleted from the active roster
   const [deletedItems, setDeletedItems] = useState([]);
@@ -291,6 +312,8 @@ export default function DailyInventoryCheckup() {
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [timeFilter, setTimeFilter] = useState('all'); // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'all'
+  const [logsPage, setLogsPage] = useState(1);
 
   // Requisitions State
   const [showReqListModal, setShowReqListModal] = useState(false);
@@ -323,6 +346,83 @@ export default function DailyInventoryCheckup() {
     setDeletedItems(prev => [...new Set([...prev, ...filteredExpiredItems])]);
     toast.success(`Removed all ${filteredExpiredItems.length} expired items from the checkup roster.`);
   };
+
+  const handleUnlockStock = async (e) => {
+    e.preventDefault();
+    if (!unlockPassword.trim()) {
+      return toast.error('Please enter the stock unlock password.');
+    }
+    try {
+      setUnlocking(true);
+      const res = await api.post('/clinical/inventory/unlock', {
+        month_year: monthYear,
+        password: unlockPassword.trim()
+      });
+      if (res.data.success) {
+        setLockStock(false);
+        setShowUnlockModal(false);
+        setUnlockPassword('');
+        toast.success('Stock count editing UNLOCKED. Edit carefully!', { icon: '🔓' });
+      }
+    } catch (err) {
+      console.error('Failed to unlock stock:', err);
+      toast.error(err.response?.data?.message || 'Incorrect password. Stock remains locked.');
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  // ── Admin: Fetch stock unlock password ──────────────────────────────────────
+  const fetchStockPassword = async (my) => {
+    try {
+      setStockPasswordLoading(true);
+      setStockPassword(null);
+      const res = await api.get(`/clinical/inventory/stock-password?month_year=${my}`);
+      if (res.data.success) {
+        setStockPassword(res.data.password);
+      }
+    } catch (err) {
+      console.error('Failed to fetch stock password:', err);
+      toast.error('Could not load stock password.');
+    } finally {
+      setStockPasswordLoading(false);
+    }
+  };
+
+  const handleOpenPasswordModal = () => {
+    setPasswordMonth(monthYear);
+    setShowPasswordModal(true);
+    setStockPasswordVisible(false);
+    setStockPasswordCopied(false);
+    fetchStockPassword(monthYear);
+    setShowToolsDropdown(false);
+  };
+
+  const handleRegeneratePassword = async () => {
+    try {
+      setRegenerating(true);
+      const res = await api.post('/clinical/inventory/regenerate-stock-password', { month_year: passwordMonth });
+      if (res.data.success) {
+        setStockPassword(res.data.password);
+        setStockPasswordVisible(true);
+        setStockPasswordCopied(false);
+        toast.success(`New password generated for ${getMonthLabel(passwordMonth)}!`, { icon: '🔑' });
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to regenerate password.');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  const handleCopyPassword = () => {
+    if (!stockPassword) return;
+    navigator.clipboard.writeText(stockPassword).then(() => {
+      setStockPasswordCopied(true);
+      setTimeout(() => setStockPasswordCopied(false), 2000);
+    });
+  };
+
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('medications');
   const [newItemStock, setNewItemStock] = useState('0');
@@ -337,15 +437,15 @@ export default function DailyInventoryCheckup() {
     try {
       const token = localStorage.getItem('token');
       const monthsStr = selectedMonths.join(',');
-      
+
       toast.loading('Generating Excel sheet...');
-      
+
       const response = await fetch(`/api/clinical/inventory/export?months=${monthsStr}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       toast.dismiss();
 
       if (!response.ok) {
@@ -361,7 +461,7 @@ export default function DailyInventoryCheckup() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-      
+
       toast.success('Excel ledger downloaded successfully!');
       setShowExportModal(false);
     } catch (err) {
@@ -446,7 +546,7 @@ export default function DailyInventoryCheckup() {
       toast.error('Please add at least one item.');
       return;
     }
-    
+
     let deptId = 121;
     try {
       const deptRes = await api.get('/clinical/inventory/departments');
@@ -564,9 +664,49 @@ export default function DailyInventoryCheckup() {
     loadInventory();
   }, [monthYear]);
 
+  useEffect(() => {
+    if (activeTab === 'matrix') {
+      const fetchMatrixLogs = async () => {
+        try {
+          setLoadingLogs(true);
+          const res = await api.get(`/clinical/inventory/change-logs?month_year=${monthYear}`);
+          if (res.data.success) {
+            setAuditLogs(res.data.data);
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error('Failed to load audit logs.');
+        } finally {
+          setLoadingLogs(false);
+        }
+      };
+      fetchMatrixLogs();
+    }
+  }, [activeTab, monthYear]);
+
+  useEffect(() => {
+    setLogsPage(1);
+  }, [searchTerm, timeFilter]);
+
   // Handle cell input edits locally
   const handleCellEdit = (itemName, field, val, targetDay = currentDay, targetSession = currentSession) => {
-    const cleanVal = ['responsible_name', 'expiration_date', 'status', 'category'].includes(field) ? val : (parseInt(val, 10) || 0);
+    let cleanVal = ['responsible_name', 'expiration_date', 'status', 'category'].includes(field) ? val : (parseInt(val, 10) || 0);
+
+    if (field === 'expiration_date' && typeof val === 'string') {
+      const cleanExp = val.trim().toLowerCase();
+      const parts = cleanExp.split('/');
+      if (parts.length === 2) {
+        const month = parseInt(parts[0], 10);
+        const year = parseInt(parts[1], 10);
+        if (!isNaN(month) && !isNaN(year) && month >= 1 && month <= 12) {
+          // Expiration date has to be the last day of the expiration date month
+          const lastDay = new Date(year, month, 0).getDate();
+          const paddedDay = String(lastDay).padStart(2, '0');
+          const paddedMonth = String(month).padStart(2, '0');
+          cleanVal = `${paddedDay}/${paddedMonth}/${year}`;
+        }
+      }
+    }
 
     setAllMonthsMap(prev => {
       const monthMap = { ...(prev[monthYear] || {}) };
@@ -578,8 +718,12 @@ export default function DailyInventoryCheckup() {
         monthMap[itemName][targetDay][targetSession] = {
           stock_in_hands: carried,
           consumed: 0,
+          consumed_obs1: 0,
+          consumed_minor: 0,
           balance: carried,
           responsible_name: '',
+          user_stn1: '',
+          user_minor: '',
           expiration_date: excelMeta.expiry || '',
           status: carried <= 0 ? 'Outstock' : (excelMeta.status || 'Available'),
           category: excelMeta.category || ''
@@ -587,7 +731,23 @@ export default function DailyInventoryCheckup() {
       }
 
       const cell = { ...monthMap[itemName][targetDay][targetSession] };
-      cell[field] = cleanVal;
+
+      // Ensure all fields exist
+      if (cell.consumed_obs1 === undefined) {
+        cell.consumed_obs1 = (cell.consumed !== undefined && cell.consumed !== '') ? parseInt(cell.consumed, 10) || 0 : 0;
+      }
+      if (cell.consumed_minor === undefined) cell.consumed_minor = 0;
+      if (cell.user_stn1 === undefined) cell.user_stn1 = cell.responsible_name || '';
+      if (cell.user_minor === undefined) cell.user_minor = '';
+
+      let targetField = field;
+      if (field === 'consumed') {
+        targetField = selectedWard === 'STN1' ? 'consumed_obs1' : 'consumed_minor';
+      } else if (field === 'responsible_name') {
+        targetField = selectedWard === 'STN1' ? 'user_stn1' : 'user_minor';
+      }
+
+      cell[targetField] = cleanVal;
 
       // Auto status update when expiration_date is edited
       if (field === 'expiration_date') {
@@ -619,14 +779,56 @@ export default function DailyInventoryCheckup() {
         cell.status = calculateStatusFromExpiry(cleanVal);
       }
 
-      // Auto balance calculation: balance = stock - consumed
-      if (field === 'stock_in_hands' || field === 'consumed') {
-        const stock = field === 'stock_in_hands' ? cleanVal : cell.stock_in_hands;
-        const cons = field === 'consumed' ? cleanVal : cell.consumed;
-        cell.balance = stock - cons;
-      }
+      // Auto balance calculation: balance = stock - (consumed_obs1 + consumed_minor)
+      cell.consumed = (parseInt(cell.consumed_obs1, 10) || 0) + (parseInt(cell.consumed_minor, 10) || 0);
+      cell.balance = cell.stock_in_hands - cell.consumed;
+      cell.responsible_name = selectedWard === 'STN1' ? cell.user_stn1 : cell.user_minor;
 
       monthMap[itemName][targetDay][targetSession] = cell;
+
+      // Dynamic carry-over propagation: Update all subsequent days/sessions in this monthMap
+      let currentDayIter = targetDay;
+      let currentSessionIter = targetSession === 'AM' ? 'PM' : 'AM';
+      if (targetSession === 'PM') currentDayIter++;
+
+      const [y, m] = monthYear.split('-');
+      const daysInMonth = new Date(parseInt(y, 10), parseInt(m, 10), 0).getDate();
+
+      while (currentDayIter <= daysInMonth) {
+        if (!monthMap[itemName][currentDayIter]) {
+          monthMap[itemName][currentDayIter] = {};
+        }
+
+        // Calculate what the stock in hand should be based on previous session balance
+        let prevBalance = 0;
+        if (currentSessionIter === 'PM') {
+          const amCell = monthMap[itemName][currentDayIter]['AM'];
+          prevBalance = amCell ? (amCell.balance !== undefined ? amCell.balance : 0) : 0;
+        } else {
+          // AM session, day > 1
+          const prevPmCell = monthMap[itemName][currentDayIter - 1]?.['PM'];
+          prevBalance = prevPmCell ? (prevPmCell.balance !== undefined ? prevPmCell.balance : 0) : 0;
+        }
+
+        // If the cell doesn't exist, we can initialize it or leave it to be resolved dynamically.
+        // But if it does exist in state (meaning it's loaded from db or edited), we MUST update its stock_in_hands and balance.
+        if (monthMap[itemName][currentDayIter][currentSessionIter]) {
+          const targetCell = { ...monthMap[itemName][currentDayIter][currentSessionIter] };
+          targetCell.stock_in_hands = prevBalance;
+          targetCell.consumed = (parseInt(targetCell.consumed_obs1, 10) || 0) + (parseInt(targetCell.consumed_minor, 10) || 0);
+          targetCell.balance = targetCell.stock_in_hands - targetCell.consumed;
+          monthMap[itemName][currentDayIter][currentSessionIter] = targetCell;
+        }
+
+        // Advance iteration
+        if (currentSessionIter === 'AM') {
+          currentSessionIter = 'PM';
+        } else {
+          currentSessionIter = 'AM';
+          currentDayIter++;
+        }
+      }
+
       return { ...prev, [monthYear]: monthMap };
     });
   };
@@ -645,14 +847,23 @@ export default function DailyInventoryCheckup() {
           const sessionsMap = daysMap[d];
           Object.keys(sessionsMap).forEach(s => {
             const cell = sessionsMap[s];
+            const consObs1 = cell.consumed_obs1 !== undefined ? cell.consumed_obs1 : (selectedWard === 'STN1' ? cell.consumed : 0);
+            const consMinor = cell.consumed_minor !== undefined ? cell.consumed_minor : (selectedWard === 'MINOR' ? cell.consumed : 0);
+            const uObs1 = cell.user_stn1 !== undefined ? cell.user_stn1 : (selectedWard === 'STN1' ? cell.responsible_name : '');
+            const uMinor = cell.user_minor !== undefined ? cell.user_minor : (selectedWard === 'MINOR' ? cell.responsible_name : '');
+
             itemsToSave.push({
               item_name: itemName,
               day: parseInt(d, 10),
               session: s,
               stock_in_hands: cell.stock_in_hands || 0,
-              consumed: cell.consumed || 0,
-              balance: cell.balance || 0,
-              responsible_name: cell.responsible_name || '',
+              consumed: (parseInt(consObs1, 10) || 0) + (parseInt(consMinor, 10) || 0),
+              consumed_obs1: consObs1 || 0,
+              consumed_minor: consMinor || 0,
+              balance: (cell.stock_in_hands || 0) - ((parseInt(consObs1, 10) || 0) + (parseInt(consMinor, 10) || 0)),
+              responsible_name: selectedWard === 'STN1' ? uObs1 : uMinor,
+              user_stn1: uObs1 || '',
+              user_minor: uMinor || '',
               expiration_date: cell.expiration_date || '',
               status: cell.status || 'Active',
               category: cell.category || ''
@@ -707,7 +918,7 @@ export default function DailyInventoryCheckup() {
     setNewItemStock('0');
     setNewItemExpDate('');
     setNewItemStatus('Available');
-    
+
     setShowCreateModal(false);
     toast.success(`Successfully added "${name}" to checkup list!`);
   };
@@ -742,7 +953,7 @@ export default function DailyInventoryCheckup() {
     if (day === 1 && session === 'AM') {
       const idx = DYNAMIC_MONTHS.indexOf(month);
       const prevMonth = idx >= 0 && idx + 1 < DYNAMIC_MONTHS.length ? DYNAMIC_MONTHS[idx + 1] : null;
-      
+
       if (prevMonth) {
         const prevBalance = getMonthEndingBalance(prevMonth, item);
         if (prevBalance !== null && prevBalance !== undefined) {
@@ -770,41 +981,96 @@ export default function DailyInventoryCheckup() {
     return 0;
   };
 
-  const calculateExcelStatus = (expiryStr, balance) => {
+  const getFilteredLogs = () => {
+    if (!auditLogs) return [];
+    const now = new Date();
+
+    return auditLogs.filter(log => {
+      // Search term filter
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const matchesItem = log.item_name && log.item_name.toLowerCase().includes(term);
+        const matchesUser = log.updated_by && log.updated_by.toLowerCase().includes(term);
+        if (!matchesItem && !matchesUser) return false;
+      }
+
+      const logDate = new Date(log.updated_at);
+      const diffTime = Math.abs(now - logDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (timeFilter === 'daily') {
+        return logDate.toDateString() === now.toDateString() || diffDays <= 1;
+      }
+      if (timeFilter === 'weekly') {
+        return diffDays <= 7;
+      }
+      if (timeFilter === 'monthly') {
+        return diffDays <= 30;
+      }
+      if (timeFilter === 'quarterly') {
+        return diffDays <= 90;
+      }
+      if (timeFilter === 'yearly') {
+        return diffDays <= 365;
+      }
+      return true; // 'all'
+    });
+  };
+
+  const itemsPerPage = 25;
+  const filteredLogs = getFilteredLogs();
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+  const safeLogsPage = Math.max(1, Math.min(logsPage, totalPages || 1));
+  const paginatedLogs = filteredLogs.slice((safeLogsPage - 1) * itemsPerPage, safeLogsPage * itemsPerPage);
+
+  const resolveStatus = (balance, expiryStr) => {
     if (balance <= 0) return 'Outstock';
-    
+
     const cleanExpiry = (expiryStr || '').trim();
     if (!cleanExpiry || cleanExpiry === 'No Expiry Listed' || !cleanExpiry.includes('/')) {
       return 'Available';
     }
-    
+
     const parts = cleanExpiry.split('/');
-    if (parts.length !== 2) return 'Available';
-    
-    const monthVal = parseInt(parts[0], 10);
-    const yearVal = parseInt(parts[1], 10);
-    if (isNaN(monthVal) || isNaN(yearVal)) return 'Available';
-    
-    // Create Date: 1st of that month
-    const expiryDate = new Date(yearVal, monthVal - 1, 1);
-    
-    // DATE(2026,6,2) -> June 2, 2026
-    const expiredThreshold = new Date(2026, 5, 2); // June is month index 5
-    
-    // DATE(2026,12,2) -> December 2, 2026
-    const nearExpiryThreshold = new Date(2026, 11, 2); // Dec is month index 11
-    
-    if (expiryDate <= expiredThreshold) {
-      return 'Expired';
-    } else if (expiryDate <= nearExpiryThreshold) {
-      return 'Near Expiry';
-    } else {
-      return 'Available';
+    if (parts.length === 3) {
+      const dayVal = parseInt(parts[0], 10);
+      const monthVal = parseInt(parts[1], 10);
+      const yearVal = parseInt(parts[2], 10);
+      if (!isNaN(dayVal) && !isNaN(monthVal) && !isNaN(yearVal)) {
+        const expiryDate = new Date(yearVal, monthVal - 1, dayVal);
+        const expiredThreshold = new Date(2026, 5, 2); // June 2, 2026
+        const nearExpiryThreshold = new Date(2026, 11, 2); // December 2, 2026
+        if (expiryDate <= expiredThreshold) {
+          return 'Expired';
+        } else if (expiryDate <= nearExpiryThreshold) {
+          return 'Near Expiry';
+        } else {
+          return 'Available';
+        }
+      }
+    } else if (parts.length === 2) {
+      const monthVal = parseInt(parts[0], 10);
+      const yearVal = parseInt(parts[1], 10);
+      if (!isNaN(monthVal) && !isNaN(yearVal)) {
+        // Expiration date has to be the last day of the expiration date month
+        const expiryDate = new Date(yearVal, monthVal, 0);
+        const expiredThreshold = new Date(2026, 5, 2);
+        const nearExpiryThreshold = new Date(2026, 11, 2);
+        if (expiryDate <= expiredThreshold) {
+          return 'Expired';
+        } else if (expiryDate <= nearExpiryThreshold) {
+          return 'Near Expiry';
+        } else {
+          return 'Available';
+        }
+      }
     }
+
+    return 'Available';
   };
 
   const getCellForMonth = (month, item, day, session) => {
-    const cacheKey = `${month}-${item}-${day}-${session}`;
+    const cacheKey = `${month}-${item}-${day}-${session}-${selectedWard}`;
     if (cellCache[cacheKey] !== undefined) {
       return cellCache[cacheKey];
     }
@@ -819,23 +1085,43 @@ export default function DailyInventoryCheckup() {
       stock = getCarriedStockForMonth(month, item, day, session);
     }
 
-    // Resolve consumed
-    const consumed = (record && record.consumed !== undefined && record.consumed !== '') ? record.consumed : 0;
+    // Resolve ward-specific consumed
+    let consumed_obs1 = (record && record.consumed_obs1 !== undefined && record.consumed_obs1 !== '') ? parseInt(record.consumed_obs1, 10) || 0 : 0;
+    let consumed_minor = (record && record.consumed_minor !== undefined && record.consumed_minor !== '') ? parseInt(record.consumed_minor, 10) || 0 : 0;
 
-    // Resolve balance: stock - consumed
-    const balance = stock - consumed;
+    // Backwards compatibility for existing records
+    if (consumed_obs1 === 0 && consumed_minor === 0 && record && record.consumed) {
+      consumed_obs1 = parseInt(record.consumed, 10) || 0;
+    }
+
+    const user_stn1 = record?.user_stn1 || (consumed_obs1 > 0 ? (record?.responsible_name || '') : '');
+    const user_minor = record?.user_minor || '';
+
+    // Total consumed across all wards for balance calculation
+    const totalConsumed = consumed_obs1 + consumed_minor;
+
+    // Resolve balance: stock - total consumed
+    const balance = stock - totalConsumed;
+
+    // Active ward values
+    const consumed = selectedWard === 'STN1' ? consumed_obs1 : consumed_minor;
+    const responsible_name = selectedWard === 'STN1' ? user_stn1 : user_minor;
 
     const excelMeta = EXCEL_DATA[item] || {};
     const expiryValue = (record?.expiration_date !== undefined && record?.expiration_date !== '') ? record.expiration_date : (excelMeta.expiry || '');
-    
+
     // Auto-calculate dynamic status based on Excel formula thresholds!
-    const calculatedStatus = calculateExcelStatus(expiryValue, balance);
+    const calculatedStatus = resolveStatus(balance, expiryValue);
 
     const result = {
       stock_in_hands: stock,
       consumed: consumed,
+      consumed_obs1: consumed_obs1,
+      consumed_minor: consumed_minor,
       balance: balance,
-      responsible_name: record?.responsible_name || '',
+      responsible_name: responsible_name,
+      user_stn1: user_stn1,
+      user_minor: user_minor,
       expiration_date: expiryValue,
       status: (record?.status !== undefined && record?.status !== '') ? record.status : calculatedStatus,
       category: (record?.category !== undefined && record?.category !== '') ? record.category : (excelMeta.category || '')
@@ -960,7 +1246,7 @@ export default function DailyInventoryCheckup() {
               className="bg-transparent border-none text-xs font-black text-slate-800 outline-none cursor-pointer py-1"
             >
               {DYNAMIC_MONTHS.map(m => (
-                <option key={m} value={m}>{getMonthLabel(m)}</option>
+                <option key={m} value={m} disabled={isNurse && m < CURRENT_MONTH_STR}>{getMonthLabel(m)}</option>
               ))}
             </select>
           </div>
@@ -970,10 +1256,10 @@ export default function DailyInventoryCheckup() {
             <Button
               disabled={loading}
               onClick={() => {
-                setLockStock(!lockStock);
                 if (lockStock) {
-                  toast.success('Stock count editing UNLOCKED. Edit carefully!', { icon: '🔓' });
+                  setShowUnlockModal(true);
                 } else {
+                  setLockStock(true);
                   toast.success('Stock count editing LOCKED.', { icon: '🔒' });
                 }
               }}
@@ -1001,7 +1287,7 @@ export default function DailyInventoryCheckup() {
               className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-2 border-0 transition-all active:scale-[0.98]"
             >
               <RotateCw className="h-4 w-4" />
-               UTILITY TOOLS
+              UTILITY TOOLS
               <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showToolsDropdown ? 'rotate-180' : ''}`} />
             </Button>
 
@@ -1010,7 +1296,7 @@ export default function DailyInventoryCheckup() {
                 {/* Clickaway backdrop */}
                 <div className="fixed inset-0 z-45 cursor-default" onClick={() => setShowToolsDropdown(false)} />
                 <div className="absolute right-0 top-full mt-2 w-[240px] bg-white border border-slate-200/80 shadow-2xl rounded-2xl p-2.5 z-50 origin-top-right animate-in fade-in slide-in-from-top-2 duration-150 text-left">
-                  
+
                   {/* Action 1: Create Custom Item */}
                   <button
                     onClick={() => {
@@ -1084,6 +1370,21 @@ export default function DailyInventoryCheckup() {
                     View Audit Logs
                   </button>
 
+                  {/* Action 5: Stock Password (Admin Only) */}
+                  {isAdmin && (
+                    <>
+                      <div className="my-1.5 border-t border-slate-100" />
+                      <button
+                        onClick={handleOpenPasswordModal}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-700 transition-all border-none bg-transparent group"
+                      >
+                        <span className="p-1 bg-rose-50 text-rose-600 rounded-lg group-hover:bg-rose-100"><KeyRound size={14} /></span>
+                        Stock Lock Password
+                        <span className="ml-auto text-[9px] font-black uppercase tracking-wider text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-100">Admin</span>
+                      </button>
+                    </>
+                  )}
+
                 </div>
               </>
             )}
@@ -1091,18 +1392,18 @@ export default function DailyInventoryCheckup() {
             {/* Nested organic Excel Export modal dialog popup */}
             {showExportModal && (
               <>
-                <div 
-                  className="fixed inset-0 z-40 cursor-default" 
+                <div
+                  className="fixed inset-0 z-40 cursor-default"
                   onClick={() => setShowExportModal(false)}
                 />
                 <div className="absolute right-0 top-full mt-2.5 w-[360px] bg-white border border-slate-200/80 shadow-2xl rounded-3xl p-5 z-50 origin-top-right transform animate-in fade-in slide-in-from-top-4 duration-200 ease-out select-none">
-                  
+
                   <div className="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-4">
                     <div className="flex items-center gap-2">
                       <span className="p-1.5 bg-purple-50 text-purple-600 rounded-lg"><FileSpreadsheet size={15} /></span>
                       <h3 className="text-xs font-black text-slate-800 tracking-tight">Export Excel Ledger</h3>
                     </div>
-                    <button 
+                    <button
                       onClick={() => setShowExportModal(false)}
                       className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-all"
                     >
@@ -1176,9 +1477,37 @@ export default function DailyInventoryCheckup() {
                           <span className="font-bold text-slate-800">{log.item_name} (Day {log.day} {log.session})</span>
                           <span className="text-[10px] text-slate-500 font-semibold">{new Date(log.updated_at).toLocaleString()}</span>
                         </div>
-                        <div className="text-[10px] text-slate-600">
-                          <p>Stock: <span className="font-mono text-slate-500">{log.old_stock}</span> &rarr; <span className="font-mono font-bold text-slate-800">{log.new_stock}</span></p>
-                          <p>Consumed: <span className="font-mono text-slate-500">{log.old_consumed}</span> &rarr; <span className="font-mono font-bold text-slate-800">{log.new_consumed}</span></p>
+                        <div className="text-[10px] text-slate-600 space-y-1">
+                          <p>Stock in Hand: <span className="font-mono text-slate-500">{log.old_stock}</span> &rarr; <span className="font-mono font-bold text-slate-800">{log.new_stock}</span></p>
+                          <p>Total Consumed: <span className="font-mono text-slate-500">{log.old_consumed}</span> &rarr; <span className="font-mono font-bold text-slate-800">{log.new_consumed}</span></p>
+
+                          {/* STN1 details */}
+                          {((log.old_consumed_obs1 !== undefined && log.old_consumed_obs1 !== log.new_consumed_obs1) ||
+                            (log.old_user_stn1 !== undefined && log.old_user_stn1 !== log.new_user_stn1)) && (
+                              <div className="pl-2.5 border-l-2 border-sky-400 bg-sky-50/30 py-1 my-1 rounded-r-lg">
+                                <span className="font-black text-sky-700 uppercase text-[9px] tracking-wider block mb-0.5">STATION 1 (STN1)</span>
+                                {log.old_consumed_obs1 !== log.new_consumed_obs1 && (
+                                  <p className="text-[9px]">Consumed: <span className="font-mono text-slate-400">{log.old_consumed_obs1}</span> &rarr; <span className="font-mono font-bold text-sky-850">{log.new_consumed_obs1}</span></p>
+                                )}
+                                {log.old_user_stn1 !== log.new_user_stn1 && (
+                                  <p className="text-[9px]">Nurse: <span className="font-mono text-slate-400">"{log.old_user_stn1 || 'None'}"</span> &rarr; <span className="font-mono font-bold text-sky-850">"{log.new_user_stn1 || 'None'}"</span></p>
+                                )}
+                              </div>
+                            )}
+
+                          {/* MINOR details */}
+                          {((log.old_consumed_minor !== undefined && log.old_consumed_minor !== log.new_consumed_minor) ||
+                            (log.old_user_minor !== undefined && log.old_user_minor !== log.new_user_minor)) && (
+                              <div className="pl-2.5 border-l-2 border-emerald-400 bg-emerald-50/30 py-1 my-1 rounded-r-lg">
+                                <span className="font-black text-emerald-700 uppercase text-[9px] tracking-wider block mb-0.5">Minor Surgery (MINOR)</span>
+                                {log.old_consumed_minor !== log.new_consumed_minor && (
+                                  <p className="text-[9px]">Consumed: <span className="font-mono text-slate-400">{log.old_consumed_minor}</span> &rarr; <span className="font-mono font-bold text-emerald-850">{log.new_consumed_minor}</span></p>
+                                )}
+                                {log.old_user_minor !== log.new_user_minor && (
+                                  <p className="text-[9px]">Nurse: <span className="font-mono text-slate-400">"{log.old_user_minor || 'None'}"</span> &rarr; <span className="font-mono font-bold text-emerald-850">"{log.new_user_minor || 'None'}"</span></p>
+                                )}
+                              </div>
+                            )}
                         </div>
                         <div className="text-[10px] text-slate-500 mt-1">Updated by: <span className="font-bold">{log.updated_by}</span></div>
                       </div>
@@ -1206,741 +1535,837 @@ export default function DailyInventoryCheckup() {
         ) : (
           <div className="space-y-6">
             {/* ── Beautiful Premium Persistent Tabs Navigation Bar ── */}
-            <div className="flex border-b border-slate-200 pb-0.5 select-none gap-2 mb-2 bg-white px-5 py-2.5 rounded-2xl border border-slate-200/50 shadow-sm">
-              <button
-                onClick={() => setActiveTab('active_checkup')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] ${
-                  activeTab === 'active_checkup'
+            <div className="flex flex-col md:flex-row justify-between items-center border-b border-slate-200 pb-0.5 select-none gap-4 mb-4 bg-white px-5 py-2.5 rounded-2xl border border-slate-200/50 shadow-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setActiveTab('active_checkup')}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] ${activeTab === 'active_checkup'
                     ? 'border-[#0369a1] text-[#0369a1]'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <span>Active Checkup</span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeTab === 'active_checkup' ? 'bg-sky-100 text-[#0369a1]' : 'bg-slate-100 text-slate-550'}`}>
-                  {filteredActiveItems.length}
-                </span>
-              </button>
+                    }`}
+                >
+                  <span>Active Checkup</span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeTab === 'active_checkup' ? 'bg-sky-100 text-[#0369a1]' : 'bg-slate-100 text-slate-550'}`}>
+                    {filteredActiveItems.length}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => setActiveTab('expired_inventory')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] ${
-                  activeTab === 'expired_inventory'
+                <button
+                  onClick={() => setActiveTab('expired_inventory')}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] ${activeTab === 'expired_inventory'
                     ? 'border-red-500 text-red-650'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <span>Expired Inventory</span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeTab === 'expired_inventory' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-550'}`}>
-                  {filteredExpiredItems.length}
-                </span>
-              </button>
+                    }`}
+                >
+                  <span>Expired Inventory</span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeTab === 'expired_inventory' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-550'}`}>
+                    {filteredExpiredItems.length}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => setActiveTab('matrix')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] ${
-                  activeTab === 'matrix'
+                <button
+                  onClick={() => setActiveTab('matrix')}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider relative transition-all border-b-2 -mb-[11px] ${activeTab === 'matrix'
                     ? 'border-[#0369a1] text-[#0369a1]'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <FileSpreadsheet size={13} />
-                <span>Spreadsheet Matrix</span>
-              </button>
+                    }`}
+                >
+                  <Activity size={13} />
+                  <span>Stock Changes</span>
+                </button>
+              </div>
+
+              {/* Wards selector buttons (STATION 1, Minor Surgery) */}
+              <div className="flex items-center gap-2 shrink-0 bg-slate-50 p-1 rounded-xl border border-slate-200/60 shadow-inner">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider px-2">
+                  Ward Context:
+                </span>
+                <button
+                  onClick={() => setSelectedWard('STN1')}
+                  className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg border transition-all ${selectedWard === 'STN1'
+                    ? 'bg-[#003A44] border-[#002D35] text-white shadow-sm active:scale-95'
+                    : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50'
+                    }`}
+                >
+                  STN1 (STATION 1)
+                </button>
+                <button
+                  onClick={() => setSelectedWard('MINOR')}
+                  className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg border transition-all ${selectedWard === 'MINOR'
+                    ? 'bg-[#003A44] border-[#002D35] text-white shadow-sm active:scale-95'
+                    : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50'
+                    }`}
+                >
+                  MINOR (Minor Surgery)
+                </button>
+              </div>
             </div>
 
             {/* Render conditional views based on activeTab */}
             {(activeTab === 'active_checkup' || activeTab === 'expired_inventory') ? (
               <div className="space-y-6 select-none">
 
-            {/* Horizontal Header: Session Selector */}
-            <Card className="p-4 border border-slate-200/60 shadow-sm bg-white rounded-[24px]">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-                
-                {/* Left Side: Session Toggle & Period Indicator */}
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
-                  {/* Period Badge */}
-                  <div className="bg-gradient-to-br from-sky-50 to-blue-50/50 border border-sky-100/80 rounded-2xl px-4 py-2 text-center shrink-0 w-full sm:w-auto">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-sky-600 bg-sky-100/50 px-2 py-0.5 rounded border border-sky-200/40 inline-block mb-1">Selected Period</span>
-                    <h4 className="text-lg font-black text-sky-950 leading-none">Day {currentDay} {currentSession}</h4>
-                    <p className="text-[9px] text-sky-700/80 font-bold mt-0.5 uppercase tracking-widest">{getMonthLabel(monthYear)}</p>
-                  </div>
+                {/* Horizontal Header: Session Selector */}
+                <Card className="p-4 border border-slate-200/60 shadow-sm bg-white rounded-[24px]">
+                  <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
 
-                  {/* AM/PM Switcher */}
-                  <div className="flex bg-slate-100/80 p-1 rounded-2xl w-full sm:w-64 border border-slate-200/40 shadow-inner">
-                    <button
-                      onClick={() => setCurrentSession('AM')}
-                      className={`flex-1 py-2 text-xs font-black rounded-xl uppercase transition-all ${currentSession === 'AM' ? 'bg-[#0369a1] text-white shadow-sm font-black' : 'text-slate-500 hover:text-slate-800'}`}
-                    >
-                      AM Session
-                    </button>
-                    <button
-                      onClick={() => setCurrentSession('PM')}
-                      className={`flex-1 py-2 text-xs font-black rounded-xl uppercase transition-all ${currentSession === 'PM' ? 'bg-[#0369a1] text-white shadow-sm font-black' : 'text-slate-500 hover:text-slate-800'}`}
-                    >
-                      PM Session
-                    </button>
-                  </div>
-                </div>
-
-                {/* Right Side: Week Selector & Day Buttons */}
-                <div className="flex flex-col md:flex-row items-center gap-4 w-full lg:w-auto lg:justify-end">
-                  {/* Week Tabs */}
-                  <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Week:</span>
-                    <div className="flex bg-slate-105 p-0.5 rounded-lg border border-slate-200/40 text-[10px] font-black select-none shrink-0 shadow-inner">
-                      {[1, 2, 3, 4].map((wk) => {
-                        const isCurrentWk = 
-                          (wk === 1 && currentDay <= 7) ||
-                          (wk === 2 && currentDay >= 8 && currentDay <= 14) ||
-                          (wk === 3 && currentDay >= 15 && currentDay <= 21) ||
-                          (wk === 4 && currentDay >= 22);
-                        
-                        return (
-                          <button
-                            key={wk}
-                            onClick={() => {
-                              const targetDay = wk === 4 ? 22 : (wk - 1) * 7 + 1;
-                              setCurrentDay(targetDay);
-                            }}
-                            className={`px-3 py-1 rounded transition-all ${
-                              isCurrentWk 
-                                ? 'bg-white text-slate-900 shadow-sm font-black' 
-                                : 'text-slate-400 hover:text-slate-650'
-                            }`}
-                            title={`Week ${wk}`}
-                          >
-                            W{wk}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Day Buttons */}
-                  <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Day:</span>
-                    <div className="flex flex-wrap gap-1.5 justify-center md:justify-start">
-                      {(() => {
-                        const currentWk = 
-                          currentDay <= 7 ? 1 :
-                          currentDay <= 14 ? 2 :
-                          currentDay <= 21 ? 3 : 4;
-                        
-                        const startDay = currentWk === 4 ? 22 : (currentWk - 1) * 7 + 1;
-                        const endDay = currentWk === 4 ? 30 : currentWk * 7;
-                        
-                        const days = [];
-                        for (let d = startDay; d <= endDay; d++) {
-                          days.push(d);
-                        }
-                        
-                        return days.map((dNum) => {
-                          const isSelected = currentDay === dNum;
-                          return (
-                            <button
-                              key={dNum}
-                              onClick={() => setCurrentDay(dNum)}
-                              className={`w-8 h-8 text-xs font-black rounded-lg transition-all border flex items-center justify-center relative active:scale-95 shadow-sm ${
-                                isSelected 
-                                  ? 'bg-[#0369a1] border-transparent text-white font-black shadow-md' 
-                                  : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50 hover:border-slate-350'
-                              }`}
-                            >
-                              {dNum}
-                            </button>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </Card>
-
-            {/* Wide Expanded Inventory Items Table Container */}
-            <div className="w-full space-y-6">
-              <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-[24px]">
-
-                {/* Search & Category Filter Bar */}
-                <div className="flex flex-col gap-4 pb-4 border-b border-dashed border-slate-100">
-                  <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="relative w-full md:w-72">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><Search size={15} /></span>
-                      <input
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search items..."
-                        className="w-full pl-10 pr-4 py-2 text-xs font-bold text-slate-700 placeholder-slate-400 bg-slate-50/80 border border-slate-200 rounded-xl outline-none focus:border-sky-500 focus:bg-white transition-all shadow-sm"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                        {displayItems.length} items &bull; {filteredExpiredItems.length} expired
+                    {/* Left Side: Session Toggle & Period Indicator */}
+                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+                      {/* Period Badge */}
+                      <div className="bg-gradient-to-br from-sky-50 to-blue-50/50 border border-sky-100/80 rounded-2xl px-4 py-2 text-center shrink-0 w-full sm:w-auto">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-sky-600 bg-sky-100/50 px-2 py-0.5 rounded border border-sky-200/40 inline-block mb-1">Selected Period</span>
+                        <h4 className="text-lg font-black text-sky-950 leading-none">Day {currentDay} {currentSession}</h4>
+                        <p className="text-[9px] text-sky-700/80 font-bold mt-0.5 uppercase tracking-widest">{getMonthLabel(monthYear)}</p>
                       </div>
-                      {activeTab === 'expired_inventory' && filteredExpiredItems.length > 0 && (
+
+                      {/* AM/PM Switcher */}
+                      <div className="flex bg-slate-100/80 p-1 rounded-2xl w-full sm:w-64 border border-slate-200/40 shadow-inner">
                         <button
-                          onClick={handleDeleteAllExpired}
-                          disabled={lockStock}
-                          title={lockStock ? "Unlock stock editing to delete expired items" : "Remove all expired items from roster"}
-                          className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1.5 active:scale-[0.97] ${
-                            lockStock
-                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none'
-                              : 'bg-red-50 hover:bg-red-100 border-red-200 text-red-750 hover:shadow-sm'
-                          }`}
+                          onClick={() => setCurrentSession('AM')}
+                          className={`flex-1 py-2 text-xs font-black rounded-xl uppercase transition-all ${currentSession === 'AM' ? 'bg-[#0369a1] text-white shadow-sm font-black' : 'text-slate-500 hover:text-slate-800'}`}
                         >
-                          <Trash2 size={12} />
-                          Delete All Expired
+                          AM Session
                         </button>
-                      )}
+                        <button
+                          onClick={() => setCurrentSession('PM')}
+                          className={`flex-1 py-2 text-xs font-black rounded-xl uppercase transition-all ${currentSession === 'PM' ? 'bg-[#0369a1] text-white shadow-sm font-black' : 'text-slate-500 hover:text-slate-800'}`}
+                        >
+                          PM Session
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Right Side: Week Selector & Day Buttons */}
+                    <div className="flex flex-col md:flex-row items-center gap-4 w-full lg:w-auto lg:justify-end">
+                      {/* Week Tabs */}
+                      <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Week:</span>
+                        <div className="flex bg-slate-105 p-0.5 rounded-lg border border-slate-200/40 text-[10px] font-black select-none shrink-0 shadow-inner">
+                          {[1, 2, 3, 4].map((wk) => {
+                            const isCurrentWk =
+                              (wk === 1 && currentDay <= 7) ||
+                              (wk === 2 && currentDay >= 8 && currentDay <= 14) ||
+                              (wk === 3 && currentDay >= 15 && currentDay <= 21) ||
+                              (wk === 4 && currentDay >= 22);
+
+                            return (
+                              <button
+                                key={wk}
+                                onClick={() => {
+                                  const targetDay = wk === 4 ? 22 : (wk - 1) * 7 + 1;
+                                  setCurrentDay(targetDay);
+                                }}
+                                disabled={isNurse && (() => {
+                                  if (monthYear < CURRENT_MONTH_STR) return true;
+                                  if (monthYear > CURRENT_MONTH_STR) return false;
+                                  const endOfWeekDay = wk === 4 ? 30 : wk * 7;
+                                  return endOfWeekDay < new Date().getDate();
+                                })()}
+                                className={`px-3 py-1 rounded transition-all ${isCurrentWk
+                                  ? 'bg-white text-slate-900 shadow-sm font-black'
+                                  : 'text-slate-400 hover:text-slate-650'
+                                  } disabled:opacity-30 disabled:cursor-not-allowed`}
+                                title={`Week ${wk}`}
+                              >
+                                W{wk}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Day Buttons */}
+                      <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Day:</span>
+                        <div className="flex flex-wrap gap-1.5 justify-center md:justify-start">
+                          {(() => {
+                            const currentWk =
+                              currentDay <= 7 ? 1 :
+                                currentDay <= 14 ? 2 :
+                                  currentDay <= 21 ? 3 : 4;
+
+                            const startDay = currentWk === 4 ? 22 : (currentWk - 1) * 7 + 1;
+                            const endDay = currentWk === 4 ? 30 : currentWk * 7;
+
+                            const days = [];
+                            for (let d = startDay; d <= endDay; d++) {
+                              days.push(d);
+                            }
+
+                            return days.map((dNum) => {
+                              const isSelected = currentDay === dNum;
+                              return (
+                                <button
+                                  key={dNum}
+                                  onClick={() => setCurrentDay(dNum)}
+                                  disabled={isNurse && (() => {
+                                    if (monthYear < CURRENT_MONTH_STR) return true;
+                                    if (monthYear > CURRENT_MONTH_STR) return false;
+                                    return dNum < new Date().getDate();
+                                  })()}
+                                  className={`w-8 h-8 text-xs font-black rounded-lg transition-all border flex items-center justify-center relative active:scale-95 shadow-sm ${isSelected
+                                    ? 'bg-[#0369a1] border-transparent text-white font-black shadow-md'
+                                    : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50 hover:border-slate-350'
+                                    } disabled:opacity-30 disabled:cursor-not-allowed`}
+                                >
+                                  {dNum}
+                                </button>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
+                </Card>
 
-                  {/* Category badged pills list */}
-                  <div className="flex flex-wrap gap-1.5 w-full">
-                    <button
-                      onClick={() => setSelectedCategory('all')}
-                      className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all ${
-                        selectedCategory === 'all' 
-                          ? 'bg-slate-900 border-slate-900 text-white shadow-sm' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      All Items
-                    </button>
-                    {Object.entries(CATEGORIES).map(([key, cat]) => {
-                      const isSelected = selectedCategory === key;
-                      const niceLabel = 
-                        key === 'medical_supplies' ? 'Supplies' :
-                        key === 'medications' ? 'Meds' :
-                        key === 'anesthetics' ? 'Anesth' :
-                        key === 'antiseptics' ? 'Antisep' :
-                        key === 'antidotes' ? 'Antidotes' :
-                        key === 'sutures' ? 'Sutures' : key;
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => setSelectedCategory(key)}
-                          className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all ${
-                            isSelected 
-                              ? 'bg-slate-900 border-slate-900 text-white shadow-sm' 
-                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                          }`}
-                        >
-                          {niceLabel}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                {/* Wide Expanded Inventory Items Table Container */}
+                <div className="w-full space-y-6">
+                  <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-[24px]">
 
-                {/* Main Session Focused Table */}
-                <div className="overflow-x-auto mt-4 custom-scrollbar">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="bg-slate-50/50 text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
-                        <th className="py-3.5 px-4 w-[240px]">Items</th>
-                        <th className="py-3.5 px-4 text-center w-[120px]">Category</th>
-                        <th className="py-3.5 px-4 text-center w-[100px]">Batch #</th>
-                        <th className="py-3.5 px-4 text-center w-[150px]">Expiration Date</th>
-                        <th className="py-3.5 px-4 text-center w-[160px]">Status</th>
-                        <th className="py-3.5 px-4 text-center w-[110px]">Stock in hands</th>
-                        <th className="py-3.5 px-4 text-center w-[110px]">Consumed items</th>
-                        <th className="py-3.5 px-4 text-center w-[110px]">Balance</th>
-                        <th className="py-3.5 px-4">Responsible Name</th>
-                        <th className="py-3.5 px-4 w-[110px] text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                      {displayItems.length > 0 ? (
-                        displayItems.map(item => {
-                          const cell = getCell(item);
+                    {/* Search & Category Filter Bar */}
+                    <div className="flex flex-col gap-4 pb-4 border-b border-dashed border-slate-100">
+                      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="relative w-full md:w-72">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><Search size={15} /></span>
+                          <input
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search items..."
+                            className="w-full pl-10 pr-4 py-2 text-xs font-bold text-slate-700 placeholder-slate-400 bg-slate-50/80 border border-slate-200 rounded-xl outline-none focus:border-sky-500 focus:bg-white transition-all shadow-sm"
+                          />
+                        </div>
 
-                          // Determine item category color
-                          const catKey = Object.keys(CATEGORIES).find(k => CATEGORIES[k].items.includes(item)) || cell.category || 'medical_supplies';
-                          const categoryLabel = CATEGORIES[catKey]?.label || cell.category || 'Medical Supplies';
+                        <div className="flex items-center gap-3">
+                          <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                            {displayItems.length} items &bull; {filteredExpiredItems.length} expired
+                          </div>
+                          {activeTab === 'expired_inventory' && filteredExpiredItems.length > 0 && (
+                            <button
+                              onClick={handleDeleteAllExpired}
+                              disabled={lockStock}
+                              title={lockStock ? "Unlock stock editing to delete expired items" : "Remove all expired items from roster"}
+                              className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1.5 active:scale-[0.97] ${lockStock
+                                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none'
+                                : 'bg-red-50 hover:bg-red-100 border-red-200 text-red-750 hover:shadow-sm'
+                                }`}
+                            >
+                              <Trash2 size={12} />
+                              Delete All Expired
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                          // Exquisite dot indicator styles
-                          const dotColor = 
-                            catKey === 'medical_supplies' ? 'bg-blue-500 ring-blue-100' :
-                            catKey === 'medications' ? 'bg-emerald-500 ring-emerald-100' :
-                            catKey === 'anesthetics' ? 'bg-purple-500 ring-purple-100' :
-                            catKey === 'antiseptics' ? 'bg-amber-500 ring-amber-100' :
-                            catKey === 'sutures' ? 'bg-rose-500 ring-rose-100' :
-                            catKey === 'antidotes' ? 'bg-teal-500 ring-teal-100' : 'bg-pink-500 ring-pink-100';
 
-                          const isExpired = cell.status === 'Expired';
-                          const rowStyle = isExpired 
-                            ? 'bg-slate-100/60 opacity-60 text-slate-400 select-none' 
-                            : 'hover:bg-slate-50/40 text-slate-700';
+                    </div>
 
-                          return (
-                            <tr key={item} className={`transition-all align-center ${rowStyle}`}>
-                              {/* Item label */}
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2.5">
-                                  <span className={`w-2 h-2 rounded-full shrink-0 ring-4 ${dotColor}`} />
-                                  <div className="text-slate-900 font-black text-[13px] tracking-tight">{item}</div>
-                                </div>
-                              </td>
+                    {/* Main Session Focused Table */}
+                    <div className="overflow-x-auto mt-4 custom-scrollbar">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="bg-slate-50/50 text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
+                            <th className="py-3.5 px-4 w-[240px]">Items</th>
+                            <th className="py-3.5 px-4 text-center w-[120px]">Category</th>
+                            <th className="py-3.5 px-4 text-center w-[100px]">Batch #</th>
+                            <th className="py-3.5 px-4 text-center w-[150px]">Expiration Date</th>
+                            <th className="py-3.5 px-4 text-center w-[160px]">Status</th>
+                            <th className="py-3.5 px-4 text-center w-[110px]">Stock in hands</th>
+                            <th className="py-3.5 px-4 text-center w-[110px]">Consumed items</th>
+                            <th className="py-3.5 px-4 text-center w-[110px]">Balance</th>
+                            <th className="py-3.5 px-4">Responsible Name</th>
+                            <th className="py-3.5 px-4 w-[110px] text-center">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                          {displayItems.length > 0 ? (
+                            displayItems.map(item => {
+                              const cell = getCell(item);
 
-                              {/* Category Column */}
-                              <td className="py-3 px-4 text-center">
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-slate-150 text-slate-700 border border-slate-200">
-                                  {categoryLabel}
-                                </span>
-                              </td>
+                              // Determine item category color
+                              const catKey = Object.keys(CATEGORIES).find(k => CATEGORIES[k].items.includes(item)) || cell.category || 'medical_supplies';
+                              const categoryLabel = CATEGORIES[catKey]?.label || cell.category || 'Medical Supplies';
 
-                              {/* Batch # Column */}
-                              <td className="py-3 px-4 text-center">
-                                <span className="text-[10px] text-slate-400 font-bold">—</span>
-                              </td>
+                              // Exquisite dot indicator styles
+                              const dotColor =
+                                catKey === 'medical_supplies' ? 'bg-blue-500 ring-blue-100' :
+                                  catKey === 'medications' ? 'bg-emerald-500 ring-emerald-100' :
+                                    catKey === 'anesthetics' ? 'bg-purple-500 ring-purple-100' :
+                                      catKey === 'antiseptics' ? 'bg-amber-500 ring-amber-100' :
+                                        catKey === 'sutures' ? 'bg-rose-500 ring-rose-100' :
+                                          catKey === 'antidotes' ? 'bg-teal-500 ring-teal-100' : 'bg-pink-500 ring-pink-100';
 
-                              {/* Expiration Date Column */}
-                              <td className="py-3 px-4 text-center">
-                                  <input
-                                    type="text"
-                                    value={cell.expiration_date || ''}
-                                    onChange={(e) => handleCellEdit(item, 'expiration_date', e.target.value)}
-                                    placeholder="MM/YYYY or No Expiry"
-                                    disabled={isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))}
-                                    className={`w-36 text-center py-1.5 px-2 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none font-bold text-xs transition-all shadow-sm text-slate-800 ${
-                                      (isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))) ? 'bg-slate-100/80 text-slate-400 cursor-not-allowed border-slate-200 hover:border-slate-200 shadow-none' : ''
-                                    }`}
-                                  />
-                              </td>
+                              const isExpired = cell.status === 'Expired';
+                              const rowStyle = isExpired
+                                ? 'bg-slate-100/60 opacity-60 text-slate-400 select-none'
+                                : 'hover:bg-slate-50/40 text-slate-700';
 
-                              {/* Status Column (Read-Only Pill Badge) */}
-                              <td className="py-3 px-4 text-center">
-                                <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border shadow-sm ${
-                                  cell.status === 'Expired' ? 'text-red-750 bg-red-50 border-red-200 ring-1 ring-red-50' :
-                                  cell.status === 'Near Expiry' ? 'text-amber-700 bg-amber-50 border-amber-200 ring-1 ring-amber-50' :
-                                  cell.status === 'Outstock' ? 'text-slate-500 bg-slate-50 border-slate-200 ring-1 ring-slate-50' : 'text-emerald-700 bg-emerald-50 border-emerald-200 ring-1 ring-emerald-50'
-                                }`}>
-                                  {cell.status === 'Expired' ? 'EXPIRED' :
-                                   cell.status === 'Near Expiry' ? 'Near Expiry (<6mo)' :
-                                   cell.status === 'Outstock' ? 'Outstock' : 'Available'}
-                                </span>
-                              </td>
+                              return (
+                                <tr key={item} className={`transition-all align-center ${rowStyle}`}>
+                                  {/* Item label */}
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2.5">
+                                      <span className={`w-2 h-2 rounded-full shrink-0 ring-4 ${dotColor}`} />
+                                      <div className="text-slate-900 font-black text-[13px] tracking-tight">{item}</div>
+                                    </div>
+                                  </td>
 
-                              {/* Stock in hands input */}
-                              <td className="py-3 px-4 text-center">
-                                <input
-                                  value={cell.stock_in_hands}
-                                  onChange={(e) => handleCellEdit(item, 'stock_in_hands', e.target.value)}
-                                  placeholder="0"
-                                  className={`w-20 text-center py-1.5 px-2 border rounded-xl outline-none font-black text-xs transition-all shadow-sm ${
-                                    (lockStock || isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession)))
-                                      ? 'bg-slate-55 text-slate-400 border-slate-200 cursor-not-allowed select-none' 
-                                      : 'bg-white border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 text-slate-900'
-                                  }`}
-                                  type="number"
-                                  disabled={lockStock || isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))}
-                                />
-                              </td>
+                                  {/* Category Column */}
+                                  <td className="py-3 px-4 text-center">
+                                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-slate-150 text-slate-700 border border-slate-200">
+                                      {categoryLabel}
+                                    </span>
+                                  </td>
 
-                              {/* Consumed items input */}
-                              <td className="py-3 px-4 text-center">
-                                <input
-                                  value={cell.consumed}
-                                  onChange={(e) => handleCellEdit(item, 'consumed', e.target.value)}
-                                  placeholder="0"
-                                  disabled={isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))}
-                                  className={`w-20 text-center py-1.5 px-2 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none font-black text-xs transition-all shadow-sm ${
-                                    (isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))) ? 'bg-slate-100/85 text-slate-400 cursor-not-allowed border-slate-200' : ''
-                                  }`}
-                                  type="number"
-                                />
-                              </td>
+                                  {/* Batch # Column */}
+                                  <td className="py-3 px-4 text-center">
+                                    <span className="text-[10px] text-slate-400 font-bold">—</span>
+                                  </td>
 
-                              {/* Balance view (formula stock - consumed) */}
-                              <td className="py-3 px-4 text-center">
-                                <span className={`text-[11px] font-black px-2.5 py-1 rounded-lg border shadow-sm ${
-                                  cell.balance < 0 
-                                    ? 'bg-red-50 text-red-600 border-red-100 ring-1 ring-red-50' 
-                                    : 'bg-slate-50 text-slate-700 border-slate-200/80'
-                                }`}>
-                                  {cell.balance !== '' ? cell.balance : 0}
-                                </span>
-                              </td>
+                                  {/* Expiration Date Column */}
+                                  <td className="py-3 px-4 text-center">
+                                    <input
+                                      type="text"
+                                      value={cell.expiration_date || ''}
+                                      onChange={(e) => handleCellEdit(item, 'expiration_date', e.target.value)}
+                                      placeholder="MM/YYYY or No Expiry"
+                                      disabled={isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))}
+                                      className={`w-36 text-center py-1.5 px-2 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none font-bold text-xs transition-all shadow-sm text-slate-800 ${(isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))) ? 'bg-slate-100/80 text-slate-400 cursor-not-allowed border-slate-200 hover:border-slate-200 shadow-none' : ''
+                                        }`}
+                                    />
+                                  </td>
 
-                              {/* Responsible Name input */}
-                              <td className="py-3 px-4">
-                                <input
-                                  value={cell.responsible_name || ''}
-                                  onChange={(e) => handleCellEdit(item, 'responsible_name', e.target.value)}
-                                  placeholder="RN Signature"
-                                  disabled={isExpired}
-                                  className={`w-full max-w-[200px] py-1.5 px-3 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none text-xs font-semibold shadow-sm transition-all ${
-                                    isExpired ? 'bg-slate-100/85 text-slate-400 cursor-not-allowed border-slate-200' : ''
-                                  }`}
-                                />
-                              </td>
+                                  {/* Status Column (Read-Only Pill Badge) */}
+                                  <td className="py-3 px-4 text-center">
+                                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border shadow-sm ${cell.status === 'Expired' ? 'text-red-750 bg-red-50 border-red-200 ring-1 ring-red-50' :
+                                      cell.status === 'Near Expiry' ? 'text-amber-700 bg-amber-50 border-amber-200 ring-1 ring-amber-50' :
+                                        cell.status === 'Outstock' ? 'text-slate-500 bg-slate-50 border-slate-200 ring-1 ring-slate-50' : 'text-emerald-700 bg-emerald-50 border-emerald-200 ring-1 ring-emerald-50'
+                                      }`}>
+                                      {cell.status === 'Expired' ? 'EXPIRED' :
+                                        cell.status === 'Near Expiry' ? 'Near Expiry (<6mo)' :
+                                          cell.status === 'Outstock' ? 'Outstock' : 'Available'}
+                                    </span>
+                                  </td>
 
-                              {/* Actions Column */}
-                              <td className="py-3 px-4 text-center">
-                                {isExpired ? (
-                                  <button
-                                    onClick={() => handleDeleteItem(item)}
-                                    disabled={lockStock}
-                                    title={lockStock ? "Unlock stock editing to delete expired items" : "Remove expired item from checkup roster"}
-                                    className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1 mx-auto active:scale-[0.95] ${
-                                      lockStock
-                                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none'
-                                        : 'border-red-200 bg-red-50 text-red-650 hover:bg-red-100 hover:text-red-700 hover:shadow-sm'
-                                    }`}
-                                  >
-                                    <Trash2 size={12} />
-                                    Delete
-                                  </button>
-                                ) : (
-                                  <span className="text-[10px] text-slate-400 font-bold">—</span>
-                                )}
+                                  {/* Stock in hands input */}
+                                  <td className="py-3 px-4 text-center">
+                                    <input
+                                      value={cell.stock_in_hands}
+                                      onChange={(e) => handleCellEdit(item, 'stock_in_hands', e.target.value)}
+                                      placeholder="0"
+                                      className={`w-20 text-center py-1.5 px-2 border rounded-xl outline-none font-black text-xs transition-all shadow-sm ${(lockStock || isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession)))
+                                        ? 'bg-slate-55 text-slate-400 border-slate-200 cursor-not-allowed select-none'
+                                        : 'bg-white border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 text-slate-900'
+                                        }`}
+                                      type="number"
+                                      disabled={lockStock || isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))}
+                                    />
+                                  </td>
+
+                                  {/* Consumed items input */}
+                                  <td className="py-3 px-4 text-center">
+                                    <input
+                                      value={cell.consumed}
+                                      onChange={(e) => handleCellEdit(item, 'consumed', e.target.value)}
+                                      placeholder="0"
+                                      disabled={isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))}
+                                      className={`w-20 text-center py-1.5 px-2 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none font-black text-xs transition-all shadow-sm ${(isExpired || (isNurse && checkIsPast(monthYear, currentDay, currentSession))) ? 'bg-slate-100/85 text-slate-400 cursor-not-allowed border-slate-200' : ''
+                                        }`}
+                                      type="number"
+                                    />
+                                  </td>
+
+                                  {/* Balance view (formula stock - consumed) */}
+                                  <td className="py-3 px-4 text-center">
+                                    <span className={`text-[11px] font-black px-2.5 py-1 rounded-lg border shadow-sm ${cell.balance < 0
+                                      ? 'bg-red-50 text-red-600 border-red-100 ring-1 ring-red-50'
+                                      : 'bg-slate-50 text-slate-700 border-slate-200/80'
+                                      }`}>
+                                      {cell.balance !== '' ? cell.balance : 0}
+                                    </span>
+                                  </td>
+
+                                  {/* Responsible Name input */}
+                                  <td className="py-3 px-4">
+                                    <input
+                                      value={cell.responsible_name || ''}
+                                      onChange={(e) => handleCellEdit(item, 'responsible_name', e.target.value)}
+                                      placeholder="RN Signature"
+                                      disabled={isExpired}
+                                      className={`w-full max-w-[200px] py-1.5 px-3 bg-white border border-slate-200 hover:border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 rounded-xl outline-none text-xs font-semibold shadow-sm transition-all ${isExpired ? 'bg-slate-100/85 text-slate-400 cursor-not-allowed border-slate-200' : ''
+                                        }`}
+                                    />
+                                  </td>
+
+                                  {/* Actions Column */}
+                                  <td className="py-3 px-4 text-center">
+                                    {isExpired ? (
+                                      <button
+                                        onClick={() => handleDeleteItem(item)}
+                                        disabled={lockStock}
+                                        title={lockStock ? "Unlock stock editing to delete expired items" : "Remove expired item from checkup roster"}
+                                        className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1 mx-auto active:scale-[0.95] ${lockStock
+                                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none'
+                                          : 'border-red-200 bg-red-50 text-red-650 hover:bg-red-100 hover:text-red-700 hover:shadow-sm'
+                                          }`}
+                                      >
+                                        <Trash2 size={12} />
+                                        Delete
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 font-bold">—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan={9} className="py-12 text-center text-slate-400 font-bold">
+                                No matching items found.
                               </td>
                             </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={9} className="py-12 text-center text-slate-400 font-bold">
-                            No matching items found.
-                          </td>
-                        </tr>
-                      )}
-                      {/* ── Total Stock Volume Footer Row ── */}
-                      {activeTab !== 'expired_inventory' && (
-                        <tr className="bg-slate-900 text-white border-t-2 border-slate-700">
-                          <td className="py-3.5 px-4 font-black text-[11px] tracking-tight" colSpan={2}>
-                            Total Stock Volume (All Purchases)
-                          </td>
-                          <td className="py-3.5 px-4 text-center" colSpan={3} />
-                          <td className="py-3.5 px-4 text-center">
-                            <span className="text-[13px] font-black text-white">
-                              {filteredItems.reduce((sum, item) => {
-                                const cell = getCell(item);
-                                return sum + (parseInt(cell.stock_in_hands, 10) || 0);
-                              }, 0).toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <span className="text-[13px] font-black text-white">
-                              {filteredItems.reduce((sum, item) => {
-                                const cell = getCell(item);
-                                return sum + (parseInt(cell.consumed, 10) || 0);
-                              }, 0).toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <span className="text-[13px] font-black text-white">
-                              {filteredItems.reduce((sum, item) => {
-                                const cell = getCell(item);
-                                return sum + (parseInt(cell.balance, 10) || 0);
-                              }, 0).toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4" colSpan={2} />
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                          )}
+                          {/* ── Total Stock Volume Footer Row ── */}
+                          {activeTab !== 'expired_inventory' && (
+                            <tr className="bg-slate-900 text-white border-t-2 border-slate-700">
+                              <td className="py-3.5 px-4 font-black text-[11px] tracking-tight" colSpan={2}>
+                                Total Stock Volume (All Purchases)
+                              </td>
+                              <td className="py-3.5 px-4 text-center" colSpan={3} />
+                              <td className="py-3.5 px-4 text-center">
+                                <span className="text-[13px] font-black text-white">
+                                  {filteredItems.reduce((sum, item) => {
+                                    const cell = getCell(item);
+                                    return sum + (parseInt(cell.stock_in_hands, 10) || 0);
+                                  }, 0).toLocaleString()}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-center">
+                                <span className="text-[13px] font-black text-white">
+                                  {filteredItems.reduce((sum, item) => {
+                                    const cell = getCell(item);
+                                    return sum + (parseInt(cell.consumed, 10) || 0);
+                                  }, 0).toLocaleString()}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-center">
+                                <span className="text-[13px] font-black text-white">
+                                  {filteredItems.reduce((sum, item) => {
+                                    const cell = getCell(item);
+                                    return sum + (parseInt(cell.balance, 10) || 0);
+                                  }, 0).toLocaleString()}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4" colSpan={2} />
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
                 </div>
-              </Card>
-            </div>
-            </div>
-            ) : (
-              /* ── 2. FULL MONTH MATRIX EXCEL SPREADSHEET ── */
-              <Card className="p-6 border border-slate-200 shadow bg-white rounded-[24px] overflow-hidden">
-            <div className="mb-4 bg-blue-50 border border-blue-100 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-              <div>
-                <h3 className="text-xs font-black text-blue-800 uppercase tracking-widest">Interactive Audit Grid</h3>
-                <p className="text-[11px] text-blue-700/80 font-bold mt-1">Full month horizontal spreadsheet checkup for {getMonthLabel(monthYear)}. Scroll horizontally to audit cell states.</p>
               </div>
-              <span className="text-[10px] font-extrabold uppercase bg-blue-100 border border-blue-200 px-3 py-1 rounded text-blue-800">
-                Formula Reconciled: Balance = Stock - Consumed
-              </span>
-            </div>
+            ) : (
+              /* ── 2. STOCK CHANGES LIGHTWEIGHT OVERVIEW ── */
+              <div className="space-y-6">
+                {/* Header & Time Filters Card */}
+                <Card className="p-6 border border-slate-200 shadow bg-white rounded-[24px]">
+                  <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 pb-6 border-b border-slate-100">
+                    <div>
+                      <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                        <Activity className="h-4.5 w-4.5 text-[#003A44]" />
+                        Stock Changes Overview
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-bold mt-1">Lightweight audit timeline tracking stock additions, edits, and ward consumptions.</p>
+                    </div>
 
-            {/* ── Day range pagination & Jump to Day bar ── */}
-            {(() => {
-              const [y, m] = monthYear.split('-');
-              const daysInMonth = new Date(parseInt(y, 10), parseInt(m, 10), 0).getDate();
-              return (
-                <div className="mb-4 flex flex-wrap justify-between items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-4 select-none">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Spreadsheet Columns Range</span>
-                    <div className="flex bg-slate-200/60 p-1 rounded-xl border border-slate-300/30">
+                    {/* Time Filters buttons */}
+                    <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl border border-slate-200/50">
                       {[
-                        { label: 'Days 1 – 10', value: '1-10' },
-                        { label: 'Days 11 – 20', value: '11-20' },
-                        { label: `Days 21 – ${daysInMonth}`, value: '21-30' },
-                        { label: 'Full Month (Slow)', value: 'all' },
-                      ].map((range) => (
+                        { label: 'Daily', value: 'daily' },
+                        { label: 'Weekly', value: 'weekly' },
+                        { label: 'Monthly', value: 'monthly' },
+                        { label: 'Quarterly', value: 'quarterly' },
+                        { label: 'Yearly', value: 'yearly' },
+                        { label: 'All Time', value: 'all' }
+                      ].map((itemFilter) => (
                         <button
-                          key={range.value}
-                          onClick={() => setDayRange(range.value)}
-                          className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${dayRange === range.value ? 'bg-[#0369a1] text-white shadow-sm font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
+                          key={itemFilter.value}
+                          onClick={() => setTimeFilter(itemFilter.value)}
+                          className={`px-3.5 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${timeFilter === itemFilter.value
+                            ? 'bg-[#003A44] text-white shadow-sm font-black'
+                            : 'text-slate-655 hover:text-slate-900 hover:bg-white/50'
+                            }`}
                         >
-                          {range.label}
+                          {itemFilter.label}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Jump to Day bar */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 shrink-0 mr-1">Jump to Day:</span>
-                    <select
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val) {
-                          const dNum = parseInt(val, 10);
-                          // Automatically switch to correct dayRange block first
-                          if (dNum <= 10) setDayRange('1-10');
-                          else if (dNum <= 20) setDayRange('11-20');
-                          else setDayRange('21-30');
-                          
-                          // Wait for render cycle, then jump
-                          setTimeout(() => jumpToDay(dNum), 150);
-                        }
-                        e.target.value = ''; // Reset select after jump
-                      }}
-                      className="bg-white border border-slate-200 text-slate-700 text-xs font-black rounded-xl px-3 py-1.5 outline-none hover:bg-slate-50 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer shadow-sm"
-                    >
-                      <option value="">-- Select Day --</option>
-                      {Array.from({ length: daysInMonth }).map((_, idx) => {
-                        const d = idx + 1;
-                        const isToday = d === new Date().getDate() && monthYear === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-                        return (
-                          <option key={d} value={d}>
-                            Day {d} {isToday ? '(Today)' : ''}
-                          </option>
-                        );
-                      })}
-                    </select>
+                  {/* Summary Stats Grid */}
+                  {(() => {
+                    const filtered = getFilteredLogs();
+                    const totalOperations = filtered.length;
+                    const itemsAffected = new Set(filtered.map(l => l.item_name)).size;
+                    const uniqueUsers = new Set(filtered.map(l => l.updated_by)).size;
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-center">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Total Operations</span>
+                          <span className="text-xl font-black text-slate-800 leading-none mt-1.5">{totalOperations}</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-center">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Items Affected</span>
+                          <span className="text-xl font-black text-[#003A44] leading-none mt-1.5">{itemsAffected}</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-center">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Active Auditors</span>
+                          <span className="text-xl font-black text-slate-700 leading-none mt-1.5">{uniqueUsers}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Search filter for changes */}
+                  <div className="relative mb-4">
+                    <Search className="absolute left-3.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search log by item name or username..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 text-xs font-bold text-slate-700 placeholder-slate-400 bg-slate-50/80 border border-slate-200 rounded-xl outline-none focus:border-sky-500 focus:bg-white transition-all shadow-sm"
+                    />
                   </div>
-                </div>
-              );
-            })()}
 
-            {/* Matrix horizontal scroll container */}
-            <div ref={matrixScrollRef} className="overflow-x-auto max-h-[70vh] border border-slate-200 rounded-2xl relative">
-              <table 
-                className="border-collapse text-[10px] text-left text-slate-600"
-                style={{ minWidth: dayRange === 'all' ? '5000px' : `${activeDays.length * 165 + 260}px` }}
-              >
-                {/* Row 1 Header: Title + Day numbers repeating */}
-                <thead>
-                  <tr className="bg-slate-800 text-white font-extrabold select-none h-10">
-                    <th className="sticky left-0 bg-slate-800 border-r border-slate-700 px-4 text-[11px] font-black z-20 w-[240px]">
-                      MONTHLY STOCK {getMonthLabel(monthYear)}
-                    </th>
-                    <th className="border-r border-slate-700 px-2 text-center w-8">
-                      {/* Spacer */}
-                    </th>
-                    {activeDays.map((d) => {
-                      return (
-                        <React.Fragment key={d}>
-                          <th id={`day-col-${d}`} colSpan={4} className="border-r border-slate-700 text-center font-black uppercase text-[10px] tracking-wider bg-slate-700/50">
-                            Day {d} (AM)
-                          </th>
-                          <th colSpan={4} className="border-r border-slate-700 text-center font-black uppercase text-[10px] tracking-wider bg-slate-700">
-                            Day {d} (PM)
-                          </th>
-                          {/* Blank spacer column */}
-                          <th className="border-r border-slate-700 w-3 bg-slate-900"></th>
-                        </React.Fragment>
-                      );
-                    })}
-                  </tr>
-
-                  {/* Row 2 Header: Stock Daily Check-up + Session labels merged */}
-                  <tr className="bg-[#00B0F0] text-white font-black text-center h-10 select-none border-b border-sky-400">
-                    <th className="sticky left-0 bg-[#00B0F0] border-r border-sky-400 px-4 text-left z-20">
-                      STOCK DAILY CHECK-UP
-                    </th>
-                    <th className="border-r border-sky-400">
-                      {/* Spacer */}
-                    </th>
-                    {activeDays.map((d) => {
-                      return (
-                        <React.Fragment key={d}>
-                          <th colSpan={4} className="border-r border-sky-400 bg-sky-600 uppercase text-[9px] tracking-widest text-sky-100 font-extrabold">
-                            AM CONS
-                          </th>
-                          <th colSpan={4} className="border-r border-sky-400 bg-sky-700 uppercase text-[9px] tracking-widest text-sky-100 font-extrabold">
-                            PM CONS
-                          </th>
-                          <th className="border-r border-sky-400 w-3 bg-slate-900"></th>
-                        </React.Fragment>
-                      );
-                    })}
-                  </tr>
-
-                  {/* Row 3 Header: Column definitions tall h = 81pt/80px */}
-                  <tr className="bg-slate-100 text-slate-600 border-b border-slate-200 h-[64px] align-bottom select-none">
-                    <th className="sticky left-0 bg-slate-100 border-r border-slate-300 px-4 pb-2 text-[10px] font-black z-20">
-                      ITEMS
-                    </th>
-                    <th className="border-r border-slate-300 w-8 px-1 pb-2 text-center text-slate-400 font-bold">
-                      SPC
-                    </th>
-                    {activeDays.map((d) => {
-                      return (
-                        <React.Fragment key={d}>
-                          {/* AM sub columns */}
-                          <th className="border-r border-slate-200 px-2 pb-2 text-center font-bold font-mono text-[9px] w-[55px] hover:bg-slate-200/50">Stock</th>
-                          <th className="border-r border-slate-200 px-2 pb-2 text-center font-bold font-mono text-[9px] w-[55px] hover:bg-slate-200/50">Cons</th>
-                          <th className="border-r border-slate-200 px-2 pb-2 text-center font-bold font-mono text-[9px] w-[55px] hover:bg-slate-200/50">Bal</th>
-                          <th className="border-r border-slate-300 px-2 pb-2 text-center font-bold text-[9px] w-[110px] hover:bg-slate-200/50">Nurse</th>
-
-                          {/* PM sub columns */}
-                          <th className="border-r border-slate-200 px-2 pb-2 text-center font-bold font-mono text-[9px] w-[55px] hover:bg-slate-200/50">Stock</th>
-                          <th className="border-r border-slate-200 px-2 pb-2 text-center font-bold font-mono text-[9px] w-[55px] hover:bg-slate-200/50">Cons</th>
-                          <th className="border-r border-slate-200 px-2 pb-2 text-center font-bold font-mono text-[9px] w-[55px] hover:bg-slate-200/50">Bal</th>
-                          <th className="border-r border-slate-300 px-2 pb-2 text-center font-bold text-[9px] w-[110px] hover:bg-slate-200/50">Nurse</th>
-
-                          <th className="border-r border-slate-300 w-3 bg-slate-900"></th>
-                        </React.Fragment>
-                      );
-                    })}
-                  </tr>
-                </thead>
-
-                {/* Spreadsheet Body */}
-                <tbody className="divide-y divide-slate-200 bg-white font-bold text-slate-800">
-                  {filteredItems.length > 0 ? (
-                    filteredItems.map((item, rIdx) => (
-                      <tr key={item} className="hover:bg-slate-50 h-10 select-none align-middle">
-                        {/* Column A (ITEMS) - Frozen left */}
-                        <td className="sticky left-0 bg-white border-r border-slate-300 px-4 font-black z-10 text-[11px] shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-[240px]">
-                          {item}
-                        </td>
-                        {/* Column B (Spacer column) */}
-                        <td className="border-r border-slate-300 w-8 bg-slate-50 text-center font-bold text-slate-300">
-                          {ALL_ITEMS.indexOf(item) + 1}
-                        </td>
-                        {/* All Day Columns */}
-                        {activeDays.map((d) => {
-                          const cellAM = getCell(item, d, 'AM');
-                          const cellPM = getCell(item, d, 'PM');
-
-                          return (
-                            <React.Fragment key={d}>
-                              {/* AM Session inputs */}
-                              <td className={`border-r border-slate-200 p-0 text-center font-mono ${lockStock ? 'bg-slate-100/50' : ''}`}>
-                                <input
-                                  value={cellAM.stock_in_hands || ''}
-                                  onChange={(e) => {
-                                    setCurrentDay(d);
-                                    setCurrentSession('AM');
-                                    handleCellEdit(item, 'stock_in_hands', e.target.value, d, 'AM');
-                                  }}
-                                  placeholder="0"
-                                  className={`w-full text-center h-8 outline-none text-[10px] font-extrabold transition-all ${lockStock ? 'text-slate-400 cursor-not-allowed select-none' : 'bg-transparent text-slate-900 focus:bg-sky-50'}`}
-                                  disabled={lockStock}
-                                />
+                  {/* Audit Logs Timeline Table */}
+                  <div className="overflow-x-auto rounded-xl border border-slate-200/80 shadow-sm">
+                    {loadingLogs ? (
+                      <div className="flex justify-center items-center py-12 bg-white">
+                        <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
+                      </div>
+                    ) : getFilteredLogs().length > 0 ? (
+                      <table className="w-full text-left text-xs bg-white">
+                        <thead>
+                          <tr className="bg-slate-50 text-slate-500 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
+                            <th className="py-3 px-4">Date / Time</th>
+                            <th className="py-3 px-4">Item Name</th>
+                            <th className="py-3 px-4">Period</th>
+                            <th className="py-3 px-4">Stock Change</th>
+                            <th className="py-3 px-4">Total Consumed</th>
+                            <th className="py-3 px-4">Ward Breakdown Details</th>
+                            <th className="py-3 px-4">Audited By</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                          {paginatedLogs.map((log, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3 px-4 text-[10px] text-slate-500 whitespace-nowrap">
+                                {new Date(log.updated_at).toLocaleString()}
                               </td>
-                              <td className="border-r border-slate-200 p-0 text-center font-mono">
-                                <input
-                                  value={cellAM.consumed || ''}
-                                  onChange={(e) => {
-                                    setCurrentDay(d);
-                                    setCurrentSession('AM');
-                                    handleCellEdit(item, 'consumed', e.target.value, d, 'AM');
-                                  }}
-                                  placeholder="0"
-                                  disabled={isNurse && checkIsPast(monthYear, d, 'AM')}
-                                  className={`w-full text-center h-8 bg-transparent border-none outline-none text-[10px] font-extrabold focus:bg-sky-50 ${
-                                    (isNurse && checkIsPast(monthYear, d, 'AM')) ? 'text-slate-400 cursor-not-allowed select-none' : ''
+                              <td className="py-3 px-4 font-bold text-slate-900 text-[11px]">
+                                {log.item_name}
+                              </td>
+                              <td className="py-3 px-4 whitespace-nowrap">
+                                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-extrabold text-[9px] uppercase tracking-wider">
+                                  Day {log.day} &bull; {log.session}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 whitespace-nowrap font-mono text-[10px]">
+                                <span className="text-slate-400">{log.old_stock}</span>
+                                <span className="mx-1.5 text-slate-400">&rarr;</span>
+                                <span className="font-bold text-slate-800">{log.new_stock}</span>
+                              </td>
+                              <td className="py-3 px-4 whitespace-nowrap font-mono text-[10px]">
+                                <span className="text-slate-400">{log.old_consumed}</span>
+                                <span className="mx-1.5 text-slate-400">&rarr;</span>
+                                <span className="font-bold text-slate-800">{log.new_consumed}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="space-y-1">
+                                  {/* STN1 details */}
+                                  {((log.old_consumed_obs1 !== undefined && log.old_consumed_obs1 !== log.new_consumed_obs1) ||
+                                    (log.old_user_stn1 !== undefined && log.old_user_stn1 !== log.new_user_stn1)) && (
+                                      <div className="pl-2 border-l-2 border-sky-400 bg-sky-50/20 py-0.5 rounded-r">
+                                        <span className="font-bold text-sky-700 text-[8px] uppercase tracking-wider block">STN1</span>
+                                        <p className="text-[8px] text-slate-500">
+                                          Use: {log.old_consumed_obs1} &rarr; <span className="font-bold text-sky-850">{log.new_consumed_obs1}</span>
+                                          {log.old_user_stn1 !== log.new_user_stn1 && ` | RN: "${log.old_user_stn1 || 'None'}" -> "${log.new_user_stn1 || 'None'}"`}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                  {/* MINOR details */}
+                                  {((log.old_consumed_minor !== undefined && log.old_consumed_minor !== log.new_consumed_minor) ||
+                                    (log.old_user_minor !== undefined && log.old_user_minor !== log.new_user_minor)) && (
+                                      <div className="pl-2 border-l-2 border-emerald-400 bg-emerald-50/20 py-0.5 rounded-r">
+                                        <span className="font-bold text-emerald-700 text-[8px] uppercase tracking-wider block">MINOR</span>
+                                        <p className="text-[8px] text-slate-500">
+                                          Use: {log.old_consumed_minor} &rarr; <span className="font-bold text-emerald-850">{log.new_consumed_minor}</span>
+                                          {log.old_user_minor !== log.new_user_minor && ` | RN: "${log.old_user_minor || 'None'}" -> "${log.new_user_minor || 'None'}"`}
+                                        </p>
+                                      </div>
+                                    )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 font-bold text-slate-800 text-[10px]">
+                                {log.updated_by}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="text-center py-12 bg-white text-slate-400 font-bold">
+                        No stock changes found for the selected time filter.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {filteredLogs.length > 0 && (
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 mt-2 border-t border-slate-100 select-none">
+                      <div className="text-[11px] text-slate-500 font-medium">
+                        Showing <span className="font-extrabold text-slate-750">{Math.min(filteredLogs.length, (safeLogsPage - 1) * itemsPerPage + 1)}</span> to{' '}
+                        <span className="font-extrabold text-slate-750">{Math.min(filteredLogs.length, safeLogsPage * itemsPerPage)}</span> of{' '}
+                        <span className="font-extrabold text-slate-750">{filteredLogs.length}</span> operations
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setLogsPage(prev => Math.max(1, prev - 1))}
+                          disabled={safeLogsPage === 1}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+
+                        {(() => {
+                          const pages = [];
+                          const maxVisible = 5;
+                          let start = Math.max(1, safeLogsPage - 2);
+                          let end = Math.min(totalPages, start + maxVisible - 1);
+                          if (end - start + 1 < maxVisible) {
+                            start = Math.max(1, end - maxVisible + 1);
+                          }
+
+                          for (let i = start; i <= end; i++) {
+                            pages.push(
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => setLogsPage(i)}
+                                className={`min-w-8 h-8 px-2 rounded-lg text-xs font-bold transition-all border ${safeLogsPage === i
+                                  ? 'bg-[#0369a1] text-white border-[#0369a1] shadow-sm'
+                                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
                                   }`}
-                                />
-                              </td>
-                              <td className={`border-r border-slate-200 px-1 text-center font-mono select-none ${cellAM.balance < 0 ? 'text-red-600 bg-red-50' : 'text-slate-500 bg-slate-50/50'}`}>
-                                {cellAM.balance !== '' ? cellAM.balance : 0}
-                              </td>
-                              <td className="border-r border-slate-300 p-0">
-                                <input
-                                  value={cellAM.responsible_name || ''}
-                                  onChange={(e) => {
-                                    setCurrentDay(d);
-                                    setCurrentSession('AM');
-                                    handleCellEdit(item, 'responsible_name', e.target.value, d, 'AM');
-                                  }}
-                                  placeholder="RN"
-                                  className="w-full px-2 h-8 bg-transparent border-none outline-none text-[9px] focus:bg-sky-50"
-                                />
-                              </td>
+                              >
+                                {i}
+                              </button>
+                            );
+                          }
+                          return pages;
+                        })()}
 
-                              {/* PM Session inputs */}
-                              <td className={`border-r border-slate-200 p-0 text-center font-mono ${lockStock ? 'bg-slate-100/50' : ''}`}>
-                                <input
-                                  value={cellPM.stock_in_hands || ''}
-                                  onChange={(e) => {
-                                    setCurrentDay(d);
-                                    setCurrentSession('PM');
-                                    handleCellEdit(item, 'stock_in_hands', e.target.value, d, 'PM');
-                                  }}
-                                  placeholder="0"
-                                  className={`w-full text-center h-8 outline-none text-[10px] font-extrabold transition-all ${lockStock ? 'text-slate-400 cursor-not-allowed select-none' : 'bg-transparent text-slate-900 focus:bg-sky-50'}`}
-                                  disabled={lockStock}
-                                />
-                              </td>
-                              <td className="border-r border-slate-200 p-0 text-center font-mono">
-                                <input
-                                  value={cellPM.consumed || ''}
-                                  onChange={(e) => {
-                                    setCurrentDay(d);
-                                    setCurrentSession('PM');
-                                    handleCellEdit(item, 'consumed', e.target.value, d, 'PM');
-                                  }}
-                                  placeholder="0"
-                                  disabled={isNurse && checkIsPast(monthYear, d, 'PM')}
-                                  className={`w-full text-center h-8 bg-transparent border-none outline-none text-[10px] font-extrabold focus:bg-sky-50 ${
-                                    (isNurse && checkIsPast(monthYear, d, 'PM')) ? 'text-slate-400 cursor-not-allowed select-none' : ''
-                                  }`}
-                                />
-                              </td>
-                              <td className={`border-r border-slate-200 px-1 text-center font-mono select-none ${cellPM.balance < 0 ? 'text-red-600 bg-red-50' : 'text-slate-500 bg-slate-50/50'}`}>
-                                {cellPM.balance !== '' ? cellPM.balance : 0}
-                              </td>
-                              <td className="border-r border-slate-300 p-0">
-                                <input
-                                  value={cellPM.responsible_name || ''}
-                                  onChange={(e) => {
-                                    setCurrentDay(d);
-                                    setCurrentSession('PM');
-                                    handleCellEdit(item, 'responsible_name', e.target.value, d, 'PM');
-                                  }}
-                                  placeholder="RN"
-                                  className="w-full px-2 h-8 bg-transparent border-none outline-none text-[9px] focus:bg-sky-50"
-                                />
-                              </td>
-
-                              {/* Blank spacer column */}
-                              <td className="border-r border-slate-300 w-3 bg-slate-900 select-none"></td>
-                            </React.Fragment>
-                          );
-                        })}
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={activeDays.length * 9 + 2} className="py-12 text-center text-slate-400 font-bold text-sm">
-                        No matching items found.
-                      </td>
-                    </tr>
+                        <button
+                          type="button"
+                          onClick={() => setLogsPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={safeLogsPage === totalPages}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
-              </Card>
+                </Card>
+              </div>
             )}
           </div>
         )}
       </div>
 
+      {/* ── Unlock Stock Password Modal ── */}
+      <Modal
+        isOpen={showUnlockModal}
+        onClose={() => {
+          setShowUnlockModal(false);
+          setUnlockPassword('');
+        }}
+        title="Unlock Stock Editing"
+        maxWidth="400px"
+      >
+        <form onSubmit={handleUnlockStock} className="space-y-4 text-left p-2">
+          <p className="text-[11px] text-slate-500 font-bold leading-normal mb-4">
+            Stock count editing is locked! Ask Admin for access.
+          </p>
+
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Unlock Password</label>
+            <input
+              required
+              type="password"
+              placeholder="Enter monthly password"
+              value={unlockPassword}
+              onChange={(e) => setUnlockPassword(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:border-[#0369a1] outline-none transition-all"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 select-none">
+            <Button
+              type="button"
+              onClick={() => {
+                setShowUnlockModal(false);
+                setUnlockPassword('');
+              }}
+              className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={unlocking}
+              className="px-4 py-2 bg-[#0369a1] hover:bg-[#075985] text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center gap-1.5"
+            >
+              {unlocking && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Unlock Stock
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Admin: Stock Lock Password Modal ── */}
+      {isAdmin && (
+        <Modal
+          isOpen={showPasswordModal}
+          onClose={() => {
+            setShowPasswordModal(false);
+            setStockPassword(null);
+            setStockPasswordVisible(false);
+            setStockPasswordCopied(false);
+          }}
+          title="Stock Lock Password"
+          maxWidth="440px"
+        >
+          <div className="space-y-5 text-left p-2">
+
+            {/* Info banner */}
+            <div className="flex items-start gap-3 bg-rose-50 border border-rose-100 rounded-2xl px-4 py-3">
+              <KeyRound size={16} className="text-rose-500 mt-0.5 shrink-0" />
+              <p className="text-[11px] text-rose-700 font-bold leading-relaxed">
+                This is the monthly password nurses must enter to unlock stock editing. Keep it confidential and only share directly with authorized personnel.
+              </p>
+            </div>
+
+            {/* Month Selector */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Month Period</label>
+              <select
+                value={passwordMonth}
+                onChange={(e) => {
+                  setPasswordMonth(e.target.value);
+                  setStockPassword(null);
+                  setStockPasswordVisible(false);
+                  setStockPasswordCopied(false);
+                  fetchStockPassword(e.target.value);
+                }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-black text-slate-800 focus:bg-white focus:border-rose-400 outline-none transition-all cursor-pointer"
+              >
+                {DYNAMIC_MONTHS.map(m => (
+                  <option key={m} value={m}>{getMonthLabel(m)}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Password display */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Current Password</label>
+              <div className="relative">
+                {stockPasswordLoading ? (
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                    <Loader2 size={14} className="animate-spin text-slate-400" />
+                    <span className="text-xs text-slate-400 font-bold">Loading password...</span>
+                  </div>
+                ) : stockPassword ? (
+                  <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 pr-2">
+                    <span className="flex-1 font-mono text-sm font-black tracking-[0.2em] text-emerald-400 select-all">
+                      {stockPasswordVisible ? stockPassword : '••••••••'}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setStockPasswordVisible(v => !v)}
+                        className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                        title={stockPasswordVisible ? 'Hide password' : 'Show password'}
+                      >
+                        {stockPasswordVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCopyPassword}
+                        className={`p-1.5 rounded-lg transition-all border-none bg-transparent cursor-pointer ${stockPasswordCopied ? 'text-emerald-400' : 'text-slate-400 hover:text-white'}`}
+                        title="Copy to clipboard"
+                      >
+                        {stockPasswordCopied ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-400 font-bold text-center">
+                    No password generated yet for this month.
+                  </div>
+                )}
+              </div>
+              {stockPasswordCopied && (
+                <p className="text-[10px] text-emerald-600 font-black flex items-center gap-1">
+                  <Check size={10} /> Copied to clipboard!
+                </p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-between items-center pt-1 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setStockPassword(null);
+                  setStockPasswordVisible(false);
+                }}
+                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Close
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRegeneratePassword}
+                disabled={regenerating}
+                className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 disabled:opacity-60 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-md shadow-rose-200 cursor-pointer border-none"
+              >
+                {regenerating
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : <RefreshCw size={12} />
+                }
+                {regenerating ? 'Generating...' : 'Regenerate Password'}
+              </button>
+            </div>
+
+            <p className="text-[9px] text-slate-400 font-bold text-center border-t border-slate-100 pt-3">
+              Regenerating creates a new password and invalidates the old one. All admins will be notified.
+            </p>
+          </div>
+        </Modal>
+      )}
+
       {/* ── Create New Item Modal ── */}
+
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
@@ -2086,8 +2511,8 @@ export default function DailyInventoryCheckup() {
                       <td className="py-2.5 px-4 text-center">
                         <Badge className={
                           req.urgency === 'Critical' ? 'bg-red-100 text-red-800 border-red-300' :
-                          req.urgency === 'High'     ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                          'bg-slate-50 text-slate-600 border-slate-200'
+                            req.urgency === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                              'bg-slate-50 text-slate-600 border-slate-200'
                         }>
                           {req.urgency || 'Normal'}
                         </Badge>
@@ -2096,8 +2521,8 @@ export default function DailyInventoryCheckup() {
                       <td className="py-2.5 px-4 text-center">
                         <Badge className={
                           req.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                          req.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                          'bg-amber-50 text-amber-700 border-amber-200'
+                            req.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-amber-50 text-amber-700 border-amber-200'
                         }>
                           {req.status}
                         </Badge>
@@ -2137,11 +2562,10 @@ export default function DailyInventoryCheckup() {
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-slate-50 rounded-xl p-3 text-center">
               <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Status</p>
-              <Badge className={`mt-1 ${
-                selectedReq?.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+              <Badge className={`mt-1 ${selectedReq?.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                 selectedReq?.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                'bg-amber-50 text-amber-700 border-amber-200'
-              }`}>{selectedReq?.status}</Badge>
+                  'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>{selectedReq?.status}</Badge>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
               <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Urgency</p>

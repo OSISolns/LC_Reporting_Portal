@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import { Toaster } from 'react-hot-toast';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -57,6 +58,7 @@ function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
+        <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
         <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
