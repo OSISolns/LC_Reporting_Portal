@@ -42,7 +42,7 @@ class DailyReport {
    */
   static async getByDate(reportDate) {
     const { rows: metrics } = await db.query(
-      `SELECT id, report_date, provider_id, department_id, patient_count 
+      `SELECT id, report_date, provider_id, department_id, patient_count, follow_up_count 
        FROM daily_report_metrics 
        WHERE report_date = $1`,
       [reportDate]
@@ -76,9 +76,9 @@ class DailyReport {
     // Bulk insert new metrics
     for (const item of metrics) {
       statements.push({
-        sql: `INSERT INTO daily_report_metrics (report_date, provider_id, department_id, patient_count) 
-              VALUES ($1, $2, $3, $4)`,
-        args: [reportDate, item.provider_id, item.department_id, parseInt(item.patient_count, 10) || 0]
+        sql: `INSERT INTO daily_report_metrics (report_date, provider_id, department_id, patient_count, follow_up_count) 
+              VALUES ($1, $2, $3, $4, $5)`,
+        args: [reportDate, item.provider_id, item.department_id, parseInt(item.patient_count, 10) || 0, parseInt(item.follow_up_count, 10) || 0]
       });
     }
 
@@ -104,7 +104,7 @@ class DailyReport {
     const end = `${year}-${formattedMonth}-31`; // LibSQL handles date comparison perfectly
 
     const { rows: metrics } = await db.query(
-      `SELECT m.id, m.report_date, m.provider_id, m.department_id, m.patient_count,
+      `SELECT m.id, m.report_date, m.provider_id, m.department_id, m.patient_count, m.follow_up_count,
               p.name as provider_name, p.title as provider_title, d.name as department_name
        FROM daily_report_metrics m
        JOIN providers p ON m.provider_id = p.id
@@ -140,7 +140,7 @@ class DailyReport {
    */
   static async getWeeklyData(startDate, endDate) {
     const { rows: metrics } = await db.query(
-      `SELECT m.id, m.report_date, m.provider_id, m.department_id, m.patient_count,
+      `SELECT m.id, m.report_date, m.provider_id, m.department_id, m.patient_count, m.follow_up_count,
               p.name as provider_name, p.title as provider_title, d.name as department_name
        FROM daily_report_metrics m
        JOIN providers p ON m.provider_id = p.id

@@ -65,6 +65,9 @@ router.get('/inventory/export', authorizeRoles(['nurse', 'chef-nurse', 'admin', 
 router.post('/inventory/sync-central-stock', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant']), clinicalController.syncCentralStockToNursing);
 router.get('/inventory/items', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant']), clinicalController.getInventoryItems);
 router.post('/inventory/bulk', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant']), clinicalController.saveInventoryBulk);
+router.post('/inventory/unlock', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant']), clinicalController.unlockInventory);
+router.get('/inventory/stock-password', authorizeRoles(['admin']), clinicalController.getStockPassword);
+router.post('/inventory/regenerate-stock-password', authorizeRoles(['admin']), clinicalController.regenerateStockPassword);
 router.post('/inventory/sync', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant']), clinicalController.triggerInventorySync);
 router.get('/inventory/change-logs', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'pa']), clinicalController.getInventoryChangeLogs);
 

@@ -166,13 +166,13 @@ const syncClinicalUsagesToInventory = async () => {
         identification = typeof obs.identification_json === 'string'
           ? JSON.parse(obs.identification_json)
           : (obs.identification_json || {});
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         medication_mar = typeof obs.medication_mar_json === 'string'
           ? JSON.parse(obs.medication_mar_json)
           : (obs.medication_mar_json || {});
-      } catch (e) {}
+      } catch (e) { }
 
       const dateStr = identification.date;
       if (!dateStr || !dateStr.includes('-')) return;
@@ -493,12 +493,86 @@ exports.getDocChecksum = async (req, res) => {
 };
 
 // ─── Inventory: Get all stock for a month ─────────────────────────────────────
+// Helper to generate a random 8-character password
+function generateRandomPassword(length = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let pwd = '';
+  for (let i = 0; i < length; i++) {
+    pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pwd;
+}
+
+// Helper to format month year (e.g. 2026-06 -> June 2026)
+function formatMonthYear(my) {
+  if (!my || !my.includes('-')) return my;
+  const [year, month] = my.split('-');
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const mIndex = parseInt(month, 10) - 1;
+  if (mIndex >= 0 && mIndex < 12) {
+    return `${monthNames[mIndex]} ${year}`;
+  }
+  return my;
+}
+
+// ─── Inventory: Get all stock for a month ─────────────────────────────────────
 exports.getInventory = async (req, res) => {
   try {
     const { month_year } = req.query;
     if (!month_year) {
       return res.status(400).json({ success: false, message: 'month_year query parameter is required' });
     }
+
+    // Auto-generate unlock password if it doesn't exist for this month
+    const { rows: pwdRows } = await db.query(
+      `SELECT password FROM nursing_unlock_passwords WHERE month_year = $1`,
+      [month_year]
+    );
+
+    let currentPassword = '';
+    if (pwdRows.length === 0) {
+      currentPassword = generateRandomPassword(8);
+      await db.query(
+        `INSERT INTO nursing_unlock_passwords (month_year, password) VALUES ($1, $2)`,
+        [month_year, currentPassword]
+      );
+    } else {
+      currentPassword = pwdRows[0].password;
+    }
+
+    // Always ensure admins have a notification with this month's password
+    try {
+      const Notification = require('../models/notification');
+      const User = require('../models/user');
+      const admins = await User.findByRole('admin');
+
+      const monthLabel = formatMonthYear(month_year);
+      const title = `Stock Unlock Password Generated`;
+      const message = `The stock unlock password for ${monthLabel} has been generated: ${currentPassword}`;
+
+      for (const admin of admins) {
+        // Query if notification already exists for this admin
+        const { rows: existingNotifs } = await db.query(
+          `SELECT id FROM notifications WHERE userId = $1 AND title = $2`,
+          [admin.id, title]
+        );
+        if (existingNotifs.length === 0) {
+          await Notification.create({
+            userId: admin.id,
+            title,
+            message,
+            type: 'info',
+            link: '/clinical/inventory-checkup'
+          });
+        }
+      }
+    } catch (notifyErr) {
+      console.error('Failed to notify admins of stock password:', notifyErr);
+    }
+
     const { rows } = await db.query(
       `SELECT * FROM nursing_monthly_stock WHERE month_year = $1`,
       [month_year]
@@ -509,6 +583,123 @@ exports.getInventory = async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+// ─── Inventory: Unlock editing for a month ────────────────────────────────────
+exports.unlockInventory = async (req, res) => {
+  try {
+    const { month_year, password } = req.body;
+    if (!month_year || !password) {
+      return res.status(400).json({ success: false, message: 'month_year and password are required' });
+    }
+
+    const { rows } = await db.query(
+      `SELECT password FROM nursing_unlock_passwords WHERE month_year = $1`,
+      [month_year]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Unlock password not found for this month.' });
+    }
+
+    const correctPassword = rows[0].password;
+    if (correctPassword === password.trim()) {
+      // Log the unlock action
+      try {
+        const { logAction } = require('../middleware/audit');
+        await logAction(req, 'UNLOCK_STOCK', 'nursing_stock', null, { month_year });
+      } catch (logErr) {
+        console.error('Failed to log unlock action:', logErr);
+      }
+
+      return res.json({ success: true, message: 'Stock editing unlocked successfully.' });
+    } else {
+      return res.status(401).json({ success: false, message: 'Incorrect password. Stock editing remains locked.' });
+    }
+  } catch (error) {
+    console.error('Error in unlockInventory:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Inventory: Get current stock unlock password (admin only) ────────────────
+exports.getStockPassword = async (req, res) => {
+  try {
+    const { month_year } = req.query;
+    if (!month_year) {
+      return res.status(400).json({ success: false, message: 'month_year query parameter is required' });
+    }
+
+    const { rows } = await db.query(
+      `SELECT password, created_at FROM nursing_unlock_passwords WHERE month_year = $1`,
+      [month_year]
+    );
+
+    if (rows.length === 0) {
+      return res.json({ success: true, password: null, message: 'No password generated yet for this month.' });
+    }
+
+    return res.json({ success: true, password: rows[0].password, created_at: rows[0].created_at });
+  } catch (error) {
+    console.error('Error in getStockPassword:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Inventory: Regenerate stock unlock password (admin only) ─────────────────
+exports.regenerateStockPassword = async (req, res) => {
+  try {
+    const { month_year } = req.body;
+    if (!month_year) {
+      return res.status(400).json({ success: false, message: 'month_year is required' });
+    }
+
+    const newPassword = generateRandomPassword(8);
+    const monthLabel = formatMonthYear(month_year);
+
+    // Upsert the password
+    await db.query(
+      `INSERT INTO nursing_unlock_passwords (month_year, password)
+       VALUES ($1, $2)
+       ON CONFLICT (month_year) DO UPDATE SET password = EXCLUDED.password`,
+      [month_year, newPassword]
+    );
+
+    // Notify all admins of the new password
+    try {
+      const Notification = require('../models/notification');
+      const User = require('../models/user');
+      const admins = await User.findByRole('admin');
+      const title = `Stock Unlock Password Regenerated`;
+      const message = `The stock unlock password for ${monthLabel} has been regenerated: ${newPassword}`;
+
+      for (const admin of admins) {
+        await Notification.create({
+          userId: admin.id,
+          title,
+          message,
+          type: 'info',
+          link: '/clinical/inventory-checkup'
+        });
+      }
+    } catch (notifyErr) {
+      console.error('Failed to notify admins of regenerated password:', notifyErr);
+    }
+
+    // Log the action
+    try {
+      const { logAction } = require('../middleware/audit');
+      await logAction(req, 'REGENERATE_STOCK_PASSWORD', 'nursing_unlock_passwords', null, { month_year });
+    } catch (logErr) {
+      console.error('Failed to log password regeneration:', logErr);
+    }
+
+    return res.json({ success: true, password: newPassword, message: `Password regenerated for ${monthLabel}.` });
+  } catch (error) {
+    console.error('Error in regenerateStockPassword:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 
 // ─── Inventory: Bulk save (from DailyInventoryCheckup) ────────────────────────
 exports.saveInventoryBulk = async (req, res) => {
@@ -522,7 +713,7 @@ exports.saveInventoryBulk = async (req, res) => {
 
     // Fetch existing records for this month/year to compare and log changes
     const { rows: existingRows } = await db.query(
-      `SELECT item_name, day, session, stock_in_hands, consumed FROM nursing_monthly_stock WHERE month_year = $1`,
+      `SELECT item_name, day, session, stock_in_hands, consumed, consumed_obs1, consumed_minor, user_stn1, user_minor FROM nursing_monthly_stock WHERE month_year = $1`,
       [month_year]
     );
 
@@ -535,17 +726,40 @@ exports.saveInventoryBulk = async (req, res) => {
     const logsToInsert = [];
 
     const statements = items.map(item => {
-      const oldStock = existingMap[`${item.item_name}-${item.day}-${item.session}`]?.stock_in_hands || 0;
-      const oldConsumed = existingMap[`${item.item_name}-${item.day}-${item.session}`]?.consumed || 0;
-      const newStock = parseInt(item.stock_in_hands, 10) || 0;
-      const newConsumed = parseInt(item.consumed, 10) || 0;
+      const existing = existingMap[`${item.item_name}-${item.day}-${item.session}`];
 
-      // If stock or consumed has changed, add to our logs list!
-      if (oldStock !== newStock || oldConsumed !== newConsumed) {
+      const oldStock = existing?.stock_in_hands || 0;
+      const oldConsumed = existing?.consumed || 0;
+      const oldObs1 = existing?.consumed_obs1 || 0;
+      const oldMinor = existing?.consumed_minor || 0;
+      const oldUObs1 = existing?.user_stn1 || '';
+      const oldUMinor = existing?.user_minor || '';
+
+      const newStock = parseInt(item.stock_in_hands, 10) || 0;
+      const newObs1 = parseInt(item.consumed_obs1, 10) || 0;
+      const newMinor = parseInt(item.consumed_minor, 10) || 0;
+      const newUObs1 = item.user_stn1 || '';
+      const newUMinor = item.user_minor || '';
+
+      // Force consistency: consumed = obs1 + minor, balance = stock - consumed
+      const newConsumed = newObs1 + newMinor;
+      const newBalance = newStock - newConsumed;
+
+      // Log if anything changed
+      if (
+        oldStock !== newStock ||
+        oldConsumed !== newConsumed ||
+        oldObs1 !== newObs1 ||
+        oldMinor !== newMinor ||
+        oldUObs1 !== newUObs1 ||
+        oldUMinor !== newUMinor
+      ) {
         logsToInsert.push({
           sql: `INSERT INTO nursing_stock_change_logs (
-              month_year, item_name, day, session, old_stock, new_stock, old_consumed, new_consumed, updated_by
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+              month_year, item_name, day, session, old_stock, new_stock, old_consumed, new_consumed, updated_by,
+              old_consumed_obs1, new_consumed_obs1, old_consumed_minor, new_consumed_minor,
+              old_user_stn1, new_user_stn1, old_user_minor, new_user_minor
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
           args: [
             month_year,
             item.item_name,
@@ -555,15 +769,24 @@ exports.saveInventoryBulk = async (req, res) => {
             newStock,
             oldConsumed,
             newConsumed,
-            updater
+            updater,
+            oldObs1,
+            newObs1,
+            oldMinor,
+            newMinor,
+            oldUObs1,
+            newUObs1,
+            oldUMinor,
+            newUMinor
           ]
         });
       }
 
       return {
         sql: `INSERT INTO nursing_monthly_stock (
-            month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, expiration_date, status, category, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+            month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, expiration_date, status, category,
+            consumed_obs1, consumed_minor, user_stn1, user_minor, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
           ON CONFLICT(month_year, item_name, day, session) DO UPDATE SET
             stock_in_hands = excluded.stock_in_hands,
             consumed = excluded.consumed,
@@ -572,6 +795,10 @@ exports.saveInventoryBulk = async (req, res) => {
             expiration_date = excluded.expiration_date,
             status = excluded.status,
             category = excluded.category,
+            consumed_obs1 = excluded.consumed_obs1,
+            consumed_minor = excluded.consumed_minor,
+            user_stn1 = excluded.user_stn1,
+            user_minor = excluded.user_minor,
             updated_at = CURRENT_TIMESTAMP`,
         args: [
           month_year,
@@ -580,11 +807,15 @@ exports.saveInventoryBulk = async (req, res) => {
           item.session,
           newStock,
           newConsumed,
-          parseInt(item.balance, 10) || 0,
+          newBalance,
           item.responsible_name || '',
           item.expiration_date || '',
           item.status || '',
-          item.category || ''
+          item.category || '',
+          newObs1,
+          newMinor,
+          newUObs1,
+          newUMinor
         ]
       };
     });
@@ -602,7 +833,7 @@ exports.getInventoryChangeLogs = async (req, res) => {
   try {
     const { date, month_year } = req.query;
     let sql = `
-      SELECT l.*, COALESCE(u.full_name, l.updated_by) as updated_by 
+      SELECT l.*, u.full_name as user_full_name 
       FROM nursing_stock_change_logs l
       LEFT JOIN users u ON LOWER(l.updated_by) = LOWER(u.username)
     `;
@@ -619,7 +850,11 @@ exports.getInventoryChangeLogs = async (req, res) => {
     sql += ' ORDER BY l.updated_at DESC';
 
     const { rows } = await db.query(sql, params);
-    res.json({ success: true, data: rows });
+    const data = rows.map(row => ({
+      ...row,
+      updated_by: row.user_full_name || row.updated_by || 'System'
+    }));
+    res.json({ success: true, data });
   } catch (error) {
     console.error('Error in getInventoryChangeLogs:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -681,9 +916,9 @@ exports.getAllObservationsList = async (req, res) => {
 
     const data = rows.map(row => {
       let triage = {};
-      try { triage = typeof row.triage_json === 'string' ? JSON.parse(row.triage_json) : (row.triage_json || {}); } catch (_) {}
+      try { triage = typeof row.triage_json === 'string' ? JSON.parse(row.triage_json) : (row.triage_json || {}); } catch (_) { }
       let identification = {};
-      try { identification = typeof row.identification_json === 'string' ? JSON.parse(row.identification_json) : (row.identification_json || {}); } catch (_) {}
+      try { identification = typeof row.identification_json === 'string' ? JSON.parse(row.identification_json) : (row.identification_json || {}); } catch (_) { }
       return {
         id: row.id,
         patient_id: row.patient_id,
@@ -731,10 +966,10 @@ exports.getCompletedPrescriptions = async (req, res) => {
     const data = [];
     for (const row of rows) {
       let medMar = {};
-      try { medMar = typeof row.medication_mar_json === 'string' ? JSON.parse(row.medication_mar_json) : (row.medication_mar_json || {}); } catch (_) {}
-      
+      try { medMar = typeof row.medication_mar_json === 'string' ? JSON.parse(row.medication_mar_json) : (row.medication_mar_json || {}); } catch (_) { }
+
       let ident = {};
-      try { ident = typeof row.identification_json === 'string' ? JSON.parse(row.identification_json) : (row.identification_json || {}); } catch (_) {}
+      try { ident = typeof row.identification_json === 'string' ? JSON.parse(row.identification_json) : (row.identification_json || {}); } catch (_) { }
 
       let fallbackName = row.patient_name;
       if (!fallbackName) {
@@ -802,7 +1037,7 @@ exports.exportInventoryExcel = async (req, res) => {
       const item = row.item_name;
       const day = row.day;
       const sess = row.session; // "AM" or "PM"
-      
+
       if (!dataMap[my]) dataMap[my] = {};
       if (!dataMap[my][item]) dataMap[my][item] = {};
       if (!dataMap[my][item][day]) dataMap[my][item][day] = {};
@@ -841,12 +1076,12 @@ exports.exportInventoryExcel = async (req, res) => {
       // Determine if previous month exists in selected months list for inter-sheet linkage
       const [year, month] = my.split('-');
       const daysInMonth = new Date(parseInt(year, 10), parseInt(month, 10), 0).getDate();
-      
+
       const prevDate = new Date(parseInt(year, 10), parseInt(month, 10) - 2, 1);
       const prevYr = prevDate.getFullYear();
       const prevMo = String(prevDate.getMonth() + 1).padStart(2, '0');
       const prevMyStr = `${prevYr}-${prevMo}`;
-      
+
       const hasPrevSheet = monthList.includes(prevMyStr);
       const prevSheetName = hasPrevSheet ? (getMonthLabel(prevMyStr) || prevMyStr).substring(0, 31) : null;
 
@@ -935,7 +1170,7 @@ exports.exportInventoryExcel = async (req, res) => {
 
       for (let d = 1; d <= daysInMonth; d++) {
         const startColIdx = 3 + (d - 1) * 9;
-        
+
         // Merge Day label Row 3: Col C to J
         const dayLabelCellRef = `${colLetter(startColIdx)}3`;
         worksheet.mergeCells(`${colLetter(startColIdx)}3:${colLetter(startColIdx + 7)}3`);
@@ -944,7 +1179,7 @@ exports.exportInventoryExcel = async (req, res) => {
         dayLabelCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0284C7' } };
         dayLabelCell.alignment = { vertical: 'middle', horizontal: 'center' };
         dayLabelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F9FF' } }; // sky-50
-        
+
         // Add borders to Day cell
         for (let c = 0; c < 8; c++) {
           worksheet.getCell(3, startColIdx + c).border = {
@@ -999,7 +1234,7 @@ exports.exportInventoryExcel = async (req, res) => {
 
       // Add Data Rows
       const monthData = dataMap[my] || {};
-      
+
       INVENTORY_ITEMS.forEach((itemName, index) => {
         const itemIndex = index + 1;
         const rowIndex = 6 + index;
@@ -1049,10 +1284,10 @@ exports.exportInventoryExcel = async (req, res) => {
               const prevDays = new Date(parseInt(prevYr, 10), parseInt(prevMo, 10), 0).getDate();
               const prevPmBalColIdx = 3 + (prevDays - 1) * 9 + 6;
               const prevPmBalColLetter = colLetter(prevPmBalColIdx);
-              
-              row.getCell(startColIdx).value = { 
-                formula: `'${prevSheetName}'!${prevPmBalColLetter}${rowIndex}`, 
-                result: amStock !== '' ? Number(amStock) : 0 
+
+              row.getCell(startColIdx).value = {
+                formula: `'${prevSheetName}'!${prevPmBalColLetter}${rowIndex}`,
+                result: amStock !== '' ? Number(amStock) : 0
               };
             } else {
               row.getCell(startColIdx).value = amStock !== '' ? Number(amStock) : '';
@@ -1106,8 +1341,8 @@ exports.exportInventoryExcel = async (req, res) => {
             cell.border = borderStyle;
 
             if (c === 2 || c === 6) {
-               cell.font = { name: 'Calibri', size: 9, bold: true };
-               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+              cell.font = { name: 'Calibri', size: 9, bold: true };
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
             }
           }
 
@@ -1208,7 +1443,7 @@ exports.getmasterInventory = async (req, res) => {
 // Helper to auto-generate SKU Prefix based on item name consonants
 // e.g. "Black Pens" -> BKP, "Blue Pens" -> BP
 const generateSkuPrefix = (name) => {
-  const VOWELS = new Set(['A','E','I','O','U']);
+  const VOWELS = new Set(['A', 'E', 'I', 'O', 'U']);
   const words = (name || 'ITM').toUpperCase().trim().split(/\s+/);
   let code = '';
   for (const word of words) {
@@ -1226,19 +1461,19 @@ const generateSkuPrefix = (name) => {
 exports.createmasterInventory = async (req, res) => {
   try {
     const items = Array.isArray(req.body) ? req.body : (req.body.items || [req.body]);
-    
+
     for (const item of items) {
       const { name, unit_of_measure, category, batch_number, expiry_date, purchase_time, department_id, quantity, price, vendor_id } = item;
-      
+
       // 1. Check if name already exists in master_inventory
       const { rows: existingItems } = await db.query(
         "SELECT id, sku FROM master_inventory WHERE name = $1",
         [name]
       );
-      
+
       let itemId;
       let skuPrefix;
-      
+
       if (existingItems.length > 0) {
         itemId = existingItems[0].id;
         skuPrefix = existingItems[0].sku;
@@ -1251,7 +1486,7 @@ exports.createmasterInventory = async (req, res) => {
         );
         itemId = itemRows[0].id;
       }
-      
+
       // 2. Count existing batches to assign lot_number
       const { rows: batchCount } = await db.query(
         "SELECT COUNT(*) as cnt FROM stock_batches WHERE item_id = $1",
@@ -1259,14 +1494,14 @@ exports.createmasterInventory = async (req, res) => {
       );
       const nextLotInt = (Number(batchCount[0]?.cnt) || 0) + 1;
       const lotNumber = String(nextLotInt).padStart(2, '0'); // minimalist e.g. "01", "02"
-      
+
       // 3. Insert into stock_batches
       const { rows: batchRows } = await db.query(
         "INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, expiry_date, purchase_price, quantity, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, CURRENT_TIMESTAMP)) RETURNING id",
         [itemId, vendor_id || null, batch_number || null, lotNumber, expiry_date || null, price || 0, quantity || 0, purchase_time || null]
       );
       const batchId = batchRows[0].id;
-      
+
       if (department_id) {
         await db.query(
           "INSERT INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
@@ -1274,7 +1509,7 @@ exports.createmasterInventory = async (req, res) => {
         );
       }
     }
-    
+
     res.json({ success: true, message: 'Items added successfully' });
   } catch (error) {
     console.error('Error in createmasterInventory:', error);
@@ -1285,19 +1520,19 @@ exports.createmasterInventory = async (req, res) => {
 exports.updatemasterInventory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      name, unit_of_measure, category, 
-      batch_id, batch_number, lot_number, expiry_date, purchase_time, price, 
+    const {
+      name, unit_of_measure, category,
+      batch_id, batch_number, lot_number, expiry_date, purchase_time, price,
       dept_stock_id, department_id, quantity, vendor_id
     } = req.body;
-    
+
     const skuPrefix = generateSkuPrefix(name);
-    
+
     await db.query(
       "UPDATE master_inventory SET name = $1, sku = $2, unit_of_measure = $3, category = $4 WHERE id = $5",
       [name, skuPrefix, unit_of_measure, category, id]
     );
-    
+
     if (batch_id) {
       let lotToSave = lot_number;
       if (!lotToSave) {
@@ -1308,13 +1543,13 @@ exports.updatemasterInventory = async (req, res) => {
         const nextLotInt = (Number(batchCount[0]?.cnt) || 0) + 1;
         lotToSave = String(nextLotInt).padStart(2, '0');
       }
-      
+
       await db.query(
         "UPDATE stock_batches SET batch_number = $1, lot_number = $2, expiry_date = $3, purchase_price = $4, quantity = $5, created_at = COALESCE($6, created_at) WHERE id = $7",
         [batch_number || null, lotToSave, expiry_date || null, price || 0, quantity || 0, purchase_time || null, batch_id]
       );
     }
-    
+
     if (dept_stock_id) {
       await db.query(
         "UPDATE department_stock SET department_id = $1, quantity = $2 WHERE id = $3",
@@ -1327,7 +1562,7 @@ exports.updatemasterInventory = async (req, res) => {
         [department_id, id, batch_id, quantity || 0]
       );
     }
-    
+
     res.json({ success: true, message: 'Item updated successfully' });
   } catch (error) {
     console.error('Error in updatemasterInventory:', error);
@@ -1385,7 +1620,7 @@ exports.createBatch = async (req, res) => {
       INSERT INTO stock_batches (item_id, vendor_id, batch_number, expiry_date, purchase_price, quantity)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [itemId, vendorId || null, batchNumber, expiryDate, purchasePrice || 0.0, quantity]);
-    
+
     res.json({ success: true, message: 'Stock batch received successfully' });
   } catch (error) {
     console.error('Error in createBatch:', error);
@@ -1401,16 +1636,16 @@ exports.getRequisitions = async (req, res) => {
       console.log('🌱 Auto-seeding a dummy pending requisition...');
       const { rows: depts } = await db.query("SELECT id FROM departments LIMIT 1");
       const deptId = depts[0]?.id || 1;
-      
+
       const { rows: items } = await db.query("SELECT id FROM master_inventory LIMIT 3");
-      
+
       if (items.length > 0) {
         const { rows: newReq } = await db.query(
           "INSERT INTO requisitions (department_id, urgency, status) VALUES ($1, 'High', 'Pending') RETURNING id",
           [deptId]
         );
         const reqId = newReq[0].id;
-        
+
         for (const item of items) {
           await db.query(
             "INSERT INTO requisition_items (requisition_id, item_id, requested_quantity) VALUES ($1, $2, 100)",
@@ -1500,22 +1735,22 @@ exports.approveRequisition = async (req, res) => {
   try {
     const { id } = req.params;
     const { items: approvedItems } = req.body;
-    
+
     // Update status to 'Approved'
     await db.query("UPDATE requisitions SET status = 'Approved', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
-    
+
     // Auto fulfill by transferring items to department stock
     const { rows: items } = await db.query("SELECT * FROM requisition_items WHERE requisition_id = $1", [id]);
     const { rows: reqData } = await db.query("SELECT department_id FROM requisitions WHERE id = $1", [id]);
     const deptId = reqData[0]?.department_id;
-    
+
     if (deptId && items.length > 0) {
       for (const item of items) {
         // Determine approved quantity
         let approvedQty = item.requested_quantity; // Default to full requested quantity
         if (approvedItems && Array.isArray(approvedItems)) {
-          const match = approvedItems.find(ai => 
-            (ai.id && Number(ai.id) === Number(item.id)) || 
+          const match = approvedItems.find(ai =>
+            (ai.id && Number(ai.id) === Number(item.id)) ||
             (ai.item_id && Number(ai.item_id) === Number(item.item_id))
           );
           if (match && match.approved_quantity !== undefined) {
@@ -1539,7 +1774,7 @@ exports.approveRequisition = async (req, res) => {
             [item.item_id, approvedQty]
           );
           let batch = batchData[0];
-          
+
           if (!batch) {
             // Fallback: search for first batch of this item even if it doesn't have enough quantity
             const { rows: anyBatchData } = await db.query(
@@ -1550,13 +1785,13 @@ exports.approveRequisition = async (req, res) => {
           }
 
           const batchId = batch ? batch.id : null;
-          
+
           if (batch) {
             // Deduct from central store batch (clamp to batch quantity so it doesn't go negative)
             const deductQty = Math.min(approvedQty, batch.quantity);
             await db.query("UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2", [deductQty, batch.id]);
           }
-          
+
           // Upsert into department stock
           await db.query(`
             INSERT INTO department_stock (department_id, item_id, batch_id, quantity)
@@ -1565,7 +1800,7 @@ exports.approveRequisition = async (req, res) => {
               quantity = department_stock.quantity + $4
           `, [deptId, item.item_id, batchId, approvedQty]);
         }
-        
+
         // Mark items as approved in the requisition details
         await db.query("UPDATE requisition_items SET approved_quantity = $1 WHERE id = $2", [approvedQty, item.id]);
       }
@@ -1751,7 +1986,7 @@ exports.reconcileInventory = async (req, res) => {
       const { rows: existingBatches } = await db.query("SELECT id, quantity FROM stock_batches WHERE batch_number = $1", [batchNumber]);
       if (existingBatches.length > 0) {
         const batch = existingBatches[0];
-        
+
         // Log the change for audit log
         await db.query(`
           INSERT INTO nursing_stock_change_logs (month_year, item_name, day, session, old_stock, new_stock, updated_by)
@@ -2128,7 +2363,7 @@ exports.getSupplierSubmissionItems = async (req, res) => {
 exports.receiveSupplierStock = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Get submission metadata
     const { rows: subRows } = await db.query(
       "SELECT * FROM supplier_submissions WHERE id = $1 AND status = 'pending'",
