@@ -71,8 +71,8 @@ function App() {
             <Route path="/permissions" element={<ProtectedRoute allowedRoles={['admin']}><Permissions /></ProtectedRoute>} />
             <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['admin']}><AuditLogs /></ProtectedRoute>} />
             <Route path="/safety-management" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo']}><SafetyManagement /></ProtectedRoute>} />
-            <Route path="/risk-register" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo', 'chef-nurse']}><RiskRegister /></ProtectedRoute>} />
-            <Route path="/infection-control" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo', 'chef-nurse', 'nurse']}><InfectionControlTracker /></ProtectedRoute>} />
+            <Route path="/risk-register" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo']}><RiskRegister /></ProtectedRoute>} />
+            <Route path="/infection-control" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer', 'coo', 'deputy_coo']}><InfectionControlTracker /></ProtectedRoute>} />
             <Route path="/revenue-tracker" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'principal_cashier', 'deputy_coo']}><RevenueLeakageTracker /></ProtectedRoute>} />
             <Route path="/compliance" element={<ProtectedRoute allowedRoles={['admin', 'coo', 'hsfp', 'reviewer']}><CompliancePortal /></ProtectedRoute>} />
             <Route path="/it-ticketing" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><ITAssetTicketing /></ProtectedRoute>} />
@@ -86,7 +86,7 @@ function App() {
 
             
             <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><ResultTransferList /></ProtectedRoute>} />
-            <Route path="/performance" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer', 'chef-nurse']}><PerformanceDashboard /></ProtectedRoute>} />
+            <Route path="/performance" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer']}><PerformanceDashboard /></ProtectedRoute>} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/clinical-observation" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
             <Route path="/nursing-hub" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'reviewer', 'chef-nurse']}><NursingHub /></ProtectedRoute>} />
