@@ -1,3 +1,5 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const db = require('../src/config/db');
 
 const rawData = `id	report_date	provider_id	patient_count
@@ -805,19 +807,19 @@ const rawData = `id	report_date	provider_id	patient_count
 
 async function restoreData() {
   console.log('Starting data restoration...');
-  const lines = rawData.trim().split('\\n').slice(1); // skip header
+  const lines = rawData.trim().split('\n').slice(1); // skip header
   
   let inserted = 0;
   
   for (const line of lines) {
     if (!line.trim()) continue;
-    const [id, report_date, provider_id, patient_count] = line.split('\\t');
+    const [id, report_date, provider_id, patient_count] = line.split('\t');
     
     if (parseInt(patient_count) > 0) {
       try {
         await db.client.execute({
-          sql: "INSERT INTO daily_report_metrics (id, report_date, provider_id, patient_count, follow_up_count) VALUES (?, ?, ?, ?, 0) ON CONFLICT(id) DO UPDATE SET patient_count = excluded.patient_count",
-          args: [parseInt(id), report_date, parseInt(provider_id), parseInt(patient_count)]
+          sql: "INSERT INTO daily_report_metrics (report_date, provider_id, patient_count, follow_up_count) VALUES (?, ?, ?, 0) ON CONFLICT(report_date, provider_id) DO UPDATE SET patient_count = excluded.patient_count",
+          args: [report_date, parseInt(provider_id), parseInt(patient_count)]
         });
         
         inserted++;
