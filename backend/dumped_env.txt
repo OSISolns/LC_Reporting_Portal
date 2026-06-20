@@ -1,0 +1,4 @@
+{
+  "TURSO_DATABASE_URL": "file:/home/noble/Documents/LC_APPS/LC_Reporting_Portal/reporting-1.db",
+  "TURSO_AUTH_TOKEN": ""
+}

@@ -101,7 +101,25 @@ export default function DailyOperationalReportBoard() {
         setLoading(true);
         const res = await getReportConfig();
         if (res.data.success) {
-          setConfig(res.data.data);
+          const sorted = [...(res.data.data.providers || [])].sort((a, b) => {
+            const getSpecializationRank = (spec) => {
+              const s = (spec || '').toLowerCase();
+              if (s.includes('physio')) return 4;
+              if (s.includes('psycholog')) return 3;
+              if (s.includes('dental') || s.includes('dentist') || s.includes('orthodont')) return 2;
+              return 1; // Doctors on top
+            };
+            const rankA = getSpecializationRank(a.specialization || a.department_name);
+            const rankB = getSpecializationRank(b.specialization || b.department_name);
+            if (rankA !== rankB) return rankA - rankB;
+            // secondary sort: specialization/dept name
+            const specA = a.specialization || a.department_name || '';
+            const specB = b.specialization || b.department_name || '';
+            if (specA !== specB) return specA.localeCompare(specB);
+            // tertiary sort: provider name
+            return a.name.localeCompare(b.name);
+          });
+          setConfig({ ...res.data.data, providers: sorted });
         }
       } catch (err) {
         console.error('Failed to load report configurations:', err);
@@ -269,13 +287,29 @@ export default function DailyOperationalReportBoard() {
     setSelectedDate(d.toISOString().split('T')[0]);
   };
 
-  // Group providers by department name
+  // Group providers by specialization (falls back to department_name if not set)
   const providersByDept = config.providers.reduce((acc, p) => {
-    const dName = p.department_name || 'OTHER';
+    const dName = p.specialization || p.department_name || 'Other';
     if (!acc[dName]) acc[dName] = [];
     acc[dName].push(p);
     return acc;
   }, {});
+
+  const getSpecializationRank = (spec) => {
+    const s = (spec || '').toLowerCase();
+    if (s.includes('physio')) return 4;
+    if (s.includes('psycholog')) return 3;
+    if (s.includes('dental') || s.includes('dentist') || s.includes('orthodont')) return 2;
+    return 1; // Doctors on top
+  };
+
+  const sortedSpecializations = Object.keys(providersByDept).sort((a, b) => {
+    const rankA = getSpecializationRank(a);
+    const rankB = getSpecializationRank(b);
+    if (rankA !== rankB) return rankA - rankB;
+    return a.localeCompare(b);
+  });
+
 
   // Compute Daily KPIs
   const getDailyKPIs = () => {
@@ -291,7 +325,7 @@ export default function DailyOperationalReportBoard() {
       totalPatients += count;
       totalFollowUps += followUp;
 
-      const dName = p.department_name || 'OTHER';
+      const dName = p.specialization || p.department_name || 'Other';
       // Combined: consultations + follow-ups for top dept ranking
       deptTotals[dName] = (deptTotals[dName] || 0) + count + followUp;
       if (deptTotals[dName] > maxDeptCount) {
@@ -312,8 +346,7 @@ export default function DailyOperationalReportBoard() {
 
   // Filter departments & providers based on search query and filter selection
   const getFilteredDepts = () => {
-    const depts = Object.keys(providersByDept);
-    return depts.filter(dept => {
+    return sortedSpecializations.filter(dept => {
       if (deptFilter !== 'ALL' && dept !== deptFilter) return false;
 
       if (searchQuery.trim() !== '') {
@@ -441,7 +474,7 @@ export default function DailyOperationalReportBoard() {
         r.height = 20;
         r.getCell(1).value = p.name;
         r.getCell(2).value = p.title || 'Specialist';
-        r.getCell(3).value = p.department_name || 'OTHER';
+        r.getCell(3).value = p.specialization || p.department_name || 'Other';
         r.getCell(4).value = count;
 
         for (let col = 1; col <= 4; col++) {
@@ -645,7 +678,7 @@ export default function DailyOperationalReportBoard() {
       });
 
       filteredProviders.forEach(provider => {
-        const deptName = provider.department_name || 'OTHER';
+        const deptName = provider.specialization || provider.department_name || 'Other';
         const r = sheet.getRow(currentRow);
         r.height = 20;
         r.getCell(1).value = provider.name;
@@ -899,7 +932,7 @@ export default function DailyOperationalReportBoard() {
 
       // Providers Row Insertion
       filteredProviders.forEach(provider => {
-        const deptName = provider.department_name || 'OTHER';
+        const deptName = provider.specialization || provider.department_name || 'Other';
         const r = sheet.getRow(currentRow);
         r.height = 20;
         r.getCell(1).value = provider.name;
@@ -1291,7 +1324,7 @@ export default function DailyOperationalReportBoard() {
                 className="w-full sm:w-60 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
               >
                 <option value="ALL">ALL SPECIALTY DEPARTMENTS</option>
-                {Object.keys(providersByDept).map(dept => (
+                {sortedSpecializations.map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
@@ -1322,10 +1355,10 @@ export default function DailyOperationalReportBoard() {
                     const deptFollowUps = providers.reduce((sum, p) => sum + (dailyFollowUps[p.id] || 0), 0);
 
                     return (
-                      <div key={deptName} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:border-sky-500/30 transition-all duration-300">
+                      <div key={deptName} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:border-sky-500/30 transition-all duration-300">
 
                         {/* Dept Header */}
-                        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                        <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                           <span className="text-xs font-black text-slate-800 uppercase tracking-wider">{deptName}</span>
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black px-2.5 py-1 bg-sky-50 text-sky-600 rounded-full border border-sky-100">
@@ -1340,15 +1373,15 @@ export default function DailyOperationalReportBoard() {
                         </div>
 
                         {/* Providers Grid */}
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                           {providers.map(provider => {
                             const count = dailyMetrics[provider.id] || 0;
                             const followUp = dailyFollowUps[provider.id] || 0;
                             return (
-                              <div key={provider.id} className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/30">
+                              <div key={provider.id} className="flex items-center justify-between p-2.5 px-3.5 rounded-xl border border-slate-100 bg-slate-50/30">
                                 <div className="flex items-center gap-3">
-                                  <div className="p-2.5 bg-slate-100 text-slate-500 rounded-xl">
-                                    <User size={16} />
+                                  <div className="p-1.5 bg-slate-100 text-slate-500 rounded-lg">
+                                    <User size={14} />
                                   </div>
                                   <div>
                                     <p className="text-xs font-black text-slate-800">{provider.name}</p>
@@ -1356,15 +1389,15 @@ export default function DailyOperationalReportBoard() {
                                   </div>
                                 </div>
 
-                                <div className="flex flex-col items-end gap-1">
-                                  <span className={`text-[10px] font-black font-mono px-2.5 py-1 rounded-lg border flex items-center gap-1 ${count > 0
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[10px] font-black font-mono px-2 py-0.5 rounded border flex items-center gap-1 ${count > 0
                                     ? 'bg-sky-50 text-sky-700 border-sky-100'
                                     : 'bg-slate-100 text-slate-400 border-slate-200/60'
                                     }`}>
                                     <span className="text-[8px] font-black text-sky-400 uppercase">C</span>
                                     {count}
                                   </span>
-                                  <span className={`text-[10px] font-black font-mono px-2.5 py-1 rounded-lg border flex items-center gap-1 ${followUp > 0
+                                  <span className={`text-[10px] font-black font-mono px-2 py-0.5 rounded border flex items-center gap-1 ${followUp > 0
                                     ? 'bg-teal-50 text-teal-700 border-teal-100'
                                     : 'bg-slate-100 text-slate-400 border-slate-200/60'
                                     }`}>
@@ -1486,6 +1519,7 @@ export default function DailyOperationalReportBoard() {
                           <th className="px-4 py-3">Day / Session</th>
                           <th className="px-4 py-3 text-center">Stock Change</th>
                           <th className="px-4 py-3 text-center">Consumed Change</th>
+                          <th className="px-4 py-3">Ward Breakdown</th>
                           <th className="px-4 py-3">Updated By</th>
                         </tr>
                       </thead>
@@ -1520,6 +1554,41 @@ export default function DailyOperationalReportBoard() {
                                   {log.old_consumed} ➔ {log.new_consumed}
                                   {consumedDiff !== 0 && ` (${consumedDiff > 0 ? '+' : ''}${consumedDiff})`}
                                 </span>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <div className="space-y-1 min-w-[150px]">
+                                  {/* STN1 details */}
+                                  {((log.old_consumed_obs1 !== undefined && log.old_consumed_obs1 !== log.new_consumed_obs1) ||
+                                    (log.old_user_stn1 !== undefined && log.old_user_stn1 !== log.new_user_stn1)) && (
+                                      <div className="pl-1.5 border-l-2 border-sky-400 bg-sky-50/20 py-0.5 rounded-r">
+                                        <span className="font-black text-sky-700 text-[8px] uppercase tracking-wider block">STN1</span>
+                                        <p className="text-[9px] text-slate-500 font-semibold leading-tight">
+                                          Use: {log.old_consumed_obs1} &rarr; <span className="font-bold text-sky-850">{log.new_consumed_obs1}</span>
+                                          {log.old_user_stn1 !== log.new_user_stn1 && ` | RN: "${log.old_user_stn1 || 'None'}" -> "${log.new_user_stn1 || 'None'}"`}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                  {/* MINOR details */}
+                                  {((log.old_consumed_minor !== undefined && log.old_consumed_minor !== log.new_consumed_minor) ||
+                                    (log.old_user_minor !== undefined && log.old_user_minor !== log.new_user_minor)) && (
+                                      <div className="pl-1.5 border-l-2 border-emerald-400 bg-emerald-50/20 py-0.5 rounded-r">
+                                        <span className="font-black text-emerald-700 text-[8px] uppercase tracking-wider block">MINOR</span>
+                                        <p className="text-[9px] text-slate-500 font-semibold leading-tight">
+                                          Use: {log.old_consumed_minor} &rarr; <span className="font-bold text-emerald-850">{log.new_consumed_minor}</span>
+                                          {log.old_user_minor !== log.new_user_minor && ` | RN: "${log.old_user_minor || 'None'}" -> "${log.new_user_minor || 'None'}"`}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                  {/* Fallback if no specific ward logs exist */}
+                                  {!((log.old_consumed_obs1 !== undefined && log.old_consumed_obs1 !== log.new_consumed_obs1) ||
+                                    (log.old_user_stn1 !== undefined && log.old_user_stn1 !== log.new_user_stn1)) &&
+                                   !((log.old_consumed_minor !== undefined && log.old_consumed_minor !== log.new_consumed_minor) ||
+                                    (log.old_user_minor !== undefined && log.old_user_minor !== log.new_user_minor)) && (
+                                      <span className="text-[9px] text-slate-400 font-bold italic">No ward detail</span>
+                                    )}
+                                </div>
                               </td>
                               <td className="px-4 py-3.5 whitespace-nowrap text-slate-800">
                                 <span className="inline-flex items-center gap-1.5">
@@ -1694,7 +1763,7 @@ export default function DailyOperationalReportBoard() {
             className="w-full sm:w-52 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-xs font-bold text-slate-850 focus:outline-none"
           >
             <option value="ALL">ALL SPECIALTY DEPARTMENTS</option>
-            {Object.keys(providersByDept).map(dept => (
+            {sortedSpecializations.map(dept => (
               <option key={dept} value={dept}>{dept}</option>
             ))}
           </select>
@@ -1759,7 +1828,7 @@ export default function DailyOperationalReportBoard() {
                       return true;
                     })
                     .map(provider => {
-                      const deptName = provider.department_name || 'OTHER';
+                      const deptName = provider.specialization || provider.department_name || 'Other';
                       const daysMap = {};
                       const followMap = {};
                       let providerSum = 0;
@@ -2037,7 +2106,7 @@ export default function DailyOperationalReportBoard() {
             className="w-full sm:w-52 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-xs font-bold text-slate-850 focus:outline-none"
           >
             <option value="ALL">ALL SPECIALTY DEPARTMENTS</option>
-            {Object.keys(providersByDept).map(dept => (
+            {sortedSpecializations.map(dept => (
               <option key={dept} value={dept}>{dept}</option>
             ))}
           </select>
@@ -2100,7 +2169,7 @@ export default function DailyOperationalReportBoard() {
                       return true;
                     })
                     .map(provider => {
-                      const deptName = provider.department_name || 'OTHER';
+                      const deptName = provider.specialization || provider.department_name || 'Other';
                       const daysMap = {};
                       const followMap = {};
                       let providerSum = 0;
@@ -2371,6 +2440,38 @@ export default function DailyOperationalReportBoard() {
                     {selectedLog.new_consumed - selectedLog.old_consumed > 0 ? '+' : ''}{selectedLog.new_consumed - selectedLog.old_consumed} items
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Ward Breakdown Details */}
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ward Breakdown Details</span>
+              <div className="space-y-2">
+                {/* STN1 */}
+                <div className="bg-white p-3 rounded-lg border border-slate-150 flex items-center justify-between">
+                  <div>
+                    <span className="font-black text-sky-700 text-[9px] uppercase tracking-wider block">Station 1 (STN1)</span>
+                    <span className="text-[9px] text-slate-400 font-bold">RN: {selectedLog.new_user_stn1 || 'None'}</span>
+                  </div>
+                  <div className="text-right font-mono text-[11px] font-black">
+                    <span className="text-slate-450">{selectedLog.old_consumed_obs1 || 0}</span>
+                    <span className="mx-1 text-slate-400">➔</span>
+                    <span className="text-slate-800">{selectedLog.new_consumed_obs1 || 0}</span>
+                  </div>
+                </div>
+
+                {/* MINOR */}
+                <div className="bg-white p-3 rounded-lg border border-slate-150 flex items-center justify-between">
+                  <div>
+                    <span className="font-black text-emerald-700 text-[9px] uppercase tracking-wider block">Minor Surgery (MINOR)</span>
+                    <span className="text-[9px] text-slate-400 font-bold">RN: {selectedLog.new_user_minor || 'None'}</span>
+                  </div>
+                  <div className="text-right font-mono text-[11px] font-black">
+                    <span className="text-slate-450">{selectedLog.old_consumed_minor || 0}</span>
+                    <span className="mx-1 text-slate-400">➔</span>
+                    <span className="text-slate-800">{selectedLog.new_consumed_minor || 0}</span>
+                  </div>
+                </div>
               </div>
             </div>
 

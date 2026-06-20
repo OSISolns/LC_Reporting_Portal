@@ -10,11 +10,14 @@ class DailyReport {
       'SELECT id, name FROM departments ORDER BY id ASC'
     );
     const { rows: providers } = await db.query(
-      `SELECT p.id, p.name, p.title, p.department_id, d.name as department_name 
+      `SELECT p.id, p.name, p.title, p.specialization, p.specialization_id, s.name as specialization_name
        FROM providers p
-       LEFT JOIN departments d ON p.department_id = d.id
+       LEFT JOIN specializations s ON p.specialization_id = s.id
        WHERE p.is_active = 1
-       ORDER BY p.department_id ASC, p.id ASC`
+       ORDER BY
+         CASE WHEN p.specialization = 'PHYSIO' THEN 1 ELSE 0 END ASC,
+         p.specialization ASC,
+         p.id ASC`
     );
     
     // Default procedure metrics tracked in daily logs
@@ -105,10 +108,14 @@ class DailyReport {
 
     const { rows: metrics } = await db.query(
       `SELECT m.id, m.report_date, m.provider_id, m.department_id, m.patient_count, m.follow_up_count,
-              p.name as provider_name, p.title as provider_title, d.name as department_name
+              p.name as provider_name, p.title as provider_title,
+              p.specialization as provider_specialization,
+              p.specialization_id, s.name as specialization_name,
+              d.name as department_name
        FROM daily_report_metrics m
        JOIN providers p ON m.provider_id = p.id
-       JOIN departments d ON m.department_id = d.id
+       LEFT JOIN specializations s ON p.specialization_id = s.id
+       LEFT JOIN departments d ON m.department_id = d.id
        WHERE m.report_date >= $1 AND m.report_date <= $2
        ORDER BY m.report_date ASC`,
       [start, end]
@@ -141,10 +148,14 @@ class DailyReport {
   static async getWeeklyData(startDate, endDate) {
     const { rows: metrics } = await db.query(
       `SELECT m.id, m.report_date, m.provider_id, m.department_id, m.patient_count, m.follow_up_count,
-              p.name as provider_name, p.title as provider_title, d.name as department_name
+              p.name as provider_name, p.title as provider_title,
+              p.specialization as provider_specialization,
+              p.specialization_id, s.name as specialization_name,
+              d.name as department_name
        FROM daily_report_metrics m
        JOIN providers p ON m.provider_id = p.id
-       JOIN departments d ON m.department_id = d.id
+       LEFT JOIN specializations s ON p.specialization_id = s.id
+       LEFT JOIN departments d ON m.department_id = d.id
        WHERE m.report_date >= $1 AND m.report_date <= $2
        ORDER BY m.report_date ASC`,
       [startDate, endDate]

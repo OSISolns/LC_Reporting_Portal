@@ -514,7 +514,7 @@ export default function MasterModule() {
       case 'items':
         return { label: 'Add Item', action: () => openItemModal() };
       case 'departments':
-        return null;
+        return { label: 'Add Department', action: () => openDeptModal() };
       case 'uoms':
         return { label: 'Add UOM', action: () => openUomModal() };
       case 'vendors':
@@ -934,9 +934,20 @@ export default function MasterModule() {
                                   <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/50">Active</Badge>
                                 </td>
                                 <td className="py-4.5 px-6 text-right">
-                                  <span className="text-[11px] font-bold text-slate-400 italic bg-slate-50 border border-slate-200/60 px-2 py-1.5 rounded-lg select-none">
-                                    Fixed System Location
-                                  </span>
+                                  <div className="flex justify-end gap-1.5">
+                                    <button 
+                                      onClick={() => openDeptModal(dept)} 
+                                      className="p-2 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    >
+                                      <Edit2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                    <button 
+                                      onClick={() => confirmDelete(dept, 'department')} 
+                                      className="p-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
+                                    >
+                                      <Trash2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                  </div>
                                 </td>
                               </motion.tr>
                             ));

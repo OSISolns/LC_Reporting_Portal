@@ -84,7 +84,25 @@ export default function DailyOperationalReport() {
         setLoading(true);
         const res = await getReportConfig();
         if (res.data.success) {
-          setConfig(res.data.data);
+          const sorted = [...(res.data.data.providers || [])].sort((a, b) => {
+            const getSpecializationRank = (spec) => {
+              const s = (spec || '').toLowerCase();
+              if (s.includes('physio')) return 4;
+              if (s.includes('psycholog')) return 3;
+              if (s.includes('dental') || s.includes('dentist') || s.includes('orthodont')) return 2;
+              return 1; // Doctors on top
+            };
+            const rankA = getSpecializationRank(a.specialization || a.department_name);
+            const rankB = getSpecializationRank(b.specialization || b.department_name);
+            if (rankA !== rankB) return rankA - rankB;
+            // secondary sort: specialization/dept name
+            const specA = a.specialization || a.department_name || '';
+            const specB = b.specialization || b.department_name || '';
+            if (specA !== specB) return specA.localeCompare(specB);
+            // tertiary sort: provider name
+            return a.name.localeCompare(b.name);
+          });
+          setConfig({ ...res.data.data, providers: sorted });
         }
       } catch (err) {
         console.error('Failed to load report configurations:', err);
@@ -391,7 +409,7 @@ export default function DailyOperationalReport() {
       });
       
       filteredProviders.forEach(provider => {
-        const deptName = provider.department_name || 'OTHER';
+        const deptName = provider.specialization || provider.department_name || 'Other';
         const r = sheet.getRow(currentRow);
         r.height = 20;
         r.getCell(1).value = provider.name;
@@ -617,7 +635,7 @@ export default function DailyOperationalReport() {
       const startRowProviders = 5;
       
       config.providers.forEach(provider => {
-        const deptName = provider.department_name || 'OTHER';
+        const deptName = provider.specialization || provider.department_name || 'Other';
         const r = sheet.getRow(currentRow);
         r.height = 20;
         r.getCell(1).value = provider.name;
@@ -766,13 +784,29 @@ export default function DailyOperationalReport() {
     }
   };
 
-  // Group active providers by department
+  // Group active providers by specialization
   const providersByDept = config.providers.reduce((acc, p) => {
-    const deptName = p.department_name || 'OTHER';
+    const deptName = p.specialization || p.department_name || 'Other';
     if (!acc[deptName]) acc[deptName] = [];
     acc[deptName].push(p);
     return acc;
   }, {});
+
+  const getSpecializationRank = (spec) => {
+    const s = (spec || '').toLowerCase();
+    if (s.includes('physio')) return 4;
+    if (s.includes('psycholog')) return 3;
+    if (s.includes('dental') || s.includes('dentist') || s.includes('orthodont')) return 2;
+    return 1; // Doctors on top
+  };
+
+  const sortedSpecializations = Object.keys(providersByDept).sort((a, b) => {
+    const rankA = getSpecializationRank(a);
+    const rankB = getSpecializationRank(b);
+    if (rankA !== rankB) return rankA - rankB;
+    return a.localeCompare(b);
+  });
+
 
   return (
     <div className="space-y-6 pb-12 animate-fadeIn max-w-[1600px] mx-auto px-1">
@@ -912,12 +946,12 @@ export default function DailyOperationalReport() {
             ) : (
               // Active Roster Entry Card
               <div className="space-y-6">
-                {Object.keys(providersByDept).map((deptName) => {
+                {sortedSpecializations.map((deptName) => {
                   if (deptName === 'PROCEDURES') return null; // Handle separately below
                   return (
-                    <div key={deptName} className="bg-white rounded-3xl border border-slate-200/60 shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
+                    <div key={deptName} className="bg-white rounded-2xl border border-slate-200/60 shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
                       {/* Department Ribbon */}
-                      <div className="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                      <div className="bg-slate-50/80 px-5 py-3 border-b border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
                           <span className="w-2.5 h-2.5 rounded-full bg-sky-500 animate-ping" />
                           <h3 className="text-xs font-extrabold text-slate-800 tracking-widest uppercase">
@@ -934,19 +968,19 @@ export default function DailyOperationalReport() {
                       </div>
 
                       {/* Providers List Grid */}
-                      <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                         {providersByDept[deptName].map((provider) => (
                           <div
                             key={provider.id}
-                            className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/30 hover:bg-sky-50/10 hover:border-sky-100 transition-all duration-350 hover:shadow-sm"
+                            className="flex items-center justify-between p-2.5 px-3.5 rounded-xl border border-slate-100 bg-slate-50/30 hover:bg-sky-50/10 hover:border-sky-100 transition-all duration-350 hover:shadow-sm"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-550 to-sky-700 text-sky-600 flex items-center justify-center font-black text-xs border border-sky-100 bg-sky-50 shadow-inner">
+                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-550 to-sky-700 text-sky-600 flex items-center justify-center font-black text-[10px] border border-sky-100 bg-sky-50 shadow-inner">
                                 {provider.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                               </div>
                               <div>
                                 <p className="text-xs font-black text-slate-700">{provider.name}</p>
-                                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{provider.title || ''}</span>
+                                <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">{provider.title || ''}</span>
                               </div>
                             </div>
 
@@ -1179,7 +1213,7 @@ export default function DailyOperationalReport() {
                 className="w-full sm:w-60 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-xs font-bold text-slate-850 focus:outline-none"
               >
                 <option value="ALL">ALL SPECIALTY DEPARTMENTS</option>
-                {Object.keys(providersByDept).map(dept => (
+                {sortedSpecializations.map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
@@ -1244,7 +1278,7 @@ export default function DailyOperationalReport() {
                           return true;
                         })
                         .map(provider => {
-                          const deptName = provider.department_name || 'OTHER';
+                          const deptName = provider.specialization || provider.department_name || 'Other';
                           const daysMap = {};
                           let providerSum = 0;
 
@@ -1518,7 +1552,7 @@ export default function DailyOperationalReport() {
                   <tbody>
                     {/* Providers Rows grouped by department */}
                     {config.providers.map(provider => {
-                      const deptName = provider.department_name || 'OTHER';
+                      const deptName = provider.specialization || provider.department_name || 'Other';
 
                       // Calculate values map for this provider
                       const daysMap = {};

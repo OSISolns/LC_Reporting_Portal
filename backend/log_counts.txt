@@ -1,0 +1,5 @@
+Active total logs: 2227
+Active June 19 logs: 40
+Backup June 19 logs: 74
+Missing logs count: 34
+Date query count: 1592

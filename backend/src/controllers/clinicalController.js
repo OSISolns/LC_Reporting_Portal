@@ -153,10 +153,19 @@ const syncClinicalUsagesToInventory = async () => {
     console.log('🔄 Syncing clinical sheet usages to daily stock...');
 
     const { rows: observations } = await db.query(
-      `SELECT identification_json, medication_mar_json FROM clinical_observations`
+      `SELECT co.ward, co.identification_json, co.medication_mar_json, u.full_name as nurse_name
+       FROM clinical_observations co
+       LEFT JOIN users u ON co.created_by = u.id`
     );
 
     const aggregates = {};
+
+    const getWardType = (wardStr) => {
+      if (!wardStr) return 'STN1';
+      const normalized = wardStr.toUpperCase();
+      if (normalized.includes('MINOR')) return 'MINOR';
+      return 'STN1';
+    };
 
     observations.forEach(obs => {
       let identification = {};
@@ -198,6 +207,13 @@ const syncClinicalUsagesToInventory = async () => {
         }
       }
 
+      let ward = obs.ward;
+      if (!ward && identification.ward) {
+        ward = identification.ward;
+      }
+      const wardType = getWardType(ward);
+      const nurseName = obs.nurse_name || 'System Sync';
+
       const interventions = medication_mar.interventions || [];
       interventions.forEach(interv => {
         const name = (interv.name || '').trim();
@@ -216,7 +232,22 @@ const syncClinicalUsagesToInventory = async () => {
 
         // Use || as separator to avoid conflicts with item names containing _
         const key = `${month_year}||${matchedItem}||${day}||${session}`;
-        aggregates[key] = (aggregates[key] || 0) + qty;
+        if (!aggregates[key]) {
+          aggregates[key] = {
+            consumed_obs1: 0,
+            consumed_minor: 0,
+            nurses_stn1: new Set(),
+            nurses_minor: new Set()
+          };
+        }
+
+        if (wardType === 'MINOR') {
+          aggregates[key].consumed_minor += qty;
+          if (nurseName) aggregates[key].nurses_minor.add(nurseName);
+        } else {
+          aggregates[key].consumed_obs1 += qty;
+          if (nurseName) aggregates[key].nurses_stn1.add(nurseName);
+        }
       });
     });
 
@@ -229,17 +260,36 @@ const syncClinicalUsagesToInventory = async () => {
       const item_name = parts[1];
       const day = parseInt(parts[2], 10);
       const session = parts[3];
-      const consumedCount = aggregates[key];
+      const val = aggregates[key];
+
+      const totalConsumed = val.consumed_obs1 + val.consumed_minor;
+      const userStn1 = Array.from(val.nurses_stn1).join(', ') || '';
+      const userMinor = Array.from(val.nurses_minor).join(', ') || '';
 
       statements.push({
         sql: `INSERT INTO nursing_monthly_stock (
-          month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, updated_at
-        ) VALUES ($1, $2, $3, $4, 0, $5, 0 - $5, 'Clinical Sheet Sync', CURRENT_TIMESTAMP)
+          month_year, item_name, day, session, stock_in_hands, consumed, balance,
+          consumed_obs1, consumed_minor, user_stn1, user_minor, responsible_name, updated_at
+        ) VALUES ($1, $2, $3, $4, 0, $5, 0 - $5, $6, $7, $8, $9, 'Clinical Sheet Sync', CURRENT_TIMESTAMP)
         ON CONFLICT(month_year, item_name, day, session) DO UPDATE SET
           consumed = $5,
           balance = nursing_monthly_stock.stock_in_hands - $5,
+          consumed_obs1 = $6,
+          consumed_minor = $7,
+          user_stn1 = $8,
+          user_minor = $9,
           updated_at = CURRENT_TIMESTAMP`,
-        args: [month_year, item_name, day, session, consumedCount]
+        args: [
+          month_year,
+          item_name,
+          day,
+          session,
+          totalConsumed,
+          val.consumed_obs1,
+          val.consumed_minor,
+          userStn1,
+          userMinor
+        ]
       });
     }
 
@@ -1412,7 +1462,8 @@ exports.getmasterInventory = async (req, res) => {
       SELECT 
         mi.id,
         mi.name, 
-        COALESCE(mi.sku, '') || COALESCE(sb.lot_number, '01') as sku, 
+        mi.sku as sku,
+        COALESCE(mi.sku, '') || COALESCE(sb.lot_number, '01') as full_sku, 
         mi.unit_of_measure, 
         mi.category,
         sb.id as batch_id,
@@ -1425,7 +1476,8 @@ exports.getmasterInventory = async (req, res) => {
         ds.id as dept_stock_id,
         d.name as department,
         d.id as department_id,
-        v.name as vendor
+        v.name as vendor,
+        sb.vendor_id as vendor_id
       FROM master_inventory mi
       LEFT JOIN stock_batches sb ON mi.id = sb.item_id
       LEFT JOIN department_stock ds ON sb.id = ds.batch_id
@@ -1463,7 +1515,7 @@ exports.createmasterInventory = async (req, res) => {
     const items = Array.isArray(req.body) ? req.body : (req.body.items || [req.body]);
 
     for (const item of items) {
-      const { name, unit_of_measure, category, batch_number, expiry_date, purchase_time, department_id, quantity, price, vendor_id } = item;
+      const { name, sku, unit_of_measure, category, batch_number, lot_number, expiry_date, purchase_time, department_id, quantity, price, vendor_id } = item;
 
       // 1. Check if name already exists in master_inventory
       const { rows: existingItems } = await db.query(
@@ -1476,9 +1528,12 @@ exports.createmasterInventory = async (req, res) => {
 
       if (existingItems.length > 0) {
         itemId = existingItems[0].id;
-        skuPrefix = existingItems[0].sku;
+        skuPrefix = sku || existingItems[0].sku;
+        if (sku) {
+          await db.query("UPDATE master_inventory SET sku = $1 WHERE id = $2", [sku, itemId]);
+        }
       } else {
-        skuPrefix = generateSkuPrefix(name);
+        skuPrefix = sku || generateSkuPrefix(name);
         // Insert into master_inventory
         const { rows: itemRows } = await db.query(
           "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4) RETURNING id",
@@ -1487,13 +1542,16 @@ exports.createmasterInventory = async (req, res) => {
         itemId = itemRows[0].id;
       }
 
-      // 2. Count existing batches to assign lot_number
-      const { rows: batchCount } = await db.query(
-        "SELECT COUNT(*) as cnt FROM stock_batches WHERE item_id = $1",
-        [itemId]
-      );
-      const nextLotInt = (Number(batchCount[0]?.cnt) || 0) + 1;
-      const lotNumber = String(nextLotInt).padStart(2, '0'); // minimalist e.g. "01", "02"
+      // 2. Count existing batches to assign lot_number if not provided
+      let lotNumber = lot_number;
+      if (!lotNumber) {
+        const { rows: batchCount } = await db.query(
+          "SELECT COUNT(*) as cnt FROM stock_batches WHERE item_id = $1",
+          [itemId]
+        );
+        const nextLotInt = (Number(batchCount[0]?.cnt) || 0) + 1;
+        lotNumber = String(nextLotInt).padStart(2, '0'); // minimalist e.g. "01", "02"
+      }
 
       // 3. Insert into stock_batches
       const { rows: batchRows } = await db.query(
@@ -1521,12 +1579,12 @@ exports.updatemasterInventory = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      name, unit_of_measure, category,
+      name, sku, unit_of_measure, category,
       batch_id, batch_number, lot_number, expiry_date, purchase_time, price,
       dept_stock_id, department_id, quantity, vendor_id
     } = req.body;
 
-    const skuPrefix = generateSkuPrefix(name);
+    const skuPrefix = sku || generateSkuPrefix(name);
 
     await db.query(
       "UPDATE master_inventory SET name = $1, sku = $2, unit_of_measure = $3, category = $4 WHERE id = $5",
@@ -1545,8 +1603,8 @@ exports.updatemasterInventory = async (req, res) => {
       }
 
       await db.query(
-        "UPDATE stock_batches SET batch_number = $1, lot_number = $2, expiry_date = $3, purchase_price = $4, quantity = $5, created_at = COALESCE($6, created_at) WHERE id = $7",
-        [batch_number || null, lotToSave, expiry_date || null, price || 0, quantity || 0, purchase_time || null, batch_id]
+        "UPDATE stock_batches SET vendor_id = $1, batch_number = $2, lot_number = $3, expiry_date = $4, purchase_price = $5, quantity = $6, created_at = COALESCE($7, created_at) WHERE id = $8",
+        [vendor_id || null, batch_number || null, lotToSave, expiry_date || null, price || 0, quantity || 0, purchase_time || null, batch_id]
       );
     }
 

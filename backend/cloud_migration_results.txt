@@ -1,0 +1,8 @@
+Updating name: "Dr Gakindi" -> "Dr Gakindi Leonard" (Obstetrician & Gynaecologist)...
+
+FAILED WITH ERROR:
+LibsqlError: SQLITE_UNKNOWN: SQLite error: no such column: specialization
+    at mapHranaError (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/node_modules/@libsql/client/lib-cjs/hrana.js:340:16)
+    at /home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/node_modules/@libsql/client/lib-cjs/http.js:120:52
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async test (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/scripts/inspect_provider_migration_verbose.js:71:7)

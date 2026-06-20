@@ -1,24 +1,6 @@
 'use strict';
 require('dotenv').config();
 
-// One-time cleanup push
-const fs = require('fs');
-const flagPath = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal/cleanup_done.txt';
-if (!fs.existsSync(flagPath)) {
-  try {
-    fs.writeFileSync(flagPath, '1');
-    const { execSync } = require('child_process');
-    const rootDir = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal';
-    execSync('git add .', { cwd: rootDir });
-    try {
-      execSync('git commit -m "chore: cleanup temporary auto-commit script"', { cwd: rootDir });
-    } catch (err) {}
-    execSync('git push', { cwd: rootDir });
-  } catch (e) {
-    console.error(e);
-  }
-}
-
 const tursoUrl = process.env.PROD_TURSO_DATABASE_URL || process.env.lcreporting_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL;
 const tursoAuthToken = process.env.PROD_TURSO_AUTH_TOKEN || process.env.lcreporting_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
 
