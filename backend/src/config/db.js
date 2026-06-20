@@ -24,9 +24,252 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     try {
       await client.execute("SELECT 1");
       console.log('🔌 DATABASE: Successfully connected to Turso Cloud.');
+      
+      console.log('⚙️ Running custom department cleanup migration...');
+      const targetDepts = ['DENTAL', 'PHYSIO', 'NURSING', 'OPERATIONS', 'LABORATORY', 'IMAGING'];
+      
+      // Get all current departments
+      const { rows: depts } = await client.execute("SELECT id, name FROM departments");
+      console.log('Current departments in DB:', depts.map(d => `${d.name} (${d.id})`));
+      
+      // 1. Standardize and merge duplicates for target departments
+      for (const target of targetDepts) {
+        const matches = depts.filter(d => d.name.toUpperCase().trim() === target);
+        if (matches.length > 1) {
+          const keeper = matches[0];
+          // Update keeper name to exact target uppercase
+          await client.execute({
+            sql: "UPDATE departments SET name = ? WHERE id = ?",
+            args: [target, keeper.id]
+          });
+          // Merge duplicates
+          for (let i = 1; i < matches.length; i++) {
+            const dup = matches[i];
+            console.log(`Merging duplicate department: "${dup.name}" (id: ${dup.id}) into "${keeper.name}" (id: ${keeper.id})`);
+            
+            await client.execute({
+              sql: "UPDATE department_stock SET department_id = ? WHERE department_id = ?",
+              args: [keeper.id, dup.id]
+            }).catch(() => {});
+            
+            await client.execute({
+              sql: "UPDATE daily_report_metrics SET department_id = ? WHERE department_id = ?",
+              args: [keeper.id, dup.id]
+            }).catch(() => {});
+            
+            await client.execute({
+              sql: "UPDATE requisitions SET department_id = ? WHERE department_id = ?",
+              args: [keeper.id, dup.id]
+            }).catch(() => {});
+            
+            // Note: providers no longer use department_id (replaced by specialization_id)
+            
+            await client.execute({
+              sql: "DELETE FROM departments WHERE id = ?",
+              args: [dup.id]
+            });
+          }
+        } else if (matches.length === 1) {
+          // Standardize name to uppercase
+          await client.execute({
+            sql: "UPDATE departments SET name = ? WHERE id = ?",
+            args: [target, matches[0].id]
+          });
+        } else {
+          // Insert missing target department
+          await client.execute({
+            sql: "INSERT INTO departments (name) VALUES (?)",
+            args: [target]
+          });
+          console.log(`Inserted missing target department: "${target}"`);
+        }
+      }
+      
+      // Re-fetch departments after standardizing targets
+      const { rows: updatedDepts } = await client.execute("SELECT id, name FROM departments");
+      
+      // 2. Delete non-target departments and clean up their associations
+      for (const d of updatedDepts) {
+        const nameUpper = d.name.toUpperCase().trim();
+        if (!targetDepts.includes(nameUpper)) {
+          console.log(`Removing non-target department: "${d.name}" (id: ${d.id})`);
+          
+          // Manually handle dependent rows to avoid orphan entries if FK constraints aren't active
+          await client.execute({
+            sql: "DELETE FROM department_stock WHERE department_id = ?",
+            args: [d.id]
+          }).catch(() => {});
+          
+          await client.execute({
+            sql: "DELETE FROM daily_report_metrics WHERE department_id = ?",
+            args: [d.id]
+          }).catch(() => {});
+          
+          await client.execute({
+            sql: "DELETE FROM requisitions WHERE department_id = ?",
+            args: [d.id]
+          }).catch(() => {});
+          
+          // Note: providers no longer use department_id — no action needed here
+          
+          await client.execute({
+            sql: "DELETE FROM departments WHERE id = ?",
+            args: [d.id]
+          });
+        }
+      }
+      
+      console.log('✅ Custom department cleanup migration complete.');
+      const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
+      console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));
+      
     } catch (err) {
-      console.error('❌ FATAL: Could not connect to Turso Cloud. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.', err.message);
+      console.error('❌ FATAL: Could not connect to Turso Cloud or run custom migrations. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.', err.message);
       // Note: Do not call process.exit(1) here as it will crash the Vercel build if it executes during pre-rendering.
+    }
+
+    // ─── Provider Specialization Migration ───────────────────────────────────────────────
+    try {
+      // Step 1: Add specialization column (safe - catches error if already exists)
+      await client.execute("ALTER TABLE providers ADD COLUMN specialization TEXT").catch(() => {});
+      console.log('⚙️ Running provider name + specialization migration...');
+
+      // Step 2: Provider map — [oldName, verifiedName, specialization]
+      // IMPORTANT: Only UPDATE statements. Never DELETE. IDs and metrics are untouched.
+      const providerUpdates = [
+        // ── GYNECOLOGY ──
+        ['Dr Gakindi',              'Dr Gakindi Leonard',                        'Obstetrician & Gynaecologist'],
+        ['Dr SITINI BERTIN',        'DR SITINI BERTIN',                          'Obstetrician & Gynaecologist'],
+        ['Dr NKUBITO',              'Dr NKUBITO GATERA VALENS',                  'Obstetrician & Gynaecologist'],
+        ['Dr NTIRUSHWA',            'Dr Ntirushwa David',                        'Obstetrician & Gynaecologist'],
+        ['BUTOYI ALPHONSE',         'DR BUTOYI ALPHONSE',                        'Obstetrician & Gynaecologist'],
+
+        // ── GENERAL MEDECINE ──
+        ['Dr Fabrice N.',           'NGABO NTAGANDA FABRICE',                    'General Practitioner'],
+        ['Dr Yves L. Bizimana',     'Dr BIZIMANA YVES LAURENT',                  'General Practitioner'],
+        ['Dr Gihana Jacques',       'Dr. NKERAGUTABARA Gihana Jacques',           'Family Physician'],
+
+        // ── INTERNAL MEDECINE ──
+        ['Dr. Masaisa florence',    'Dr Masaisa Florence',                       'Hematologist'],
+        ['DR SHEMA NSHUTI D.',      'Dr NSHUTI SHEMA DAVID',                     'Internist'],
+        ['DR DUFATANYE DARIUS',     'DR DUFATANYE DARIUS',                       'Cardiologist'],
+        ['Dr Ganza G. JMV',         'Dr GAPIRA GANZA JEAN MARIE VIANNEY',        'Cardiologist'],
+        ['DR RUTAGANDA Eric',       'Dr Rutaganda Eric',                         'Internist'],
+        ['DR BAZATSINDA A.',        'DR BAZATSINDA ANTHONY',                     'Internist'],
+        ['DR MBABAZI Maguy',        'DR MBABAZI MAGUY',                          'Internist'],
+        ['DR HABYARIMANA O.',       'DR HABYARIMANA OSWALD',                     'Internist'],
+        ['KABAKAMBIRA J.Damascene', 'Dr KABAKAMBIRA JEAN DAMASCENE',             'Internist'],
+        ['DR SEBATUNZI Osee',       'DR SEBATUNZI OSEE',                         'Internist'],
+
+        // ── PEDIATRICS ──
+        ['Dr KABAYIZA JC',          'Dr Kabayiza Jean Claude',                   'Pediatrician'],
+        ['Dr Aimable K.',           'Dr Kanyamuhunga Aimable',                   'Pediatrician'],
+        ['Dr Christian Muhoza',     'Dr Umuhoza Christian',                      'Pediatrician'],
+        ['Dr Mukaruziga Agnes',     'DR MUKARUZIGA AGNES',                       'Pediatrician'],
+        ['Dr Karangwa Valens',      'DR KARANGWA VALENS',                        'Pediatrician'],
+
+        // ── NEUROLOGY ──
+        ['DR KAREKEZI CLAIRE',      'Dr. KAREKEZI CLAIRE',                       'Neurologist'],
+        ['DR MUTUNGIREHE SYLVES',   'DR MUTUNGIREHE SYLVESTRE',                  'Neurologist'],
+
+        // ── UROLOGY ──
+        ['Dr Afrika G.',            'Dr Afrika Gasana',                          'Urologist'],
+        ['Dr NYIRIMODOKA ALEXANDRE','DR NYIRIMODOKA ALEXANDRE',                  'Urologist'],
+
+        // ── ORTHO / GENERAL SURGERY ──
+        ['Dr KWESIGA STEPHEN',      'Dr KWESIGA STEPHEN',                        'Orthopedic Surgeon'],
+        ['KANSAYISA MARIE GRACE',   'Dr Kansayisa Marie Grace',                  'Orthopedic Surgeon'],
+        ['RUBANGUKA Desire',        'Dr Desire Rubanguka',                       'General Surgeon'],
+        ['DR INGABIRE Allen JDC',   'Dr. INGABIRE Allen Jean De La Croix',       'Orthopedic Surgeon'],
+
+        // ── ENT ──
+        ['DR HAKIZIMANA ARISTOTE',  'DR HAKIZIMANA ARISTOTE',                    'Consultant ENT'],
+        ['DR Dushimiyimana jmv',    'DR DUSHIMIYIMANA JMV',                      'Consultant ENT'],
+
+        // ── CHIRO ──
+        ['Dr Kanyabutembo Noella',  'Dr Noella Kanyabutembo',                    'Chiropractitioner'],
+
+        // ── MENTAL HEALTH ──
+        ['Innocent Nsengiyumva',    'Mr NSENGIYUMVA INNOCENT',                   'Clinical Psychologist'],
+
+        // ── DENTAL ──
+        ['Dr NYIRANEZA Esperence',  'Dr Nyiraneza Esperance',                    'Dental Surgeon'],
+        ['DR ANAMALI Rogers',       'Dr ANAMALI ROGER',                          'Dental Surgeon'],
+        ['Dr MUGESERA Ernest',      'DR MUGESERA ERNEST',                        'Dental Surgeon'],
+        ['Dr BANA Bede',            'Dr Bede Bana',                              'Dental Surgeon'],
+        ['JAYAKAR G.Sargunar',      'DR. JAYKAR G SARGUNAR',                     'Orthodontist'],
+        ['Sanddeep Goyal',          'Dr. SANDEEP GOYAL',                         'Orthodontist'],
+        ['DR MICONGWE Moses',       'Dr MICONGWE MOSES ISYAGI',                  'Dental Surgeon & Oral Pathologist'],
+        ['Mr NDAYISENGA KALISA Gilbert', 'Mr NDAYISENGA KALISA Gilbert',         'Dentistry'],
+        ['Mr ERIC RUTAGANDA',       'Mr ERIC RUTAGANDA',                         'Dentistry'],
+        ['ISHIMWE GILBERT',         'Mr ISHIMWE GILBERT',                        'Dentistry'],
+
+        // ── PHYSIO ──
+        ['Mr NAZE Thierry',         'Mr NAZE Thierry',                           'PHYSIO'],
+        ['Miss FRANCINE M.',        'Miss FRANCINE M.',                          'PHYSIO'],
+        ['Mr KARIMWABO Jean Claude','Mr KARIMWABO Jean Claude',                  'PHYSIO'],
+        ['Mr NSENGIMANA Emmanuel',  'Mr NSENGIMANA Emmanuel',                    'PHYSIO'],
+        ['Miss LEAH MUTESI',        'Miss LEAH MUTESI',                          'PHYSIO'],
+        ['Miss UWAMAHORO Sarah',    'Miss UWAMAHORO Sarah',                      'PHYSIO'],
+        ['INGABIRE J. Paul',        'Mr Ingabire J. Paul',                       'PHYSIO'],
+      ];
+
+      for (const [oldName, verifiedName, specialization] of providerUpdates) {
+        // Update by old name (initial seed name) — safe, idempotent
+        await client.execute({
+          sql: 'UPDATE providers SET name = ?, specialization = ? WHERE name = ?',
+          args: [verifiedName, specialization, oldName]
+        });
+        // Also update by new name in case the name was already corrected but specialization wasn't set
+        await client.execute({
+          sql: 'UPDATE providers SET specialization = ? WHERE name = ? AND (specialization IS NULL OR specialization = "")',
+          args: [specialization, verifiedName]
+        });
+      }
+
+      // Cleanup: rename any previously written 'Physiotherapist' to 'PHYSIO'
+      await client.execute({
+        sql: "UPDATE providers SET specialization = 'PHYSIO' WHERE specialization = 'Physiotherapist'",
+        args: []
+      });
+
+      // Ensure 'Mr Ingabire J. Paul' is added/updated in the DB
+      try {
+        const { rows: physioDept } = await client.execute("SELECT id FROM departments WHERE name = 'PHYSIO'");
+        // Lookup specialization_id for 'PHYSIO' from specializations table
+        const { rows: physioSpec } = await client.execute("SELECT id FROM specializations WHERE name = 'PHYSIO'");
+        const physioSpecId = physioSpec.length > 0 ? physioSpec[0].id : null;
+
+        const { rows: existing } = await client.execute({
+          sql: "SELECT id FROM providers WHERE name = 'Mr Ingabire J. Paul' OR name = 'INGABIRE J. Paul'",
+          args: []
+        });
+
+        if (existing.length === 0) {
+          console.log("🌱 Inserting missing provider Mr Ingabire J. Paul into DB...");
+          await client.execute({
+            sql: "INSERT INTO providers (name, title, specialization, specialization_id) VALUES (?, ?, ?, ?)",
+            args: ["Mr Ingabire J. Paul", "Mr", "PHYSIO", physioSpecId]
+          });
+        } else {
+          console.log("🌱 Updating provider Mr Ingabire J. Paul in DB...");
+          await client.execute({
+            sql: "UPDATE providers SET name = ?, title = ?, specialization = ?, specialization_id = ? WHERE id = ?",
+            args: ["Mr Ingabire J. Paul", "Mr", "PHYSIO", physioSpecId, existing[0].id]
+          });
+        }
+      } catch (insertErr) {
+        console.error("❌ Failed to add/update Mr Ingabire J. Paul:", insertErr.message);
+      }
+
+      const { rows: provs } = await client.execute('SELECT id, name, specialization FROM providers');
+      console.log(`✅ Provider migration complete: ${provs.length} providers updated.`);
+      provs.forEach(p => {
+        if (!p.specialization) console.warn(`⚠️ Provider still without specialization: "${p.name}" (id: ${p.id})`);
+      });
+
+    } catch (err) {
+      console.error('❌ Provider specialization migration error:', err.message);
     }
 
     // ─── Shift Sessions Role CHECK Constraint Upgrade & Related Tables ───────────────────
@@ -216,14 +459,29 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.warn('⚠️ SQLite Schema Migration Notice for departments:', err.message);
     }
 
+    // specializations table — must be created before providers
+    try {
+      await client.execute(`
+      CREATE TABLE IF NOT EXISTS specializations (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        name       TEXT NOT NULL UNIQUE,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+      console.log('✅ SQLite Schema Migration: created specializations table');
+    } catch (err) {
+      console.warn('⚠️ SQLite Schema Migration Notice for specializations:', err.message);
+    }
+
     try {
       await client.execute(`
       CREATE TABLE IF NOT EXISTS providers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        title TEXT,
-        department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
-        is_active INTEGER DEFAULT 1
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        name              TEXT NOT NULL,
+        title             TEXT,
+        specialization_id INTEGER REFERENCES specializations(id) ON DELETE SET NULL,
+        specialization    TEXT,
+        is_active         INTEGER DEFAULT 1
       )
     `);
       console.log('✅ SQLite Schema Migration: created providers table');

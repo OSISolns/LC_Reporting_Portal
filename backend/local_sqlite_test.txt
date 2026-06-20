@@ -1,0 +1,27 @@
+Local SQLite Success! Users: [
+  {
+    "id": 1,
+    "username": "lc_patience",
+    "email": "bayingana@legacyclinics.rw"
+  },
+  {
+    "id": 3,
+    "username": "lc_denyse",
+    "email": "gakuba@legacyclinics.rw"
+  },
+  {
+    "id": 4,
+    "username": "lc_olivier",
+    "email": "habiyambere@legacyclinics.rw"
+  },
+  {
+    "id": 5,
+    "username": "lc_valery",
+    "email": "valery@legacyclinics.rw"
+  },
+  {
+    "id": 6,
+    "username": "lc_sofia",
+    "email": "sofia@legacyclinics.rw"
+  }
+]

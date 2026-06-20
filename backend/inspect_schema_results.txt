@@ -1,0 +1,7 @@
+CREATE TABLE providers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        title TEXT,
+        department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+        is_active INTEGER DEFAULT 1
+      , specialization TEXT)

@@ -1,0 +1,4 @@
+Connecting to URL: libsql://reporting-1-enigmatic-gemini-qt.aws-us-east-2.turso.io
+Providers columns: ["id","name","title","department_id","is_active","specialization"]
+ALTER TABLE failed: SQLITE_UNKNOWN: SQLite error: duplicate column name: specialization
+Update succeeded!

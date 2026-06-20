@@ -1,12 +1,15 @@
 'use client';
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
+import { useInactivityTimer } from '../hooks/useInactivityTimer';
+import SessionTimeoutModal from '../components/SessionTimeoutModal';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showWarning, setShowWarning] = useState(false);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -40,17 +43,29 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     setUser(null);
-  };
+    setShowWarning(false);
+  }, []);
+
+  const handleWarn   = useCallback(() => setShowWarning(true),  []);
+  const handleResume = useCallback(() => setShowWarning(false), []);
+
+  // Inactivity timer — only active when a user is logged in
+  useInactivityTimer({
+    onLogout: logout,
+    onWarn:   handleWarn,
+    onResume: handleResume,
+    active:   !!user,
+  });
 
   const hasPermission = (module, action) => {
     if (!user) return false;
-    
+
     // Admins should NOT be able to verify (review) any request
     if (user.role === 'admin' && action === 'review') return false;
-    
+
     if (user.role === 'admin') return true;
     return user.permissions?.[module]?.[action]?.granted === true;
   };
@@ -58,6 +73,13 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{ user, setUser, loading, login, devLogin, logout, hasPermission }}>
       {children}
+
+      {/* Session timeout warning overlay — rendered here so it floats above everything */}
+      <SessionTimeoutModal
+        visible={showWarning}
+        onStay={handleResume}
+        onLogout={logout}
+      />
     </AuthContext.Provider>
   );
 };

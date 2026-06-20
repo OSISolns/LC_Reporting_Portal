@@ -1,0 +1,9 @@
+Updating oldName: "Dr Gakindi" -> "Dr Gakindi Leonard" (Obstetrician & Gynaecologist)...
+
+FAILED WITH ERROR:
+LibsqlError: SQLITE_ERROR: no such column: 
+    at mapSqliteError (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/node_modules/@libsql/client/lib-cjs/sqlite3.js:458:16)
+    at executeStmt (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/node_modules/@libsql/client/lib-cjs/sqlite3.js:361:15)
+    at Sqlite3Client.execute (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/node_modules/@libsql/client/lib-cjs/sqlite3.js:104:16)
+    at test (/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/scripts/inspect_full_provider_migration.js:95:20)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

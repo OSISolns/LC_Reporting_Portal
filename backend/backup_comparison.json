@@ -1,0 +1,655 @@
+[
+  {
+    "id": 641,
+    "item_name": "Aquabloc 15cm",
+    "session": "AM",
+    "old_stock": 70,
+    "new_stock": 70,
+    "old_consumed": 2,
+    "new_consumed": 10,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 10:41:16",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 649,
+    "item_name": "Aquabloc 15cm",
+    "session": "PM",
+    "old_stock": 0,
+    "new_stock": 70,
+    "old_consumed": 0,
+    "new_consumed": 1,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 13:28:53",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 650,
+    "item_name": "Aquabloc 15cm",
+    "session": "PM",
+    "old_stock": 70,
+    "new_stock": 70,
+    "old_consumed": 1,
+    "new_consumed": 0,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 13:29:06",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 659,
+    "item_name": "Adrenaline 1ml",
+    "session": "PM",
+    "old_stock": 22,
+    "new_stock": 22,
+    "old_consumed": 12,
+    "new_consumed": 0,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 662,
+    "item_name": "Aquabloc 15cm",
+    "session": "AM",
+    "old_stock": 70,
+    "new_stock": 70,
+    "old_consumed": 10,
+    "new_consumed": 10,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 663,
+    "item_name": "Aquabloc 15cm",
+    "session": "PM",
+    "old_stock": 70,
+    "new_stock": 70,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 801,
+    "item_name": "Gants propre",
+    "session": "PM",
+    "old_stock": 1700,
+    "new_stock": 1700,
+    "old_consumed": 200,
+    "new_consumed": 0,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 835,
+    "item_name": "IV Paracetamol 1g",
+    "session": "PM",
+    "old_stock": 43,
+    "new_stock": 43,
+    "old_consumed": 2,
+    "new_consumed": 0,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 853,
+    "item_name": "Masque Neb Enfant",
+    "session": "PM",
+    "old_stock": 86,
+    "new_stock": 86,
+    "old_consumed": 4,
+    "new_consumed": 0,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 872,
+    "item_name": "NS (Normal Saline)",
+    "session": "PM",
+    "old_stock": 32,
+    "new_stock": 32,
+    "old_consumed": 2,
+    "new_consumed": 0,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 905,
+    "item_name": "RL (Ringer's Lactate)",
+    "session": "PM",
+    "old_stock": 44,
+    "new_stock": 44,
+    "old_consumed": 2,
+    "new_consumed": 0,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 967,
+    "item_name": "Seringue 5cc",
+    "session": "PM",
+    "old_stock": 231,
+    "new_stock": 231,
+    "old_consumed": 1,
+    "new_consumed": 0,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 992,
+    "item_name": "Trousse",
+    "session": "PM",
+    "old_stock": 73,
+    "new_stock": 73,
+    "old_consumed": 3,
+    "new_consumed": 0,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": false
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 1021,
+    "item_name": "Pethidine",
+    "session": "PM",
+    "old_stock": 0,
+    "new_stock": 8,
+    "old_consumed": 0,
+    "new_consumed": 20,
+    "updated_by": "lc_valery",
+    "updated_at": "2026-06-19 16:44:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": true,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": true
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  },
+  {
+    "id": 1280,
+    "item_name": "Pethidine",
+    "session": "PM",
+    "old_stock": 8,
+    "new_stock": 8,
+    "old_consumed": 20,
+    "new_consumed": 20,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:52:51",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": false,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": true
+    },
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1679,
+      2079
+    ]
+  },
+  {
+    "id": 1427,
+    "item_name": "Adrenaline 1ml",
+    "session": "PM",
+    "old_stock": 22,
+    "new_stock": 22,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:52:59",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1028,
+      1827
+    ]
+  },
+  {
+    "id": 1431,
+    "item_name": "Aquabloc 15cm",
+    "session": "AM",
+    "old_stock": 70,
+    "new_stock": 70,
+    "old_consumed": 10,
+    "new_consumed": 10,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:52:59",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1032,
+      1831
+    ]
+  },
+  {
+    "id": 1432,
+    "item_name": "Aquabloc 15cm",
+    "session": "PM",
+    "old_stock": 70,
+    "new_stock": 70,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:52:59",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1033,
+      1832
+    ]
+  },
+  {
+    "id": 1583,
+    "item_name": "Gants propre",
+    "session": "PM",
+    "old_stock": 1700,
+    "new_stock": 1700,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:52:59",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1184,
+      1983
+    ]
+  },
+  {
+    "id": 1640,
+    "item_name": "Masque Neb Enfant",
+    "session": "PM",
+    "old_stock": 86,
+    "new_stock": 86,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:52:59",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1241,
+      2040
+    ]
+  },
+  {
+    "id": 1660,
+    "item_name": "NS (Normal Saline)",
+    "session": "PM",
+    "old_stock": 32,
+    "new_stock": 32,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:52:59",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1261,
+      2060
+    ]
+  },
+  {
+    "id": 1679,
+    "item_name": "Pethidine",
+    "session": "PM",
+    "old_stock": 8,
+    "new_stock": 8,
+    "old_consumed": 20,
+    "new_consumed": 20,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:52:59",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": false,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": true
+    },
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1280,
+      2079
+    ]
+  },
+  {
+    "id": 1764,
+    "item_name": "Seringue 5cc",
+    "session": "PM",
+    "old_stock": 231,
+    "new_stock": 231,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:52:59",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1365
+    ]
+  },
+  {
+    "id": 1827,
+    "item_name": "Adrenaline 1ml",
+    "session": "PM",
+    "old_stock": 22,
+    "new_stock": 22,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:53:11",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1028,
+      1427
+    ]
+  },
+  {
+    "id": 1831,
+    "item_name": "Aquabloc 15cm",
+    "session": "AM",
+    "old_stock": 70,
+    "new_stock": 70,
+    "old_consumed": 10,
+    "new_consumed": 10,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:53:11",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1032,
+      1431
+    ]
+  },
+  {
+    "id": 1832,
+    "item_name": "Aquabloc 15cm",
+    "session": "PM",
+    "old_stock": 70,
+    "new_stock": 70,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:53:11",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1033,
+      1432
+    ]
+  },
+  {
+    "id": 1983,
+    "item_name": "Gants propre",
+    "session": "PM",
+    "old_stock": 1700,
+    "new_stock": 1700,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:53:11",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1184,
+      1583
+    ]
+  },
+  {
+    "id": 2020,
+    "item_name": "IV Paracetamol 1g",
+    "session": "PM",
+    "old_stock": 43,
+    "new_stock": 43,
+    "old_consumed": 1,
+    "new_consumed": 1,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:53:11",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1620
+    ]
+  },
+  {
+    "id": 2040,
+    "item_name": "Masque Neb Enfant",
+    "session": "PM",
+    "old_stock": 86,
+    "new_stock": 86,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:53:11",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1241,
+      1640
+    ]
+  },
+  {
+    "id": 2060,
+    "item_name": "NS (Normal Saline)",
+    "session": "PM",
+    "old_stock": 32,
+    "new_stock": 32,
+    "old_consumed": 0,
+    "new_consumed": 0,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:53:11",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1261,
+      1660
+    ]
+  },
+  {
+    "id": 2079,
+    "item_name": "Pethidine",
+    "session": "PM",
+    "old_stock": 8,
+    "new_stock": 8,
+    "old_consumed": 20,
+    "new_consumed": 20,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:53:11",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": false,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": true
+    },
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1280,
+      1679
+    ]
+  },
+  {
+    "id": 2101,
+    "item_name": "RL (Ringer's Lactate)",
+    "session": "PM",
+    "old_stock": 44,
+    "new_stock": 44,
+    "old_consumed": 1,
+    "new_consumed": 1,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:53:11",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1701
+    ]
+  },
+  {
+    "id": 2189,
+    "item_name": "Trousse",
+    "session": "PM",
+    "old_stock": 73,
+    "new_stock": 73,
+    "old_consumed": 1,
+    "new_consumed": 1,
+    "updated_by": "lc_adelphine",
+    "updated_at": "2026-06-19 16:53:11",
+    "isValeryRelated": false,
+    "valeryReason": null,
+    "hasDuplicatesInBackup": true,
+    "duplicateIds": [
+      1789
+    ]
+  },
+  {
+    "id": 2480,
+    "item_name": "Pethidine",
+    "session": "PM",
+    "old_stock": 8,
+    "new_stock": 8,
+    "old_consumed": 20,
+    "new_consumed": 20,
+    "updated_by": "lc_jackson",
+    "updated_at": "2026-06-19 18:05:01",
+    "isValeryRelated": true,
+    "valeryReason": {
+      "isValeryUser": false,
+      "inObs1": false,
+      "inMinor": false,
+      "inStn1": true
+    },
+    "hasDuplicatesInBackup": false,
+    "duplicateIds": []
+  }
+]
