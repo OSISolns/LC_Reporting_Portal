@@ -52,10 +52,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
               args: [keeper.id, dup.id]
             }).catch(() => {});
             
-            await client.execute({
-              sql: "UPDATE daily_report_metrics SET department_id = ? WHERE department_id = ?",
-              args: [keeper.id, dup.id]
-            }).catch(() => {});
+            // daily_report_metrics no longer uses department_id
             
             await client.execute({
               sql: "UPDATE requisitions SET department_id = ? WHERE department_id = ?",
@@ -100,10 +97,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
             args: [d.id]
           }).catch(() => {});
           
-          await client.execute({
-            sql: "DELETE FROM daily_report_metrics WHERE department_id = ?",
-            args: [d.id]
-          }).catch(() => {});
+          // daily_report_metrics no longer uses department_id
           
           await client.execute({
             sql: "DELETE FROM requisitions WHERE department_id = ?",
@@ -131,7 +125,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     // ─── Provider Specialization Migration ───────────────────────────────────────────────
     try {
       // Step 1: Add specialization column (safe - catches error if already exists)
-      await client.execute("ALTER TABLE providers ADD COLUMN specialization TEXT").catch(() => {});
+      await client.execute("ALTER TABLE providers ADD COLUMN specialization TEXT").catch((err) => {
+        console.warn("⚠️ ALTER TABLE providers ADD COLUMN specialization failed:", err.message);
+      });
       console.log('⚙️ Running provider name + specialization migration...');
 
       // Step 2: Provider map — [oldName, verifiedName, specialization]
@@ -222,7 +218,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         });
         // Also update by new name in case the name was already corrected but specialization wasn't set
         await client.execute({
-          sql: 'UPDATE providers SET specialization = ? WHERE name = ? AND (specialization IS NULL OR specialization = "")',
+          sql: "UPDATE providers SET specialization = ? WHERE name = ? AND (specialization IS NULL OR specialization = '')",
           args: [specialization, verifiedName]
         });
       }
@@ -495,7 +491,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         report_date TEXT NOT NULL,
         provider_id INTEGER REFERENCES providers(id) ON DELETE CASCADE,
-        department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE,
+        specialization_id INTEGER REFERENCES specializations(id) ON DELETE CASCADE,
         patient_count INTEGER DEFAULT 0,
         follow_up_count INTEGER DEFAULT 0,
         UNIQUE (report_date, provider_id)
