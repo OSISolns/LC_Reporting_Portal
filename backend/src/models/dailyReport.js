@@ -10,7 +10,8 @@ class DailyReport {
       'SELECT id, name FROM departments ORDER BY id ASC'
     );
     const { rows: providers } = await db.query(
-      `SELECT p.id, p.name, p.title, p.specialization, p.specialization_id, s.name as specialization_name
+      `SELECT p.id, p.name, p.title, p.specialization, p.specialization_id, s.name as specialization_name,
+              coalesce(s.name, p.specialization) as department_name
        FROM providers p
        LEFT JOIN specializations s ON p.specialization_id = s.id
        WHERE p.is_active = 1
@@ -45,7 +46,7 @@ class DailyReport {
    */
   static async getByDate(reportDate) {
     const { rows: metrics } = await db.query(
-      `SELECT id, report_date, provider_id, department_id, patient_count, follow_up_count 
+      `SELECT id, report_date, provider_id, specialization_id, patient_count, follow_up_count 
        FROM daily_report_metrics 
        WHERE report_date = $1`,
       [reportDate]
@@ -79,9 +80,9 @@ class DailyReport {
     // Bulk insert new metrics
     for (const item of metrics) {
       statements.push({
-        sql: `INSERT INTO daily_report_metrics (report_date, provider_id, department_id, patient_count, follow_up_count) 
+        sql: `INSERT INTO daily_report_metrics (report_date, provider_id, specialization_id, patient_count, follow_up_count) 
               VALUES ($1, $2, $3, $4, $5)`,
-        args: [reportDate, item.provider_id, item.department_id, parseInt(item.patient_count, 10) || 0, parseInt(item.follow_up_count, 10) || 0]
+        args: [reportDate, item.provider_id, item.specialization_id, parseInt(item.patient_count, 10) || 0, parseInt(item.follow_up_count, 10) || 0]
       });
     }
 
@@ -107,15 +108,15 @@ class DailyReport {
     const end = `${year}-${formattedMonth}-31`; // LibSQL handles date comparison perfectly
 
     const { rows: metrics } = await db.query(
-      `SELECT m.id, m.report_date, m.provider_id, m.department_id, m.patient_count, m.follow_up_count,
+      `SELECT m.id, m.report_date, m.provider_id, m.specialization_id, m.patient_count, m.follow_up_count,
               p.name as provider_name, p.title as provider_title,
               p.specialization as provider_specialization,
-              p.specialization_id, s.name as specialization_name,
-              d.name as department_name
+              p.specialization_id as original_specialization_id, s.name as specialization_name,
+              sp.name as department_name
        FROM daily_report_metrics m
        JOIN providers p ON m.provider_id = p.id
        LEFT JOIN specializations s ON p.specialization_id = s.id
-       LEFT JOIN departments d ON m.department_id = d.id
+       LEFT JOIN specializations sp ON m.specialization_id = sp.id
        WHERE m.report_date >= $1 AND m.report_date <= $2
        ORDER BY m.report_date ASC`,
       [start, end]
@@ -147,15 +148,15 @@ class DailyReport {
    */
   static async getWeeklyData(startDate, endDate) {
     const { rows: metrics } = await db.query(
-      `SELECT m.id, m.report_date, m.provider_id, m.department_id, m.patient_count, m.follow_up_count,
+      `SELECT m.id, m.report_date, m.provider_id, m.specialization_id, m.patient_count, m.follow_up_count,
               p.name as provider_name, p.title as provider_title,
               p.specialization as provider_specialization,
-              p.specialization_id, s.name as specialization_name,
-              d.name as department_name
+              p.specialization_id as original_specialization_id, s.name as specialization_name,
+              sp.name as department_name
        FROM daily_report_metrics m
        JOIN providers p ON m.provider_id = p.id
        LEFT JOIN specializations s ON p.specialization_id = s.id
-       LEFT JOIN departments d ON m.department_id = d.id
+       LEFT JOIN specializations sp ON m.specialization_id = sp.id
        WHERE m.report_date >= $1 AND m.report_date <= $2
        ORDER BY m.report_date ASC`,
       [startDate, endDate]

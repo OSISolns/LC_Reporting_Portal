@@ -1,0 +1,12 @@
+{
+  "ignore": [
+    "*.db",
+    "*.db-journal",
+    "*.sqlite",
+    "*.sqlite3",
+    "local.db",
+    "local.db-journal",
+    "local.db-shm",
+    "local.db-wal"
+  ]
+}
