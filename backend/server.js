@@ -88,6 +88,7 @@ const apiLimiter = rateLimit({
   max:      200,
   standardHeaders: true,
   legacyHeaders:   false,
+  validate: { trustProxy: false },
   message: { success: false, message: 'Too many requests. Please try again later.' },
 });
 app.use('/api/', apiLimiter);
@@ -155,6 +156,57 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`\n🏥  Legacy Clinics Reporting Portal API`);
     console.log(`🚀  Server running on http://localhost:${PORT}`);
     console.log(`🌍  Environment: ${process.env.NODE_ENV || 'development'}\n`);
+
+    // Temporary automated migration execution hook
+    (async () => {
+      const fs = require('fs');
+      const path = require('path');
+      const logPath = path.join(__dirname, 'scripts', 'restore_output_log.txt');
+      
+      if (fs.existsSync(logPath)) {
+        console.log('Skipping startup migration: restore_output_log.txt already exists.');
+        return;
+      }
+      
+      const logStream = fs.createWriteStream(logPath, { flags: 'a' });
+      const originalLog = console.log;
+      const originalError = console.error;
+      
+      const customLog = (...args) => {
+        const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ');
+        logStream.write(`[INFO] ${new Date().toISOString()} - ${msg}\n`);
+        originalLog(...args);
+      };
+      
+      const customError = (...args) => {
+        const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ');
+        logStream.write(`[ERROR] ${new Date().toISOString()} - ${msg}\n`);
+        originalError(...args);
+      };
+      
+      console.log = customLog;
+      console.error = customError;
+      
+      try {
+        console.log('Starting automated June data restoration and backfill...');
+        const { restoreData } = require('./scripts/restore_june_data');
+        const { updateSpecializationId } = require('./scripts/backfill_specialization_id');
+        
+        console.log('Running restoreData()...');
+        await restoreData();
+        
+        console.log('Running updateSpecializationId()...');
+        await updateSpecializationId();
+        
+        console.log('Migration finished successfully!');
+      } catch (err) {
+        console.error('Migration failed:', err);
+      } finally {
+        console.log = originalLog;
+        console.error = originalError;
+        logStream.end();
+      }
+    })();
   });
 }
 
