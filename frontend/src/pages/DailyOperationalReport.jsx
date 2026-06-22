@@ -414,7 +414,7 @@ export default function DailyOperationalReport() {
         const r = sheet.getRow(currentRow);
         r.height = 20;
         r.getCell(1).value = provider.name;
-        r.getCell(2).value = deptName;
+        r.getCell(2).value = specName;
         
         days.forEach((day, index) => {
           const record = weeklyData.metrics.find(m => m.provider_id === provider.id && m.report_date === day);
@@ -1300,7 +1300,7 @@ export default function DailyOperationalReport() {
                                 </span>
                               </td>
                               <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
-                                {deptName}
+                                {specName}
                               </td>
 
                               {getWeeklyDaysArray().map(dateStr => {
@@ -1577,7 +1577,7 @@ export default function DailyOperationalReport() {
                             </span>
                           </td>
                           <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
-                            {deptName}
+                            {specName}
                           </td>
 
                           {getDaysArray().map(day => {
