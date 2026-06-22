@@ -109,12 +109,12 @@ export default function DailyOperationalReportBoard() {
               if (s.includes('dental') || s.includes('dentist') || s.includes('orthodont')) return 2;
               return 1; // Doctors on top
             };
-            const rankA = getSpecializationRank(a.specialization || a.department_name);
-            const rankB = getSpecializationRank(b.specialization || b.department_name);
+            const rankA = getSpecializationRank(a.specialization_name || a.specialization || 'Other');
+            const rankB = getSpecializationRank(b.specialization_name || b.specialization || 'Other');
             if (rankA !== rankB) return rankA - rankB;
             // secondary sort: specialization/dept name
-            const specA = a.specialization || a.department_name || '';
-            const specB = b.specialization || b.department_name || '';
+            const specA = a.specialization_name || a.specialization || '';
+            const specB = b.specialization_name || b.specialization || '';
             if (specA !== specB) return specA.localeCompare(specB);
             // tertiary sort: provider name
             return a.name.localeCompare(b.name);
@@ -287,11 +287,11 @@ export default function DailyOperationalReportBoard() {
     setSelectedDate(d.toISOString().split('T')[0]);
   };
 
-  // Group providers by specialization (falls back to department_name if not set)
+  // Group providers by specialization
   const providersByDept = config.providers.reduce((acc, p) => {
-    const dName = p.specialization || p.department_name || 'Other';
-    if (!acc[dName]) acc[dName] = [];
-    acc[dName].push(p);
+    const specName = p.specialization_name || p.specialization || 'Other';
+    if (!acc[specName]) acc[specName] = [];
+    acc[specName].push(p);
     return acc;
   }, {});
 
@@ -325,12 +325,12 @@ export default function DailyOperationalReportBoard() {
       totalPatients += count;
       totalFollowUps += followUp;
 
-      const dName = p.specialization || p.department_name || 'Other';
+      const specName = p.specialization_name || p.specialization || 'Other';
       // Combined: consultations + follow-ups for top dept ranking
-      deptTotals[dName] = (deptTotals[dName] || 0) + count + followUp;
-      if (deptTotals[dName] > maxDeptCount) {
-        maxDeptCount = deptTotals[dName];
-        maxDeptName = dName;
+      deptTotals[specName] = (deptTotals[specName] || 0) + count + followUp;
+      if (deptTotals[specName] > maxDeptCount) {
+        maxDeptCount = deptTotals[specName];
+        maxDeptName = specName;
       }
     });
 
@@ -474,7 +474,7 @@ export default function DailyOperationalReportBoard() {
         r.height = 20;
         r.getCell(1).value = p.name;
         r.getCell(2).value = p.title || 'Specialist';
-        r.getCell(3).value = p.specialization || p.department_name || 'Other';
+        r.getCell(3).value = p.specialization_name || p.specialization || 'Other';
         r.getCell(4).value = count;
 
         for (let col = 1; col <= 4; col++) {
@@ -669,16 +669,17 @@ export default function DailyOperationalReportBoard() {
       const startRowProviders = 5;
 
       const filteredProviders = config.providers.filter(p => {
-        if (weeklyDeptFilter !== 'ALL' && p.department_name !== weeklyDeptFilter) return false;
+        const specName = p.specialization_name || p.specialization || 'Other';
+        if (weeklyDeptFilter !== 'ALL' && specName !== weeklyDeptFilter) return false;
         if (weeklySearchQuery.trim() !== '') {
           const query = weeklySearchQuery.toLowerCase();
-          return p.name.toLowerCase().includes(query) || (p.department_name && p.department_name.toLowerCase().includes(query));
+          return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
         }
         return true;
       });
 
       filteredProviders.forEach(provider => {
-        const deptName = provider.specialization || provider.department_name || 'Other';
+        const specName = provider.specialization_name || provider.specialization || 'Other';
         const r = sheet.getRow(currentRow);
         r.height = 20;
         r.getCell(1).value = provider.name;
@@ -922,17 +923,17 @@ export default function DailyOperationalReportBoard() {
 
       // Filter providers to match EXACTLY what's on the screen
       const filteredProviders = config.providers.filter(p => {
-        if (monthlyDeptFilter !== 'ALL' && p.department_name !== monthlyDeptFilter) return false;
+        const specName = p.specialization_name || p.specialization || 'Other';
+        if (monthlyDeptFilter !== 'ALL' && specName !== monthlyDeptFilter) return false;
         if (monthlySearchQuery.trim() !== '') {
           const query = monthlySearchQuery.toLowerCase();
-          return p.name.toLowerCase().includes(query) || (p.department_name && p.department_name.toLowerCase().includes(query));
+          return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
         }
         return true;
       });
 
-      // Providers Row Insertion
       filteredProviders.forEach(provider => {
-        const deptName = provider.specialization || provider.department_name || 'Other';
+        const specName = provider.specialization_name || provider.specialization || 'Other';
         const r = sheet.getRow(currentRow);
         r.height = 20;
         r.getCell(1).value = provider.name;
@@ -1820,15 +1821,16 @@ export default function DailyOperationalReportBoard() {
                   {/* Filtered Outpatients rows */}
                   {config.providers
                     .filter(p => {
-                      if (weeklyDeptFilter !== 'ALL' && p.department_name !== weeklyDeptFilter) return false;
+                      const specName = p.specialization_name || p.specialization || 'Other';
+                      if (weeklyDeptFilter !== 'ALL' && specName !== weeklyDeptFilter) return false;
                       if (weeklySearchQuery.trim() !== '') {
                         const query = weeklySearchQuery.toLowerCase();
-                        return p.name.toLowerCase().includes(query) || (p.department_name && p.department_name.toLowerCase().includes(query));
+                        return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
                       }
                       return true;
                     })
                     .map(provider => {
-                      const deptName = provider.specialization || provider.department_name || 'Other';
+                      const specName = provider.specialization_name || provider.specialization || 'Other';
                       const daysMap = {};
                       const followMap = {};
                       let providerSum = 0;
@@ -1887,7 +1889,7 @@ export default function DailyOperationalReportBoard() {
                                   : <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-teal-300" />{provider.name} <span className="text-[8px] font-black text-teal-400 ml-1 uppercase">F</span></span>
                                 }
                               </td>
-                              <td className="px-4 py-1.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">{weeklyMetricMode === 'followup' ? deptName : ''}</td>
+                              <td className="px-4 py-1.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">{weeklyMetricMode === 'followup' ? specName : ''}</td>
                               {getWeeklyDaysArray().map(dateStr => {
                                 const fval = followMap[dateStr];
                                 return (
@@ -2161,15 +2163,16 @@ export default function DailyOperationalReportBoard() {
                   {/* Filtered Outpatients rows */}
                   {config.providers
                     .filter(p => {
-                      if (monthlyDeptFilter !== 'ALL' && p.department_name !== monthlyDeptFilter) return false;
+                      const specName = p.specialization_name || p.specialization || 'Other';
+                      if (monthlyDeptFilter !== 'ALL' && specName !== monthlyDeptFilter) return false;
                       if (monthlySearchQuery.trim() !== '') {
                         const query = monthlySearchQuery.toLowerCase();
-                        return p.name.toLowerCase().includes(query) || (p.department_name && p.department_name.toLowerCase().includes(query));
+                        return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
                       }
                       return true;
                     })
                     .map(provider => {
-                      const deptName = provider.specialization || provider.department_name || 'Other';
+                      const specName = provider.specialization_name || provider.specialization || 'Other';
                       const daysMap = {};
                       const followMap = {};
                       let providerSum = 0;
@@ -2229,7 +2232,7 @@ export default function DailyOperationalReportBoard() {
                                   : <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-teal-300" />{provider.name} <span className="text-[8px] font-black text-teal-400 ml-1 uppercase">F</span></span>
                                 }
                               </td>
-                              <td className="px-4 py-1.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">{monthlyMetricMode === 'followup' ? deptName : ''}</td>
+                              <td className="px-4 py-1.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">{monthlyMetricMode === 'followup' ? specName : ''}</td>
                               {getDaysArray().map(day => {
                                 const fval = followMap[day];
                                 return (

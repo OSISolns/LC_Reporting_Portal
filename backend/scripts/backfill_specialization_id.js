@@ -1,3 +1,5 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const db = require('../src/config/db');
 
 async function updateSpecializationId() {
@@ -21,7 +23,13 @@ async function updateSpecializationId() {
   } catch (err) {
     console.error('Fatal error:', err);
   }
-  process.exit(0);
 }
 
-updateSpecializationId();
+if (require.main === module) {
+  (async () => {
+    await updateSpecializationId();
+    process.exit(0);
+  })();
+} else {
+  module.exports = { updateSpecializationId };
+}
