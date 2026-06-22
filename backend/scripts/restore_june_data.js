@@ -847,4 +847,8 @@ async function restoreData() {
   }
 }
 
-restoreData().catch(console.error).finally(() => process.exit(0));
+if (require.main === module) {
+  restoreData().catch(console.error).finally(() => process.exit(0));
+} else {
+  module.exports = { restoreData };
+}
