@@ -1393,9 +1393,6 @@ export default function DailyOperationalReportBoard() {
 
             </div>
 
-
-
-              /* Daily Stock Changes Card (formerly Nursing Stock Daily Audit Timeline) */
               <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 mt-6 animate-fadeIn">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
                   <div>
