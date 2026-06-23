@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -257,8 +257,10 @@ export default function DailyInventoryCheckup() {
     if (day < currentDayNum) return true;
     if (day > currentDayNum) return false;
 
-    const currentRealSession = now.getHours() < 13 ? 'AM' : 'PM';
-    if (session === 'AM' && currentRealSession === 'PM') return true;
+    const currentRealSession = now.getHours() < 15 ? 'AM' : 'PM';
+    
+    // We do NOT return true here anymore to allow late AM reporting
+    // if (session === 'AM' && currentRealSession === 'PM') return true;
 
     return false;
   };
@@ -266,11 +268,11 @@ export default function DailyInventoryCheckup() {
   // Active state
   const [monthYear, setMonthYear] = useState(CURRENT_MONTH_STR);
   const [currentDay, setCurrentDay] = useState(() => new Date().getDate());
-  const [currentSession, setCurrentSession] = useState(() => new Date().getHours() < 13 ? 'AM' : 'PM');
+  const [currentSession, setCurrentSession] = useState(() => new Date().getHours() < 15 ? 'AM' : 'PM');
 
   const matrixScrollRef = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedWard, setSelectedWard] = useState('STN1'); // 'STN1' or 'MINOR'
+  const [selectedWard, setSelectedWard] = useState(''); // Neutral by default, must be 'STN1' or 'MINOR'
   const [searchTerm, setSearchTerm] = useState('');
 
   // Renders modes: 'focused' (session checkup) or 'matrix' (excel spreadsheet)
@@ -690,6 +692,11 @@ export default function DailyInventoryCheckup() {
 
   // Handle cell input edits locally
   const handleCellEdit = (itemName, field, val, targetDay = currentDay, targetSession = currentSession) => {
+    if ((field === 'consumed' || field === 'responsible_name') && !selectedWard) {
+      toast.error('Please select a ward (STN1 or MINOR) before making stock changes.', { duration: 4000 });
+      return;
+    }
+
     let cleanVal = ['responsible_name', 'expiration_date', 'status', 'category'].includes(field) ? val : (parseInt(val, 10) || 0);
 
     if (field === 'expiration_date' && typeof val === 'string') {
@@ -981,7 +988,7 @@ export default function DailyInventoryCheckup() {
     return 0;
   };
 
-  const getFilteredLogs = () => {
+  const filteredLogs = useMemo(() => {
     if (!auditLogs) return [];
     const now = new Date();
 
@@ -1015,10 +1022,9 @@ export default function DailyInventoryCheckup() {
       }
       return true; // 'all'
     });
-  };
+  }, [auditLogs, searchTerm, timeFilter]);
 
   const itemsPerPage = 25;
-  const filteredLogs = getFilteredLogs();
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
   const safeLogsPage = Math.max(1, Math.min(logsPage, totalPages || 1));
   const paginatedLogs = filteredLogs.slice((safeLogsPage - 1) * itemsPerPage, safeLogsPage * itemsPerPage);
@@ -1576,9 +1582,13 @@ export default function DailyInventoryCheckup() {
               </div>
 
               {/* Wards selector buttons (STATION 1, Minor Surgery) */}
-              <div className="flex items-center gap-2 shrink-0 bg-slate-50 p-1 rounded-xl border border-slate-200/60 shadow-inner">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider px-2">
-                  Ward Context:
+              <div className={`flex items-center gap-2 shrink-0 bg-slate-50 p-1 rounded-xl border shadow-inner transition-all duration-500 ${
+                !selectedWard ? 'border-amber-400 ring-4 ring-amber-400/20 bg-amber-50/50' : 'border-slate-200/60'
+              }`}>
+                <span className={`text-[9px] font-black uppercase tracking-wider px-2 ${
+                  !selectedWard ? 'text-amber-600 animate-pulse' : 'text-slate-400'
+                }`}>
+                  {selectedWard ? 'Ward Context:' : '⚠️ Select Ward to Edit:'}
                 </span>
                 <button
                   onClick={() => setSelectedWard('STN1')}
@@ -2007,10 +2017,9 @@ export default function DailyInventoryCheckup() {
 
                   {/* Summary Stats Grid */}
                   {(() => {
-                    const filtered = getFilteredLogs();
-                    const totalOperations = filtered.length;
-                    const itemsAffected = new Set(filtered.map(l => l.item_name)).size;
-                    const uniqueUsers = new Set(filtered.map(l => l.updated_by)).size;
+                    const totalOperations = filteredLogs.length;
+                    const itemsAffected = new Set(filteredLogs.map(l => l.item_name)).size;
+                    const uniqueUsers = new Set(filteredLogs.map(l => l.updated_by)).size;
 
                     return (
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -2048,14 +2057,14 @@ export default function DailyInventoryCheckup() {
                       <div className="flex justify-center items-center py-12 bg-white">
                         <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
                       </div>
-                    ) : getFilteredLogs().length > 0 ? (
+                    ) : filteredLogs.length > 0 ? (
                       <table className="w-full text-left text-xs bg-white">
                         <thead>
                           <tr className="bg-slate-50 text-slate-500 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
                             <th className="py-3 px-4">Date / Time</th>
                             <th className="py-3 px-4">Item Name</th>
                             <th className="py-3 px-4">Period</th>
-                            <th className="py-3 px-4">Stock Change</th>
+                            <th className="py-3 px-4">Stock In Hand &rarr; Balance</th>
                             <th className="py-3 px-4">Total Consumed</th>
                             <th className="py-3 px-4">Ward Breakdown Details</th>
                             <th className="py-3 px-4">Audited By</th>
@@ -2076,9 +2085,9 @@ export default function DailyInventoryCheckup() {
                                 </span>
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap font-mono text-[10px]">
-                                <span className="text-slate-400">{log.old_stock}</span>
+                                <span className="text-slate-500">{log.new_stock || 0}</span>
                                 <span className="mx-1.5 text-slate-400">&rarr;</span>
-                                <span className="font-bold text-slate-800">{log.new_stock}</span>
+                                <span className="font-bold text-slate-800">{(log.new_stock || 0) - (log.new_consumed || 0)}</span>
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap font-mono text-[10px]">
                                 <span className="text-slate-400">{log.old_consumed}</span>
@@ -2088,25 +2097,35 @@ export default function DailyInventoryCheckup() {
                               <td className="py-3 px-4">
                                 <div className="space-y-1">
                                   {/* STN1 details */}
-                                  {((log.old_consumed_obs1 !== undefined && log.old_consumed_obs1 !== log.new_consumed_obs1) ||
-                                    (log.old_user_stn1 !== undefined && log.old_user_stn1 !== log.new_user_stn1)) && (
-                                      <div className="pl-2 border-l-2 border-sky-400 bg-sky-50/20 py-0.5 rounded-r">
+                                  {(log.new_consumed_obs1 !== undefined && log.new_consumed_obs1 !== null) && (
+                                      <div className="pl-2 border-l-2 border-sky-400 bg-sky-50/20 py-0.5 rounded-r mb-1">
                                         <span className="font-bold text-sky-700 text-[8px] uppercase tracking-wider block">STN1</span>
                                         <p className="text-[8px] text-slate-500">
-                                          Use: {log.old_consumed_obs1} &rarr; <span className="font-bold text-sky-850">{log.new_consumed_obs1}</span>
-                                          {log.old_user_stn1 !== log.new_user_stn1 && ` | RN: "${log.old_user_stn1 || 'None'}" -> "${log.new_user_stn1 || 'None'}"`}
+                                          Use: {log.old_consumed_obs1 === log.new_consumed_obs1 ? (
+                                            <span className="font-bold text-sky-850">{log.new_consumed_obs1}</span>
+                                          ) : (
+                                            <>{log.old_consumed_obs1} &rarr; <span className="font-bold text-sky-850">{log.new_consumed_obs1}</span></>
+                                          )}
+                                          {log.old_user_stn1 !== log.new_user_stn1 
+                                            ? ` | RN: "${log.old_user_stn1 || 'None'}" -> "${log.new_user_stn1 || 'None'}"`
+                                            : (log.new_user_stn1 ? ` | RN: ${log.new_user_stn1}` : '')}
                                         </p>
                                       </div>
                                     )}
 
                                   {/* MINOR details */}
-                                  {((log.old_consumed_minor !== undefined && log.old_consumed_minor !== log.new_consumed_minor) ||
-                                    (log.old_user_minor !== undefined && log.old_user_minor !== log.new_user_minor)) && (
+                                  {(log.new_consumed_minor !== undefined && log.new_consumed_minor !== null) && (
                                       <div className="pl-2 border-l-2 border-emerald-400 bg-emerald-50/20 py-0.5 rounded-r">
                                         <span className="font-bold text-emerald-700 text-[8px] uppercase tracking-wider block">MINOR</span>
                                         <p className="text-[8px] text-slate-500">
-                                          Use: {log.old_consumed_minor} &rarr; <span className="font-bold text-emerald-850">{log.new_consumed_minor}</span>
-                                          {log.old_user_minor !== log.new_user_minor && ` | RN: "${log.old_user_minor || 'None'}" -> "${log.new_user_minor || 'None'}"`}
+                                          Use: {log.old_consumed_minor === log.new_consumed_minor ? (
+                                            <span className="font-bold text-emerald-850">{log.new_consumed_minor}</span>
+                                          ) : (
+                                            <>{log.old_consumed_minor} &rarr; <span className="font-bold text-emerald-850">{log.new_consumed_minor}</span></>
+                                          )}
+                                          {log.old_user_minor !== log.new_user_minor 
+                                            ? ` | RN: "${log.old_user_minor || 'None'}" -> "${log.new_user_minor || 'None'}"`
+                                            : (log.new_user_minor ? ` | RN: ${log.new_user_minor}` : '')}
                                         </p>
                                       </div>
                                     )}
