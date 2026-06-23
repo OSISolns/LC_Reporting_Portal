@@ -790,6 +790,7 @@ export default function DailyInventoryCheckup() {
       cell.consumed = (parseInt(cell.consumed_obs1, 10) || 0) + (parseInt(cell.consumed_minor, 10) || 0);
       cell.balance = cell.stock_in_hands - cell.consumed;
       cell.responsible_name = selectedWard === 'STN1' ? cell.user_stn1 : cell.user_minor;
+      cell.manually_edited = true;
 
       monthMap[itemName][targetDay][targetSession] = cell;
 
@@ -873,7 +874,8 @@ export default function DailyInventoryCheckup() {
               user_minor: uMinor || '',
               expiration_date: cell.expiration_date || '',
               status: cell.status || 'Active',
-              category: cell.category || ''
+              category: cell.category || '',
+              manually_edited: cell.manually_edited === true
             });
           });
         });
