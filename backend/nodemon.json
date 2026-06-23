@@ -3,6 +3,8 @@
     "*.db",
     "*.db-journal",
     "*.sqlite",
+    "*.sqlite-wal",
+    "*.sqlite-shm",
     "*.sqlite3",
     "local.db",
     "local.db-journal",

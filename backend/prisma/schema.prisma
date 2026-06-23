@@ -1,0 +1,820 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model audit_logs {
+  id          Int       @id @default(autoincrement())
+  user_id     Int?
+  action      String
+  entity_type String
+  entity_id   Int?
+  details     String?
+  ip_address  String?
+  created_at  DateTime? @default(now())
+  user_name   String?
+  user_role   String?
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([entity_type, entity_id], map: "idx_audit_entity")
+}
+
+model cancellation_requests {
+  id                                             Int       @id @default(autoincrement())
+  patient_full_name                              String
+  pid_number                                     String
+  old_sid_number                                 String?
+  new_sid_number                                 String?
+  telephone_number                               String?
+  insurance_payer                                String?
+  total_amount_cancelled                         String?
+  original_receipt_number                        String?
+  rectified_receipt_number                       String?
+  initial_transaction_date                       DateTime?
+  rectified_date                                 DateTime?
+  reason_for_cancellation                        String?
+  status                                         String?   @default("pending")
+  created_by                                     Int?
+  verified_by                                    Int?
+  verified_at                                    DateTime?
+  approved_by                                    Int?
+  approved_at                                    DateTime?
+  rejected_by                                    Int?
+  rejected_at                                    DateTime?
+  rejection_comment                              String?
+  created_at                                     DateTime? @default(now())
+  updated_at                                     DateTime? @default(now())
+  billed_by                                      Int?
+  is_mock                                        Int?      @default(0)
+  original_receipt_amount                        Float?
+  rectified_receipt_amount                       Float?
+  users_cancellation_requests_rejected_byTousers users?    @relation("cancellation_requests_rejected_byTousers", fields: [rejected_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_cancellation_requests_approved_byTousers users?    @relation("cancellation_requests_approved_byTousers", fields: [approved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_cancellation_requests_verified_byTousers users?    @relation("cancellation_requests_verified_byTousers", fields: [verified_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_cancellation_requests_created_byTousers  users?    @relation("cancellation_requests_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_by], map: "idx_canc_created_by")
+  @@index([created_at(sort: Desc)], map: "idx_canc_created_at")
+  @@index([status], map: "idx_canc_status")
+}
+
+model clinical_observations {
+  id                  Int       @id @default(autoincrement())
+  patient_id          String
+  queue_id            String
+  patient_name        String?
+  ward                String?
+  bed                 String?
+  identification_json String?
+  triage_json         String?
+  progress_notes_json String?
+  medication_mar_json String?
+  sbar_json           String?
+  status              String?   @default("Draft")
+  created_by          Int?
+  created_at          DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at          DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  is_mock             Int?      @default(0)
+  users               users?    @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([updated_at(sort: Desc)], map: "idx_co_updated_at")
+  @@index([status], map: "idx_co_status")
+  @@index([patient_id], map: "idx_co_patient_id")
+}
+
+model compliance_audits {
+  id              Int     @id @default(autoincrement())
+  title           String
+  scheduled_date  String
+  readiness_score Int?    @default(0)
+  description     String?
+}
+
+model compliance_facility_certs {
+  id          Int    @id @default(autoincrement())
+  name        String
+  issuer      String
+  expiry_date String
+  status      String
+}
+
+model compliance_licenses {
+  id           Int    @id @default(autoincrement())
+  staff_name   String
+  role         String
+  license_type String
+  expiry_date  String
+  status       String
+}
+
+model daily_procedure_logs {
+  id           Int     @id @default(autoincrement())
+  report_date  String
+  metric_name  String
+  metric_value String? @default("0")
+
+  @@unique([report_date, metric_name], map: "sqlite_autoindex_daily_procedure_logs_1")
+}
+
+model daily_report_metrics {
+  id                Int        @id @default(autoincrement())
+  report_date       String
+  provider_id       Int?
+  patient_count     Int?       @default(0)
+  follow_up_count   Int?       @default(0)
+  specialization_id Int?
+  providers         providers? @relation(fields: [provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([report_date, provider_id], map: "sqlite_autoindex_daily_report_metrics_1")
+}
+
+model department_stock {
+  id               Int               @id @default(autoincrement())
+  department_id    Int?
+  item_id          Int?
+  batch_id         Int?
+  quantity         Int?              @default(0)
+  min_stock_level  Int?              @default(10)
+  stock_batches    stock_batches?    @relation(fields: [batch_id], references: [id], onUpdate: NoAction)
+  master_inventory master_inventory? @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  departments      departments?      @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([department_id, item_id, batch_id], map: "sqlite_autoindex_department_stock_1")
+}
+
+model departments {
+  id               Int                @id @default(autoincrement())
+  name             String             @unique(map: "sqlite_autoindex_departments_1")
+  department_stock department_stock[]
+  requisitions     requisitions[]
+}
+
+model icd11_cache {
+  id         Int       @id @default(autoincrement())
+  keyword    String    @unique(map: "sqlite_autoindex_icd11_cache_1")
+  results    String
+  created_at DateTime? @default(now())
+}
+
+model incident_reports {
+  id                                        Int       @id @default(autoincrement())
+  incident_type                             String
+  department                                String
+  area_of_incident                          String
+  names_involved                            String?
+  pid_number                                String?
+  description                               String
+  contributing_factors                      String?
+  immediate_actions                         String?
+  prevention_measures                       String?
+  status                                    String?   @default("pending")
+  created_by                                Int?
+  reviewed_by                               Int?
+  reviewed_at                               DateTime?
+  review_comments                           String?
+  created_at                                DateTime? @default(now())
+  updated_at                                DateTime? @default(now())
+  approved_by                               Int?
+  approved_at                               DateTime?
+  hsfp_comments                             String?
+  rca_environment                           String?
+  rca_staff                                 String?
+  rca_equipment                             String?
+  rca_policy                                String?
+  rca_verification_json                     String?
+  corrective_actions_json                   String?
+  is_mock                                   Int?      @default(0)
+  users_incident_reports_approved_byTousers users?    @relation("incident_reports_approved_byTousers", fields: [approved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_incident_reports_reviewed_byTousers users?    @relation("incident_reports_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_incident_reports_created_byTousers  users?    @relation("incident_reports_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_by], map: "idx_inc_created_by")
+  @@index([created_at(sort: Desc)], map: "idx_inc_created_at")
+  @@index([status], map: "idx_inc_status")
+}
+
+model internal_feedbacks {
+  id                    Int     @id @default(autoincrement())
+  contact_info          String?
+  feedback_date         String?
+  reception_call_center Int?    @default(0)
+  nursing               Int?    @default(0)
+  doctors_room          Int?    @default(0)
+  reception_cashier     Int?    @default(0)
+  call_center           Int?    @default(0)
+  tabara_service        Int?    @default(0)
+  laboratory            Int?    @default(0)
+  cafetaria             Int?    @default(0)
+  imaging               Int?    @default(0)
+  concern_description   String
+  created_at            String  @default("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')")
+  laboratory_results    Int?    @default(0)
+  other                 Int?    @default(0)
+  other_details         String?
+
+  @@index([feedback_date], map: "idx_feedbacks_date")
+}
+
+model it_assets {
+  id          Int     @id @default(autoincrement())
+  asset_tag   String  @unique(map: "sqlite_autoindex_it_assets_1")
+  name        String
+  assigned_to String?
+  department  String?
+  status      String? @default("Active")
+}
+
+model it_tickets {
+  id            Int     @id @default(autoincrement())
+  ticket_number String  @unique(map: "sqlite_autoindex_it_tickets_1")
+  title         String
+  description   String?
+  reporter      String
+  category      String
+  status        String? @default("Open")
+  priority      String? @default("Medium")
+  created_at    String? @default("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')")
+}
+
+model master_inventory {
+  id                Int                 @id @default(autoincrement())
+  name              String              @unique(map: "sqlite_autoindex_master_inventory_1")
+  sku               String?
+  unit_of_measure   String?
+  category          String?
+  department_stock  department_stock[]
+  requisition_items requisition_items[]
+  stock_batches     stock_batches[]
+}
+
+model notifications {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  title      String
+  message    String
+  type       String?
+  link       String?
+  is_read    Boolean?  @default(false)
+  created_at DateTime? @default(now())
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_notifications_created_at")
+  @@index([is_read], map: "idx_notifications_is_read")
+  @@index([user_id], map: "idx_notifications_user_id")
+}
+
+model nursing_monthly_stock {
+  id                     Int       @id @default(autoincrement())
+  month_year             String
+  item_name              String
+  day                    Int
+  session                String
+  stock_in_hands         Int?      @default(0)
+  consumed               Int?      @default(0)
+  balance                Int?      @default(0)
+  responsible_name       String?
+  created_at             DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at             DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  expiration_date        String?
+  status                 String?
+  category               String?
+  consumed_obs1          String?
+  consumed_minor_surgery String?
+  consumed_minor         Int?      @default(0)
+  user_obs1              String?
+  user_minor             String?
+  user_stn1              String?
+
+  @@unique([month_year, item_name, day, session], map: "idx_nursing_stock_unique")
+}
+
+model nursing_stock_change_logs {
+  id                 Int       @id @default(autoincrement())
+  month_year         String
+  item_name          String
+  day                Int
+  session            String
+  old_stock          Int?
+  new_stock          Int?
+  old_consumed       Int?
+  new_consumed       Int?
+  updated_by         String?
+  updated_at         DateTime? @default(now())
+  old_consumed_obs1  Int?      @default(0)
+  new_consumed_obs1  Int?      @default(0)
+  old_consumed_minor Int?      @default(0)
+  new_consumed_minor Int?      @default(0)
+  old_user_obs1      String?
+  new_user_obs1      String?
+  old_user_minor     String?
+  new_user_minor     String?
+  old_user_stn1      String?
+  new_user_stn1      String?
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model nursing_unlock_passwords {
+  month_year String?   @id
+  password   String
+  created_at DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+
+  @@ignore
+}
+
+model patient_vitals {
+  id               Int       @id @default(autoincrement())
+  patient_id       String
+  temperature      String?
+  pulse            String?
+  respiratory_rate String?
+  blood_pressure   String?
+  weight           String?
+  spo2             String?
+  general_comments String?
+  created_at       DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+
+  @@index([patient_id], map: "idx_vitals_patient_id")
+}
+
+model permission_modules {
+  id           Int       @id @default(autoincrement())
+  name         String    @unique(map: "sqlite_autoindex_permission_modules_1")
+  display_name String
+  actions      String
+  created_at   DateTime? @default(now())
+}
+
+model providers {
+  id                   Int                    @id @default(autoincrement())
+  name                 String
+  title                String?
+  specialization_id    Int?
+  specialization       String?
+  is_active            Int?                   @default(1)
+  daily_report_metrics daily_report_metrics[]
+  specializations      specializations?       @relation(fields: [specialization_id], references: [id], onUpdate: NoAction)
+
+  @@index([is_active], map: "idx_providers_active")
+  @@index([specialization_id], map: "idx_providers_spec_id")
+}
+
+model refund_requests {
+  id                                       Int     @id @default(autoincrement())
+  patient_full_name                        String
+  pid_number                               String
+  sid_number                               String?
+  telephone_number                         String?
+  insurance_payer                          String?
+  momo_code                                String?
+  total_amount_paid                        Float   @default(0)
+  amount_to_be_refunded                    Float   @default(0)
+  amount_paid_by                           String?
+  original_receipt_number                  String?
+  initial_transaction_date                 String?
+  reason_for_refund                        String
+  status                                   String  @default("pending")
+  rejection_comment                        String?
+  created_by                               Int?
+  verified_by                              Int?
+  approved_by                              Int?
+  rejected_by                              Int?
+  created_at                               String? @default("DATETIME('now')")
+  verified_at                              String?
+  approved_at                              String?
+  rejected_at                              String?
+  updated_at                               String? @default("DATETIME('now')")
+  billed_by                                Int?
+  is_mock                                  Int?    @default(0)
+  users_refund_requests_rejected_byTousers users?  @relation("refund_requests_rejected_byTousers", fields: [rejected_by], references: [id], onUpdate: NoAction)
+  users_refund_requests_approved_byTousers users?  @relation("refund_requests_approved_byTousers", fields: [approved_by], references: [id], onUpdate: NoAction)
+  users_refund_requests_verified_byTousers users?  @relation("refund_requests_verified_byTousers", fields: [verified_by], references: [id], onUpdate: NoAction)
+  users_refund_requests_created_byTousers  users?  @relation("refund_requests_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+
+  @@index([created_by], map: "idx_ref_created_by")
+  @@index([created_at(sort: Desc)], map: "idx_ref_created_at")
+  @@index([status], map: "idx_ref_status")
+  @@index([created_by], map: "idx_refund_created_by")
+  @@index([patient_full_name], map: "idx_refund_name")
+  @@index([pid_number], map: "idx_refund_pid")
+  @@index([created_at], map: "idx_refund_created_at")
+  @@index([status], map: "idx_refund_status")
+}
+
+model requisition_items {
+  id                 Int               @id @default(autoincrement())
+  requisition_id     Int?
+  item_id            Int?
+  requested_quantity Int?              @default(0)
+  approved_quantity  Int?              @default(0)
+  master_inventory   master_inventory? @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  requisitions       requisitions?     @relation(fields: [requisition_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model requisitions {
+  id                Int                 @id @default(autoincrement())
+  department_id     Int?
+  status            String?             @default("Pending")
+  urgency           String?             @default("Normal")
+  created_at        DateTime?           @default(now())
+  updated_at        DateTime?           @default(now())
+  notes             String?
+  rejection_reason  String?
+  requisition_items requisition_items[]
+  departments       departments?        @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model results_transfers {
+  id                                         Int       @id @default(autoincrement())
+  transfer_date                              DateTime
+  old_sid                                    String
+  new_sid                                    String
+  reason                                     String
+  edited_by_name                             String?
+  status                                     String    @default("pending")
+  rejection_comment                          String?
+  created_by                                 Int?
+  reviewed_by                                Int?
+  approved_by                                Int?
+  rejected_by                                Int?
+  created_at                                 DateTime? @default(now())
+  reviewed_at                                DateTime?
+  approved_at                                DateTime?
+  rejected_at                                DateTime?
+  updated_at                                 DateTime? @default(now())
+  is_mock                                    Int?      @default(0)
+  users_results_transfers_rejected_byTousers users?    @relation("results_transfers_rejected_byTousers", fields: [rejected_by], references: [id], onUpdate: NoAction)
+  users_results_transfers_approved_byTousers users?    @relation("results_transfers_approved_byTousers", fields: [approved_by], references: [id], onUpdate: NoAction)
+  users_results_transfers_reviewed_byTousers users?    @relation("results_transfers_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+  users_results_transfers_created_byTousers  users?    @relation("results_transfers_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_res_trans_created_at")
+  @@index([new_sid], map: "idx_res_trans_new_sid")
+  @@index([old_sid], map: "idx_res_trans_old_sid")
+  @@index([status], map: "idx_res_trans_status")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model revenue_leakages {
+  id           String? @id
+  patient      String
+  service      String
+  date         String
+  clinical_log String
+  billing_log  String
+  value        Int
+  status       String  @default("Unresolved")
+
+  @@ignore
+}
+
+model role_permissions {
+  id         Int       @id @default(autoincrement())
+  role_name  String
+  module     String
+  action     String
+  granted    Int?      @default(0)
+  updated_by Int?
+  updated_at DateTime? @default(now())
+  users      users?    @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([role_name, module, action], map: "sqlite_autoindex_role_permissions_1")
+  @@index([role_name, module, action], map: "idx_role_permissions_lookup")
+}
+
+model roles {
+  id           Int     @id @default(autoincrement())
+  name         String  @unique(map: "sqlite_autoindex_roles_1")
+  display_name String
+  users        users[]
+}
+
+model safety_reports {
+  id                Int       @id @default(autoincrement())
+  title             String?
+  period_start      DateTime?
+  period_end        DateTime?
+  executive_summary String?
+  key_findings      String?
+  recommendations   String?
+  status            String?   @default("draft")
+  created_by        Int?
+  created_at        DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+}
+
+model shift_callcenter_close {
+  id                    Int            @id @default(autoincrement())
+  shift_id              Int            @unique(map: "sqlite_autoindex_shift_callcenter_close_1")
+  inbound_total         Int            @default(0)
+  inbound_assisted      Int            @default(0)
+  inbound_dropped       Int            @default(0)
+  outbound_total        Int            @default(0)
+  outbound_reached      Int            @default(0)
+  outbound_unreached    Int            @default(0)
+  call_top_reasons      String?
+  has_pending_followups Int            @default(0)
+  followup_details      String?
+  created_at            DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at            DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  shift_sessions        shift_sessions @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model shift_cashier_close {
+  id                          Int            @id @default(autoincrement())
+  shift_id                    Int            @unique(map: "sqlite_autoindex_shift_cashier_close_1")
+  total_patients              Int            @default(0)
+  total_insured               Int            @default(0)
+  total_private               Int            @default(0)
+  insurances_used             String?
+  total_momo_transactions     Int            @default(0)
+  total_card_transactions     Int            @default(0)
+  card_bank_terminal          String?
+  payments_all_successful     Int            @default(1)
+  failed_payment_status       String?
+  failed_payment_amount       Float?
+  failed_payment_action_taken String?
+  opening_float               Float          @default(0)
+  closing_float               Float          @default(0)
+  cash_payments_total         Float          @default(0)
+  cash_discrepancy            Float          @default(0)
+  created_at                  DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at                  DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  shift_sessions              shift_sessions @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model shift_cashier_open {
+  id             Int            @id @default(autoincrement())
+  shift_id       Int            @unique(map: "sqlite_autoindex_shift_cashier_open_1")
+  opening_float  Float          @default(0)
+  created_at     DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  shift_sessions shift_sessions @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model shift_equipment_logs {
+  id               Int            @id @default(autoincrement())
+  shift_id         Int
+  snapshot         String
+  equipment_name   String
+  equipment_status String
+  remarks          String?
+  created_at       DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  shift_sessions   shift_sessions @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([snapshot], map: "idx_equip_snapshot")
+  @@index([shift_id], map: "idx_equip_shift_id")
+}
+
+model shift_helpdesk_close {
+  id                     Int            @id @default(autoincrement())
+  shift_id               Int            @unique(map: "sqlite_autoindex_shift_helpdesk_close_1")
+  patient_walkin_queries Int            @default(0)
+  internal_staff_queries Int            @default(0)
+  created_at             DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at             DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  shift_sessions         shift_sessions @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model shift_nurse_close {
+  id                Int            @id @default(autoincrement())
+  shift_id          Int            @unique(map: "sqlite_autoindex_shift_nurse_close_1")
+  total_assessments Int?           @default(0)
+  total_incidents   Int?           @default(0)
+  handover_sbar_sb  String?
+  handover_sbar_ar  String?
+  created_at        DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at        DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  shift_sessions    shift_sessions @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model shift_sessions {
+  id                                      Int                     @id @default(autoincrement())
+  user_id                                 Int
+  shift_role                              String
+  status                                  String                  @default("open")
+  opened_at                               DateTime                @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  closed_at                               DateTime?
+  handover_notes                          String?
+  reviewed_by                             Int?
+  reviewed_at                             DateTime?
+  is_flagged                              Int                     @default(0)
+  flag_reasons                            String?
+  created_at                              DateTime?               @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at                              DateTime?               @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  start_hour                              String?
+  wave                                    String?
+  shift_callcenter_close                  shift_callcenter_close?
+  shift_cashier_close                     shift_cashier_close?
+  shift_cashier_open                      shift_cashier_open?
+  shift_equipment_logs                    shift_equipment_logs[]
+  shift_helpdesk_close                    shift_helpdesk_close?
+  shift_nurse_close                       shift_nurse_close?
+  users_shift_sessions_reviewed_byTousers users?                  @relation("shift_sessions_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+  users_shift_sessions_user_idTousers     users                   @relation("shift_sessions_user_idTousers", fields: [user_id], references: [id], onUpdate: NoAction)
+  shift_viplounge_close                   shift_viplounge_close?
+
+  @@index([is_flagged], map: "idx_shift_is_flagged")
+  @@index([opened_at(sort: Desc)], map: "idx_shift_opened_at")
+  @@index([shift_role], map: "idx_shift_role")
+  @@index([status], map: "idx_shift_status")
+  @@index([user_id], map: "idx_shift_user_id")
+}
+
+model shift_viplounge_close {
+  id             Int            @id @default(autoincrement())
+  shift_id       Int            @unique(map: "sqlite_autoindex_shift_viplounge_close_1")
+  vip_logs       String?
+  created_at     DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at     DateTime?      @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  shift_sessions shift_sessions @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model specializations {
+  id         Int         @id @default(autoincrement())
+  name       String      @unique(map: "sqlite_autoindex_specializations_1")
+  created_at DateTime?   @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  providers  providers[]
+}
+
+model staff_performance_ratings {
+  id              Int       @id @default(autoincrement())
+  staff_user_id   Int
+  rated_by        Int
+  request_type    String
+  request_id      Int
+  reason          String
+  severity        Int
+  points_deducted Float     @default(0)
+  note            String?
+  created_at      DateTime? @default(now())
+}
+
+model staff_performance_scores {
+  id         Int       @id @default(autoincrement())
+  user_id    Int       @unique(map: "sqlite_autoindex_staff_performance_scores_1")
+  score      Float     @default(100)
+  warnings   Int       @default(0)
+  created_at DateTime? @default(now())
+  updated_at DateTime? @default(now())
+}
+
+model stock_batches {
+  id               Int                @id @default(autoincrement())
+  item_id          Int?
+  vendor_id        Int?
+  batch_number     String?            @unique(map: "sqlite_autoindex_stock_batches_1")
+  expiry_date      String?
+  purchase_price   Float?
+  created_at       DateTime?          @default(now())
+  quantity         Int?               @default(0)
+  lot_number       String?
+  department_stock department_stock[]
+  vendors          vendors?           @relation(fields: [vendor_id], references: [id], onUpdate: NoAction)
+  master_inventory master_inventory?  @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sukraa_patients {
+  id         Int     @id @default(autoincrement())
+  pid        String  @unique(map: "sqlite_autoindex_sukraa_patients_1")
+  full_name  String
+  age        String?
+  dob        String?
+  gender     String?
+  phone      String?
+  insurance  String?
+  extra_1    String?
+  extra_2    String?
+  source     String  @default("sukraa")
+  synced_at  String  @default("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')")
+  created_at String  @default("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')")
+  updated_at String  @default("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')")
+
+  @@index([phone], map: "idx_sukraa_patients_phone")
+  @@index([pid], map: "idx_sukraa_patients_pid")
+  @@index([full_name], map: "idx_sukraa_patients_name")
+}
+
+model sukraa_sync_log {
+  id              Int     @id @default(autoincrement())
+  started_at      String
+  completed_at    String?
+  records_added   Int?    @default(0)
+  records_updated Int?    @default(0)
+  status          String  @default("running")
+  error_message   String?
+}
+
+model supplier_portal_sessions {
+  id          Int       @id @default(autoincrement())
+  vendor_id   Int
+  vendor_name String
+  token       String    @unique(map: "sqlite_autoindex_supplier_portal_sessions_1")
+  items       String?   @default("[]")
+  created_at  DateTime? @default(now())
+  is_active   Int?      @default(1)
+}
+
+model supplier_submission_items {
+  id                   Int                   @id @default(autoincrement())
+  submission_id        Int?
+  name                 String
+  sku                  String?
+  category             String?
+  unit_of_measure      String?
+  batch_number         String?
+  expiry_date          String?
+  purchase_price       Float?
+  quantity             Int?                  @default(0)
+  vendor_name          String?
+  supplier_submissions supplier_submissions? @relation(fields: [submission_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model supplier_submissions {
+  id                        Int                         @id @default(autoincrement())
+  supplier_name             String
+  uploaded_at               DateTime?                   @default(now())
+  status                    String?                     @default("pending")
+  supplier_submission_items supplier_submission_items[]
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model system_settings {
+  key   String? @id
+  value String?
+
+  @@ignore
+}
+
+model uoms {
+  id           Int     @id @default(autoincrement())
+  name         String  @unique(map: "sqlite_autoindex_uoms_1")
+  abbreviation String
+  description  String?
+}
+
+model user_permission_overrides {
+  id                                                Int       @id @default(autoincrement())
+  user_id                                           Int
+  module                                            String
+  action                                            String
+  granted                                           Int
+  reason                                            String?
+  updated_by                                        Int?
+  updated_at                                        DateTime? @default(now())
+  users_user_permission_overrides_updated_byTousers users?    @relation("user_permission_overrides_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_user_permission_overrides_user_idTousers    users     @relation("user_permission_overrides_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, module, action], map: "sqlite_autoindex_user_permission_overrides_1")
+  @@index([user_id, module, action], map: "idx_user_overrides_lookup")
+}
+
+model users {
+  id                                                                    Int                         @id @default(autoincrement())
+  full_name                                                             String
+  username                                                              String                      @unique(map: "sqlite_autoindex_users_1")
+  email                                                                 String?
+  password_hash                                                         String
+  role_id                                                               Int?
+  is_active                                                             Int?                        @default(1)
+  created_at                                                            DateTime?                   @default(now())
+  updated_at                                                            DateTime?                   @default(now())
+  failed_attempts                                                       Int?                        @default(0)
+  lockout_until                                                         DateTime?
+  must_change_password                                                  Int?                        @default(0)
+  audit_logs                                                            audit_logs[]
+  cancellation_requests_cancellation_requests_rejected_byTousers        cancellation_requests[]     @relation("cancellation_requests_rejected_byTousers")
+  cancellation_requests_cancellation_requests_approved_byTousers        cancellation_requests[]     @relation("cancellation_requests_approved_byTousers")
+  cancellation_requests_cancellation_requests_verified_byTousers        cancellation_requests[]     @relation("cancellation_requests_verified_byTousers")
+  cancellation_requests_cancellation_requests_created_byTousers         cancellation_requests[]     @relation("cancellation_requests_created_byTousers")
+  clinical_observations                                                 clinical_observations[]
+  incident_reports_incident_reports_approved_byTousers                  incident_reports[]          @relation("incident_reports_approved_byTousers")
+  incident_reports_incident_reports_reviewed_byTousers                  incident_reports[]          @relation("incident_reports_reviewed_byTousers")
+  incident_reports_incident_reports_created_byTousers                   incident_reports[]          @relation("incident_reports_created_byTousers")
+  notifications                                                         notifications[]
+  refund_requests_refund_requests_rejected_byTousers                    refund_requests[]           @relation("refund_requests_rejected_byTousers")
+  refund_requests_refund_requests_approved_byTousers                    refund_requests[]           @relation("refund_requests_approved_byTousers")
+  refund_requests_refund_requests_verified_byTousers                    refund_requests[]           @relation("refund_requests_verified_byTousers")
+  refund_requests_refund_requests_created_byTousers                     refund_requests[]           @relation("refund_requests_created_byTousers")
+  results_transfers_results_transfers_rejected_byTousers                results_transfers[]         @relation("results_transfers_rejected_byTousers")
+  results_transfers_results_transfers_approved_byTousers                results_transfers[]         @relation("results_transfers_approved_byTousers")
+  results_transfers_results_transfers_reviewed_byTousers                results_transfers[]         @relation("results_transfers_reviewed_byTousers")
+  results_transfers_results_transfers_created_byTousers                 results_transfers[]         @relation("results_transfers_created_byTousers")
+  role_permissions                                                      role_permissions[]
+  shift_sessions_shift_sessions_reviewed_byTousers                      shift_sessions[]            @relation("shift_sessions_reviewed_byTousers")
+  shift_sessions_shift_sessions_user_idTousers                          shift_sessions[]            @relation("shift_sessions_user_idTousers")
+  user_permission_overrides_user_permission_overrides_updated_byTousers user_permission_overrides[] @relation("user_permission_overrides_updated_byTousers")
+  user_permission_overrides_user_permission_overrides_user_idTousers    user_permission_overrides[] @relation("user_permission_overrides_user_idTousers")
+  roles                                                                 roles?                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model vendors {
+  id             Int             @id @default(autoincrement())
+  name           String
+  contact        String?
+  contract_terms String?
+  is_active      Int?            @default(1)
+  stock_batches  stock_batches[]
+}
