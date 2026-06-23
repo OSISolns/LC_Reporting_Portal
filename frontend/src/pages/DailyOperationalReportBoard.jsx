@@ -1197,16 +1197,16 @@ export default function DailyOperationalReportBoard() {
               <div className="p-4 bg-sky-50 text-sky-600 rounded-2xl border border-sky-100 shadow-sm">
                 <Users size={24} />
               </div>
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Outpatients Seen</p>
-                  <h3 className="text-3xl font-black text-slate-900 mt-1">{kpis.totalPatients} Patients</h3>
-                  {kpis.totalFollowUps > 0 && (
-                    <p className="text-[11px] font-black text-amber-500 mt-1 flex items-center gap-1">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                      {kpis.totalFollowUps} Follow-up{kpis.totalFollowUps !== 1 ? 's' : ''}
-                    </p>
-                  )}
-                </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Outpatients Seen</p>
+                <h3 className="text-3xl font-black text-slate-900 mt-1">{kpis.totalPatients} Patients</h3>
+                {kpis.totalFollowUps > 0 && (
+                  <p className="text-[11px] font-black text-amber-500 mt-1 flex items-center gap-1">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    {kpis.totalFollowUps} Follow-up{kpis.totalFollowUps !== 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4 relative overflow-hidden">
@@ -1393,963 +1393,963 @@ export default function DailyOperationalReportBoard() {
 
             </div>
 
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 mt-6 animate-fadeIn">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
-                  <div>
-                    <h3 className="text-sm font-black text-sky-650 uppercase tracking-widest flex items-center gap-2">
-                      <Database size={16} className="text-sky-650" /> Stock Changes
-                    </h3>
-                    <p className="text-[10px] text-slate-400 font-extrabold uppercase mt-0.5">
-                      Real-time stock counting updates and consumed level adjustments log
-                    </p>
-                  </div>
-                  <span className="text-[10px] font-black px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full">
-                    {stockLogs.length} CHANGES LOGGED
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 mt-6 animate-fadeIn">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
+                <div>
+                  <h3 className="text-sm font-black text-sky-650 uppercase tracking-widest flex items-center gap-2">
+                    <Database size={16} className="text-sky-650" /> Stock Changes
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-extrabold uppercase mt-0.5">
+                    Real-time stock counting updates and consumed level adjustments log
+                  </p>
+                </div>
+                <span className="text-[10px] font-black px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full">
+                  {stockLogs.length} CHANGES LOGGED
+                </span>
+              </div>
+
+              {stockLogs.length === 0 ? (
+                <div className="text-center py-8 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                  <Database size={24} className="text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs text-slate-450 font-bold">No inventory stock or consumption level modifications logged today.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-left border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                        <th className="px-4 py-3">Logged At</th>
+                        <th className="px-4 py-3">Item Name</th>
+                        <th className="px-4 py-3">Day / Session</th>
+                        <th className="px-4 py-3 text-left">Stock Level</th>
+                        <th className="px-4 py-3 text-left">Total Consumed</th>
+                        <th className="px-4 py-3">Ward</th>
+                        <th className="px-4 py-3">Updated By</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {stockLogs.map((log) => {
+                        const logTime = new Date(log.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                        const stockDiff = log.new_stock - log.old_stock;
+                        const consumedDiff = log.new_consumed - log.old_consumed;
+
+                        return (
+                          <tr
+                            key={log.id}
+                            className="hover:bg-slate-50/40 text-xs font-bold text-slate-700 cursor-pointer"
+                            onClick={() => setSelectedLog(log)}
+                          >
+                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-400 font-mono text-[11px]">{logTime}</td>
+                            <td className="px-4 py-3.5 text-slate-900 font-black">{log.item_name}</td>
+                            <td className="px-4 py-3.5">
+                              <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100 uppercase">
+                                Day {log.day} - {log.session}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap min-w-[110px]">
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex justify-between items-center px-2 py-0.5 bg-slate-50 border border-slate-200/60 rounded">
+                                  <span className="text-[8px] uppercase tracking-widest text-slate-400 font-black">Hand</span>
+                                  <span className="font-mono text-[10px] text-slate-600 font-bold">{log.new_stock || 0}</span>
+                                </div>
+                                <div className="flex justify-between items-center px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded shadow-sm">
+                                  <span className="text-[8px] uppercase tracking-widest text-indigo-500 font-black">Balance</span>
+                                  <span className="font-mono text-[11px] text-indigo-700 font-black">{(log.new_stock || 0) - (log.new_consumed || 0)}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5 text-left">
+                              <span className="px-2 py-1 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-black rounded-lg">
+                                {log.new_consumed || 0}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              {(() => {
+                                const stn1Changed = log.old_consumed_obs1 !== log.new_consumed_obs1 || log.old_user_stn1 !== log.new_user_stn1;
+                                const minorChanged = log.old_consumed_minor !== log.new_consumed_minor || log.old_user_minor !== log.new_user_minor;
+
+                                let wardLabel = "STN1";
+                                let badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
+
+                                if (stn1Changed && minorChanged) {
+                                  wardLabel = "STN1 & MINOR";
+                                  badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
+                                } else if (minorChanged) {
+                                  wardLabel = "MINOR";
+                                  badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                } else if (stn1Changed) {
+                                  wardLabel = "STN1";
+                                  badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
+                                } else {
+                                  // Aggressive fallback logic
+                                  if (log.new_user_minor && !log.new_user_stn1) {
+                                    wardLabel = "MINOR";
+                                    badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                  } else if (log.updated_by === log.new_user_minor && log.updated_by !== log.new_user_stn1) {
+                                    wardLabel = "MINOR";
+                                    badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                  }
+                                }
+
+                                return (
+                                  <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-md border ${badgeClass}`}>
+                                    {wardLabel}
+                                  </span>
+                                );
+                              })()}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-800">
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-450" />
+                                {log.updated_by}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+
+
+          </div>
+
+        </div>
+      )
+      }
+
+      {/* ────────────────── WEEKLY REPORT TAB ────────────────── */}
+      {
+        !loading && activeTab === 'weekly' && (
+          <div className="space-y-8 animate-fadeIn">
+
+            {/* Week Date Selector and Download Actions */}
+            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-sky-50 text-sky-600 rounded-xl border border-sky-100">
+                  <Calendar size={18} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-sky-600 uppercase tracking-widest">Selected Week Range</p>
+                  <span className="text-sm font-extrabold text-slate-850">
+                    {getWeekRange(selectedWeekDate).start} to {getWeekRange(selectedWeekDate).end}
                   </span>
                 </div>
+              </div>
 
-                {stockLogs.length === 0 ? (
-                  <div className="text-center py-8 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                    <Database size={24} className="text-slate-300 mx-auto mb-2" />
-                    <p className="text-xs text-slate-450 font-bold">No inventory stock or consumption level modifications logged today.</p>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-250 shadow-inner w-full md:w-auto justify-between">
+                  <button
+                    onClick={() => adjustWeek(-7)}
+                    className="px-3 py-1.5 hover:bg-slate-200 rounded-xl transition font-extrabold text-slate-500 hover:text-slate-850 text-xs"
+                  >
+                    ◀ Prev Week
+                  </button>
+                  <input
+                    type="date"
+                    value={selectedWeekDate}
+                    onChange={(e) => setSelectedWeekDate(e.target.value)}
+                    className="bg-white text-slate-800 font-extrabold border border-slate-200 px-3 py-1.5 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                  <button
+                    onClick={() => adjustWeek(7)}
+                    className="px-3 py-1.5 hover:bg-slate-200 rounded-xl transition font-extrabold text-slate-500 hover:text-slate-850 text-xs"
+                  >
+                    Next Week ▶
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleExportWeeklyXlsx}
+                  className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-emerald-500/20 active:scale-95 transition"
+                >
+                  <FileSpreadsheet size={15} /> Export Excel
+                </button>
+              </div>
+            </div>
+
+            {/* Filtering Ribbon */}
+            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-3.5 text-slate-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search staff, specialties, logs..."
+                  value={weeklySearchQuery}
+                  onChange={(e) => setWeeklySearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-850 placeholder-slate-450 focus:outline-none"
+                />
+              </div>
+
+              {/* Metric Mode Toggle */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
+                {[['both', 'Both'], ['consultation', 'Consult.'], ['followup', 'Follow-up']].map(([val, label]) => (
+                  <button key={val} onClick={() => setWeeklyMetricMode(val)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${weeklyMetricMode === val
+                      ? val === 'followup' ? 'bg-teal-500 text-white shadow-sm' : val === 'consultation' ? 'bg-sky-500 text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-700'
+                      }`}>{label}</button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter className="text-slate-400" size={16} />
+                <select
+                  value={weeklyDeptFilter}
+                  onChange={(e) => setWeeklyDeptFilter(e.target.value)}
+                  className="w-full sm:w-52 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-xs font-bold text-slate-850 focus:outline-none"
+                >
+                  <option value="ALL">ALL SPECIALTY DEPARTMENTS</option>
+                  {sortedSpecializations.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Weekly Report Pivot Matrix Table */}
+            {weeklyData ? (
+              <div ref={weeklyReportRef} className="p-4 bg-slate-50 rounded-3xl overflow-hidden">
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
+
+                  <div className="p-6 border-b border-slate-200 bg-slate-50/40 flex justify-between items-center">
+                    <div>
+                      <h3 className="text-xs font-black uppercase text-slate-800 tracking-widest">Weekly Operational Matrix</h3>
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase">
+                        Period: {getWeekRange(selectedWeekDate).start} to {getWeekRange(selectedWeekDate).end}
+                      </span>
+                    </div>
+                    <div className="text-right flex items-center gap-2">
+                      <span className="text-[10px] font-black text-sky-700 px-3 py-1.5 bg-sky-50 border border-sky-100 rounded-full">
+                        WEEKLY TOTALS LOGGED
+                      </span>
+                      <span className="text-[10px] font-black bg-sky-100 text-sky-850 px-3 py-1.5 rounded-full uppercase tracking-wider border border-sky-200/50">
+                        Pivoted Row-Per-Day Layout
+                      </span>
+                    </div>
                   </div>
-                ) : (
+
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                       <thead>
-                        <tr className="bg-slate-50 text-left border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                          <th className="px-4 py-3">Logged At</th>
-                          <th className="px-4 py-3">Item Name</th>
-                          <th className="px-4 py-3">Day / Session</th>
-                          <th className="px-4 py-3 text-left">Stock Level</th>
-                          <th className="px-4 py-3 text-left">Total Consumed</th>
-                          <th className="px-4 py-3">Ward</th>
-                          <th className="px-4 py-3">Updated By</th>
+                        <tr className="bg-slate-100/90 border-b border-slate-250">
+                          <th className="sticky left-0 bg-slate-100 text-left px-4 py-3.5 min-w-[200px] border-r border-slate-200 font-extrabold text-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                            Staff Specialist
+                          </th>
+                          <th className="text-left px-4 py-3.5 min-w-[120px] border-r border-slate-200 font-extrabold text-slate-800">
+                            Department
+                          </th>
+
+                          {getWeeklyDaysArray().map(dateStr => (
+                            <th key={dateStr} className="text-center w-24 min-w-[70px] py-3.5 border-r border-slate-200 font-extrabold text-slate-700 bg-slate-50/50">
+                              {formatWeeklyDayHeader(dateStr)}
+                            </th>
+                          ))}
+
+                          <th className="text-center px-4 py-3.5 min-w-[80px] font-black text-sky-850 bg-sky-50/80">
+                            TOTAL
+                          </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {stockLogs.map((log) => {
-                          const logTime = new Date(log.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-                          const stockDiff = log.new_stock - log.old_stock;
-                          const consumedDiff = log.new_consumed - log.old_consumed;
+                      <tbody>
 
-                          return (
-                            <tr
-                              key={log.id}
-                              className="hover:bg-slate-50/40 text-xs font-bold text-slate-700 cursor-pointer"
-                              onClick={() => setSelectedLog(log)}
-                            >
-                              <td className="px-4 py-3.5 whitespace-nowrap text-slate-400 font-mono text-[11px]">{logTime}</td>
-                              <td className="px-4 py-3.5 text-slate-900 font-black">{log.item_name}</td>
-                              <td className="px-4 py-3.5">
-                                <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100 uppercase">
-                                  Day {log.day} - {log.session}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3.5 whitespace-nowrap min-w-[110px]">
-                                <div className="flex flex-col gap-1.5">
-                                  <div className="flex justify-between items-center px-2 py-0.5 bg-slate-50 border border-slate-200/60 rounded">
-                                    <span className="text-[8px] uppercase tracking-widest text-slate-400 font-black">Hand</span>
-                                    <span className="font-mono text-[10px] text-slate-600 font-bold">{log.new_stock || 0}</span>
-                                  </div>
-                                  <div className="flex justify-between items-center px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded shadow-sm">
-                                    <span className="text-[8px] uppercase tracking-widest text-indigo-500 font-black">Balance</span>
-                                    <span className="font-mono text-[11px] text-indigo-700 font-black">{(log.new_stock || 0) - (log.new_consumed || 0)}</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3.5 text-left">
-                                <span className="px-2 py-1 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-black rounded-lg">
-                                  {log.new_consumed || 0}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3.5">
-                                {(() => {
-                                  const stn1Changed = log.old_consumed_obs1 !== log.new_consumed_obs1 || log.old_user_stn1 !== log.new_user_stn1;
-                                  const minorChanged = log.old_consumed_minor !== log.new_consumed_minor || log.old_user_minor !== log.new_user_minor;
-                                  
-                                  let wardLabel = "STN1";
-                                  let badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
+                        {/* Filtered Outpatients rows */}
+                        {config.providers
+                          .filter(p => {
+                            const specName = p.specialization_name || p.specialization || 'Other';
+                            if (weeklyDeptFilter !== 'ALL' && specName !== weeklyDeptFilter) return false;
+                            if (weeklySearchQuery.trim() !== '') {
+                              const query = weeklySearchQuery.toLowerCase();
+                              return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
+                            }
+                            return true;
+                          })
+                          .map(provider => {
+                            const specName = provider.specialization_name || provider.specialization || 'Other';
+                            const daysMap = {};
+                            const followMap = {};
+                            let providerSum = 0;
+                            let followSum = 0;
 
-                                  if (stn1Changed && minorChanged) {
-                                    wardLabel = "STN1 & MINOR";
-                                    badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
-                                  } else if (minorChanged) {
-                                    wardLabel = "MINOR";
-                                    badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                  } else if (stn1Changed) {
-                                    wardLabel = "STN1";
-                                    badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
-                                  } else {
-                                    // Aggressive fallback logic
-                                    if (log.new_user_minor && !log.new_user_stn1) {
-                                      wardLabel = "MINOR";
-                                      badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                    } else if (log.updated_by === log.new_user_minor && log.updated_by !== log.new_user_stn1) {
-                                      wardLabel = "MINOR";
-                                      badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                    }
-                                  }
+                            getWeeklyDaysArray().forEach(dateStr => {
+                              const record = weeklyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
+                              const val = record ? record.patient_count : 0;
+                              const fval = record ? (record.follow_up_count || 0) : 0;
+                              daysMap[dateStr] = val;
+                              followMap[dateStr] = fval;
+                              providerSum += val;
+                              followSum += fval;
+                            });
 
-                                  return (
-                                    <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-md border ${badgeClass}`}>
-                                      {wardLabel}
-                                    </span>
-                                  );
-                                })()}
-                              </td>
-                              <td className="px-4 py-3.5 whitespace-nowrap text-slate-800">
-                                <span className="inline-flex items-center gap-1.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-450" />
-                                  {log.updated_by}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
+                            return (
+                              <React.Fragment key={provider.id}>
+                                {/* Consultation row */}
+                                {weeklyMetricMode !== 'followup' && (
+                                  <tr className="border-b border-slate-100 hover:bg-slate-50/65 transition-colors">
+                                    <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-2.5 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                      <span className="flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-sky-300" />
+                                        {provider.name}
+                                        {weeklyMetricMode === 'both' && <span className="text-[8px] font-black text-sky-400 ml-1 uppercase">C</span>}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
+                                      {specName}
+                                    </td>
 
+                                    {getWeeklyDaysArray().map(dateStr => {
+                                      const val = daysMap[dateStr];
+                                      return (
+                                        <td key={dateStr} className="text-center py-2.5 border-r border-slate-100 font-mono font-bold text-xs">
+                                          {val > 0 ? (
+                                            <span className="text-sky-650 font-black">{val}</span>
+                                          ) : (
+                                            <span className="text-slate-350 opacity-40">-</span>
+                                          )}
+                                        </td>
+                                      );
+                                    })}
 
-        </div>
+                                    <td className="text-center py-2.5 bg-sky-50/30 text-sky-850 font-black font-mono text-xs">
+                                      {providerSum}
+                                    </td>
+                                  </tr>
+                                )}
+                                {/* Follow-up sub-row */}
+                                {weeklyMetricMode !== 'consultation' && (
+                                  <tr className={`border-b border-slate-150 ${weeklyMetricMode === 'both' ? 'bg-teal-50/20' : 'hover:bg-teal-50/30 transition-colors'}`}>
+                                    <td className="sticky left-0 bg-teal-50/30 px-4 py-1.5 border-r border-slate-250 z-10" colSpan={1}>
+                                      {weeklyMetricMode === 'both'
+                                        ? <span className="text-[9px] font-black text-teal-500 uppercase tracking-wider">↳ Follow-up</span>
+                                        : <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-teal-300" />{provider.name} <span className="text-[8px] font-black text-teal-400 ml-1 uppercase">F</span></span>
+                                      }
+                                    </td>
+                                    <td className="px-4 py-1.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">{weeklyMetricMode === 'followup' ? specName : ''}</td>
+                                    {getWeeklyDaysArray().map(dateStr => {
+                                      const fval = followMap[dateStr];
+                                      return (
+                                        <td key={dateStr} className="text-center py-1.5 border-r border-slate-100 font-mono text-[10px]">
+                                          {fval > 0 ? (
+                                            <span className="text-teal-600 font-black">{fval}</span>
+                                          ) : (
+                                            <span className="text-slate-300 opacity-40">-</span>
+                                          )}
+                                        </td>
+                                      );
+                                    })}
+                                    <td className="text-center py-1.5 bg-teal-50/40 text-teal-700 font-black font-mono text-[10px]">
+                                      {followSum > 0 ? followSum : '-'}
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
 
-        </div>
-  )
-}
-
-{/* ────────────────── WEEKLY REPORT TAB ────────────────── */ }
-{
-  !loading && activeTab === 'weekly' && (
-    <div className="space-y-8 animate-fadeIn">
-
-      {/* Week Date Selector and Download Actions */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-sky-50 text-sky-600 rounded-xl border border-sky-100">
-            <Calendar size={18} />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-sky-600 uppercase tracking-widest">Selected Week Range</p>
-            <span className="text-sm font-extrabold text-slate-850">
-              {getWeekRange(selectedWeekDate).start} to {getWeekRange(selectedWeekDate).end}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-250 shadow-inner w-full md:w-auto justify-between">
-            <button
-              onClick={() => adjustWeek(-7)}
-              className="px-3 py-1.5 hover:bg-slate-200 rounded-xl transition font-extrabold text-slate-500 hover:text-slate-850 text-xs"
-            >
-              ◀ Prev Week
-            </button>
-            <input
-              type="date"
-              value={selectedWeekDate}
-              onChange={(e) => setSelectedWeekDate(e.target.value)}
-              className="bg-white text-slate-800 font-extrabold border border-slate-200 px-3 py-1.5 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
-            />
-            <button
-              onClick={() => adjustWeek(7)}
-              className="px-3 py-1.5 hover:bg-slate-200 rounded-xl transition font-extrabold text-slate-500 hover:text-slate-850 text-xs"
-            >
-              Next Week ▶
-            </button>
-          </div>
-
-          <button
-            onClick={handleExportWeeklyXlsx}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-emerald-500/20 active:scale-95 transition"
-          >
-            <FileSpreadsheet size={15} /> Export Excel
-          </button>
-        </div>
-      </div>
-
-      {/* Filtering Ribbon */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-3.5 text-slate-400" size={16} />
-          <input
-            type="text"
-            placeholder="Search staff, specialties, logs..."
-            value={weeklySearchQuery}
-            onChange={(e) => setWeeklySearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-850 placeholder-slate-450 focus:outline-none"
-          />
-        </div>
-
-        {/* Metric Mode Toggle */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
-          {[['both', 'Both'], ['consultation', 'Consult.'], ['followup', 'Follow-up']].map(([val, label]) => (
-            <button key={val} onClick={() => setWeeklyMetricMode(val)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${weeklyMetricMode === val
-                ? val === 'followup' ? 'bg-teal-500 text-white shadow-sm' : val === 'consultation' ? 'bg-sky-500 text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-400 hover:text-slate-700'
-                }`}>{label}</button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="text-slate-400" size={16} />
-          <select
-            value={weeklyDeptFilter}
-            onChange={(e) => setWeeklyDeptFilter(e.target.value)}
-            className="w-full sm:w-52 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-xs font-bold text-slate-850 focus:outline-none"
-          >
-            <option value="ALL">ALL SPECIALTY DEPARTMENTS</option>
-            {sortedSpecializations.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Weekly Report Pivot Matrix Table */}
-      {weeklyData ? (
-        <div ref={weeklyReportRef} className="p-4 bg-slate-50 rounded-3xl overflow-hidden">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
-
-            <div className="p-6 border-b border-slate-200 bg-slate-50/40 flex justify-between items-center">
-              <div>
-                <h3 className="text-xs font-black uppercase text-slate-800 tracking-widest">Weekly Operational Matrix</h3>
-                <span className="text-[10px] text-slate-400 font-extrabold uppercase">
-                  Period: {getWeekRange(selectedWeekDate).start} to {getWeekRange(selectedWeekDate).end}
-                </span>
-              </div>
-              <div className="text-right flex items-center gap-2">
-                <span className="text-[10px] font-black text-sky-700 px-3 py-1.5 bg-sky-50 border border-sky-100 rounded-full">
-                  WEEKLY TOTALS LOGGED
-                </span>
-                <span className="text-[10px] font-black bg-sky-100 text-sky-850 px-3 py-1.5 rounded-full uppercase tracking-wider border border-sky-200/50">
-                  Pivoted Row-Per-Day Layout
-                </span>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-slate-100/90 border-b border-slate-250">
-                    <th className="sticky left-0 bg-slate-100 text-left px-4 py-3.5 min-w-[200px] border-r border-slate-200 font-extrabold text-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                      Staff Specialist
-                    </th>
-                    <th className="text-left px-4 py-3.5 min-w-[120px] border-r border-slate-200 font-extrabold text-slate-800">
-                      Department
-                    </th>
-
-                    {getWeeklyDaysArray().map(dateStr => (
-                      <th key={dateStr} className="text-center w-24 min-w-[70px] py-3.5 border-r border-slate-200 font-extrabold text-slate-700 bg-slate-50/50">
-                        {formatWeeklyDayHeader(dateStr)}
-                      </th>
-                    ))}
-
-                    <th className="text-center px-4 py-3.5 min-w-[80px] font-black text-sky-850 bg-sky-50/80">
-                      TOTAL
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-
-                  {/* Filtered Outpatients rows */}
-                  {config.providers
-                    .filter(p => {
-                      const specName = p.specialization_name || p.specialization || 'Other';
-                      if (weeklyDeptFilter !== 'ALL' && specName !== weeklyDeptFilter) return false;
-                      if (weeklySearchQuery.trim() !== '') {
-                        const query = weeklySearchQuery.toLowerCase();
-                        return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
-                      }
-                      return true;
-                    })
-                    .map(provider => {
-                      const specName = provider.specialization_name || provider.specialization || 'Other';
-                      const daysMap = {};
-                      const followMap = {};
-                      let providerSum = 0;
-                      let followSum = 0;
-
-                      getWeeklyDaysArray().forEach(dateStr => {
-                        const record = weeklyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
-                        const val = record ? record.patient_count : 0;
-                        const fval = record ? (record.follow_up_count || 0) : 0;
-                        daysMap[dateStr] = val;
-                        followMap[dateStr] = fval;
-                        providerSum += val;
-                        followSum += fval;
-                      });
-
-                      return (
-                        <React.Fragment key={provider.id}>
-                          {/* Consultation row */}
-                          {weeklyMetricMode !== 'followup' && (
-                            <tr className="border-b border-slate-100 hover:bg-slate-50/65 transition-colors">
-                              <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-2.5 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                                <span className="flex items-center gap-1.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-sky-300" />
-                                  {provider.name}
-                                  {weeklyMetricMode === 'both' && <span className="text-[8px] font-black text-sky-400 ml-1 uppercase">C</span>}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
-                                {specName}
-                              </td>
-
-                              {getWeeklyDaysArray().map(dateStr => {
-                                const val = daysMap[dateStr];
-                                return (
-                                  <td key={dateStr} className="text-center py-2.5 border-r border-slate-100 font-mono font-bold text-xs">
-                                    {val > 0 ? (
-                                      <span className="text-sky-650 font-black">{val}</span>
-                                    ) : (
-                                      <span className="text-slate-350 opacity-40">-</span>
-                                    )}
-                                  </td>
-                                );
-                              })}
-
-                              <td className="text-center py-2.5 bg-sky-50/30 text-sky-850 font-black font-mono text-xs">
-                                {providerSum}
-                              </td>
-                            </tr>
-                          )}
-                          {/* Follow-up sub-row */}
-                          {weeklyMetricMode !== 'consultation' && (
-                            <tr className={`border-b border-slate-150 ${weeklyMetricMode === 'both' ? 'bg-teal-50/20' : 'hover:bg-teal-50/30 transition-colors'}`}>
-                              <td className="sticky left-0 bg-teal-50/30 px-4 py-1.5 border-r border-slate-250 z-10" colSpan={1}>
-                                {weeklyMetricMode === 'both'
-                                  ? <span className="text-[9px] font-black text-teal-500 uppercase tracking-wider">↳ Follow-up</span>
-                                  : <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-teal-300" />{provider.name} <span className="text-[8px] font-black text-teal-400 ml-1 uppercase">F</span></span>
-                                }
-                              </td>
-                              <td className="px-4 py-1.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">{weeklyMetricMode === 'followup' ? specName : ''}</td>
-                              {getWeeklyDaysArray().map(dateStr => {
-                                const fval = followMap[dateStr];
-                                return (
-                                  <td key={dateStr} className="text-center py-1.5 border-r border-slate-100 font-mono text-[10px]">
-                                    {fval > 0 ? (
-                                      <span className="text-teal-600 font-black">{fval}</span>
-                                    ) : (
-                                      <span className="text-slate-300 opacity-40">-</span>
-                                    )}
-                                  </td>
-                                );
-                              })}
-                              <td className="text-center py-1.5 bg-teal-50/40 text-teal-700 font-black font-mono text-[10px]">
-                                {followSum > 0 ? followSum : '-'}
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-
-                  {/* Section Header for Procedures */}
-                  <tr className="bg-slate-100/80 border-t border-b border-slate-200 font-bold">
-                    <td colSpan={2 + 7 + 1} className="px-4 py-3 text-xs font-black text-sky-700 uppercase tracking-widest">
-                      Nursing and Ward Procedures
-                    </td>
-                  </tr>
-
-                  {/* Filtered Clinical Procedures rows */}
-                  {config.defaultProcedureMetrics
-                    .filter(mName => {
-                      if (weeklyDeptFilter !== 'ALL') return false;
-                      if (weeklySearchQuery.trim() !== '') {
-                        return mName.toLowerCase().includes(weeklySearchQuery.toLowerCase());
-                      }
-                      return true;
-                    })
-                    .map(metricName => {
-                      const daysMap = {};
-                      let procedureSum = 0;
-                      const isNameInput = metricName.toLowerCase().includes('assistant');
-
-                      getWeeklyDaysArray().forEach(dateStr => {
-                        const record = weeklyData.logs.find(l => l.metric_name === metricName && l.report_date === dateStr);
-                        const val = record ? record.metric_value : '0';
-                        daysMap[dateStr] = val;
-
-                        if (!isNameInput) {
-                          const numVal = parseInt(val, 10);
-                          if (!isNaN(numVal)) {
-                            procedureSum += numVal;
-                          }
-                        }
-                      });
-
-                      return (
-                        <tr key={metricName} className="border-b border-slate-150 hover:bg-slate-50/65 transition-colors bg-slate-50/10">
-                          <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-3 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                            <span className="flex items-center gap-1.5">
-                              <span className={`w-1.5 h-1.5 rounded-full ${isNameInput ? 'bg-purple-300' : 'bg-slate-350'}`} />
-                              {metricName}
-                            </span>
+                        {/* Section Header for Procedures */}
+                        <tr className="bg-slate-100/80 border-t border-b border-slate-200 font-bold">
+                          <td colSpan={2 + 7 + 1} className="px-4 py-3 text-xs font-black text-sky-700 uppercase tracking-widest">
+                            Nursing and Ward Procedures
                           </td>
-                          <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
-                            PROCEDURES
+                        </tr>
+
+                        {/* Filtered Clinical Procedures rows */}
+                        {config.defaultProcedureMetrics
+                          .filter(mName => {
+                            if (weeklyDeptFilter !== 'ALL') return false;
+                            if (weeklySearchQuery.trim() !== '') {
+                              return mName.toLowerCase().includes(weeklySearchQuery.toLowerCase());
+                            }
+                            return true;
+                          })
+                          .map(metricName => {
+                            const daysMap = {};
+                            let procedureSum = 0;
+                            const isNameInput = metricName.toLowerCase().includes('assistant');
+
+                            getWeeklyDaysArray().forEach(dateStr => {
+                              const record = weeklyData.logs.find(l => l.metric_name === metricName && l.report_date === dateStr);
+                              const val = record ? record.metric_value : '0';
+                              daysMap[dateStr] = val;
+
+                              if (!isNameInput) {
+                                const numVal = parseInt(val, 10);
+                                if (!isNaN(numVal)) {
+                                  procedureSum += numVal;
+                                }
+                              }
+                            });
+
+                            return (
+                              <tr key={metricName} className="border-b border-slate-150 hover:bg-slate-50/65 transition-colors bg-slate-50/10">
+                                <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-3 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                  <span className="flex items-center gap-1.5">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isNameInput ? 'bg-purple-300' : 'bg-slate-350'}`} />
+                                    {metricName}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
+                                  PROCEDURES
+                                </td>
+
+                                {getWeeklyDaysArray().map(dateStr => {
+                                  const val = daysMap[dateStr];
+                                  const isZero = val === '0' || val === '' || val === undefined;
+                                  return (
+                                    <td key={dateStr} className="text-center py-3 border-r border-slate-100 font-mono font-bold text-xs" title={val}>
+                                      {isZero ? (
+                                        <span className="text-slate-350 opacity-40">-</span>
+                                      ) : (
+                                        <span className={`${isNameInput
+                                          ? 'text-purple-650 text-[10px] font-sans truncate block max-w-[60px] hover:max-w-none hover:bg-white hover:z-30 hover:absolute px-1.5 py-0.5 rounded border border-purple-100 shadow-sm bg-purple-50'
+                                          : 'text-slate-700 font-black'
+                                          }`}>
+                                          {val}
+                                        </span>
+                                      )}
+                                    </td>
+                                  );
+                                })}
+
+                                <td className="text-center py-3 bg-slate-100/50 text-slate-650 font-black font-mono text-xs">
+                                  {isNameInput ? 'N/A' : procedureSum}
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                        {/* Sticky Daily Calculations Column Sum Row */}
+                        <tr className="bg-gradient-to-r from-sky-900 to-sky-950 text-white font-extrabold border-t border-sky-950">
+                          <td
+                            className="sticky left-0 bg-sky-950 text-left px-4 py-4 border-r border-sky-950 font-black uppercase text-xs tracking-wider z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]"
+                            colSpan={2}
+                          >
+                            TOTAL COMPLETED PATIENTS
                           </td>
 
                           {getWeeklyDaysArray().map(dateStr => {
-                            const val = daysMap[dateStr];
-                            const isZero = val === '0' || val === '' || val === undefined;
+                            const dailySum = weeklyData.metrics
+                              .filter(m => m.report_date === dateStr)
+                              .reduce((sum, m) => sum + (m.patient_count || 0), 0);
+
                             return (
-                              <td key={dateStr} className="text-center py-3 border-r border-slate-100 font-mono font-bold text-xs" title={val}>
-                                {isZero ? (
-                                  <span className="text-slate-350 opacity-40">-</span>
-                                ) : (
-                                  <span className={`${isNameInput
-                                    ? 'text-purple-650 text-[10px] font-sans truncate block max-w-[60px] hover:max-w-none hover:bg-white hover:z-30 hover:absolute px-1.5 py-0.5 rounded border border-purple-100 shadow-sm bg-purple-50'
-                                    : 'text-slate-700 font-black'
-                                    }`}>
-                                    {val}
-                                  </span>
-                                )}
+                              <td key={dateStr} className="text-center py-4 border-r border-sky-950 font-mono font-black text-sm text-sky-200">
+                                {dailySum}
                               </td>
                             );
                           })}
 
-                          <td className="text-center py-3 bg-slate-100/50 text-slate-650 font-black font-mono text-xs">
-                            {isNameInput ? 'N/A' : procedureSum}
+                          <td className="text-center py-4 font-mono font-black text-sm bg-sky-950 text-emerald-300">
+                            {weeklyData.metrics.reduce((sum, m) => sum + (m.patient_count || 0), 0)}
                           </td>
                         </tr>
-                      );
-                    })}
 
-                  {/* Sticky Daily Calculations Column Sum Row */}
-                  <tr className="bg-gradient-to-r from-sky-900 to-sky-950 text-white font-extrabold border-t border-sky-950">
-                    <td
-                      className="sticky left-0 bg-sky-950 text-left px-4 py-4 border-r border-sky-950 font-black uppercase text-xs tracking-wider z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]"
-                      colSpan={2}
-                    >
-                      TOTAL COMPLETED PATIENTS
-                    </td>
+                      </tbody>
+                    </table>
+                  </div>
 
-                    {getWeeklyDaysArray().map(dateStr => {
-                      const dailySum = weeklyData.metrics
-                        .filter(m => m.report_date === dateStr)
-                        .reduce((sum, m) => sum + (m.patient_count || 0), 0);
-
-                      return (
-                        <td key={dateStr} className="text-center py-4 border-r border-sky-950 font-mono font-black text-sm text-sky-200">
-                          {dailySum}
-                        </td>
-                      );
-                    })}
-
-                    <td className="text-center py-4 font-mono font-black text-sm bg-sky-950 text-emerald-300">
-                      {weeklyData.metrics.reduce((sum, m) => sum + (m.patient_count || 0), 0)}
-                    </td>
-                  </tr>
-
-                </tbody>
-              </table>
-            </div>
-
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center text-slate-450">
-          No weekly report dataset is loaded for the selected period.
-        </div>
-      )}
-
-    </div>
-  )
-}
-
-{/* ────────────────── MONTHLY MATRIX EXPLORER TAB ────────────────── */ }
-{
-  !loading && activeTab === 'monthly' && (
-    <div className="space-y-8 animate-fadeIn">
-
-      {/* Calendar Selectors */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
-            <FileSpreadsheet size={18} />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Monthly Period</p>
-            <span className="text-sm font-extrabold text-slate-850">Period: {selectedMonth}/{selectedYear}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-inner w-full md:w-auto">
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="bg-white text-slate-800 font-extrabold border border-slate-200 px-3 py-2 rounded-xl text-xs focus:outline-none"
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                <option key={m} value={m}>
-                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}
-                </option>
-              ))}
-            </select>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-white text-slate-800 font-extrabold border border-slate-200 px-3 py-2 rounded-xl text-xs focus:outline-none"
-            >
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          </div>
-
-
-          <button
-            onClick={handleExportMonthlyXlsx}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-emerald-500/20 active:scale-95 transition w-full md:w-auto"
-          >
-            <FileSpreadsheet size={15} /> Export Excel
-          </button>
-        </div>
-      </div>
-
-      {/* Filtering Ribbon */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-3.5 text-slate-400" size={16} />
-          <input
-            type="text"
-            placeholder="Search staff, specialties, logs..."
-            value={monthlySearchQuery}
-            onChange={(e) => setMonthlySearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-850 placeholder-slate-450 focus:outline-none"
-          />
-        </div>
-
-        {/* Metric Mode Toggle */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
-          {[['both', 'Both'], ['consultation', 'Consult.'], ['followup', 'Follow-up']].map(([val, label]) => (
-            <button key={val} onClick={() => setMonthlyMetricMode(val)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${monthlyMetricMode === val
-                ? val === 'followup' ? 'bg-teal-500 text-white shadow-sm' : val === 'consultation' ? 'bg-sky-500 text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-400 hover:text-slate-700'
-                }`}>{label}</button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="text-slate-400" size={16} />
-          <select
-            value={monthlyDeptFilter}
-            onChange={(e) => setMonthlyDeptFilter(e.target.value)}
-            className="w-full sm:w-52 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-xs font-bold text-slate-850 focus:outline-none"
-          >
-            <option value="ALL">ALL SPECIALTY DEPARTMENTS</option>
-            {sortedSpecializations.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Pivot Matrix Table wrapped for PDF capture */}
-      {monthlyData ? (
-        <div ref={monthlyMatrixRef} className="p-4 bg-slate-50 rounded-3xl overflow-hidden">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
-
-            <div className="p-6 border-b border-slate-200 bg-slate-50/40 flex justify-between items-center">
-              <div>
-                <h3 className="text-xs font-black uppercase text-slate-800 tracking-widest">Institutional Operational Matrix</h3>
-                <span className="text-[10px] text-slate-400 font-extrabold uppercase">Monthly Overview ({selectedMonth}/{selectedYear})</span>
+                </div>
               </div>
-              <div className="text-right flex items-center gap-2">
-                <span className="text-[10px] font-black text-sky-700 px-3 py-1.5 bg-sky-50 border border-sky-100 rounded-full">
-                  MONTHLY TOTALS LOGGED
-                </span>
-                <span className="text-[10px] font-black bg-sky-100 text-sky-850 px-3 py-1.5 rounded-full uppercase tracking-wider border border-sky-200/50">
-                  Pivoted Row-Per-Day Layout
-                </span>
+            ) : (
+              <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center text-slate-450">
+                No weekly report dataset is loaded for the selected period.
               </div>
-            </div>
+            )}
 
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-slate-100/90 border-b border-slate-250">
-                    <th className="sticky left-0 bg-slate-100 text-left px-4 py-3.5 min-w-[200px] border-r border-slate-200 font-extrabold text-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                      Staff Specialist
-                    </th>
-                    <th className="text-left px-4 py-3.5 min-w-[120px] border-r border-slate-200 font-extrabold text-slate-800">
-                      Department
-                    </th>
+          </div>
+        )
+      }
 
-                    {getDaysArray().map(day => (
-                      <th key={day} className="text-center w-10 min-w-[38px] py-3.5 border-r border-slate-200 font-extrabold text-slate-700 bg-slate-50/50">
-                        {day}
-                      </th>
+      {/* ────────────────── MONTHLY MATRIX EXPLORER TAB ────────────────── */}
+      {
+        !loading && activeTab === 'monthly' && (
+          <div className="space-y-8 animate-fadeIn">
+
+            {/* Calendar Selectors */}
+            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
+                  <FileSpreadsheet size={18} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Monthly Period</p>
+                  <span className="text-sm font-extrabold text-slate-850">Period: {selectedMonth}/{selectedYear}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-inner w-full md:w-auto">
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                    className="bg-white text-slate-800 font-extrabold border border-slate-200 px-3 py-2 rounded-xl text-xs focus:outline-none"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                      <option key={m} value={m}>
+                        {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}
+                      </option>
                     ))}
+                  </select>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="bg-white text-slate-800 font-extrabold border border-slate-200 px-3 py-2 rounded-xl text-xs focus:outline-none"
+                  >
+                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
 
-                    <th className="text-center px-4 py-3.5 min-w-[80px] font-black text-sky-850 bg-sky-50/80">
-                      TOTAL
-                    </th>
-                  </tr>
-                </thead>
 
-                <tbody>
+                <button
+                  onClick={handleExportMonthlyXlsx}
+                  className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-lg shadow-emerald-500/20 active:scale-95 transition w-full md:w-auto"
+                >
+                  <FileSpreadsheet size={15} /> Export Excel
+                </button>
+              </div>
+            </div>
 
-                  {/* Filtered Outpatients rows */}
-                  {config.providers
-                    .filter(p => {
-                      const specName = p.specialization_name || p.specialization || 'Other';
-                      if (monthlyDeptFilter !== 'ALL' && specName !== monthlyDeptFilter) return false;
-                      if (monthlySearchQuery.trim() !== '') {
-                        const query = monthlySearchQuery.toLowerCase();
-                        return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
-                      }
-                      return true;
-                    })
-                    .map(provider => {
-                      const specName = provider.specialization_name || provider.specialization || 'Other';
-                      const daysMap = {};
-                      const followMap = {};
-                      let providerSum = 0;
-                      let followSum = 0;
+            {/* Filtering Ribbon */}
+            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-3.5 text-slate-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search staff, specialties, logs..."
+                  value={monthlySearchQuery}
+                  onChange={(e) => setMonthlySearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-850 placeholder-slate-450 focus:outline-none"
+                />
+              </div>
 
-                      getDaysArray().forEach(day => {
-                        const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                        const record = monthlyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
-                        const val = record ? record.patient_count : 0;
-                        const fval = record ? (record.follow_up_count || 0) : 0;
-                        daysMap[day] = val;
-                        followMap[day] = fval;
-                        providerSum += val;
-                        followSum += fval;
-                      });
+              {/* Metric Mode Toggle */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
+                {[['both', 'Both'], ['consultation', 'Consult.'], ['followup', 'Follow-up']].map(([val, label]) => (
+                  <button key={val} onClick={() => setMonthlyMetricMode(val)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${monthlyMetricMode === val
+                      ? val === 'followup' ? 'bg-teal-500 text-white shadow-sm' : val === 'consultation' ? 'bg-sky-500 text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-700'
+                      }`}>{label}</button>
+                ))}
+              </div>
 
-                      return (
-                        <React.Fragment key={provider.id}>
-                          {/* Consultation row */}
-                          {monthlyMetricMode !== 'followup' && (
-                            <tr className="border-b border-slate-100 hover:bg-slate-50/65 transition-colors">
-                              <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-2.5 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                                <span className="flex items-center gap-1.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-sky-300" />
-                                  {provider.name}
-                                  {monthlyMetricMode === 'both' && <span className="text-[8px] font-black text-sky-400 ml-1 uppercase">C</span>}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
-                                {specName}
-                              </td>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter className="text-slate-400" size={16} />
+                <select
+                  value={monthlyDeptFilter}
+                  onChange={(e) => setMonthlyDeptFilter(e.target.value)}
+                  className="w-full sm:w-52 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-xs font-bold text-slate-850 focus:outline-none"
+                >
+                  <option value="ALL">ALL SPECIALTY DEPARTMENTS</option>
+                  {sortedSpecializations.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-                              {getDaysArray().map(day => {
-                                const val = daysMap[day];
-                                return (
-                                  <td key={day} className="text-center py-2.5 border-r border-slate-100 font-mono font-bold text-xs">
-                                    {val > 0 ? (
-                                      <span className="text-sky-650 font-black">{val}</span>
-                                    ) : (
-                                      <span className="text-slate-350 opacity-40">-</span>
-                                    )}
-                                  </td>
-                                );
-                              })}
+            {/* Pivot Matrix Table wrapped for PDF capture */}
+            {monthlyData ? (
+              <div ref={monthlyMatrixRef} className="p-4 bg-slate-50 rounded-3xl overflow-hidden">
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
 
-                              <td className="text-center py-2.5 bg-sky-50/30 text-sky-850 font-black font-mono text-xs">
-                                {providerSum}
-                              </td>
-                            </tr>
-                          )}
-                          {/* Follow-up sub-row */}
-                          {monthlyMetricMode !== 'consultation' && (
-                            <tr className={`border-b border-slate-150 ${monthlyMetricMode === 'both' ? 'bg-teal-50/20' : 'hover:bg-teal-50/30 transition-colors'}`}>
-                              <td className="sticky left-0 bg-teal-50/30 px-4 py-1.5 border-r border-slate-250 z-10" colSpan={1}>
-                                {monthlyMetricMode === 'both'
-                                  ? <span className="text-[9px] font-black text-teal-500 uppercase tracking-wider">↳ Follow-up</span>
-                                  : <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-teal-300" />{provider.name} <span className="text-[8px] font-black text-teal-400 ml-1 uppercase">F</span></span>
-                                }
-                              </td>
-                              <td className="px-4 py-1.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">{monthlyMetricMode === 'followup' ? specName : ''}</td>
-                              {getDaysArray().map(day => {
-                                const fval = followMap[day];
-                                return (
-                                  <td key={day} className="text-center py-1.5 border-r border-slate-100 font-mono text-[10px]">
-                                    {fval > 0 ? (
-                                      <span className="text-teal-600 font-black">{fval}</span>
-                                    ) : (
-                                      <span className="text-slate-300 opacity-40">-</span>
-                                    )}
-                                  </td>
-                                );
-                              })}
-                              <td className="text-center py-1.5 bg-teal-50/40 text-teal-700 font-black font-mono text-[10px]">
-                                {followSum > 0 ? followSum : '-'}
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
+                  <div className="p-6 border-b border-slate-200 bg-slate-50/40 flex justify-between items-center">
+                    <div>
+                      <h3 className="text-xs font-black uppercase text-slate-800 tracking-widest">Institutional Operational Matrix</h3>
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase">Monthly Overview ({selectedMonth}/{selectedYear})</span>
+                    </div>
+                    <div className="text-right flex items-center gap-2">
+                      <span className="text-[10px] font-black text-sky-700 px-3 py-1.5 bg-sky-50 border border-sky-100 rounded-full">
+                        MONTHLY TOTALS LOGGED
+                      </span>
+                      <span className="text-[10px] font-black bg-sky-100 text-sky-850 px-3 py-1.5 rounded-full uppercase tracking-wider border border-sky-200/50">
+                        Pivoted Row-Per-Day Layout
+                      </span>
+                    </div>
+                  </div>
 
-                  {/* Section Header for Procedures */}
-                  <tr className="bg-slate-100/80 border-t border-b border-slate-200 font-bold">
-                    <td colSpan={2 + getDaysArray().length + 1} className="px-4 py-3 text-xs font-black text-sky-700 uppercase tracking-widest">
-                      Nursing and Ward Procedures
-                    </td>
-                  </tr>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100/90 border-b border-slate-250">
+                          <th className="sticky left-0 bg-slate-100 text-left px-4 py-3.5 min-w-[200px] border-r border-slate-200 font-extrabold text-slate-800 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                            Staff Specialist
+                          </th>
+                          <th className="text-left px-4 py-3.5 min-w-[120px] border-r border-slate-200 font-extrabold text-slate-800">
+                            Department
+                          </th>
 
-                  {/* Filtered Clinical Procedures rows */}
-                  {config.defaultProcedureMetrics
-                    .filter(mName => {
-                      if (monthlyDeptFilter !== 'ALL') return false;
-                      if (monthlySearchQuery.trim() !== '') {
-                        return mName.toLowerCase().includes(monthlySearchQuery.toLowerCase());
-                      }
-                      return true;
-                    })
-                    .map(metricName => {
-                      const daysMap = {};
-                      let procedureSum = 0;
-                      const isNameInput = metricName.toLowerCase().includes('assistant');
+                          {getDaysArray().map(day => (
+                            <th key={day} className="text-center w-10 min-w-[38px] py-3.5 border-r border-slate-200 font-extrabold text-slate-700 bg-slate-50/50">
+                              {day}
+                            </th>
+                          ))}
 
-                      getDaysArray().forEach(day => {
-                        const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                        const record = monthlyData.logs.find(l => l.metric_name === metricName && l.report_date === dateStr);
-                        const val = record ? record.metric_value : '0';
-                        daysMap[day] = val;
+                          <th className="text-center px-4 py-3.5 min-w-[80px] font-black text-sky-850 bg-sky-50/80">
+                            TOTAL
+                          </th>
+                        </tr>
+                      </thead>
 
-                        if (!isNameInput) {
-                          const numVal = parseInt(val, 10);
-                          if (!isNaN(numVal)) {
-                            procedureSum += numVal;
-                          }
-                        }
-                      });
+                      <tbody>
 
-                      return (
-                        <tr key={metricName} className="border-b border-slate-150 hover:bg-slate-50/65 transition-colors bg-slate-50/10">
-                          <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-3 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                            <span className="flex items-center gap-1.5">
-                              <span className={`w-1.5 h-1.5 rounded-full ${isNameInput ? 'bg-purple-300' : 'bg-slate-350'}`} />
-                              {metricName}
-                            </span>
+                        {/* Filtered Outpatients rows */}
+                        {config.providers
+                          .filter(p => {
+                            const specName = p.specialization_name || p.specialization || 'Other';
+                            if (monthlyDeptFilter !== 'ALL' && specName !== monthlyDeptFilter) return false;
+                            if (monthlySearchQuery.trim() !== '') {
+                              const query = monthlySearchQuery.toLowerCase();
+                              return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
+                            }
+                            return true;
+                          })
+                          .map(provider => {
+                            const specName = provider.specialization_name || provider.specialization || 'Other';
+                            const daysMap = {};
+                            const followMap = {};
+                            let providerSum = 0;
+                            let followSum = 0;
+
+                            getDaysArray().forEach(day => {
+                              const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                              const record = monthlyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
+                              const val = record ? record.patient_count : 0;
+                              const fval = record ? (record.follow_up_count || 0) : 0;
+                              daysMap[day] = val;
+                              followMap[day] = fval;
+                              providerSum += val;
+                              followSum += fval;
+                            });
+
+                            return (
+                              <React.Fragment key={provider.id}>
+                                {/* Consultation row */}
+                                {monthlyMetricMode !== 'followup' && (
+                                  <tr className="border-b border-slate-100 hover:bg-slate-50/65 transition-colors">
+                                    <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-2.5 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                      <span className="flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-sky-300" />
+                                        {provider.name}
+                                        {monthlyMetricMode === 'both' && <span className="text-[8px] font-black text-sky-400 ml-1 uppercase">C</span>}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
+                                      {specName}
+                                    </td>
+
+                                    {getDaysArray().map(day => {
+                                      const val = daysMap[day];
+                                      return (
+                                        <td key={day} className="text-center py-2.5 border-r border-slate-100 font-mono font-bold text-xs">
+                                          {val > 0 ? (
+                                            <span className="text-sky-650 font-black">{val}</span>
+                                          ) : (
+                                            <span className="text-slate-350 opacity-40">-</span>
+                                          )}
+                                        </td>
+                                      );
+                                    })}
+
+                                    <td className="text-center py-2.5 bg-sky-50/30 text-sky-850 font-black font-mono text-xs">
+                                      {providerSum}
+                                    </td>
+                                  </tr>
+                                )}
+                                {/* Follow-up sub-row */}
+                                {monthlyMetricMode !== 'consultation' && (
+                                  <tr className={`border-b border-slate-150 ${monthlyMetricMode === 'both' ? 'bg-teal-50/20' : 'hover:bg-teal-50/30 transition-colors'}`}>
+                                    <td className="sticky left-0 bg-teal-50/30 px-4 py-1.5 border-r border-slate-250 z-10" colSpan={1}>
+                                      {monthlyMetricMode === 'both'
+                                        ? <span className="text-[9px] font-black text-teal-500 uppercase tracking-wider">↳ Follow-up</span>
+                                        : <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-teal-300" />{provider.name} <span className="text-[8px] font-black text-teal-400 ml-1 uppercase">F</span></span>
+                                      }
+                                    </td>
+                                    <td className="px-4 py-1.5 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">{monthlyMetricMode === 'followup' ? specName : ''}</td>
+                                    {getDaysArray().map(day => {
+                                      const fval = followMap[day];
+                                      return (
+                                        <td key={day} className="text-center py-1.5 border-r border-slate-100 font-mono text-[10px]">
+                                          {fval > 0 ? (
+                                            <span className="text-teal-600 font-black">{fval}</span>
+                                          ) : (
+                                            <span className="text-slate-300 opacity-40">-</span>
+                                          )}
+                                        </td>
+                                      );
+                                    })}
+                                    <td className="text-center py-1.5 bg-teal-50/40 text-teal-700 font-black font-mono text-[10px]">
+                                      {followSum > 0 ? followSum : '-'}
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+
+                        {/* Section Header for Procedures */}
+                        <tr className="bg-slate-100/80 border-t border-b border-slate-200 font-bold">
+                          <td colSpan={2 + getDaysArray().length + 1} className="px-4 py-3 text-xs font-black text-sky-700 uppercase tracking-widest">
+                            Nursing and Ward Procedures
                           </td>
-                          <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
-                            PROCEDURES
+                        </tr>
+
+                        {/* Filtered Clinical Procedures rows */}
+                        {config.defaultProcedureMetrics
+                          .filter(mName => {
+                            if (monthlyDeptFilter !== 'ALL') return false;
+                            if (monthlySearchQuery.trim() !== '') {
+                              return mName.toLowerCase().includes(monthlySearchQuery.toLowerCase());
+                            }
+                            return true;
+                          })
+                          .map(metricName => {
+                            const daysMap = {};
+                            let procedureSum = 0;
+                            const isNameInput = metricName.toLowerCase().includes('assistant');
+
+                            getDaysArray().forEach(day => {
+                              const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                              const record = monthlyData.logs.find(l => l.metric_name === metricName && l.report_date === dateStr);
+                              const val = record ? record.metric_value : '0';
+                              daysMap[day] = val;
+
+                              if (!isNameInput) {
+                                const numVal = parseInt(val, 10);
+                                if (!isNaN(numVal)) {
+                                  procedureSum += numVal;
+                                }
+                              }
+                            });
+
+                            return (
+                              <tr key={metricName} className="border-b border-slate-150 hover:bg-slate-50/65 transition-colors bg-slate-50/10">
+                                <td className="sticky left-0 bg-white hover:bg-slate-50 font-black text-slate-800 px-4 py-3 border-r border-slate-250 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                  <span className="flex items-center gap-1.5">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isNameInput ? 'bg-purple-300' : 'bg-slate-350'}`} />
+                                    {metricName}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 border-r border-slate-200 text-slate-400 font-extrabold text-[10px] uppercase">
+                                  PROCEDURES
+                                </td>
+
+                                {getDaysArray().map(day => {
+                                  const val = daysMap[day];
+                                  const isZero = val === '0' || val === '' || val === undefined;
+                                  return (
+                                    <td key={day} className="text-center py-3 border-r border-slate-100 font-mono font-bold text-xs" title={val}>
+                                      {isZero ? (
+                                        <span className="text-slate-350 opacity-40">-</span>
+                                      ) : (
+                                        <span className={`${isNameInput
+                                          ? 'text-purple-650 text-[10px] font-sans truncate block max-w-[45px] hover:max-w-none hover:bg-white hover:z-30 hover:absolute px-1.5 py-0.5 rounded border border-purple-100 shadow-sm bg-purple-50'
+                                          : 'text-slate-700 font-black'
+                                          }`}>
+                                          {val}
+                                        </span>
+                                      )}
+                                    </td>
+                                  );
+                                })}
+
+                                <td className="text-center py-3 bg-slate-100/50 text-slate-650 font-black font-mono text-xs">
+                                  {isNameInput ? 'N/A' : procedureSum}
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                        {/* Sticky Daily Calculations Column Sum Row */}
+                        <tr className="bg-gradient-to-r from-sky-900 to-sky-950 text-white font-extrabold border-t border-sky-950">
+                          <td
+                            className="sticky left-0 bg-sky-950 text-left px-4 py-4 border-r border-sky-950 font-black uppercase text-xs tracking-wider z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]"
+                            colSpan={2}
+                          >
+                            TOTAL COMPLETED PATIENTS
                           </td>
 
                           {getDaysArray().map(day => {
-                            const val = daysMap[day];
-                            const isZero = val === '0' || val === '' || val === undefined;
+                            const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const dailySum = monthlyData.metrics
+                              .filter(m => m.report_date === dateStr)
+                              .reduce((sum, m) => sum + (m.patient_count || 0), 0);
+
                             return (
-                              <td key={day} className="text-center py-3 border-r border-slate-100 font-mono font-bold text-xs" title={val}>
-                                {isZero ? (
-                                  <span className="text-slate-350 opacity-40">-</span>
-                                ) : (
-                                  <span className={`${isNameInput
-                                    ? 'text-purple-650 text-[10px] font-sans truncate block max-w-[45px] hover:max-w-none hover:bg-white hover:z-30 hover:absolute px-1.5 py-0.5 rounded border border-purple-100 shadow-sm bg-purple-50'
-                                    : 'text-slate-700 font-black'
-                                    }`}>
-                                    {val}
-                                  </span>
-                                )}
+                              <td key={day} className="text-center py-4 border-r border-sky-950 font-mono font-black text-sm text-sky-200">
+                                {dailySum}
                               </td>
                             );
                           })}
 
-                          <td className="text-center py-3 bg-slate-100/50 text-slate-650 font-black font-mono text-xs">
-                            {isNameInput ? 'N/A' : procedureSum}
+                          <td className="text-center py-4 font-mono font-black text-sm bg-sky-950 text-emerald-300">
+                            {monthlyData.metrics.reduce((sum, m) => sum + (m.patient_count || 0), 0)}
                           </td>
                         </tr>
-                      );
-                    })}
 
-                  {/* Sticky Daily Calculations Column Sum Row */}
-                  <tr className="bg-gradient-to-r from-sky-900 to-sky-950 text-white font-extrabold border-t border-sky-950">
-                    <td
-                      className="sticky left-0 bg-sky-950 text-left px-4 py-4 border-r border-sky-950 font-black uppercase text-xs tracking-wider z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]"
-                      colSpan={2}
-                    >
-                      TOTAL COMPLETED PATIENTS
-                    </td>
+                      </tbody>
+                    </table>
+                  </div>
 
-                    {getDaysArray().map(day => {
-                      const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                      const dailySum = monthlyData.metrics
-                        .filter(m => m.report_date === dateStr)
-                        .reduce((sum, m) => sum + (m.patient_count || 0), 0);
-
-                      return (
-                        <td key={day} className="text-center py-4 border-r border-sky-950 font-mono font-black text-sm text-sky-200">
-                          {dailySum}
-                        </td>
-                      );
-                    })}
-
-                    <td className="text-center py-4 font-mono font-black text-sm bg-sky-950 text-emerald-300">
-                      {monthlyData.metrics.reduce((sum, m) => sum + (m.patient_count || 0), 0)}
-                    </td>
-                  </tr>
-
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center text-slate-450">
+                No monthly report matrix dataset is loaded for the selected period.
+              </div>
+            )}
 
           </div>
-        </div>
-      ) : (
-        <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center text-slate-450">
-          No monthly report matrix dataset is loaded for the selected period.
-        </div>
-      )}
+        )
+      }
 
-    </div>
-  )
-}
-
-{/* ────────────────── STOCK LOG DETAILS MODAL ────────────────── */ }
-{
-  selectedLog && createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center text-sky-600">
-              <Database size={18} />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-800">Transaction Details</h3>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ID: #{selectedLog.id}</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSelectedLog(null)}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="p-5 overflow-y-auto custom-scrollbar">
-          <div className="space-y-4">
-
-            {/* Item & Session Info */}
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-              <div className="mb-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Item Name</span>
-                <span className="text-sm font-black text-slate-800">{selectedLog.item_name}</span>
-              </div>
-              <div className="flex items-center gap-6">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Month/Year</span>
-                  <span className="text-xs font-bold text-slate-700">{selectedLog.month_year}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Session</span>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100 uppercase">
-                    Day {selectedLog.day} - {selectedLog.session}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Values Comparison */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">Stock Change</span>
-                <div className="flex items-center justify-center gap-2 font-mono text-xs font-black">
-                  <span className="text-slate-500">{selectedLog.old_stock}</span>
-                  <span className="text-slate-300">➔</span>
-                  <span className="text-slate-800">{selectedLog.new_stock}</span>
-                </div>
-                {selectedLog.new_stock - selectedLog.old_stock !== 0 && (
-                  <div className={`mt-2 text-[10px] font-bold text-center py-1 rounded ${selectedLog.new_stock - selectedLog.old_stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                    {selectedLog.new_stock - selectedLog.old_stock > 0 ? '+' : ''}{selectedLog.new_stock - selectedLog.old_stock} items
+      {/* ────────────────── STOCK LOG DETAILS MODAL ────────────────── */}
+      {
+        selectedLog && createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center text-sky-600">
+                    <Database size={18} />
                   </div>
-                )}
-              </div>
-              <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">Consumed Change</span>
-                <div className="flex items-center justify-center gap-2 font-mono text-xs font-black">
-                  <span className="text-slate-500">{selectedLog.old_consumed}</span>
-                  <span className="text-slate-300">➔</span>
-                  <span className="text-slate-800">{selectedLog.new_consumed}</span>
-                </div>
-                {selectedLog.new_consumed - selectedLog.old_consumed !== 0 && (
-                  <div className={`mt-2 text-[10px] font-bold text-center py-1 rounded ${selectedLog.new_consumed - selectedLog.old_consumed > 0 ? 'bg-amber-50 text-amber-600' : 'bg-sky-50 text-sky-600'}`}>
-                    {selectedLog.new_consumed - selectedLog.old_consumed > 0 ? '+' : ''}{selectedLog.new_consumed - selectedLog.old_consumed} items
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Ward Breakdown Details */}
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ward Breakdown Details</span>
-              <div className="space-y-2">
-                {/* STN1 */}
-                <div className="bg-white p-3 rounded-lg border border-slate-150 flex items-center justify-between">
                   <div>
-                    <span className="font-black text-sky-700 text-[9px] uppercase tracking-wider block">Station 1 (STN1)</span>
-                    <span className="text-[9px] text-slate-400 font-bold">RN: {selectedLog.new_user_stn1 || 'None'}</span>
-                  </div>
-                  <div className="text-right font-mono text-[11px] font-black">
-                    <span className="text-slate-450">{selectedLog.old_consumed_obs1 || 0}</span>
-                    <span className="mx-1 text-slate-400">➔</span>
-                    <span className="text-slate-800">{selectedLog.new_consumed_obs1 || 0}</span>
+                    <h3 className="text-sm font-black text-slate-800">Transaction Details</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ID: #{selectedLog.id}</p>
                   </div>
                 </div>
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-                {/* MINOR */}
-                <div className="bg-white p-3 rounded-lg border border-slate-150 flex items-center justify-between">
-                  <div>
-                    <span className="font-black text-emerald-700 text-[9px] uppercase tracking-wider block">Minor Surgery (MINOR)</span>
-                    <span className="text-[9px] text-slate-400 font-bold">RN: {selectedLog.new_user_minor || 'None'}</span>
+              <div className="p-5 overflow-y-auto custom-scrollbar">
+                <div className="space-y-4">
+
+                  {/* Item & Session Info */}
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <div className="mb-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Item Name</span>
+                      <span className="text-sm font-black text-slate-800">{selectedLog.item_name}</span>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Month/Year</span>
+                        <span className="text-xs font-bold text-slate-700">{selectedLog.month_year}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Session</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100 uppercase">
+                          Day {selectedLog.day} - {selectedLog.session}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right font-mono text-[11px] font-black">
-                    <span className="text-slate-450">{selectedLog.old_consumed_minor || 0}</span>
-                    <span className="mx-1 text-slate-400">➔</span>
-                    <span className="text-slate-800">{selectedLog.new_consumed_minor || 0}</span>
+
+                  {/* Values Comparison */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">Stock Change</span>
+                      <div className="flex items-center justify-center gap-2 font-mono text-xs font-black">
+                        <span className="text-slate-500">{selectedLog.old_stock}</span>
+                        <span className="text-slate-300">➔</span>
+                        <span className="text-slate-800">{selectedLog.new_stock}</span>
+                      </div>
+                      {selectedLog.new_stock - selectedLog.old_stock !== 0 && (
+                        <div className={`mt-2 text-[10px] font-bold text-center py-1 rounded ${selectedLog.new_stock - selectedLog.old_stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                          {selectedLog.new_stock - selectedLog.old_stock > 0 ? '+' : ''}{selectedLog.new_stock - selectedLog.old_stock} items
+                        </div>
+                      )}
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">Consumed Change</span>
+                      <div className="flex items-center justify-center gap-2 font-mono text-xs font-black">
+                        <span className="text-slate-500">{selectedLog.old_consumed}</span>
+                        <span className="text-slate-300">➔</span>
+                        <span className="text-slate-800">{selectedLog.new_consumed}</span>
+                      </div>
+                      {selectedLog.new_consumed - selectedLog.old_consumed !== 0 && (
+                        <div className={`mt-2 text-[10px] font-bold text-center py-1 rounded ${selectedLog.new_consumed - selectedLog.old_consumed > 0 ? 'bg-amber-50 text-amber-600' : 'bg-sky-50 text-sky-600'}`}>
+                          {selectedLog.new_consumed - selectedLog.old_consumed > 0 ? '+' : ''}{selectedLog.new_consumed - selectedLog.old_consumed} items
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Ward Breakdown Details */}
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ward Breakdown Details</span>
+                    <div className="space-y-2">
+                      {/* STN1 */}
+                      <div className="bg-white p-3 rounded-lg border border-slate-150 flex items-center justify-between">
+                        <div>
+                          <span className="font-black text-sky-700 text-[9px] uppercase tracking-wider block">Station 1 (STN1)</span>
+                          <span className="text-[9px] text-slate-400 font-bold">RN: {selectedLog.new_user_stn1 || 'None'}</span>
+                        </div>
+                        <div className="text-right font-mono text-[11px] font-black">
+                          <span className="text-slate-450">{selectedLog.old_consumed_obs1 || 0}</span>
+                          <span className="mx-1 text-slate-400">➔</span>
+                          <span className="text-slate-800">{selectedLog.new_consumed_obs1 || 0}</span>
+                        </div>
+                      </div>
+
+                      {/* MINOR */}
+                      <div className="bg-white p-3 rounded-lg border border-slate-150 flex items-center justify-between">
+                        <div>
+                          <span className="font-black text-emerald-700 text-[9px] uppercase tracking-wider block">Minor Surgery (MINOR)</span>
+                          <span className="text-[9px] text-slate-400 font-bold">RN: {selectedLog.new_user_minor || 'None'}</span>
+                        </div>
+                        <div className="text-right font-mono text-[11px] font-black">
+                          <span className="text-slate-450">{selectedLog.old_consumed_minor || 0}</span>
+                          <span className="mx-1 text-slate-400">➔</span>
+                          <span className="text-slate-800">{selectedLog.new_consumed_minor || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metadata */}
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Updated By</span>
+                      <span className="text-xs font-bold text-slate-700 inline-flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-450" />
+                        {selectedLog.updated_by}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Timestamp</span>
+                      <span className="text-xs font-mono font-bold text-slate-600">
+                        {new Date(selectedLog.updated_at).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
                 </div>
               </div>
-            </div>
 
-            {/* Metadata */}
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Updated By</span>
-                <span className="text-xs font-bold text-slate-700 inline-flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-450" />
-                  {selectedLog.updated_by}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Timestamp</span>
-                <span className="text-xs font-mono font-bold text-slate-600">
-                  {new Date(selectedLog.updated_at).toLocaleString()}
-                </span>
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="px-5 py-2 rounded-lg bg-white border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+                >
+                  Close
+                </button>
               </div>
             </div>
-
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-          <button
-            onClick={() => setSelectedLog(null)}
-            className="px-5 py-2 rounded-lg bg-white border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>, document.body
-  )
-}
+          </div>, document.body
+        )
+      }
 
     </div >
   );
