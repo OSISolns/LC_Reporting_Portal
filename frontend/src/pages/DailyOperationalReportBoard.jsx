@@ -51,7 +51,6 @@ const getWeekRange = (dateStr) => {
 export default function DailyOperationalReportBoard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('daily'); // 'daily', 'weekly' or 'monthly'
-  const [dailySubTab, setDailySubTab] = useState('stock-changes'); // 'stock-changes' or 'consumption'
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState({ departments: [], providers: [], defaultProcedureMetrics: [] });
 
@@ -65,7 +64,6 @@ export default function DailyOperationalReportBoard() {
   const [dailyFollowUps, setDailyFollowUps] = useState({}); // providerId -> followUpCount
   const [dailyLogs, setDailyLogs] = useState({}); // metricName -> metricValue
   const [stockLogs, setStockLogs] = useState([]); // inventory audit logs
-  const [consumptionRecords, setConsumptionRecords] = useState([]); // daily inventory rows
   const [selectedLog, setSelectedLog] = useState(null); // specific log for modal
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
@@ -183,22 +181,7 @@ export default function DailyOperationalReportBoard() {
           setStockLogs([]);
         }
 
-        // Fetch monthly inventory for the daily consumption board card
-        try {
-          const [year, month] = selectedDate.split('-');
-          if (year && month) {
-            const monthYear = `${year}-${month}`;
-            const invRes = await api.get(`/clinical/inventory?month_year=${monthYear}`);
-            if (invRes.data.success && Array.isArray(invRes.data.data)) {
-              setConsumptionRecords(invRes.data.data);
-            } else {
-              setConsumptionRecords([]);
-            }
-          }
-        } catch (invErr) {
-          console.error('Failed to fetch monthly inventory for consumption report:', invErr);
-          setConsumptionRecords([]);
-        }
+
       } catch (err) {
         console.error('Failed to fetch daily report details:', err);
         toast.error('Failed to load daily report.');
@@ -1095,61 +1078,7 @@ export default function DailyOperationalReportBoard() {
     }
   };
 
-  // Get consumption entries for the selected date
-  const getDailyConsumptionData = () => {
-    if (!selectedDate) return { entries: [], obs1Total: 0, minorTotal: 0 };
-    const parts = selectedDate.split('-');
-    if (parts.length !== 3) return { entries: [], obs1Total: 0, minorTotal: 0 };
-    const day = parseInt(parts[2], 10);
 
-    const entries = [];
-    let obs1Total = 0;
-    let minorTotal = 0;
-
-    consumptionRecords.forEach(row => {
-      if (row.day === day) {
-        // Resolve ward-specific consumed
-        let consumed_obs1 = row.consumed_obs1 !== undefined ? (parseInt(row.consumed_obs1, 10) || 0) : 0;
-        let consumed_minor = row.consumed_minor !== undefined ? (parseInt(row.consumed_minor, 10) || 0) : 0;
-
-        // Backwards compatibility for legacy records (attribute to STN1)
-        if (consumed_obs1 === 0 && consumed_minor === 0 && row.consumed > 0) {
-          consumed_obs1 = parseInt(row.consumed, 10) || 0;
-        }
-
-        const user_stn1 = row.user_stn1 || (consumed_obs1 > 0 ? (row.responsible_name || 'Not Specified') : 'Not Specified');
-        const user_minor = row.user_minor || 'Not Specified';
-
-        if (consumed_obs1 > 0) {
-          entries.push({
-            id: `${row.id}-stn1`,
-            user: user_stn1,
-            ward: 'Station 1',
-            item: row.item_name,
-            session: row.session || 'AM',
-            usedNumber: consumed_obs1
-          });
-          obs1Total += consumed_obs1;
-        }
-
-        if (consumed_minor > 0) {
-          entries.push({
-            id: `${row.id}-minor`,
-            user: user_minor,
-            ward: 'Minor Surgery',
-            item: row.item_name,
-            session: row.session || 'AM',
-            usedNumber: consumed_minor
-          });
-          minorTotal += consumed_minor;
-        }
-      }
-    });
-
-    return { entries, obs1Total, minorTotal };
-  };
-
-  const { entries: dailyConsumptions, obs1Total, minorTotal } = getDailyConsumptionData();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 space-y-8 select-none">
@@ -1464,31 +1393,8 @@ export default function DailyOperationalReportBoard() {
 
             </div>
 
-            {/* Daily Summaries Audit and Consumption Tabs */}
-            <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-250 mt-6 shadow-inner max-w-lg select-none">
-              <button
-                type="button"
-                onClick={() => setDailySubTab('stock-changes')}
-                className={`flex-1 px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 ${dailySubTab === 'stock-changes'
-                  ? 'bg-white text-slate-800 shadow-sm border border-slate-200/40'
-                  : 'text-slate-500 hover:text-slate-850 hover:bg-slate-200/30'
-                  }`}
-              >
-                <Database size={15} /> Stock Changes
-              </button>
-              <button
-                type="button"
-                onClick={() => setDailySubTab('consumption')}
-                className={`flex-1 px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 ${dailySubTab === 'consumption'
-                  ? 'bg-white text-slate-800 shadow-sm border border-slate-200/40'
-                  : 'text-slate-500 hover:text-slate-850 hover:bg-slate-200/30'
-                  }`}
-              >
-                <Activity size={15} /> Wards Consumption
-              </button>
-            </div>
 
-            {dailySubTab === 'stock-changes' && (
+
               /* Daily Stock Changes Card (formerly Nursing Stock Daily Audit Timeline) */
               <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 mt-6 animate-fadeIn">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
@@ -1612,75 +1518,7 @@ export default function DailyOperationalReportBoard() {
               </div>
             )}
 
-            {dailySubTab === 'consumption' && (
-              /* Daily Nursing Ward Consumption Report Card */
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 mt-6 animate-fadeIn">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
-                  <div>
-                    <h3 className="text-sm font-black text-sky-650 uppercase tracking-widest flex items-center gap-2">
-                      <Activity size={16} className="text-sky-650" /> Nursing Wards Consumption Report
-                    </h3>
-                    <p className="text-[10px] text-slate-400 font-extrabold uppercase mt-0.5">
-                      Consumption breakdown by user and ward with calculated totals
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-[10px] font-black px-2.5 py-1 bg-sky-50 text-sky-700 border border-sky-100 rounded-full">
-                      STN1 TOTAL: {obs1Total}
-                    </span>
-                    <span className="text-[10px] font-black px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full">
-                      MINOR TOTAL: {minorTotal}
-                    </span>
-                  </div>
-                </div>
 
-                {dailyConsumptions.length === 0 ? (
-                  <div className="text-center py-8 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                    <Activity size={24} className="text-slate-300 mx-auto mb-2" />
-                    <p className="text-xs text-slate-450 font-bold">No nursing stock consumption records recorded for this day.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 text-left border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                          <th className="px-4 py-3">User (Nurse)</th>
-                          <th className="px-4 py-3">Ward</th>
-                          <th className="px-4 py-3">Item Name</th>
-                          <th className="px-4 py-3 text-center">Session</th>
-                          <th className="px-4 py-3 text-center">Used Number</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                        {dailyConsumptions.map(entry => (
-                          <tr key={entry.id} className="hover:bg-slate-50/80 transition-colors text-xs">
-                            <td className="px-4 py-3 font-bold text-slate-900">{entry.user}</td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                                entry.ward === 'Station 1'
-                                  ? 'bg-sky-50 text-sky-700 border-sky-100'
-                                  : 'bg-indigo-50 text-indigo-700 border-indigo-100'
-                              }`}>
-                                {entry.ward}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 font-bold text-slate-800">{entry.item}</td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                                entry.session === 'AM' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-blue-50 text-blue-700 border border-blue-100'
-                              }`}>
-                                {entry.session}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center font-mono font-black text-slate-900">{entry.usedNumber}</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                  </div>
-            )}
-          </div>
-            )}
         </div>
 
         </div>
