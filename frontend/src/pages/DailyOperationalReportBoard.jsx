@@ -1518,9 +1518,9 @@ export default function DailyOperationalReportBoard() {
                           <th className="px-4 py-3">Logged At</th>
                           <th className="px-4 py-3">Item Name</th>
                           <th className="px-4 py-3">Day / Session</th>
-                          <th className="px-4 py-3 text-center">Stock Change</th>
-                          <th className="px-4 py-3 text-center">Consumed Change</th>
-                          <th className="px-4 py-3">Ward Breakdown</th>
+                          <th className="px-4 py-3 text-left">Stock Level</th>
+                          <th className="px-4 py-3 text-left">Total Consumed</th>
+                          <th className="px-4 py-3">Ward</th>
                           <th className="px-4 py-3">Updated By</th>
                         </tr>
                       </thead>
@@ -1544,52 +1544,57 @@ export default function DailyOperationalReportBoard() {
                                   Day {log.day} - {log.session}
                                 </span>
                               </td>
-                              <td className="px-4 py-3.5 text-center">
-                                <span className={`inline-flex items-center gap-1 font-mono text-[11px] font-black ${stockDiff === 0 ? 'text-slate-400' : stockDiff > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                  {log.old_stock} ➔ {log.new_stock}
-                                  {stockDiff !== 0 && ` (${stockDiff > 0 ? '+' : ''}${stockDiff})`}
-                                </span>
+                              <td className="px-4 py-3.5 whitespace-nowrap min-w-[110px]">
+                                <div className="flex flex-col gap-1.5">
+                                  <div className="flex justify-between items-center px-2 py-0.5 bg-slate-50 border border-slate-200/60 rounded">
+                                    <span className="text-[8px] uppercase tracking-widest text-slate-400 font-black">Hand</span>
+                                    <span className="font-mono text-[10px] text-slate-600 font-bold">{log.new_stock || 0}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded shadow-sm">
+                                    <span className="text-[8px] uppercase tracking-widest text-indigo-500 font-black">Balance</span>
+                                    <span className="font-mono text-[11px] text-indigo-700 font-black">{(log.new_stock || 0) - (log.new_consumed || 0)}</span>
+                                  </div>
+                                </div>
                               </td>
-                              <td className="px-4 py-3.5 text-center">
-                                <span className={`inline-flex items-center gap-1 font-mono text-[11px] font-black ${consumedDiff === 0 ? 'text-slate-400' : consumedDiff > 0 ? 'text-amber-600' : 'text-sky-600'}`}>
-                                  {log.old_consumed} ➔ {log.new_consumed}
-                                  {consumedDiff !== 0 && ` (${consumedDiff > 0 ? '+' : ''}${consumedDiff})`}
+                              <td className="px-4 py-3.5 text-left">
+                                <span className="px-2 py-1 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-black rounded-lg">
+                                  {log.new_consumed || 0}
                                 </span>
                               </td>
                               <td className="px-4 py-3.5">
-                                <div className="space-y-1 min-w-[150px]">
-                                  {/* STN1 details */}
-                                  {((log.old_consumed_obs1 !== undefined && log.old_consumed_obs1 !== log.new_consumed_obs1) ||
-                                    (log.old_user_stn1 !== undefined && log.old_user_stn1 !== log.new_user_stn1)) && (
-                                      <div className="pl-1.5 border-l-2 border-sky-400 bg-sky-50/20 py-0.5 rounded-r">
-                                        <span className="font-black text-sky-700 text-[8px] uppercase tracking-wider block">STN1</span>
-                                        <p className="text-[9px] text-slate-500 font-semibold leading-tight">
-                                          Use: {log.old_consumed_obs1} &rarr; <span className="font-bold text-sky-850">{log.new_consumed_obs1}</span>
-                                          {log.old_user_stn1 !== log.new_user_stn1 && ` | RN: "${log.old_user_stn1 || 'None'}" -> "${log.new_user_stn1 || 'None'}"`}
-                                        </p>
-                                      </div>
-                                    )}
+                                {(() => {
+                                  const stn1Changed = log.old_consumed_obs1 !== log.new_consumed_obs1 || log.old_user_stn1 !== log.new_user_stn1;
+                                  const minorChanged = log.old_consumed_minor !== log.new_consumed_minor || log.old_user_minor !== log.new_user_minor;
+                                  
+                                  let wardLabel = "STN1";
+                                  let badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
 
-                                  {/* MINOR details */}
-                                  {((log.old_consumed_minor !== undefined && log.old_consumed_minor !== log.new_consumed_minor) ||
-                                    (log.old_user_minor !== undefined && log.old_user_minor !== log.new_user_minor)) && (
-                                      <div className="pl-1.5 border-l-2 border-emerald-400 bg-emerald-50/20 py-0.5 rounded-r">
-                                        <span className="font-black text-emerald-700 text-[8px] uppercase tracking-wider block">MINOR</span>
-                                        <p className="text-[9px] text-slate-500 font-semibold leading-tight">
-                                          Use: {log.old_consumed_minor} &rarr; <span className="font-bold text-emerald-850">{log.new_consumed_minor}</span>
-                                          {log.old_user_minor !== log.new_user_minor && ` | RN: "${log.old_user_minor || 'None'}" -> "${log.new_user_minor || 'None'}"`}
-                                        </p>
-                                      </div>
-                                    )}
+                                  if (stn1Changed && minorChanged) {
+                                    wardLabel = "STN1 & MINOR";
+                                    badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
+                                  } else if (minorChanged) {
+                                    wardLabel = "MINOR";
+                                    badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                  } else if (stn1Changed) {
+                                    wardLabel = "STN1";
+                                    badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
+                                  } else {
+                                    // Aggressive fallback logic
+                                    if (log.new_user_minor && !log.new_user_stn1) {
+                                      wardLabel = "MINOR";
+                                      badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                    } else if (log.updated_by === log.new_user_minor && log.updated_by !== log.new_user_stn1) {
+                                      wardLabel = "MINOR";
+                                      badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                    }
+                                  }
 
-                                  {/* Fallback if no specific ward logs exist */}
-                                  {!((log.old_consumed_obs1 !== undefined && log.old_consumed_obs1 !== log.new_consumed_obs1) ||
-                                    (log.old_user_stn1 !== undefined && log.old_user_stn1 !== log.new_user_stn1)) &&
-                                   !((log.old_consumed_minor !== undefined && log.old_consumed_minor !== log.new_consumed_minor) ||
-                                    (log.old_user_minor !== undefined && log.old_user_minor !== log.new_user_minor)) && (
-                                      <span className="text-[9px] text-slate-400 font-bold italic">No ward detail</span>
-                                    )}
-                                </div>
+                                  return (
+                                    <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-md border ${badgeClass}`}>
+                                      {wardLabel}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="px-4 py-3.5 whitespace-nowrap text-slate-800">
                                 <span className="inline-flex items-center gap-1.5">
