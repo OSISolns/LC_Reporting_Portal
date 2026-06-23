@@ -1,7 +1,21 @@
 'use strict';
 require('dotenv').config();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const tursoUrl = process.env.lcreporting_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL;
+const tursoToken = process.env.lcreporting_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
+
+let libsql = null;
+let prisma = null;
+
+if (tursoUrl && tursoToken) {
+  const { createClient } = require('@libsql/client');
+  libsql = createClient({
+    url: tursoUrl,
+    authToken: tursoToken,
+  });
+} else {
+  const { PrismaClient } = require('@prisma/client');
+  prisma = new PrismaClient();
+}
 
 const transformQuery = (sql, params) => {
   let transformedSql = sql;
@@ -40,25 +54,39 @@ const client = {
     const upperSql = transformedSql.trim().toUpperCase();
     const isSelect = upperSql.startsWith('SELECT') || upperSql.startsWith('PRAGMA') || upperSql.startsWith('RETURNING');
     try {
-      if (isSelect) {
-        const result = await prisma.$queryRawUnsafe(transformedSql, ...finalArgs);
-        const rows = Array.isArray(result) ? result : [];
-        const safeRows = rows.map(row => {
+      if (libsql) {
+        // Native Turso Execution
+        const result = await libsql.execute({ sql: transformedSql, args: finalArgs });
+        const safeRows = (result.rows || []).map(row => {
           const newRow = { ...row };
           for (const key in newRow) {
             if (typeof newRow[key] === 'bigint') newRow[key] = Number(newRow[key]);
           }
           return newRow;
         });
-        return { rows: safeRows, rowsAffected: safeRows.length };
+        return { rows: safeRows, rowsAffected: result.rowsAffected || safeRows.length };
       } else {
-        const affected = await prisma.$executeRawUnsafe(transformedSql, ...finalArgs);
-        return { rows: [], rowsAffected: affected };
+        // Prisma Execution
+        if (isSelect) {
+          const result = await prisma.$queryRawUnsafe(transformedSql, ...finalArgs);
+          const rows = Array.isArray(result) ? result : [];
+          const safeRows = rows.map(row => {
+            const newRow = { ...row };
+            for (const key in newRow) {
+              if (typeof newRow[key] === 'bigint') newRow[key] = Number(newRow[key]);
+            }
+            return newRow;
+          });
+          return { rows: safeRows, rowsAffected: safeRows.length };
+        } else {
+          const affected = await prisma.$executeRawUnsafe(transformedSql, ...finalArgs);
+          return { rows: [], rowsAffected: affected };
+        }
       }
     } catch (e) {
       const msg = e.message || '';
       if (!msg.includes('duplicate column name') && !msg.includes('already exists')) {
-        console.error('\n❌ Prisma Query Error:');
+        console.error('\n❌ DB Engine Query Error:');
         console.error('SQL:', transformedSql);
         console.error('Args:', finalArgs);
         console.error('Error:', msg);
@@ -1495,13 +1523,21 @@ const query = async (sql, params = []) => {
  */
 const batch = async (statements) => {
   try {
-    const promises = statements.map(s => {
-      const { sql, args } = transformQuery(s.sql, s.args);
-      return prisma.$executeRawUnsafe(sql, ...(args || []));
-    });
-    return await prisma.$transaction(promises);
+    if (libsql) {
+      const mapped = statements.map(s => {
+        const { sql, args } = transformQuery(s.sql, s.args);
+        return { sql, args };
+      });
+      return await libsql.batch(mapped);
+    } else {
+      const promises = statements.map(s => {
+        const { sql, args } = transformQuery(s.sql, s.args);
+        return prisma.$executeRawUnsafe(sql, ...(args || []));
+      });
+      return await prisma.$transaction(promises);
+    }
   } catch (err) {
-    console.error('💥 Prisma Batch Error:', err.message);
+    console.error('💥 Batch Error:', err.message);
     throw err;
   }
 };

@@ -1,4 +1,4 @@
 #!/bin/bash
 git add .
-git commit -m "fix: resolve Prisma TIMESTAMPTZ deserialization crash in auth and allow late AM reporting"
+git commit -m "feat(db): implement dynamic dual-driver architecture connecting to native Turso (@libsql/client) in production to bypass Prisma TIMESTAMPTZ SQLite metadata crash"
 git push
