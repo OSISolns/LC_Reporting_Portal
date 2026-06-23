@@ -798,14 +798,15 @@ exports.saveInventoryBulk = async (req, res) => {
       const newConsumed = newObs1 + newMinor;
       const newBalance = newStock - newConsumed;
 
-      // Log if anything changed
+      // Log if the user manually edited this specific cell (prevents ripple-effect spam)
       if (
-        oldStock !== newStock ||
+        item.manually_edited === true &&
+        (oldStock !== newStock ||
         oldConsumed !== newConsumed ||
         oldObs1 !== newObs1 ||
         oldMinor !== newMinor ||
         oldUObs1 !== newUObs1 ||
-        oldUMinor !== newUMinor
+        oldUMinor !== newUMinor)
       ) {
         logsToInsert.push({
           sql: `INSERT INTO nursing_stock_change_logs (
