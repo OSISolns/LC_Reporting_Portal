@@ -167,6 +167,11 @@ const syncClinicalUsagesToInventory = async () => {
       return 'STN1';
     };
 
+    const inventoryMap = new Map();
+    INVENTORY_ITEMS.forEach(item => {
+      inventoryMap.set(item.toLowerCase(), item);
+    });
+
     observations.forEach(obs => {
       let identification = {};
       let medication_mar = {};
@@ -219,9 +224,7 @@ const syncClinicalUsagesToInventory = async () => {
         const name = (interv.name || '').trim();
         if (!name) return;
 
-        const matchedItem = INVENTORY_ITEMS.find(
-          item => item.toLowerCase() === name.toLowerCase()
-        );
+        const matchedItem = inventoryMap.get(name.toLowerCase());
         if (!matchedItem) return;
 
         // Each named intervention on the sheet counts as 1 unit consumed.
