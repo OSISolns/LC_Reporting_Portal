@@ -2108,23 +2108,27 @@ export default function DailyInventoryCheckup() {
                                   const stn1Changed = log.old_consumed_obs1 !== log.new_consumed_obs1 || log.old_user_stn1 !== log.new_user_stn1;
                                   const minorChanged = log.old_consumed_minor !== log.new_consumed_minor || log.old_user_minor !== log.new_user_minor;
                                   
-                                  let wardLabel = "SYSTEM";
-                                  let badgeClass = "bg-slate-100 text-slate-500 border-slate-200";
+                                  let wardLabel = "STN1";
+                                  let badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
 
                                   if (stn1Changed && minorChanged) {
                                     wardLabel = "STN1 & MINOR";
                                     badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
-                                  } else if (stn1Changed) {
-                                    wardLabel = "STN1";
-                                    badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
                                   } else if (minorChanged) {
                                     wardLabel = "MINOR";
                                     badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                  } else if (stn1Changed) {
+                                    wardLabel = "STN1";
+                                    badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
                                   } else {
-                                    // Fallback if only stock changed without specific ward attribution
-                                    if (log.new_user_stn1 && !log.new_user_minor) { wardLabel = "STN1"; badgeClass = "bg-sky-50 text-sky-700 border-sky-200"; }
-                                    else if (log.new_user_minor && !log.new_user_stn1) { wardLabel = "MINOR"; badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200"; }
-                                    else if (log.new_user_stn1 && log.new_user_minor) { wardLabel = "STN1 & MINOR"; badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200"; }
+                                    // Aggressive fallback logic
+                                    if (log.new_user_minor && !log.new_user_stn1) {
+                                      wardLabel = "MINOR";
+                                      badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                    } else if (log.updated_by === log.new_user_minor && log.updated_by !== log.new_user_stn1) {
+                                      wardLabel = "MINOR";
+                                      badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                    }
                                   }
 
                                   return (
