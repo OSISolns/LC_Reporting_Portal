@@ -1,0 +1,42 @@
+[INFO] 2026-06-20T21:11:42.203Z - Starting automated June data restoration and backfill...
+[INFO] 2026-06-20T21:11:42.206Z - Running restoreData()...
+[INFO] 2026-06-20T21:11:42.207Z - Starting data restoration...
+[INFO] 2026-06-20T21:11:46.142Z - 🔌 DATABASE: Successfully connected to Turso Cloud.
+[INFO] 2026-06-20T21:11:46.143Z - ⚙️ Running custom department cleanup migration...
+[INFO] 2026-06-20T21:11:47.238Z - Current departments in DB: ["PHYSIO (120)","NURSING (121)","OPERATIONS (122)","LABORATORY (123)","IMAGING (124)","DENTAL (129)"]
+[INFO] 2026-06-20T21:11:56.994Z - ✅ Custom department cleanup migration complete.
+[INFO] 2026-06-20T21:11:58.828Z - Final departments in DB: ["PHYSIO (120)","NURSING (121)","OPERATIONS (122)","LABORATORY (123)","IMAGING (124)","DENTAL (129)"]
+[INFO] 2026-06-20T21:12:00.556Z - ⚙️ Running provider name + specialization migration...
+[INFO] 2026-06-20T21:13:34.927Z - 🌱 Updating provider Mr Ingabire J. Paul in DB...
+[INFO] 2026-06-20T21:13:36.567Z - ✅ Provider migration complete: 53 providers updated.
+[INFO] 2026-06-20T21:13:38.481Z - ✅ SQLite Schema Migration: created shift_nurse_close table
+[INFO] 2026-06-20T21:13:39.509Z - ✅ SQLite Schema Migration: created shift_viplounge_close table
+[INFO] 2026-06-20T21:13:53.623Z - ✅ SQLite Schema Migration: created departments table
+[INFO] 2026-06-20T21:13:54.256Z - ✅ SQLite Schema Migration: created specializations table
+[INFO] 2026-06-20T21:13:54.754Z - ✅ SQLite Schema Migration: created providers table
+[INFO] 2026-06-20T21:13:55.270Z - ✅ SQLite Schema Migration: created daily_report_metrics table
+[INFO] 2026-06-20T21:13:56.929Z - ✅ SQLite Schema Migration: created daily_procedure_logs table
+[INFO] 2026-06-20T21:13:57.822Z - ✅ SQLite Schema Migration: created icd11_cache table
+[INFO] 2026-06-20T21:14:00.765Z - ✅ SQLite Schema Migration: created/verified nursing_monthly_stock table
+[INFO] 2026-06-20T21:14:05.681Z - ✅ SQLite Schema Migration: created/verified nursing_stock_change_logs table
+[INFO] 2026-06-20T21:14:13.648Z - ✅ SQLite Schema Migration: created/verified nursing_unlock_passwords table
+[INFO] 2026-06-20T21:14:18.016Z - ✅ SQLite Schema Migration: created stock management relational tables
+[INFO] 2026-06-20T21:14:18.424Z - ✅ SQLite Schema Migration: created uoms table
+[INFO] 2026-06-20T21:14:19.481Z - ✅ All SKUs already standardised.
+[INFO] 2026-06-20T21:14:27.153Z - ✅ SQLite Schema Migration: created/verified Supplier Portal tables
+[INFO] 2026-06-20T21:14:28.482Z - ✅ SQLite Schema Migration: created/verified supplier_portal_sessions table
+[INFO] 2026-06-20T21:14:34.960Z - ✅ SQLite Schema Migration: created/verified clinical_observations table
+[INFO] 2026-06-20T21:14:38.816Z - ✅ SQLite Schema Migration: created/verified patient_vitals table
+[INFO] 2026-06-20T21:14:42.691Z - ✅ SQLite Schema Migration: created/verified it_assets table
+[INFO] 2026-06-20T21:14:43.897Z - ✅ SQLite Schema Migration: created/verified it_tickets table
+[INFO] 2026-06-20T21:14:48.141Z - ✅ SQLite Schema Migration: created/verified compliance_licenses table
+[INFO] 2026-06-20T21:14:49.971Z - ✅ SQLite Schema Migration: created/verified compliance_facility_certs table
+[INFO] 2026-06-20T21:14:51.814Z - ✅ SQLite Schema Migration: created/verified compliance_audits table
+[INFO] 2026-06-20T21:14:58.109Z - ✅ SQLite Schema Migration: created/verified revenue_leakages table
+[INFO] 2026-06-20T21:18:29.352Z - Restored 369 records.
+[INFO] 2026-06-20T21:18:30.446Z - Backfilled specialization_id for 1 rows
+[INFO] 2026-06-20T21:18:30.446Z - Running updateSpecializationId()...
+[INFO] 2026-06-20T21:18:30.447Z - 🔌 Connecting to Turso...
+[INFO] 2026-06-20T21:18:30.447Z - Updating specialization_id in daily_report_metrics...
+[INFO] 2026-06-20T21:18:31.877Z - ✅ Updated 1 rows with correct specialization_id!
+[INFO] 2026-06-20T21:18:31.877Z - Migration finished successfully!

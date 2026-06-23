@@ -5,7 +5,10 @@ const bcrypt = require('bcryptjs');
 class User {
   static async findByUsername(username) {
     const { rows } = await db.query(
-      `SELECT u.*, r.name as role 
+      `SELECT 
+         u.id, u.full_name, u.username, u.password_hash, u.email, 
+         u.role_id, u.is_active, u.failed_attempts, u.must_change_password,
+         r.name as role 
        FROM users u 
        JOIN roles r ON u.role_id = r.id 
        WHERE LOWER(u.username) = LOWER(?)`,
@@ -15,10 +18,8 @@ class User {
   }
 
   static async incrementFailedAttempts(id) {
-    // In SQLite, we can't easily do UPDATE ... RETURNING in older versions 
-    // but LibSQL supports it. However, to be safe with our db.js wrapper:
     await db.query(
-      'UPDATE users SET failed_attempts = failed_attempts + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE users SET failed_attempts = failed_attempts + 1 WHERE id = ?',
       [id]
     );
     const { rows } = await db.query('SELECT failed_attempts FROM users WHERE id = ?', [id]);
@@ -27,21 +28,24 @@ class User {
 
   static async lockout(id, minutes) {
     await db.query(
-      "UPDATE users SET lockout_until = datetime('now', ? || ' minutes'), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      "UPDATE users SET lockout_until = datetime('now', ? || ' minutes') WHERE id = ?",
       [minutes, id]
     );
   }
 
   static async resetAttempts(id) {
     await db.query(
-      'UPDATE users SET failed_attempts = 0, lockout_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE users SET failed_attempts = 0, lockout_until = NULL WHERE id = ?',
       [id]
     );
   }
 
   static async findByEmail(email) {
     const { rows } = await db.query(
-      `SELECT u.*, r.name as role 
+      `SELECT 
+         u.id, u.full_name, u.username, u.password_hash, u.email, 
+         u.role_id, u.is_active, u.failed_attempts, u.must_change_password,
+         r.name as role 
        FROM users u 
        JOIN roles r ON u.role_id = r.id 
        WHERE u.email = ?`,
@@ -52,7 +56,10 @@ class User {
 
   static async findById(id) {
     const { rows } = await db.query(
-      `SELECT u.*, r.name as role 
+      `SELECT 
+         u.id, u.full_name, u.username, u.password_hash, u.email, 
+         u.role_id, u.is_active, u.failed_attempts, u.must_change_password,
+         r.name as role 
        FROM users u 
        JOIN roles r ON u.role_id = r.id 
        WHERE u.id = ?`,
@@ -65,7 +72,6 @@ class User {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
     
-    // LibSQL supports RETURNING
     const { rows } = await db.query(
       `INSERT INTO users (full_name, username, email, password_hash, role_id, must_change_password)
        VALUES (?, ?, ?, ?, ?, 1)
@@ -77,10 +83,12 @@ class User {
 
   static async getAll() {
     const { rows } = await db.query(
-      `SELECT u.id, u.full_name, u.username, u.email, u.is_active, r.display_name as role_name, u.created_at
+      `SELECT 
+         u.id, u.full_name, u.username, u.email, u.is_active, 
+         r.display_name as role_name 
        FROM users u
        JOIN roles r ON u.role_id = r.id
-       ORDER BY u.created_at DESC`
+       ORDER BY u.id DESC`
     );
     return rows;
   }
@@ -88,7 +96,7 @@ class User {
   static async update(id, { fullName, username, email, roleId, isActive }) {
     const { rows } = await db.query(
       `UPDATE users 
-       SET full_name = ?, username = ?, email = ?, role_id = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+       SET full_name = ?, username = ?, email = ?, role_id = ?, is_active = ?
        WHERE id = ?
        RETURNING id, full_name, username, email, role_id, is_active`,
       [fullName, username, email, roleId, isActive, id]
@@ -137,7 +145,7 @@ class User {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(newPassword, salt);
     await db.query(
-      'UPDATE users SET password_hash = ?, must_change_password = 1, failed_attempts = 0, lockout_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE users SET password_hash = ?, must_change_password = 1, failed_attempts = 0, lockout_until = NULL WHERE id = ?',
       [passwordHash, id]
     );
   }

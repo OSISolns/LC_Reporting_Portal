@@ -1,22 +1,77 @@
 'use strict';
 require('dotenv').config();
-const { createClient } = require('@libsql/client');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-/**
- * Initialize Turso (LibSQL) Client
- * Prioritize PROD_ variables to allow bypassing Vercel's Turso integration preview branches (e.g. database-pink-bucket).
- */
-const tursoUrl = process.env.PROD_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.lcreporting_TURSO_DATABASE_URL;
-const tursoAuthToken = process.env.PROD_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.lcreporting_TURSO_AUTH_TOKEN;
+const transformQuery = (sql, params) => {
+  let transformedSql = sql;
+  const matches = sql.match(/\$\d+/g);
+  let args = [];
+  if (matches && params && params.length > 0) {
+    args = matches.map(m => {
+      const index = parseInt(m.substring(1), 10) - 1;
+      const val = params[index];
+      return val === undefined ? null : val;
+    });
+  } else {
+    args = (params || []).map(p => p === undefined ? null : p);
+  }
+  transformedSql = transformedSql.replace(/\$\d+/g, '?');
+  transformedSql = transformedSql
+    .replace(/ILIKE/gi, 'LIKE')
+    .replace(/NOW\(\)/gi, "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
+    .replace(/CURRENT_TIMESTAMP/gi, "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
+    .replace(/TIMESTAMPTZ/gi, 'DATETIME')
+    .replace(/SERIAL/gi, 'INTEGER PRIMARY KEY AUTOINCREMENT');
+  return { sql: transformedSql, args };
+};
 
-if (!tursoUrl || !tursoAuthToken) {
-  throw new Error('❌ TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set in environment variables.');
-}
-
-const client = createClient({
-  url: tursoUrl,
-  authToken: tursoAuthToken,
-});
+const client = {
+  execute: async (stmt) => {
+    let sql, args;
+    if (typeof stmt === 'string') {
+      sql = stmt;
+      args = [];
+    } else {
+      sql = stmt.sql;
+      args = stmt.args || [];
+    }
+    const { sql: transformedSql, args: finalArgs } = transformQuery(sql, args);
+    const upperSql = transformedSql.trim().toUpperCase();
+    const isSelect = upperSql.startsWith('SELECT') || upperSql.startsWith('PRAGMA') || upperSql.startsWith('RETURNING');
+    try {
+      if (isSelect) {
+        const result = await prisma.$queryRawUnsafe(transformedSql, ...finalArgs);
+        const rows = Array.isArray(result) ? result : [];
+        const safeRows = rows.map(row => {
+          const newRow = { ...row };
+          for (const key in newRow) {
+            if (typeof newRow[key] === 'bigint') newRow[key] = Number(newRow[key]);
+          }
+          return newRow;
+        });
+        return { rows: safeRows, rowsAffected: safeRows.length };
+      } else {
+        const affected = await prisma.$executeRawUnsafe(transformedSql, ...finalArgs);
+        return { rows: [], rowsAffected: affected };
+      }
+    } catch (e) {
+      const msg = e.message || '';
+      if (!msg.includes('duplicate column name') && !msg.includes('already exists')) {
+        console.error('\n❌ Prisma Query Error:');
+        console.error('SQL:', transformedSql);
+        console.error('Args:', finalArgs);
+        console.error('Error:', msg);
+      }
+      throw e;
+    }
+  },
+  batch: async (statements) => {
+    for (const stmt of statements) {
+      await client.execute(stmt);
+    }
+  }
+};
 
 // Run dynamic schema migrations on start (Only in development or if explicitly forced, to prevent Vercel cold-start timeouts)
 if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'true') {
@@ -126,7 +181,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     try {
       // Step 1: Add specialization column (safe - catches error if already exists)
       await client.execute("ALTER TABLE providers ADD COLUMN specialization TEXT").catch((err) => {
-        console.warn("⚠️ ALTER TABLE providers ADD COLUMN specialization failed:", err.message);
+        if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+          console.warn("⚠️ ALTER TABLE providers ADD COLUMN specialization failed:", err.message);
+        }
       });
       console.log('⚙️ Running provider name + specialization migration...');
 
@@ -1403,54 +1460,17 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
 
 
 /**
- * Compatibility Layer: Transforms Postgres-style SQL/params into LibSQL format.
- * - Converts $1, $2, etc. to ?
- * - Replaces NOW() with CURRENT_TIMESTAMP or DATETIME('now')
- * - Replaces ILIKE with LIKE (SQLite LIKE is case-insensitive for ASCII)
- */
-const transformQuery = (sql, params) => {
-  let transformedSql = sql;
-
-  // 1. Convert Postgres $n placeholders to SQLite ?
-  // If the same placeholder is used multiple times (e.g. $1 or $2), we rebuild the sequential args array.
-  const matches = sql.match(/\$\d+/g);
-  let args = [];
-  if (matches && params && params.length > 0) {
-    args = matches.map(m => {
-      const index = parseInt(m.substring(1), 10) - 1;
-      return params[index];
-    });
-  } else {
-    args = params || [];
-  }
-
-  transformedSql = transformedSql.replace(/\$\d+/g, '?');
-
-  // 2. Dialect translation
-  transformedSql = transformedSql
-    .replace(/ILIKE/gi, 'LIKE')
-    .replace(/NOW\(\)/gi, "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
-    .replace(/CURRENT_TIMESTAMP/gi, "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
-    .replace(/TIMESTAMPTZ/gi, 'DATETIME')
-    .replace(/SERIAL/gi, 'INTEGER PRIMARY KEY AUTOINCREMENT');
-
-  return { sql: transformedSql, args };
-};
-
-/**
  * Mocking the 'pg' query interface for minimal model refactoring.
  */
 const query = async (sql, params = []) => {
   try {
-    const { sql: transformedSql, args } = transformQuery(sql, params);
-    const result = await client.execute({ sql: transformedSql, args });
+    const { rows, rowsAffected } = await client.execute({ sql, args: params });
 
     // Auto-fix SQLite date strings to ISO UTC format for frontend compatibility
-    const rows = result.rows.map(row => {
+    const fixedRows = rows.map(row => {
       const newRow = { ...row };
       for (const key in newRow) {
         const val = newRow[key];
-        // Match YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.SSS
         if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(val)) {
           newRow[key] = val.replace(' ', 'T') + 'Z';
         }
@@ -1459,11 +1479,11 @@ const query = async (sql, params = []) => {
     });
 
     return {
-      rows: rows,
-      rowCount: result.rowsAffected || rows.length
+      rows: fixedRows,
+      rowCount: rowsAffected || fixedRows.length
     };
   } catch (err) {
-    console.error('💥 Turso/LibSQL Query Error:', err.message);
+    console.error('💥 Prisma Query Error:', err.message);
     console.error('SQL:', sql);
     throw err;
   }
@@ -1475,13 +1495,13 @@ const query = async (sql, params = []) => {
  */
 const batch = async (statements) => {
   try {
-    const transformed = statements.map(s => {
+    const promises = statements.map(s => {
       const { sql, args } = transformQuery(s.sql, s.args);
-      return { sql, args };
+      return prisma.$executeRawUnsafe(sql, ...(args || []));
     });
-    return await client.batch(transformed);
+    return await prisma.$transaction(promises);
   } catch (err) {
-    console.error('💥 Turso/LibSQL Batch Error:', err.message);
+    console.error('💥 Prisma Batch Error:', err.message);
     throw err;
   }
 };
