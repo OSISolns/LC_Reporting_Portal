@@ -1,12 +1,8 @@
 'use strict';
 require('dotenv').config();
-const { createClient } = require('@libsql/client');
+const dbConn = require('./src/config/db');
+const client = dbConn.client;
 const bcrypt = require('bcryptjs');
-
-const client = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
 
 async function seed() {
   try {

@@ -19,7 +19,6 @@
 
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
-const { createClient } = require('@libsql/client');
 const { bulkPullAllPatients, bulkPullByPrefix } = require('../src/services/sukraaService');
 
 // ── Parse CLI flags ──────────────────────────────────────────────────────────
@@ -29,10 +28,11 @@ const isDryRun   = args.includes('--dry-run');
 const isForce    = args.includes('--force');
 
 // ── Init DB client ───────────────────────────────────────────────────────────
-const db = createClient({
-  url:       process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+const dbConn = require('../src/config/db');
+const db = {
+  execute: (stmt) => dbConn.client.execute(stmt),
+  batch: (statements) => dbConn.batch(statements)
+};
 
 // ── Run migration if table doesn't exist ─────────────────────────────────────
 async function ensureSchema() {
@@ -131,11 +131,15 @@ async function main() {
   // Insert sync log entry
   let logId = null;
   if (!isDryRun) {
-    const logResult = await db.execute({
+    await db.execute({
       sql:  `INSERT INTO sukraa_sync_log (started_at, status) VALUES (?, 'running')`,
       args: [startTime],
     });
-    logId = logResult.lastInsertRowid;
+    const latestLog = await db.execute({
+      sql: `SELECT id FROM sukraa_sync_log WHERE started_at = ? AND status = 'running' ORDER BY id DESC LIMIT 1`,
+      args: [startTime]
+    });
+    logId = latestLog.rows?.[0]?.id || latestLog[0]?.id;
   }
 
   const stats = { added: 0, errors: 0 };
