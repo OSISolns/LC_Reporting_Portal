@@ -167,8 +167,10 @@ const syncClinicalUsagesToInventory = async () => {
       return 'STN1';
     };
 
+    const { rows: masterItems } = await db.query("SELECT name FROM master_inventory");
     const inventoryMap = new Map();
-    INVENTORY_ITEMS.forEach(item => {
+    const itemsList = masterItems.length > 0 ? masterItems.map(r => r.name) : INVENTORY_ITEMS;
+    itemsList.forEach(item => {
       inventoryMap.set(item.toLowerCase(), item);
     });
 
@@ -316,8 +318,22 @@ exports.saveObservation = async (req, res) => {
 
     const existing = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id, req.user);
 
+    // Enforce that only doctors and medical directors can set or update the diagnosis field
+    const isDoctorOrMD = ['doctor', 'consultant', 'medical_director'].includes(req.user.role);
+    if (!isDoctorOrMD) {
+      if (req.body.identification) {
+        const existingDiagnosis = existing && existing.identification ? existing.identification.diagnosis : '';
+        req.body.identification.diagnosis = existingDiagnosis || '';
+      }
+    }
+
     let result;
     if (existing) {
+      // When a clinical sheet is complete (Verified), nothing can be edited by any role
+      if (existing.status === 'Verified') {
+        return res.status(403).json({ success: false, message: 'This clinical sheet is already verified/completed and locked for edits.' });
+      }
+
       // Enforce backend-level immutability for SBAR reported/received details once set
       if (existing.sbar) {
         if (!req.body.sbar) req.body.sbar = {};
@@ -335,15 +351,10 @@ exports.saveObservation = async (req, res) => {
         }
       }
 
-      // Restrict modifying verified sheets to Chef Nurses, Doctors, and Consultants
-      if (existing.status === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(req.user.role)) {
-        return res.status(403).json({ success: false, message: 'This clinical sheet is already verified and locked.' });
-      }
-
       const statusToSave = req.body.status || existing.status || 'Draft';
 
       // Only Chef Nurses can verify or keep a clinical sheet in verified status
-      if (statusToSave === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(req.user.role)) {
+      if (statusToSave === 'Verified' && !['chef-nurse', 'doctor', 'consultant', 'medical_director'].includes(req.user.role)) {
         return res.status(403).json({ success: false, message: 'Only authorized personnel can verify clinical sheets.' });
       }
 
@@ -359,7 +370,7 @@ exports.saveObservation = async (req, res) => {
       const statusToSave = req.body.status || 'Draft';
 
       // Only Chef Nurses, Doctors, and Consultants can create or verify clinical sheets with Verified status
-      if (statusToSave === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(req.user.role)) {
+      if (statusToSave === 'Verified' && !['chef-nurse', 'doctor', 'consultant', 'medical_director'].includes(req.user.role)) {
         return res.status(403).json({ success: false, message: 'Only authorized personnel can verify clinical sheets.' });
       }
 
@@ -916,8 +927,15 @@ exports.getInventoryChangeLogs = async (req, res) => {
 };
 
 // ─── Inventory: Return item master list ───────────────────────────────────────
-exports.getInventoryItems = (req, res) => {
-  res.json({ success: true, data: INVENTORY_ITEMS });
+exports.getInventoryItems = async (req, res) => {
+  try {
+    const { rows } = await db.query("SELECT name FROM master_inventory ORDER BY name ASC");
+    const items = rows.length > 0 ? rows.map(r => r.name) : INVENTORY_ITEMS;
+    res.json({ success: true, data: items });
+  } catch (error) {
+    console.error('Error in getInventoryItems:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 };
 
 // ─── Inventory: Manual sync trigger endpoint ──────────────────────────────────
@@ -932,7 +950,7 @@ exports.syncClinicalUsagesToInventory = syncClinicalUsagesToInventory;
 exports.getAllObservationsList = async (req, res) => {
   try {
     const { search = '', status = '', from = '', to = '' } = req.query;
-    const isPrivileged = ['admin', 'chef-nurse', 'doctor', 'consultant', 'reviewer'].includes(req.user.role);
+    const isPrivileged = ['admin', 'chef-nurse', 'doctor', 'consultant', 'reviewer', 'medical_director'].includes(req.user.role);
 
     let sql = `
       SELECT
@@ -1049,6 +1067,7 @@ exports.getCompletedPrescriptions = async (req, res) => {
             created_at: row.created_at,
             updated_at: row.updated_at,
             diagnosis: ident.diagnosis || '',
+            medical_note: ident.medical_note || '',
             medications: validMeds
           });
         }
@@ -1123,6 +1142,9 @@ exports.exportInventoryExcel = async (req, res) => {
       const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
       return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
     };
+
+    const { rows: masterItems } = await db.query("SELECT name FROM master_inventory ORDER BY name ASC");
+    const itemsToExport = masterItems.length > 0 ? masterItems.map(r => r.name) : INVENTORY_ITEMS;
 
     monthList.forEach((my) => {
       const sheetName = getMonthLabel(my) || my;
@@ -1289,7 +1311,7 @@ exports.exportInventoryExcel = async (req, res) => {
       // Add Data Rows
       const monthData = dataMap[my] || {};
 
-      INVENTORY_ITEMS.forEach((itemName, index) => {
+      itemsToExport.forEach((itemName, index) => {
         const itemIndex = index + 1;
         const rowIndex = 6 + index;
         const itemCells = monthData[itemName] || {};
