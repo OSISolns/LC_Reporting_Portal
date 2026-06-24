@@ -1,4 +1,9 @@
 #!/bin/bash
-git add frontend/src/pages/DailyInventoryCheckup.jsx backend/src/controllers/clinicalController.js frontend/src/pages/DailyOperationalReportBoard.jsx
-git commit -m "fix: prevent duplicate audit logs from stock carry-over ripple effects, format stock/consumed columns, and simplify ward badge"
+# Staging all code updates, scripts, and configurations
+git add -A
+
+# Commit with a descriptive message
+git commit -m "feat: support medical director, secure feedbacks, migrate db config to sqlite, and lock completed clinical sheets"
+
+# Push to origin
 git push
