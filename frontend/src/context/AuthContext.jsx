@@ -67,6 +67,12 @@ export const AuthProvider = ({ children }) => {
     if (user.role === 'admin' && action === 'review') return false;
 
     if (user.role === 'admin') return true;
+
+    if (user.role === 'medical_director') {
+      const allowedModules = ['incident_reports', 'clinical_observation', 'feedbacks', 'reports'];
+      if (allowedModules.includes(module)) return true;
+    }
+
     return user.permissions?.[module]?.[action]?.granted === true;
   };
 
