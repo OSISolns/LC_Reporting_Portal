@@ -16,6 +16,9 @@ function authMiddleware(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded && decoded.role === 'M.D') {
+      decoded.role = 'medical_director';
+    }
     req.user = decoded; // Contains id, role, fullName
     next();
   } catch (error) {
