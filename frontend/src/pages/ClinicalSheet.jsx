@@ -77,6 +77,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
         appt_date_no: 'Walk-in / No Appointment',
         insurance: '',
         diagnosis: '',
+        medical_note: '',
         date: new Date().toISOString().split('T')[0],
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         rn: ''
@@ -132,6 +133,25 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
 
   useEffect(() => {
     const fetchData = async () => {
+      const formatDobForInput = (dobVal) => {
+        if (!dobVal) return '';
+        // If it's already YYYY-MM-DD
+        if (dobVal.includes('-') && dobVal.split('-')[0].length === 4) {
+          return dobVal.substring(0, 10);
+        }
+        // If it's DD/MM/YYYY
+        if (dobVal.includes('/')) {
+          const parts = dobVal.split('/');
+          if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2];
+            return `${year}-${month}-${day}`;
+          }
+        }
+        return dobVal;
+      };
+
       try {
         setLoading(true);
         const [patientRes, vitalsRes, sheetRes, inventoryRes] = await Promise.all([
@@ -148,15 +168,38 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
           setInventoryItems(inventoryRes.data.data);
         }
 
+        const fullName = patientObj.full_name || '';
+        const nameParts = fullName.trim().split(/\s+/);
+        const lastName = nameParts[0] || '';
+        const firstName = nameParts.slice(1).join(' ') || '';
+
         if (sheetRes.data && sheetRes.data.data) {
           // Sheet found for the exact queue_id — load it directly
           const sheet = sheetRes.data.data;
+
+          const sheetIdent = sheet.identification || {};
+          const mergedIdent = {
+            ...sheetIdent,
+            last_name: sheetIdent.last_name || lastName || patientObj.last_name || '',
+            first_name: sheetIdent.first_name || firstName || patientObj.first_name || '',
+            occupation: sheetIdent.occupation || patientObj.occupation || '',
+            national_id: sheetIdent.national_id || patientObj.national_id || '',
+            dob: sheetIdent.dob || formatDobForInput(patientObj.dob) || '',
+            gender: sheetIdent.gender || patientObj.gender || '',
+            pid: sheetIdent.pid || patientId,
+            insurance: sheetIdent.insurance || patientObj.insurance || patientObj.insurance_provider || '',
+            date: sheetIdent.date || new Date().toISOString().split('T')[0],
+            time: sheetIdent.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            rn: sheetIdent.rn || user?.name || ''
+          };
+
           const emptyI = { name: '', dose: '', frequency: '', route: '', start_time: '', end_time: '' };
           const emptyL = { time: '', initials: '' };
           const sInterventions = sheet.medication_mar?.interventions || [];
           const sLogs = sheet.medication_mar?.admin_logs || [];
           reset({
             ...sheet,
+            identification: mergedIdent,
             medication_mar: {
               ...sheet.medication_mar,
               interventions: [
@@ -190,6 +233,22 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
           }
 
           if (latestSheet) {
+            const sheetIdent = latestSheet.identification || {};
+            const mergedIdent = {
+              ...sheetIdent,
+              last_name: sheetIdent.last_name || lastName || patientObj.last_name || '',
+              first_name: sheetIdent.first_name || firstName || patientObj.first_name || '',
+              occupation: sheetIdent.occupation || patientObj.occupation || '',
+              national_id: sheetIdent.national_id || patientObj.national_id || '',
+              dob: sheetIdent.dob || formatDobForInput(patientObj.dob) || '',
+              gender: sheetIdent.gender || patientObj.gender || '',
+              pid: sheetIdent.pid || patientId,
+              insurance: sheetIdent.insurance || patientObj.insurance || patientObj.insurance_provider || '',
+              date: sheetIdent.date || new Date().toISOString().split('T')[0],
+              time: sheetIdent.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              rn: sheetIdent.rn || user?.name || ''
+            };
+
             // Pad medication_mar.interventions to at least 4 so the fixed-column table renders
             const emptyIntervention = { name: '', dose: '', frequency: '', route: '', start_time: '', end_time: '' };
             const emptyLog = { time: '', initials: '' };
@@ -206,6 +265,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
 
             reset({
               ...latestSheet,
+              identification: mergedIdent,
               medication_mar: {
                 ...latestSheet.medication_mar,
                 interventions: paddedInterventions,
@@ -219,30 +279,6 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             // Truly no data — build defaults from patient demographics & latest vitals
             const latestVitals = (vitalsRes.data?.data || vitalsRes.data || [])[0] || {};
 
-            const fullName = patientObj.full_name || '';
-            const nameParts = fullName.trim().split(/\s+/);
-            const lastName = nameParts[0] || '';
-            const firstName = nameParts.slice(1).join(' ') || '';
-
-            const formatDobForInput = (dobVal) => {
-              if (!dobVal) return '';
-              // If it's already YYYY-MM-DD
-              if (dobVal.includes('-') && dobVal.split('-')[0].length === 4) {
-                return dobVal.substring(0, 10);
-              }
-              // If it's DD/MM/YYYY
-              if (dobVal.includes('/')) {
-                const parts = dobVal.split('/');
-                if (parts.length === 3) {
-                  const day = parts[0].padStart(2, '0');
-                  const month = parts[1].padStart(2, '0');
-                  const year = parts[2];
-                  return `${year}-${month}-${day}`;
-                }
-              }
-              return dobVal;
-            };
-
             reset({
               identification: {
                 last_name: lastName || patientObj.last_name || '',
@@ -255,6 +291,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 appt_date_no: 'Walk-in / No Appointment',
                 insurance: patientObj.insurance || patientObj.insurance_provider || '',
                 diagnosis: '',
+                medical_note: '',
                 date: new Date().toISOString().split('T')[0],
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 rn: user?.name || ''
@@ -610,7 +647,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             <FileText className="h-5 w-5" /> Clinical Sheet
           </div>
           <div className="flex gap-2">
-            {!((sheetStatus === 'Verified') && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role)) ? (
+            {sheetStatus !== 'Verified' ? (
               <button onClick={handleSubmit(onSubmit)} disabled={saving} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded shadow-sm">
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Save Draft
               </button>
@@ -668,16 +705,14 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             <div>
               <p className="font-bold">Verified Clinical Sheet</p>
               <p className="text-emerald-700">
-                {['chef-nurse', 'doctor', 'consultant'].includes(user?.role)
-                  ? "This sheet has been verified and locked. As a medical professional or Chief Nurse, you retain permission to edit and prescribe."
-                  : "This sheet has been verified and is locked. Alterations are restricted to medical professionals only."}
+                This clinical sheet has been completed and verified. Edits are permanently locked.
               </p>
             </div>
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <fieldset disabled={(sheetStatus === 'Verified') && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role)} className="border-0 p-0 m-0 min-w-0 disabled:opacity-100">
+          <fieldset disabled={sheetStatus === 'Verified'} className="border-0 p-0 m-0 min-w-0 disabled:opacity-100">
             {/* Section I & II: Patient Identification, Assessment & Notes */}
             {/* Section I */}
             <div className="section-header">I. Patient Identification</div>
@@ -701,7 +736,20 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
               </div>
               <div className="row-flex">
                 <span className="form-label w-28">Clinical Diagnosis (ICD-11)</span>
-                <input {...register('identification.diagnosis')} className="form-input" placeholder="e.g. Malaria (B50.0)" />
+                <input
+                  {...register('identification.diagnosis')}
+                  disabled={!['doctor', 'consultant', 'medical_director'].includes(user?.role)}
+                  className="form-input disabled:bg-slate-100 disabled:text-slate-500"
+                  placeholder={
+                    ['doctor', 'consultant', 'medical_director'].includes(user?.role)
+                      ? "e.g. Malaria (B50.0)"
+                      : "Restricted to Doctors / Medical Director"
+                  }
+                />
+              </div>
+              <div className="row-flex">
+                <span className="form-label w-28">Medical Note</span>
+                <textarea {...register('identification.medical_note')} className="form-input min-h-[40px] resize-none" placeholder="Enter medical note..." />
               </div>
             </div>
             <div className="px-1 mt-1">
@@ -742,7 +790,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
               <div className="w-full mt-2">
                 <div className="flex justify-between items-center mb-1">
                   <div className="form-label mb-0">General comments</div>
-                  <button type="button" onClick={handleAIGenerateComments} disabled={aiCommentsLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                  <button type="button" onClick={handleAIGenerateComments} disabled={aiCommentsLoading || sheetStatus === 'Verified'} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                     {aiCommentsLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
                     Assess Vitals
                   </button>
@@ -754,7 +802,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             {/* Section II */}
             <div className="section-header flex justify-between items-center pr-2">
               <span>Progress / Clinical Notes</span>
-              <button type="button" onClick={handleAIGenerateProgressNote} disabled={aiProgressNoteLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+              <button type="button" onClick={handleAIGenerateProgressNote} disabled={aiProgressNoteLoading || sheetStatus === 'Verified'} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 {aiProgressNoteLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
                 Generate Note
               </button>
@@ -778,7 +826,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                   ))}
                 </tbody>
               </table>
-              {!(sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role)) && (
+              {sheetStatus !== 'Verified' && (
                 <button type="button" onClick={() => appendProgress({ datetime: '', note: '', signature: '' })} className="text-blue-600 text-xs font-bold flex items-center mt-1 no-print">
                   <Plus className="h-3 w-3 mr-1" /> Add Note Row
                 </button>
@@ -788,7 +836,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             {/* Section III: Prescription and Medication Administration Record  (MAR)  (MAR) */}
             <div className="section-header flex justify-between items-center pr-2">
               <span>Prescription and Medication Administration Record  (MAR) </span>
-              <button type="button" onClick={handleApplyAI} disabled={aiLoading || (sheetStatus === 'Verified' && !['chef-nurse', 'doctor', 'consultant'].includes(user?.role))} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+              <button type="button" onClick={handleApplyAI} disabled={aiLoading || sheetStatus === 'Verified'} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 {aiLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
                 Suggest Doses & Routes
               </button>
@@ -931,7 +979,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             {/* Section IV: SBAR Hand Over Report */}
             <div className="section-header flex justify-between items-center pr-2">
               <span>SBAR Hand Over Report</span>
-              <button type="button" onClick={handleAIGenerateSBAR} disabled={aiSbarLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+              <button type="button" onClick={handleAIGenerateSBAR} disabled={aiSbarLoading || sheetStatus === 'Verified'} className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 {aiSbarLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <span className="mr-1"></span>}
                 Generate SBAR
               </button>
@@ -1016,7 +1064,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 </button>
               )}
 
-              {!(sheetStatus === 'Verified' && user?.role !== 'chef-nurse') && (
+              {sheetStatus !== 'Verified' && (
                 <button
                   type="button"
                   onClick={handleSubmit(onSubmit)}
@@ -1160,7 +1208,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Quick Actions</p>
                 <div className="grid grid-cols-1 gap-2">
                   <button onClick={() => { handleAIGenerateComments(); }}
-                    disabled={aiCommentsLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
+                    disabled={aiCommentsLoading || sheetStatus === 'Verified'}
                     className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left transition-all group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200">
                     <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
                       <Stethoscope className="h-4 w-4 text-amber-600" />
@@ -1173,7 +1221,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                   </button>
 
                   <button onClick={() => { handleAIGenerateProgressNote(); }}
-                    disabled={aiProgressNoteLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
+                    disabled={aiProgressNoteLoading || sheetStatus === 'Verified'}
                     className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left transition-all group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200">
                     <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
                       <ClipboardList className="h-4 w-4 text-green-600" />
@@ -1186,7 +1234,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                   </button>
 
                   <button onClick={() => { handleAIGenerateSBAR(); }}
-                    disabled={aiSbarLoading || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
+                    disabled={aiSbarLoading || sheetStatus === 'Verified'}
                     className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-left transition-all group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200">
                     <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                       <MessageSquare className="h-4 w-4 text-blue-600" />
@@ -1203,7 +1251,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
               {/* Medication AI */}
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Medication AI</p>
-                <button onClick={handleMedSuggest} disabled={medSugLoading || isNurse || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
+                <button onClick={handleMedSuggest} disabled={medSugLoading || isNurse || sheetStatus === 'Verified'}
                   className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all disabled:opacity-60 mb-3 disabled:cursor-not-allowed">
                   {medSugLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   Suggest Doses, Routes & Frequency
@@ -1219,7 +1267,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                             <p className="text-[10px] text-indigo-600 font-medium">{sug.category}</p>
                           </div>
                           <button onClick={() => applyMedSuggestion(sug, idx)}
-                            disabled={isNurse || (sheetStatus === 'Verified' && user?.role !== 'chef-nurse')}
+                            disabled={isNurse || sheetStatus === 'Verified'}
                             className="text-[10px] bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             Apply
                           </button>
