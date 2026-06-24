@@ -716,17 +716,17 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             {/* Section I & II: Patient Identification, Assessment & Notes */}
             {/* Section I */}
             <div className="section-header">I. Patient Identification</div>
-            <div className="px-1 w-[400px]">
-              <div className="row-flex"><span className="form-label w-28">Last name</span><input {...register('identification.last_name')} className="form-input" /></div>
-              <div className="row-flex"><span className="form-label w-28">First name</span><input {...register('identification.first_name')} className="form-input" /></div>
-              <div className="row-flex"><span className="form-label w-28">Occupation</span><input {...register('identification.occupation')} className="form-input" /></div>
-              <div className="row-flex"><span className="form-label w-28">National ID / Passport</span><input {...register('identification.national_id')} className="form-input" /></div>
-              <div className="row-flex"><span className="form-label w-28">Date of birth</span><input {...register('identification.dob')} type="date" className="form-input w-[150px]" /></div>
-              <div className="row-flex"><span className="form-label w-28">Gender</span><input {...register('identification.gender')} className="form-input w-[120px]" /></div>
-              <div className="row-flex"><span className="form-label w-28">Patient ID (PID)</span><input {...register('identification.pid')} className="form-input" /></div>
-              <div className="row-flex"><span className="form-label w-28">Appt. Date & No.</span><input {...register('identification.appt_date_no')} className="form-input" /></div>
+            <div className="px-1 w-[450px]">
+              <div className="row-flex"><span className="form-label w-44">Last name</span><input {...register('identification.last_name')} className="form-input" /></div>
+              <div className="row-flex"><span className="form-label w-44">First name</span><input {...register('identification.first_name')} className="form-input" /></div>
+              <div className="row-flex"><span className="form-label w-44">Occupation</span><input {...register('identification.occupation')} className="form-input" /></div>
+              <div className="row-flex"><span className="form-label w-44">National ID / Passport</span><input {...register('identification.national_id')} className="form-input" /></div>
+              <div className="row-flex"><span className="form-label w-44">Date of birth</span><input {...register('identification.dob')} type="date" className="form-input w-[150px]" /></div>
+              <div className="row-flex"><span className="form-label w-44">Gender</span><input {...register('identification.gender')} className="form-input w-[120px]" /></div>
+              <div className="row-flex"><span className="form-label w-44">Patient ID (PID)</span><input {...register('identification.pid')} className="form-input" /></div>
+              <div className="row-flex"><span className="form-label w-44">Appt. Date & No.</span><input {...register('identification.appt_date_no')} className="form-input" /></div>
               <div className="row-flex">
-                <span className="form-label w-28">Health insurance</span>
+                <span className="form-label w-44">Health insurance</span>
                 <select {...register('identification.insurance')} className="form-input">
                   <option value="">Select Insurance / Payer</option>
                   {INSURANCES.map(ins => (
@@ -735,7 +735,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 </select>
               </div>
               <div className="row-flex">
-                <span className="form-label w-28">Clinical Diagnosis (ICD-11)</span>
+                <span className="form-label w-44">Clinical Diagnosis (ICD-11)</span>
                 <input
                   {...register('identification.diagnosis')}
                   disabled={!['doctor', 'consultant', 'medical_director'].includes(user?.role)}
@@ -748,7 +748,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 />
               </div>
               <div className="row-flex">
-                <span className="form-label w-28">Medical Note</span>
+                <span className="form-label w-44">Medical Note</span>
                 <textarea {...register('identification.medical_note')} className="form-input min-h-[40px] resize-none" placeholder="Enter medical note..." />
               </div>
             </div>
@@ -777,14 +777,14 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
               </div>
 
               <div className="flex gap-4 mb-1">
-                <div className="flex-1 row-flex"><span className="form-label w-24">Temp</span><input {...register('triage.temp')} className="form-input" /></div>
-                <div className="flex-1 row-flex"><span className="form-label w-24">Pulse</span><input {...register('triage.pulse')} className="form-input" /></div>
-                <div className="flex-1 row-flex"><span className="form-label w-24">Respiratory Rate</span><input {...register('triage.rr')} className="form-input" /></div>
+                <div className="flex-1 row-flex"><span className="form-label w-32">Temp</span><input {...register('triage.temp')} className="form-input" /></div>
+                <div className="flex-1 row-flex"><span className="form-label w-32">Pulse</span><input {...register('triage.pulse')} className="form-input" /></div>
+                <div className="flex-1 row-flex"><span className="form-label w-32">Respiratory Rate</span><input {...register('triage.rr')} className="form-input" /></div>
               </div>
               <div className="flex gap-4 mb-2">
-                <div className="flex-1 row-flex"><span className="form-label w-24">Blood Pressure</span><input {...register('triage.bp')} className="form-input" /></div>
-                <div className="flex-1 row-flex"><span className="form-label w-24">Weight (Kg)</span><input {...register('triage.weight')} className="form-input" /></div>
-                <div className="flex-1 row-flex"><span className="form-label w-24">SpO2</span><input {...register('triage.spo2')} className="form-input" /></div>
+                <div className="flex-1 row-flex"><span className="form-label w-32">Blood Pressure</span><input {...register('triage.bp')} className="form-input" /></div>
+                <div className="flex-1 row-flex"><span className="form-label w-32">Weight (Kg)</span><input {...register('triage.weight')} className="form-input" /></div>
+                <div className="flex-1 row-flex"><span className="form-label w-32">SpO2</span><input {...register('triage.spo2')} className="form-input" /></div>
               </div>
 
               <div className="w-full mt-2">
