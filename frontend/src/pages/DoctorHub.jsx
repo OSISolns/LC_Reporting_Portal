@@ -36,6 +36,8 @@ export default function DoctorHub() {
   const [now, setNow] = useState(new Date());
   const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
   const [activeClinicalTab, setActiveClinicalTab] = useState(null);
+  const [patientSheets, setPatientSheets] = useState([]);
+  const [loadingSheets, setLoadingSheets] = useState(false);
 
   const getGreeting = () => {
     const hrs = now.getHours();
@@ -65,11 +67,25 @@ export default function DoctorHub() {
 
   const handlePatientSelect = async (patient, existingQueueId = null) => {
     setSelectedPatient(patient);
+    setPatientSheets([]);
 
     if (existingQueueId) {
       // Reusing an existing queue ID from the recent consultations list
       setSessionQueueId(existingQueueId);
       toast.success(`Active workspace loaded for ${patient.full_name}`);
+      
+      // Load patient sheets
+      try {
+        setLoadingSheets(true);
+        const res = await api.get(`/clinical/observations/${patient.pid}/all`);
+        if (res.data?.success) {
+          setPatientSheets(res.data.data || []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingSheets(false);
+      }
       return;
     }
 
@@ -77,22 +93,32 @@ export default function DoctorHub() {
     // clinical observation so we reuse the same sheet/queue_id rather than
     // always opening a blank new one.
     try {
+      setLoadingSheets(true);
       const res = await api.get(`/clinical/observations/${patient.pid}/all`);
-      if (res.data?.success && res.data.data?.length > 0) {
-        const sorted = res.data.data.sort(
-          (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
-        );
-        const latest = sorted[0];
-        setSessionQueueId(latest.queue_id);
-        toast.success(`Resuming existing session for ${patient.full_name}`);
+      if (res.data?.success) {
+        const sheets = res.data.data || [];
+        setPatientSheets(sheets);
+        if (sheets.length > 0) {
+          const sorted = [...sheets].sort(
+            (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
+          );
+          const latest = sorted[0];
+          setSessionQueueId(latest.queue_id);
+          toast.success(`Resuming existing session for ${patient.full_name}`);
+        } else {
+          // No prior record — create a fresh encounter queue ID
+          setSessionQueueId(`Q-${Date.now()}`);
+          toast.success(`New session started for ${patient.full_name}`);
+        }
       } else {
-        // No prior record — create a fresh encounter queue ID
         setSessionQueueId(`Q-${Date.now()}`);
         toast.success(`New session started for ${patient.full_name}`);
       }
     } catch {
       setSessionQueueId(`Q-${Date.now()}`);
       toast.success(`Active workspace loaded for ${patient.full_name}`);
+    } finally {
+      setLoadingSheets(false);
     }
   };
 
@@ -172,6 +198,8 @@ export default function DoctorHub() {
                   // Bug #3 fix: clear selected patient when user re-types
                   if (selectedPatient && val !== selectedPatient.full_name) {
                     setSelectedPatient(null);
+                    setSessionQueueId(null);
+                    setPatientSheets([]);
                   }
                 }} 
                 onPatientSelect={handlePatientSelect}
@@ -248,17 +276,72 @@ export default function DoctorHub() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }} className="flex-col sm:flex-row">
+                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }} className="space-y-3">
+                  <p style={{ margin: 0, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.65rem' }}>Recent Clinical Sheets</p>
+                  {loadingSheets ? (
+                    <p className="text-xs text-slate-400 font-medium">Loading clinical sheets...</p>
+                  ) : patientSheets.length > 0 ? (
+                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                      {patientSheets.map((sheet) => (
+                        <div 
+                          key={sheet.queue_id}
+                          onClick={() => {
+                            setSessionQueueId(sheet.queue_id);
+                            setActiveClinicalTab('all');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 12px',
+                            backgroundColor: '#ffffff',
+                            border: sessionQueueId === sheet.queue_id ? '2px solid #0369a1' : '1px solid #e2e8f0',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          className="hover:border-sky-400 hover:bg-sky-50/10 group"
+                        >
+                          <div className="flex flex-col text-left">
+                            <span className="text-[10px] font-bold text-slate-700 font-mono">{sheet.queue_id}</span>
+                            <span className="text-[9px] text-slate-400 font-medium">
+                              {new Date(sheet.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={sheet.status === 'Final' ? 'success' : 'outline'}
+                              className={`text-[9px] px-1.5 py-0 ${sheet.status === 'Draft' ? 'border-amber-300 text-amber-700 bg-amber-50' : sheet.status === 'Final' ? '' : ''}`}
+                            >
+                              {sheet.status || 'Draft'}
+                            </Badge>
+                            <ArrowRight size={10} className="text-slate-300 group-hover:text-sky-600 transition-colors" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 font-medium text-left">No prior clinical sheets found for this patient.</p>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '1.5rem' }} className="flex-col sm:flex-row">
+                  <Button 
+                    onClick={() => setActiveClinicalTab('all')}
+                    className="flex-1 py-3 bg-[#0369a1] hover:bg-[#0284c7] text-white font-black text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <FileText size={14} /> Open Clinical Sheet
+                  </Button>
                   <Button 
                     onClick={() => navigate('/e-prescriptions', { state: { patient: selectedPatient } })}
-                    className="flex-1 py-3.5 rounded-xl bg-[#0369a1] hover:bg-[#0284c7] text-white font-black text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-[#10b981] hover:bg-[#059669] text-white font-black text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-1.5"
                   >
-                    <FileText size={14} /> Prescribe
+                    <Pill size={14} /> Prescribe
                   </Button>
                   <Button 
                     variant="outline"
-                    onClick={() => { setSelectedPatient(null); setSessionQueueId(null); }}
-                    className="py-3.5 rounded-xl border-slate-200 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-50"
+                    onClick={() => { setSelectedPatient(null); setSessionQueueId(null); setPatientSheets([]); }}
+                    className="py-3 rounded-xl border-slate-200 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-50"
                   >
                     Clear Selector
                   </Button>
@@ -516,6 +599,17 @@ export default function DoctorHub() {
                   setRecentPatients(res.data.data.slice(0, 5));
                 }
               }).catch(() => {});
+
+              // Refresh patient specific sheets list
+              if (selectedPatient?.pid) {
+                setLoadingSheets(true);
+                api.get(`/clinical/observations/${selectedPatient.pid}/all`).then(res => {
+                  if (res.data?.success) {
+                    setPatientSheets(res.data.data || []);
+                  }
+                }).catch(() => {})
+                  .finally(() => setLoadingSheets(false));
+              }
             }}
           />
         )}

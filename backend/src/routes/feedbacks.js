@@ -22,9 +22,14 @@ router.post('/', async (req, res, next) => {
 });
 
 // ── GET /api/feedbacks (Restricted Access) ───────────────────────────────────
-router.get('/', authMiddleware, authorizeRoles(['coo', 'deputy_coo', 'chef-nurse']), async (req, res, next) => {
+router.get('/', authMiddleware, authorizeRoles(['coo', 'deputy_coo', 'chef-nurse', 'medical_director']), async (req, res, next) => {
   try {
     const list = await Feedback.getAll(req.query);
+    const { logAction } = require('../middleware/audit');
+    await logAction(req, 'VIEW_FEEDBACKS', 'feedback', null, {
+      query: req.query,
+      recordsCount: list.length
+    });
     res.json({ success: true, data: list });
   } catch (err) {
     next(err);
@@ -32,13 +37,9 @@ router.get('/', authMiddleware, authorizeRoles(['coo', 'deputy_coo', 'chef-nurse
 });
 
 // ── DELETE /api/feedbacks/:id (Restricted Access) ────────────────────────────
-router.delete('/:id', authMiddleware, authorizeRoles(['coo', 'deputy_coo', 'chef-nurse']), async (req, res, next) => {
+router.delete('/:id', authMiddleware, authorizeRoles(['coo', 'deputy_coo', 'chef-nurse', 'medical_director']), async (req, res, next) => {
   try {
-    const deleted = await Feedback.delete(req.params.id);
-    if (!deleted) {
-      return res.status(404).json({ success: false, message: 'Feedback record not found.' });
-    }
-    res.json({ success: true, message: 'Feedback entry successfully removed.', data: deleted });
+    res.status(403).json({ success: false, message: 'Deletion of internal feedback records is strictly prohibited for audit and compliance integrity.' });
   } catch (err) {
     next(err);
   }

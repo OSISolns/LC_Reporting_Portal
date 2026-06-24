@@ -462,6 +462,11 @@ const getMedicalReportHTML = (type, data) => {
               <td style="color: #64748b; padding: 3px 0;">Clinical Diagnosis:</td>
               <td colspan="3" style="font-weight: 700; color: #1b669e; border-bottom: 1px dashed #cbd5e1; padding: 3px 0;">${iden.diagnosis}</td>
             </tr>` : ''}
+            ${iden.medical_note ? `
+            <tr>
+              <td style="color: #64748b; padding: 3px 0;">Medical Note:</td>
+              <td colspan="3" style="font-weight: 600; color: #334155; border-bottom: 1px dashed #cbd5e1; padding: 3px 0;">${iden.medical_note}</td>
+            </tr>` : ''}
           </table>
         </div>
 

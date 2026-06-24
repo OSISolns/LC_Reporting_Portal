@@ -15,6 +15,7 @@ const EPrescriptions = () => {
     id: '',
     date: new Date().toISOString().split('T')[0],
     diagnosis: '',
+    medical_note: '',
     age: '',
     gender: '',
     phone: '',
@@ -306,7 +307,8 @@ const EPrescriptions = () => {
     try {
       await api.post(`/patients/${patientInfo.id}/prescription`, {
         medications: validMedications,
-        diagnosis: patientInfo.diagnosis
+        diagnosis: patientInfo.diagnosis,
+        medical_note: patientInfo.medical_note
       });
 
       toast.success('Prescription saved and added to the clinical sheet successfully!');
@@ -317,6 +319,7 @@ const EPrescriptions = () => {
         id: '',
         date: new Date().toISOString().split('T')[0],
         diagnosis: '',
+        medical_note: '',
         age: '',
         gender: '',
         phone: '',
@@ -446,6 +449,10 @@ const EPrescriptions = () => {
                     <option key={idx} value={item.code}>{item.desc}</option>
                   ))}
                 </datalist>
+              </div>
+              <div className="px-8 pb-8">
+                <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Medical Note</label>
+                <textarea name="medical_note" value={patientInfo.medical_note || ''} onChange={handlePatientChange} placeholder="Enter any medical notes, symptoms, or clinical details..." className="w-full px-5 py-3.5 rounded-xl border-2 border-slate-200 focus:border-[#1B669E] focus:ring-4 focus:ring-[#1B669E]/10 outline-none text-base transition-all font-medium text-slate-800 bg-white min-h-[100px] resize-y" />
               </div>
             </div>
 
@@ -654,6 +661,12 @@ const EPrescriptions = () => {
                         <p className="m-0 text-sm font-medium text-slate-700">{rx.diagnosis}</p>
                       </div>
                     )}
+                    {rx.medical_note && (
+                      <div className="mb-3">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Medical Note</span>
+                        <p className="m-0 text-sm font-medium text-slate-700">{rx.medical_note}</p>
+                      </div>
+                    )}
                     <div>
                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Medications</span>
                       <ul className="m-0 pl-4 space-y-1">
@@ -720,6 +733,11 @@ const EPrescriptions = () => {
             <p className="m-0"><span className="font-bold">Clinical Diagnosis:</span> {patientInfo.diagnosis}</p>
           </div>
         )}
+        {patientInfo.medical_note && (
+          <div className="mb-8 text-sm">
+            <p className="m-0"><span className="font-bold">Medical Note:</span> {patientInfo.medical_note}</p>
+          </div>
+        )}
 
         <div className="print-rx">Rx</div>
 
@@ -781,6 +799,14 @@ const EPrescriptions = () => {
                 </div>
               </div>
             )}
+            {selectedRx.medical_note && (
+              <div className="pb-4 border-b border-slate-100">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Medical Note</span>
+                <div className="px-4 py-2.5 bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-medium block">
+                  {selectedRx.medical_note}
+                </div>
+              </div>
+            )}
 
             <div>
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-3">Prescribed Medications</span>
@@ -815,6 +841,7 @@ const EPrescriptions = () => {
                     id: selectedRx.patient_id,
                     date: new Date(selectedRx.updated_at).toISOString().split('T')[0],
                     diagnosis: selectedRx.diagnosis || '',
+                    medical_note: selectedRx.medical_note || '',
                     dob: '',
                     age: '',
                     gender: '',

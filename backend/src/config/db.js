@@ -52,7 +52,7 @@ const client = {
     }
     const { sql: transformedSql, args: finalArgs } = transformQuery(sql, args);
     const upperSql = transformedSql.trim().toUpperCase();
-    const isSelect = upperSql.startsWith('SELECT') || upperSql.startsWith('PRAGMA') || upperSql.startsWith('RETURNING');
+    const isSelect = upperSql.startsWith('SELECT') || upperSql.startsWith('PRAGMA') || upperSql.includes('RETURNING');
     try {
       if (libsql) {
         // Native Turso Execution
@@ -1480,6 +1480,53 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       }
     } catch (err) {
       console.error('❌ Failed to initialize Revenue Leakages table:', err);
+    }
+
+    // --- Medical Director Role Setup & Permissions Sync ---
+    try {
+      await client.execute({
+        sql: "INSERT OR IGNORE INTO roles (name, display_name) VALUES (?, ?)",
+        args: ['medical_director', 'Medical Director']
+      });
+      console.log('✅ SQLite Schema Migration: registered medical_director role');
+
+      const { ROLE_DEFAULTS } = require('./permissions');
+      const mdPermissions = ROLE_DEFAULTS['medical_director'];
+      if (mdPermissions) {
+        for (const [moduleName, actions] of Object.entries(mdPermissions)) {
+          for (const [action, granted] of Object.entries(actions)) {
+            await client.execute({
+              sql: `
+                INSERT INTO role_permissions (role_name, module, action, granted, updated_by)
+                VALUES (?, ?, ?, ?, 1)
+                ON CONFLICT(role_name, module, action) DO UPDATE 
+                SET granted = EXCLUDED.granted
+              `,
+              args: ['medical_director', moduleName, action, granted ? 1 : 0]
+            }).catch(() => {});
+          }
+        }
+        console.log('✅ SQLite Schema Migration: synced medical_director permissions');
+      }
+
+      // 3. Add test user
+      const bcrypt = require('bcryptjs');
+      const passwordHash = await bcrypt.hash('director123', 10);
+      const { rows: roles } = await client.execute({
+        sql: 'SELECT id FROM roles WHERE name = ?',
+        args: ['medical_director']
+      });
+      if (roles.length > 0) {
+        await client.execute({
+          sql: `INSERT INTO users (full_name, username, email, password_hash, role_id) 
+                VALUES (?, ?, ?, ?, ?) 
+                ON CONFLICT (username) DO NOTHING`,
+          args: ['Dr. Miranda Bailey', 'director_miranda', 'miranda@legacyclinics.rw', passwordHash, roles[0].id]
+        });
+        console.log('✅ SQLite Schema Migration: registered test Medical Director user (director_miranda)');
+      }
+    } catch (err) {
+      console.error('❌ Failed to setup medical_director role/permissions:', err);
     }
   })();
 }
