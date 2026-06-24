@@ -22,6 +22,13 @@ const checkPermission = (module, action) => {
         return next();
       }
 
+      if (req.user.role === 'medical_director') {
+        const allowedModules = ['incident_reports', 'clinical_observation', 'feedbacks', 'reports'];
+        if (allowedModules.includes(module)) {
+          return next();
+        }
+      }
+
       const hasAccess = await Permission.check(req.user.id, req.user.role, module, action);
       
       if (!hasAccess) {
