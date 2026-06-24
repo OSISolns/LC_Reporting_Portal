@@ -113,7 +113,8 @@ async function seed() {
       ['cashier', 'Cashier'],
       ['principal_cashier', 'Principal Cashier'],
       ['customer_care', 'Customer Care'],
-      ['nurse', 'Clinical Nurse']
+      ['nurse', 'Clinical Nurse'],
+      ['medical_director', 'Medical Director']
     ];
 
     for (const [name, display] of roles) {
