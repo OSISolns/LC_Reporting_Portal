@@ -19,7 +19,7 @@ const Dashboard = () => {
   if (role === 'it_officer')           return <ITDashboard />;
   if (role === 'reviewer')                          return <ReviewerDashboard />;
   if (role === 'stock-manager' || role === 'stock_manager') return <StockManagerDashboard />;
-  if (['doctor', 'consultant'].includes(role))      return <DoctorDashboard />;
+  if (['doctor', 'consultant', 'medical_director'].includes(role))      return <DoctorDashboard />;
   if (MGMT_ROLES.includes(role))       return <ManagementDashboard />;
   if (STAFF_ROLES.includes(role))      return <StaffDashboard />;
 

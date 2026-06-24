@@ -313,7 +313,7 @@ router.post('/:pid/vitals', async (req, res, next) => {
 router.post('/:pid/prescription', async (req, res, next) => {
   try {
     const pid = req.params.pid.trim();
-    const { medications, diagnosis } = req.body;
+    const { medications, diagnosis, medical_note } = req.body;
 
     if (!medications || !Array.isArray(medications)) {
       return res.status(400).json({ success: false, message: 'Invalid medications format' });
@@ -356,10 +356,13 @@ router.post('/:pid/prescription', async (req, res, next) => {
         }
       });
 
-      // Optionally update diagnosis in identification if provided
+      // Optionally update diagnosis and medical_note in identification if provided
       let ident = JSON.parse(draft.identification_json || '{}');
       if (diagnosis && diagnosis.trim()) {
         ident.diagnosis = diagnosis;
+      }
+      if (medical_note && medical_note.trim()) {
+        ident.medical_note = medical_note;
       }
 
       await db.query(
@@ -384,7 +387,10 @@ router.post('/:pid/prescription', async (req, res, next) => {
         }))
       };
 
-      const newIdent = diagnosis && diagnosis.trim() ? { diagnosis } : {};
+      const newIdent = {
+        ...(diagnosis && diagnosis.trim() ? { diagnosis } : {}),
+        ...(medical_note && medical_note.trim() ? { medical_note } : {})
+      };
 
       await db.query(
         `INSERT INTO clinical_observations (

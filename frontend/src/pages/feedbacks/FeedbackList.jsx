@@ -26,6 +26,11 @@ const FeedbackList = () => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
+  const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedFeedback, setSelectedFeedback] = useState(null);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -33,12 +38,6 @@ const FeedbackList = () => {
 
   const totalPages = Math.ceil(feedbacks.length / itemsPerPage);
   const paginatedFeedbacks = feedbacks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [selectedFeedback, setSelectedFeedback] = useState(null);
-  const [isReportOpen, setIsReportOpen] = useState(false);
 
   const fetchFeedbacks = async () => {
     try {
@@ -61,19 +60,6 @@ const FeedbackList = () => {
     fetchFeedbacks();
   }, [startDate, endDate]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to permanently delete this feedback entry?')) return;
-    try {
-      const res = await deleteFeedback(id);
-      if (res.data?.success) {
-        toast.success('Feedback entry deleted successfully.');
-        setFeedbacks(prev => prev.filter(f => f.id !== id));
-        if (selectedFeedback?.id === id) setSelectedFeedback(null);
-      }
-    } catch (err) {
-      toast.error('Failed to delete feedback entry.');
-    }
-  };
 
   const clearFilters = () => {
     setStartDate('');
@@ -246,30 +232,7 @@ const FeedbackList = () => {
                         </div>
                       </div>
 
-                      {user?.role === 'coo' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(item.id);
-                          }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--danger)',
-                            cursor: 'pointer',
-                            padding: '6px',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'background 0.2s'
-                          }}
-                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 53, 69, 0.05)'}
-                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
+
                     </div>
 
                     {/* Snippet */}

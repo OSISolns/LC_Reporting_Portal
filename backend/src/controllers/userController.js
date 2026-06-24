@@ -18,6 +18,12 @@ exports.createUser = async (req, res, next) => {
     await logAction(req, 'CREATE', 'user', user.id, { email: user.email });
     res.status(201).json({ success: true, data: user });
   } catch (err) {
+    if (err.message && (err.message.includes('UNIQUE constraint failed: users.username') || err.message.includes('users_username_key'))) {
+      return res.status(400).json({ success: false, message: 'Username is already taken.' });
+    }
+    if (err.message && (err.message.includes('UNIQUE constraint failed: users.email') || err.message.includes('users_email_key'))) {
+      return res.status(400).json({ success: false, message: 'Email address is already registered.' });
+    }
     next(err);
   }
 };
@@ -29,6 +35,12 @@ exports.updateUser = async (req, res, next) => {
     await logAction(req, 'UPDATE', 'user', user.id, { email: user.email });
     res.json({ success: true, data: user });
   } catch (err) {
+    if (err.message && (err.message.includes('UNIQUE constraint failed: users.username') || err.message.includes('users_username_key'))) {
+      return res.status(400).json({ success: false, message: 'Username is already taken.' });
+    }
+    if (err.message && (err.message.includes('UNIQUE constraint failed: users.email') || err.message.includes('users_email_key'))) {
+      return res.status(400).json({ success: false, message: 'Email address is already registered.' });
+    }
     next(err);
   }
 };

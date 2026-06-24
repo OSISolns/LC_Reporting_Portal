@@ -15,7 +15,7 @@ const MGMT_ROLES = ['sales_manager','coo','chairman','admin','deputy_coo', 'cons
 const STATS_ROLES = [...MGMT_ROLES, 'principal_cashier', 'consultant'];
 
 // Clinical nursing roles
-const CLINICAL_ROLES = ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'reviewer'];
+const CLINICAL_ROLES = ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'medical_director'];
 
 router.get('/stats',            authorizeRoles(STATS_ROLES),    aiController.getModuleStats);
 router.get('/classify/:module', authorizeRoles(STATS_ROLES),    aiController.classifyReasons);
