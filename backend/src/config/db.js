@@ -106,7 +106,11 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
   (async () => {
     try {
       await client.execute("SELECT 1");
-      console.log('🔌 DATABASE: Successfully connected to Turso Cloud.');
+      if (libsql) {
+        console.log('🔌 DATABASE: Successfully connected to Turso Cloud.');
+      } else {
+        console.log('🔌 DATABASE: Successfully connected to local SQLite database (via Prisma).');
+      }
       
       console.log('⚙️ Running custom department cleanup migration...');
       const targetDepts = ['DENTAL', 'PHYSIO', 'NURSING', 'OPERATIONS', 'LABORATORY', 'IMAGING'];

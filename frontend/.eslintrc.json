@@ -1,0 +1,43 @@
+{
+  "env": {
+    "browser": true,
+    "es2020": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:react/jsx-runtime",
+    "plugin:react-hooks/recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "settings": {
+    "react": {
+      "version": "18.3"
+    }
+  },
+  "plugins": [
+    "react-refresh"
+  ],
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "vite.config.js",
+    "postcss.config.js",
+    "tailwind.config.js",
+    "test-parse.cjs"
+  ],
+  "rules": {
+    "react-refresh/only-export-components": "off",
+    "react/prop-types": "off",
+    "no-unused-vars": "off",
+    "react/no-unescaped-entities": "off",
+    "react/no-unknown-property": "off",
+    "react-hooks/exhaustive-deps": "off",
+    "no-empty": "off",
+    "no-undef": "off",
+    "react/jsx-no-undef": "off"
+  }
+}

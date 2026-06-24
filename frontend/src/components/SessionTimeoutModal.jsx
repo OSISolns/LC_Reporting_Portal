@@ -35,7 +35,7 @@ export default function SessionTimeoutModal({ visible, onStay, onLogout }) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   if (!visible) return null;
 
