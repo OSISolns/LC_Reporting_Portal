@@ -21,6 +21,7 @@ import PatientAutocomplete from '../components/PatientAutocomplete';
 import VitalsModal from '../components/VitalsModal';
 import ClinicalSheet from './ClinicalSheet';
 import Modal from '../components/Modal';
+import ICD11BrowserModal from '../components/ICD11BrowserModal';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { Card, Badge, Button } from '../components/ui/index.jsx';
@@ -36,6 +37,7 @@ export default function DoctorHub() {
   const [now, setNow] = useState(new Date());
   const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
   const [activeClinicalTab, setActiveClinicalTab] = useState(null);
+  const [isIcd11BrowserOpen, setIsIcd11BrowserOpen] = useState(false);
   const [patientSheets, setPatientSheets] = useState([]);
   const [loadingSheets, setLoadingSheets] = useState(false);
 
@@ -123,6 +125,11 @@ export default function DoctorHub() {
   };
 
   const handleQuickAction = (submodule) => {
+    if (submodule === 'ICD-11 Browser') {
+      setIsIcd11BrowserOpen(true);
+      return;
+    }
+
     if (!selectedPatient) {
       toast.error(`Please search and select a patient first to proceed with ${submodule}!`, {
         icon: '⚠️',
@@ -483,6 +490,14 @@ export default function DoctorHub() {
                   bg: '#fef3c7',
                   cta: 'Open Full Archive',
                   specialised: true
+                },
+                { 
+                  title: 'ICD-11 Browser', 
+                  desc: 'Browse official WHO ICD-11 classifications or paste a code to view diagnostic definitions, presentations, and guidelines.',
+                  icon: <BookOpen size={22} />, 
+                  color: '#6366f1', 
+                  bg: '#e0e7ff',
+                  cta: 'Open Browser'
                 }
               ].map((sub, idx) => (
                 <div 
@@ -580,6 +595,10 @@ export default function DoctorHub() {
           </div>
         </div>
       </div>
+      <ICD11BrowserModal
+        isOpen={isIcd11BrowserOpen}
+        onClose={() => setIsIcd11BrowserOpen(false)}
+      />
       <Modal 
         isOpen={activeClinicalTab !== null} 
         onClose={() => setActiveClinicalTab(null)} 

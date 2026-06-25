@@ -743,7 +743,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                   placeholder={
                     ['doctor', 'consultant', 'medical_director'].includes(user?.role)
                       ? "e.g. Malaria (B50.0)"
-                      : "Restricted to Doctors / Medical Director"
+                      : "Restricted"
                   }
                 />
               </div>
