@@ -359,13 +359,25 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
         data.sbar.reported_sign_time = nowStr;
       }
 
+      const isChefNurse = user?.role === 'chef-nurse';
+      if (isChefNurse) {
+        data.status = 'Verified';
+        const baseReceived = user?.fullName || user?.name || 'Chef Nurse';
+        data.sbar.received_by = `${baseReceived} (${nowStr})`;
+        data.sbar.received_sign_time = nowStr;
+      }
+
       await api.post(`/clinical/observations/${patientId}`, { ...data, queue_id, patient_id: patientId });
+      if (isChefNurse) {
+        setSheetStatus('Verified');
+        setHasReceived(true);
+      }
       setHasReported(true);
-      toast.success("Saved successfully");
+      toast.success(isChefNurse ? "Sheet verified and saved permanently!" : "Saved successfully");
       reset(data);
       if (onSaveSuccess) onSaveSuccess();
     } catch (error) {
-      toast.error("Failed to save");
+      toast.error(user?.role === 'chef-nurse' ? "Failed to verify and save sheet" : "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -649,7 +661,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
           <div className="flex gap-2">
             {sheetStatus !== 'Verified' ? (
               <button onClick={handleSubmit(onSubmit)} disabled={saving} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded shadow-sm">
-                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Save Draft
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} {user?.role === 'chef-nurse' ? 'Save & Verify' : 'Save Draft'}
               </button>
             ) : (
               <div className="flex items-center text-xs font-bold text-slate-400 bg-slate-100 px-4 py-1.5 rounded border border-slate-200 shadow-sm select-none">
@@ -1072,7 +1084,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                   className="flex items-center text-xs font-black uppercase tracking-widest text-white bg-[#0369a1] hover:bg-[#0284c7] px-6 py-2.5 rounded-xl shadow-lg transition-all disabled:opacity-50"
                 >
                   {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Save Changes
+                  {user?.role === 'chef-nurse' ? 'Save & Verify' : 'Save Changes'}
                 </button>
               )}
             </div>
