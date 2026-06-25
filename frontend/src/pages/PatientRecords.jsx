@@ -513,7 +513,7 @@ export default function PatientRecords() {
                       </div>
                       <div className="mt-2">
                         <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${
-                          summarySheet.status === 'Final' || summarySheet.status === 'Saved'
+                          summarySheet.status === 'Final' || summarySheet.status === 'Saved' || summarySheet.status === 'Verified'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : 'bg-amber-50 text-amber-700 border-amber-200'
                         }`}>{summarySheet.status || 'Draft'}</span>
@@ -910,6 +910,7 @@ export default function PatientRecords() {
                           Draft: 'bg-amber-50 text-amber-700 border-amber-200',
                           Saved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
                           Reviewed: 'bg-blue-50 text-blue-700 border-blue-200',
+                          Verified: 'bg-emerald-50 text-emerald-700 border-emerald-200',
                         };
                         const statusCls = statusColors[doc.status] || 'bg-slate-100 text-slate-600 border-slate-200';
                         const date = doc.updated_at ? new Date(doc.updated_at) : null;

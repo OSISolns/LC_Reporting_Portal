@@ -53,6 +53,7 @@ export default function ClinicalObservationList() {
     Saved:    'bg-emerald-50 text-emerald-700 border-emerald-200',
     Final:    'bg-emerald-50 text-emerald-700 border-emerald-200',
     Reviewed: 'bg-blue-50 text-blue-700 border-blue-200',
+    Verified: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   };
 
   return (
@@ -77,6 +78,7 @@ export default function ClinicalObservationList() {
             <option value="Saved">Saved</option>
             <option value="Final">Final</option>
             <option value="Reviewed">Reviewed</option>
+            <option value="Verified">Verified</option>
           </select>
 
           {/* Search */}
