@@ -206,6 +206,18 @@ class Permission {
     // Re-insert defaults
     await this.updateRolePermissions(roleName, defaults, updatedBy);
   }
+
+  /**
+   * Get logs of who has unlocked the stock and when.
+   */
+  static async getUnlockLogs() {
+    const { rows } = await db.query(
+      `SELECT id, month_year, user_id, username, full_name, unlocked_at 
+       FROM nursing_stock_unlocks 
+       ORDER BY unlocked_at DESC`
+    );
+    return rows;
+  }
 }
 
 module.exports = Permission;

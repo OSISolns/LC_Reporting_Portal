@@ -675,6 +675,16 @@ exports.unlockInventory = async (req, res) => {
         console.error('Failed to log unlock action:', logErr);
       }
 
+      // Store in dedicated unlock logs table
+      try {
+        await db.query(
+          `INSERT INTO nursing_stock_unlocks (month_year, user_id, username, full_name) VALUES (?, ?, ?, ?)`,
+          [month_year, req.user.id, req.user.username, req.user.full_name || req.user.fullName]
+        );
+      } catch (dbErr) {
+        console.error('Failed to log stock unlock to DB:', dbErr);
+      }
+
       return res.json({ success: true, message: 'Stock editing unlocked successfully.' });
     } else {
       return res.status(401).json({ success: false, message: 'Incorrect password. Stock editing remains locked.' });
