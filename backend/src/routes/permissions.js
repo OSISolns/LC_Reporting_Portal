@@ -40,9 +40,15 @@ router.get('/user/:userId', permissionController.getUserEffectivePermissions);
 router.post('/user/:userId/override', permissionController.setUserOverride);
 
 /**
- * @route POST /api/permissions/role/:roleName/reset
+ * @route GET /api/permissions/role/:roleName/reset
  * @desc Reset permissions for a role to defaults
  */
 router.post('/role/:roleName/reset', permissionController.resetRolePermissions);
+
+/**
+ * @route GET /api/permissions/unlock-logs
+ * @desc Get logs of who has unlocked the stock and when
+ */
+router.get('/unlock-logs', permissionController.getUnlockLogs);
 
 module.exports = router;

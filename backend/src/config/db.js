@@ -1169,6 +1169,23 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to initialize nursing_unlock_passwords table:', err);
     }
 
+    // Nursing stock unlock logs table
+    try {
+      await client.execute(`
+      CREATE TABLE IF NOT EXISTS nursing_stock_unlocks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month_year TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        unlocked_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+      console.log('✅ SQLite Schema Migration: created/verified nursing_stock_unlocks table');
+    } catch (err) {
+      console.error('❌ Failed to initialize nursing_stock_unlocks table:', err);
+    }
+
     // --- New Stock Management Relational Architecture ---
     try {
       await client.execute(`

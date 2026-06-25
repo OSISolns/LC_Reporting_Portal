@@ -47,3 +47,27 @@ export const resetRolePermissions = async (roleName, adminPassword) => {
   const response = await api.post(`/permissions/role/${roleName}/reset`, { adminPassword });
   return response.data;
 };
+
+/**
+ * Get logs of who has unlocked stock and when.
+ */
+export const getUnlockLogs = async () => {
+  const response = await api.get('/permissions/unlock-logs');
+  return response.data;
+};
+
+/**
+ * Get stock unlock password for a specific month.
+ */
+export const getStockPassword = async (month_year) => {
+  const response = await api.get(`/clinical/inventory/stock-password?month_year=${month_year}`);
+  return response.data;
+};
+
+/**
+ * Regenerate stock unlock password for a specific month.
+ */
+export const regenerateStockPassword = async (month_year) => {
+  const response = await api.post('/clinical/inventory/regenerate-stock-password', { month_year });
+  return response.data;
+};

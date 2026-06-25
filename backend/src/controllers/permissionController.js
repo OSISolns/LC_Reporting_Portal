@@ -120,3 +120,15 @@ exports.resetRolePermissions = async (req, res, next) => {
     next(err);
   }
 };
+
+/**
+ * Retrieve logs of who has unlocked the stock and when.
+ */
+exports.getUnlockLogs = async (req, res, next) => {
+  try {
+    const logs = await Permission.getUnlockLogs();
+    res.json({ success: true, data: logs });
+  } catch (err) {
+    next(err);
+  }
+};
