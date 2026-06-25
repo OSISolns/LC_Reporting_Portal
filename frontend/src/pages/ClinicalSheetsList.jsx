@@ -11,6 +11,7 @@ const STATUS_COLORS = {
   Draft:     { bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-400' },
   Completed: { bg: 'bg-green-100', text: 'text-green-700', dot: 'bg-green-500' },
   Reviewed:  { bg: 'bg-blue-100',  text: 'text-blue-700',  dot: 'bg-blue-500'  },
+  Verified:  { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
 };
 
 const StatusBadge = ({ status }) => {
@@ -132,6 +133,7 @@ const ClinicalSheetsList = () => {
             <option value="Draft">Draft</option>
             <option value="Completed">Completed</option>
             <option value="Reviewed">Reviewed</option>
+            <option value="Verified">Verified</option>
           </select>
 
           {/* Date range */}
@@ -159,6 +161,7 @@ const ClinicalSheetsList = () => {
         <span><strong>{records.filter(r => r.status === 'Draft').length}</strong> Draft</span>
         <span><strong>{records.filter(r => r.status === 'Completed').length}</strong> Completed</span>
         <span><strong>{records.filter(r => r.status === 'Reviewed').length}</strong> Reviewed</span>
+        <span><strong>{records.filter(r => r.status === 'Verified').length}</strong> Verified</span>
       </div>
 
       {/* ── Table ── */}

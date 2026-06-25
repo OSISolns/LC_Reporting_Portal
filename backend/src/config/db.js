@@ -6,6 +6,98 @@ const tursoToken = process.env.lcreporting_TURSO_AUTH_TOKEN || process.env.TURSO
 let libsql = null;
 let prisma = null;
 
+const { encryptField, decryptField } = require('../utils/crypto');
+
+function encryptParams(sql, params) {
+  if (!params || params.length === 0) return params;
+  const encrypted = [...params];
+  const upperSql = sql.toUpperCase();
+  
+  if (upperSql.includes('CLINICAL_OBSERVATIONS')) {
+    if (upperSql.includes('INSERT INTO CLINICAL_OBSERVATIONS')) {
+      const match = sql.match(/INSERT\s+INTO\s+clinical_observations\s*\(([^)]+)\)/i);
+      if (match) {
+        const cols = match[1].split(',').map(c => c.trim().toLowerCase());
+        cols.forEach((col, idx) => {
+          if (['identification_json', 'triage_json', 'progress_notes_json', 'medication_mar_json', 'sbar_json'].includes(col)) {
+            if (encrypted[idx] && typeof encrypted[idx] === 'string') {
+              encrypted[idx] = encryptField(encrypted[idx]);
+            }
+          }
+        });
+      }
+    } else if (upperSql.includes('UPDATE CLINICAL_OBSERVATIONS')) {
+      const matches = sql.match(/(\w+)\s*=\s*\$(\d+)/g);
+      if (matches) {
+        matches.forEach(m => {
+          const parts = m.split('=');
+          const colName = parts[0].trim().toLowerCase();
+          const placeholder = parts[1].trim();
+          const idx = parseInt(placeholder.substring(1), 10) - 1;
+          if (['identification_json', 'triage_json', 'progress_notes_json', 'medication_mar_json', 'sbar_json'].includes(colName)) {
+            if (encrypted[idx] && typeof encrypted[idx] === 'string') {
+              encrypted[idx] = encryptField(encrypted[idx]);
+            }
+          }
+        });
+      }
+    }
+  }
+  
+  if (upperSql.includes('PATIENT_VITALS')) {
+    if (upperSql.includes('INSERT INTO PATIENT_VITALS')) {
+      const match = sql.match(/INSERT\s+INTO\s+patient_vitals\s*\(([^)]+)\)/i);
+      if (match) {
+        const cols = match[1].split(',').map(c => c.trim().toLowerCase());
+        cols.forEach((col, idx) => {
+          if (['temperature', 'pulse', 'respiratory_rate', 'blood_pressure', 'weight', 'spo2', 'general_comments'].includes(col)) {
+            if (encrypted[idx] && typeof encrypted[idx] === 'string') {
+              encrypted[idx] = encryptField(encrypted[idx]);
+            }
+          }
+        });
+      }
+    } else if (upperSql.includes('UPDATE PATIENT_VITALS')) {
+      const matches = sql.match(/(\w+)\s*=\s*\$(\d+)/g);
+      if (matches) {
+        matches.forEach(m => {
+          const parts = m.split('=');
+          const colName = parts[0].trim().toLowerCase();
+          const placeholder = parts[1].trim();
+          const idx = parseInt(placeholder.substring(1), 10) - 1;
+          if (['temperature', 'pulse', 'respiratory_rate', 'blood_pressure', 'weight', 'spo2', 'general_comments'].includes(colName)) {
+            if (encrypted[idx] && typeof encrypted[idx] === 'string') {
+              encrypted[idx] = encryptField(encrypted[idx]);
+            }
+          }
+        });
+      }
+    }
+  }
+  
+  return encrypted;
+}
+
+function decryptRow(row) {
+  if (!row) return row;
+  const decrypted = { ...row };
+  const coCols = ['identification_json', 'triage_json', 'progress_notes_json', 'medication_mar_json', 'sbar_json'];
+  coCols.forEach(col => {
+    if (decrypted[col] && typeof decrypted[col] === 'string') {
+      decrypted[col] = decryptField(decrypted[col]);
+    }
+  });
+  
+  const vitalsCols = ['temperature', 'pulse', 'respiratory_rate', 'blood_pressure', 'weight', 'spo2', 'general_comments'];
+  vitalsCols.forEach(col => {
+    if (decrypted[col] && typeof decrypted[col] === 'string') {
+      decrypted[col] = decryptField(decrypted[col]);
+    }
+  });
+  
+  return decrypted;
+}
+
 if (tursoUrl && tursoToken) {
   const { createClient } = require('@libsql/client');
   libsql = createClient({
@@ -50,7 +142,8 @@ const client = {
       sql = stmt.sql;
       args = stmt.args || [];
     }
-    const { sql: transformedSql, args: finalArgs } = transformQuery(sql, args);
+    const encryptedArgs = encryptParams(sql, args);
+    const { sql: transformedSql, args: finalArgs } = transformQuery(sql, encryptedArgs);
     const upperSql = transformedSql.trim().toUpperCase();
     const isSelect = upperSql.startsWith('SELECT') || upperSql.startsWith('PRAGMA') || upperSql.includes('RETURNING');
     try {
@@ -62,7 +155,7 @@ const client = {
           for (const key in newRow) {
             if (typeof newRow[key] === 'bigint') newRow[key] = Number(newRow[key]);
           }
-          return newRow;
+          return decryptRow(newRow);
         });
         return { rows: safeRows, rowsAffected: result.rowsAffected || safeRows.length };
       } else {
@@ -75,7 +168,7 @@ const client = {
             for (const key in newRow) {
               if (typeof newRow[key] === 'bigint') newRow[key] = Number(newRow[key]);
             }
-            return newRow;
+            return decryptRow(newRow);
           });
           return { rows: safeRows, rowsAffected: safeRows.length };
         } else {
@@ -1719,13 +1812,15 @@ const batch = async (statements) => {
   try {
     if (libsql) {
       const mapped = statements.map(s => {
-        const { sql, args } = transformQuery(s.sql, s.args);
+        const encryptedArgs = encryptParams(s.sql, s.args || []);
+        const { sql, args } = transformQuery(s.sql, encryptedArgs);
         return { sql, args };
       });
       return await libsql.batch(mapped);
     } else {
       const promises = statements.map(s => {
-        const { sql, args } = transformQuery(s.sql, s.args);
+        const encryptedArgs = encryptParams(s.sql, s.args || []);
+        const { sql, args } = transformQuery(s.sql, encryptedArgs);
         return prisma.$executeRawUnsafe(sql, ...(args || []));
       });
       return await prisma.$transaction(promises);

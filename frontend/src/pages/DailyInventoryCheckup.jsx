@@ -235,7 +235,7 @@ Object.entries(EXCEL_DATA).forEach(([item, val]) => {
 export default function DailyInventoryCheckup() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isNurse = user?.role?.toLowerCase() === 'nurse' || user?.role?.toLowerCase() === 'chef_nurse';
+  const isNurse = user?.role?.toLowerCase() === 'nurse' || user?.role?.toLowerCase() === 'chef-nurse' || user?.role?.toLowerCase() === 'chef_nurse';
 
   const checkIsPast = (mYear, day, session) => {
     if (!mYear) return false;
