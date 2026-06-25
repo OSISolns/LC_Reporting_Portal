@@ -518,4 +518,268 @@ function generateInstructions(medications) {
   });
 }
 
-module.exports = { suggestMedications, generateAssessmentComments, generateProgressNote, generateSBAR, generateInstructions, suggestICD10, suggestICD11, getICD11Token, FREQUENCY_LEGEND, DRUG_DB };
+// ── Rich ICD-11 Diagnosis Details Database ────────────────────────────────────
+const ICD11_DETAILS_DB = {
+  "1F45": {
+    category: "Infectious Diseases / Parasitic",
+    symptoms: "Fever, chills, sweat, headache, muscle pain, fatigue.",
+    guidelines: "Confirm with rapid diagnostic test (RDT) or microscopy. Prescribe Artemether-lumefantrine (Coartem) per protocol. Monitor for severe features."
+  },
+  "1F4Z": {
+    category: "Infectious Diseases / Parasitic",
+    symptoms: "Fever, rigors, headache, splenomegaly.",
+    guidelines: "Determine species if possible. Administer antimalarials. Monitor hydration and blood sugar levels."
+  },
+  "1A00": {
+    category: "Infectious Diseases / Bacterial Intestinal",
+    symptoms: "Profuse watery diarrhea ('rice-water stool'), vomiting, rapid dehydration, muscle cramps.",
+    guidelines: "Immediate rehydration is critical. Administer ORS for mild/moderate cases, Ringer's Lactate IV for severe dehydration. Antibiotics (e.g. Azithromycin) only in severe cases."
+  },
+  "1A07.Z": {
+    category: "Infectious Diseases / Bacterial",
+    symptoms: "Prolonged high fever, abdominal discomfort, headache, rose spots, constipation or diarrhea.",
+    guidelines: "Prescribe Ceftriaxone or Ciprofloxacin. Monitor for complications such as intestinal perforation or hemorrhage. Advise hygiene and handwashing."
+  },
+  "BA00.Z": {
+    category: "Cardiovascular Diseases / Vascular",
+    symptoms: "Often asymptomatic ('silent killer'), headache, shortness of breath, dizziness.",
+    guidelines: "Confirm with multiple readings. Initiate lifestyle modifications (low salt, exercise). Prescribe antihypertensives (e.g. Amlodipine, Enalapril) as per protocol."
+  },
+  "BA03": {
+    category: "Cardiovascular Diseases / Vascular",
+    symptoms: "Severe headache, chest pain, dyspnea, neurological deficits, systolic BP >= 180 mmHg or diastolic BP >= 120 mmHg.",
+    guidelines: "Medical emergency. Securing IV access. Gradual reduction of BP using intravenous agents (e.g. Hydralazine). Monitor vital signs Q15M."
+  },
+  "5A14": {
+    category: "Endocrine, Nutritional or Metabolic Diseases / Diabetes",
+    symptoms: "Polyuria, polydipsia, polyphagia, unexplained weight loss, fatigue, blurry vision.",
+    guidelines: "Check HbA1c and fasting blood glucose. Initiate lifestyle and dietary counselling. Initiate oral hypoglycemics (Metformin) or insulin as indicated."
+  },
+  "5A11": {
+    category: "Endocrine, Nutritional or Metabolic Diseases / Diabetes",
+    symptoms: "Gradual onset, polyuria, polydipsia, fatigue, recurrent infections.",
+    guidelines: "First line: Metformin + lifestyle adjustments. Regular diabetic foot screening. Monitor renal function (eGFR, microalbuminuria)."
+  },
+  "5A10": {
+    category: "Endocrine, Nutritional or Metabolic Diseases / Diabetes",
+    symptoms: "Acute onset, polyuria, polydipsia, weight loss, diabetic ketoacidosis (DKA) risk.",
+    guidelines: "Requires lifelong insulin therapy. Education on carbohydrate counting and insulin administration. Check blood glucose before meals and bedtime."
+  },
+  "1E32": {
+    category: "Respiratory Diseases / Viral Infection",
+    symptoms: "Sudden onset of fever, cough, sore throat, runny nose, body aches, fatigue.",
+    guidelines: "Symptomatic care: Rest, hydration, paracetamol for fever. Antivirals (Oseltamivir) for high-risk patients if initiated within 48 hours."
+  },
+  "CA20.Z": {
+    category: "Respiratory Diseases / Bronchial",
+    symptoms: "Cough (productive or non-productive), wheezing, low fever, chest tightness.",
+    guidelines: "Hydration, bronchodilators (e.g. Salbutamol) if wheezing. Avoid routine antibiotics unless bacterial infection is suspected."
+  },
+  "1A40.0": {
+    category: "Gastrointestinal Diseases / Intestinal Infection",
+    symptoms: "Nausea, vomiting, watery diarrhea, abdominal cramps, low-grade fever.",
+    guidelines: "Prevent dehydration. Administer ORS. Zinc supplementation for children. Advise bland diet and avoidance of dairy/fatty foods."
+  },
+  "DB10.Z": {
+    category: "Gastrointestinal Diseases / Acute Surgical",
+    symptoms: "Periumbilical pain migrating to the right lower quadrant (McBurney's point), fever, anorexia, nausea, vomiting.",
+    guidelines: "Keep patient NPO (Nil Per Os). Urgent surgical consult for appendectomy. Secure IV access and administer IV fluids. Avoid laxatives or heat applications."
+  },
+  "JA80.Z": {
+    category: "Obstetrics / Pregnancy Care",
+    symptoms: "Multiple gestational sacs on ultrasound, rapid uterine growth, severe morning sickness.",
+    guidelines: "High-risk pregnancy. Increase frequency of antenatal visits. Monitor blood pressure, urine protein, and fetal growth closely. Ensure adequate iron and folic acid intake."
+  },
+  "3A9Z": {
+    category: "Diseases of the Blood / Anemia",
+    symptoms: "Fatigue, pallor (conjunctival, palmar), weakness, shortness of breath, dizziness.",
+    guidelines: "Order complete blood count (CBC) and ferritin levels. Prescribe Ferrous Sulphate or iron supplements. Dietary counseling on iron-rich foods."
+  },
+  "CA40.Z": {
+    category: "Respiratory Diseases / Lung Infection",
+    symptoms: "Cough with sputum, fever, shaking chills, shortness of breath, sharp chest pain on deep breathing.",
+    guidelines: "Empiric antibiotics (e.g. Amoxicillin or Ceftriaxone). Assess oxygen saturation (SpO2); administer supplemental O2 if SpO2 < 92%. Monitor respiratory rate."
+  },
+  "CA23": {
+    category: "Respiratory Diseases / Chronic Airway",
+    symptoms: "Wheezing, shortness of breath, chest tightness, coughing, symptoms worse at night/early morning.",
+    guidelines: "Assess severity. Administer inhaled short-acting beta-agonists (Salbutamol). Add inhaled corticosteroids (ICS) for maintenance. Provide an asthma action plan."
+  },
+  "8A80.Z": {
+    category: "Neurological Diseases / Headache",
+    symptoms: "Unilateral, throbbing headache, duration 4-72 hours, nausea, vomiting, photophobia/phonophobia.",
+    guidelines: "Prescribe NSAIDs (Ibuprofen) or triptans. Advise patient to rest in a dark, quiet room. Identify and avoid triggers (stress, certain foods)."
+  },
+  "CA03.Z": {
+    category: "Diseases of the Ear, Nose or Throat / Tonsils",
+    symptoms: "Sore throat, pain on swallowing, fever, red swollen tonsils, cervical lymphadenopathy.",
+    guidelines: "Differentiate between viral and bacterial (Centor criteria). Prescribe Amoxicillin if bacterial. Symptomatic care: warm fluids, throat lozenges, paracetamol."
+  },
+  "1D2Z": {
+    category: "Infectious Diseases / Viral Vector-Borne",
+    symptoms: "Sudden high fever, severe headache ('breakbone fever'), retro-orbital pain, muscle/joint pain, rash.",
+    guidelines: "Symptomatic treatment with Paracetamol. Avoid NSAIDs (Ibuprofen, Aspirin) due to bleeding risk. Monitor hematocrit and platelet count for signs of severe dengue."
+  },
+  "RA01": {
+    category: "Infectious Diseases / Viral Respiratory",
+    symptoms: "Fever, cough, fatigue, shortness of breath, loss of taste or smell, sore throat.",
+    guidelines: "Follow local isolation guidelines. Monitor oxygen saturation. Supportive care: rest, hydration, antipyretics. Escalate if respiratory distress develops."
+  },
+  "GC08.Z": {
+    category: "Genitourinary Diseases / Urinary tract",
+    symptoms: "Dysuria (burning on urination), frequency, urgency, suprapubic pain, cloudy/foul-smelling urine.",
+    guidelines: "Perform urine dipstick or urinalysis. Prescribe antibiotics (e.g. Nitrofurantoin, Ciprofloxacin). Encourage high oral fluid intake."
+  },
+  "1B1Z": {
+    category: "Infectious Diseases / Mycobacterial",
+    symptoms: "Chronic cough (>2 weeks), hemoptysis (coughing blood), night sweats, unexplained weight loss, fever.",
+    guidelines: "Collect sputum for GeneXpert or AFB smear. Initiate standard 4-drug anti-TB regimen (RHZE) under DOTS supervision. Screen close contacts."
+  }
+};
+
+/**
+ * Retrieve all unique cached/seeded ICD-11 codes.
+ */
+async function getAllCachedICD11() {
+  try {
+    const res = await db.query('SELECT results FROM icd11_cache');
+    const codesMap = new Map();
+    if (res && res.rows) {
+      for (const row of res.rows) {
+        try {
+          const list = JSON.parse(row.results);
+          for (const item of list) {
+            if (item.code && item.desc) {
+              codesMap.set(item.code.toUpperCase().trim(), item.desc.trim());
+            }
+          }
+        } catch (_) {}
+      }
+    }
+    const list = Array.from(codesMap.entries()).map(([code, desc]) => ({ code, desc }));
+    list.sort((a, b) => a.code.localeCompare(b.code));
+    return list;
+  } catch (err) {
+    console.error('Failed to fetch cached ICD11 codes:', err);
+    return [];
+  }
+}
+
+/**
+ * Resolve details of a specific ICD-11 code.
+ */
+async function lookupICD11CodeDetails(code) {
+  if (!code) return null;
+  const cleanCode = code.toUpperCase().trim();
+
+  // 1. Search in our static database for high-quality rich details
+  let matchedDetails = null;
+  const detailKey = Object.keys(ICD11_DETAILS_DB).find(k => cleanCode.startsWith(k) || k.startsWith(cleanCode));
+  if (detailKey) {
+    matchedDetails = ICD11_DETAILS_DB[detailKey];
+  }
+
+  // 2. Fetch the description from local cache / live API search
+  let desc = 'Unknown Diagnosis';
+  let definition = null;
+  let source = 'Local System';
+
+  try {
+    const res = await db.query('SELECT results FROM icd11_cache WHERE results LIKE $1', [`%${cleanCode}%`]);
+    if (res && res.rows.length > 0) {
+      for (const row of res.rows) {
+        const parsed = JSON.parse(row.results);
+        const match = parsed.find(item => item.code.toUpperCase() === cleanCode);
+        if (match) {
+          desc = match.desc;
+          source = 'Local Cache';
+          break;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error searching local cache by code:', err.message);
+  }
+
+  // Try live WHO API if it is configured
+  try {
+    const token = await getICD11Token();
+    const liveDetails = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'id.who.int',
+        path:     `/icd/release/11/2024-01/mms/codeinfo/${cleanCode}`,
+        method:   'GET',
+        headers:  {
+          Authorization:          `Bearer ${token}`,
+          Accept:                 'application/json',
+          'Accept-Language':      'en',
+          'API-Version':          'v2',
+        },
+        timeout: 5000,
+      };
+
+      const req = https.request(options, (res) => {
+        let raw = '';
+        res.on('data', (chunk) => { raw += chunk; });
+        res.on('end', () => {
+          try {
+            if (res.statusCode !== 200) {
+              return reject(new Error(`WHO API returned status ${res.statusCode}`));
+            }
+            const json = JSON.parse(raw);
+            resolve({
+              desc: json.title?.['@value'] || json.title || desc,
+              definition: json.definition?.['@value'] || null,
+              source: 'WHO Live API'
+            });
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+
+      req.on('timeout', () => { req.destroy(); reject(new Error('WHO API timeout')); });
+      req.on('error', reject);
+      req.end();
+    });
+
+    if (liveDetails) {
+      desc = liveDetails.desc;
+      definition = liveDetails.definition;
+      source = liveDetails.source;
+    }
+  } catch (err) {
+    // Ignore and use local/cache details
+  }
+
+  const details = matchedDetails || {
+    category: "General Clinical Diagnosis",
+    symptoms: "Presents per patient's clinical chief complaint.",
+    guidelines: "Consult standard clinical guidelines for this classification. Review patient history and observations."
+  };
+
+  return {
+    code: cleanCode,
+    desc,
+    definition,
+    category: details.category,
+    symptoms: details.symptoms,
+    guidelines: details.guidelines,
+    source
+  };
+}
+
+module.exports = { 
+  suggestMedications, 
+  generateAssessmentComments, 
+  generateProgressNote, 
+  generateSBAR, 
+  generateInstructions, 
+  suggestICD10, 
+  suggestICD11, 
+  getICD11Token, 
+  getAllCachedICD11,
+  lookupICD11CodeDetails,
+  FREQUENCY_LEGEND, 
+  DRUG_DB 
+};

@@ -6,6 +6,8 @@ const {
   generateSBAR,
   suggestICD10,
   generateInstructions,
+  getAllCachedICD11,
+  lookupICD11CodeDetails,
   FREQUENCY_LEGEND,
 } = require('../utils/clinicalAI');
 
@@ -85,5 +87,28 @@ exports.generateSBAR = (req, res, next) => {
 exports.getFrequencies = (_req, res, next) => {
   try {
     res.json({ success: true, data: FREQUENCY_LEGEND });
+  } catch (err) { next(err); }
+};
+
+// GET /api/ai/clinical/icd11/all
+exports.getAllICD11 = async (req, res, next) => {
+  try {
+    const data = await getAllCachedICD11();
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
+};
+
+// GET /api/ai/clinical/icd11/lookup
+exports.lookupICD11 = async (req, res, next) => {
+  try {
+    const { code } = req.query;
+    if (!code) {
+      return res.status(400).json({ success: false, message: 'code query parameter is required' });
+    }
+    const data = await lookupICD11CodeDetails(code);
+    if (!data) {
+      return res.status(404).json({ success: false, message: `No details found for ICD-11 code: ${code}` });
+    }
+    res.json({ success: true, data });
   } catch (err) { next(err); }
 };
