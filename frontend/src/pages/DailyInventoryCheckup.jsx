@@ -336,7 +336,16 @@ export default function DailyInventoryCheckup() {
   const [reqItemsLoading, setReqItemsLoading] = useState(false);
 
   const handleDeleteItem = (itemName) => {
-    setDeletedItems(prev => [...prev, itemName]);
+    const newDeleted = [...deletedItems, itemName];
+    setDeletedItems(newDeleted);
+    // Persist directly here — DO NOT rely on a useEffect to do this.
+    // A useEffect watching [deletedItems] will also fire after loadInventory
+    // sets deletedItems from the DB, and by then React has already cleared any
+    // "loading" or ref guard, causing it to overwrite the DB with stale data.
+    api.post('/clinical/inventory/deleted-items', {
+      month_year: monthYear,
+      deleted_items: newDeleted
+    }).catch(err => console.error('Failed to persist deleted item:', err));
     toast.success(`Removed "${itemName}" from active checkup roster.`);
   };
 
@@ -346,7 +355,13 @@ export default function DailyInventoryCheckup() {
       toast.error("No expired items to delete.");
       return;
     }
-    setDeletedItems(prev => [...new Set([...prev, ...filteredExpiredItems])]);
+    const newDeleted = [...new Set([...deletedItems, ...filteredExpiredItems])];
+    setDeletedItems(newDeleted);
+    // Persist directly — same reason as handleDeleteItem above
+    api.post('/clinical/inventory/deleted-items', {
+      month_year: monthYear,
+      deleted_items: newDeleted
+    }).catch(err => console.error('Failed to persist deleted items:', err));
     toast.success(`Removed all ${filteredExpiredItems.length} expired items from the checkup roster.`);
   };
 
@@ -684,22 +699,11 @@ export default function DailyInventoryCheckup() {
     loadInventory(false, monthYear);
   }, [monthYear]);
 
-  // Auto-persist deleted items whenever they change — debounced 500ms to batch rapid deletions
-  const deletedItemsPersistRef = useRef(null);
-  useEffect(() => {
-    // isHydratingRef.current is true while loadInventory is running.
-    // This prevents the empty [] that exists before the DB response arrives
-    // from being written back to the DB and wiping out the saved deletions.
-    if (isHydratingRef.current) return;
-    if (deletedItemsPersistRef.current) clearTimeout(deletedItemsPersistRef.current);
-    deletedItemsPersistRef.current = setTimeout(() => {
-      api.post('/clinical/inventory/deleted-items', {
-        month_year: monthYear,
-        deleted_items: deletedItems
-      }).catch(err => console.error('Failed to persist deleted items:', err));
-    }, 500);
-    return () => { if (deletedItemsPersistRef.current) clearTimeout(deletedItemsPersistRef.current); };
-  }, [deletedItems, monthYear]);
+  // NOTE: Deleted items are persisted directly inside handleDeleteItem and
+  // handleDeleteAllExpired. There is intentionally NO useEffect watching
+  // [deletedItems] here — such an effect would fire every time loadInventory
+  // restores the list from the DB, racing with the load and overwriting the
+  // DB with an empty array before the fetch completes.
 
   useEffect(() => {
     if (activeTab === 'matrix') {
