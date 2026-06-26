@@ -309,6 +309,10 @@ export default function DailyInventoryCheckup() {
 
   // State for tracking custom or seeded items removed/deleted from the active roster
   const [deletedItems, setDeletedItems] = useState([]);
+  // Ref-based guard: true while loadInventory is running, preventing the persist
+  // effect from firing before deleted items have been hydrated from the DB.
+  // Using a ref (not state) so toggling it never causes extra re-renders.
+  const isHydratingRef = useRef(false);
 
   // Audit Logs State
   const [showLogsModal, setShowLogsModal] = useState(false);
@@ -601,13 +605,18 @@ export default function DailyInventoryCheckup() {
     container.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
   };
 
-  // Load inventory from backend on month changes
-  const loadInventory = async (isManual = false) => {
+  // Load inventory from backend on month changes.
+  // Accept targetMonth as a parameter so callers can pass the up-to-date value
+  // without relying on the closure-captured `monthYear` (avoids stale-closure bugs).
+  const loadInventory = async (isManual = false, targetMonth = monthYear) => {
+    // Mark as hydrating BEFORE any awaits so the persist effect never fires
+    // while the list is still [] waiting for the DB response.
+    isHydratingRef.current = true;
     try {
       setLoading(true);
       const promises = DYNAMIC_MONTHS.map(m => api.get(`/clinical/inventory?month_year=${m}`));
-      // Also fetch the persisted deleted items list for the current month
-      const deletedPromise = api.get(`/clinical/inventory/deleted-items?month_year=${monthYear}`).catch(() => ({ data: { success: false, data: [] } }));
+      // Fetch the persisted deleted items list for the target month
+      const deletedPromise = api.get(`/clinical/inventory/deleted-items?month_year=${targetMonth}`).catch(() => ({ data: { success: false, data: [] } }));
       const [responses, deletedRes] = await Promise.all([Promise.all(promises), deletedPromise]);
 
       const allMap = {};
@@ -635,7 +644,7 @@ export default function DailyInventoryCheckup() {
       });
       setCustomItems(Array.from(discoveredItems));
 
-      // Restore persisted deleted items
+      // Restore persisted deleted items from DB
       if (deletedRes.data?.success && Array.isArray(deletedRes.data.data)) {
         setDeletedItems(deletedRes.data.data);
       } else {
@@ -665,18 +674,23 @@ export default function DailyInventoryCheckup() {
       toast.error('Failed to load monthly inventory logs.');
     } finally {
       setLoading(false);
+      // Clear hydration flag AFTER all state has been set, so the persist
+      // effect can safely fire for subsequent user-triggered changes.
+      isHydratingRef.current = false;
     }
   };
 
   useEffect(() => {
-    loadInventory();
+    loadInventory(false, monthYear);
   }, [monthYear]);
 
   // Auto-persist deleted items whenever they change — debounced 500ms to batch rapid deletions
   const deletedItemsPersistRef = useRef(null);
   useEffect(() => {
-    // Don't persist during the initial load (when loading is true) to avoid overwriting DB with empty array
-    if (loading) return;
+    // isHydratingRef.current is true while loadInventory is running.
+    // This prevents the empty [] that exists before the DB response arrives
+    // from being written back to the DB and wiping out the saved deletions.
+    if (isHydratingRef.current) return;
     if (deletedItemsPersistRef.current) clearTimeout(deletedItemsPersistRef.current);
     deletedItemsPersistRef.current = setTimeout(() => {
       api.post('/clinical/inventory/deleted-items', {
