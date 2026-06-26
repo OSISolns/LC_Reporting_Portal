@@ -33,10 +33,6 @@ import Modal from '../components/Modal';
 // Excel metadata source matching the provided spreadsheet
 const EXCEL_DATA = {
   "Aquabloc 15cm": { qty: 70, expiry: "02/2028", status: "Available", category: "medical_supplies" },
-  "Adrenaline": { qty: 2, expiry: "05/2026", status: "Available", category: "medications" },
-  "Adrenaline 1mg": { qty: 10, expiry: "04/2026", status: "Expired", category: "medications" },
-  "Alcohol pads": { qty: 30, expiry: "05/2026", status: "Available", category: "medical_supplies" },
-  "Atropine 1mg": { qty: 10, expiry: "05/2026", status: "Expired", category: "medications" },
   "Bande 15cm": { qty: 7, expiry: "10/2027", status: "Available", category: "medical_supplies" },
   "Bande 7.5cm": { qty: 3, expiry: "06/2029", status: "Available", category: "medical_supplies" },
   "Bupivacaine": { qty: 5, expiry: "04/2027", status: "Available", category: "anesthetics" },
@@ -48,7 +44,6 @@ const EXCEL_DATA = {
   "Catheter G22": { qty: 80, expiry: "05/2028", status: "Available", category: "medical_supplies" },
   "Catheter G24": { qty: 120, expiry: "12/2028", status: "Available", category: "medical_supplies" },
   "Ceftriaxone 1g": { qty: 39, expiry: "11/2026", status: "Near Expiry", category: "medications" },
-  "Dexamethasone": { qty: 8, expiry: "04/2026", status: "Expired", category: "medications" },
   "Dexamethasone 4mg": { qty: 17, expiry: "04/2028", status: "Available", category: "medications" },
   "Dexamethasone 8mg": { qty: 25, expiry: "05/2028", status: "Available", category: "medications" },
   "Dextrose 50%": { qty: 20, expiry: "01/2027", status: "Available", category: "antiseptics" },
@@ -58,7 +53,6 @@ const EXCEL_DATA = {
   "Diclofenac IM 75mg": { qty: 40, expiry: "02/2028", status: "Available", category: "medications" },
   "Dicynone 250mg": { qty: 8, expiry: "04/2028", status: "Available", category: "medications" },
   "Eau oxygénée 3%": { qty: 7, expiry: "12/2027", status: "Available", category: "antiseptics" },
-  "Emitino": { qty: 54, expiry: "04/2026", status: "Expired", category: "medications" },
   "Esomeprazole": { qty: 9, expiry: "04/2027", status: "Available", category: "medications" },
   "Fentanyl": { qty: 7, expiry: "12/2026", status: "Near Expiry", category: "anesthetics" },
   "Flagyl": { qty: 6, expiry: "10/2026", status: "Near Expiry", category: "medications" },
@@ -79,7 +73,6 @@ const EXCEL_DATA = {
   "Metoclopramide": { qty: 18, expiry: "04/2028", status: "Available", category: "medications" },
   "Metronidazole": { qty: 6, expiry: "11/2026", status: "Near Expiry", category: "medications" },
   "Midazolam 5mg": { qty: 5, expiry: "06/2026", status: "Available", category: "anesthetics" },
-  "Morphine 10mg": { qty: 8, expiry: "04/2026", status: "Expired", category: "anesthetics" },
   "NS (Normal Saline)": { qty: 40, expiry: "02/2028", status: "Available", category: "antiseptics" },
   "Naloxone": { qty: 1, expiry: "No Expiry Listed", status: "Available", category: "antidotes" },
   "Nasal Oxygen Masque Enfant": { qty: 28, expiry: "04/2027", status: "Available", category: "medical_supplies" },
@@ -93,16 +86,12 @@ const EXCEL_DATA = {
   "Paracetamol 125mg": { qty: 18, expiry: "04/2029", status: "Available", category: "medications" },
   "Paracetamol Ces": { qty: 40, expiry: "03/2028", status: "Available", category: "medications" },
   "Paraffin Gauze 5cm": { qty: 5, expiry: "05/2027", status: "Available", category: "medical_supplies" },
-  "Pause": { qty: 10, expiry: "04/2026", status: "Expired", category: "medications" },
   "Pethidine": { qty: 8, expiry: "05/2027", status: "Available", category: "anesthetics" },
   "Phenobarbital 100mg": { qty: 10, expiry: "04/2027", status: "Available", category: "medications" },
   "Phenytoin 250mg": { qty: 3, expiry: "02/2027", status: "Available", category: "medications" },
   "Phytomenadione 10mg": { qty: 3, expiry: "02/2028", status: "Available", category: "medications" },
-  "Plaster": { qty: 2, expiry: "02/2026", status: "Expired", category: "medical_supplies" },
   "Polyglactin 3/0": { qty: 38, expiry: "04/2030", status: "Available", category: "sutures" },
   "Polyglactin 4/0": { qty: 32, expiry: "03/2030", status: "Available", category: "sutures" },
-  "Polypropylene 6/0": { qty: 8, expiry: "02/2026", status: "Expired", category: "sutures" },
-  "Povidone 10%": { qty: 8, expiry: "02/2026", status: "Expired", category: "antiseptics" },
   "Propofol 200mg": { qty: 4, expiry: "06/2027", status: "Available", category: "anesthetics" },
   "RL (Ringer's Lactate)": { qty: 34, expiry: "11/2028", status: "Available", category: "antiseptics" },
   "Sac à urine": { qty: 5, expiry: "04/2027", status: "Available", category: "medical_supplies" },
@@ -138,10 +127,10 @@ const CATEGORIES = {
     label: "Medical Supplies",
     color: "bg-blue-50 text-blue-700 border-blue-200",
     items: [
-      "Aquabloc 15cm", "Alcohol pads", "Bande 15cm", "Bande 7.5cm",
+      "Aquabloc 15cm", "Bande 15cm", "Bande 7.5cm",
       "Catheter G16", "Catheter G18", "Catheter G20", "Catheter G22", "Catheter G24",
       "Gants Sterile 8", "Gants propre", "Gloves 7.5", "Masque Neb Adulte", "Masque Neb Enfant",
-      "Nasal Oxygen Masque Enfant", "Pap Smear", "Paraffin Gauze 5cm", "Plaster", "Sac à urine",
+      "Nasal Oxygen Masque Enfant", "Pap Smear", "Paraffin Gauze 5cm", "Sac à urine",
       "Seringue 10cc", "Seringue 1cc (Insuline)", "Seringue 20cc", "Seringue 2cc", "Seringue 5cc",
       "Sonde Vésicale G10", "Sonde Vésicale G12", "Sonde Vésicale G16", "Spatula", "Speculum",
       "Sterile Gauze 10cm", "Tongue Depressor", "Trousse", "Vaginal Swab"
@@ -151,13 +140,13 @@ const CATEGORIES = {
     label: "Medications",
     color: "bg-emerald-50 text-emerald-700 border-emerald-200",
     items: [
-      "Adrenaline", "Adrenaline 1mg", "Atropine 1mg", "Buscopan", "Buscopan 20mg",
-      "Ceftriaxone 1g", "Dexamethasone", "Dexamethasone 4mg", "Dexamethasone 8mg",
+      "Buscopan", "Buscopan 20mg",
+      "Ceftriaxone 1g", "Dexamethasone 4mg", "Dexamethasone 8mg",
       "Diazepam 10mg", "Diclo 100mg Supp", "Diclofenac 75mg", "Diclofenac IM 75mg",
-      "Dicynone 250mg", "Emitino", "Esomeprazole", "Flagyl", "Furosemide", "Furosemide 20mg",
+      "Dicynone 250mg", "Esomeprazole", "Flagyl", "Furosemide", "Furosemide 20mg",
       "Hydralazine 20mg", "Hydrocortisone 100mg", "IV Paracetamol 1g", "Largactil 25mg",
       "Metoclopramide", "Metronidazole", "Pantoprazole 40mg", "Paracet 125mg Supp",
-      "Paracet 250mg Supp", "Paracetamol 125mg", "Paracetamol Ces", "Pause",
+      "Paracet 250mg Supp", "Paracetamol 125mg", "Paracetamol Ces",
       "Phenobarbital 100mg", "Phenytoin 250mg", "Phytomenadione 10mg", "Salbutamol",
       "Vit B complex"
     ]
@@ -167,7 +156,7 @@ const CATEGORIES = {
     color: "bg-purple-50 text-purple-700 border-purple-200",
     items: [
       "Bupivacaine", "Fentanyl", "Ketamine 500mg", "Lidocaine", "Midazolam 5mg",
-      "Morphine 10mg", "Pethidine", "Propofol 200mg", "Tramadol"
+      "Pethidine", "Propofol 200mg", "Tramadol"
     ]
   },
   antiseptics: {
@@ -175,7 +164,7 @@ const CATEGORIES = {
     color: "bg-amber-50 text-amber-700 border-amber-200",
     items: [
       "Dextrose 50%", "Eau oxygénée 3%", "Glucose 5%", "NS (Normal Saline)",
-      "Povidone 10%", "RL (Ringer's Lactate)", "Water for injection"
+      "RL (Ringer's Lactate)", "Water for injection"
     ]
   },
   sutures: {
@@ -183,7 +172,7 @@ const CATEGORIES = {
     color: "bg-rose-50 text-rose-700 border-rose-200",
     items: [
       "Nylon 2/0", "Nylon 4/0", "Nylon 5/0", "Polyglactin 3/0", "Polyglactin 4/0",
-      "Polypropylene 6/0", "Surgical Blades N15", "Surgical Blades N23",
+      "Surgical Blades N15", "Surgical Blades N23",
       "Vicryl 2/0", "Vicryl 3/0", "Vicryl 4/0", "Vicryl 5/0"
     ]
   },
