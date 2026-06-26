@@ -336,11 +336,8 @@ export default function DailyInventoryCheckup() {
     toast.success(`Removed "${itemName}" from active checkup roster.`);
   };
 
+  // Expired items can always be removed — they don't need stock-editing unlock
   const handleDeleteAllExpired = () => {
-    if (lockStock) {
-      toast.error("Roster editing must be unlocked to delete expired items.");
-      return;
-    }
     if (filteredExpiredItems.length === 0) {
       toast.error("No expired items to delete.");
       return;
@@ -609,7 +606,9 @@ export default function DailyInventoryCheckup() {
     try {
       setLoading(true);
       const promises = DYNAMIC_MONTHS.map(m => api.get(`/clinical/inventory?month_year=${m}`));
-      const responses = await Promise.all(promises);
+      // Also fetch the persisted deleted items list for the current month
+      const deletedPromise = api.get(`/clinical/inventory/deleted-items?month_year=${monthYear}`).catch(() => ({ data: { success: false, data: [] } }));
+      const [responses, deletedRes] = await Promise.all([Promise.all(promises), deletedPromise]);
 
       const allMap = {};
       DYNAMIC_MONTHS.forEach(m => allMap[m] = {});
@@ -635,6 +634,13 @@ export default function DailyInventoryCheckup() {
         }
       });
       setCustomItems(Array.from(discoveredItems));
+
+      // Restore persisted deleted items
+      if (deletedRes.data?.success && Array.isArray(deletedRes.data.data)) {
+        setDeletedItems(deletedRes.data.data);
+      } else {
+        setDeletedItems([]);
+      }
 
       // Seed April 1 opening stock values if empty
       Object.entries(APRIL_INITIAL_STOCK).forEach(([item, val]) => {
@@ -665,6 +671,21 @@ export default function DailyInventoryCheckup() {
   useEffect(() => {
     loadInventory();
   }, [monthYear]);
+
+  // Auto-persist deleted items whenever they change — debounced 500ms to batch rapid deletions
+  const deletedItemsPersistRef = useRef(null);
+  useEffect(() => {
+    // Don't persist during the initial load (when loading is true) to avoid overwriting DB with empty array
+    if (loading) return;
+    if (deletedItemsPersistRef.current) clearTimeout(deletedItemsPersistRef.current);
+    deletedItemsPersistRef.current = setTimeout(() => {
+      api.post('/clinical/inventory/deleted-items', {
+        month_year: monthYear,
+        deleted_items: deletedItems
+      }).catch(err => console.error('Failed to persist deleted items:', err));
+    }, 500);
+    return () => { if (deletedItemsPersistRef.current) clearTimeout(deletedItemsPersistRef.current); };
+  }, [deletedItems, monthYear]);
 
   useEffect(() => {
     if (activeTab === 'matrix') {
@@ -901,6 +922,7 @@ export default function DailyInventoryCheckup() {
   const handleCreateItem = (e) => {
     e.preventDefault();
     if (!newItemName.trim()) return toast.error('Please enter a valid item name.');
+    if (lockStock) return toast.error('Please unlock stock editing before adding new items.');
 
     const name = newItemName.trim();
 
@@ -914,13 +936,28 @@ export default function DailyInventoryCheckup() {
 
     const stock = parseInt(newItemStock, 10) || 0;
 
-    // Initialize in allMonthsMap for current month/day/session
-    handleCellEdit(name, 'stock_in_hands', stock, currentDay, currentSession);
-    handleCellEdit(name, 'consumed', 0, currentDay, currentSession);
-    handleCellEdit(name, 'responsible_name', user?.fullName || '', currentDay, currentSession);
-    handleCellEdit(name, 'expiration_date', newItemExpDate, currentDay, currentSession);
-    handleCellEdit(name, 'status', newItemStatus, currentDay, currentSession);
-    handleCellEdit(name, 'category', newItemCategory, currentDay, currentSession);
+    // Directly seed the cell in allMonthsMap without going through handleCellEdit
+    // (which requires selectedWard for consumed/responsible_name fields)
+    setAllMonthsMap(prev => {
+      const monthMap = { ...(prev[monthYear] || {}) };
+      if (!monthMap[name]) monthMap[name] = {};
+      if (!monthMap[name][currentDay]) monthMap[name][currentDay] = {};
+      monthMap[name][currentDay][currentSession] = {
+        stock_in_hands: stock,
+        consumed: 0,
+        consumed_obs1: 0,
+        consumed_minor: 0,
+        balance: stock,
+        responsible_name: '',
+        user_stn1: '',
+        user_minor: '',
+        expiration_date: newItemExpDate,
+        status: newItemStatus,
+        category: newItemCategory,
+        manually_edited: true
+      };
+      return { ...prev, [monthYear]: monthMap };
+    });
 
     // Reset inputs
     setNewItemName('');
@@ -1308,13 +1345,20 @@ export default function DailyInventoryCheckup() {
                   {/* Action 1: Create Custom Item */}
                   <button
                     onClick={() => {
+                      if (lockStock) {
+                        toast.error('Unlock stock editing to add new items.');
+                        setShowToolsDropdown(false);
+                        return;
+                      }
                       setShowCreateModal(true);
                       setShowToolsDropdown(false);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all border-none bg-transparent"
+                    title={lockStock ? 'Unlock stock to add new items' : 'Add a custom item to the roster'}
+                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold transition-all border-none bg-transparent ${lockStock ? 'text-slate-400 cursor-not-allowed opacity-60' : 'text-slate-700 hover:bg-slate-50'}`}
                   >
-                    <span className="p-1 bg-emerald-50 text-emerald-600 rounded-lg"><PackagePlus size={14} /></span>
+                    <span className={`p-1 rounded-lg ${lockStock ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-600'}`}><PackagePlus size={14} /></span>
                     Create Custom Item
+                    {lockStock && <span className="ml-auto text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Locked</span>}
                   </button>
 
                   {/* Action 2: Sync with DB */}
@@ -1756,12 +1800,8 @@ export default function DailyInventoryCheckup() {
                           {activeTab === 'expired_inventory' && filteredExpiredItems.length > 0 && (
                             <button
                               onClick={handleDeleteAllExpired}
-                              disabled={lockStock}
-                              title={lockStock ? "Unlock stock editing to delete expired items" : "Remove all expired items from roster"}
-                              className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1.5 active:scale-[0.97] ${lockStock
-                                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none'
-                                : 'bg-red-50 hover:bg-red-100 border-red-200 text-red-750 hover:shadow-sm'
-                                }`}
+                              title="Remove all expired items from roster"
+                              className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1.5 active:scale-[0.97] bg-red-50 hover:bg-red-100 border-red-200 text-red-750 hover:shadow-sm"
                             >
                               <Trash2 size={12} />
                               Delete All Expired
@@ -1915,15 +1955,20 @@ export default function DailyInventoryCheckup() {
                                     {isExpired ? (
                                       <button
                                         onClick={() => handleDeleteItem(item)}
-                                        disabled={lockStock}
-                                        title={lockStock ? "Unlock stock editing to delete expired items" : "Remove expired item from checkup roster"}
-                                        className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1 mx-auto active:scale-[0.95] ${lockStock
-                                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none'
-                                          : 'border-red-200 bg-red-50 text-red-650 hover:bg-red-100 hover:text-red-700 hover:shadow-sm'
-                                          }`}
+                                        title="Remove expired item from checkup roster"
+                                        className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1 mx-auto active:scale-[0.95] border-red-200 bg-red-50 text-red-650 hover:bg-red-100 hover:text-red-700 hover:shadow-sm"
                                       >
                                         <Trash2 size={12} />
                                         Delete
+                                      </button>
+                                    ) : !lockStock ? (
+                                      <button
+                                        onClick={() => handleDeleteItem(item)}
+                                        title="Remove item from checkup roster"
+                                        className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all flex items-center gap-1 mx-auto active:scale-[0.95] border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700 hover:shadow-sm"
+                                      >
+                                        <Trash2 size={12} />
+                                        Remove
                                       </button>
                                     ) : (
                                       <span className="text-[10px] text-slate-400 font-bold">—</span>

@@ -556,6 +556,54 @@ exports.getDocChecksum = async (req, res) => {
   }
 };
 
+// ─── Inventory: Get deleted items for a month ─────────────────────────────────
+exports.getDeletedItems = async (req, res) => {
+  try {
+    const { month_year } = req.query;
+    if (!month_year) {
+      return res.status(400).json({ success: false, message: 'month_year is required' });
+    }
+    const { rows } = await db.query(
+      `SELECT item_name FROM nursing_deleted_items WHERE month_year = $1 ORDER BY deleted_at ASC`,
+      [month_year]
+    );
+    res.json({ success: true, data: rows.map(r => r.item_name) });
+  } catch (error) {
+    console.error('Error getting deleted items:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Inventory: Save (replace) deleted items list for a month ─────────────────
+exports.saveDeletedItems = async (req, res) => {
+  try {
+    const { month_year, deleted_items } = req.body;
+    if (!month_year || !Array.isArray(deleted_items)) {
+      return res.status(400).json({ success: false, message: 'month_year and deleted_items array are required' });
+    }
+
+    const deletedBy = req.user?.fullName || req.user?.username || 'System';
+
+    // Remove all existing deleted items for this month, then insert fresh list
+    await db.query(`DELETE FROM nursing_deleted_items WHERE month_year = $1`, [month_year]);
+
+    if (deleted_items.length > 0) {
+      for (const itemName of deleted_items) {
+        await db.query(
+          `INSERT INTO nursing_deleted_items (month_year, item_name, deleted_by) VALUES ($1, $2, $3)
+           ON CONFLICT(month_year, item_name) DO NOTHING`,
+          [month_year, itemName, deletedBy]
+        );
+      }
+    }
+
+    res.json({ success: true, message: `Deleted items list updated for ${month_year}.` });
+  } catch (error) {
+    console.error('Error saving deleted items:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 // ─── Inventory: Get all stock for a month ─────────────────────────────────────
 // Helper to generate a random 8-character password
 function generateRandomPassword(length = 8) {
