@@ -963,16 +963,28 @@ export default function PatientRecords() {
                               >
                                 <Eye size={13} /> View
                               </button>
-                              <button
-                                onClick={() => handleDownloadPdf(doc.queue_id)}
-                                disabled={pdfDownloading === doc.queue_id}
-                                className="flex items-center gap-1.5 text-xs font-bold text-white bg-[#0369a1] hover:bg-[#0284c7] px-3 py-1.5 rounded-lg transition-all disabled:opacity-60"
-                              >
-                                {pdfDownloading === doc.queue_id
-                                  ? <Loader2 size={13} className="animate-spin" />
-                                  : <Download size={13} />}
-                                PDF
-                              </button>
+                              {doc.status === 'Verified' ? (
+                                <button
+                                  onClick={() => handleDownloadPdf(doc.queue_id)}
+                                  disabled={pdfDownloading === doc.queue_id}
+                                  className="flex items-center gap-1.5 text-xs font-bold text-white bg-[#0369a1] hover:bg-[#0284c7] px-3 py-1.5 rounded-lg transition-all disabled:opacity-60"
+                                  title="Download verified clinical sheet as PDF"
+                                >
+                                  {pdfDownloading === doc.queue_id
+                                    ? <Loader2 size={13} className="animate-spin" />
+                                    : <Download size={13} />}
+                                  PDF
+                                </button>
+                              ) : (
+                                <button
+                                  disabled
+                                  className="flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg cursor-not-allowed"
+                                  title="PDF only available after Chef Nurse verification"
+                                >
+                                  <Download size={13} />
+                                  PDF Locked
+                                </button>
+                              )}
                             </div>
                           </div>
                         );

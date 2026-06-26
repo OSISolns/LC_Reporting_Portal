@@ -1279,6 +1279,23 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to initialize nursing_stock_unlocks table:', err);
     }
 
+    // Nursing deleted items table — persists which items were removed from the roster per month
+    try {
+      await client.execute(`
+      CREATE TABLE IF NOT EXISTS nursing_deleted_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month_year TEXT NOT NULL,
+        item_name TEXT NOT NULL,
+        deleted_by TEXT,
+        deleted_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        UNIQUE(month_year, item_name)
+      )
+    `);
+      console.log('✅ SQLite Schema Migration: created/verified nursing_deleted_items table');
+    } catch (err) {
+      console.error('❌ Failed to initialize nursing_deleted_items table:', err);
+    }
+
     // --- New Stock Management Relational Architecture ---
     try {
       await client.execute(`

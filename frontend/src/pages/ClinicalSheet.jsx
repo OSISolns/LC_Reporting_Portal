@@ -696,13 +696,22 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
       <div className={isEmbedded ? "sheet-container bg-white w-full p-4 relative" : "sheet-container bg-white mx-auto mt-6 border shadow-sm max-w-[850px] p-8 pb-12"}>
         {isEmbedded && (
           <div className="absolute top-4 right-4 no-print">
-            <button
-              onClick={handleDownloadPdf}
-              className="flex items-center text-[10px] font-bold text-white bg-[#1b669d] hover:bg-blue-800 px-2 py-1 rounded shadow-sm"
-              title="Download PDF"
-            >
-              <FileText className="h-3 w-3 mr-1" /> PDF
-            </button>
+            {sheetStatus === 'Verified' ? (
+              <button
+                onClick={handleDownloadPdf}
+                className="flex items-center text-[10px] font-bold text-white bg-[#1b669d] hover:bg-blue-800 px-2 py-1 rounded shadow-sm"
+                title="Download verified clinical sheet as PDF"
+              >
+                <FileText className="h-3 w-3 mr-1" /> PDF
+              </button>
+            ) : (
+              <span
+                className="flex items-center text-[10px] font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1 rounded cursor-not-allowed select-none"
+                title="PDF available after Chef Nurse verification"
+              >
+                <FileText className="h-3 w-3 mr-1" /> PDF Locked
+              </span>
+            )}
           </div>
         )}
 
