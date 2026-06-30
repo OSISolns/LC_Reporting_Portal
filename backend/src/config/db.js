@@ -1,5 +1,6 @@
 'use strict';
 require('dotenv').config();
+const { createClient } = require('@libsql/client');
 const tursoUrl = process.env.lcreporting_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL;
 const tursoToken = process.env.lcreporting_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
 
@@ -285,8 +286,36 @@ const client = {
     }
   },
   batch: async (statements) => {
-    for (const stmt of statements) {
-      await client.execute(stmt);
+    if (libsql) {
+      const mapped = statements.map(s => {
+        let stmtSql, stmtArgs;
+        if (typeof s === 'string') {
+          stmtSql = s;
+          stmtArgs = [];
+        } else {
+          stmtSql = s.sql;
+          stmtArgs = s.args || [];
+        }
+        const encryptedArgs = encryptParams(stmtSql, stmtArgs);
+        const { sql, args } = transformQuery(stmtSql, encryptedArgs);
+        return { sql, args };
+      });
+      return await libsql.batch(mapped);
+    } else {
+      const promises = statements.map(s => {
+        let stmtSql, stmtArgs;
+        if (typeof s === 'string') {
+          stmtSql = s;
+          stmtArgs = [];
+        } else {
+          stmtSql = s.sql;
+          stmtArgs = s.args || [];
+        }
+        const encryptedArgs = encryptParams(stmtSql, stmtArgs);
+        const { sql, args } = transformQuery(stmtSql, encryptedArgs);
+        return prisma.$executeRawUnsafe(sql, ...(args || []));
+      });
+      return await prisma.$transaction(promises);
     }
   }
 };
