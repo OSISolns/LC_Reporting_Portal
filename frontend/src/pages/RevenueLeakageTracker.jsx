@@ -34,7 +34,7 @@ const RevenueLeakageTracker = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/revenue-leakage');
+      const res = await api.get('/revenue-leakage');
       setData(res.data.data || []);
     } catch (err) {
       console.error('Failed to load leakage data:', err);
@@ -53,11 +53,11 @@ const RevenueLeakageTracker = () => {
     setScanning(true);
     toast.loading('Analyzing clinical records against billing logs...', { id: 'scan' });
     try {
-      const res = await api.post('/api/revenue-leakage/scan');
+      const res = await api.post('/revenue-leakage/scan');
       if (res.data.success) {
         toast.success(res.data.message || 'Scan complete! Discrepancy found.', { id: 'scan' });
         // Re-fetch data
-        const freshRes = await api.get('/api/revenue-leakage');
+        const freshRes = await api.get('/revenue-leakage');
         setData(freshRes.data.data || []);
       }
     } catch (err) {
@@ -73,13 +73,13 @@ const RevenueLeakageTracker = () => {
     e.preventDefault();
     try {
       if (editingLeakage) {
-        const res = await api.put(`/api/revenue-leakage/${editingLeakage.id}`, form);
+        const res = await api.put(`/revenue-leakage/${editingLeakage.id}`, form);
         if (res.data.success) {
           setData(data.map(d => d.id === editingLeakage.id ? res.data.data : d));
           toast.success('Discrepancy record updated.');
         }
       } else {
-        const res = await api.post('/api/revenue-leakage', form);
+        const res = await api.post('/revenue-leakage', form);
         if (res.data.success) {
           setData([res.data.data, ...data]);
           toast.success('Discrepancy record logged successfully.');
@@ -105,7 +105,7 @@ const RevenueLeakageTracker = () => {
   // Resolve
   const handleResolveLeakage = async (leakageItem) => {
     try {
-      const res = await api.put(`/api/revenue-leakage/${leakageItem.id}`, {
+      const res = await api.put(`/revenue-leakage/${leakageItem.id}`, {
         ...leakageItem,
         status: 'Recovered'
       });
@@ -123,7 +123,7 @@ const RevenueLeakageTracker = () => {
   const handleDeleteLeakage = async (id) => {
     if (!window.confirm('Are you sure you want to delete this record?')) return;
     try {
-      const res = await api.delete(`/api/revenue-leakage/${id}`);
+      const res = await api.delete(`/revenue-leakage/${id}`);
       if (res.data.success) {
         setData(data.filter(d => d.id !== id));
         toast.success('Record deleted.');

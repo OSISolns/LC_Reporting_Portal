@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Database, 
-  Package, 
-  Scale, 
-  Truck, 
-  DollarSign, 
-  Plus, 
-  RefreshCw, 
-  Loader2, 
-  ArrowLeft, 
-  Building2, 
-  Edit2, 
-  Trash2, 
-  X, 
-  AlertTriangle, 
-  ChevronLeft, 
+import {
+  Database,
+  Package,
+  Scale,
+  Truck,
+  DollarSign,
+  Plus,
+  RefreshCw,
+  Loader2,
+  ArrowLeft,
+  Building2,
+  Edit2,
+  Trash2,
+  X,
+  AlertTriangle,
+  ChevronLeft,
   ChevronRight,
   Search,
   SlidersHorizontal,
@@ -88,14 +88,14 @@ export default function MasterModule() {
   const [isVendorModalOpen, setVendorModalOpen] = useState(false);
   const [isUomModalOpen, setUomModalOpen] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
-  
+
   const [editingRecord, setEditingRecord] = useState(null);
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Form states
-  const [itemForm, setItemForm] = useState({ 
+  const [itemForm, setItemForm] = useState({
     name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'pc',
     batch_number: '', lot_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
   });
@@ -116,19 +116,17 @@ export default function MasterModule() {
     { id: 'stationery', label: 'Stationery' }
   ];
 
-  // Mirrors the backend SKU algorithm for live preview
-  // Rule: for each word take first letter; if word > 4 chars and ends in a consonant, also take the last letter
+  // Mirrors the backend SKU algorithm for live preview.
+  // Format: first 3 chars of word 1 + "-" + first 3 chars of word 2 (if exists).
+  // Single word: up to first 6 chars.  Examples: "Ceftriaxone 1g" → CEF-1G | "Paracetamol" → PARACE
   const previewSku = (name) => {
-    const VOWELS = new Set(['A','E','I','O','U']);
-    const words = (name || '').toUpperCase().trim().split(/\s+/);
-    let code = '';
-    for (const word of words) {
-      if (!word) continue;
-      code += word[0];
-      const last = word[word.length - 1];
-      if (word.length > 4 && !VOWELS.has(last)) code += last;
-    }
-    return code ? `${code}01` : '—';
+    const clean = (name || '').toUpperCase().trim().replace(/[^A-Z0-9\s]/g, '');
+    const words = clean.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return '—';
+    if (words.length === 1) return words[0].substring(0, 6) || '—';
+    const part1 = words[0].substring(0, 3);
+    const part2 = words[1].substring(0, 3);
+    return `${part1}-${part2}`;
   };
 
   useEffect(() => {
@@ -191,39 +189,39 @@ export default function MasterModule() {
   const getFilteredData = () => {
     if (activeTab === 'items') {
       return items.filter(item => {
-        const matchesSearch = 
+        const matchesSearch =
           !searchTerm ||
           item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.batch_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.department?.toLowerCase().includes(searchTerm.toLowerCase());
-        
+
         const matchesCategory = !selectedCategory || item.category === selectedCategory;
-        const matchesDepartment = !selectedDepartment || 
-          String(item.department_id) === String(selectedDepartment) || 
+        const matchesDepartment = !selectedDepartment ||
+          String(item.department_id) === String(selectedDepartment) ||
           item.department === selectedDepartment;
-        
+
         return matchesSearch && matchesCategory && matchesDepartment;
       });
     }
     if (activeTab === 'departments') {
-      return departments.filter(dept => 
+      return departments.filter(dept =>
         !searchTerm || dept.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (activeTab === 'uoms') {
-      return uoms.filter(u => 
+      return uoms.filter(u =>
         !searchTerm ||
-        u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.abbreviation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (activeTab === 'vendors') {
-      return vendors.filter(v => 
+      return vendors.filter(v =>
         !searchTerm ||
-        v.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        v.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.contact?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.contract_terms?.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -242,7 +240,7 @@ export default function MasterModule() {
     setPendingItems([]);
     if (item) {
       setEditingRecord(item);
-      setItemForm({ 
+      setItemForm({
         name: item.name, sku: item.sku, category: item.category, unit_of_measure: item.unit_of_measure,
         batch_number: item.batch_number || '',
         lot_number: item.lot_number || '',
@@ -256,7 +254,7 @@ export default function MasterModule() {
       });
     } else {
       setEditingRecord(null);
-      setItemForm({ 
+      setItemForm({
         name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'pc',
         batch_number: '', lot_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
       });
@@ -545,18 +543,20 @@ export default function MasterModule() {
 
   const rowVariants = {
     hidden: { opacity: 0, y: 10 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      transition: { 
-        type: 'spring', 
-        stiffness: 220, 
-        damping: 24 
-      } 
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring',
+        stiffness: 220,
+        damping: 24
+      }
     }
   };
 
   // KPI Calculations
+  const isStockManager = user?.role === 'stock-manager';
+
   const kpis = [
     {
       title: 'Catalog Items',
@@ -567,7 +567,7 @@ export default function MasterModule() {
       iconBg: 'bg-indigo-100 text-indigo-700'
     },
     {
-      title: 'Hospital Units',
+      title: 'Legacy Clinics Units',
       value: departments.length,
       sub: 'Active cost centers',
       icon: <Building2 size={22} />,
@@ -582,19 +582,20 @@ export default function MasterModule() {
       colorBg: 'bg-amber-50/70 border border-amber-100/50',
       iconBg: 'bg-amber-100 text-amber-700'
     },
-    {
+    // Vendors KPI only visible to admin and procurement-manager
+    ...(!isStockManager ? [{
       title: 'Verified Vendors',
       value: vendors.length,
       sub: 'Contracted drug suppliers',
       icon: <Truck size={22} />,
       colorBg: 'bg-sky-50/70 border border-sky-100/50',
       iconBg: 'bg-sky-100 text-sky-700'
-    }
+    }] : [])
   ];
 
   return (
     <div className="min-h-screen bg-slate-50/30 pb-16 font-sans relative overflow-hidden">
-      
+
       {/* Background Blurs for Premium Feel */}
       <div className="absolute top-0 right-0 -mr-32 -mt-32 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 -ml-32 -mb-32 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
@@ -619,7 +620,7 @@ export default function MasterModule() {
           </div>
         </div>
 
-        <button 
+        <button
           onClick={handleSync}
           disabled={syncing}
           className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-xs font-black tracking-wide uppercase transition-all flex items-center gap-2 border-0 cursor-pointer shadow-lg shadow-indigo-100"
@@ -630,7 +631,7 @@ export default function MasterModule() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 mt-8 relative z-10 space-y-6">
-        
+
         {/* KPI Dashboard Analytics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {kpis.map((kpi, idx) => (
@@ -655,26 +656,26 @@ export default function MasterModule() {
 
         {/* Master Control and Tabs Container */}
         <div className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/50 shadow-sm p-6 space-y-6">
-          
+
           {/* Tabs navigation and Search controls */}
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-            
+
             {/* Elegant Floating Tab Selector */}
             <div className="flex items-center p-1 bg-slate-100/80 rounded-2xl border border-slate-200/40 w-fit overflow-x-auto scrollbar-none max-w-full">
               {[
                 { id: 'items', label: 'Items Master', icon: <Package size={14} /> },
                 { id: 'departments', label: 'Departments', icon: <Building2 size={14} /> },
                 { id: 'uoms', label: 'Units of Measure', icon: <Scale size={14} /> },
-                { id: 'vendors', label: 'Vendors Registry', icon: <Truck size={14} /> }
+                // Vendors Registry tab only visible to admin and procurement-manager
+                ...(!isStockManager ? [{ id: 'vendors', label: 'Vendors Registry', icon: <Truck size={14} /> }] : [])
               ].map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-0 cursor-pointer shrink-0 ${
-                    activeTab === tab.id
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-0 cursor-pointer shrink-0 ${activeTab === tab.id
                       ? 'bg-white text-indigo-700 shadow-sm'
                       : 'bg-transparent text-slate-400 hover:text-slate-600'
-                  }`}
+                    }`}
                 >
                   {tab.icon}
                   {tab.label}
@@ -726,9 +727,9 @@ export default function MasterModule() {
               {/* Text Search input */}
               <div className="relative flex-1 md:max-w-xs md:flex-initial">
                 <Search className="absolute left-3 top-3 text-slate-400 stroke-[2.5]" size={15} />
-                <input 
-                  type="text" 
-                  placeholder={`Search ${activeTab}...`} 
+                <input
+                  type="text"
+                  placeholder={`Search ${activeTab}...`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 rounded-xl border border-slate-200 text-xs font-semibold placeholder-slate-400 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all focus:bg-white shadow-inner"
@@ -764,7 +765,7 @@ export default function MasterModule() {
                 animate="visible"
                 exit="exit"
               >
-                
+
                 {/* ITEMS TAB */}
                 {activeTab === 'items' && (
                   <div className="space-y-3">
@@ -832,9 +833,8 @@ export default function MasterModule() {
                                 initial="hidden"
                                 animate="visible"
                                 key={`${item.id}-${item.batch_id || 'new'}-${item.dept_stock_id || 'none'}`}
-                                className={`transition-all border-b border-slate-100 ${
-                                  selectedIds.includes(item.id) ? 'bg-indigo-50/40' : 'hover:bg-indigo-50/20'
-                                }`}
+                                className={`transition-all border-b border-slate-100 ${selectedIds.includes(item.id) ? 'bg-indigo-50/40' : 'hover:bg-indigo-50/20'
+                                  }`}
                               >
                                 <td className="py-4 px-4">
                                   <input
@@ -922,11 +922,11 @@ export default function MasterModule() {
                               );
                             }
                             return paginatedData.map((dept, idx) => (
-                              <motion.tr 
-                                variants={rowVariants} 
-                                initial="hidden" 
-                                animate="visible" 
-                                key={dept.id} 
+                              <motion.tr
+                                variants={rowVariants}
+                                initial="hidden"
+                                animate="visible"
+                                key={dept.id}
                                 className="hover:bg-indigo-50/20 transition-all border-b border-slate-100"
                               >
                                 <td className="py-4.5 px-6 text-slate-900 font-black text-[13px]">{dept.name}</td>
@@ -935,14 +935,14 @@ export default function MasterModule() {
                                 </td>
                                 <td className="py-4.5 px-6 text-right">
                                   <div className="flex justify-end gap-1.5">
-                                    <button 
-                                      onClick={() => openDeptModal(dept)} 
+                                    <button
+                                      onClick={() => openDeptModal(dept)}
                                       className="p-2 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
                                     >
                                       <Edit2 size={13} className="stroke-[2.5]" />
                                     </button>
-                                    <button 
-                                      onClick={() => confirmDelete(dept, 'department')} 
+                                    <button
+                                      onClick={() => confirmDelete(dept, 'department')}
                                       className="p-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
                                     >
                                       <Trash2 size={13} className="stroke-[2.5]" />
@@ -987,11 +987,11 @@ export default function MasterModule() {
                               );
                             }
                             return paginatedData.map((u, idx) => (
-                              <motion.tr 
-                                variants={rowVariants} 
-                                initial="hidden" 
-                                animate="visible" 
-                                key={u.id} 
+                              <motion.tr
+                                variants={rowVariants}
+                                initial="hidden"
+                                animate="visible"
+                                key={u.id}
                                 className="hover:bg-indigo-50/20 transition-all border-b border-slate-100"
                               >
                                 <td className="py-4.5 px-6 text-slate-900 font-black text-[13px]">{u.name}</td>
@@ -1006,14 +1006,14 @@ export default function MasterModule() {
                                 </td>
                                 <td className="py-4.5 px-6 text-right">
                                   <div className="flex justify-end gap-1.5">
-                                    <button 
-                                      onClick={() => openUomModal(u)} 
+                                    <button
+                                      onClick={() => openUomModal(u)}
                                       className="p-2 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
                                     >
                                       <Edit2 size={13} className="stroke-[2.5]" />
                                     </button>
-                                    <button 
-                                      onClick={() => confirmDelete(u, 'uom')} 
+                                    <button
+                                      onClick={() => confirmDelete(u, 'uom')}
                                       className="p-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
                                     >
                                       <Trash2 size={13} className="stroke-[2.5]" />
@@ -1058,11 +1058,11 @@ export default function MasterModule() {
                               );
                             }
                             return paginatedData.map((v, idx) => (
-                              <motion.tr 
-                                variants={rowVariants} 
-                                initial="hidden" 
-                                animate="visible" 
-                                key={v.id} 
+                              <motion.tr
+                                variants={rowVariants}
+                                initial="hidden"
+                                animate="visible"
+                                key={v.id}
                                 className="hover:bg-indigo-50/20 transition-all border-b border-slate-100"
                               >
                                 <td className="py-4.5 px-6 text-slate-900 font-black text-[13px]">{v.name}</td>
@@ -1081,14 +1081,14 @@ export default function MasterModule() {
                                 </td>
                                 <td className="py-4.5 px-6 text-right">
                                   <div className="flex justify-end gap-1.5">
-                                    <button 
-                                      onClick={() => openVendorModal(v)} 
+                                    <button
+                                      onClick={() => openVendorModal(v)}
                                       className="p-2 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
                                     >
                                       <Edit2 size={13} className="stroke-[2.5]" />
                                     </button>
-                                    <button 
-                                      onClick={() => confirmDelete(v, 'vendor')} 
+                                    <button
+                                      onClick={() => confirmDelete(v, 'vendor')}
                                       className="p-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-colors cursor-pointer border-0 shadow-sm"
                                     >
                                       <Trash2 size={13} className="stroke-[2.5]" />
@@ -1111,7 +1111,7 @@ export default function MasterModule() {
                       Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItemsCount)} of {totalItemsCount} entries
                     </span>
                     <div className="flex gap-2">
-                      <button 
+                      <button
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                         disabled={currentPage === 1}
                         className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 cursor-pointer shadow-sm border-0 transition-colors"
@@ -1121,7 +1121,7 @@ export default function MasterModule() {
                       <span className="text-xs font-black text-slate-700 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm border-0">
                         Page {currentPage} of {totalPages}
                       </span>
-                      <button 
+                      <button
                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                         disabled={currentPage === totalPages}
                         className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 cursor-pointer shadow-sm border-0 transition-colors"
@@ -1146,9 +1146,9 @@ export default function MasterModule() {
         <form onSubmit={handleSaveItem} className="space-y-4">
           <div>
             <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Item Name</label>
-            <input required placeholder="e.g. Paracetamol 500mg" type="text" value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+            <input required placeholder="e.g. Paracetamol 500mg" type="text" value={itemForm.name} onChange={e => setItemForm({ ...itemForm, name: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">SKU Preview <span className="text-indigo-400 normal-case font-semibold">(auto-generated)</span></label>
@@ -1159,21 +1159,21 @@ export default function MasterModule() {
             </div>
             <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
-              <select value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
+              <select value={itemForm.category} onChange={e => setItemForm({ ...itemForm, category: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
                 {categoriesList.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.label}</option>
                 ))}
               </select>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Unit of Measure (UOM)</label>
               <select
                 required
                 value={itemForm.unit_of_measure}
-                onChange={e => setItemForm({...itemForm, unit_of_measure: e.target.value})}
+                onChange={e => setItemForm({ ...itemForm, unit_of_measure: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer"
               >
                 <option value="">Select abbreviation...</option>
@@ -1187,7 +1187,7 @@ export default function MasterModule() {
             </div>
             <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Manufacturer Batch</label>
-              <input placeholder="e.g. BATCH-9941" type="text" value={itemForm.batch_number} onChange={e => setItemForm({...itemForm, batch_number: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+              <input placeholder="e.g. BATCH-9941" type="text" value={itemForm.batch_number} onChange={e => setItemForm({ ...itemForm, batch_number: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
             </div>
           </div>
 
@@ -1200,18 +1200,18 @@ export default function MasterModule() {
             </div>
             <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Purchase Date</label>
-              <input type="date" value={itemForm.purchase_time} onChange={e => setItemForm({...itemForm, purchase_time: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer shadow-inner" />
+              <input type="date" value={itemForm.purchase_time} onChange={e => setItemForm({ ...itemForm, purchase_time: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer shadow-inner" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Expiry Date</label>
-              <input type="date" value={itemForm.expiry_date} onChange={e => setItemForm({...itemForm, expiry_date: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer shadow-inner" />
+              <input type="date" value={itemForm.expiry_date} onChange={e => setItemForm({ ...itemForm, expiry_date: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer shadow-inner" />
             </div>
             <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Department Location</label>
-              <select value={itemForm.department_id} onChange={e => setItemForm({...itemForm, department_id: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
+              <select value={itemForm.department_id} onChange={e => setItemForm({ ...itemForm, department_id: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
                 <option value="">- Central Store Hub (Global) -</option>
                 {departments.map(dept => (
                   <option key={dept.id} value={dept.id}>{dept.name}</option>
@@ -1257,10 +1257,10 @@ export default function MasterModule() {
             <button type="button" onClick={() => setItemModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>
             <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-100 border-0">
               {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-              {editingRecord 
-                ? 'Update Catalog Item' 
-                : pendingItems.length > 0 
-                  ? `Save All (${pendingItems.length + (itemForm.name.trim() ? 1 : 0)} items)` 
+              {editingRecord
+                ? 'Update Catalog Item'
+                : pendingItems.length > 0
+                  ? `Save All (${pendingItems.length + (itemForm.name.trim() ? 1 : 0)} items)`
                   : 'Add Item'}
             </button>
           </div>
@@ -1272,7 +1272,7 @@ export default function MasterModule() {
         <form onSubmit={handleSaveDept} className="space-y-4">
           <div>
             <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Department Name</label>
-            <input required placeholder="e.g. Pharmacy Ward, Dental Clinic" type="text" value={deptForm.name} onChange={e => setDeptForm({...deptForm, name: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+            <input required placeholder="e.g. Pharmacy Ward, Dental Clinic" type="text" value={deptForm.name} onChange={e => setDeptForm({ ...deptForm, name: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
             <button type="button" onClick={() => setDeptModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>
@@ -1288,15 +1288,15 @@ export default function MasterModule() {
         <form onSubmit={handleSaveUom} className="space-y-4">
           <div>
             <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Unit Name</label>
-            <input required type="text" value={uomForm.name} onChange={e => setUomForm({...uomForm, name: e.target.value})} placeholder="e.g. Box, Vial, Ampoule" className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+            <input required type="text" value={uomForm.name} onChange={e => setUomForm({ ...uomForm, name: e.target.value })} placeholder="e.g. Box, Vial, Ampoule" className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div>
             <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Abbreviation / Symbol</label>
-            <input required type="text" value={uomForm.abbreviation} onChange={e => setUomForm({...uomForm, abbreviation: e.target.value})} placeholder="e.g. bx, vl, amp" className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+            <input required type="text" value={uomForm.abbreviation} onChange={e => setUomForm({ ...uomForm, abbreviation: e.target.value })} placeholder="e.g. bx, vl, amp" className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div>
             <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Description Context</label>
-            <textarea value={uomForm.description} onChange={e => setUomForm({...uomForm, description: e.target.value})} placeholder="Describe typical quantities or dimensions of this measurement unit..." className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 min-h-[90px] shadow-inner"></textarea>
+            <textarea value={uomForm.description} onChange={e => setUomForm({ ...uomForm, description: e.target.value })} placeholder="Describe typical quantities or dimensions of this measurement unit..." className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 min-h-[90px] shadow-inner"></textarea>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
             <button type="button" onClick={() => setUomModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>
@@ -1312,15 +1312,15 @@ export default function MasterModule() {
         <form onSubmit={handleSaveVendor} className="space-y-4">
           <div>
             <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Vendor Company Name</label>
-            <input required placeholder="e.g. Rwanda Pharma Ltd" type="text" value={vendorForm.name} onChange={e => setVendorForm({...vendorForm, name: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+            <input required placeholder="e.g. Rwanda Pharma Ltd" type="text" value={vendorForm.name} onChange={e => setVendorForm({ ...vendorForm, name: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div>
             <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Contact Detail (Email / Tel)</label>
-            <input placeholder="e.g. orders@rwandapharma.rw or +250..." type="text" value={vendorForm.contact} onChange={e => setVendorForm({...vendorForm, contact: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+            <input placeholder="e.g. orders@rwandapharma.rw or +250..." type="text" value={vendorForm.contact} onChange={e => setVendorForm({ ...vendorForm, contact: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div>
             <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Payment / Contract Terms</label>
-            <input type="text" value={vendorForm.contractTerms} onChange={e => setVendorForm({...vendorForm, contractTerms: e.target.value})} placeholder="e.g. Net 30, COD, Net 60" className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+            <input type="text" value={vendorForm.contractTerms} onChange={e => setVendorForm({ ...vendorForm, contractTerms: e.target.value })} placeholder="e.g. Net 30, COD, Net 60" className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
             <button type="button" onClick={() => setVendorModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>

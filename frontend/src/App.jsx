@@ -46,6 +46,8 @@ import DailyOperationalReportBoard from './pages/DailyOperationalReportBoard';
 import CentralStoreHub from './pages/CentralStoreHub';
 import MasterModule from './pages/MasterModule';
 import SupplierPortalPublic from './pages/SupplierPortalPublic';
+import ProcurementHub from './pages/ProcurementHub';
+import SupplierPortalManager from './pages/SupplierPortalManager';
 
 const ShiftDashboardRedirect = () => {
   const { user } = useAuth();
@@ -75,14 +77,14 @@ function App() {
             <Route path="/infection-control" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'reviewer', 'deputy_coo']}><InfectionControlTracker /></ProtectedRoute>} />
             <Route path="/revenue-tracker" element={<ProtectedRoute allowedRoles={['sales_manager', 'chairman', 'admin', 'principal_cashier', 'deputy_coo']}><RevenueLeakageTracker /></ProtectedRoute>} />
             <Route path="/compliance" element={<ProtectedRoute allowedRoles={['admin', 'hsfp', 'reviewer']}><CompliancePortal /></ProtectedRoute>} />
-            <Route path="/it-ticketing" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><ITAssetTicketing /></ProtectedRoute>} />
+            <Route path="/it-ticketing" element={<ITAssetTicketing />} />
             <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'reviewer']}><AIInsights /></ProtectedRoute>} />
             
             <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><CancellationList /></ProtectedRoute>} />
             
             <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><RefundList /></ProtectedRoute>} />
             
-            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo', 'medical_director']}><IncidentList /></ProtectedRoute>} />
+            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'reviewer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo', 'medical_director', 'procurement-manager']}><IncidentList /></ProtectedRoute>} />
 
             
             <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', 'reviewer']}><ResultTransferList /></ProtectedRoute>} />
@@ -98,6 +100,8 @@ function App() {
             <Route path="/feedbacks" element={<ProtectedRoute allowedRoles={['coo', 'deputy_coo', 'chef-nurse', 'medical_director']}><FeedbackList /></ProtectedRoute>} />
             <Route path="/central-store" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'chef-nurse', 'nurse', 'stock-manager']}><CentralStoreHub /></ProtectedRoute>} />
             <Route path="/master" element={<ProtectedRoute allowedRoles={['admin', 'stock-manager']}><MasterModule /></ProtectedRoute>} />
+            <Route path="/procurement" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'procurement-manager']}><ProcurementHub /></ProtectedRoute>} />
+            <Route path="/supplier-portal-manager" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'procurement-manager']}><SupplierPortalManager /></ProtectedRoute>} />
 
             <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'medical_director']}><ClinicalSheet /></ProtectedRoute>} />
             <Route path="/clinical-sheet/:patientId" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'medical_director']}><ClinicalSheet /></ProtectedRoute>} />

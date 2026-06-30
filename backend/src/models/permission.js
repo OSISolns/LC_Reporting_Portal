@@ -87,12 +87,21 @@ class Permission {
 
   /**
    * Bulk update role permissions (whole role matrix).
+   * Unknown/stale modules (e.g. ones removed from config but still in DB) are
+   * silently skipped so they can never block a save operation.
    */
   static async updateRolePermissions(roleName, permissions, updatedBy) {
     const batch = [];
     for (const [module, actions] of Object.entries(permissions)) {
+      // Skip modules that are no longer in the system config
+      const mod = MODULES.find(m => m.name === module);
+      if (!mod) {
+        console.warn(`[Permissions] Skipping unknown module "${module}" for role "${roleName}" — not in system config.`);
+        continue;
+      }
       for (const [action, granted] of Object.entries(actions)) {
-        this.validate(module, action);
+        // Skip actions not supported by this module
+        if (!mod.actions.includes(action)) continue;
         batch.push({
           sql: `INSERT INTO role_permissions (role_name, module, action, granted, updated_by, updated_at)
                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -102,8 +111,8 @@ class Permission {
         });
       }
     }
-    await db.batch(batch);
-    this.clearCache(); // Global clear
+    if (batch.length > 0) await db.batch(batch);
+    this.clearCache();
   }
 
   /**

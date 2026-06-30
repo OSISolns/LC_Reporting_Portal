@@ -58,9 +58,9 @@ const CompliancePortal = () => {
     setError(null);
     try {
       const [licRes, certRes, auditRes] = await Promise.all([
-        api.get('/api/compliance/licenses'),
-        api.get('/api/compliance/facility-certs'),
-        api.get('/api/compliance/audits')
+        api.get('/compliance/licenses'),
+        api.get('/compliance/facility-certs'),
+        api.get('/compliance/audits')
       ]);
       setLicenses(licRes.data.data || []);
       setCerts(certRes.data.data || []);
@@ -83,13 +83,13 @@ const CompliancePortal = () => {
     try {
       if (editingLicense) {
         // Update
-        const res = await api.put(`/api/compliance/licenses/${editingLicense.id}`, licenseForm);
+        const res = await api.put(`/compliance/licenses/${editingLicense.id}`, licenseForm);
         if (res.data.success) {
           setLicenses(licenses.map(l => l.id === editingLicense.id ? res.data.data : l));
         }
       } else {
         // Create
-        const res = await api.post('/api/compliance/licenses', licenseForm);
+        const res = await api.post('/compliance/licenses', licenseForm);
         if (res.data.success) {
           setLicenses([...licenses, res.data.data]);
         }
@@ -118,7 +118,7 @@ const CompliancePortal = () => {
   const handleDeleteLicense = async (id) => {
     if (!window.confirm('Are you sure you want to delete this license record?')) return;
     try {
-      const res = await api.delete(`/api/compliance/licenses/${id}`);
+      const res = await api.delete(`/compliance/licenses/${id}`);
       if (res.data.success) {
         setLicenses(licenses.filter(l => l.id !== id));
       }
@@ -134,13 +134,13 @@ const CompliancePortal = () => {
     try {
       if (editingCert) {
         // Update
-        const res = await api.put(`/api/compliance/facility-certs/${editingCert.id}`, certForm);
+        const res = await api.put(`/compliance/facility-certs/${editingCert.id}`, certForm);
         if (res.data.success) {
           setCerts(certs.map(c => c.id === editingCert.id ? res.data.data : c));
         }
       } else {
         // Create
-        const res = await api.post('/api/compliance/facility-certs', certForm);
+        const res = await api.post('/compliance/facility-certs', certForm);
         if (res.data.success) {
           setCerts([...certs, res.data.data]);
         }
@@ -168,7 +168,7 @@ const CompliancePortal = () => {
   const handleDeleteCert = async (id) => {
     if (!window.confirm('Are you sure you want to delete this facility certification?')) return;
     try {
-      const res = await api.delete(`/api/compliance/facility-certs/${id}`);
+      const res = await api.delete(`/compliance/facility-certs/${id}`);
       if (res.data.success) {
         setCerts(certs.filter(c => c.id !== id));
       }
@@ -182,7 +182,7 @@ const CompliancePortal = () => {
     const newExpiry = window.prompt('Enter new expiry date (YYYY-MM-DD):', cert.expiry_date);
     if (!newExpiry) return;
     try {
-      const res = await api.put(`/api/compliance/facility-certs/${cert.id}`, {
+      const res = await api.put(`/compliance/facility-certs/${cert.id}`, {
         ...cert,
         expiry_date: newExpiry,
         status: 'Valid'
@@ -201,7 +201,7 @@ const CompliancePortal = () => {
     e.preventDefault();
     if (!editingAudit) return;
     try {
-      const res = await api.put(`/api/compliance/audits/${editingAudit.id}`, auditForm);
+      const res = await api.put(`/compliance/audits/${editingAudit.id}`, auditForm);
       if (res.data.success) {
         setAudits(audits.map(a => a.id === editingAudit.id ? res.data.data : a));
         setShowAuditModal(false);
