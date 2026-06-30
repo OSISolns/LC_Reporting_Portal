@@ -22,7 +22,8 @@ import {
   Copy,
   Check,
   KeyRound,
-  RefreshCw
+  RefreshCw,
+  Plus
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
@@ -740,6 +741,17 @@ export default function DailyInventoryCheckup() {
           const paddedMonth = String(month).padStart(2, '0');
           cleanVal = `${paddedDay}/${paddedMonth}/${year}`;
         }
+      }
+    }
+
+    if (field === 'consumed') {
+      const cellData = getCellForMonth(monthYear, itemName, targetDay, targetSession);
+      const otherConsumed = selectedWard === 'STN1' ? (cellData.consumed_minor || 0) : (cellData.consumed_obs1 || 0);
+      const newTotal = cleanVal + otherConsumed;
+      
+      if (newTotal > cellData.stock_in_hands) {
+        toast.error(`Cannot consume more than available stock (${cellData.stock_in_hands})!`, { duration: 4000 });
+        return;
       }
     }
 

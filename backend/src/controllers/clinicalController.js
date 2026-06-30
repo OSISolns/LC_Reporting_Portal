@@ -984,10 +984,46 @@ exports.saveInventoryBulk = async (req, res) => {
 
       const itemNames = Object.keys(latestBalancesMap);
       if (itemNames.length > 0) {
-        const placeholders = itemNames.map((_, idx) => `$${idx + 1}`).join(', ');
+        const nameMapping = {
+          'EXAMINATION GLOVES': 'Examination Gloves',
+          'ADRENALINE': 'Adrenaline inj',
+          'ADRENALINE 1ML': 'Adrenaline inj',
+          'ADRENALINE INJ': 'Adrenaline inj',
+          'APRON': 'Apron',
+          'AQUABLOCK PLASTER 15*10': 'Aquablock plaster 15*10',
+          'AQUABLOC 15CM': 'Aquablock plaster 15*10',
+          'PLASTER': 'Sparadra 18*5M',
+          'SPARADRA': 'Sparadra 18*5M',
+          'ATROPINE 1MG': 'Atropine inj 1gr',
+          'ATROPINE INJ/1MG': 'Atropine inj 1gr',
+          'ATROPINE INJ 1GR': 'Atropine inj 1gr',
+          'ACCU-CHECK STRIPS': 'Accu-check strips',
+          'ACCU-CHECK': 'Accu-check strips',
+          'BUSCOPAN': 'Buscopam inj 20mg',
+          'BUSCOPAN 20MG': 'Buscopam inj 20mg',
+          'CEFTRIAXONE 1G': 'Cefotriaxone inj 1g',
+          'CEFOTRIAXONE INJ 1G': 'Cefotriaxone inj 1g',
+          'GLUCOSE 5%': 'Dextrose5%',
+          'DEXTROSE 5%': 'Dextrose5%',
+          'DEXTROSE 50%': 'Dextrose D50%',
+          'DEXAMETHASONE': 'Dexamethasone inj 4mg',
+          'DEXAMETHASONE 4MG': 'Dexamethasone inj 4mg',
+          'DEXAMETHASONE 8MG': 'Dexamethasone inj 4mg',
+          'DIAZEPAM 10MG': 'Diazepam inj 10mg',
+          'DIAZEPAM INJ 10MG': 'Diazepam inj 10mg',
+          'DICYNONE 250MG': 'Dycinone inj',
+          'DYCINONE INJ': 'Dycinone inj'
+        };
+
+        const searchNames = Array.from(new Set(itemNames.map(name => {
+          const upper = name.toUpperCase();
+          return (nameMapping[upper] || name).toUpperCase();
+        })));
+
+        const placeholders = searchNames.map((_, idx) => `$${idx + 1}`).join(', ');
         const { rows: matchedItems } = await db.query(
           `SELECT id, name FROM master_inventory WHERE UPPER(name) IN (${placeholders})`,
-          itemNames.map(n => n.toUpperCase())
+          searchNames
         );
         
         const itemMap = {};
@@ -996,7 +1032,8 @@ exports.saveInventoryBulk = async (req, res) => {
         });
 
         for (const name of itemNames) {
-          const itemId = itemMap[name.toUpperCase()];
+          const mappedName = nameMapping[name.toUpperCase()] || name;
+          const itemId = itemMap[mappedName.toUpperCase()];
           if (!itemId) continue;
 
           const newQty = latestBalancesMap[name].balance;
@@ -1295,8 +1332,8 @@ exports.exportInventoryExcel = async (req, res) => {
       return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
     };
 
-    const { rows: masterItems } = await db.query("SELECT name FROM master_inventory ORDER BY name ASC");
-    const itemsToExport = masterItems.length > 0 ? masterItems.map(r => r.name) : INVENTORY_ITEMS;
+    const uniqueItems = Array.from(new Set(rows.map(r => r.item_name))).sort();
+    const itemsToExport = uniqueItems.length > 0 ? uniqueItems : INVENTORY_ITEMS;
 
     monthList.forEach((my) => {
       const sheetName = getMonthLabel(my) || my;
@@ -1495,13 +1532,13 @@ exports.exportInventoryExcel = async (req, res) => {
           const pmData = dayData.PM || {};
 
           // AM Values
-          const amStock = amData.stock_in_hands !== undefined ? amData.stock_in_hands : '';
-          const amConsumed = amData.consumed !== undefined ? amData.consumed : '';
+          const amStock = amData.stock_in_hands !== undefined && amData.stock_in_hands !== '' ? Number(amData.stock_in_hands) : null;
+          const amConsumed = amData.consumed !== undefined && amData.consumed !== '' ? Number(amData.consumed) : null;
           const amNurse = amData.responsible_name || '';
 
           // PM Values
-          const pmStock = pmData.stock_in_hands !== undefined ? pmData.stock_in_hands : '';
-          const pmConsumed = pmData.consumed !== undefined ? pmData.consumed : '';
+          const pmStock = pmData.stock_in_hands !== undefined && pmData.stock_in_hands !== '' ? Number(pmData.stock_in_hands) : null;
+          const pmConsumed = pmData.consumed !== undefined && pmData.consumed !== '' ? Number(pmData.consumed) : null;
           const pmNurse = pmData.responsible_name || '';
 
           // AM Stock logic:
@@ -1515,22 +1552,22 @@ exports.exportInventoryExcel = async (req, res) => {
 
               row.getCell(startColIdx).value = {
                 formula: `'${prevSheetName}'!${prevPmBalColLetter}${rowIndex}`,
-                result: amStock !== '' ? Number(amStock) : 0
+                result: amStock !== null ? amStock : 0
               };
             } else {
-              row.getCell(startColIdx).value = amStock !== '' ? Number(amStock) : '';
+              row.getCell(startColIdx).value = amStock !== null ? amStock : null;
             }
           } else {
             // Intra-sheet linkage to previous day's PM Balance (colLetter(startColIdx - 3))
             const prevPmBalRef = `${colLetter(startColIdx - 3)}${rowIndex}`;
             row.getCell(startColIdx).value = {
               formula: prevPmBalRef,
-              result: amStock !== '' ? Number(amStock) : 0
+              result: amStock !== null ? amStock : 0
             };
           }
 
           // AM Consumed
-          row.getCell(startColIdx + 1).value = amConsumed !== '' ? Number(amConsumed) : '';
+          row.getCell(startColIdx + 1).value = amConsumed !== null ? amConsumed : null;
 
           // AM Balance Formula (Stock - Consumed)
           const stockAmRef = `${colLetter(startColIdx)}${rowIndex}`;
@@ -1543,11 +1580,11 @@ exports.exportInventoryExcel = async (req, res) => {
           const amBalRef = `${colLetter(startColIdx + 2)}${rowIndex}`;
           row.getCell(startColIdx + 4).value = {
             formula: amBalRef,
-            result: pmStock !== '' ? Number(pmStock) : 0
+            result: pmStock !== null ? pmStock : 0
           };
 
           // PM Consumed
-          row.getCell(startColIdx + 5).value = pmConsumed !== '' ? Number(pmConsumed) : '';
+          row.getCell(startColIdx + 5).value = pmConsumed !== null ? pmConsumed : null;
 
           // PM Balance Formula (Stock - Consumed)
           const stockPmRef = `${colLetter(startColIdx + 4)}${rowIndex}`;
@@ -1591,8 +1628,6 @@ exports.exportInventoryExcel = async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename="Clinical_Stock_Ledger.xlsx"');
 
     await workbook.xlsx.write(res);
-    res.end();
-
   } catch (error) {
     console.error('Error in exportInventoryExcel:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -1626,7 +1661,7 @@ exports.getmasterInventory = async (req, res) => {
         sb.vendor_id as vendor_id
       FROM master_inventory mi
       LEFT JOIN stock_batches sb ON mi.id = sb.item_id
-      LEFT JOIN department_stock ds ON sb.id = ds.batch_id
+      LEFT JOIN department_stock ds ON ds.item_id = mi.id AND (ds.batch_id = sb.id OR (ds.batch_id IS NULL AND sb.id IS NULL))
       LEFT JOIN departments d ON ds.department_id = d.id
       LEFT JOIN vendors v ON sb.vendor_id = v.id
       ORDER BY mi.id DESC
