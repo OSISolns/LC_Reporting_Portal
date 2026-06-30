@@ -359,7 +359,16 @@ export default function CentralStoreHub() {
   // Filtered lists
   const filteredStock = useMemo(() => {
     return stockItems.filter(item => {
-      const matchDept = activeDept === 'All Departments' || item.department === activeDept;
+      // Segment based on activeTab
+      if (activeTab === 'stock_in_hand') {
+        // Stock in hand is stock currently in Central Store (no department assigned)
+        if (item.department_id) return false;
+      } else if (activeTab === 'distributed_stock') {
+        // Distributed stock is stock assigned to a department
+        if (!item.department_id) return false;
+      }
+
+      const matchDept = activeTab === 'stock_in_hand' || activeDept === 'All Departments' || item.department === activeDept;
       const matchCategory = stockCategoryFilter === 'All' || item.category === stockCategoryFilter;
       
       let matchStatus = true;
@@ -383,7 +392,7 @@ export default function CentralStoreHub() {
 
       return matchDept && matchCategory && matchStatus && matchSearch;
     });
-  }, [stockItems, activeDept, stockCategoryFilter, stockStatusFilter, searchTerm]);
+  }, [stockItems, activeTab, activeDept, stockCategoryFilter, stockStatusFilter, searchTerm]);
 
   const filteredVendors = useMemo(() => {
     return vendors.filter(v =>
@@ -543,7 +552,8 @@ export default function CentralStoreHub() {
 
   // ── tabs config ───────────────────────────────────────────────────────────
   const tabs = [
-    { id: 'stock_in_hand', label: 'Stock In Hand',        icon: <Package size={13} />,        badge: stockItems.length },
+    { id: 'stock_in_hand', label: 'Stock In Hand',        icon: <Package size={13} />,        badge: stockItems.filter(i => !i.department_id).length },
+    { id: 'distributed_stock', label: 'Distributed Stock', icon: <ArrowRightLeft size={13} />, badge: stockItems.filter(i => i.department_id).length },
     ...(user?.role !== 'stock-manager' ? [{ id: 'vendors',       label: 'Vendors',              icon: <Truck size={13} />,           badge: vendors.length }] : []),
     { id: 'requisitions',  label: 'Requisitions',         icon: <ArrowRightLeft size={13} />,  badge: pendingReqs || null },
     { id: 'expiring',      label: 'Expiring Items',       icon: <Calendar size={13} />,        badge: expiringItems.length || null },
@@ -718,9 +728,137 @@ export default function CentralStoreHub() {
               <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-2xl">
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-5 pb-4 border-b border-slate-100">
                   <div>
-                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5"><Package size={16} className="text-sky-700" /> Stock In Hand Per Department</h3>
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5"><Package size={16} className="text-sky-700" /> Stock In Hand (Central Store)</h3>
                     <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">
-                      Showing {filteredStock.length} of {stockItems.length} items
+                      Showing {filteredStock.length} of {stockItems.filter(i => !i.department_id).length} items
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 items-center w-full xl:w-auto">
+                    {/* Category Dropdown */}
+                    <div className="flex items-center gap-2">
+                      <Filter size={13} className="text-slate-400" />
+                      <select
+                        value={stockCategoryFilter}
+                        onChange={e => setStockCategoryFilter(e.target.value)}
+                        className="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none cursor-pointer"
+                      >
+                        <option value="All">All Categories</option>
+                        {stockCategories.filter(c => c !== 'All').map((cat, i) => (
+                          <option key={i} value={cat}>{cat.replace(/_/g, ' ')}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Stock Status Dropdown */}
+                    <select
+                      value={stockStatusFilter}
+                      onChange={e => setStockStatusFilter(e.target.value)}
+                      className="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none cursor-pointer"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="Normal">Normal (&ge; 20)</option>
+                      <option value="Low Stock">Low Stock (&lt; 20)</option>
+                      <option value="Expiring Soon">Expiring (&le; 90 days)</option>
+                      <option value="Expired">Expired</option>
+                      <option value="Out of Stock">Out of Stock</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-500 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
+                        <th className="py-3.5 px-4 rounded-l-xl">Item Name</th>
+                        <th className="py-3.5 px-4">SKU</th>
+                        <th className="py-3.5 px-4">Batch</th>
+                        <th className="py-3.5 px-4">UoM</th>
+                        <th className="py-3.5 px-4">Expiry</th>
+                        <th className="py-3.5 px-4">Purchase Date</th>
+                        <th className="py-3.5 px-4">Vendor</th>
+                        <th className="py-3.5 px-4">Category</th>
+                        <th className="py-3.5 px-4 text-center">Qty</th>
+                        <th className="py-3.5 px-4 text-right">Unit Price</th>
+                        {canRectify ? (
+                          <>
+                            <th className="py-3.5 px-4 text-right">Tot Price</th>
+                            <th className="py-3.5 px-4 text-center rounded-r-xl">Actions</th>
+                          </>
+                        ) : (
+                          <th className="py-3.5 px-4 text-right rounded-r-xl">Tot Price</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                      {filteredStock.length === 0
+                        ? <EmptyRow cols={canRectify ? 12 : 11} message="No stock items found." />
+                        : filteredStock.map((item, idx) => {
+                            const expStatus = getExpiryStatus(item.expiry_date);
+                            const isLow = item.quantity > 0 && item.quantity < 20;
+                            const isOut = item.quantity === 0;
+                            return (
+                              <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="py-3 px-4 text-slate-900 font-black text-[13px] max-w-[200px] truncate">{item.name}</td>
+                                <td className="py-3 px-4 font-mono text-slate-450 text-[11px]">{item.sku || '—'}</td>
+                                <td className="py-3 px-4 font-mono text-sky-700 text-[11px]">{item.batch_number || '—'}</td>
+                                <td className="py-3 px-4 text-slate-600">{item.unit_of_measure || '—'}</td>
+                                <td className="py-3 px-4">
+                                  {expStatus
+                                    ? <Badge className={`font-black uppercase tracking-wider text-[9px] ${expStatus.cls}`}>{item.expiry_date ? fmt(item.expiry_date) : 'N/A'}</Badge>
+                                    : <span className="text-slate-400">—</span>
+                                  }
+                                </td>
+                                <td className="py-3 px-4 text-slate-500 font-normal">{fmt(item.purchase_time)}</td>
+                                <td className="py-3 px-4 text-slate-600 font-semibold">{item.vendor || '—'}</td>
+                                <td className="py-3 px-4 capitalize text-slate-500 font-normal">{item.category?.replace(/_/g, ' ') || '—'}</td>
+                                <td className="py-3 px-4 text-center">
+                                  <span className={`text-[13px] font-black px-2 py-0.5 rounded-lg ${
+                                    isOut ? 'bg-red-50 text-red-655 border border-red-100' :
+                                    isLow ? 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse' :
+                                    'text-slate-900'
+                                  }`}>{fmtNum(item.quantity)}</span>
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono text-slate-550 font-bold">{fmtNum(item.price)} RWF</td>
+                                <td className="py-3 px-4 text-right font-mono text-slate-800 font-black">{fmtNum(item.quantity * item.price)} RWF</td>
+                                {canRectify && (
+                                  <td className="py-3 px-4 text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button 
+                                        onClick={() => openRectifyModal(item)}
+                                        className="p-1.5 text-slate-400 hover:text-sky-700 bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-200 rounded-lg transition-colors cursor-pointer shadow-xs"
+                                        title="Rectify stock balance & price"
+                                      >
+                                        <Edit2 size={13} className="stroke-[2.5]" />
+                                      </button>
+                                      <button 
+                                        onClick={() => openReturnModal(item)}
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition-colors cursor-pointer shadow-xs"
+                                        title="Return to Supplier"
+                                      >
+                                        <CornerUpLeft size={13} className="stroke-[2.5]" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
+            {/* ══ TAB 1.5: DISTRIBUTED STOCK ══ */}
+            {activeTab === 'distributed_stock' && (
+              <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-2xl">
+                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-5 pb-4 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5"><ArrowRightLeft size={16} className="text-sky-700" /> Distributed Stock Per Department</h3>
+                    <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">
+                      Showing {filteredStock.length} of {stockItems.filter(i => i.department_id).length} items
                     </p>
                   </div>
 

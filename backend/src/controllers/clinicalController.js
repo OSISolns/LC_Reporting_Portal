@@ -944,6 +944,100 @@ exports.saveInventoryBulk = async (req, res) => {
     });
 
     await db.batch([...statements, ...logsToInsert]);
+
+    // ─── Sync closing balance back to department_stock for NURSING ───────────
+    try {
+      const latestBalancesMap = {};
+      items.forEach(item => {
+        const name = item.item_name;
+        if (!name) return;
+        const day = parseInt(item.day, 10) || 1;
+        const session = item.session || '';
+        
+        const newStock = parseInt(item.stock_in_hands, 10) || 0;
+        const newObs1 = parseInt(item.consumed_obs1, 10) || 0;
+        const newMinor = parseInt(item.consumed_minor, 10) || 0;
+        const newConsumed = newObs1 + newMinor;
+        const newBalance = newStock - newConsumed;
+
+        const currentEntry = latestBalancesMap[name];
+        const sessionPriority = (s) => {
+          const lower = String(s).toLowerCase();
+          if (lower.includes('night') || lower.includes('evening')) return 2;
+          if (lower.includes('afternoon')) return 1.5;
+          return 1;
+        };
+
+        if (!currentEntry || 
+            day > currentEntry.day || 
+            (day === currentEntry.day && sessionPriority(session) > sessionPriority(currentEntry.session))) {
+          latestBalancesMap[name] = {
+            day,
+            session,
+            balance: newBalance
+          };
+        }
+      });
+
+      const { rows: deptRows } = await db.query("SELECT id FROM departments WHERE UPPER(name) = 'NURSING' LIMIT 1");
+      const deptId = deptRows[0]?.id || 121;
+
+      const itemNames = Object.keys(latestBalancesMap);
+      if (itemNames.length > 0) {
+        const placeholders = itemNames.map((_, idx) => `$${idx + 1}`).join(', ');
+        const { rows: matchedItems } = await db.query(
+          `SELECT id, name FROM master_inventory WHERE UPPER(name) IN (${placeholders})`,
+          itemNames.map(n => n.toUpperCase())
+        );
+        
+        const itemMap = {};
+        matchedItems.forEach(mi => {
+          itemMap[mi.name.toUpperCase()] = mi.id;
+        });
+
+        for (const name of itemNames) {
+          const itemId = itemMap[name.toUpperCase()];
+          if (!itemId) continue;
+
+          const newQty = latestBalancesMap[name].balance;
+
+          const { rows: existingDeptStock } = await db.query(
+            "SELECT id FROM department_stock WHERE department_id = $1 AND item_id = $2 ORDER BY id DESC",
+            [deptId, itemId]
+          );
+
+          if (existingDeptStock.length > 0) {
+            await db.query(
+              "UPDATE department_stock SET quantity = $1 WHERE id = $2",
+              [newQty, existingDeptStock[0].id]
+            );
+            if (existingDeptStock.length > 1) {
+              const extraIds = existingDeptStock.slice(1).map(r => r.id);
+              const extraPlaceholders = extraIds.map((_, idx) => `$${idx + 1}`).join(', ');
+              await db.query(
+                `UPDATE department_stock SET quantity = 0 WHERE id IN (${extraPlaceholders})`,
+                extraIds
+              );
+            }
+          } else {
+            const { rows: batchRows } = await db.query(
+              "SELECT id FROM stock_batches WHERE item_id = $1 ORDER BY id DESC LIMIT 1",
+              [itemId]
+            );
+            const batchId = batchRows[0]?.id || null;
+
+            await db.query(
+              "INSERT INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
+              [deptId, itemId, batchId, newQty]
+            );
+          }
+        }
+        console.log(`✅ Synced daily checkup quantities for ${itemNames.length} items to department_stock NURSING.`);
+      }
+    } catch (syncErr) {
+      console.error('❌ Failed to sync daily checkup back to department_stock:', syncErr);
+    }
+
     res.json({ success: true, message: 'Inventory saved and audit logs created successfully' });
   } catch (error) {
     console.error('Error in saveInventoryBulk:', error);
@@ -1544,21 +1638,14 @@ exports.getmasterInventory = async (req, res) => {
   }
 };
 
-// Helper to auto-generate a human-readable SKU from an item name.
-// Format: first 3 chars of word 1 + "-" + first 3 chars of word 2 (if exists).
-// Examples: "Ceftriaxone 1g" → CEF-1G  |  "Black Pens" → BLA-PEN  |  "Paracetamol" → PARACE
 const generateSkuPrefix = exports.generateSkuPrefix = (name) => {
-  const clean = (name || 'ITEM').toUpperCase().trim().replace(/[^A-Z0-9\s]/g, '');
-  const words = clean.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return 'ITEM';
-  if (words.length === 1) {
-    // Single word: take up to first 6 chars
-    return words[0].substring(0, 6) || 'ITEM';
-  }
-  // Multi-word: take up to 3 chars from first word + dash + up to 3 chars from second word
-  const part1 = words[0].substring(0, 3);
-  const part2 = words[1].substring(0, 3);
-  return `${part1}-${part2}`;
+  let clean = (name || 'ITEM').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Strip leading "LC"
+  clean = clean.replace(/^LC/i, '');
+  if (!clean) clean = 'ITEM';
+  const prefix = clean.substring(0, 4).padEnd(4, 'X');
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `${prefix}${rand}`;
 };
 
 
