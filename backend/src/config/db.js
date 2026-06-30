@@ -1510,13 +1510,107 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         item_id INTEGER REFERENCES master_inventory(id) ON DELETE CASCADE,
         vendor_id INTEGER REFERENCES vendors(id) ON DELETE SET NULL,
-        batch_number TEXT UNIQUE,
+        batch_number TEXT,
         expiry_date TEXT,
         purchase_price REAL,
         quantity INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+      // Check and migrate stock_batches UNIQUE constraint if present
+      try {
+        const { rows: sbSchema } = await client.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='stock_batches'");
+        const needsUniqueRemoval = sbSchema.length > 0 && sbSchema[0].sql.includes('batch_number TEXT UNIQUE');
+
+        const { rows: dsSchema } = await client.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='department_stock'");
+        const dsReferencesOld = dsSchema.length > 0 && dsSchema[0].sql.includes('stock_batches_old');
+
+        const { rows: sriSchema } = await client.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='supplier_return_items'");
+        const sriReferencesOld = sriSchema.length > 0 && sriSchema[0].sql.includes('stock_batches_old');
+
+        if (needsUniqueRemoval || dsReferencesOld || sriReferencesOld) {
+          console.log('⚙️ Migrating stock system tables to clean up constraints and foreign keys...');
+
+          if (needsUniqueRemoval) {
+            // 1. Rename table
+            await client.execute("ALTER TABLE stock_batches RENAME TO stock_batches_old");
+            // 2. Create new table without UNIQUE
+            await client.execute(`
+              CREATE TABLE stock_batches (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_id INTEGER REFERENCES master_inventory(id) ON DELETE CASCADE,
+                vendor_id INTEGER REFERENCES vendors(id) ON DELETE SET NULL,
+                batch_number TEXT,
+                expiry_date TEXT,
+                purchase_price REAL,
+                quantity INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                lot_number TEXT
+              )
+            `);
+            // 3. Copy data
+            await client.execute(`
+              INSERT INTO stock_batches (id, item_id, vendor_id, batch_number, expiry_date, purchase_price, quantity, created_at, lot_number)
+              SELECT id, item_id, vendor_id, batch_number, expiry_date, purchase_price, quantity, created_at, lot_number FROM stock_batches_old
+            `);
+          }
+
+          // Recreate department_stock if it references stock_batches_old OR if we just renamed stock_batches
+          if (dsReferencesOld || needsUniqueRemoval) {
+            console.log('⚙️ Recreating department_stock to point to new stock_batches...');
+            await client.execute("ALTER TABLE department_stock RENAME TO department_stock_old");
+            await client.execute(`
+              CREATE TABLE department_stock (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE,
+                item_id INTEGER REFERENCES master_inventory(id) ON DELETE CASCADE,
+                batch_id INTEGER REFERENCES stock_batches(id) ON DELETE SET NULL,
+                quantity INTEGER DEFAULT 0,
+                min_stock_level INTEGER DEFAULT 10,
+                UNIQUE(department_id, item_id, batch_id)
+              )
+            `);
+            await client.execute(`
+              INSERT INTO department_stock (id, department_id, item_id, batch_id, quantity, min_stock_level)
+              SELECT id, department_id, item_id, batch_id, quantity, min_stock_level FROM department_stock_old
+            `);
+            await client.execute("DROP TABLE department_stock_old");
+          }
+
+          // Recreate supplier_return_items if it references stock_batches_old OR if we just renamed stock_batches
+          if (sriReferencesOld || needsUniqueRemoval) {
+            console.log('⚙️ Recreating supplier_return_items to point to new stock_batches...');
+            await client.execute("ALTER TABLE supplier_return_items RENAME TO supplier_return_items_old");
+            await client.execute(`
+              CREATE TABLE supplier_return_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                return_id INTEGER NOT NULL REFERENCES supplier_returns(id) ON DELETE CASCADE,
+                item_id INTEGER NOT NULL REFERENCES master_inventory(id) ON DELETE RESTRICT,
+                batch_id INTEGER REFERENCES stock_batches(id) ON DELETE SET NULL,
+                quantity INTEGER NOT NULL,
+                reason TEXT
+              )
+            `);
+            await client.execute(`
+              INSERT INTO supplier_return_items (id, return_id, item_id, batch_id, quantity, reason)
+              SELECT id, return_id, item_id, batch_id, quantity, reason FROM supplier_return_items_old
+            `);
+            await client.execute("DROP TABLE supplier_return_items_old");
+          }
+
+          // Drop stock_batches_old if it exists
+          try {
+            await client.execute("DROP TABLE IF EXISTS stock_batches_old");
+          } catch (e) {
+            // ignore if already dropped
+          }
+
+          console.log('✅ SQLite Schema Migration: cleaned up stock tables successfully');
+        }
+      } catch (err) {
+        console.error('❌ Failed to migrate stock tables:', err.message);
+      }
 
       await client.execute(`
       CREATE TABLE IF NOT EXISTS department_stock (
@@ -1615,53 +1709,41 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to initialize uoms table:', err);
     }
 
-    // ── SKU Standardisation (lc-INITIALS-BATCH-DEPT-0001) ───────────────────────
+    // ── SKU Standardisation (Clean: exactly 8 characters, no lc, no hyphens) ───────────────────────
     try {
       const { rows: skuCheck } = await client.execute(
-        "SELECT COUNT(*) as total, SUM(CASE WHEN sku GLOB 'lc-*-*-*-[0-9][0-9][0-9][0-9]' THEN 1 ELSE 0 END) as lc_count FROM master_inventory"
+        "SELECT COUNT(*) as total, SUM(CASE WHEN length(sku) = 8 AND sku NOT LIKE '%-%' AND sku NOT LIKE '%lc%' AND sku IS NOT NULL THEN 1 ELSE 0 END) as clean_count FROM master_inventory"
       );
       const total = Number(skuCheck[0].total);
-      const lcCount = Number(skuCheck[0].lc_count);
+      const cleanCount = Number(skuCheck[0].clean_count);
 
-      if (total > 0 && lcCount < total) {
-        console.log(`🔧 Standardising SKUs: ${total - lcCount} items — running as single batch…`);
+      if (total > 0 && cleanCount < total) {
+        console.log(`🔧 Standardising SKUs to exactly 8 characters: ${total - cleanCount} items to fix…`);
 
-        // Fetch all items with their batch + dept + vendor context
+        // Fetch ALL items in the master inventory to assign fresh, sequential, 8-char SKUs
         const { rows: items } = await client.execute(`
-        SELECT mi.id, mi.name, sb.batch_number, sb.vendor_id, ds.department_id, d.name AS dept_name
-        FROM master_inventory mi
-        LEFT JOIN stock_batches sb ON mi.id = sb.item_id
-        LEFT JOIN department_stock ds ON sb.id = ds.batch_id
-        LEFT JOIN departments d ON ds.department_id = d.id
-        WHERE mi.sku NOT GLOB 'lc-*-*-*-[0-9][0-9][0-9][0-9]' OR mi.sku IS NULL
-        GROUP BY mi.id
-        ORDER BY ds.department_id, sb.vendor_id, mi.id
-      `);
+          SELECT id, name FROM master_inventory ORDER BY id ASC
+        `);
 
-        // Build a counter map keyed by "dept_id|vendor_id"
-        const seqMap = {};
-        const statements = items.map(item => {
-          const initials = (item.name || 'ITM').substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'ITM';
-          const batch = item.batch_number ? item.batch_number : 'XXXX';
-          const dept = item.dept_name
-            ? item.dept_name.substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'DEP'
-            : 'XXX';
-
-          // Unique key for dept + vendor combo
-          const groupKey = `${item.department_id || 'none'}|${item.vendor_id || 'none'}`;
-          seqMap[groupKey] = (seqMap[groupKey] || 0) + 1;
-          const seqStr = String(seqMap[groupKey]).padStart(4, '0');
+        const statements = items.map((item, idx) => {
+          let cleanName = (item.name || 'ITEM').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          // Strip leading "LC"
+          cleanName = cleanName.replace(/^LC/i, '');
+          if (!cleanName) cleanName = 'ITEM';
+          const prefix = cleanName.substring(0, 4).padEnd(4, 'X');
+          const seqStr = String(idx + 1).padStart(4, '0');
+          const newSku = `${prefix}${seqStr}`;
 
           return {
             sql: "UPDATE master_inventory SET sku = ? WHERE id = ?",
-            args: [`lc-${initials}-${batch}-${dept}-${seqStr}`, item.id]
+            args: [newSku, item.id]
           };
         });
 
         await client.batch(statements, 'write');
-        console.log(`✅ SKU standardisation complete — updated ${items.length} items in one batch.`);
+        console.log(`✅ SKU standardisation complete — updated all ${items.length} items to exactly 8 characters.`);
       } else {
-        console.log('✅ All SKUs already standardised.');
+        console.log('✅ All SKUs already standardised to 8 characters.');
       }
     } catch (err) {
       console.error('❌ Failed to standardise SKUs:', err);
