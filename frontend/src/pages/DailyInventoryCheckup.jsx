@@ -2544,8 +2544,41 @@ export default function DailyInventoryCheckup() {
         title="Nursing Stock Requisitions"
         maxWidth="700px"
       >
-        <div className="space-y-4 p-2 text-left">
-          <div className="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-4">
+        <div className="space-y-5 p-2 text-left">
+          
+          {/* Summary Stats Grid */}
+          {(() => {
+            const total = reqList.length;
+            const pending = reqList.filter(r => r.status === 'Pending').length;
+            const approved = reqList.filter(r => r.status === 'Approved').length;
+            const urgent = reqList.filter(r => (r.urgency === 'Critical' || r.urgency === 'High') && r.status === 'Pending').length;
+
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-2">
+                <div className="p-3 bg-slate-50 border border-slate-205 rounded-xl shadow-xs">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Total Requests</span>
+                  <span className="text-base font-black text-slate-800 block mt-1">{total}</span>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-205 rounded-xl shadow-xs">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Pending review</span>
+                  <span className="text-base font-black text-amber-600 block mt-1 flex items-center gap-1">
+                    {pending}
+                    {pending > 0 && <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />}
+                  </span>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-205 rounded-xl shadow-xs">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Urgent pending</span>
+                  <span className="text-base font-black text-rose-600 block mt-1">{urgent}</span>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-205 rounded-xl shadow-xs">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Approved / Sent</span>
+                  <span className="text-base font-black text-emerald-600 block mt-1">{approved}</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          <div className="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-2">
             <p className="text-[11px] text-slate-500 font-bold leading-normal">
               Track stock requests sent to the Central Store Hub, or request additional inventory items.
             </p>
@@ -2554,13 +2587,13 @@ export default function DailyInventoryCheckup() {
                 setShowCreateReqModal(true);
                 setShowReqListModal(false);
               }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm animate-in fade-in"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-indigo-500/10 active:scale-[0.98] transition-all"
             >
               New Requisition
             </Button>
           </div>
-
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+ 
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
             {loadingReqs ? (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="animate-spin text-[#0369a1]" size={20} />
@@ -2570,49 +2603,64 @@ export default function DailyInventoryCheckup() {
                 No requisitions found for the NURSING department.
               </div>
             ) : (
-              <table className="w-full text-xs">
+              <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
-                    <th className="py-2.5 px-4 text-left">Req ID</th>
-                    <th className="py-2.5 px-4 text-left">Date</th>
-                    <th className="py-2.5 px-4 text-center">Urgency</th>
-                    <th className="py-2.5 px-4 text-center">Items count</th>
-                    <th className="py-2.5 px-4 text-center">Status</th>
-                    <th className="py-2.5 px-4 text-right">Action</th>
+                  <tr className="bg-slate-50 text-slate-500 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
+                    <th className="py-3 px-4 text-left">Req ID</th>
+                    <th className="py-3 px-4 text-left">Date</th>
+                    <th className="py-3 px-4 text-center">Urgency</th>
+                    <th className="py-3 px-4 text-center">Items count</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                   {reqList.map((req) => (
-                    <tr key={req.id} className="hover:bg-slate-50/60">
-                      <td className="py-2.5 px-4 text-slate-900 font-black">#{req.id}</td>
-                      <td className="py-2.5 px-4 text-slate-500">{new Date(req.created_at).toLocaleDateString()}</td>
-                      <td className="py-2.5 px-4 text-center">
+                    <tr key={req.id} className={`hover:bg-slate-50/60 transition-colors relative ${
+                      req.urgency === 'Critical' ? 'bg-rose-50/10' :
+                      req.urgency === 'High' ? 'bg-amber-50/5' : ''
+                    }`}>
+                      <td className="py-3 px-4 text-slate-900 font-black relative">
+                        {/* Urgency indicator strip */}
+                        {(req.urgency === 'Critical' || req.urgency === 'High') && (
+                          <span className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-md ${
+                            req.urgency === 'Critical' ? 'bg-red-500' : 'bg-orange-400'
+                          }`} />
+                        )}
+                        #{req.id}
+                      </td>
+                      <td className="py-3 px-4 text-slate-500 font-normal">{new Date(req.created_at).toLocaleDateString()}</td>
+                      <td className="py-3 px-4 text-center">
                         <Badge className={
-                          req.urgency === 'Critical' ? 'bg-red-100 text-red-800 border-red-300' :
+                          req.urgency === 'Critical' ? 'bg-red-50 text-red-655 border-red-150' :
                             req.urgency === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
                               'bg-slate-50 text-slate-600 border-slate-200'
                         }>
                           {req.urgency || 'Normal'}
                         </Badge>
                       </td>
-                      <td className="py-2.5 px-4 text-center">{req.items_count || 0}</td>
-                      <td className="py-2.5 px-4 text-center">
+                      <td className="py-3 px-4 text-center">
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-800 rounded-lg text-[11px] font-black">
+                          {req.items_count || 0} items
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
                         <Badge className={
                           req.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            req.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                            req.status === 'Rejected' ? 'bg-rose-50 text-rose-600 border-rose-100' :
                               'bg-amber-50 text-amber-700 border-amber-200'
                         }>
                           {req.status}
                         </Badge>
                       </td>
-                      <td className="py-2.5 px-4 text-right">
+                      <td className="py-3 px-4 text-right">
                         <button
                           type="button"
                           onClick={() => {
                             handleViewReq(req);
                             setShowReqListModal(false);
                           }}
-                          className="px-2 py-1 text-[10px] font-black text-[#0369a1] bg-sky-50 hover:bg-sky-100 rounded border border-sky-150 cursor-pointer transition-all"
+                          className="px-3 py-1.5 text-[10px] font-black text-[#0369a1] bg-sky-50 hover:bg-sky-100 rounded-xl border border-sky-150 cursor-pointer transition-all shadow-xs"
                         >
                           View Details
                         </button>
@@ -2625,7 +2673,7 @@ export default function DailyInventoryCheckup() {
           </div>
         </div>
       </Modal>
-
+ 
       {/* ── Requisition Details Modal ── */}
       <Modal
         isOpen={showReqDetailModal}
@@ -2636,69 +2684,118 @@ export default function DailyInventoryCheckup() {
         title={`Requisition #${selectedReq?.id} Details`}
         maxWidth="650px"
       >
-        <div className="space-y-4 p-2 text-left">
+        <div className="space-y-5 p-2 text-left">
+          
+          {/* Stepper Progression */}
+          <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 mb-2">
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-4">Request Status Timeline</p>
+            <div className="relative flex items-center justify-between">
+              <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-0.5 bg-slate-200" />
+              
+              {/* Step 1 */}
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-md shadow-emerald-500/10">
+                  <Check size={12} />
+                </div>
+                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mt-1.5">Submitted</span>
+              </div>
+
+              {/* Step 2 */}
+              <div className="relative z-10 flex flex-col items-center">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all ${
+                  selectedReq?.status === 'Pending' 
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/10 animate-pulse' 
+                    : selectedReq?.status === 'Approved' || selectedReq?.status === 'Rejected'
+                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/10'
+                    : 'bg-white text-slate-350 border-slate-200'
+                }`}>
+                  {selectedReq?.status === 'Pending' ? <Activity size={12} /> : (selectedReq?.status === 'Approved' || selectedReq?.status === 'Rejected' ? <Check size={12} /> : '2')}
+                </div>
+                <span className={`text-[9px] font-black uppercase tracking-wider mt-1.5 ${
+                  selectedReq?.status === 'Pending' ? 'text-amber-500 font-extrabold' : selectedReq?.status === 'Approved' || selectedReq?.status === 'Rejected' ? 'text-emerald-600' : 'text-slate-400'
+                }`}>In Review</span>
+              </div>
+
+              {/* Step 3 */}
+              <div className="relative z-10 flex flex-col items-center">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all ${
+                  selectedReq?.status === 'Approved'
+                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/10'
+                    : selectedReq?.status === 'Rejected'
+                    ? 'bg-rose-500 text-white border-rose-500 shadow-md shadow-rose-500/10'
+                    : 'bg-white text-slate-350 border-slate-200'
+                }`}>
+                  {selectedReq?.status === 'Approved' ? <Check size={12} /> : (selectedReq?.status === 'Rejected' ? <X size={12} /> : '3')}
+                </div>
+                <span className={`text-[9px] font-black uppercase tracking-wider mt-1.5 ${
+                  selectedReq?.status === 'Approved' ? 'text-emerald-600' : selectedReq?.status === 'Rejected' ? 'text-rose-500' : 'text-slate-400'
+                }`}>{selectedReq?.status === 'Rejected' ? 'Rejected' : 'Dispatched'}</span>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-slate-50 rounded-xl p-3 text-center">
+            <div className="bg-slate-50 border border-slate-200/50 rounded-xl p-3 text-center">
               <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Status</p>
-              <Badge className={`mt-1 ${selectedReq?.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+              <Badge className={`mt-1 font-black uppercase tracking-wider text-[9px] ${selectedReq?.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                 selectedReq?.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' :
                   'bg-amber-50 text-amber-700 border-amber-200'
                 }`}>{selectedReq?.status}</Badge>
             </div>
-            <div className="bg-slate-50 rounded-xl p-3 text-center">
+            <div className="bg-slate-50 border border-slate-200/50 rounded-xl p-3 text-center">
               <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Urgency</p>
-              <Badge className={`mt-1 ${selectedReq?.urgency === 'High' || selectedReq?.urgency === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+              <Badge className={`mt-1 font-black uppercase tracking-wider text-[9px] ${selectedReq?.urgency === 'High' || selectedReq?.urgency === 'Critical' ? 'bg-red-50 text-red-700 border-red-200 font-bold' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                 {selectedReq?.urgency || 'Normal'}
               </Badge>
             </div>
-            <div className="bg-slate-50 rounded-xl p-3 text-center">
+            <div className="bg-slate-50 border border-slate-200/50 rounded-xl p-3 text-center">
               <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Date</p>
-              <p className="text-xs font-black text-slate-700 mt-1">{selectedReq?.created_at ? new Date(selectedReq.created_at).toLocaleDateString() : 'N/A'}</p>
+              <p className="text-xs font-black text-slate-705 mt-1">{selectedReq?.created_at ? new Date(selectedReq.created_at).toLocaleDateString() : 'N/A'}</p>
             </div>
           </div>
-
+ 
           {selectedReq?.notes && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
               <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Notes / Instructions</p>
               <p className="text-xs text-slate-700 font-bold mt-1 leading-relaxed">{selectedReq.notes}</p>
             </div>
           )}
-
+ 
           {selectedReq?.rejection_reason && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+            <div className="bg-red-50 border border-red-250 rounded-xl p-3">
               <p className="text-[9px] font-black uppercase text-red-600 tracking-wider">Rejection Reason</p>
               <p className="text-xs text-red-800 font-extrabold mt-1 leading-relaxed">{selectedReq.rejection_reason}</p>
             </div>
           )}
-
+ 
           {/* Items table */}
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
             {reqItemsLoading ? (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="animate-spin text-[#0369a1]" size={20} />
               </div>
             ) : (
-              <table className="w-full text-xs">
+              <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-400 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
+                  <tr className="bg-slate-50 text-slate-500 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
                     <th className="py-2.5 px-4 text-left">Item Name</th>
                     <th className="py-2.5 px-4 text-left">UoM</th>
                     <th className="py-2.5 px-4 text-center">Requested Qty</th>
                     <th className="py-2.5 px-4 text-center">Approved Qty</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                <tbody className="divide-y divide-slate-100 font-bold text-slate-700 bg-white">
                   {reqItems.length === 0 ? (
                     <tr>
                       <td colSpan="4" className="py-8 text-center text-slate-400 font-bold">No items found in this requisition.</td>
                     </tr>
                   ) : (
                     reqItems.map(ri => (
-                      <tr key={ri.id} className="hover:bg-slate-50/60">
+                      <tr key={ri.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-2.5 px-4 text-slate-900 font-black">{ri.item_name}</td>
-                        <td className="py-2.5 px-4 text-slate-500">{ri.unit_of_measure || '—'}</td>
-                        <td className="py-2.5 px-4 text-center">{ri.requested_quantity}</td>
-                        <td className="py-2.5 px-4 text-center">{ri.approved_quantity ?? '—'}</td>
+                        <td className="py-2.5 px-4 text-slate-500 font-normal">{ri.unit_of_measure || '—'}</td>
+                        <td className="py-2.5 px-4 text-center text-slate-800 text-sm font-extrabold">{ri.requested_quantity}</td>
+                        <td className="py-2.5 px-4 text-center text-sm font-black text-slate-905">{ri.approved_quantity ?? '—'}</td>
                       </tr>
                     ))
                   )}
@@ -2706,7 +2803,7 @@ export default function DailyInventoryCheckup() {
               </table>
             )}
           </div>
-
+ 
           <div className="flex justify-end pt-2 border-t border-slate-100 mt-4">
             <Button
               type="button"
@@ -2714,7 +2811,7 @@ export default function DailyInventoryCheckup() {
                 setShowReqDetailModal(false);
                 setShowReqListModal(true);
               }}
-              className="bg-[#0369a1] hover:bg-[#075985] text-white px-5 py-2 rounded-xl font-bold text-xs shadow-sm border-0"
+              className="bg-[#0369a1] hover:bg-[#075985] text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-sky-500/10 active:scale-[0.98] border-0"
             >
               Back to List
             </Button>
@@ -2777,13 +2874,13 @@ export default function DailyInventoryCheckup() {
               <button
                 type="button"
                 onClick={() => setNewReqLines([...newReqLines, { item_id: '', quantity: '' }])}
-                className="flex items-center gap-1 text-[10px] font-black text-indigo-650 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/70 px-2 py-1 rounded-lg border border-indigo-100 transition-all cursor-pointer"
+                className="flex items-center gap-1 text-[10px] font-black text-indigo-650 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-100 transition-all cursor-pointer shadow-xs"
               >
-                + Add Item
+                <Plus size={11} /> Add Item
               </button>
             </div>
 
-            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
               {newReqLines.map((line, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <div className="flex-1">
@@ -2795,7 +2892,7 @@ export default function DailyInventoryCheckup() {
                         updated[idx].item_id = e.target.value;
                         setNewReqLines(updated);
                       }}
-                      className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#0369a1] focus:bg-white transition-all cursor-pointer"
+                      className="w-full px-3 py-2.5 text-xs font-bold text-slate-705 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#0369a1] focus:bg-white transition-all cursor-pointer"
                     >
                       <option value="">Select Item…</option>
                       {masterItems.map(i => (
@@ -2815,16 +2912,16 @@ export default function DailyInventoryCheckup() {
                         updated[idx].quantity = e.target.value;
                         setNewReqLines(updated);
                       }}
-                      className="w-full px-3 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#0369a1] focus:bg-white transition-all shadow-sm"
+                      className="w-full px-3 py-2.5 text-xs font-bold text-slate-705 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#0369a1] focus:bg-white transition-all shadow-sm"
                     />
                   </div>
                   {newReqLines.length > 1 && (
                     <button
                       type="button"
                       onClick={() => setNewReqLines(newReqLines.filter((_, i) => i !== idx))}
-                      className="p-2 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-105 border border-red-150 rounded-xl transition-all cursor-pointer"
+                      className="p-2.5 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-150 rounded-xl transition-all cursor-pointer"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={14} />
                     </button>
                   )}
                 </div>
@@ -2835,19 +2932,18 @@ export default function DailyInventoryCheckup() {
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 mt-6">
             <Button
               type="button"
-              variant="outline"
               onClick={() => {
                 setShowCreateReqModal(false);
                 setShowReqListModal(true);
               }}
-              className="px-4 py-2 rounded-xl text-slate-500 font-bold text-xs"
+              className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={saving}
-              className="bg-[#0369a1] hover:bg-[#075985] text-white px-5 py-2 rounded-xl font-bold text-xs shadow-sm flex items-center gap-1.5 border-0"
+              className="bg-[#0369a1] hover:bg-[#075985] text-white px-5 py-2 rounded-xl font-bold text-xs shadow-md shadow-sky-500/10 active:scale-[0.98] flex items-center gap-1.5 border-none cursor-pointer"
             >
               {saving && <Loader2 className="h-3 w-3 animate-spin" />}
               Submit Requisition

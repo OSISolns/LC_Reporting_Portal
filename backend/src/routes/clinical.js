@@ -11,7 +11,22 @@ router.post('/inventory/supplier-portal/verify-token', clinicalController.verify
 router.post('/inventory/supplier-portal/upload', clinicalController.supplierPortalUpload);
 
 router.use(authenticateToken);
-router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'deputy_coo', 'stock-manager', 'pa', 'medical_director']));
+router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'deputy_coo', 'stock-manager', 'pa', 'medical_director', 'procurement-manager']));
+
+// --- Purchase Order Routes ---
+router.get('/inventory/purchase-orders', authorizeRoles(['admin', 'deputy_coo', 'procurement-manager']), clinicalController.getPurchaseOrders);
+router.post('/inventory/purchase-orders', authorizeRoles(['admin', 'deputy_coo', 'procurement-manager']), clinicalController.createPurchaseOrder);
+router.put('/inventory/purchase-orders/:id/status', authorizeRoles(['admin', 'deputy_coo', 'procurement-manager']), clinicalController.updatePOStatus);
+
+// --- Goods Receipt Notes Routes ---
+router.get('/inventory/grns', authorizeRoles(['admin', 'deputy_coo', 'procurement-manager']), clinicalController.getGRNs);
+router.post('/inventory/grns', authorizeRoles(['admin', 'deputy_coo', 'procurement-manager']), clinicalController.createGRN);
+router.get('/inventory/grns/:id/items', authorizeRoles(['admin', 'deputy_coo', 'procurement-manager']), clinicalController.getGRNItems);
+
+// --- Supplier Returns Routes ---
+router.get('/inventory/returns', authorizeRoles(['admin', 'deputy_coo', 'procurement-manager']), clinicalController.getSupplierReturns);
+router.post('/inventory/returns', authorizeRoles(['admin', 'deputy_coo', 'procurement-manager']), clinicalController.createSupplierReturn);
+router.get('/inventory/returns/:id/items', authorizeRoles(['admin', 'deputy_coo', 'procurement-manager']), clinicalController.getSupplierReturnItems);
 
 // --- Supplier Portal Authenticated Routes ---
 router.get('/inventory/supplier-portal/settings', clinicalController.getSupplierPortalSettings);
@@ -60,17 +75,17 @@ router.get('/observations/:patientId/verify',   clinicalController.verifyDocumen
 router.get('/observations/:patientId/pdf',      clinicalController.getPDF);
 router.get('/observations/:patientId',          clinicalController.getObservation);
 
-router.get('/inventory', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.getInventory);
-router.get('/inventory/export', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.exportInventoryExcel);
-router.post('/inventory/sync-central-stock', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.syncCentralStockToNursing);
-router.get('/inventory/items', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'medical_director', 'pa']), clinicalController.getInventoryItems);
-router.post('/inventory/bulk', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.saveInventoryBulk);
-router.get('/inventory/deleted-items', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.getDeletedItems);
-router.post('/inventory/deleted-items', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.saveDeletedItems);
-router.post('/inventory/unlock', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.unlockInventory);
+router.get('/inventory', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'stock-manager', 'procurement-manager']), clinicalController.getInventory);
+router.get('/inventory/export', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'stock-manager', 'procurement-manager']), clinicalController.exportInventoryExcel);
+router.post('/inventory/sync-central-stock', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'stock-manager', 'procurement-manager']), clinicalController.syncCentralStockToNursing);
+router.get('/inventory/items', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'medical_director', 'pa', 'stock-manager', 'procurement-manager']), clinicalController.getInventoryItems);
+router.post('/inventory/bulk', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'stock-manager', 'procurement-manager']), clinicalController.saveInventoryBulk);
+router.get('/inventory/deleted-items', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'stock-manager', 'procurement-manager']), clinicalController.getDeletedItems);
+router.post('/inventory/deleted-items', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'stock-manager', 'procurement-manager']), clinicalController.saveDeletedItems);
+router.post('/inventory/unlock', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'stock-manager', 'procurement-manager']), clinicalController.unlockInventory);
 router.get('/inventory/stock-password', authorizeRoles(['admin']), clinicalController.getStockPassword);
 router.post('/inventory/regenerate-stock-password', authorizeRoles(['admin']), clinicalController.regenerateStockPassword);
-router.post('/inventory/sync', authorizeRoles(['nurse', 'chef-nurse', 'admin']), clinicalController.triggerInventorySync);
-router.get('/inventory/change-logs', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'reviewer', 'pa']), clinicalController.getInventoryChangeLogs);
+router.post('/inventory/sync', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'stock-manager', 'procurement-manager']), clinicalController.triggerInventorySync);
+router.get('/inventory/change-logs', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'reviewer', 'pa', 'stock-manager', 'procurement-manager']), clinicalController.getInventoryChangeLogs);
 
 module.exports = router;

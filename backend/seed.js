@@ -3,6 +3,7 @@ require('dotenv').config();
 const dbConn = require('./src/config/db');
 const client = dbConn.client;
 const bcrypt = require('bcryptjs');
+const { INVENTORY_ITEMS, generateSkuPrefix } = require('./src/controllers/clinicalController');
 
 async function seed() {
   try {
@@ -183,6 +184,43 @@ async function seed() {
       console.log(`✅ User synced: ${u.username}`);
     }
 
+    // 4. Seed Master Inventory
+    console.log('📦 Seeding default inventory items...');
+    const { rows: inventoryCount } = await client.execute("SELECT COUNT(*) as count FROM master_inventory");
+    if (inventoryCount[0].count === 0) {
+      console.log('🌱 Table master_inventory is empty. Auto-seeding default items...');
+      for (const item of INVENTORY_ITEMS) {
+        let category = 'medical_supplies';
+        const lower = item.toLowerCase();
+        if (lower.includes('mg') || lower.includes('1g') || lower.includes('paracetamol') || lower.includes('adrenaline') || lower.includes('atropine') || lower.includes('fentanyl') || lower.includes('morphine')) {
+          category = 'medications';
+        } else if (lower.includes('bupivacaine') || lower.includes('lidocaine') || lower.includes('propofol') || lower.includes('ketamine')) {
+          category = 'anesthetics';
+        } else if (lower.includes('alcohol') || lower.includes('povidone') || lower.includes('eau')) {
+          category = 'antiseptics';
+        } else if (lower.includes('nylon') || lower.includes('vicryl') || lower.includes('polyglactin') || lower.includes('polypropylene')) {
+          category = 'sutures';
+        } else if (lower.includes('naloxone')) {
+          category = 'antidotes';
+        }
+        const prefix = generateSkuPrefix(item);
+        const inserted = await client.execute({
+          sql: "INSERT OR IGNORE INTO master_inventory (name, sku, unit_of_measure, category) VALUES (?, ?, 'Unit', ?) RETURNING id",
+          args: [item, prefix, category]
+        });
+        if (inserted.rows && inserted.rows.length > 0) {
+          const itemId = inserted.rows[0].id;
+          await client.execute({
+            sql: "INSERT OR IGNORE INTO stock_batches (item_id, lot_number, quantity) VALUES (?, '01', 0)",
+            args: [itemId]
+          });
+        }
+      }
+      console.log('✅ Inventory items seeded.');
+    } else {
+      console.log('ℹ️ Inventory table is not empty, skipping seeding.');
+    }
+ 
     console.log('✨ Turso Seeding Completed Successfully!');
   } catch (err) {
     console.error('❌ Seeding failed:', err);

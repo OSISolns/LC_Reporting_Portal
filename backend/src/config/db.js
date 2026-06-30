@@ -8,98 +8,153 @@ let prisma = null;
 
 const { encryptField, decryptField } = require('../utils/crypto');
 
+const ENCRYPTED_COLUMNS = {
+  clinical_observations: ['patient_name', 'identification_json', 'triage_json', 'progress_notes_json', 'medication_mar_json', 'sbar_json'],
+  patient_vitals: ['temperature', 'pulse', 'respiratory_rate', 'blood_pressure', 'weight', 'spo2', 'general_comments'],
+  cancellation_requests: ['patient_full_name', 'pid_number', 'old_sid_number', 'new_sid_number', 'telephone_number', 'insurance_payer', 'reason_for_cancellation', 'rejection_comment'],
+  refund_requests: ['patient_full_name', 'pid_number', 'sid_number', 'telephone_number', 'insurance_payer', 'momo_code', 'amount_paid_by', 'original_receipt_number', 'reason_for_refund', 'rejection_comment'],
+  incident_reports: ['names_involved', 'pid_number', 'description', 'contributing_factors', 'immediate_actions', 'prevention_measures', 'review_comments', 'hsfp_comments', 'rca_environment', 'rca_staff', 'rca_equipment', 'rca_policy', 'rca_verification_json', 'corrective_actions_json'],
+  results_transfers: ['old_sid', 'new_sid', 'reason', 'edited_by_name', 'rejection_comment'],
+  internal_feedbacks: ['contact_info', 'concern_description', 'other_details'],
+  it_tickets: ['title', 'description', 'reporter'],
+  it_assets: ['name', 'assigned_to'],
+  notifications: ['title', 'message', 'link'],
+  nursing_monthly_stock: ['responsible_name', 'consumed_obs1', 'consumed_minor_surgery', 'user_obs1', 'user_minor', 'user_stn1'],
+  nursing_stock_change_logs: ['updated_by', 'old_user_obs1', 'new_user_obs1', 'old_user_minor', 'new_user_minor', 'old_user_stn1', 'new_user_stn1'],
+  requisitions: ['notes', 'rejection_reason'],
+  safety_reports: ['title', 'executive_summary', 'key_findings', 'recommendations'],
+  shift_sessions: ['handover_notes', 'flag_reasons'],
+  shift_nurse_close: ['handover_sbar_sb', 'handover_sbar_ar'],
+  shift_callcenter_close: ['call_top_reasons', 'followup_details'],
+  shift_viplounge_close: ['vip_logs'],
+  sukraa_patients: ['full_name', 'age', 'dob', 'gender', 'phone', 'insurance', 'extra_1', 'extra_2'],
+  supplier_portal_sessions: ['items'],
+  users: ['full_name', 'email']
+};
+
+const ALL_ENCRYPTED_COLS = new Set(Object.values(ENCRYPTED_COLUMNS).flat());
+
 function encryptParams(sql, params) {
   if (!params || params.length === 0) return params;
   const encrypted = [...params];
   const upperSql = sql.toUpperCase();
-  
-  if (upperSql.includes('CLINICAL_OBSERVATIONS')) {
-    if (upperSql.includes('INSERT INTO CLINICAL_OBSERVATIONS')) {
-      const match = sql.match(/INSERT\s+INTO\s+clinical_observations\s*\(([^)]+)\)/i);
+
+  const tables = Object.keys(ENCRYPTED_COLUMNS).filter(t => upperSql.includes(t.toUpperCase()));
+  if (tables.length === 0) return params;
+
+  for (const table of tables) {
+    const colsToEncrypt = ENCRYPTED_COLUMNS[table];
+
+    // Case 1: INSERT
+    if (upperSql.includes('INSERT INTO')) {
+      const regex = new RegExp(`INSERT\\s+INTO\\s+${table}\\s*\\(([^)]+)\\)`, 'i');
+      const match = sql.match(regex);
       if (match) {
         const cols = match[1].split(',').map(c => c.trim().toLowerCase());
         cols.forEach((col, idx) => {
-          if (['identification_json', 'triage_json', 'progress_notes_json', 'medication_mar_json', 'sbar_json'].includes(col)) {
-            if (encrypted[idx] && typeof encrypted[idx] === 'string') {
-              encrypted[idx] = encryptField(encrypted[idx]);
-            }
-          }
-        });
-      }
-    } else if (upperSql.includes('UPDATE CLINICAL_OBSERVATIONS')) {
-      const matches = sql.match(/(\w+)\s*=\s*\$(\d+)/g);
-      if (matches) {
-        matches.forEach(m => {
-          const parts = m.split('=');
-          const colName = parts[0].trim().toLowerCase();
-          const placeholder = parts[1].trim();
-          const idx = parseInt(placeholder.substring(1), 10) - 1;
-          if (['identification_json', 'triage_json', 'progress_notes_json', 'medication_mar_json', 'sbar_json'].includes(colName)) {
-            if (encrypted[idx] && typeof encrypted[idx] === 'string') {
-              encrypted[idx] = encryptField(encrypted[idx]);
+          if (colsToEncrypt.includes(col)) {
+            if (encrypted[idx] !== undefined && encrypted[idx] !== null && typeof encrypted[idx] === 'string') {
+              if (!String(encrypted[idx]).startsWith('enc:')) {
+                encrypted[idx] = encryptField(encrypted[idx]);
+              }
             }
           }
         });
       }
     }
-  }
-  
-  if (upperSql.includes('PATIENT_VITALS')) {
-    if (upperSql.includes('INSERT INTO PATIENT_VITALS')) {
-      const match = sql.match(/INSERT\s+INTO\s+patient_vitals\s*\(([^)]+)\)/i);
-      if (match) {
-        const cols = match[1].split(',').map(c => c.trim().toLowerCase());
-        cols.forEach((col, idx) => {
-          if (['temperature', 'pulse', 'respiratory_rate', 'blood_pressure', 'weight', 'spo2', 'general_comments'].includes(col)) {
-            if (encrypted[idx] && typeof encrypted[idx] === 'string') {
-              encrypted[idx] = encryptField(encrypted[idx]);
+    
+    // Case 2 & 3: UPDATE / SELECT exact matches
+    const regex = /(\w+)\s*=\s*(?:\$(\d+)|(\?))/gi;
+    let match;
+    let placeholderIdx = 0;
+    while ((match = regex.exec(sql)) !== null) {
+      const colName = match[1].toLowerCase();
+      const dollarIdx = match[2];
+      const questionMark = match[3];
+
+      if (colsToEncrypt.includes(colName)) {
+        let paramIdx = -1;
+        if (dollarIdx) {
+          paramIdx = parseInt(dollarIdx, 10) - 1;
+        } else if (questionMark) {
+          paramIdx = placeholderIdx;
+        }
+        if (paramIdx >= 0 && paramIdx < encrypted.length) {
+          if (encrypted[paramIdx] !== undefined && encrypted[paramIdx] !== null && typeof encrypted[paramIdx] === 'string') {
+            if (!String(encrypted[paramIdx]).startsWith('enc:')) {
+              encrypted[paramIdx] = encryptField(encrypted[paramIdx]);
             }
           }
-        });
+        }
       }
-    } else if (upperSql.includes('UPDATE PATIENT_VITALS')) {
-      const matches = sql.match(/(\w+)\s*=\s*\$(\d+)/g);
-      if (matches) {
-        matches.forEach(m => {
-          const parts = m.split('=');
-          const colName = parts[0].trim().toLowerCase();
-          const placeholder = parts[1].trim();
-          const idx = parseInt(placeholder.substring(1), 10) - 1;
-          if (['temperature', 'pulse', 'respiratory_rate', 'blood_pressure', 'weight', 'spo2', 'general_comments'].includes(colName)) {
-            if (encrypted[idx] && typeof encrypted[idx] === 'string') {
-              encrypted[idx] = encryptField(encrypted[idx]);
-            }
-          }
-        });
+      if (questionMark) {
+        placeholderIdx++;
       }
     }
   }
-  
+
   return encrypted;
 }
 
 function decryptRow(row) {
   if (!row) return row;
   const decrypted = { ...row };
-  const coCols = ['identification_json', 'triage_json', 'progress_notes_json', 'medication_mar_json', 'sbar_json'];
-  coCols.forEach(col => {
-    if (decrypted[col] && typeof decrypted[col] === 'string') {
-      decrypted[col] = decryptField(decrypted[col]);
-    }
-  });
-  
-  const vitalsCols = ['temperature', 'pulse', 'respiratory_rate', 'blood_pressure', 'weight', 'spo2', 'general_comments'];
-  vitalsCols.forEach(col => {
-    if (decrypted[col] && typeof decrypted[col] === 'string') {
-      decrypted[col] = decryptField(decrypted[col]);
-    }
-  });
-  
+
+  for (const table in ENCRYPTED_COLUMNS) {
+    const colsToDecrypt = ENCRYPTED_COLUMNS[table];
+    colsToDecrypt.forEach(col => {
+      if (decrypted[col] !== undefined && decrypted[col] !== null && typeof decrypted[col] === 'string') {
+        decrypted[col] = decryptField(decrypted[col]);
+      }
+    });
+  }
+
   return decrypted;
 }
 
+const interceptAndFilterQuery = (sql, params) => {
+  let newSql = sql;
+  const inMemoryFilters = [];
+  const placeholdersUsed = [];
+
+  const likeRegex = /(?:(\w+)\.)?(\w+)\s+(?:I)?LIKE\s+(?:\$(\d+)|\?)/gi;
+  let matches = [...sql.matchAll(likeRegex)];
+  
+  if (matches.length > 0) {
+    for (const m of matches) {
+      const colName = m[2].toLowerCase();
+      if (ALL_ENCRYPTED_COLS.has(colName)) {
+        const fullMatchStr = m[0];
+        const dollarIdx = m[3];
+
+        let paramIdx = -1;
+        if (dollarIdx) {
+          paramIdx = parseInt(dollarIdx, 10) - 1;
+        } else {
+          const matchPos = m.index;
+          const textBefore = sql.substring(0, matchPos);
+          const qCountBefore = (textBefore.match(/\?/g) || []).length;
+          paramIdx = qCountBefore;
+        }
+
+        if (paramIdx >= 0 && paramIdx < params.length) {
+          const filterVal = params[paramIdx];
+          if (filterVal) {
+            const rawSearch = String(filterVal).replace(/^%|%$/g, '').toLowerCase();
+            inMemoryFilters.push({ column: colName, search: rawSearch });
+            placeholdersUsed.push(paramIdx);
+          }
+        }
+
+        newSql = newSql.replace(fullMatchStr, '1=1');
+      }
+    }
+  }
+
+  return { newSql, inMemoryFilters, placeholdersUsed };
+};
+
 if (tursoUrl && tursoToken) {
-  const { createClient } = require('@libsql/client');
   libsql = createClient({
     url: tursoUrl,
     authToken: tursoToken,
@@ -107,6 +162,7 @@ if (tursoUrl && tursoToken) {
 } else {
   const { PrismaClient } = require('@prisma/client');
   prisma = new PrismaClient();
+  console.log('🔌 DATABASE: Connected to local SQLite database (via Prisma).');
 }
 
 const transformQuery = (sql, params) => {
@@ -142,13 +198,23 @@ const client = {
       sql = stmt.sql;
       args = stmt.args || [];
     }
-    const encryptedArgs = encryptParams(sql, args);
-    const { sql: transformedSql, args: finalArgs } = transformQuery(sql, encryptedArgs);
+
+    const { newSql, inMemoryFilters, placeholdersUsed } = interceptAndFilterQuery(sql, args);
+    const encryptedArgs = encryptParams(newSql, args);
+    
+    let finalArgsBeforeTransform = encryptedArgs;
+    if (placeholdersUsed.length > 0) {
+      const usesDollar = sql.includes('$');
+      if (!usesDollar) {
+        finalArgsBeforeTransform = encryptedArgs.filter((_, idx) => !placeholdersUsed.includes(idx));
+      }
+    }
+
+    const { sql: transformedSql, args: finalArgs } = transformQuery(newSql, finalArgsBeforeTransform);
     const upperSql = transformedSql.trim().toUpperCase();
     const isSelect = upperSql.startsWith('SELECT') || upperSql.startsWith('PRAGMA') || upperSql.includes('RETURNING');
     try {
       if (libsql) {
-        // Native Turso Execution
         const result = await libsql.execute({ sql: transformedSql, args: finalArgs });
         const safeRows = (result.rows || []).map(row => {
           const newRow = { ...row };
@@ -157,9 +223,24 @@ const client = {
           }
           return decryptRow(newRow);
         });
-        return { rows: safeRows, rowsAffected: result.rowsAffected || safeRows.length };
+
+        let filteredRows = safeRows;
+        if (inMemoryFilters.length > 0 && safeRows.length > 0) {
+          filteredRows = safeRows.filter(row => {
+            return inMemoryFilters.every(f => {
+              const searchTerm = f.search;
+              if (!searchTerm) return true;
+              return Object.keys(row).some(key => {
+                const val = row[key];
+                if (val === undefined || val === null) return false;
+                return String(val).toLowerCase().includes(searchTerm);
+              });
+            });
+          });
+        }
+
+        return { rows: filteredRows, rowsAffected: result.rowsAffected || filteredRows.length };
       } else {
-        // Prisma Execution
         if (isSelect) {
           const result = await prisma.$queryRawUnsafe(transformedSql, ...finalArgs);
           const rows = Array.isArray(result) ? result : [];
@@ -170,7 +251,23 @@ const client = {
             }
             return decryptRow(newRow);
           });
-          return { rows: safeRows, rowsAffected: safeRows.length };
+
+          let filteredRows = safeRows;
+          if (inMemoryFilters.length > 0 && safeRows.length > 0) {
+            filteredRows = safeRows.filter(row => {
+              return inMemoryFilters.every(f => {
+                const searchTerm = f.search;
+                if (!searchTerm) return true;
+                return Object.keys(row).some(key => {
+                  const val = row[key];
+                  if (val === undefined || val === null) return false;
+                  return String(val).toLowerCase().includes(searchTerm);
+                });
+              });
+            });
+          }
+
+          return { rows: filteredRows, rowsAffected: filteredRows.length };
         } else {
           const affected = await prisma.$executeRawUnsafe(transformedSql, ...finalArgs);
           return { rows: [], rowsAffected: affected };
@@ -203,6 +300,28 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.log('🔌 DATABASE: Successfully connected to Turso Cloud.');
       } else {
         console.log('🔌 DATABASE: Successfully connected to local SQLite database (via Prisma).');
+      }
+      
+      // ─── IT Tickets Column Migration ──────────────────────────────────────────────────
+      try {
+        await client.execute("ALTER TABLE it_tickets ADD COLUMN user_id INTEGER REFERENCES users(id)").catch((err) => {
+          if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+            console.warn("⚠️ ALTER TABLE it_tickets ADD COLUMN user_id failed:", err.message);
+          }
+        });
+        await client.execute("ALTER TABLE it_tickets ADD COLUMN working_station TEXT").catch((err) => {
+          if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+            console.warn("⚠️ ALTER TABLE it_tickets ADD COLUMN working_station failed:", err.message);
+          }
+        });
+        await client.execute("ALTER TABLE it_tickets ADD COLUMN it_intervention INTEGER DEFAULT 0").catch((err) => {
+          if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+            console.warn("⚠️ ALTER TABLE it_tickets ADD COLUMN it_intervention failed:", err.message);
+          }
+        });
+        console.log('✅ SQLite Schema Migration: ensured user_id, working_station, and it_intervention columns on it_tickets');
+      } catch (err) {
+        console.error('❌ IT Tickets column migration error:', err.message);
       }
       
       console.log('⚙️ Running custom department cleanup migration...');
@@ -300,6 +419,45 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     } catch (err) {
       console.error('❌ FATAL: Could not connect to Turso Cloud or run custom migrations. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.', err.message);
       // Note: Do not call process.exit(1) here as it will crash the Vercel build if it executes during pre-rendering.
+    }
+
+    // ─── Permission Module Full Sync: ensure all modules in config exist in DB ─────────────
+    try {
+      const { MODULES } = require('./permissions');
+
+      // Step 1: Upsert every module from config → DB (adds missing, updates display/actions)
+      for (const mod of MODULES) {
+        await client.execute({
+          sql: `INSERT INTO permission_modules (name, display_name, actions)
+                VALUES (?, ?, ?)
+                ON CONFLICT(name) DO UPDATE
+                  SET display_name = EXCLUDED.display_name,
+                      actions      = EXCLUDED.actions`,
+          args: [mod.name, mod.display || mod.display_name || mod.name, JSON.stringify(mod.actions)],
+        });
+      }
+      console.log(`⚙️ Permission sync: upserted ${MODULES.length} module(s) into permission_modules.`);
+
+      // Step 2: Delete any rows NOT in the current config (stale/removed modules like central_store)
+      const validNames = MODULES.map(m => m.name);
+      const placeholders = validNames.map(() => '?').join(', ');
+
+      const { rowsAffected: modRemoved } = await client.execute({
+        sql: `DELETE FROM permission_modules WHERE name NOT IN (${placeholders})`,
+        args: validNames,
+      });
+      if (modRemoved > 0) console.log(`⚙️ Permission sync: removed ${modRemoved} stale module(s) from permission_modules.`);
+
+      // Step 3: Purge stale rows from role_permissions too
+      const { rowsAffected: permRemoved } = await client.execute({
+        sql: `DELETE FROM role_permissions WHERE module NOT IN (${placeholders})`,
+        args: validNames,
+      });
+      if (permRemoved > 0) console.log(`⚙️ Permission sync: removed ${permRemoved} stale permission row(s) from role_permissions.`);
+
+      console.log('✅ Permission module sync complete.');
+    } catch (err) {
+      console.warn('⚠️ Permission module sync warning:', err.message);
     }
 
     // ─── Provider Specialization Migration ───────────────────────────────────────────────
@@ -1784,6 +1942,153 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       }
     } catch (err) {
       console.error('❌ Failed to setup medical_director role/permissions:', err);
+    }
+
+    // --- Procurement Hub Tables ---
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS purchase_orders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          po_number TEXT UNIQUE NOT NULL,
+          vendor_id INTEGER NOT NULL REFERENCES vendors(id) ON DELETE RESTRICT,
+          created_by INTEGER REFERENCES users(id),
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          status TEXT NOT NULL DEFAULT 'Draft',
+          total_amount REAL DEFAULT 0,
+          notes TEXT
+        )
+      `);
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS purchase_order_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          po_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+          item_name TEXT NOT NULL,
+          sku TEXT,
+          unit_of_measure TEXT,
+          category TEXT,
+          quantity INTEGER NOT NULL,
+          unit_price REAL NOT NULL
+        )
+      `);
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS goods_receipt_notes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          grn_number TEXT UNIQUE NOT NULL,
+          po_id INTEGER REFERENCES purchase_orders(id) ON DELETE SET NULL,
+          vendor_id INTEGER NOT NULL REFERENCES vendors(id) ON DELETE RESTRICT,
+          received_by INTEGER REFERENCES users(id),
+          received_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          invoice_number TEXT,
+          delivery_note_number TEXT,
+          notes TEXT
+        )
+      `);
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS goods_receipt_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          grn_id INTEGER NOT NULL REFERENCES goods_receipt_notes(id) ON DELETE CASCADE,
+          item_name TEXT NOT NULL,
+          sku TEXT,
+          unit_of_measure TEXT,
+          category TEXT,
+          quantity_received INTEGER NOT NULL,
+          batch_number TEXT,
+          expiry_date TEXT,
+          purchase_price REAL NOT NULL
+        )
+      `);
+      console.log('✅ SQLite Schema Migration: created/verified Procurement Hub tables');
+
+      // Seed mock POs and GRNs if empty
+      const { rows: poCheck } = await client.execute("SELECT COUNT(*) as cnt FROM purchase_orders");
+      if (Number(poCheck[0].cnt) === 0) {
+        const { rows: vendors } = await client.execute("SELECT id FROM vendors LIMIT 1");
+        const vendorId = vendors.length > 0 ? vendors[0].id : 1;
+
+        await client.execute({
+          sql: "INSERT INTO purchase_orders (po_number, vendor_id, status, total_amount, notes) VALUES (?, ?, ?, ?, ?)",
+          args: ['PO-2026-0001', vendorId, 'Sent to Supplier', 450000, 'Urgent stock replacement for dental department']
+        });
+        const { rows: newPO } = await client.execute("SELECT id FROM purchase_orders ORDER BY id DESC LIMIT 1");
+        if (newPO.length > 0) {
+          await client.execute({
+            sql: "INSERT INTO purchase_order_items (po_id, item_name, sku, unit_of_measure, category, quantity, unit_price) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            args: [newPO[0].id, 'Vicryl 3/0', 'VCY-30', 'Box', 'medical_supplies', 50, 9000]
+          });
+        }
+        console.log('🌱 Seeded initial purchase orders');
+      }
+      
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS supplier_returns (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          return_number TEXT UNIQUE NOT NULL,
+          vendor_id INTEGER NOT NULL REFERENCES vendors(id) ON DELETE RESTRICT,
+          returned_by INTEGER REFERENCES users(id),
+          returned_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          notes TEXT
+        )
+      `);
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS supplier_return_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          return_id INTEGER NOT NULL REFERENCES supplier_returns(id) ON DELETE CASCADE,
+          item_id INTEGER NOT NULL REFERENCES master_inventory(id) ON DELETE RESTRICT,
+          batch_id INTEGER REFERENCES stock_batches(id) ON DELETE SET NULL,
+          quantity INTEGER NOT NULL,
+          reason TEXT
+        )
+      `);
+      console.log('✅ SQLite Schema Migration: created/verified Supplier Returns tables');
+    } catch (err) {
+      console.error('❌ Failed to initialize Procurement tables:', err);
+    }
+
+    // --- Procurement Manager Role Setup & Permissions Sync ---
+    try {
+      await client.execute({
+        sql: "INSERT OR IGNORE INTO roles (name, display_name) VALUES (?, ?)",
+        args: ['procurement-manager', 'Procurement Manager']
+      });
+      console.log('✅ SQLite Schema Migration: registered procurement-manager role');
+
+      const { ROLE_DEFAULTS } = require('./permissions');
+      const pmPermissions = ROLE_DEFAULTS['procurement-manager'];
+      if (pmPermissions) {
+        for (const [moduleName, actions] of Object.entries(pmPermissions)) {
+          for (const [action, granted] of Object.entries(actions)) {
+            await client.execute({
+              sql: `
+                INSERT INTO role_permissions (role_name, module, action, granted, updated_by)
+                VALUES (?, ?, ?, ?, 1)
+                ON CONFLICT(role_name, module, action) DO UPDATE 
+                SET granted = EXCLUDED.granted
+              `,
+              args: ['procurement-manager', moduleName, action, granted ? 1 : 0]
+            }).catch(() => {});
+          }
+        }
+        console.log('✅ SQLite Schema Migration: synced procurement-manager permissions');
+      }
+
+      // Add test user
+      const bcrypt = require('bcryptjs');
+      const passwordHash = await bcrypt.hash('procure123', 10);
+      const { rows: pmRoles } = await client.execute({
+        sql: 'SELECT id FROM roles WHERE name = ?',
+        args: ['procurement-manager']
+      });
+      if (pmRoles.length > 0) {
+        await client.execute({
+          sql: `INSERT INTO users (full_name, username, email, password_hash, role_id) 
+                VALUES (?, ?, ?, ?, ?) 
+                ON CONFLICT (username) DO NOTHING`,
+          args: ['Jean Procurement', 'procurement_jean', 'jean@legacyclinics.rw', passwordHash, pmRoles[0].id]
+        });
+        console.log('✅ SQLite Schema Migration: registered test Procurement Manager user (procurement_jean)');
+      }
+    } catch (err) {
+      console.error('❌ Failed to setup procurement-manager role/permissions:', err);
     }
   })();
 }

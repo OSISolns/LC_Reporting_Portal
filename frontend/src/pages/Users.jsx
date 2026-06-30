@@ -113,8 +113,8 @@ const Users = () => {
   const isITOfficer = currentUser?.role === 'it_officer';
 
   // Define low-level roles that can be managed by IT Officers or other limited admins
-  const LOW_LEVEL_ROLES_DISPLAY = ['Customer Care', 'Principal Cashier', 'Cashier', 'Operations Staff', 'Staff Member', 'Clinical Nurse', 'Chief Nurse Manager', 'Medical Doctor', 'Consultant', 'Medical Director'];
-  const LOW_LEVEL_ROLES_KEY = ['customer_care', 'principal_cashier', 'cashier', 'operations_staff', 'staff', 'nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director'];
+  const LOW_LEVEL_ROLES_DISPLAY = ['Customer Care', 'Principal Cashier', 'Cashier', 'Operations Staff', 'Staff Member', 'Clinical Nurse', 'Chief Nurse Manager', 'Medical Doctor', 'Consultant', 'Medical Director', 'Procurement Manager'];
+  const LOW_LEVEL_ROLES_KEY = ['customer_care', 'principal_cashier', 'cashier', 'operations_staff', 'staff', 'nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'procurement-manager'];
 
   const filteredUsers = (canEditAll
     ? users

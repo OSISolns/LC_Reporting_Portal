@@ -544,7 +544,7 @@ export default function CentralStoreHub() {
   // ── tabs config ───────────────────────────────────────────────────────────
   const tabs = [
     { id: 'stock_in_hand', label: 'Stock In Hand',        icon: <Package size={13} />,        badge: stockItems.length },
-    { id: 'vendors',       label: 'Vendors',              icon: <Truck size={13} />,           badge: vendors.length },
+    ...(user?.role !== 'stock-manager' ? [{ id: 'vendors',       label: 'Vendors',              icon: <Truck size={13} />,           badge: vendors.length }] : []),
     { id: 'requisitions',  label: 'Requisitions',         icon: <ArrowRightLeft size={13} />,  badge: pendingReqs || null },
     { id: 'expiring',      label: 'Expiring Items',       icon: <Calendar size={13} />,        badge: expiringItems.length || null },
     { id: 'disposals',     label: 'Disposal Mgt',         icon: <Trash2 size={13} />,          badge: disposalItems.length || null },
@@ -885,7 +885,7 @@ export default function CentralStoreHub() {
                         <th className="py-3.5 px-4 text-center rounded-r-xl">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                    <tbody className="divide-y divide-slate-100 font-bold text-slate-700 bg-white">
                       {filteredVendors.length === 0
                         ? <EmptyRow cols={5} message="No vendors found." />
                         : filteredVendors.map((v, i) => (
@@ -911,24 +911,72 @@ export default function CentralStoreHub() {
             {/* ══ TAB 3: REQUISITIONS ══ */}
             {activeTab === 'requisitions' && (
               <Card className="border border-slate-200/60 shadow-sm bg-white rounded-2xl overflow-hidden">
+                
+                {/* Requisition Tab Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-5 bg-slate-50/50 border-b border-slate-100">
+                  <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-xs flex justify-between items-center hover:scale-[1.01] transition-all">
+                    <div>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Total Requisitions</span>
+                      <span className="text-xl font-black text-slate-800 block mt-1">{requisitions.length}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-650 shadow-inner"><ArrowRightLeft size={16} /></div>
+                  </div>
+                  
+                  <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-xs flex justify-between items-center hover:scale-[1.01] transition-all">
+                    <div>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Pending Review</span>
+                      <span className="text-xl font-black text-amber-600 block mt-1 flex items-center gap-1.5">
+                        {requisitions.filter(r => r.status === 'Pending').length}
+                        {requisitions.filter(r => r.status === 'Pending').length > 0 && (
+                          <span className="flex h-2 w-2 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-105 text-amber-600 shadow-inner"><Activity size={16} /></div>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-xs flex justify-between items-center hover:scale-[1.01] transition-all">
+                    <div>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Unresolved Urgent</span>
+                      <span className="text-xl font-black text-rose-600 block mt-1">
+                        {requisitions.filter(r => (r.urgency === 'Critical' || r.urgency === 'High') && r.status === 'Pending').length}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 shadow-inner"><AlertCircle size={16} /></div>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-xs flex justify-between items-center hover:scale-[1.01] transition-all">
+                    <div>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Fulfillment count</span>
+                      <span className="text-xl font-black text-emerald-600 block mt-1">
+                        {requisitions.filter(r => r.status === 'Approved').length}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-650 shadow-inner"><CheckCircle size={16} /></div>
+                  </div>
+                </div>
+
                 {/* Header */}
                 <div className="p-5 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5"><ArrowRightLeft size={16} className="text-sky-700" /> Department Requisitions</h3>
-                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-1.5">Management Filters</h3>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       {['All','Pending','Approved','Rejected'].map(s => {
                         const cnt = s === 'All' ? requisitions.length : requisitions.filter(r => r.status === s).length;
                         return (
                           <button
                             key={s}
                             onClick={() => setReqStatusFilter(s)}
-                            className={`text-[10px] font-black px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                            className={`text-[10px] font-black px-3.5 py-1.5 rounded-xl border transition-all cursor-pointer ${
                               reqStatusFilter === s
-                                ? s === 'Pending'  ? 'bg-amber-500 text-white border-amber-500'
-                                : s === 'Approved' ? 'bg-emerald-500 text-white border-emerald-500'
-                                : s === 'Rejected' ? 'bg-red-500 text-white border-red-500'
-                                                  : 'bg-indigo-650 text-white border-indigo-600'
-                                : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-350 hover:bg-slate-100/50'
+                                ? s === 'Pending'  ? 'bg-amber-50 text-amber-705 border-amber-200 shadow-xs'
+                                : s === 'Approved' ? 'bg-emerald-50 text-emerald-705 border-emerald-200 shadow-xs'
+                                : s === 'Rejected' ? 'bg-rose-55 text-rose-700 border-rose-200 shadow-xs'
+                                                  : 'bg-sky-50 text-sky-750 border-sky-200 shadow-xs'
+                                : 'bg-white text-slate-500 border-slate-200 hover:border-slate-350 hover:bg-slate-50/60'
                             }`}
                           >
                             {s} {cnt > 0 && <span className="ml-0.5 opacity-80">({cnt})</span>}
@@ -941,7 +989,7 @@ export default function CentralStoreHub() {
                     <select
                       value={reqUrgencyFilter}
                       onChange={e => setReqUrgencyFilter(e.target.value)}
-                      className="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none cursor-pointer hover:bg-slate-50 shadow-xs transition-colors"
+                      className="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white text-slate-700 focus:outline-none cursor-pointer hover:bg-slate-50 shadow-xs transition-colors"
                     >
                       <option value="All">All Urgency</option>
                       <option value="Normal">Normal</option>
@@ -950,35 +998,46 @@ export default function CentralStoreHub() {
                     </select>
                     <button
                       onClick={() => setReqCreateOpen(true)}
-                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black text-white bg-indigo-650 hover:bg-indigo-600 rounded-xl transition-colors cursor-pointer shadow-sm shadow-indigo-100"
+                      className="flex items-center gap-1.5 px-4.5 py-2.5 text-xs font-black text-white bg-indigo-650 hover:bg-indigo-600 rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/20 active:scale-[0.98]"
                     >
                       <Plus size={13} /> New Requisition
                     </button>
                   </div>
                 </div>
-
+ 
                 {/* Table */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-slate-500 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
-                        <th className="py-3.5 px-4 rounded-l-xl">#</th>
+                        <th className="py-3.5 px-6 rounded-l-xl">#</th>
                         <th className="py-3.5 px-4">Department</th>
                         <th className="py-3.5 px-4">Date</th>
                         <th className="py-3.5 px-4">Urgency</th>
                         <th className="py-3.5 px-4 text-center">Items</th>
                         <th className="py-3.5 px-4">Notes</th>
                         <th className="py-3.5 px-4 text-center">Status</th>
-                        <th className="py-3.5 px-4 text-right rounded-r-xl">Actions</th>
+                        <th className="py-3.5 px-6 text-right rounded-r-xl">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                    <tbody className="divide-y divide-slate-100 font-bold text-slate-700 bg-white">
                       {filteredReqs.length === 0 ? (
                         <EmptyRow cols={8} message="No requisitions match your filters." />
                       ) : (
                         filteredReqs.map((req, i) => (
-                          <tr key={req.id} className={`hover:bg-slate-50/50 transition-colors ${req.urgency === 'Critical' ? 'bg-rose-50/15' : ''}`}>
-                            <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">#{req.id}</td>
+                          <tr key={req.id} className={`hover:bg-slate-50/40 transition-colors relative ${
+                            req.urgency === 'Critical' ? 'bg-rose-50/10' :
+                            req.urgency === 'High' ? 'bg-amber-50/5' : ''
+                          }`}>
+                            <td className="py-3.5 px-6 text-slate-400 font-mono text-[11px] relative">
+                              {/* Urgency indicator strip */}
+                              {(req.urgency === 'Critical' || req.urgency === 'High') && (
+                                <span className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-md ${
+                                  req.urgency === 'Critical' ? 'bg-red-500 shadow-sm shadow-red-500/50' : 'bg-orange-400'
+                                }`} />
+                              )}
+                              #{req.id}
+                            </td>
                             <td className="py-3.5 px-4">
                               <span className={`px-2.5 py-1 text-[10px] font-black rounded-lg border uppercase tracking-wider ${getDeptColorBg(req.department_name)} ${getDeptColorText(req.department_name)}`}>
                                 {req.department_name || '—'}
@@ -988,39 +1047,43 @@ export default function CentralStoreHub() {
                             <td className="py-3.5 px-4">
                               <Badge className={
                                 req.urgency === 'Critical' ? 'bg-red-50 text-red-655 border-red-150 font-black' :
-                                req.urgency === 'High'     ? 'bg-orange-50 text-orange-600 border-orange-200 font-black' :
+                                req.urgency === 'High'     ? 'bg-orange-50 text-orange-750 border-orange-200 font-black' :
                                 'bg-slate-50 text-slate-500 border-slate-200'
                               }>
                                 {req.urgency || 'Normal'}
                               </Badge>
                             </td>
-                            <td className="py-3.5 px-4 text-center font-black text-slate-800 text-[13px]">{req.items_count || 0}</td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-800 rounded-lg text-xs font-black">
+                                {req.items_count || 0} items
+                              </span>
+                            </td>
                             <td className="py-3.5 px-4 text-slate-450 max-w-[200px] truncate text-[11px] font-normal">
-                              {req.notes || <span className="italic text-slate-300">—</span>}
+                              {req.notes || <span className="italic text-slate-300 font-normal">No details</span>}
                             </td>
                             <td className="py-3.5 px-4 text-center">
                               <Badge className={`font-black uppercase tracking-wider text-[9px] ${statusCls(req.status)}`}>{req.status}</Badge>
                             </td>
-                            <td className="py-3.5 px-4 text-right">
+                            <td className="py-3.5 px-6 text-right">
                               <div className="flex justify-end gap-1.5">
                                 <button
                                   onClick={() => handleViewReq(req)}
-                                  className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-black text-slate-650 bg-white hover:bg-slate-50 border border-slate-205 rounded-lg transition-colors cursor-pointer shadow-xs"
+                                  className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-black text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-xs"
                                 >
-                                  <Eye size={11} /> View Details
+                                  <Eye size={11} /> Details
                                 </button>
                                 {req.status === 'Pending' && (<>
                                   <button
                                     onClick={() => handleApprove(req.id)}
                                     disabled={approvingId === req.id}
-                                    className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
+                                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-black text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-all cursor-pointer disabled:opacity-50 shadow-sm shadow-emerald-500/10"
                                   >
                                     {approvingId === req.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
-                                    Quick Approve
+                                    Approve
                                   </button>
                                   <button
                                     onClick={() => openRejectDialog(req)}
-                                    className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-black text-white bg-red-500 hover:bg-red-650 rounded-lg transition-colors cursor-pointer shadow-sm"
+                                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-black text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-all cursor-pointer shadow-sm shadow-rose-500/10"
                                   >
                                     <X size={11} /> Reject
                                   </button>
@@ -1258,114 +1321,280 @@ export default function CentralStoreHub() {
         </form>
       </Modal>
 
-      {/* ══ MODAL: Requisition Detail ══ */}
-      <Modal
-        isOpen={reqDetailOpen}
-        onClose={() => { setReqDetailOpen(false); setSelectedReq(null); setReqItems([]); }}
-        title={`Requisition #${selectedReq?.id} — ${selectedReq?.department_name}`}
-      >
-        <div className="space-y-5">
-          {/* Meta */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-              <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Status</p>
-              <Badge className={`mt-1 font-bold ${statusCls(selectedReq?.status)}`}>{selectedReq?.status}</Badge>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-              <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Urgency</p>
-              <Badge className={`mt-1 font-bold ${selectedReq?.urgency === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                {selectedReq?.urgency || 'Normal'}
-              </Badge>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-              <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Date</p>
-              <p className="text-xs font-black text-slate-700 mt-1">{fmt(selectedReq?.created_at)}</p>
-            </div>
-          </div>
-
-          {/* Items table */}
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/30">
-            {reqItemsLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 className="animate-spin text-sky-700" size={20} />
+      {/* ══ DRAWER: Requisition Detail ══ */}
+      <div className={`fixed inset-0 z-50 overflow-hidden transition-all duration-500 ${reqDetailOpen ? 'visible' : 'invisible'}`}>
+        {/* Backdrop blur */}
+        <div 
+          className={`absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-500 ${reqDetailOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => { setReqDetailOpen(false); setSelectedReq(null); setReqItems([]); }}
+        />
+        
+        <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+          <div className={`w-screen max-w-xl bg-white shadow-2xl flex flex-col transform transition-transform duration-500 ease-out ${reqDetailOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            
+            {/* Header */}
+            <div className="px-6 py-5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Requisition Details</span>
+                <h3 className="text-base font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
+                  <ArrowRightLeft className="text-sky-700" size={18} />
+                  Requisition #{selectedReq?.id}
+                </h3>
               </div>
-            ) : (
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-450 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
-                    <th className="py-2.5 px-4 text-left">Item</th>
-                    <th className="py-2.5 px-4 text-left">UoM</th>
-                    <th className="py-2.5 px-4 text-center">Requested Qty</th>
-                    <th className="py-2.5 px-4 text-center">Central Stock</th>
-                    <th className="py-2.5 px-4 text-center">Approved Qty</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-150 font-bold text-slate-700 bg-white">
-                  {reqItems.length === 0 ? (
-                    <EmptyRow cols={5} message="No items in this requisition." />
-                  ) : (
-                    reqItems.map(ri => (
-                      <tr key={ri.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-2.5 px-4 text-slate-900 font-black">{ri.item_name}</td>
-                        <td className="py-2.5 px-4 text-slate-500 font-normal">{ri.unit_of_measure || '—'}</td>
-                        <td className="py-2.5 px-4 text-center text-slate-800 text-[13px]">{ri.requested_quantity}</td>
-                        <td className="py-2.5 px-4 text-center text-[13px]">
-                          <span className={Number(ri.central_stock) >= Number(ri.requested_quantity) ? 'text-emerald-700' : 'text-red-655 font-bold'}>
-                            {fmtNum(ri.central_stock)}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-4 text-center">
-                          {selectedReq?.status === 'Pending' ? (
-                            <input
-                              type="number"
-                              min="0"
-                              max={Math.min(ri.requested_quantity, Number(ri.central_stock) || 0)}
-                              value={ri.approved_quantity ?? Math.min(ri.requested_quantity, Number(ri.central_stock) || 0)}
-                              onChange={(e) => {
-                                const maxAllowed = Math.min(ri.requested_quantity, Number(ri.central_stock) || 0);
-                                const val = e.target.value === '' ? '' : Math.min(maxAllowed, Math.max(0, Number(e.target.value)));
-                                setReqItems(prev => prev.map(item => item.id === ri.id ? { ...item, approved_quantity: val } : item));
-                              }}
-                              className="w-16 p-1 text-center bg-slate-50 border border-slate-200 rounded text-xs font-bold focus:ring-1 focus:ring-sky-500 focus:outline-none"
-                            />
-                          ) : (
-                            <span className="font-black text-slate-800">{ri.approved_quantity ?? '—'}</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Approve from detail modal */}
-          {selectedReq?.status === 'Pending' && (
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-              <button
-                onClick={() => {
-                  const approvedPayload = reqItems.map(ri => ({
-                    id: ri.id,
-                    item_id: ri.item_id,
-                    approved_quantity: ri.approved_quantity === '' ? 0 : Number(ri.approved_quantity)
-                  }));
-                  handleApprove(selectedReq.id, approvedPayload);
-                  setReqDetailOpen(false);
-                }}
-                disabled={approvingId === selectedReq?.id}
-                className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
+              <button 
+                onClick={() => { setReqDetailOpen(false); setSelectedReq(null); setReqItems([]); }}
+                className="p-2 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer text-slate-400 hover:text-slate-600"
               >
-                {approvingId === selectedReq?.id
-                  ? <Loader2 size={15} className="animate-spin" />
-                  : <CheckCircle size={15} />
-                }
-                Approve & Transfer Stock
+                <X size={18} />
               </button>
             </div>
-          )}
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              
+              {/* Stepper Progression */}
+              <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-5">
+                <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-4">Request Status Timeline</p>
+                <div className="relative flex items-center justify-between">
+                  <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-0.5 bg-slate-200" />
+                  
+                  {/* Step 1 */}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-md shadow-emerald-500/10">
+                      <Check size={14} />
+                    </div>
+                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mt-1.5">Submitted</span>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all ${
+                      selectedReq?.status === 'Pending' 
+                        ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/10 animate-pulse' 
+                        : selectedReq?.status === 'Approved' || selectedReq?.status === 'Rejected'
+                        ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/10'
+                        : 'bg-white text-slate-350 border-slate-200'
+                    }`}>
+                      {selectedReq?.status === 'Pending' ? <Activity size={14} /> : (selectedReq?.status === 'Approved' || selectedReq?.status === 'Rejected' ? <Check size={14} /> : '2')}
+                    </div>
+                    <span className={`text-[9px] font-black uppercase tracking-wider mt-1.5 ${
+                      selectedReq?.status === 'Pending' ? 'text-amber-500 font-extrabold' : selectedReq?.status === 'Approved' || selectedReq?.status === 'Rejected' ? 'text-emerald-600' : 'text-slate-400'
+                    }`}>In Review</span>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all ${
+                      selectedReq?.status === 'Approved'
+                        ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/10'
+                        : selectedReq?.status === 'Rejected'
+                        ? 'bg-rose-500 text-white border-rose-500 shadow-md shadow-rose-500/10'
+                        : 'bg-white text-slate-350 border-slate-200'
+                    }`}>
+                      {selectedReq?.status === 'Approved' ? <Check size={14} /> : (selectedReq?.status === 'Rejected' ? <X size={14} /> : '3')}
+                    </div>
+                    <span className={`text-[9px] font-black uppercase tracking-wider mt-1.5 ${
+                      selectedReq?.status === 'Approved' ? 'text-emerald-600' : selectedReq?.status === 'Rejected' ? 'text-rose-500' : 'text-slate-400'
+                    }`}>{selectedReq?.status === 'Rejected' ? 'Rejected' : 'Dispatched'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Department Meta */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 flex items-center gap-3">
+                  <div className={`p-3 rounded-xl ${getDeptColorBg(selectedReq?.department_name)} shadow-inner shrink-0`}>
+                    <Building size={20} className={getDeptColorText(selectedReq?.department_name)} />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Requesting Dept</span>
+                    <span className={`text-xs font-black uppercase tracking-wide ${getDeptColorText(selectedReq?.department_name)}`}>
+                      {selectedReq?.department_name || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 flex items-center gap-3">
+                  <div className={`p-3 rounded-xl shadow-inner shrink-0 ${
+                    selectedReq?.urgency === 'Critical' ? 'bg-red-50 text-red-655' :
+                    selectedReq?.urgency === 'High' ? 'bg-orange-50 text-orange-600' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    <AlertCircle size={20} />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Urgency Level</span>
+                    <span className={`text-xs font-black uppercase tracking-wide ${
+                      selectedReq?.urgency === 'Critical' ? 'text-red-655' :
+                      selectedReq?.urgency === 'High' ? 'text-orange-600' : 'text-slate-650'
+                    }`}>
+                      {selectedReq?.urgency || 'Normal'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes or Reason */}
+              {selectedReq?.notes && (
+                <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200/60 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-2 h-full bg-sky-750" />
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Notes & Details</span>
+                  <p className="text-xs text-slate-700 font-bold mt-1.5 leading-relaxed">{selectedReq.notes}</p>
+                </div>
+              )}
+
+              {selectedReq?.rejection_reason && (
+                <div className="bg-red-50/40 border border-red-200/80 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-2 h-full bg-red-500" />
+                  <span className="text-[9px] font-black text-red-500 uppercase tracking-wider block">Rejection Logged Reason</span>
+                  <p className="text-xs text-red-800 font-extrabold mt-1.5 leading-relaxed">{selectedReq.rejection_reason}</p>
+                </div>
+              )}
+
+              {/* Items List */}
+              <div className="space-y-3">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Requisition Items</span>
+                
+                {reqItemsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="animate-spin text-sky-700" size={24} />
+                  </div>
+                ) : reqItems.length === 0 ? (
+                  <div className="text-center py-8 bg-slate-50 border border-slate-200/60 rounded-2xl text-slate-400 font-bold text-xs">
+                    No items in this requisition.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {reqItems.map(ri => {
+                      const isStockSufficient = Number(ri.central_stock) >= Number(ri.requested_quantity);
+                      
+                      return (
+                        <div key={ri.id} className="bg-white border border-slate-200/70 shadow-sm rounded-2xl p-4 flex flex-col gap-3 hover:border-slate-350 transition-colors">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="text-xs font-black text-slate-800 line-clamp-1">{ri.item_name}</h4>
+                              <p className="text-[10px] text-slate-400 font-bold mt-0.5">UoM: {ri.unit_of_measure || 'Unit'}</p>
+                            </div>
+                            
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Stock Status</span>
+                              <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${
+                                Number(ri.central_stock) === 0 ? 'bg-red-50 text-red-655 border-red-100' :
+                                !isStockSufficient ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                'bg-emerald-50 text-emerald-600 border-emerald-100'
+                              }`}>
+                                {Number(ri.central_stock) === 0 ? 'Out of Stock' : (!isStockSufficient ? `Shortage (${ri.central_stock})` : `In Stock: ${ri.central_stock}`)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-bold text-slate-600">
+                            <div>
+                              <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Qty Requested</span>
+                              <span className="text-sm font-black text-slate-800 mt-0.5 block">{ri.requested_quantity}</span>
+                            </div>
+
+                            <div className="flex flex-col items-end">
+                              <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1">Approved Qty</span>
+                              {selectedReq?.status === 'Pending' ? (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const val = Math.max(0, (ri.approved_quantity ?? Math.min(ri.requested_quantity, Number(ri.central_stock) || 0)) - 1);
+                                      setReqItems(prev => prev.map(item => item.id === ri.id ? { ...item, approved_quantity: val } : item));
+                                    }}
+                                    className="p-1 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                                  >
+                                    -
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={Math.min(ri.requested_quantity, Number(ri.central_stock) || 0)}
+                                    value={ri.approved_quantity ?? Math.min(ri.requested_quantity, Number(ri.central_stock) || 0)}
+                                    onChange={(e) => {
+                                      const maxAllowed = Math.min(ri.requested_quantity, Number(ri.central_stock) || 0);
+                                      const val = e.target.value === '' ? '' : Math.min(maxAllowed, Math.max(0, Number(e.target.value)));
+                                      setReqItems(prev => prev.map(item => item.id === ri.id ? { ...item, approved_quantity: val } : item));
+                                    }}
+                                    className="w-14 p-1 text-center bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const maxAllowed = Math.min(ri.requested_quantity, Number(ri.central_stock) || 0);
+                                      const val = Math.min(maxAllowed, (ri.approved_quantity ?? maxAllowed) + 1);
+                                      setReqItems(prev => prev.map(item => item.id === ri.id ? { ...item, approved_quantity: val } : item));
+                                    }}
+                                    className="p-1 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                                  >
+                                    +
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const maxAllowed = Math.min(ri.requested_quantity, Number(ri.central_stock) || 0);
+                                      setReqItems(prev => prev.map(item => item.id === ri.id ? { ...item, approved_quantity: maxAllowed } : item));
+                                    }}
+                                    className="ml-1 text-[9px] font-black uppercase text-sky-700 bg-sky-50 hover:bg-sky-100 px-2 py-1 rounded-md transition-colors"
+                                    title="Set to max available"
+                                  >
+                                    Max
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-sm font-black text-slate-800">{ri.approved_quantity ?? '—'}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setReqDetailOpen(false); setSelectedReq(null); setReqItems([]); }}
+                className="flex-1 py-3 bg-white hover:bg-slate-100 text-slate-500 border border-slate-200 rounded-xl font-bold text-xs transition-colors text-center cursor-pointer"
+              >
+                Close Drawer
+              </button>
+              
+              {selectedReq?.status === 'Pending' && (
+                <>
+                  <button
+                    onClick={() => openRejectDialog(selectedReq)}
+                    className="flex-1 py-3 bg-red-50 hover:bg-red-105 text-red-655 border border-red-150 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <X size={14} /> Reject Request
+                  </button>
+                  <button
+                    onClick={() => {
+                      const approvedPayload = reqItems.map(ri => ({
+                        id: ri.id,
+                        item_id: ri.item_id,
+                        approved_quantity: ri.approved_quantity === '' ? 0 : Number(ri.approved_quantity)
+                      }));
+                      handleApprove(selectedReq.id, approvedPayload);
+                      setReqDetailOpen(false);
+                    }}
+                    className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-emerald-500/10 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <CheckCircle size={14} /> Approve & Dispatch
+                  </button>
+                </>
+              )}
+            </div>
+
+          </div>
         </div>
-      </Modal>
+      </div>
 
       {/* ══ MODAL: New Requisition ══ */}
       <Modal isOpen={reqCreateOpen} onClose={() => setReqCreateOpen(false)} title="New Requisition Request">

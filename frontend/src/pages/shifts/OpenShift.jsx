@@ -153,6 +153,12 @@ export default function OpenShift() {
     // VIP Lounge Agents only see VIP Lounge
     if (user?.role === 'vip_lounge') return role.value === 'vip_lounge';
     
+    // Customer Care sees VIP Lounge, Helpdesk, and Call Center
+    if (user?.role === 'customer_care') return ['vip_lounge', 'helpdesk', 'call_center'].includes(role.value);
+    
+    // Cashiers only see Cashier
+    if (user?.role === 'cashier') return role.value === 'cashier';
+    
     // Everyone else sees everything EXCEPT Nurse and VIP Lounge
     return role.value !== 'nurse' && role.value !== 'vip_lounge';
   });
