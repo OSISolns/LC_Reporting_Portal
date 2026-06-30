@@ -160,6 +160,20 @@ export default function CentralStoreHub() {
   const [rectifyingItem, setRectifyingItem]     = useState(null);
   const [rectifyForm, setRectifyForm]           = useState({ quantity: '', price: '' });
 
+  // Pagination for Distributed Stock
+  const [distributedStockPage, setDistributedStockPage] = useState(1);
+  const DISTRIBUTED_ITEMS_PER_PAGE = 25;
+
+  const [poForm, setPoForm] = useState({
+    vendor_id: '',
+    notes: '',
+    items: [{ master_item_id: '', quantity: '', unit_price: '' }]
+  });
+
+  useEffect(() => {
+    setDistributedStockPage(1);
+  }, [stockCategoryFilter, stockStatusFilter, searchTerm, activeDept, activeTab]);
+
   const [returnOpen, setReturnOpen]             = useState(false);
   const [returningItem, setReturningItem]       = useState(null);
   const [returnForm, setReturnForm]             = useState({ quantity: '', reason: '' });
@@ -939,7 +953,7 @@ export default function CentralStoreHub() {
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                       {filteredStock.length === 0
                         ? <EmptyRow cols={canRectify ? 13 : 12} message="No stock items found." />
-                        : filteredStock.map((item, idx) => {
+                        : filteredStock.slice((distributedStockPage - 1) * DISTRIBUTED_ITEMS_PER_PAGE, distributedStockPage * DISTRIBUTED_ITEMS_PER_PAGE).map((item, idx) => {
                             const expStatus = getExpiryStatus(item.expiry_date);
                             const isLow = item.quantity > 0 && item.quantity < 20;
                             const isOut = item.quantity === 0;
@@ -999,6 +1013,31 @@ export default function CentralStoreHub() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {filteredStock.length > DISTRIBUTED_ITEMS_PER_PAGE && (
+                  <div className="flex justify-between items-center mt-5 pt-4 border-t border-slate-100">
+                    <span className="text-xs font-bold text-slate-400">
+                      Showing {((distributedStockPage - 1) * DISTRIBUTED_ITEMS_PER_PAGE) + 1} to {Math.min(distributedStockPage * DISTRIBUTED_ITEMS_PER_PAGE, filteredStock.length)} of {filteredStock.length} items
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setDistributedStockPage(p => Math.max(1, p - 1))}
+                        disabled={distributedStockPage === 1}
+                        className="px-4 py-2 rounded-xl text-xs font-black bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"
+                      >
+                        Prev
+                      </button>
+                      <button
+                        onClick={() => setDistributedStockPage(p => Math.min(Math.ceil(filteredStock.length / DISTRIBUTED_ITEMS_PER_PAGE), p + 1))}
+                        disabled={distributedStockPage === Math.ceil(filteredStock.length / DISTRIBUTED_ITEMS_PER_PAGE)}
+                        className="px-4 py-2 rounded-xl text-xs font-black bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-50 transition-colors"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </Card>
             )}
 

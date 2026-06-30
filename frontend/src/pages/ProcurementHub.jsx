@@ -11,12 +11,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import { getIncidents, createIncident } from '../api/incidents';
 import { toast } from 'react-hot-toast';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function ProcurementHub() {
   const { user } = useAuth();
   const location = useLocation();
   const printRef = useRef(null);
   const [poPrintData, setPoPrintData] = useState(null); // PO selected for PDF preview
+  const [grnPrintData, setGrnPrintData] = useState(null); // GRN selected for PDF preview
   
   // Tab State: 'overview' | 'store_requisitions' | 'purchase_orders' | 'goods_receipts' | 'returns' | 'suppliers' | 'incidents'
   const [activeTab, setActiveTab] = useState('overview');
@@ -92,8 +95,17 @@ export default function ProcurementHub() {
   const [requisitions, setRequisitions] = useState([]);
   const [returnsList, setReturnsList] = useState([]);
   const [selectedRequisition, setSelectedRequisition] = useState(null);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [requisitionItems, setRequisitionItems] = useState([]);
   const [loadingReqItems, setLoadingReqItems] = useState(false);
+  const [submissionItems, setSubmissionItems] = useState([]);
+  const [loadingSubItems, setLoadingSubItems] = useState(false);
+  const [processingReceive, setProcessingReceive] = useState(false);
+
+  const handleReceiveStock = async (id) => {
+    // Stub for processing submission
+    toast.error('Supplier submissions functionality not fully implemented yet.');
+  };
   const [showCreateReturnModal, setShowCreateReturnModal] = useState(false);
   const [returnVendorId, setReturnVendorId] = useState('');
   const [returnNotes, setReturnNotes] = useState('');
@@ -2038,6 +2050,16 @@ export default function ProcurementHub() {
                   </table>
                 )}
               </div>
+
+              {/* Print GRN Button */}
+              <div className="mt-6">
+                <button
+                  onClick={() => setGrnPrintData({ ...selectedGRN, items: grnItems })}
+                  className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Printer size={14} /> Generate Printable GRN Document
+                </button>
+              </div>
             </motion.div>
           </>
         )}
@@ -2459,6 +2481,161 @@ export default function ProcurementHub() {
           </>
         )}
       </AnimatePresence>
+      {/* ─── PRINT / PDF GOODS RECEIPT NOTE MODAL ─── */}
+      <AnimatePresence>
+        {grnPrintData && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden"
+            >
+              {/* Modal Toolbar */}
+              <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Goods Receipt Note — Print Preview</h3>
+                  <p className="text-[10px] text-slate-400 font-bold mt-0.5">{grnPrintData.grn_number} • {grnPrintData.vendor_name}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const element = document.getElementById('grn-print-template');
+                      html2canvas(element, { scale: 2, useCORS: true }).then((canvas) => {
+                        const imgData = canvas.toDataURL('image/png');
+                        const pdf = new jsPDF('p', 'mm', 'a4');
+                        const pdfWidth = pdf.internal.pageSize.getWidth();
+                        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                        pdf.save(`GRN-${grnPrintData.grn_number}.pdf`);
+                      });
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-teal-700 hover:bg-teal-600 text-white text-xs font-bold rounded-xl cursor-pointer transition-all"
+                  >
+                    <Download size={14} /> Download PDF
+                  </button>
+                  <button onClick={() => setGrnPrintData(null)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 cursor-pointer">
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* The A4 print-preview body */}
+              <div className="overflow-y-auto flex-1 p-6 bg-slate-100">
+                <div id="grn-print-template" className="grn-page bg-white shadow-lg mx-auto" style={{ width: '210mm', minHeight: '297mm', padding: '16mm 14mm', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#111' }}>
+                  
+                  {/* ── HEADER ── */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    {/* Logo */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <img src="/legacy-logo.png" alt="Legacy Clinics" style={{ height: '40px' }} />
+                    </div>
+                    {/* Address block */}
+                    <div style={{ textAlign: 'right', fontSize: '9px', lineHeight: '1.5', color: '#444' }}>
+                      <div style={{ fontWeight: 700 }}>KK3 RD 134 KICUKIRO Districts</div>
+                      <div>Nyarugunga Sector RWANDA</div>
+                      <div>Tel: 0788382000 | 0733682000 | 0723382000 | 8000</div>
+                      <div>info@legacyclinics.rw | www.legacyclinics.rw</div>
+                    </div>
+                  </div>
+
+                  {/* Divider + Title */}
+                  <div style={{ borderTop: '2px solid #000', borderBottom: '1px solid #000', textAlign: 'center', padding: '4px 0', marginBottom: '10px' }}>
+                    <span style={{ fontWeight: '900', fontSize: '14px', letterSpacing: '1px' }}>Goods Receipt Note</span>
+                  </div>
+
+                  {/* GRN Meta Row */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ marginBottom: '6px' }}>
+                        <span style={{ fontWeight: 700 }}>Supplier: </span>
+                        <span style={{ borderBottom: '1px solid #000', minWidth: '160px', display: 'inline-block', paddingBottom: '1px' }}>{grnPrintData.vendor_name}</span>
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 700 }}>Invoice No: </span>
+                        <span style={{ borderBottom: '1px solid #000', minWidth: '130px', display: 'inline-block' }}>{grnPrintData.invoice_number || '—'}</span>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '18px', fontWeight: '900', marginBottom: '4px' }}>{grnPrintData.grn_number}</div>
+                      <div style={{ fontSize: '9px', color: '#666' }}>Delivery Note No: <span style={{ borderBottom: '1px dotted #888', display: 'inline-block', minWidth: '60px' }}>{grnPrintData.delivery_note_number || '—'}</span></div>
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: '10px' }}>
+                    <span style={{ fontWeight: 700 }}>Date Received: </span>
+                    <span style={{ borderBottom: '1px solid #000', display: 'inline-block', minWidth: '130px' }}>{new Date(grnPrintData.received_at).toLocaleDateString()}</span>
+                  </div>
+
+                  {/* Items Table */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0', fontSize: '11px' }}>
+                    <thead>
+                      <tr style={{ background: '#f5f5f5' }}>
+                        <th style={{ border: '1px solid #000', padding: '5px 8px', fontWeight: 800, textAlign: 'center', width: '8%' }}>Sl. No.</th>
+                        <th style={{ border: '1px solid #000', padding: '5px 8px', fontWeight: 800, textAlign: 'center' }}>Description of Items</th>
+                        <th style={{ border: '1px solid #000', padding: '5px 8px', fontWeight: 800, textAlign: 'center', width: '15%' }}>Batch No.</th>
+                        <th style={{ border: '1px solid #000', padding: '5px 8px', fontWeight: 800, textAlign: 'center', width: '10%' }}>Qty.</th>
+                        <th style={{ border: '1px solid #000', padding: '5px 8px', fontWeight: 800, textAlign: 'center', width: '14%' }}>Unit Price</th>
+                        <th style={{ border: '1px solid #000', padding: '5px 8px', fontWeight: 800, textAlign: 'center', width: '16%' }}>Total Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(grnPrintData.items || []).map((item, idx) => (
+                        <tr key={idx}>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center' }}>{idx + 1}</td>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px' }}>{item.item_name}</td>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center', fontSize: '9px', fontFamily: 'monospace' }}>{item.batch_number || '—'}</td>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center' }}>{item.quantity_received}</td>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'right' }}>{(item.purchase_price || 0).toLocaleString()}</td>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'right' }}>{((item.purchase_price || 0) * (item.quantity_received || 0)).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                      {/* Padding rows for empty lines */}
+                      {Array.from({ length: Math.max(0, 10 - (grnPrintData.items || []).length) }).map((_, i) => (
+                        <tr key={`empty-${i}`}>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px', height: '22px' }}>&nbsp;</td>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px' }}></td>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px' }}></td>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px' }}></td>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px' }}></td>
+                          <td style={{ border: '1px solid #000', padding: '5px 8px' }}></td>
+                        </tr>
+                      ))}
+                      {/* Subtotal */}
+                      <tr>
+                        <td colSpan={4} style={{ border: '1px solid #000', padding: '5px 8px' }}></td>
+                        <td style={{ border: '1px solid #000', padding: '5px 8px', fontWeight: 800, textAlign: 'right', background: '#f5f5f5' }}>Total Value</td>
+                        <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'right', fontWeight: 700 }}>
+                          {((grnPrintData.items || []).reduce((s, i) => s + ((i.purchase_price || 0) * (i.quantity_received || 0)), 0)).toLocaleString()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* Notes / Footer */}
+                  <div style={{ marginTop: '16px', fontSize: '10px' }}>
+                    {grnPrintData.notes && <div style={{ marginTop: '4px', fontStyle: 'italic', color: '#555' }}>Note: {grnPrintData.notes}</div>}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px' }}>
+                      <div style={{ width: '30%' }}>
+                        <div style={{ borderTop: '1px solid #000', paddingTop: '4px', textAlign: 'center' }}>Received By (Signature)</div>
+                      </div>
+                      <div style={{ width: '30%' }}>
+                        <div style={{ borderTop: '1px solid #000', paddingTop: '4px', textAlign: 'center' }}>Authorized Signature</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer Banner */}
+                  <div style={{ marginTop: '24px', background: '#1C69A0', color: 'white', textAlign: 'center', padding: '10px', borderRadius: '4px', fontWeight: '900', fontSize: '14px', letterSpacing: '2px' }}>
+                    HEALTH FOR LIFE
+                  </div>
+
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* ─── PRINT / PDF PURCHASE ORDER MODAL ─── */}
       <AnimatePresence>
         {poPrintData && (
@@ -2478,29 +2655,19 @@ export default function ProcurementHub() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      const printWindow = window.open('', '_blank');
-                      const poDoc = document.getElementById('po-print-template').innerHTML;
-                      printWindow.document.write(`
-                        <html><head><title>PO - ${poPrintData.po_number}</title>
-                        <style>
-                          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-                          * { margin: 0; padding: 0; box-sizing: border-box; }
-                          body { font-family: 'Inter', Arial, sans-serif; font-size: 11px; color: #111; }
-                          @page { size: A4 portrait; margin: 1cm; }
-                          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-                          .po-page { max-width: 100%; padding: 0; }
-                          table { width: 100%; border-collapse: collapse; }
-                          th, td { border: 1px solid #000; padding: 5px 8px; }
-                          thead th { background: #f8f8f8; font-weight: 800; text-align: center; }
-                        </style></head><body>${poDoc}</body></html>
-                      `);
-                      printWindow.document.close();
-                      printWindow.focus();
-                      setTimeout(() => { printWindow.print(); }, 400);
+                      const element = document.getElementById('po-print-template');
+                      html2canvas(element, { scale: 2, useCORS: true }).then((canvas) => {
+                        const imgData = canvas.toDataURL('image/png');
+                        const pdf = new jsPDF('p', 'mm', 'a4');
+                        const pdfWidth = pdf.internal.pageSize.getWidth();
+                        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                        pdf.save(`PO-${poPrintData.po_number}.pdf`);
+                      });
                     }}
                     className="flex items-center gap-1.5 px-4 py-2 bg-teal-700 hover:bg-teal-600 text-white text-xs font-bold rounded-xl cursor-pointer transition-all"
                   >
-                    <Printer size={14} /> Print / Save PDF
+                    <Download size={14} /> Download PDF
                   </button>
                   <button onClick={() => setPoPrintData(null)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 cursor-pointer">
                     <X size={18} />
@@ -2516,9 +2683,7 @@ export default function ProcurementHub() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     {/* Logo + Name */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ background: '#1d4ed8', borderRadius: '6px', padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ color: 'white', fontWeight: '900', fontSize: '13px', letterSpacing: '-0.5px', lineHeight: 1 }}>&#10011; LEGACY<br /><span style={{ fontSize: '9px', letterSpacing: '1px', fontWeight: '700' }}>CLINICS</span></div>
-                      </div>
+                      <img src="/legacy-logo.png" alt="Legacy Clinics" style={{ height: '40px' }} />
                     </div>
                     {/* Address block */}
                     <div style={{ textAlign: 'right', fontSize: '9px', lineHeight: '1.5', color: '#444' }}>
@@ -2636,7 +2801,7 @@ export default function ProcurementHub() {
                   </div>
 
                   {/* Footer Banner */}
-                  <div style={{ marginTop: '24px', background: '#1d4ed8', color: 'white', textAlign: 'center', padding: '6px', borderRadius: '4px', fontWeight: '800', fontSize: '11px', letterSpacing: '1px' }}>
+                  <div style={{ marginTop: '24px', background: '#1C69A0', color: 'white', textAlign: 'center', padding: '10px', borderRadius: '4px', fontWeight: '900', fontSize: '14px', letterSpacing: '2px' }}>
                     HEALTH FOR LIFE
                   </div>
                 </div>
