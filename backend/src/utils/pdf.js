@@ -9,17 +9,14 @@ const generateHighFidelityPDF = async (type, data, stream) => {
   const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL;
 
   try {
+    // Both packages are ESM-only in current versions (@sparticuz/chromium
+    // since v135, puppeteer-core since v23) -- require() of them throws
+    // ERR_REQUIRE_ESM on Vercel's runtime, so always load via dynamic import.
+    puppeteer = (await import('puppeteer-core')).default;
     if (isProd) {
-      // Production (Vercel) setup
-      // @sparticuz/chromium is ESM-only from v135 -- require() of it fails on
-      // Node 20 runtimes, so load it via dynamic import (works from CJS).
+      // The serverless Chromium binary is only needed in production; locally
+      // we point at the developer's installed Chrome instead.
       chromium = (await import('@sparticuz/chromium')).default;
-      puppeteer = require('puppeteer-core');
-    } else {
-      // Local development setup
-      // We use puppeteer-core + locally installed chrome to stay lightweight
-      puppeteer = require('puppeteer-core');
-      // No chromium required for local if we have a direct path to Chrome/Chromium
     }
   } catch (err) {
     console.error('Dependency Loading Error:', err);
