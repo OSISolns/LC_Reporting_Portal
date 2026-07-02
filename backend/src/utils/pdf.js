@@ -11,7 +11,9 @@ const generateHighFidelityPDF = async (type, data, stream) => {
   try {
     if (isProd) {
       // Production (Vercel) setup
-      chromium = require('@sparticuz/chromium');
+      // @sparticuz/chromium is ESM-only from v135 -- require() of it fails on
+      // Node 20 runtimes, so load it via dynamic import (works from CJS).
+      chromium = (await import('@sparticuz/chromium')).default;
       puppeteer = require('puppeteer-core');
     } else {
       // Local development setup
@@ -28,9 +30,8 @@ const generateHighFidelityPDF = async (type, data, stream) => {
   try {
     const launchConfig = isProd ? {
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: true,
     } : {
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       executablePath: '/usr/bin/google-chrome', // Local developer path
