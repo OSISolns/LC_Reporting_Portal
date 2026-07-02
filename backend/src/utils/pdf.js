@@ -31,7 +31,6 @@ const generateHighFidelityPDF = async (type, data, stream) => {
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
-      ignoreHTTPSErrors: true,
     } : {
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       executablePath: '/usr/bin/google-chrome', // Local developer path
