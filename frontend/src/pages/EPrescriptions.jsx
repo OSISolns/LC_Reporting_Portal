@@ -32,32 +32,41 @@ const EPrescriptions = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeSearchField, setActiveSearchField] = useState(null);
-  const [inventoryItems, setInventoryItems] = useState([]);
+  // Medication-name autocomplete, backed by the Rwanda FDA generic-name cache
+  // (not Central Store inventory -- doctors prescribe from the national drug
+  // list, not just what the clinic currently has in stock).
+  const [medNameSuggestions, setMedNameSuggestions] = useState([]);
+  const [medSuggestIndex, setMedSuggestIndex] = useState(null);
+  const [medSearching, setMedSearching] = useState(false);
 
   const [icd11Suggestions, setIcd11Suggestions] = useState([]);
   const [nursingData, setNursingData] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     if (patientInfo.diagnosis && patientInfo.diagnosis.length >= 2) {
       const delay = setTimeout(() => {
         api.post('/ai/clinical/icd10', { query: patientInfo.diagnosis })
           .then(res => {
-            if (res.data?.success) {
+            if (isMounted && res.data?.success) {
               setIcd11Suggestions(res.data.data);
             }
           })
           .catch(err => console.error('Failed to get ICD-11 suggestions', err));
       }, 300);
-      return () => clearTimeout(delay);
+      return () => { isMounted = false; clearTimeout(delay); };
     } else {
       setIcd11Suggestions([]);
     }
+    return () => { isMounted = false; };
   }, [patientInfo.diagnosis]);
 
   useEffect(() => {
+    let isMounted = true;
     if (patientInfo.id) {
       api.get(`/clinical/observations/${patientInfo.id}/all`)
         .then(res => {
+          if (!isMounted) return;
           if (res.data?.success && res.data.data?.length > 0) {
             const sorted = res.data.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             const latest = sorted[0];
@@ -83,11 +92,12 @@ const EPrescriptions = () => {
         })
         .catch(err => {
           console.error('Failed to fetch nursing data', err);
-          setNursingData(null);
+          if (isMounted) setNursingData(null);
         });
     } else {
       setNursingData(null);
     }
+    return () => { isMounted = false; };
   }, [patientInfo.id]);
 
   useEffect(() => {
@@ -125,24 +135,41 @@ const EPrescriptions = () => {
     }
   }, [location.state]);
 
+  // Debounced live search against the FDA generic-name cache for whichever
+  // medication row is currently focused.
   useEffect(() => {
-    api.get('/clinical/inventory/items')
-      .then(res => {
+    if (medSuggestIndex === null) return;
+    const query = (medications[medSuggestIndex]?.name || '').trim();
+
+    if (query.length < 2) {
+      setMedNameSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setMedSearching(true);
+      try {
+        const res = await api.get(`/clinical/medications/search?q=${encodeURIComponent(query)}`);
         if (res.data?.success) {
-          const consumableKeywords = [
-            'set', 'papsmear', 'swab', 'povidone', 'eaux', 'gauze', 'vicryl',
-            'ethilon', 'monocryl', 'blade', 'bandage', 'aquabloc', 'water',
-            'syringe', 'needle', 'bag', 'catheter', 'glove', 'mask'
-          ];
-          const medsOnly = res.data.data.filter(item => {
-            const lowerItem = item.toLowerCase();
-            return !consumableKeywords.some(keyword => lowerItem.includes(keyword));
-          });
-          setInventoryItems(medsOnly);
+          setMedNameSuggestions(res.data.data);
         }
-      })
-      .catch(err => console.error('Failed to fetch inventory:', err));
-  }, []);
+      } catch (err) {
+        console.error('Medication search failed:', err);
+      } finally {
+        setMedSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [medSuggestIndex, medSuggestIndex !== null ? medications[medSuggestIndex]?.name : null]);
+
+  const selectMedName = (index, name) => {
+    const updatedMeds = [...medications];
+    updatedMeds[index].name = name;
+    setMedications(updatedMeds);
+    setMedSuggestIndex(null);
+    setMedNameSuggestions([]);
+  };
 
   useEffect(() => {
     if (activeTab === 'completed') {
@@ -224,6 +251,11 @@ const EPrescriptions = () => {
 
   const handlePatientChange = (e) => {
     const field = e.target.name;
+    // Close dropdown and clear results when switching fields
+    if (activeSearchField && activeSearchField !== field) {
+      setShowDropdown(false);
+      setSearchResults([]);
+    }
     setActiveSearchField(field);
     setPatientInfo({
       ...patientInfo,
@@ -528,12 +560,6 @@ const EPrescriptions = () => {
                 </div>
               </div>
 
-              <datalist id="inventory-meds">
-                {inventoryItems.map((item, idx) => (
-                  <option key={idx} value={item} />
-                ))}
-              </datalist>
-
               <datalist id="route-options">
                 <option value="PO">PO (Oral)</option>
                 <option value="IV">IV (Intravenous)</option>
@@ -585,9 +611,39 @@ const EPrescriptions = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6 pr-14">
-                      <div className="md:col-span-4">
+                      <div className="md:col-span-4 relative">
                         <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Medication Name</label>
-                        <input type="text" list="inventory-meds" name="name" value={med.name} onChange={(e) => handleMedChange(index, e)} placeholder="e.g. Paracetamol IV 1g" className="w-full px-5 py-3.5 rounded-xl border-2 border-slate-200 focus:border-[#1B669E] focus:ring-4 focus:ring-[#1B669E]/10 outline-none text-base transition-all font-bold text-slate-800" />
+                        <input
+                          type="text"
+                          name="name"
+                          value={med.name}
+                          onChange={(e) => handleMedChange(index, e)}
+                          onFocus={() => setMedSuggestIndex(index)}
+                          onBlur={() => setTimeout(() => setMedSuggestIndex(prev => (prev === index ? null : prev)), 150)}
+                          placeholder="e.g. Paracetamol"
+                          autoComplete="off"
+                          className="w-full px-5 py-3.5 rounded-xl border-2 border-slate-200 focus:border-[#1B669E] focus:ring-4 focus:ring-[#1B669E]/10 outline-none text-base transition-all font-bold text-slate-800"
+                        />
+                        {medSuggestIndex === index && (medSearching || medNameSuggestions.length > 0) && (
+                          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border-2 border-[#1B669E]/20 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                            {medSearching ? (
+                              <div className="px-5 py-3 flex items-center gap-2 text-sm text-slate-500 font-medium">
+                                <Loader2 size={14} className="animate-spin" /> Searching FDA register...
+                              </div>
+                            ) : (
+                              medNameSuggestions.map((name, i) => (
+                                <button
+                                  type="button"
+                                  key={i}
+                                  onMouseDown={(e) => { e.preventDefault(); selectMedName(index, name); }}
+                                  className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-[#1B669E]/5 hover:text-[#1B669E] transition-colors border-b border-slate-50 last:border-0"
+                                >
+                                  {name}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="md:col-span-2">
                         <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Dose</label>
@@ -842,11 +898,11 @@ const EPrescriptions = () => {
                     date: new Date(selectedRx.updated_at).toISOString().split('T')[0],
                     diagnosis: selectedRx.diagnosis || '',
                     medical_note: selectedRx.medical_note || '',
-                    dob: '',
-                    age: '',
-                    gender: '',
-                    phone: '',
-                    insurance: ''
+                    dob: selectedRx.dob || '',
+                    age: selectedRx.age || '',
+                    gender: selectedRx.gender || '',
+                    phone: selectedRx.phone || '',
+                    insurance: selectedRx.insurance || ''
                   });
                   setMedications(selectedRx.medications.map(m => ({
                     name: m.name,

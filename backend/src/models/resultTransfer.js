@@ -85,42 +85,46 @@ class ResultTransfer {
     return rows[0];
   }
 
-  static async review(id, userId) {
+  static async review(id, userId, user = null) {
+    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
     const { rows } = await db.query(
       `UPDATE results_transfers
        SET status = 'reviewed', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2 AND status = 'pending'
+       WHERE id = $2 AND status = 'pending'${reviewerGuard}
        RETURNING *`,
       [userId, id]
     );
     return rows[0];
   }
 
-  static async approve(id, userId, editedByName) {
+  static async approve(id, userId, editedByName, user = null) {
+    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
     const { rows } = await db.query(
       `UPDATE results_transfers
        SET status = 'approved', approved_by = $1, edited_by_name = $2, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3 AND status = 'reviewed'
+       WHERE id = $3 AND status = 'reviewed'${reviewerGuard}
        RETURNING *`,
       [userId, editedByName, id]
     );
     return rows[0];
   }
 
-  static async reject(id, userId, comment) {
+  static async reject(id, userId, comment, user = null) {
+    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
     const { rows } = await db.query(
       `UPDATE results_transfers
        SET status = 'rejected', rejected_by = $1, rejection_comment = $2, rejected_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3 AND status IN ('pending','reviewed')
+       WHERE id = $3 AND status IN ('pending','reviewed')${reviewerGuard}
        RETURNING *`,
       [userId, comment, id]
     );
     return rows[0];
   }
 
-  static async delete(id) {
+  static async delete(id, user = null) {
+    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
     const { rows } = await db.query(
-      `DELETE FROM results_transfers WHERE id = $1 AND status = 'pending' RETURNING *`,
+      `DELETE FROM results_transfers WHERE id = $1 AND status = 'pending'${reviewerGuard} RETURNING *`,
       [id]
     );
     return rows[0];

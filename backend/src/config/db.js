@@ -101,13 +101,18 @@ function decryptRow(row) {
   if (!row) return row;
   const decrypted = { ...row };
 
-  for (const table in ENCRYPTED_COLUMNS) {
-    const colsToDecrypt = ENCRYPTED_COLUMNS[table];
-    colsToDecrypt.forEach(col => {
-      if (decrypted[col] !== undefined && decrypted[col] !== null && typeof decrypted[col] === 'string') {
-        decrypted[col] = decryptField(decrypted[col]);
-      }
-    });
+  // decryptField already self-identifies ciphertext via the 'enc:' prefix and
+  // safely no-ops on anything else, so decrypting is driven by the VALUE, not
+  // by matching the result column's name against ENCRYPTED_COLUMNS. That
+  // name-matching approach silently failed for any query that aliased an
+  // encrypted column (e.g. `u.full_name AS doctor_name`) -- the alias never
+  // matched the original column name, so decryption was skipped and raw
+  // ciphertext leaked to the client. Checking every string value directly
+  // closes that gap for all existing and future aliased queries at once.
+  for (const key in decrypted) {
+    if (typeof decrypted[key] === 'string' && decrypted[key].startsWith('enc:')) {
+      decrypted[key] = decryptField(decrypted[key]);
+    }
   }
 
   return decrypted;
@@ -354,7 +359,13 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       }
       
       console.log('⚙️ Running custom department cleanup migration...');
-      const targetDepts = ['DENTAL', 'PHYSIO', 'NURSING', 'OPERATIONS', 'LABORATORY', 'IMAGING'];
+      // CENTRAL STORE must exist as a real department row -- several code
+      // paths (Purchase Requests from Stock Manager, approveRequisition's
+      // "is this a self-requisition to Procurement" check, supplier receiving)
+      // look it up by name via LIKE '%Central%'/'%Store%' and need a real id
+      // to attach requisitions/department_stock rows to. Without it here, it
+      // would get deleted by this same cleanup pass as a "non-target" dept.
+      const targetDepts = ['DENTAL', 'PHYSIO', 'NURSING', 'OPERATIONS', 'LABORATORY', 'IMAGING', 'CENTRAL STORE'];
       
       // Get all current departments
       const { rows: depts } = await client.execute("SELECT id, name FROM departments");
@@ -1338,6 +1349,24 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to migrate/seed icd11_cache table:', err);
     }
 
+    // FDA Generic Medications Cache Table Migration (populated separately via
+    // scripts/import_fda_medications.js from the Rwanda FDA register export)
+    try {
+      await client.execute(`
+      CREATE TABLE IF NOT EXISTS fda_medications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        generic_name TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+      await client.execute(`
+      CREATE INDEX IF NOT EXISTS idx_fda_medications_generic_name ON fda_medications(generic_name)
+    `);
+      console.log('✅ SQLite Schema Migration: created/verified fda_medications table');
+    } catch (err) {
+      console.error('❌ Failed to initialize fda_medications table:', err);
+    }
+
     // Nursing monthly stock table creation & migration
     try {
       await client.execute(`
@@ -1358,12 +1387,13 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         consumed_minor INTEGER DEFAULT 0,
         user_stn1 TEXT,
         user_minor TEXT,
+        manually_edited INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
       await client.execute(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_nursing_stock_unique 
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_nursing_stock_unique
       ON nursing_monthly_stock(month_year, item_name, day, session)
     `);
       console.log('✅ SQLite Schema Migration: created/verified nursing_monthly_stock table');
@@ -1379,7 +1409,12 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       { name: 'consumed_obs1', type: 'INTEGER DEFAULT 0' },
       { name: 'consumed_minor', type: 'INTEGER DEFAULT 0' },
       { name: 'user_stn1', type: 'TEXT' },
-      { name: 'user_minor', type: 'TEXT' }
+      { name: 'user_minor', type: 'TEXT' },
+      // DEFAULT 1: any row already in the table is treated as an independently
+      // recorded stock count and protected from being silently overwritten by
+      // forward-propagation. Only rows saved going forward with an explicit
+      // false get 0 (auto-carried, safe to overwrite).
+      { name: 'manually_edited', type: 'INTEGER DEFAULT 1' }
     ];
     for (const col of newCols) {
       try {
@@ -1663,6 +1698,19 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       try {
         await client.execute("ALTER TABLE stock_batches ADD COLUMN lot_number TEXT");
         console.log('✅ SQLite Schema Migration: added lot_number column to stock_batches');
+      } catch (e) { /* already exists */ }
+
+      // department_id and storage are purely descriptive/tracking metadata on
+      // a batch of stock-in-hand at Central Store -- they must NEVER create or
+      // modify department_stock rows. Distributed stock is exclusively the
+      // echo of approveRequisition's batch allocation (see that function).
+      try {
+        await client.execute("ALTER TABLE stock_batches ADD COLUMN department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL");
+        console.log('✅ SQLite Schema Migration: added department_id column to stock_batches');
+      } catch (e) { /* already exists */ }
+      try {
+        await client.execute("ALTER TABLE stock_batches ADD COLUMN storage TEXT CHECK (storage IS NULL OR storage IN ('Medical', 'Non-Medical'))");
+        console.log('✅ SQLite Schema Migration: added storage column to stock_batches');
       } catch (e) { /* already exists */ }
 
       console.log('✅ SQLite Schema Migration: created stock management relational tables');

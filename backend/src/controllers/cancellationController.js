@@ -79,7 +79,7 @@ exports.getRequestById = async (req, res, next) => {
 
 exports.verifyRequest = async (req, res, next) => {
   try {
-    const request = await Cancellation.verify(req.params.id, req.user.id);
+    const request = await Cancellation.verify(req.params.id, req.user.id, req.user);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be verified' });
     await logAction(req, 'VERIFY', 'cancellation_request', request.id);
     
@@ -102,7 +102,7 @@ exports.verifyRequest = async (req, res, next) => {
 
 exports.approveRequest = async (req, res, next) => {
   try {
-    const request = await Cancellation.approve(req.params.id, req.user.id);
+    const request = await Cancellation.approve(req.params.id, req.user.id, req.user);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be approved' });
     await logAction(req, 'APPROVE', 'cancellation_request', request.id);
     
@@ -126,13 +126,13 @@ exports.approveRequest = async (req, res, next) => {
 exports.rejectRequest = async (req, res, next) => {
   try {
     const { comment } = req.body;
-    const requestToCheck = await Cancellation.findById(req.params.id);
+    const requestToCheck = await Cancellation.findById(req.params.id, req.user);
     if (!requestToCheck) return res.status(404).json({ success: false, message: 'Request not found' });
     if (req.user.role === 'coo' && requestToCheck.status === 'pending') {
       return res.status(403).json({ success: false, message: 'COO cannot reject a pending request before verification' });
     }
 
-    const request = await Cancellation.reject(req.params.id, req.user.id, comment);
+    const request = await Cancellation.reject(req.params.id, req.user.id, comment, req.user);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be rejected' });
     await logAction(req, 'REJECT', 'cancellation_request', request.id, { reason: comment });
     
@@ -163,7 +163,7 @@ exports.deleteRequest = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own requests.' });
     }
 
-    const request = await Cancellation.delete(req.params.id);
+    const request = await Cancellation.delete(req.params.id, req.user);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be deleted' });
     await logAction(req, 'DELETE', 'cancellation_request', req.params.id);
     cache.invalidatePattern('cancellation:list');

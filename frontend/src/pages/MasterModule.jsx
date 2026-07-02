@@ -97,7 +97,7 @@ export default function MasterModule() {
   // Form states
   const [itemForm, setItemForm] = useState({
     name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'pc',
-    batch_number: '', lot_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
+    batch_number: '', lot_number: '', expiry_date: '', purchase_time: '', department_id: '', storage: '', quantity: '', price: ''
   });
   const [pendingItems, setPendingItems] = useState([]);
   const [deptForm, setDeptForm] = useState({ name: '' });
@@ -113,7 +113,9 @@ export default function MasterModule() {
     { id: 'antiseptics', label: 'Antiseptics' },
     { id: 'sutures', label: 'Sutures' },
     { id: 'antidotes', label: 'Antidotes' },
-    { id: 'stationery', label: 'Stationery' }
+    { id: 'stationery', label: 'Stationery' },
+    { id: 'consumables', label: 'Consumables' },
+    { id: 'suppository', label: 'Suppository' }
   ];
 
   // Mirrors the backend SKU algorithm for live preview.
@@ -247,16 +249,16 @@ export default function MasterModule() {
         expiry_date: item.expiry_date ? item.expiry_date.split('T')[0] : '',
         purchase_time: item.purchase_time ? item.purchase_time.split('T')[0] : '',
         department_id: item.department_id || '',
+        storage: item.storage || '',
         quantity: item.quantity || '',
         price: item.price || '',
-        batch_id: item.batch_id,
-        dept_stock_id: item.dept_stock_id
+        batch_id: item.batch_id
       });
     } else {
       setEditingRecord(null);
       setItemForm({
         name: '', sku: '', category: 'medical_supplies', unit_of_measure: 'pc',
-        batch_number: '', lot_number: '', expiry_date: '', purchase_time: '', department_id: '', quantity: '', price: ''
+        batch_number: '', lot_number: '', expiry_date: '', purchase_time: '', department_id: '', storage: '', quantity: '', price: ''
       });
     }
     setItemModalOpen(true);
@@ -807,7 +809,8 @@ export default function MasterModule() {
                             <th className="py-4 px-4">SKU Code</th>
                             <th className="py-4 px-4">Mfg Batch</th>
                             <th className="py-4 px-4">System Lot</th>
-                            <th className="py-4 px-4">Storage Location</th>
+                            <th className="py-4 px-4">Department</th>
+                            <th className="py-4 px-4">Storage</th>
                             <th className="py-4 px-4">Expiration</th>
                             <th className="py-4 px-6 text-right rounded-r-xl">Actions</th>
                           </tr>
@@ -817,7 +820,7 @@ export default function MasterModule() {
                             if (paginatedData.length === 0) {
                               return (
                                 <tr>
-                                  <td colSpan="7" className="py-16 text-center text-slate-400">
+                                  <td colSpan="8" className="py-16 text-center text-slate-400">
                                     <div className="flex flex-col items-center justify-center">
                                       <Package size={44} className="stroke-[1.5] mb-2.5 text-slate-300" />
                                       <p className="font-bold text-sm">No items found matching the search criteria</p>
@@ -864,6 +867,13 @@ export default function MasterModule() {
                                 </td>
                                 <td className="py-4 px-4">
                                   <div className="text-[12px] text-indigo-700">{item.department || <span className="text-slate-400 font-medium">Global Store</span>}</div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  {item.storage ? (
+                                    <span className={`px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-wider ${item.storage === 'Medical' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                      {item.storage}
+                                    </span>
+                                  ) : <span className="text-slate-300 text-[12px]">—</span>}
                                 </td>
                                 <td className="py-4 px-4 text-[11px] text-slate-500">
                                   {item.expiry_date ? item.expiry_date.split('T')[0] : <span className="text-slate-300">-</span>}
@@ -1210,12 +1220,23 @@ export default function MasterModule() {
               <input type="date" value={itemForm.expiry_date} onChange={e => setItemForm({ ...itemForm, expiry_date: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer shadow-inner" />
             </div>
             <div>
-              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Department Location</label>
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Department <span className="text-indigo-400 normal-case font-semibold">(tracking only)</span></label>
               <select value={itemForm.department_id} onChange={e => setItemForm({ ...itemForm, department_id: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
                 <option value="">- Central Store Hub (Global) -</option>
                 {departments.map(dept => (
                   <option key={dept.id} value={dept.id}>{dept.name}</option>
                 ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Storage <span className="text-indigo-400 normal-case font-semibold">(tracking only)</span></label>
+              <select value={itemForm.storage} onChange={e => setItemForm({ ...itemForm, storage: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
+                <option value="">- Not Set -</option>
+                <option value="Medical">Medical</option>
+                <option value="Non-Medical">Non-Medical</option>
               </select>
             </div>
           </div>

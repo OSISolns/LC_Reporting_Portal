@@ -5,21 +5,21 @@ const aiController        = require('../controllers/aiController');
 const clinicalAIController = require('../controllers/clinicalAIController');
 const { authMiddleware }  = require('../middleware/auth');
 const authorizeRoles      = require('../middleware/role');
+const checkPermission     = require('../middleware/permission');
 
 router.use(authMiddleware);
 
-// Full management access (all modules + executive briefing)
-const MGMT_ROLES = ['sales_manager','coo','chairman','admin','deputy_coo', 'consultant', 'reviewer'];
-
-// Principal cashier can view stats + classify cancellations/refunds only
-const STATS_ROLES = [...MGMT_ROLES, 'principal_cashier', 'consultant'];
-
-// Clinical nursing roles
+// Clinical nursing roles (used only by the /clinical/* AI helper endpoints
+// below -- left on the existing hardcoded gate, not part of the new
+// "AI Insights" module, since these are in-workflow drafting aids, not a
+// distinct navigable page)
 const CLINICAL_ROLES = ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'medical_director'];
 
-router.get('/stats',            authorizeRoles(STATS_ROLES),    aiController.getModuleStats);
-router.get('/classify/:module', authorizeRoles(STATS_ROLES),    aiController.classifyReasons);
-router.get('/executive',        authorizeRoles(MGMT_ROLES),     aiController.getExecutiveReport);
+// The AI Insights page (management analytics): view = stats/classify,
+// download = executive briefing
+router.get('/stats',            checkPermission('ai_insights', 'view'),     aiController.getModuleStats);
+router.get('/classify/:module', checkPermission('ai_insights', 'view'),     aiController.classifyReasons);
+router.get('/executive',        checkPermission('ai_insights', 'download'), aiController.getExecutiveReport);
 
 // ── Legacy medication suggest (kept for backward compat) ─────────────────────
 router.post('/medications/suggest', authorizeRoles(CLINICAL_ROLES), aiController.suggestMedicationRoutes);

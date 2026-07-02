@@ -669,7 +669,7 @@ export default function PatientRecords() {
                         IV:   { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
                         PO:   { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
                         IM:   { bg: '#fef3c7', color: '#d97706', border: '#fde68a' },
-                        SC:   { bg: '#fdf4ff', color: '#9333ea', border: '#e9d5ff' },
+                        SC:   { bg: '#F1F6F9', color: '#1C69A0', border: '#B6CFE1' },
                         SL:   { bg: '#fff1f2', color: '#e11d48', border: '#fecdd3' },
                       };
                       const routeKey = (med.route || '').toUpperCase().split(' ')[0];

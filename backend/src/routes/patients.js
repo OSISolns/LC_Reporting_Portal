@@ -17,6 +17,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
+const checkPermission = require('../middleware/permission');
 const { bulkPullAllPatients, bulkPullByPrefix, searchPatients } = require('../services/sukraaService');
 
 router.use(authMiddleware);
@@ -96,7 +97,7 @@ router.post('/sync/trigger', async (req, res, next) => {
 });
 
 // ── GET /api/patients/search?q=text&limit=20 ─────────────────────────────────
-router.get('/search', async (req, res, next) => {
+router.get('/search', checkPermission('patients', 'view'), async (req, res, next) => {
   try {
     const q     = (req.query.q || '').trim();
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
@@ -141,7 +142,7 @@ router.get('/search', async (req, res, next) => {
 });
 
 // ── GET /api/patients/:pid ────────────────────────────────────────────────────
-router.get('/:pid', async (req, res, next) => {
+router.get('/:pid', checkPermission('patients', 'view'), async (req, res, next) => {
   try {
     const pid = req.params.pid.trim();
 
@@ -175,7 +176,7 @@ router.get('/:pid', async (req, res, next) => {
 });
 
 // ── GET /api/patients?page=1&limit=50&q=text ─────────────────────────────────
-router.get('/', async (req, res, next) => {
+router.get('/', checkPermission('patients', 'view'), async (req, res, next) => {
   try {
     const q      = (req.query.q || '').trim();
     const page   = Math.max(parseInt(req.query.page) || 1, 1);
@@ -252,7 +253,7 @@ async function upsertPatients(patients) {
 }
 
 // ── GET /api/patients/:pid/vitals ─────────────────────────────────────────────
-router.get('/:pid/vitals', async (req, res, next) => {
+router.get('/:pid/vitals', checkPermission('patients', 'view'), async (req, res, next) => {
   try {
     const pid = req.params.pid.trim();
     const result = await db.query(
@@ -264,7 +265,7 @@ router.get('/:pid/vitals', async (req, res, next) => {
 });
 
 // ── POST /api/patients/:pid/vitals ────────────────────────────────────────────
-router.post('/:pid/vitals', async (req, res, next) => {
+router.post('/:pid/vitals', checkPermission('patients', 'view'), async (req, res, next) => {
   try {
     const pid = req.params.pid.trim();
     const { temperature, pulse, respiratory_rate, blood_pressure, weight, spo2, general_comments } = req.body;
@@ -310,7 +311,10 @@ router.post('/:pid/vitals', async (req, res, next) => {
 });
 
 // ── POST /api/patients/:pid/prescription ──────────────────────────────────────
-router.post('/:pid/prescription', async (req, res, next) => {
+// Restricted to prescribing roles -- writing medications into a patient's
+// clinical record is a diagnostic act, not something any authenticated staff
+// account should be able to do (this endpoint had no role check at all).
+router.post('/:pid/prescription', checkPermission('patients', 'create'), async (req, res, next) => {
   try {
     const pid = req.params.pid.trim();
     const { medications, diagnosis, medical_note } = req.body;
@@ -333,12 +337,13 @@ router.post('/:pid/prescription', async (req, res, next) => {
       }
       if (!medMar.interventions) medMar.interventions = [];
       
-      // Append the new medications (only if they have a name)
+      // Append the new medications (only if they have a name). Always push a
+      // new row rather than reusing an existing blank slot -- a blank
+      // intervention row may be a nurse's own pending MAR placeholder for
+      // something unrelated, and silently claiming it corrupts their entry.
       medications.forEach(med => {
         if (med.name && med.name.trim()) {
-          // Replace the first empty row if there is one
-          const emptyIdx = medMar.interventions.findIndex(m => !m.name?.trim());
-          const newIntervention = {
+          medMar.interventions.push({
             name: med.name,
             dose: med.dosage || '',
             route: med.route || '',
@@ -347,12 +352,7 @@ router.post('/:pid/prescription', async (req, res, next) => {
             instructions: med.instructions || '',
             start_time: '',
             end_time: ''
-          };
-          if (emptyIdx >= 0) {
-            medMar.interventions[emptyIdx] = newIntervention;
-          } else {
-            medMar.interventions.push(newIntervention);
-          }
+          });
         }
       });
 
@@ -392,6 +392,10 @@ router.post('/:pid/prescription', async (req, res, next) => {
         ...(medical_note && medical_note.trim() ? { medical_note } : {})
       };
 
+      if (!req.user?.id) {
+        return res.status(401).json({ success: false, message: 'Authentication required' });
+      }
+      
       await db.query(
         `INSERT INTO clinical_observations (
           patient_id, queue_id, patient_name,
@@ -408,7 +412,7 @@ router.post('/:pid/prescription', async (req, res, next) => {
           JSON.stringify(newMedMar),
           '{}',
           'Draft',
-          req.user?.id || 1
+          req.user.id
         ]
       );
     }

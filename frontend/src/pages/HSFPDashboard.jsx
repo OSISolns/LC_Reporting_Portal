@@ -142,7 +142,7 @@ const HSFPDashboard = () => {
     byDept[d] = (byDept[d] || 0) + 1;
   }
   const deptEntries = Object.entries(byDept).sort((a, b) => b[1] - a[1]).slice(0, 7);
-  const DEPT_COLORS = ['var(--primary)', '#b91c1c', '#4338ca', '#92400e', '#0369a1', '#047857', '#6d28d9'];
+  const DEPT_COLORS = ['var(--primary)', '#b91c1c', '#4338ca', '#92400e', '#0369a1', '#047857', '#1C69A0'];
 
   const pendingQueue = [...pending]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))

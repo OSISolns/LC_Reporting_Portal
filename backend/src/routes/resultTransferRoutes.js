@@ -44,15 +44,21 @@ router.put(
 
 // PUT approve request
 router.put(
-  '/:id/approve', 
-  checkPermission('results_transfer', 'approve'), 
+  '/:id/approve',
+  checkPermission('results_transfer', 'approve'),
+  validate([
+    body('editedByName').optional({ checkFalsy: true }).trim().isLength({ max: 200 }).escape(),
+  ]),
   controller.approveRequest
 );
 
 // PUT reject request
 router.put(
-  '/:id/reject', 
-  checkPermission('results_transfer', 'reject'), 
+  '/:id/reject',
+  checkPermission('results_transfer', 'reject'),
+  validate([
+    body('comment').trim().notEmpty().withMessage('Rejection comment is required').isLength({ max: 1000 }),
+  ]),
   controller.rejectRequest
 );
 

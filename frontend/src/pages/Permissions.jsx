@@ -46,11 +46,11 @@ const ALL_ROLES = [
 
 // Role display colors for badges
 const ROLE_COLORS = {
-  admin: '#7c3aed', it_officer: '#2563eb', coo: '#0891b2', deputy_coo: '#0284c7',
+  admin: '#1C69A0', it_officer: '#2563eb', coo: '#0891b2', deputy_coo: '#0284c7',
   chairman: '#d97706', sales_manager: '#059669', cashier: '#0f766e',
-  principal_cashier: '#0d9488', customer_care: '#7c3aed', lab_team_lead: '#4f46e5',
-  consultant: '#6d28d9', operations_staff: '#b45309', pa: '#9333ea',
-  staff: '#64748b', hsfp: '#dc2626', nurse: '#db2777', 'chef-nurse': '#c026d3',
+  principal_cashier: '#0d9488', customer_care: '#1C69A0', lab_team_lead: '#4f46e5',
+  consultant: '#1C69A0', operations_staff: '#b45309', pa: '#1C69A0',
+  staff: '#64748b', hsfp: '#dc2626', nurse: '#db2777', 'chef-nurse': '#1C69A0',
   reviewer: '#ea580c', 'stock-manager': '#16a34a', doctor: '#2563eb',
   medical_director: '#be123c', 'procurement-manager': '#0d9488',
 };

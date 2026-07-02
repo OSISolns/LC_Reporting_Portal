@@ -21,7 +21,7 @@ const SEVERITY_COLOR = {
 
 const MODULE_CONFIG = {
   cancellations: { label: 'Cancellations', icon: <FileText size={18} />, color: '#007b8a', lightColor: 'rgba(0,123,138,0.08)' },
-  refunds: { label: 'Refunds', icon: <ReceiptText size={18} />, color: '#7c3aed', lightColor: 'rgba(124,58,237,0.08)' },
+  refunds: { label: 'Refunds', icon: <ReceiptText size={18} />, color: '#1C69A0', lightColor: 'rgba(28,105,160,0.08)' },
   incidents: { label: 'Incidents', icon: <AlertTriangle size={18} />, color: '#dc2626', lightColor: 'rgba(220,38,38,0.08)' },
   transfers: { label: 'Result Transfers', icon: <RefreshCw size={18} />, color: '#059669', lightColor: 'rgba(5,150,105,0.08)' },
   shifts: { label: 'Staff Shifts', icon: <Clock size={18} />, color: '#1b669d', lightColor: 'rgba(27,102,157,0.08)' },
@@ -211,7 +211,7 @@ const CategoryCard = ({ cat, moduleColor }) => {
             </span>
           )}
           {cat.severityRange && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 10px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 600, backgroundColor: '#faf5ff', color: '#6d28d9', border: '1px solid #ddd6fe', textTransform: 'capitalize' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 10px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 600, backgroundColor: '#F1F6F9', color: '#1C69A0', border: '1px solid #B6CFE1', textTransform: 'capitalize' }}>
               ⚡ {cat.severityRange}
             </span>
           )}
@@ -447,7 +447,7 @@ const AIInsights = () => {
       {/* Page title */}
       <div style={{ marginBottom: '2.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '0.5rem' }}>
-          <div style={{ padding: '10px', borderRadius: '12px', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#ffffff' }}>
+          <div style={{ padding: '10px', borderRadius: '12px', background: 'linear-gradient(135deg, #667eea, #1C69A0)', color: '#ffffff' }}>
             <Brain size={22} />
           </div>
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', margin: 0 }}>AI Insights</h1>
@@ -470,13 +470,13 @@ const AIInsights = () => {
         <div style={{ marginBottom: '2rem', padding: '1.5rem 2rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: narrativeFetched ? '1rem' : 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <TrendingUp size={18} style={{ color: '#7c3aed' }} />
+              <TrendingUp size={18} style={{ color: '#1C69A0' }} />
               <span style={{ fontWeight: 700, fontSize: '1rem', color: '#1e293b' }}>AI Executive Briefing</span>
             </div>
             <button
               onClick={handleExecutive}
               disabled={narrativeLoading}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1.25rem', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', cursor: narrativeLoading ? 'not-allowed' : 'pointer', opacity: narrativeLoading ? 0.7 : 1 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1.25rem', background: 'linear-gradient(135deg, #667eea, #1C69A0)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', cursor: narrativeLoading ? 'not-allowed' : 'pointer', opacity: narrativeLoading ? 0.7 : 1 }}>
               {narrativeLoading ? <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={15} />}
               {narrativeFetched ? 'Regenerate' : 'Generate Briefing'}
             </button>
@@ -488,7 +488,7 @@ const AIInsights = () => {
             </div>
           )}
           {narrative && !narrativeLoading && (
-            <div style={{ padding: '1.25rem', backgroundColor: '#faf5ff', borderRadius: '10px', border: '1px solid #e9d5ff', fontSize: '0.95rem', color: '#4c1d95', lineHeight: 1.8, fontStyle: 'italic' }}>
+            <div style={{ padding: '1.25rem', backgroundColor: '#F1F6F9', borderRadius: '10px', border: '1px solid #B6CFE1', fontSize: '0.95rem', color: '#16527D', lineHeight: 1.8, fontStyle: 'italic' }}>
               {narrative}
             </div>
           )}

@@ -3,28 +3,11 @@ const express = require('express');
 const router  = express.Router();
 const shift   = require('../controllers/shiftController');
 const { authMiddleware } = require('../middleware/auth');
+const checkPermission = require('../middleware/permission');
 const { validate, body, param, query } = require('../middleware/validation');
 
 // All shift routes require authentication
 router.use(authMiddleware);
-
-// ─── Role guard: reviewer-only endpoints ──────────────────────────────────────
-const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse', 'pa'];
-const REVIEW_WRITE_ROLES = ['sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse'];
-
-function requireReviewer(req, res, next) {
-  if (!REVIEWER_ROLES.includes(req.user.role)) {
-    return res.status(403).json({ success: false, message: 'Access restricted to management roles.' });
-  }
-  next();
-}
-
-function requireReviewerWrite(req, res, next) {
-  if (!REVIEW_WRITE_ROLES.includes(req.user.role)) {
-    return res.status(403).json({ success: false, message: 'Access denied: Principal cashiers have read-only access to shifts.' });
-  }
-  next();
-}
 
 // ─── Staff endpoints ──────────────────────────────────────────────────────────
 
@@ -94,7 +77,7 @@ router.patch(
  */
 router.get(
   '/',
-  requireReviewer,
+  checkPermission('shifts', 'view'),
   validate([
     query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge']),
     query('status').optional().isIn(['open', 'draft', 'closed']),
@@ -111,7 +94,7 @@ router.get(
  */
 router.get(
   '/export/excel',
-  requireReviewer,
+  checkPermission('shifts', 'view'),
   validate([
     query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge']),
     query('status').optional().isIn(['open', 'draft', 'closed']),
@@ -148,7 +131,7 @@ router.get(
  */
 router.patch(
   '/:id/review',
-  requireReviewerWrite,
+  checkPermission('shifts', 'review'),
   validate([param('id').isInt().withMessage('Invalid shift ID')]),
   shift.markReviewed
 );
@@ -158,7 +141,7 @@ router.patch(
  */
 router.post(
   '/bulk-review',
-  requireReviewerWrite,
+  checkPermission('shifts', 'review'),
   validate([body('ids').isArray({ min: 1 }).withMessage('IDs must be an array')]),
   shift.bulkReview
 );
@@ -169,12 +152,7 @@ router.post(
  */
 router.patch(
   '/:id/reactivate',
-  (req, res, next) => {
-    if (!['admin', 'deputy_coo'].includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Access restricted to supervisors.' });
-    }
-    next();
-  },
+  checkPermission('shifts', 'edit'),
   validate([param('id').isInt().withMessage('Invalid shift ID')]),
   shift.reactivateShift
 );
@@ -184,12 +162,7 @@ router.patch(
  */
 router.patch(
   '/:id/admin-update',
-  (req, res, next) => {
-    if (!['admin', 'deputy_coo'].includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Access restricted to supervisors.' });
-    }
-    next();
-  },
+  checkPermission('shifts', 'edit'),
   validate([param('id').isInt().withMessage('Invalid shift ID')]),
   shift.updateShiftByAdmin
 );
@@ -199,27 +172,17 @@ router.patch(
  */
 router.delete(
   '/:id',
-  (req, res, next) => {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Only system administrators can delete shift records.' });
-    }
-    next();
-  },
+  checkPermission('shifts', 'delete'),
   validate([param('id').isInt().withMessage('Invalid shift ID')]),
   shift.deleteShift
 );
 
 /**
- * Manually trigger the auto-close job — admin only.
+ * Manually trigger the auto-close job — admin and deputy_coo only.
  */
 router.post(
   '/admin/auto-close',
-  (req, res, next) => {
-    if (!['admin', 'deputy_coo'].includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Access restricted to administrators.' });
-    }
-    next();
-  },
+  checkPermission('shifts', 'create'),
   async (req, res, next) => {
     try {
       const count = await shift.autoCloseExpiredShifts();

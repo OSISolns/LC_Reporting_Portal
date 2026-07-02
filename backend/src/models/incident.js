@@ -86,19 +86,20 @@ class Incident {
     return rows[0];
   }
 
-  static async approve(id, approverId, data) {
-    const { 
-      comments, 
-      rca_environment, 
-      rca_staff, 
-      rca_equipment, 
-      rca_policy, 
-      rca_verification_json, 
-      corrective_actions_json 
+  static async approve(id, approverId, data, user = null) {
+    const {
+      comments,
+      rca_environment,
+      rca_staff,
+      rca_equipment,
+      rca_policy,
+      rca_verification_json,
+      corrective_actions_json
     } = data;
+    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
 
     const { rows } = await db.query(
-      `UPDATE incident_reports 
+      `UPDATE incident_reports
        SET status = 'approved',
            approved_by = $1,
            approved_at = NOW(),
@@ -110,16 +111,16 @@ class Incident {
            rca_verification_json = $7,
            corrective_actions_json = $8,
            updated_at = NOW()
-       WHERE id = $9 AND status = 'pending'
+       WHERE id = $9 AND status = 'pending'${reviewerGuard}
        RETURNING *`,
       [
-        approverId, 
-        comments, 
-        rca_environment, 
-        rca_staff, 
-        rca_equipment, 
-        rca_policy, 
-        rca_verification_json, 
+        approverId,
+        comments,
+        rca_environment,
+        rca_staff,
+        rca_equipment,
+        rca_policy,
+        rca_verification_json,
         corrective_actions_json,
         id
       ]
@@ -127,9 +128,10 @@ class Incident {
     return rows[0];
   }
 
-  static async delete(id) {
+  static async delete(id, user = null) {
+    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
     const { rows } = await db.query(
-      `DELETE FROM incident_reports WHERE id = $1 AND status = 'pending' RETURNING *`,
+      `DELETE FROM incident_reports WHERE id = $1 AND status = 'pending'${reviewerGuard} RETURNING *`,
       [id]
     );
     return rows[0];

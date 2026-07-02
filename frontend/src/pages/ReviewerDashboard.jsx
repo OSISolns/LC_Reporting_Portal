@@ -107,7 +107,7 @@ const ReviewerDashboard = () => {
     { label: 'Refunds', icon: <ReceiptText size={20} />, path: '/refunds', mod: 'refunds', act: 'view', color: '#f59e0b' },
     { label: 'Result Transfers', icon: <RefreshCw size={20} />, path: '/results-transfer', mod: 'results_transfer', act: 'view', color: '#10b981' },
     { label: 'Incident Reports', icon: <AlertTriangle size={20} />, path: '/incidents', mod: 'incident_reports', act: 'view', color: '#ef4444' },
-    { label: 'Nursing Hub', icon: <Stethoscope size={20} />, path: '/nursing-hub', mod: 'clinical_observation', act: 'view', color: '#8b5cf6' },
+    { label: 'Nursing Hub', icon: <Stethoscope size={20} />, path: '/nursing-hub', mod: 'clinical_observation', act: 'view', color: '#3378AA' },
     { label: 'Performance', icon: <Activity size={20} />, path: '/performance', mod: 'staff_performance', act: 'view', color: '#ec4899' },
     { label: 'Users', icon: <Users size={20} />, path: '/users', mod: 'user_management', act: 'view', color: '#6366f1' },
     { label: 'Audit Logs', icon: <ClipboardList size={20} />, path: '/audit-logs', mod: 'audit_logs', act: 'view', color: '#475569' },
@@ -124,7 +124,7 @@ const ReviewerDashboard = () => {
         <StatCard title="Total Requests" value={fmt((c.total || 0) + (r.total || 0) + (rt.total || 0))} icon={<TrendingUp size={20} />} color="#0ea5e9" />
         <StatCard title="Pending Review" value={fmt((c.pending || 0) + (r.pending || 0) + (rt.pending || 0))} icon={<Clock size={20} />} color="#f59e0b" badge={(c.pending || 0) + (r.pending || 0) + (rt.pending || 0)} />
         <StatCard title="Incidents" value={fmt(i.total || 0)} icon={<AlertTriangle size={20} />} color="#ef4444" />
-        <StatCard title="Clinical Logs" value={fmt(stats?.observations || 0)} icon={<Stethoscope size={20} />} color="#8b5cf6" />
+        <StatCard title="Clinical Logs" value={fmt(stats?.observations || 0)} icon={<Stethoscope size={20} />} color="#3378AA" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>

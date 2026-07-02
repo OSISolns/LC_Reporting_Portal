@@ -4,7 +4,7 @@ const express = require('express');
 const router  = express.Router();
 const Feedback = require('../models/feedback');
 const { authMiddleware } = require('../middleware/auth');
-const authorizeRoles = require('../middleware/role');
+const checkPermission = require('../middleware/permission');
 
 // ── POST /api/feedbacks (Publicly Accessible) ───────────────────────────────
 router.post('/', async (req, res, next) => {
@@ -22,7 +22,7 @@ router.post('/', async (req, res, next) => {
 });
 
 // ── GET /api/feedbacks (Restricted Access) ───────────────────────────────────
-router.get('/', authMiddleware, authorizeRoles(['coo', 'deputy_coo', 'chef-nurse', 'medical_director']), async (req, res, next) => {
+router.get('/', authMiddleware, checkPermission('feedbacks', 'view'), async (req, res, next) => {
   try {
     const list = await Feedback.getAll(req.query);
     const { logAction } = require('../middleware/audit');
@@ -37,7 +37,7 @@ router.get('/', authMiddleware, authorizeRoles(['coo', 'deputy_coo', 'chef-nurse
 });
 
 // ── DELETE /api/feedbacks/:id (Restricted Access) ────────────────────────────
-router.delete('/:id', authMiddleware, authorizeRoles(['coo', 'deputy_coo', 'chef-nurse', 'medical_director']), async (req, res, next) => {
+router.delete('/:id', authMiddleware, checkPermission('feedbacks', 'delete'), async (req, res, next) => {
   try {
     res.status(403).json({ success: false, message: 'Deletion of internal feedback records is strictly prohibited for audit and compliance integrity.' });
   } catch (err) {

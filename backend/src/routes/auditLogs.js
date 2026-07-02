@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const AuditLog = require('../models/auditLog');
 const { authMiddleware } = require('../middleware/auth');
-const authorizeRoles = require('../middleware/role');
+const checkPermission = require('../middleware/permission');
 const Notification = require('../models/notification');
 const User = require('../models/user');
 const { logAction } = require('../middleware/audit');
@@ -56,9 +56,7 @@ const formatDetails = (details) => {
   return String(details);
 };
 
-router.use(authorizeRoles(['admin']));
-
-router.get('/export/excel', async (req, res, next) => {
+router.get('/export/excel', checkPermission('audit_logs', 'view'), async (req, res, next) => {
   try {
     const logs = await AuditLog.getAll(req.query);
 
@@ -100,7 +98,7 @@ router.get('/export/excel', async (req, res, next) => {
   }
 });
 
-router.get('/', async (req, res, next) => {
+router.get('/', checkPermission('audit_logs', 'view'), async (req, res, next) => {
   try {
     const logs = await AuditLog.getAll(req.query);
     res.json({ success: true, data: logs });

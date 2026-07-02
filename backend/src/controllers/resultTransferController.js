@@ -65,7 +65,7 @@ exports.getRequestById = async (req, res, next) => {
 
 exports.reviewRequest = async (req, res, next) => {
   try {
-    const request = await ResultTransfer.review(req.params.id, req.user.id);
+    const request = await ResultTransfer.review(req.params.id, req.user.id, req.user);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be reviewed' });
     await logAction(req, 'REVIEW', 'result_transfer', request.id);
     
@@ -88,7 +88,7 @@ exports.reviewRequest = async (req, res, next) => {
 exports.approveRequest = async (req, res, next) => {
   try {
     const { editedByName } = req.body;
-    const request = await ResultTransfer.approve(req.params.id, req.user.id, editedByName);
+    const request = await ResultTransfer.approve(req.params.id, req.user.id, editedByName, req.user);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be approved' });
     await logAction(req, 'APPROVE', 'result_transfer', request.id);
     
@@ -111,7 +111,13 @@ exports.approveRequest = async (req, res, next) => {
 exports.rejectRequest = async (req, res, next) => {
   try {
     const { comment } = req.body;
-    const request = await ResultTransfer.reject(req.params.id, req.user.id, comment);
+    const requestToCheck = await ResultTransfer.findById(req.params.id, req.user);
+    if (!requestToCheck) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (req.user.role === 'coo' && requestToCheck.status === 'pending') {
+      return res.status(403).json({ success: false, message: 'COO cannot reject a pending request before review' });
+    }
+
+    const request = await ResultTransfer.reject(req.params.id, req.user.id, comment, req.user);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be rejected' });
     await logAction(req, 'REJECT', 'result_transfer', request.id, { reason: comment });
     
@@ -141,7 +147,7 @@ exports.deleteRequest = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own requests.' });
     }
 
-    const request = await ResultTransfer.delete(req.params.id);
+    const request = await ResultTransfer.delete(req.params.id, req.user);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be deleted' });
     await logAction(req, 'DELETE', 'result_transfer', req.params.id);
     cache.invalidatePattern('rt:list');
