@@ -72,7 +72,7 @@ const statusCls = (s) => {
 
 export default function CentralStoreHub() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
 
   const [activeTab, setActiveTab]               = useState('stock_in_hand');
   const [activeDept, setActiveDept]             = useState('All Departments');
@@ -86,6 +86,11 @@ export default function CentralStoreHub() {
   const [requisitions, setRequisitions]         = useState([]);
   const [departments, setDepartments]           = useState([]);
   const [masterItems, setMasterItems]           = useState([]);
+  // Distributed Stock is a read-only echo of department_stock (populated
+  // exclusively by approveRequisition), fetched separately from Central
+  // Store's own stock-in-hand -- they are no longer the same data filtered
+  // two ways.
+  const [distributedStock, setDistributedStock] = useState([]);
 
   // ── modal states ──────────────────────────────────────────────────────────
   const [receiveOpen, setReceiveOpen]           = useState(false);
@@ -124,11 +129,12 @@ export default function CentralStoreHub() {
     else setRefreshing(true);
 
     try {
-      const [invRes, reqRes, venRes, deptRes] = await Promise.allSettled([
+      const [invRes, reqRes, venRes, deptRes, distRes] = await Promise.allSettled([
         api.get('/clinical/inventory/master'),
         api.get('/clinical/inventory/requisitions'),
         api.get('/clinical/inventory/vendors'),
         api.get('/clinical/inventory/departments'),
+        api.get('/clinical/inventory/distributed-stock'),
       ]);
 
       if (invRes.status === 'fulfilled' && invRes.value.data.success) {
@@ -143,6 +149,9 @@ export default function CentralStoreHub() {
       }
       if (deptRes.status === 'fulfilled' && deptRes.value.data.success) {
         setDepartments(deptRes.value.data.data);
+      }
+      if (distRes.status === 'fulfilled' && distRes.value.data.success) {
+        setDistributedStock(distRes.value.data.data);
       }
     } catch (err) {
       console.error(err);
@@ -259,7 +268,7 @@ export default function CentralStoreHub() {
     }
   };
 
-  const canRectify = user?.role === 'stock-manager' || user?.role === 'admin';
+  const canRectify = hasPermission('inventory', 'edit');
 
   // ── derived lists ─────────────────────────────────────────────────────────
   const expiringItems = useMemo(() => {
@@ -370,21 +379,45 @@ export default function CentralStoreHub() {
     return 'bg-slate-50 border-slate-100';
   };
 
-  // Filtered lists
+  // Filtered lists. Stock In Hand = every Central Store batch, full stop --
+  // department/storage are just tracking metadata now and no longer decide
+  // whether a batch counts as "in hand" (a batch can be tagged with a
+  // department for tracking and still be 100% sitting in Central Store).
   const filteredStock = useMemo(() => {
     return stockItems.filter(item => {
-      // Segment based on activeTab
-      if (activeTab === 'stock_in_hand') {
-        // Stock in hand is stock currently in Central Store (no department assigned)
-        if (item.department_id) return false;
-      } else if (activeTab === 'distributed_stock') {
-        // Distributed stock is stock assigned to a department
-        if (!item.department_id) return false;
+      const matchCategory = stockCategoryFilter === 'All' || item.category === stockCategoryFilter;
+
+      let matchStatus = true;
+      if (stockStatusFilter === 'Low Stock') {
+        matchStatus = item.quantity > 0 && item.quantity < 20;
+      } else if (stockStatusFilter === 'Out of Stock') {
+        matchStatus = item.quantity === 0;
+      } else if (stockStatusFilter === 'Expired') {
+        const expStatus = getExpiryStatus(item.expiry_date);
+        matchStatus = expStatus && expStatus.days < 0;
+      } else if (stockStatusFilter === 'Expiring Soon') {
+        const expStatus = getExpiryStatus(item.expiry_date);
+        matchStatus = expStatus && expStatus.days >= 0 && expStatus.days <= 90;
       }
 
-      const matchDept = activeTab === 'stock_in_hand' || activeDept === 'All Departments' || item.department === activeDept;
+      const matchSearch = !searchTerm ||
+        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.batch_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.vendor?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      return matchCategory && matchStatus && matchSearch;
+    });
+  }, [stockItems, stockCategoryFilter, stockStatusFilter, searchTerm]);
+
+  // Distributed Stock: read-only echo of department_stock, sourced from its
+  // own endpoint (not stockItems) since it's a genuinely different dataset --
+  // one row per department+item+batch, not per batch.
+  const filteredDistributedStock = useMemo(() => {
+    return distributedStock.filter(item => {
+      const matchDept = activeDept === 'All Departments' || item.department === activeDept;
       const matchCategory = stockCategoryFilter === 'All' || item.category === stockCategoryFilter;
-      
+
       let matchStatus = true;
       if (stockStatusFilter === 'Low Stock') {
         matchStatus = item.quantity > 0 && item.quantity < 20;
@@ -406,7 +439,7 @@ export default function CentralStoreHub() {
 
       return matchDept && matchCategory && matchStatus && matchSearch;
     });
-  }, [stockItems, activeTab, activeDept, stockCategoryFilter, stockStatusFilter, searchTerm]);
+  }, [distributedStock, activeDept, stockCategoryFilter, stockStatusFilter, searchTerm]);
 
   const filteredVendors = useMemo(() => {
     return vendors.filter(v =>
@@ -566,8 +599,8 @@ export default function CentralStoreHub() {
 
   // ── tabs config ───────────────────────────────────────────────────────────
   const tabs = [
-    { id: 'stock_in_hand', label: 'Stock In Hand',        icon: <Package size={13} />,        badge: stockItems.filter(i => !i.department_id).length },
-    { id: 'distributed_stock', label: 'Distributed Stock', icon: <ArrowRightLeft size={13} />, badge: stockItems.filter(i => i.department_id).length },
+    { id: 'stock_in_hand', label: 'Stock In Hand',        icon: <Package size={13} />,        badge: stockItems.length },
+    { id: 'distributed_stock', label: 'Distributed Stock', icon: <ArrowRightLeft size={13} />, badge: distributedStock.length },
     ...(user?.role !== 'stock-manager' ? [{ id: 'vendors',       label: 'Vendors',              icon: <Truck size={13} />,           badge: vendors.length }] : []),
     { id: 'requisitions',  label: 'Requisitions',         icon: <ArrowRightLeft size={13} />,  badge: pendingReqs || null },
     { id: 'expiring',      label: 'Expiring Items',       icon: <Calendar size={13} />,        badge: expiringItems.length || null },
@@ -744,7 +777,7 @@ export default function CentralStoreHub() {
                   <div>
                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5"><Package size={16} className="text-sky-700" /> Stock In Hand (Central Store)</h3>
                     <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">
-                      Showing {filteredStock.length} of {stockItems.filter(i => !i.department_id).length} items
+                      Showing {filteredStock.length} of {stockItems.length} items
                     </p>
                   </div>
 
@@ -865,14 +898,14 @@ export default function CentralStoreHub() {
               </Card>
             )}
 
-            {/* ══ TAB 1.5: DISTRIBUTED STOCK ══ */}
+            {/* ══ TAB 1.5: DISTRIBUTED STOCK (read-only echo of approved requisitions) ══ */}
             {activeTab === 'distributed_stock' && (
               <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-2xl">
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-5 pb-4 border-b border-slate-100">
                   <div>
                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5"><ArrowRightLeft size={16} className="text-sky-700" /> Distributed Stock Per Department</h3>
                     <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">
-                      Showing {filteredStock.length} of {stockItems.filter(i => i.department_id).length} items
+                      Showing {filteredDistributedStock.length} of {distributedStock.length} items · read-only echo of approved requisitions
                     </p>
                   </div>
 
@@ -934,31 +967,23 @@ export default function CentralStoreHub() {
                         <th className="py-3.5 px-4">Batch</th>
                         <th className="py-3.5 px-4">UoM</th>
                         <th className="py-3.5 px-4">Expiry</th>
-                        <th className="py-3.5 px-4">Purchase Date</th>
                         <th className="py-3.5 px-4">Vendor</th>
                         <th className="py-3.5 px-4">Department</th>
                         <th className="py-3.5 px-4">Category</th>
                         <th className="py-3.5 px-4 text-center">Qty</th>
                         <th className="py-3.5 px-4 text-right">Unit Price</th>
-                        {canRectify ? (
-                          <>
-                            <th className="py-3.5 px-4 text-right">Tot Price</th>
-                            <th className="py-3.5 px-4 text-center rounded-r-xl">Actions</th>
-                          </>
-                        ) : (
-                          <th className="py-3.5 px-4 text-right rounded-r-xl">Tot Price</th>
-                        )}
+                        <th className="py-3.5 px-4 text-right rounded-r-xl">Tot Price</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                      {filteredStock.length === 0
-                        ? <EmptyRow cols={canRectify ? 13 : 12} message="No stock items found." />
-                        : filteredStock.slice((distributedStockPage - 1) * DISTRIBUTED_ITEMS_PER_PAGE, distributedStockPage * DISTRIBUTED_ITEMS_PER_PAGE).map((item, idx) => {
+                      {filteredDistributedStock.length === 0
+                        ? <EmptyRow cols={11} message="No distributed stock found." />
+                        : filteredDistributedStock.slice((distributedStockPage - 1) * DISTRIBUTED_ITEMS_PER_PAGE, distributedStockPage * DISTRIBUTED_ITEMS_PER_PAGE).map((item) => {
                             const expStatus = getExpiryStatus(item.expiry_date);
                             const isLow = item.quantity > 0 && item.quantity < 20;
                             const isOut = item.quantity === 0;
                             return (
-                              <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                              <tr key={item.dept_stock_id} className="hover:bg-slate-50/50 transition-colors">
                                 <td className="py-3 px-4 text-slate-900 font-black text-[13px] max-w-[200px] truncate">{item.name}</td>
                                 <td className="py-3 px-4 font-mono text-slate-450 text-[11px]">{item.sku || '—'}</td>
                                 <td className="py-3 px-4 font-mono text-sky-700 text-[11px]">{item.batch_number || '—'}</td>
@@ -969,7 +994,6 @@ export default function CentralStoreHub() {
                                     : <span className="text-slate-400">—</span>
                                   }
                                 </td>
-                                <td className="py-3 px-4 text-slate-500 font-normal">{fmt(item.purchase_time)}</td>
                                 <td className="py-3 px-4 text-slate-600 font-semibold">{item.vendor || '—'}</td>
                                 <td className="py-3 px-4">
                                   <span className={`px-2.5 py-1 text-[10px] font-black rounded-lg border uppercase tracking-wider ${getDeptColorBg(item.department)} ${getDeptColorText(item.department)}`}>
@@ -986,26 +1010,6 @@ export default function CentralStoreHub() {
                                 </td>
                                 <td className="py-3 px-4 text-right font-mono text-slate-550 font-bold">{fmtNum(item.price)} RWF</td>
                                 <td className="py-3 px-4 text-right font-mono text-slate-800 font-black">{fmtNum(item.quantity * item.price)} RWF</td>
-                                {canRectify && (
-                                  <td className="py-3 px-4 text-center">
-                                    <div className="flex items-center justify-center gap-1">
-                                      <button 
-                                        onClick={() => openRectifyModal(item)}
-                                        className="p-1.5 text-slate-400 hover:text-sky-700 bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-200 rounded-lg transition-colors cursor-pointer shadow-xs"
-                                        title="Rectify stock balance & price"
-                                      >
-                                        <Edit2 size={13} className="stroke-[2.5]" />
-                                      </button>
-                                      <button 
-                                        onClick={() => openReturnModal(item)}
-                                        className="p-1.5 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition-colors cursor-pointer shadow-xs"
-                                        title="Return to Supplier"
-                                      >
-                                        <CornerUpLeft size={13} className="stroke-[2.5]" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                )}
                               </tr>
                             );
                           })
@@ -1015,10 +1019,10 @@ export default function CentralStoreHub() {
                 </div>
 
                 {/* Pagination Controls */}
-                {filteredStock.length > DISTRIBUTED_ITEMS_PER_PAGE && (
+                {filteredDistributedStock.length > DISTRIBUTED_ITEMS_PER_PAGE && (
                   <div className="flex justify-between items-center mt-5 pt-4 border-t border-slate-100">
                     <span className="text-xs font-bold text-slate-400">
-                      Showing {((distributedStockPage - 1) * DISTRIBUTED_ITEMS_PER_PAGE) + 1} to {Math.min(distributedStockPage * DISTRIBUTED_ITEMS_PER_PAGE, filteredStock.length)} of {filteredStock.length} items
+                      Showing {((distributedStockPage - 1) * DISTRIBUTED_ITEMS_PER_PAGE) + 1} to {Math.min(distributedStockPage * DISTRIBUTED_ITEMS_PER_PAGE, filteredDistributedStock.length)} of {filteredDistributedStock.length} items
                     </span>
                     <div className="flex gap-2">
                       <button
@@ -1029,8 +1033,8 @@ export default function CentralStoreHub() {
                         Prev
                       </button>
                       <button
-                        onClick={() => setDistributedStockPage(p => Math.min(Math.ceil(filteredStock.length / DISTRIBUTED_ITEMS_PER_PAGE), p + 1))}
-                        disabled={distributedStockPage === Math.ceil(filteredStock.length / DISTRIBUTED_ITEMS_PER_PAGE)}
+                        onClick={() => setDistributedStockPage(p => Math.min(Math.ceil(filteredDistributedStock.length / DISTRIBUTED_ITEMS_PER_PAGE), p + 1))}
+                        disabled={distributedStockPage === Math.ceil(filteredDistributedStock.length / DISTRIBUTED_ITEMS_PER_PAGE)}
                         className="px-4 py-2 rounded-xl text-xs font-black bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-50 transition-colors"
                       >
                         Next

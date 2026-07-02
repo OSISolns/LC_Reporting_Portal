@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Building, FileText, ClipboardList, ShieldAlert, Plus, Eye, Check, X, 
-  Trash2, RefreshCw, BarChart2, CheckCircle, Clock, AlertTriangle, 
+import {
+  Building, FileText, ClipboardList, ShieldAlert, Plus, Eye, Check, X,
+  Trash2, RefreshCw, BarChart2, CheckCircle, Clock, AlertTriangle,
   TrendingUp, Search, Calendar, Loader2, ArrowRight, User, AlertCircle,
-  Truck, ArrowUpRight, DollarSign, Tag, Info, ArrowRightLeft, Printer, Download
+  Truck, ArrowUpRight, DollarSign, Tag, Info, ArrowRightLeft, Printer, Download,
+  Copy, KeyRound
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
@@ -41,6 +42,9 @@ export default function ProcurementHub() {
   const [showCreateGRNModal, setShowCreateGRNModal] = useState(false);
   const [showCreateVendorModal, setShowCreateVendorModal] = useState(false);
   const [showCreateIncidentModal, setShowCreateIncidentModal] = useState(false);
+  // Shown after a PO is sent and its supplier portal session auto-opens, so
+  // procurement staff can copy/share the token with the vendor.
+  const [openedPortalSession, setOpenedPortalSession] = useState(null);
 
   // Loaders
   const [loadingGrnItems, setLoadingGrnItems] = useState(false);
@@ -195,6 +199,10 @@ export default function ProcurementHub() {
       toast.error('Enter valid quantity and price values.');
       return;
     }
+    if (poItems.some(i => i.item_name.toLowerCase() === tempPoItemName.trim().toLowerCase())) {
+      toast.error('Item already added to this PO. Remove it first if you need to change the quantity or price.');
+      return;
+    }
 
     const matched = masterInventory.find(i => i.name.toLowerCase() === tempPoItemName.toLowerCase());
 
@@ -211,6 +219,23 @@ export default function ProcurementHub() {
     setTempPoItemQty('');
     setTempPoItemPrice('');
   };
+
+  // Auto-fills the estimated price from the item's last recorded purchase
+  // price when the typed name exactly matches a known Master Inventory item,
+  // so the person building the PO usually doesn't have to look it up or
+  // guess -- only fills in if the price field is still empty, so it never
+  // clobbers a price the user already typed.
+  const handlePoItemNameChange = (value) => {
+    setTempPoItemName(value);
+    const matched = masterInventory.find(i => i.name.toLowerCase() === value.trim().toLowerCase());
+    if (matched && matched.price && !tempPoItemPrice) {
+      setTempPoItemPrice(String(matched.price));
+    }
+  };
+
+  const matchedPoItem = masterInventory.find(i => i.name.toLowerCase() === tempPoItemName.trim().toLowerCase());
+
+  const poTotal = poItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
 
   const handleRemovePoItem = (index) => {
     setPoItems(poItems.filter((_, idx) => idx !== index));
@@ -259,6 +284,39 @@ export default function ProcurementHub() {
         if (selectedPO?.id === poId) {
           setSelectedPO(prev => ({ ...prev, status: newStatus }));
         }
+
+        // Sending a PO to a supplier should give that supplier a way to
+        // submit their delivery back -- auto-open a supplier portal session
+        // for the PO's vendor, pre-filled with the PO's own line items. This
+        // is a secondary/best-effort step: the PO is already sent regardless
+        // of whether this succeeds, so failures here are surfaced but don't
+        // roll back the status change.
+        if (newStatus === 'Sent to Supplier') {
+          const po = (selectedPO?.id === poId ? selectedPO : purchaseOrders.find(p => p.id === poId));
+          if (po?.vendor_id && Array.isArray(po.items) && po.items.length > 0) {
+            try {
+              const portalRes = await api.post('/clinical/inventory/supplier-portal/toggle', {
+                active: true,
+                vendorId: po.vendor_id,
+                requestedItems: po.items.map(i => ({
+                  name: i.item_name,
+                  sku: i.sku || '',
+                  category: i.category || '',
+                  unit_of_measure: i.unit_of_measure || '',
+                  quantity: i.quantity || 0
+                }))
+              });
+              if (portalRes.data?.success) {
+                setOpenedPortalSession(portalRes.data.session);
+                toast.success(`Supplier portal opened for ${portalRes.data.session.vendorName} -- share the access token with them.`, { duration: 6000 });
+              }
+            } catch (portalErr) {
+              console.error(portalErr);
+              toast.error(portalErr.response?.data?.message || 'PO sent, but failed to open the supplier portal automatically. Open it manually from Supplier Portal Manager.');
+            }
+          }
+        }
+
         await loadData(true);
       }
     } catch (err) {
@@ -1360,17 +1418,23 @@ export default function ProcurementHub() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-slate-400">Product Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="Type name..." 
+                      <input
+                        type="text"
+                        placeholder="Type name..."
                         list="po-items-datalist"
                         value={tempPoItemName}
-                        onChange={(e) => setTempPoItemName(e.target.value)}
+                        onChange={(e) => handlePoItemNameChange(e.target.value)}
                         className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs"
                       />
                       <datalist id="po-items-datalist">
                         {masterInventory.map((item, idx) => <option key={idx} value={item.name} />)}
                       </datalist>
+                      {matchedPoItem && (
+                        <p className="text-[10px] text-slate-450 font-semibold mt-0.5">
+                          Current stock: <span className="text-slate-700 font-bold">{matchedPoItem.quantity ?? 0}</span>
+                          {matchedPoItem.price ? <> · Last price: <span className="text-slate-700 font-bold">{Number(matchedPoItem.price).toLocaleString()} RWF</span></> : null}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex flex-col gap-1">
@@ -1411,6 +1475,7 @@ export default function ProcurementHub() {
                             <th className="p-2">Name</th>
                             <th className="p-2">Qty</th>
                             <th className="p-2">Price (RWF)</th>
+                            <th className="p-2 text-right">Total (RWF)</th>
                             <th className="p-2 text-right">Action</th>
                           </tr>
                         </thead>
@@ -1420,20 +1485,28 @@ export default function ProcurementHub() {
                               <td className="p-2 font-semibold">{item.item_name}</td>
                               <td className="p-2 font-bold">{item.quantity}</td>
                               <td className="p-2 text-teal-700 font-bold">{item.unit_price.toLocaleString()}</td>
+                              <td className="p-2 text-right font-black text-slate-800">{(item.quantity * item.unit_price).toLocaleString()}</td>
                               <td className="p-2 text-right">
                                 <button type="button" onClick={() => handleRemovePoItem(idx)} className="text-rose-500 font-bold mr-2 hover:text-rose-700 cursor-pointer">Remove</button>
                               </td>
                             </tr>
                           ))}
                         </tbody>
+                        <tfoot>
+                          <tr className="bg-slate-50 border-t-2 border-slate-200">
+                            <td colSpan={3} className="p-2 text-right font-black text-slate-500 uppercase tracking-wider text-[10px]">Grand Total</td>
+                            <td className="p-2 text-right font-black text-teal-700 text-sm">{poTotal.toLocaleString()}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
                       </table>
                     </div>
                   )}
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={submittingPO}
                     className="flex-1 py-3 bg-teal-700 hover:bg-teal-650 text-white font-bold text-xs rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
                   >
@@ -1446,6 +1519,63 @@ export default function ProcurementHub() {
                   >Cancel</button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── SUPPLIER PORTAL AUTO-OPENED (after PO sent) ─── */}
+      <AnimatePresence>
+        {openedPortalSession && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpenedPortalSession(null)}
+              className="absolute inset-0 bg-slate-900"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 text-slate-800"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <span className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl">
+                  <KeyRound size={22} />
+                </span>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Supplier Portal Opened</h3>
+                  <p className="text-xs text-slate-500 font-semibold">{openedPortalSession.vendorName}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-500 font-medium mb-4">
+                Share this access token with the supplier. They'll enter it at the public
+                supplier portal to upload the delivery for this PO.
+              </p>
+
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-4">
+                <span className="flex-1 font-mono font-black text-sm tracking-widest text-slate-800">{openedPortalSession.token}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(openedPortalSession.token);
+                    toast.success('Token copied to clipboard!');
+                  }}
+                  className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors"
+                  title="Copy token"
+                >
+                  <Copy size={14} className="text-slate-600" />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setOpenedPortalSession(null)}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl cursor-pointer"
+              >Done</button>
             </motion.div>
           </div>
         )}

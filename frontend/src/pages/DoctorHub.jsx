@@ -40,6 +40,9 @@ export default function DoctorHub() {
   const [isIcd11BrowserOpen, setIsIcd11BrowserOpen] = useState(false);
   const [patientSheets, setPatientSheets] = useState([]);
   const [loadingSheets, setLoadingSheets] = useState(false);
+  
+  // Track latest patient selection to prevent race conditions
+  const latestPatientRef = React.useRef(null);
 
   const getGreeting = () => {
     const hrs = now.getHours();
@@ -68,6 +71,9 @@ export default function DoctorHub() {
   }, []);
 
   const handlePatientSelect = async (patient, existingQueueId = null) => {
+    const requestId = Date.now();
+    latestPatientRef.current = requestId;
+    
     setSelectedPatient(patient);
     setPatientSheets([]);
 
@@ -80,13 +86,14 @@ export default function DoctorHub() {
       try {
         setLoadingSheets(true);
         const res = await api.get(`/clinical/observations/${patient.pid}/all`);
-        if (res.data?.success) {
+        // Only update state if this is still the latest request
+        if (latestPatientRef.current === requestId && res.data?.success) {
           setPatientSheets(res.data.data || []);
         }
       } catch (err) {
         console.error(err);
       } finally {
-        setLoadingSheets(false);
+        if (latestPatientRef.current === requestId) setLoadingSheets(false);
       }
       return;
     }
@@ -97,6 +104,9 @@ export default function DoctorHub() {
     try {
       setLoadingSheets(true);
       const res = await api.get(`/clinical/observations/${patient.pid}/all`);
+      // Only update state if this is still the latest request
+      if (latestPatientRef.current !== requestId) return;
+      
       if (res.data?.success) {
         const sheets = res.data.data || [];
         setPatientSheets(sheets);
@@ -117,10 +127,11 @@ export default function DoctorHub() {
         toast.success(`New session started for ${patient.full_name}`);
       }
     } catch {
+      if (latestPatientRef.current !== requestId) return;
       setSessionQueueId(`Q-${Date.now()}`);
       toast.success(`Active workspace loaded for ${patient.full_name}`);
     } finally {
-      setLoadingSheets(false);
+      if (latestPatientRef.current === requestId) setLoadingSheets(false);
     }
   };
 
@@ -399,7 +410,7 @@ export default function DoctorHub() {
                     <div 
                       key={p.patient_id}
                       onClick={() => handlePatientSelect(
-                        { pid: p.patient_id, full_name: patientName, dob: p.dob, gender: p.gender, insurance: p.insurance_provider, allergies: p.allergies || '' },
+                        { pid: p.patient_id, full_name: patientName, dob: p.dob, gender: p.gender, insurance: p.insurance, allergies: p.allergies || '' },
                         p.queue_id  // reuse the existing queue ID from the recent observation
                       )}
                       style={{

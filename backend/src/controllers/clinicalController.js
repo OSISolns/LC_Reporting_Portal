@@ -327,6 +327,28 @@ exports.saveObservation = async (req, res) => {
       }
     }
 
+    // SBAR receiver sign-off must be set server-side whenever a sheet
+    // transitions to Verified, regardless of which authorized role performs
+    // the verification. The frontend only auto-populates this for chef-nurse
+    // (its "Verify Sheet" button path) -- relying on that alone means any
+    // other authorized verifier (doctor/consultant/medical_director) could
+    // set status: 'Verified' with no received_by/received_sign_time, and
+    // since a Verified sheet becomes permanently immutable for every role
+    // (see the check below), that gap would be unrecoverable.
+    const applyVerificationSignOff = (statusToSave) => {
+      if (statusToSave !== 'Verified') return;
+      if (!req.body.sbar) req.body.sbar = {};
+      if (!req.body.sbar.received_by || !req.body.sbar.received_sign_time) {
+        const nowStr = new Date().toLocaleString('en-US', {
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+        const verifierName = req.user.full_name || req.user.fullName || req.user.username || 'Verifier';
+        req.body.sbar.received_by = `${verifierName} (${nowStr})`;
+        req.body.sbar.received_sign_time = nowStr;
+      }
+    };
+
     let result;
     if (existing) {
       // When a clinical sheet is complete (Verified), nothing can be edited by any role
@@ -357,6 +379,7 @@ exports.saveObservation = async (req, res) => {
       if (statusToSave === 'Verified' && !['chef-nurse', 'doctor', 'consultant', 'medical_director'].includes(req.user.role)) {
         return res.status(403).json({ success: false, message: 'Only authorized personnel can verify clinical sheets.' });
       }
+      applyVerificationSignOff(statusToSave);
 
       if (!existing.patient_name) {
         const patientRes = await db.query(`SELECT full_name FROM sukraa_patients WHERE pid = $1`, [patientId]);
@@ -373,6 +396,7 @@ exports.saveObservation = async (req, res) => {
       if (statusToSave === 'Verified' && !['chef-nurse', 'doctor', 'consultant', 'medical_director'].includes(req.user.role)) {
         return res.status(403).json({ success: false, message: 'Only authorized personnel can verify clinical sheets.' });
       }
+      applyVerificationSignOff(statusToSave);
 
       let patientName = req.body.patient_name;
       if (!patientName) {
@@ -414,7 +438,24 @@ exports.getObservation = async (req, res) => {
 // ─── Clinical Observation: Get recent ─────────────────────────────────────────
 exports.getRecentObservations = async (req, res) => {
   try {
-    const result = await ClinicalObservation.getRecent(req.user.id, req.user.role);
+    const rows = await ClinicalObservation.getRecent(req.user.id, req.user.role);
+    // identification_json/triage_json are stored as raw JSON strings -- flatten
+    // the fields callers actually need (dob, gender, insurance, allergies) so
+    // consumers don't have to know the storage shape or guess at key names.
+    const result = rows.map(row => {
+      let identification = {};
+      let triage = {};
+      try { identification = typeof row.identification_json === 'string' ? JSON.parse(row.identification_json) : (row.identification_json || {}); } catch (_) { }
+      try { triage = typeof row.triage_json === 'string' ? JSON.parse(row.triage_json) : (row.triage_json || {}); } catch (_) { }
+      const allergies = [triage.allergy_1, triage.allergy_2].filter(a => a && a.trim()).join(', ');
+      return {
+        ...row,
+        dob: identification.dob || '',
+        gender: identification.gender || '',
+        insurance: identification.insurance || '',
+        allergies
+      };
+    });
     res.json({ success: true, data: result });
   } catch (error) {
     console.error('Error fetching recent clinical observations:', error);
@@ -905,11 +946,13 @@ exports.saveInventoryBulk = async (req, res) => {
         });
       }
 
+      const newManuallyEdited = item.manually_edited ? 1 : 0;
+
       return {
         sql: `INSERT INTO nursing_monthly_stock (
             month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, expiration_date, status, category,
-            consumed_obs1, consumed_minor, user_stn1, user_minor, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
+            consumed_obs1, consumed_minor, user_stn1, user_minor, manually_edited, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, CURRENT_TIMESTAMP)
           ON CONFLICT(month_year, item_name, day, session) DO UPDATE SET
             stock_in_hands = excluded.stock_in_hands,
             consumed = excluded.consumed,
@@ -922,6 +965,7 @@ exports.saveInventoryBulk = async (req, res) => {
             consumed_minor = excluded.consumed_minor,
             user_stn1 = excluded.user_stn1,
             user_minor = excluded.user_minor,
+            manually_edited = CASE WHEN excluded.manually_edited = 1 THEN 1 ELSE nursing_monthly_stock.manually_edited END,
             updated_at = CURRENT_TIMESTAMP`,
         args: [
           month_year,
@@ -938,7 +982,8 @@ exports.saveInventoryBulk = async (req, res) => {
           newObs1,
           newMinor,
           newUObs1,
-          newUMinor
+          newUMinor,
+          newManuallyEdited
         ]
       };
     });
@@ -1116,10 +1161,50 @@ exports.getInventoryChangeLogs = async (req, res) => {
 };
 
 // ─── Inventory: Return item master list ───────────────────────────────────────
+// ─── Medications: search FDA generic-name cache (autocomplete) ────────────────
+// Backed by the Rwanda FDA register (fda_medications, ~2,083 generic names),
+// not Central Store's master_inventory -- doctors need the full national drug
+// vocabulary to prescribe from, independent of what the clinic currently
+// stocks.
+exports.searchFdaMedications = async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 15, 50);
+
+    if (!q) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const { rows } = await db.query(
+      `SELECT generic_name FROM fda_medications
+       WHERE generic_name LIKE $1
+       ORDER BY
+         CASE WHEN generic_name LIKE $2 THEN 0 ELSE 1 END,
+         LENGTH(generic_name) ASC,
+         generic_name ASC
+       LIMIT $3`,
+      [`%${q}%`, `${q}%`, limit]
+    );
+
+    res.json({ success: true, data: rows.map(r => r.generic_name) });
+  } catch (error) {
+    console.error('Error in searchFdaMedications:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 exports.getInventoryItems = async (req, res) => {
   try {
-    const { rows } = await db.query("SELECT name FROM master_inventory ORDER BY name ASC");
-    const items = rows.length > 0 ? rows.map(r => r.name) : INVENTORY_ITEMS;
+    // Optional ?category filter (e.g. "medications") so callers that only
+    // want prescribable drugs -- not the full Central Store catalog of
+    // supplies, sutures, stationery, dental/lab items, etc. -- can ask for
+    // just that. Omitting it preserves the previous "everything" behavior
+    // for callers (like the nursing MAR sheet) that need the full list.
+    const { category } = req.query;
+    const { rows } = category
+      ? await db.query("SELECT name FROM master_inventory WHERE category = $1 ORDER BY name ASC", [category])
+      : await db.query("SELECT name FROM master_inventory ORDER BY name ASC");
+    const items = rows.length > 0 ? rows.map(r => r.name) : (category ? [] : INVENTORY_ITEMS);
     res.json({ success: true, data: items });
   } catch (error) {
     console.error('Error in getInventoryItems:', error);
@@ -1210,14 +1295,25 @@ exports.getAllObservationsList = async (req, res) => {
 exports.getCompletedPrescriptions = async (req, res) => {
   try {
     // Return all clinical sheets that have prescriptions (medication_mar_json->>'interventions' has data)
+    // sukraa_patients is joined for age/phone -- those are never captured in
+    // identification_json (the prescription form only sends medications,
+    // diagnosis, medical_note to the backend), so the patient master cache is
+    // the only available source when reprinting a historical prescription.
+    // NOTE: u.full_name and sp.age/phone/dob/gender/insurance are intentionally
+    // NOT aliased -- the transparent field-level encryption layer (db.js)
+    // decrypts by exact column name against ENCRYPTED_COLUMNS, so an alias
+    // like "AS doctor_name" or "AS cached_age" silently skips decryption and
+    // leaks ciphertext straight to the client. Rename in JS instead of SQL.
     let sql = `
       SELECT
         co.id, co.patient_id, co.patient_name, co.status, co.created_at, co.updated_at,
-        u.full_name AS doctor_name,
-        co.medication_mar_json, co.identification_json
+        u.full_name,
+        co.medication_mar_json, co.identification_json,
+        sp.age, sp.phone, sp.dob, sp.gender, sp.insurance
       FROM clinical_observations co
       LEFT JOIN users u ON co.created_by = u.id
-      WHERE co.medication_mar_json IS NOT NULL 
+      LEFT JOIN sukraa_patients sp ON sp.pid = co.patient_id
+      WHERE co.medication_mar_json IS NOT NULL
         AND co.medication_mar_json != '{}'
       ORDER BY co.updated_at DESC LIMIT 100
     `;
@@ -1251,12 +1347,21 @@ exports.getCompletedPrescriptions = async (req, res) => {
             id: row.id,
             patient_id: row.patient_id,
             patient_name: fallbackName,
-            doctor_name: row.doctor_name,
+            doctor_name: row.full_name,
             status: row.status,
             created_at: row.created_at,
             updated_at: row.updated_at,
             diagnosis: ident.diagnosis || '',
             medical_note: ident.medical_note || '',
+            // Prefer what was actually recorded on this clinical sheet at the
+            // time; fall back to the current patient master cache. age/phone
+            // are never stored on the sheet at all, so the cache is the only
+            // source for them.
+            dob: ident.dob || row.dob || '',
+            gender: ident.gender || row.gender || '',
+            insurance: ident.insurance || row.insurance || '',
+            age: row.age || '',
+            phone: row.phone || '',
             medications: validMeds
           });
         }
@@ -1639,13 +1744,19 @@ exports.exportInventoryExcel = async (req, res) => {
 exports.getmasterInventory = async (req, res) => {
   try {
 
+    // "quantity" is always stock-in-hand at Central Store (sb.quantity) --
+    // never coalesced with department_stock. department/storage are the
+    // batch's own descriptive tracking fields (sb.department_id, sb.storage),
+    // independent of distribution. distributed_quantity is a read-only echo
+    // of what's actually been transferred out via approved requisitions, so
+    // the two concepts are never conflated in a single ambiguous column.
     const { rows } = await db.query(`
-      SELECT 
+      SELECT
         mi.id,
-        mi.name, 
+        mi.name,
         mi.sku as sku,
-        COALESCE(mi.sku, '') || COALESCE(sb.lot_number, '01') as full_sku, 
-        mi.unit_of_measure, 
+        COALESCE(mi.sku, '') || COALESCE(sb.lot_number, '01') as full_sku,
+        mi.unit_of_measure,
         mi.category,
         sb.id as batch_id,
         sb.batch_number,
@@ -1653,16 +1764,16 @@ exports.getmasterInventory = async (req, res) => {
         sb.expiry_date,
         sb.created_at as purchase_time,
         sb.purchase_price as price,
-        COALESCE(ds.quantity, sb.quantity, 0) as quantity,
-        ds.id as dept_stock_id,
+        COALESCE(sb.quantity, 0) as quantity,
+        sb.storage as storage,
         d.name as department,
         d.id as department_id,
         v.name as vendor,
-        sb.vendor_id as vendor_id
+        sb.vendor_id as vendor_id,
+        COALESCE((SELECT SUM(ds.quantity) FROM department_stock ds WHERE ds.item_id = mi.id AND ds.batch_id = sb.id), 0) as distributed_quantity
       FROM master_inventory mi
       LEFT JOIN stock_batches sb ON mi.id = sb.item_id
-      LEFT JOIN department_stock ds ON ds.item_id = mi.id AND (ds.batch_id = sb.id OR (ds.batch_id IS NULL AND sb.id IS NULL))
-      LEFT JOIN departments d ON ds.department_id = d.id
+      LEFT JOIN departments d ON sb.department_id = d.id
       LEFT JOIN vendors v ON sb.vendor_id = v.id
       ORDER BY mi.id DESC
     `);
@@ -1689,7 +1800,7 @@ exports.createmasterInventory = async (req, res) => {
     const items = Array.isArray(req.body) ? req.body : (req.body.items || [req.body]);
 
     for (const item of items) {
-      const { name, sku, unit_of_measure, category, batch_number, lot_number, expiry_date, purchase_time, department_id, quantity, price, vendor_id } = item;
+      const { name, sku, unit_of_measure, category, batch_number, lot_number, expiry_date, purchase_time, department_id, storage, quantity, price, vendor_id } = item;
 
       // 1. Check if name already exists in master_inventory
       const { rows: existingItems } = await db.query(
@@ -1733,18 +1844,14 @@ exports.createmasterInventory = async (req, res) => {
         formattedPurchaseTime = `${formattedPurchaseTime}T00:00:00.000Z`;
       }
 
+      // department_id/storage are descriptive tracking fields on the batch
+      // only -- they must NOT create department_stock (distributed stock)
+      // rows. Distribution only ever happens through an approved requisition
+      // (see approveRequisition), which is the sole writer of department_stock.
       const { rows: batchRows } = await db.query(
-        "INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, expiry_date, purchase_price, quantity, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, CURRENT_TIMESTAMP)) RETURNING id",
-        [itemId, vendor_id || null, batch_number || null, lotNumber, expiry_date || null, price || 0, quantity || 0, formattedPurchaseTime]
+        "INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, expiry_date, purchase_price, quantity, department_id, storage, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, CURRENT_TIMESTAMP)) RETURNING id",
+        [itemId, vendor_id || null, batch_number || null, lotNumber, expiry_date || null, price || 0, quantity || 0, department_id || null, storage || null, formattedPurchaseTime]
       );
-      const batchId = batchRows[0].id;
-
-      if (department_id) {
-        await db.query(
-          "INSERT INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
-          [department_id, itemId, batchId, quantity || 0]
-        );
-      }
     }
 
     res.json({ success: true, message: 'Items added successfully' });
@@ -1760,7 +1867,7 @@ exports.updatemasterInventory = async (req, res) => {
     const {
       name, sku, unit_of_measure, category,
       batch_id, batch_number, lot_number, expiry_date, purchase_time, price,
-      dept_stock_id, department_id, quantity, vendor_id
+      department_id, storage, quantity, vendor_id
     } = req.body;
 
     const skuPrefix = sku || generateSkuPrefix(name);
@@ -1776,6 +1883,12 @@ exports.updatemasterInventory = async (req, res) => {
       formattedPurchaseTime = `${formattedPurchaseTime}T00:00:00.000Z`;
     }
 
+    // department_id/storage are descriptive tracking fields on the batch only
+    // (which department nominally owns it, and whether it's physically in
+    // Medical or Non-Medical storage) -- they must NOT create or modify
+    // department_stock (distributed stock). Distribution only ever happens
+    // through an approved requisition (see approveRequisition), which is the
+    // sole writer of department_stock.
     if (batch_id) {
       // --- Existing batch: update it ---
       let lotToSave = lot_number;
@@ -1789,22 +1902,9 @@ exports.updatemasterInventory = async (req, res) => {
       }
 
       await db.query(
-        "UPDATE stock_batches SET vendor_id = $1, batch_number = $2, lot_number = $3, expiry_date = $4, purchase_price = $5, quantity = $6, created_at = COALESCE($7, created_at) WHERE id = $8",
-        [vendor_id || null, batch_number || null, lotToSave, expiry_date || null, price || 0, quantity || 0, formattedPurchaseTime, batch_id]
+        "UPDATE stock_batches SET vendor_id = $1, batch_number = $2, lot_number = $3, expiry_date = $4, purchase_price = $5, quantity = $6, department_id = $7, storage = $8, created_at = COALESCE($9, created_at) WHERE id = $10",
+        [vendor_id || null, batch_number || null, lotToSave, expiry_date || null, price || 0, quantity || 0, department_id || null, storage || null, formattedPurchaseTime, batch_id]
       );
-
-      if (dept_stock_id) {
-        await db.query(
-          "UPDATE department_stock SET department_id = $1, quantity = $2 WHERE id = $3",
-          [department_id || null, quantity || 0, dept_stock_id]
-        );
-      } else if (department_id) {
-        // Create new department_stock link for this batch
-        await db.query(
-          "INSERT OR IGNORE INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
-          [department_id, id, batch_id, quantity || 0]
-        );
-      }
 
     } else if (expiry_date || purchase_time || batch_number || department_id) {
       // --- No existing batch, but user provided batch fields: create a new batch ---
@@ -1815,18 +1915,10 @@ exports.updatemasterInventory = async (req, res) => {
       const nextLotInt = (Number(batchCount[0]?.cnt) || 0) + 1;
       const lotToSave = lot_number || String(nextLotInt).padStart(2, '0');
 
-      const { rows: newBatchRows } = await db.query(
-        "INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, expiry_date, purchase_price, quantity, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, CURRENT_TIMESTAMP)) RETURNING id",
-        [id, vendor_id || null, batch_number || null, lotToSave, expiry_date || null, price || 0, quantity || 0, formattedPurchaseTime]
+      await db.query(
+        "INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, expiry_date, purchase_price, quantity, department_id, storage, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, CURRENT_TIMESTAMP))",
+        [id, vendor_id || null, batch_number || null, lotToSave, expiry_date || null, price || 0, quantity || 0, department_id || null, storage || null, formattedPurchaseTime]
       );
-      const newBatchId = newBatchRows[0].id;
-
-      if (department_id) {
-        await db.query(
-          "INSERT INTO department_stock (department_id, item_id, batch_id, quantity) VALUES ($1, $2, $3, $4)",
-          [department_id, id, newBatchId, quantity || 0]
-        );
-      }
     }
 
     res.json({ success: true, message: 'Item updated successfully' });
@@ -1972,102 +2064,166 @@ exports.getRequisitionItems = async (req, res) => {
   }
 };
 
+// ─── Distributed Stock: read-only echo of department_stock ────────────────────
+// department_stock is written to exclusively by approveRequisition's batch
+// allocation -- this endpoint just reads it back, one row per
+// (department, item, batch), so a single Central Store batch split across
+// multiple departments is represented correctly (unlike master_inventory's
+// one-row-per-batch shape, which can't show that). Excludes the internal
+// "Central Store" pseudo-department used by supplier-receiving/GRN to track
+// stock that hasn't actually been distributed anywhere.
+exports.getDistributedStock = async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT
+        ds.id as dept_stock_id,
+        ds.department_id,
+        d.name as department,
+        mi.id as item_id,
+        mi.name,
+        mi.sku,
+        mi.unit_of_measure,
+        mi.category,
+        ds.batch_id,
+        sb.batch_number,
+        sb.lot_number,
+        sb.expiry_date,
+        sb.created_at as purchase_time,
+        sb.purchase_price as price,
+        ds.quantity,
+        v.name as vendor
+      FROM department_stock ds
+      JOIN master_inventory mi ON ds.item_id = mi.id
+      LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
+      LEFT JOIN departments d ON ds.department_id = d.id
+      LEFT JOIN vendors v ON sb.vendor_id = v.id
+      WHERE ds.quantity > 0
+        AND (d.name IS NULL OR (d.name NOT LIKE '%Central%' AND d.name NOT LIKE '%Store%'))
+      ORDER BY d.name ASC, mi.name ASC
+    `);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getDistributedStock:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 exports.approveRequisition = async (req, res) => {
   try {
     const { id } = req.params;
     const { items: approvedItems } = req.body;
+
+    const { rows: reqData } = await db.query("SELECT department_id, status FROM requisitions WHERE id = $1", [id]);
+    if (reqData.length === 0) {
+      return res.status(404).json({ success: false, message: 'Requisition not found.' });
+    }
+    if (reqData[0].status !== 'Pending') {
+      return res.status(400).json({ success: false, message: `Requisition is already ${reqData[0].status}.` });
+    }
+    const deptId = reqData[0].department_id;
 
     const { rows: deptRows } = await db.query(
       "SELECT id FROM departments WHERE name LIKE '%Central%' OR name LIKE '%Store%' LIMIT 1"
     );
     const centralDeptId = deptRows[0]?.id || 1;
 
-    // Update status to 'Approved'
-    await db.query("UPDATE requisitions SET status = 'Approved', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
+    const { rows: items } = await db.query("SELECT * FROM requisition_items WHERE requisition_id = $1", [id]);
+    if (items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Cannot approve a requisition with no items.' });
+    }
 
-    const { rows: reqData } = await db.query("SELECT department_id FROM requisitions WHERE id = $1", [id]);
-    const deptId = reqData[0]?.department_id;
+    const resolveApprovedQty = (item) => {
+      let approvedQty = item.requested_quantity;
+      if (approvedItems && Array.isArray(approvedItems)) {
+        const match = approvedItems.find(ai =>
+          (ai.id && Number(ai.id) === Number(item.id)) ||
+          (ai.item_id && Number(ai.item_id) === Number(item.item_id))
+        );
+        if (match && match.approved_quantity !== undefined) {
+          approvedQty = Math.max(0, Number(match.approved_quantity));
+        }
+      }
+      return approvedQty;
+    };
 
     if (deptId === centralDeptId) {
-      const { rows: items } = await db.query("SELECT * FROM requisition_items WHERE requisition_id = $1", [id]);
+      // Purchase Request to Procurement: this just records intent to order
+      // more stock, so it doesn't depend on current Central Store
+      // availability (unlike a local requisition below).
+      await db.query("UPDATE requisitions SET status = 'Approved', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
       for (const item of items) {
-        let approvedQty = item.requested_quantity;
-        if (approvedItems && Array.isArray(approvedItems)) {
-          const match = approvedItems.find(ai =>
-            (ai.id && Number(ai.id) === Number(item.id)) ||
-            (ai.item_id && Number(ai.item_id) === Number(item.item_id))
-          );
-          if (match && match.approved_quantity !== undefined) {
-            approvedQty = Math.max(0, Number(match.approved_quantity));
-          }
-        }
-        await db.query("UPDATE requisition_items SET approved_quantity = $1 WHERE id = $2", [approvedQty, item.id]);
+        await db.query("UPDATE requisition_items SET approved_quantity = $1 WHERE id = $2", [resolveApprovedQty(item), item.id]);
       }
       return res.json({ success: true, message: 'Requisition approved by Procurement Manager.' });
     }
 
-    // Auto fulfill by transferring items to department stock
-    const { rows: items } = await db.query("SELECT * FROM requisition_items WHERE requisition_id = $1", [id]);
-    if (deptId && items.length > 0) {
-      for (const item of items) {
-        // Determine approved quantity
-        let approvedQty = item.requested_quantity; // Default to full requested quantity
-        if (approvedItems && Array.isArray(approvedItems)) {
-          const match = approvedItems.find(ai =>
-            (ai.id && Number(ai.id) === Number(item.id)) ||
-            (ai.item_id && Number(ai.item_id) === Number(item.item_id))
-          );
-          if (match && match.approved_quantity !== undefined) {
-            approvedQty = Math.max(0, Number(match.approved_quantity));
-          }
-        }
+    // Local requisition (department -> Central Store): pre-compute what's
+    // actually fulfillable from real stock BEFORE committing to 'Approved',
+    // so a requisition that resolves to zero real transfer across every
+    // item (e.g. Central Store is out of stock for everything requested)
+    // gets rejected instead of silently marked Approved with nothing moved.
+    const plannedQtys = [];
+    for (const item of items) {
+      let approvedQty = resolveApprovedQty(item);
+      const { rows: stockCount } = await db.query(
+        "SELECT COALESCE(SUM(quantity), 0) as total_stock FROM stock_batches WHERE item_id = $1",
+        [item.item_id]
+      );
+      const totalCentralStock = Number(stockCount[0]?.total_stock || 0);
+      plannedQtys.push(Math.min(approvedQty, totalCentralStock));
+    }
 
-        // Clamp approvedQty to available central stock level of this item
-        const { rows: stockCount } = await db.query(
-          "SELECT COALESCE(SUM(quantity), 0) as total_stock FROM stock_batches WHERE item_id = $1",
+    if (plannedQtys.every(q => q <= 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot approve: no stock is available at Central Store for any requested item.'
+      });
+    }
+
+    await db.query("UPDATE requisitions SET status = 'Approved', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      let approvedQty = plannedQtys[i];
+
+      if (approvedQty > 0) {
+        // Fulfil from as many batches as needed, earliest-expiry first. A
+        // request that exceeds any single batch's quantity must be split
+        // across batches -- crediting the department with more than what
+        // was actually deducted from Central Store creates phantom stock
+        // (the same units counted as both still-in-store and transferred).
+        const { rows: batches } = await db.query(
+          "SELECT id, quantity FROM stock_batches WHERE item_id = $1 AND quantity > 0 ORDER BY expiry_date ASC",
           [item.item_id]
         );
-        const totalCentralStock = Number(stockCount[0]?.total_stock || 0);
-        approvedQty = Math.min(approvedQty, totalCentralStock);
 
-        // Only transfer and deduct if approvedQty > 0
-        if (approvedQty > 0) {
-          // Find a batch for this item to deduct from
-          const { rows: batchData } = await db.query(
-            "SELECT id, quantity FROM stock_batches WHERE item_id = $1 AND quantity >= $2 ORDER BY expiry_date ASC LIMIT 1",
-            [item.item_id, approvedQty]
-          );
-          let batch = batchData[0];
+        let remaining = approvedQty;
+        for (const b of batches) {
+          if (remaining <= 0) break;
+          const deductQty = Math.min(remaining, b.quantity);
+          if (deductQty <= 0) continue;
 
-          if (!batch) {
-            // Fallback: search for first batch of this item even if it doesn't have enough quantity
-            const { rows: anyBatchData } = await db.query(
-              "SELECT id, quantity FROM stock_batches WHERE item_id = $1 ORDER BY expiry_date ASC LIMIT 1",
-              [item.item_id]
-            );
-            batch = anyBatchData[0];
-          }
+          await db.query("UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2", [deductQty, b.id]);
 
-          const batchId = batch ? batch.id : null;
-
-          if (batch) {
-            // Deduct from central store batch (clamp to batch quantity so it doesn't go negative)
-            const deductQty = Math.min(approvedQty, batch.quantity);
-            await db.query("UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2", [deductQty, batch.id]);
-          }
-
-          // Upsert into department stock
           await db.query(`
             INSERT INTO department_stock (department_id, item_id, batch_id, quantity)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT(department_id, item_id, batch_id) DO UPDATE SET
               quantity = department_stock.quantity + $4
-          `, [deptId, item.item_id, batchId, approvedQty]);
+          `, [deptId, item.item_id, b.id, deductQty]);
+
+          remaining -= deductQty;
         }
 
-        // Mark items as approved in the requisition details
-        await db.query("UPDATE requisition_items SET approved_quantity = $1 WHERE id = $2", [approvedQty, item.id]);
+        // approvedQty was already clamped to totalCentralStock above, so
+        // remaining should reach 0. If it doesn't (e.g. a batch changed
+        // concurrently), only record what was actually transferred.
+        approvedQty -= remaining;
       }
+
+      // Mark items as approved in the requisition details (reflects what
+      // was actually transferred, not just the originally-approved intent)
+      await db.query("UPDATE requisition_items SET approved_quantity = $1 WHERE id = $2", [approvedQty, item.id]);
     }
 
     res.json({ success: true, message: 'Requisition approved and stock transferred successfully' });
@@ -2238,7 +2394,7 @@ exports.reconcileInventory = async (req, res) => {
       if (existingItems.length > 0) {
         itemId = existingItems[0].id;
       } else {
-        const sku = 'SKU-' + name.substring(0, 5).toUpperCase().replace(/\s/g, '');
+        const sku = generateSkuPrefix(name);
         const { rows: newItem } = await db.query(
           "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, 'Unit', 'medical_supplies') RETURNING id",
           [name, sku]

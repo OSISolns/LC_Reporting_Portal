@@ -15,6 +15,20 @@ const MODULES = [
   { name: 'clinical_observation', display: 'Clinical Observation', actions: ['view','create','edit','review','approve'] },
   { name: 'shifts',              display: 'Shift Management',      actions: ['view','create','edit','review','delete'] },
   { name: 'feedbacks',           display: 'Internal Feedback',     actions: ['view','delete'] },
+
+  // ── Added: modules that existed as real, navigable app sections but had no
+  // row in the Access Control Matrix at all -- defaults below mirror each
+  // area's existing hardcoded authorizeRoles()/allowedRoles lists exactly, so
+  // adding these does not change anyone's access on its own.
+  { name: 'safety',           display: 'Safety Management (Risk/Infection Control)', actions: ['view','create','delete'] },
+  { name: 'inventory',        display: 'Central Store & Master Inventory',           actions: ['view','create','edit','delete'] },
+  { name: 'daily_stock',      display: 'Daily Stock Checkup',                        actions: ['view','edit'] },
+  { name: 'procurement',      display: 'Procurement & Purchase Orders',              actions: ['view','create','edit'] },
+  { name: 'ai_insights',      display: 'AI Insights',                                actions: ['view','download'] },
+  { name: 'revenue_leakage',  display: 'Revenue Leakage Tracker',                    actions: ['view','create','edit','delete'] },
+  { name: 'compliance',       display: 'Compliance Portal',                          actions: ['view','create','edit','delete'] },
+  { name: 'it_support',       display: 'IT Support Hub',                             actions: ['view','create','edit','delete'] },
+  { name: 'patients',         display: 'Patient Records & Prescriptions',            actions: ['view','create'] },
 ];
 
 /**
@@ -32,8 +46,17 @@ const ROLE_DEFAULTS = {
     staff_performance: { view:1, create:1 },
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:1 },
 
-    shifts:           { view:1, create:0, edit:1, review:1, delete:1 },
+    shifts:           { view:1, create:1, edit:1, review:1, delete:1 },
     feedbacks:        { view:0, delete:0 },
+    safety:           { view:1, create:1, delete:1 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+    procurement:      { view:1, create:1, edit:1 },
+    ai_insights:      { view:1, download:1 },
+    revenue_leakage:  { view:1, create:1, edit:1, delete:1 },
+    compliance:       { view:1, create:1, edit:1, delete:1 },
+    it_support:       { view:1, create:1, edit:1, delete:1 },
+    patients:         { view:1, create:0 },
   },
   it_officer: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -47,6 +70,8 @@ const ROLE_DEFAULTS = {
 
     shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    it_support:       { view:1, create:1, edit:1, delete:1 },
+    patients:         { view:1, create:0 },
   },
   coo: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -54,13 +79,19 @@ const ROLE_DEFAULTS = {
     results_transfer: { view:1, create:0, edit:0, approve:1, reject:1 },
     incident_reports: { view:1, create:0, edit:0, approve:1 },
     user_management: { view:0, create:0, edit:0, delete:0 },
-    audit_logs: { view:1 },
+    audit_logs: { view:0 },
     reports: { view:1, download:1 },
     staff_performance: { view:1, create:1 },
     clinical_observation: { view:1, create:0, edit:0, review:0, approve:0 },
 
     shifts:           { view:1, create:0, edit:0, review:1, delete:0 },
     feedbacks:        { view:1, delete:1 },
+    safety:           { view:1, create:1, delete:1 },
+    ai_insights:      { view:1, download:1 },
+    revenue_leakage:  { view:1, create:1, edit:1, delete:1 },
+    compliance:       { view:1, create:1, edit:1, delete:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   deputy_coo: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -68,12 +99,19 @@ const ROLE_DEFAULTS = {
     results_transfer: { view:1, create:0, edit:0, approve:1, reject:1 },
     incident_reports: { view:1, create:0, edit:0, approve:1 },
     user_management: { view:0, create:0, edit:0, delete:0 },
-    audit_logs: { view:1 },
+    audit_logs: { view:0 },
     reports: { view:1, download:1 },
     staff_performance: { view:1, create:1 },
 
-    shifts:           { view:1, create:0, edit:1, review:1, delete:0 },
+    shifts:           { view:1, create:1, edit:1, review:1, delete:0 },
     feedbacks:        { view:1, delete:1 },
+    safety:           { view:1, create:1, delete:1 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    procurement:      { view:1, create:1, edit:1 },
+    ai_insights:      { view:1, download:1 },
+    revenue_leakage:  { view:1, create:1, edit:1, delete:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   chairman: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:0 },
@@ -87,6 +125,10 @@ const ROLE_DEFAULTS = {
 
     shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    ai_insights:      { view:1, download:1 },
+    revenue_leakage:  { view:1, create:1, edit:1, delete:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   sales_manager: {
     cancellations:    { view:1, create:0, edit:0, review:1, approve:1, reject:1 },
@@ -100,6 +142,10 @@ const ROLE_DEFAULTS = {
 
     shifts:           { view:1, create:0, edit:0, review:1, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    ai_insights:      { view:1, download:1 },
+    revenue_leakage:  { view:1, create:1, edit:1, delete:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   cashier: {
     cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
@@ -111,8 +157,10 @@ const ROLE_DEFAULTS = {
     reports: { view:0, download:0 },
     staff_performance: { view:1, create:0 },
 
-    shifts:           { view:0, create:1, edit:0, review:0, delete:0 },
+    shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   principal_cashier: {
     cancellations:    { view:1, create:0, edit:0, review:1, approve:1, reject:1 },
@@ -124,8 +172,12 @@ const ROLE_DEFAULTS = {
     reports: { view:1, download:0 },
     staff_performance: { view:1, create:1 },
 
-    shifts:           { view:1, create:0, edit:0, review:1, delete:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    ai_insights:      { view:1, download:0 },
+    revenue_leakage:  { view:1, create:1, edit:1, delete:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   customer_care: {
     cancellations:    { view:1, create:1, edit:0, approve:0, reject:0 },
@@ -137,8 +189,10 @@ const ROLE_DEFAULTS = {
     reports: { view:0, download:0 },
     staff_performance: { view:1, create:0 },
 
-    shifts:           { view:0, create:1, edit:0, review:0, delete:0 },
+    shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   lab_team_lead: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -152,6 +206,8 @@ const ROLE_DEFAULTS = {
 
     shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   consultant: {
     cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
@@ -166,6 +222,11 @@ const ROLE_DEFAULTS = {
 
     shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    inventory:        { view:1, create:0, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:0 },
+    ai_insights:      { view:1, download:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   operations_staff: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -179,6 +240,8 @@ const ROLE_DEFAULTS = {
 
     shifts:           { view:1, create:0, edit:0, review:1, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   pa: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -192,6 +255,9 @@ const ROLE_DEFAULTS = {
     clinical_observation: { view:1, create:0, edit:0, review:0, approve:0 },
     shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    daily_stock:      { view:1, edit:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   staff: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -202,6 +268,8 @@ const ROLE_DEFAULTS = {
     audit_logs: { view:0 },
     reports: { view:0, download:0 },
     staff_performance: { view:0, create:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   hsfp: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -215,6 +283,10 @@ const ROLE_DEFAULTS = {
 
     shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    safety:           { view:1, create:1, delete:1 },
+    compliance:       { view:1, create:1, edit:1, delete:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   nurse: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -227,8 +299,12 @@ const ROLE_DEFAULTS = {
     staff_performance:{ view:1, create:0 },
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:0 },
 
-    shifts:           { view:0, create:1, edit:0, review:0, delete:0 },
+    shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   'chef-nurse': {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -242,6 +318,10 @@ const ROLE_DEFAULTS = {
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:1 },
     shifts:           { view:1, create:0, edit:0, review:1, delete:0 },
     feedbacks:        { view:1, delete:0 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   reviewer: {
     cancellations:    { view:1, create:1, edit:1, review:1, approve:1, reject:1, delete:1 },
@@ -254,8 +334,15 @@ const ROLE_DEFAULTS = {
     staff_performance:{ view:1, create:1 },
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:1 },
 
-    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    safety:           { view:1, create:1, delete:1 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+    ai_insights:      { view:1, download:1 },
+    compliance:       { view:1, create:1, edit:1, delete:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   'stock-manager': {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -270,6 +357,10 @@ const ROLE_DEFAULTS = {
 
     shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
   doctor: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -283,6 +374,10 @@ const ROLE_DEFAULTS = {
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:1 },
     shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    inventory:        { view:1, create:0, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
   },
   medical_director: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -296,6 +391,11 @@ const ROLE_DEFAULTS = {
     clinical_observation: { view:1, create:1, edit:1, review:1, approve:1 },
     shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:1, delete:1 },
+    inventory:        { view:1, create:0, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:0 },
+    ai_insights:      { view:1, download:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
   },
   'procurement-manager': {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -309,6 +409,10 @@ const ROLE_DEFAULTS = {
     clinical_observation: { view:1, create:0, edit:0, review:0, approve:0 },
     shifts:           { view:0, create:0, edit:0, review:0, delete:0 },
     feedbacks:        { view:0, delete:0 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    procurement:      { view:1, create:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
   },
 };
 

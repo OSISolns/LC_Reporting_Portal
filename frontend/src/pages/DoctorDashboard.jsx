@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getIncidents } from '../api/incidents';
 import api from '../api/axios';
 import LoadingSpinner from '../components/LoadingSpinner';
+import toast from 'react-hot-toast';
 import {
   AlertTriangle,
   Clock,
@@ -121,15 +122,25 @@ const DoctorDashboard = () => {
 
   const load = useCallback(async () => {
     setLoading(true);
+    let incidentsError = false;
+    let clinicalError = false;
     try {
       const [iRes, clRes] = await Promise.all([
-        getIncidents().catch(() => null),
-        api.get('/clinical/observations/recent').catch(() => ({ data: { data: [] } }))
+        getIncidents().catch(() => { incidentsError = true; return null; }),
+        api.get('/clinical/observations/recent').catch(() => { clinicalError = true; return { data: { data: [] } }; })
       ]);
       setData({
         incidents: iRes?.data?.data || [],
         clinical:  clRes?.data?.data || []
       });
+      // Show warning if any data failed to load
+      if (incidentsError && clinicalError) {
+        toast.error('Failed to load dashboard data. Please refresh.');
+      } else if (incidentsError) {
+        toast('Could not load incident reports', { icon: '⚠️' });
+      } else if (clinicalError) {
+        toast('Could not load clinical records', { icon: '⚠️' });
+      }
     } finally { setLoading(false); }
   }, []);
 
@@ -198,7 +209,7 @@ const DoctorDashboard = () => {
           {hasPermission('incident_reports', 'create') && <QuickAction label="Report Incident" icon={<AlertTriangle size={24} />} color="#b91c1c" path="/incidents/new" navigate={navigate} />}
           <QuickAction label="Clinical Sheets" icon={<FileText size={24} />} color="#059669" path="/clinical-sheets" navigate={navigate} />
           <QuickAction label="Patient Records" icon={<Users size={24} />} color="#1b669e" path="/doctor-hub" navigate={navigate} />
-          {hasPermission('reports', 'view') && <QuickAction label="AI Insights" icon={<TrendingUp size={24} />} color="#4c1d95" path="/ai-insights" navigate={navigate} />}
+          {hasPermission('reports', 'view') && <QuickAction label="AI Insights" icon={<TrendingUp size={24} />} color="#16527D" path="/ai-insights" navigate={navigate} />}
         </div>
       </div>
 

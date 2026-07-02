@@ -842,26 +842,48 @@ export default function DailyInventoryCheckup() {
       const [y, m] = monthYear.split('-');
       const daysInMonth = new Date(parseInt(y, 10), parseInt(m, 10), 0).getDate();
 
+      // Resolves the carried-in stock for (day, session) by walking backward
+      // through any gap in monthMap[itemName] instead of assuming the
+      // immediately-preceding cell exists. A single-step lookup defaults to 0
+      // across a gap, which — combined with the write below — would silently
+      // zero out an unrelated, already-recorded later day.
+      const daysMap = monthMap[itemName];
+      const resolveCarriedBalance = (day, session) => {
+        if (day === 1 && session === 'AM') {
+          return getCarriedStockForMonth(monthYear, itemName, 1, 'AM');
+        }
+        if (session === 'PM') {
+          const amCell = daysMap[day]?.['AM'];
+          if (amCell && amCell.balance !== undefined && amCell.balance !== '') {
+            return amCell.balance;
+          }
+          return resolveCarriedBalance(day, 'AM');
+        }
+        const pmCell = daysMap[day - 1]?.['PM'];
+        if (pmCell && pmCell.balance !== undefined && pmCell.balance !== '') {
+          return pmCell.balance;
+        }
+        return resolveCarriedBalance(day - 1, 'AM');
+      };
+
       while (currentDayIter <= daysInMonth) {
         if (!monthMap[itemName][currentDayIter]) {
           monthMap[itemName][currentDayIter] = {};
         }
 
         // Calculate what the stock in hand should be based on previous session balance
-        let prevBalance = 0;
-        if (currentSessionIter === 'PM') {
-          const amCell = monthMap[itemName][currentDayIter]['AM'];
-          prevBalance = amCell ? (amCell.balance !== undefined ? amCell.balance : 0) : 0;
-        } else {
-          // AM session, day > 1
-          const prevPmCell = monthMap[itemName][currentDayIter - 1]?.['PM'];
-          prevBalance = prevPmCell ? (prevPmCell.balance !== undefined ? prevPmCell.balance : 0) : 0;
-        }
+        const prevBalance = resolveCarriedBalance(currentDayIter, currentSessionIter);
 
         // If the cell doesn't exist, we can initialize it or leave it to be resolved dynamically.
-        // But if it does exist in state (meaning it's loaded from db or edited), we MUST update its stock_in_hands and balance.
-        if (monthMap[itemName][currentDayIter][currentSessionIter]) {
-          const targetCell = { ...monthMap[itemName][currentDayIter][currentSessionIter] };
+        // If it exists but was never independently recorded (auto-carried only),
+        // keep it in sync with the edit that started this ripple. But a cell
+        // that was itself manually recorded (typed by a human, at any point —
+        // truthy check because DB-hydrated cells carry this as 0/1, not a JS
+        // boolean) is authoritative and must NOT be silently overwritten just
+        // because an earlier day in the same ledger was corrected.
+        const existingCell = monthMap[itemName][currentDayIter][currentSessionIter];
+        if (existingCell && !existingCell.manually_edited) {
+          const targetCell = { ...existingCell };
           targetCell.stock_in_hands = prevBalance;
           targetCell.consumed = (parseInt(targetCell.consumed_obs1, 10) || 0) + (parseInt(targetCell.consumed_minor, 10) || 0);
           targetCell.balance = targetCell.stock_in_hands - targetCell.consumed;
@@ -915,7 +937,9 @@ export default function DailyInventoryCheckup() {
               expiration_date: cell.expiration_date || '',
               status: cell.status || 'Active',
               category: cell.category || '',
-              manually_edited: cell.manually_edited === true
+              // Truthy check, not strict === true: cells hydrated from the DB
+              // carry this as the SQLite integer 1/0, not a JS boolean.
+              manually_edited: !!cell.manually_edited
             });
           });
         });

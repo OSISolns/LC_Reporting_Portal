@@ -579,7 +579,7 @@ export default function StockManagerDashboard() {
     if (lower.includes('central')) return '#4f46e5'; // Indigo
     if (lower.includes('nurs')) return '#10b981'; // Emerald
     if (lower.includes('lab')) return '#06b6d4'; // Cyan
-    if (lower.includes('imag')) return '#8b5cf6'; // Violet
+    if (lower.includes('imag')) return '#3378AA'; // Violet
     if (lower.includes('dent')) return '#f59e0b'; // Amber
     if (lower.includes('admin')) return '#e11d48'; // Rose
     return '#64748b'; // Slate
@@ -1687,7 +1687,7 @@ export default function StockManagerDashboard() {
                               </td>
                               <td className="p-4 text-right">
                                 <button
-                                  onClick={() => handleSelectRequisition(req)}
+                                  onClick={() => setSelectedRequisition(req)}
                                   className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer"
                                 >
                                   <Eye size={13} /> View Items
@@ -2215,8 +2215,9 @@ export default function StockManagerDashboard() {
                 <button
                   type="submit"
                   form="modal-outgoing-req-form"
-                  disabled={submittingOutgoingReq}
-                  className="flex-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow"
+                  disabled={submittingOutgoingReq || outgoingReqItems.length === 0}
+                  title={outgoingReqItems.length === 0 ? 'Add at least one item before submitting' : undefined}
+                  className="flex-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-indigo-600 cursor-pointer"
                 >
                   {submittingOutgoingReq ? (
                     <>
@@ -2226,7 +2227,7 @@ export default function StockManagerDashboard() {
                   ) : (
                     <>
                       <Check size={14} />
-                      Submit Purchase Request
+                      Submit Purchase Request{outgoingReqItems.length > 0 ? ` (${outgoingReqItems.length} item${outgoingReqItems.length > 1 ? 's' : ''})` : ''}
                     </>
                   )}
                 </button>

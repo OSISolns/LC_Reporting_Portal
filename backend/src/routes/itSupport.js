@@ -3,22 +3,20 @@ const express = require('express');
 const router = express.Router();
 const itSupportController = require('../controllers/itSupportController');
 const { authMiddleware: authenticateToken } = require('../middleware/auth');
-const authorizeRoles = require('../middleware/role');
+const checkPermission = require('../middleware/permission');
 
 router.use(authenticateToken);
 
-// --- Tickets (Read/Create allowed for all roles, Update/Delete restricted to Admin/IT) ---
-router.get('/tickets', itSupportController.getTickets);
-router.post('/tickets', itSupportController.createTicket);
-router.put('/tickets/:id', authorizeRoles(['admin', 'it_officer']), itSupportController.updateTicket);
-router.delete('/tickets/:id', authorizeRoles(['admin', 'it_officer']), itSupportController.deleteTicket);
+// --- Tickets (Read/Create allowed broadly, Update/Delete restricted) ---
+router.get('/tickets', checkPermission('it_support', 'view'), itSupportController.getTickets);
+router.post('/tickets', checkPermission('it_support', 'create'), itSupportController.createTicket);
+router.put('/tickets/:id', checkPermission('it_support', 'edit'), itSupportController.updateTicket);
+router.delete('/tickets/:id', checkPermission('it_support', 'delete'), itSupportController.deleteTicket);
 
-// --- Assets (Strictly restricted to Admin/IT) ---
-router.use('/assets', authorizeRoles(['admin', 'it_officer']));
-router.get('/assets', itSupportController.getAssets);
-router.post('/assets', itSupportController.createAsset);
-router.put('/assets/:id', itSupportController.updateAsset);
-router.delete('/assets/:id', itSupportController.deleteAsset);
+// --- Assets (Restricted) ---
+router.get('/assets', checkPermission('it_support', 'edit'), itSupportController.getAssets);
+router.post('/assets', checkPermission('it_support', 'edit'), itSupportController.createAsset);
+router.put('/assets/:id', checkPermission('it_support', 'edit'), itSupportController.updateAsset);
+router.delete('/assets/:id', checkPermission('it_support', 'delete'), itSupportController.deleteAsset);
 
 module.exports = router;
-// Trigger restart

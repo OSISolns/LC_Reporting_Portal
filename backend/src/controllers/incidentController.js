@@ -58,7 +58,7 @@ exports.approveReport = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'HSFP safety assessment and comments are required before approving.' });
     }
 
-    const report = await Incident.approve(req.params.id, req.user.id, req.body);
+    const report = await Incident.approve(req.params.id, req.user.id, req.body, req.user);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found or not in pending status.' });
 
     // Notify management
@@ -121,7 +121,7 @@ exports.deleteReport = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own reports.' });
     }
 
-    const report = await Incident.delete(req.params.id);
+    const report = await Incident.delete(req.params.id, req.user);
     if (!report) return res.status(400).json({ success: false, message: 'Report could not be deleted.' });
     await logAction(req, 'DELETE', 'incident_report', req.params.id);
     cache.invalidatePattern('incident:list');

@@ -123,42 +123,46 @@ class Refund {
     return rows[0];
   }
 
-  static async verify(id, userId) {
+  static async verify(id, userId, user = null) {
+    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
     const { rows } = await db.query(
       `UPDATE refund_requests
        SET status = 'verified', verified_by = $1, verified_at = NOW(), updated_at = NOW()
-       WHERE id = $2 AND status = 'pending'
+       WHERE id = $2 AND status = 'pending'${reviewerGuard}
        RETURNING *`,
       [userId, id]
     );
     return rows[0];
   }
 
-  static async approve(id, userId) {
+  static async approve(id, userId, user = null) {
+    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
     const { rows } = await db.query(
       `UPDATE refund_requests
        SET status = 'approved', approved_by = $1, approved_at = NOW(), updated_at = NOW()
-       WHERE id = $2 AND status = 'verified'
+       WHERE id = $2 AND status = 'verified'${reviewerGuard}
        RETURNING *`,
       [userId, id]
     );
     return rows[0];
   }
 
-  static async reject(id, userId, comment) {
+  static async reject(id, userId, comment, user = null) {
+    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
     const { rows } = await db.query(
       `UPDATE refund_requests
        SET status = 'rejected', rejected_by = $1, rejection_comment = $2, rejected_at = NOW(), updated_at = NOW()
-       WHERE id = $3 AND status IN ('pending','verified')
+       WHERE id = $3 AND status IN ('pending','verified')${reviewerGuard}
        RETURNING *`,
       [userId, comment, id]
     );
     return rows[0];
   }
 
-  static async delete(id) {
+  static async delete(id, user = null) {
+    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
     const { rows } = await db.query(
-      `DELETE FROM refund_requests WHERE id = $1 AND status = 'pending' RETURNING *`,
+      `DELETE FROM refund_requests WHERE id = $1 AND status = 'pending'${reviewerGuard} RETURNING *`,
       [id]
     );
     return rows[0];

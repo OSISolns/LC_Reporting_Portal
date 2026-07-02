@@ -145,7 +145,7 @@ const ITDashboard = () => {
           value={data.logs.length} 
           sub="System events"
           icon={<Activity size={24} />} 
-          color="#8b5cf6"
+          color="#3378AA"
         />
         <ITMetricCard 
           title="Technical Incidents" 
@@ -163,7 +163,7 @@ const ITDashboard = () => {
         <div style={{ backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
           <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <History size={20} style={{ color: '#8b5cf6' }} /> System Audit Stream
+              <History size={20} style={{ color: '#3378AA' }} /> System Audit Stream
             </h3>
             <button onClick={() => navigate('/audit-logs')} style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
               Full Log View <ChevronRight size={14} />
@@ -205,10 +205,10 @@ const ITDashboard = () => {
               <button 
                 onClick={() => navigate('/audit-logs')}
                 style={{ padding: '1.25rem', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf6'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#3378AA'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
               >
-                <div style={{ padding: '10px', backgroundColor: '#ede9fe', color: '#8b5cf6', borderRadius: '10px' }}><History size={20} /></div>
+                <div style={{ padding: '10px', backgroundColor: '#DDE9F1', color: '#3378AA', borderRadius: '10px' }}><History size={20} /></div>
                 <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Trace Events</span>
               </button>
               <button 
