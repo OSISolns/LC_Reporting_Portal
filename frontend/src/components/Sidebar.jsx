@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -21,7 +21,8 @@ const ALL_ROLES = [
   'cashier', 'principal_cashier', 'customer_care', 'lab_team_lead',
   'consultant', 'operations_staff', 'pa', 'staff', 'hsfp', 'nurse',
   'chef-nurse', 'reviewer', 'stock-manager', 'doctor', 'medical_director',
-  'procurement-manager',
+  'procurement-manager', 'radiographer', 'sonographer', 'radiologist',
+  'imaging_receptionist', 'imaging_manager',
 ];
 
 const Sidebar = ({ onClose }) => {
@@ -50,6 +51,7 @@ const Sidebar = ({ onClose }) => {
     { configKey: 'performance',   name: 'Performance',      icon: <Award size={20} />,           path: '/performance',  requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'reviewer'] },
     { configKey: 'nursing_hub',   name: 'Nursing Hub',      icon: <Stethoscope size={20} />,     path: '/nursing-hub',  requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'reviewer', 'chef-nurse'] },
     { configKey: 'doctor_hub',    name: 'Doctor Hub',       icon: <Stethoscope size={20} />,     path: '/doctor-hub',   requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director'] },
+    { configKey: 'imaging',       name: 'Imaging Portal',   icon: <ScanLine size={20} />,        path: '/imaging',      requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['radiographer', 'sonographer', 'radiologist', 'imaging_receptionist', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director', 'reviewer'] },
     { configKey: 'daily_stock',   name: 'Daily Stock Checkup', icon: <Database size={20} />,     path: '/nursing-hub/inventory', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'admin'] },
     { configKey: 'central_store', name: 'Central Store Hub', icon: <Database size={20} />,       path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'stock-manager'] },
     { configKey: 'master',        name: 'master',            icon: <Database size={20} />,       path: '/master',       requiredPerm: null, allowedRoles: ['admin', 'stock-manager'] },

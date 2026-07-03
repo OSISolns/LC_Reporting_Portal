@@ -8,31 +8,32 @@ if (missingEnv.length > 0) {
   console.error(`❌ Critical Environment Variables Missing: ${missingEnv.join(', ')}`);
 }
 
-const express     = require('express');
-const cors        = require('cors');
-const helmet      = require('helmet');
-const rateLimit   = require('express-rate-limit');
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
-const authRoutes         = require('./src/routes/auth');
+const authRoutes = require('./src/routes/auth');
 const cancellationRoutes = require('./src/routes/cancellations');
-const refundRoutes       = require('./src/routes/refunds');
-const incidentRoutes     = require('./src/routes/incidents');
-const userRoutes         = require('./src/routes/users');
-const auditRoutes        = require('./src/routes/auditLogs');
-const aiRoutes           = require('./src/routes/ai');
+const refundRoutes = require('./src/routes/refunds');
+const incidentRoutes = require('./src/routes/incidents');
+const userRoutes = require('./src/routes/users');
+const auditRoutes = require('./src/routes/auditLogs');
+const aiRoutes = require('./src/routes/ai');
 const resultTransferRoutes = require('./src/routes/resultTransferRoutes');
-const notificationRoutes   = require('./src/routes/notificationRoutes');
-const permissionRoutes      = require('./src/routes/permissions');
-const performanceRoutes     = require('./src/routes/performanceRoutes');
-const shiftRoutes           = require('./src/routes/shifts');
-const safetyRoutes          = require('./src/routes/safety');
-const clinicalRoutes        = require('./src/routes/clinical');
-const patientRoutes         = require('./src/routes/patients');
-const feedbackRoutes        = require('./src/routes/feedbacks');
-const dailyReportRoutes     = require('./src/routes/dailyReport');
-const itSupportRoutes       = require('./src/routes/itSupport');
-const complianceRoutes      = require('./src/routes/compliance');
-const revenueLeakageRoutes  = require('./src/routes/revenueLeakage');
+const notificationRoutes = require('./src/routes/notificationRoutes');
+const permissionRoutes = require('./src/routes/permissions');
+const performanceRoutes = require('./src/routes/performanceRoutes');
+const shiftRoutes = require('./src/routes/shifts');
+const safetyRoutes = require('./src/routes/safety');
+const clinicalRoutes = require('./src/routes/clinical');
+const patientRoutes = require('./src/routes/patients');
+const feedbackRoutes = require('./src/routes/feedbacks');
+const dailyReportRoutes = require('./src/routes/dailyReport');
+const itSupportRoutes = require('./src/routes/itSupport');
+const complianceRoutes = require('./src/routes/compliance');
+const revenueLeakageRoutes = require('./src/routes/revenueLeakage');
+const imagingRoutes = require('./src/routes/imaging');
 
 const app = express();
 
@@ -54,7 +55,7 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow all origins in development for easy local testing
     if (process.env.NODE_ENV !== 'production') return callback(null, true);
-    
+
     // Allow requests with no origin (same-origin on Vercel, Postman, curl)
     if (!origin) return callback(null, true);
 
@@ -68,7 +69,7 @@ app.use(cors({
     callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true,
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
@@ -78,9 +79,9 @@ app.options('*', cors());
 // ── Rate limiting ────────────────────────────────────────────────────────────
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
-  max:      200,
+  max: 200,
   standardHeaders: true,
-  legacyHeaders:   false,
+  legacyHeaders: false,
   validate: { trustProxy: false },
   message: { success: false, message: 'Too many requests. Please try again later.' },
 });
@@ -91,34 +92,35 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-app.use('/api/auth',          authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/cancellations', cancellationRoutes);
-app.use('/api/refunds',       refundRoutes);
-app.use('/api/incidents',     incidentRoutes);
-app.use('/api/users',         userRoutes);
-app.use('/api/audit',         auditRoutes);
-app.use('/api/ai',            aiRoutes);
+app.use('/api/refunds', refundRoutes);
+app.use('/api/incidents', incidentRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/audit', auditRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/results-transfer', resultTransferRoutes);
-app.use('/api/notifications',     notificationRoutes);
-app.use('/api/permissions',       permissionRoutes);
-app.use('/api/performance',       performanceRoutes);
-app.use('/api/shifts',            shiftRoutes);
-app.use('/api/safety',            safetyRoutes);
-app.use('/api/clinical',          clinicalRoutes);
-app.use('/api/patients',          patientRoutes);
-app.use('/api/feedbacks',         feedbackRoutes);
-app.use('/api/reports',           dailyReportRoutes);
-app.use('/api/it-support',        itSupportRoutes);
-app.use('/api/compliance',        complianceRoutes);
-app.use('/api/revenue-leakage',   revenueLeakageRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/permissions', permissionRoutes);
+app.use('/api/performance', performanceRoutes);
+app.use('/api/shifts', shiftRoutes);
+app.use('/api/safety', safetyRoutes);
+app.use('/api/clinical', clinicalRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/feedbacks', feedbackRoutes);
+app.use('/api/reports', dailyReportRoutes);
+app.use('/api/it-support', itSupportRoutes);
+app.use('/api/compliance', complianceRoutes);
+app.use('/api/revenue-leakage', revenueLeakageRoutes);
+app.use('/api/imaging', imagingRoutes);
 
 
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {
-  res.json({ 
-    success: true, 
-    message: '🏥 Legacy Clinics Reporting Portal API is running',
+  res.json({
+    success: true,
+    message: '🏥 Legacy Clinics Lumina Portal API is running',
     docs: 'Use /api/health for system status'
   });
 });
@@ -146,7 +148,7 @@ app.use((err, _req, res, _next) => {
 const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`\n🏥  Legacy Clinics Reporting Portal API`);
+    console.log(`\n🏥  Legacy Clinics Lumina Portal API`);
     console.log(`🚀  Server running on http://localhost:${PORT}`);
     console.log(`🌍  Environment: ${process.env.NODE_ENV || 'development'}\n`);
   });

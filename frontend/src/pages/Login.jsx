@@ -40,14 +40,14 @@ const Login = () => {
       // The text on screen should literally be the encoded string
       const displayedText = 'Inyrel Fgehpgher';
       const el = document.getElementById(sigId);
-      
+
       // Verify both that the element exists and contains the encoded text, 
       // and that decoding it yields the original author's signature
       if (!el || el.innerText !== displayedText || rot13(el.innerText) !== 'Valery Structure') {
         console.warn('System signature integrity check failed.');
       }
     };
-    
+
     const interval = setInterval(checkSignature, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -66,9 +66,9 @@ const Login = () => {
       overflow: 'hidden'
     }}>
       {/* Background Watermark */}
-      <img 
-        src="/caduceus_bg.png" 
-        alt="" 
+      <img
+        src="/caduceus_bg.png"
+        alt=""
         style={{
           position: 'absolute',
           bottom: '-2rem',
@@ -78,7 +78,7 @@ const Login = () => {
           pointerEvents: 'none',
           zIndex: 0,
           transform: 'rotate(15deg)'
-        }} 
+        }}
       />
       <div className="card-shadow" style={{
         width: '100%',
@@ -90,7 +90,7 @@ const Login = () => {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <img src="/logo.png" alt="Legacy Clinics" style={{ height: '64px', marginBottom: '1.5rem', objectFit: 'contain' }} />
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>Reporting Portal</h1>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>Lumina Portal</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
             Secure Clinical & Administrative Login
           </p>
@@ -275,7 +275,7 @@ const Login = () => {
 
 
       {/* Subtle Protected Signature */}
-      <div 
+      <div
         id={rot13('if-fvt')}
         style={{
           position: 'fixed',

@@ -47,12 +47,13 @@ const getMedicalReportHTML = (type, data) => {
     'CANCELLATION': 'Cancellation Form',
     'RESULT_TRANSFER': 'Results Transfer Form',
     'SAFETY': 'Safety Investigation Report',
-    'CLINICAL_SHEET': 'Patient Observation Records Sheet'
+    'CLINICAL_SHEET': 'Patient Observation Records Sheet',
+    'IMAGING_REPORT': 'Radiology / Imaging Report'
   };
 
   const getDocId = () => {
     const year = new Date().getFullYear();
-    const prefix = type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : type === 'RESULT_TRANSFER' ? 'RST' : type === 'SAFETY' ? 'SAF' : type === 'CLINICAL_SHEET' ? 'CLN' : 'CAN';
+    const prefix = type === 'INCIDENT' ? 'INC' : type === 'REFUND' ? 'REF' : type === 'RESULT_TRANSFER' ? 'RST' : type === 'SAFETY' ? 'SAF' : type === 'CLINICAL_SHEET' ? 'CLN' : type === 'IMAGING_REPORT' ? 'IMG' : 'CAN';
     return `LC-${prefix}-${year}-${String(data.id || '0').padStart(5, '0')}`;
   };
 
@@ -609,7 +610,67 @@ const getMedicalReportHTML = (type, data) => {
             <div style="font-size: 5.5pt; color: #94a3b8;">Nursing Dept.</div>
           </div>
         </div>
-        
+
+      </div>
+    `;
+  } else if (type === 'IMAGING_REPORT') {
+    // Render a coded value list (LOINC / SNOMED / ICD-11) as compact chips.
+    const codeChips = (codes, color) => {
+      const list = Array.isArray(codes) ? codes : [];
+      if (list.length === 0) return '<span style="color:#94a3b8;font-style:italic;">Not coded</span>';
+      return list.map(c => `
+        <span style="display:inline-block; background:${color}15; color:${color}; border:1px solid ${color}40; border-radius:4px; padding:1px 6px; margin:2px 3px 2px 0; font-size:7pt; font-weight:600;">
+          ${c.display || c.code}${c.code ? ` <span style="opacity:0.7;font-family:monospace;">[${c.code}]</span>` : ''}${c.system ? ` <span style="opacity:0.55;">· ${c.system}</span>` : ''}
+        </span>`).join('');
+    };
+    const isVerified = data.status === 'final' || data.status === 'verified' || !!data.verified_at;
+
+    content = `
+      <div class="medical-form-modern">
+        <div class="medical-form-header" style="background-color: ${primaryDark};">
+          <span>Radiology / Imaging Report</span>
+          <span style="font-size: 8pt; opacity: 0.85;">${(data.modality_label || data.modality || 'Imaging')} · ${data.status ? data.status.toUpperCase() : 'DRAFT'}</span>
+        </div>
+
+        <div class="section-head">I. Patient &amp; Study</div>
+        <table class="medical-form-table">
+          <tr><th>Patient Name</th><td class="important-value">${data.patient_name || ''}</td></tr>
+          <tr><th>Patient ID (PID)</th><td>${data.patient_id || ''}</td></tr>
+          <tr><th>Accession No.</th><td style="font-family: monospace;">${data.accession_number || ''}</td></tr>
+          <tr><th>Modality / Unit</th><td>${data.sub_unit || data.modality || ''}</td></tr>
+          <tr><th>Study Date</th><td>${data.acquired_at ? new Date(data.acquired_at).toLocaleString() : (data.scheduled_at ? new Date(data.scheduled_at).toLocaleString() : '')}</td></tr>
+          <tr><th>Referring Provider</th><td>${data.referring_provider || '—'}</td></tr>
+          <tr><th>Exam Type <span style="color:#94a3b8;">(LOINC)</span></th><td>${codeChips(data.exam_type_codes && data.exam_type_codes.length ? data.exam_type_codes : (data.exam_type_display ? [{ display: data.exam_type_display, code: data.exam_type_loinc, system: 'LOINC' }] : []), '#0369a1')}</td></tr>
+          <tr><th>Clinical Indication <span style="color:#94a3b8;">(ICD-11)</span></th><td>${data.clinical_indication ? `<div style="margin-bottom:4px;">${data.clinical_indication}</div>` : ''}${codeChips(data.indication_codes, '#7c3aed')}</td></tr>
+        </table>
+
+        <div class="section-head">II. Technique</div>
+        <div style="padding: 12px 20px; font-size: 8.5pt; color: #1e293b; line-height: 1.6; border-bottom: 1px solid #e2e8f0; white-space: pre-wrap;">${data.technique || '<span style="color:#94a3b8;font-style:italic;">Not recorded.</span>'}</div>
+
+        <div class="section-head">III. Findings <span style="color:#94a3b8; font-weight:600;">(SNOMED CT)</span></div>
+        <div style="padding: 12px 20px; font-size: 8.5pt; color: #1e293b; line-height: 1.6; border-bottom: 1px solid #e2e8f0; white-space: pre-wrap;">${data.findings_narrative || '<span style="color:#94a3b8;font-style:italic;">No findings recorded.</span>'}</div>
+        <div style="padding: 6px 20px 12px; border-bottom: 1px solid #e2e8f0;">${codeChips(data.findings_codes, '#0f766e')}</div>
+
+        <div class="section-head">IV. Impression</div>
+        <div style="padding: 12px 20px; font-size: 9pt; font-weight: 600; color: ${primaryDark}; line-height: 1.6; background: #f8fafc; border-bottom: 1px solid #e2e8f0; white-space: pre-wrap;">${data.impression || '<span style="color:#94a3b8;font-style:italic;font-weight:400;">No impression recorded.</span>'}</div>
+
+        <div class="section-head">V. Diagnosis <span style="color:#94a3b8; font-weight:600;">(ICD-11)</span> &amp; Recommendations</div>
+        <div style="padding: 10px 20px; border-bottom: 1px solid #e2e8f0;">${codeChips(data.diagnosis_codes, '#b91c1c')}</div>
+        <div style="padding: 10px 20px; font-size: 8.5pt; color: #14532d; line-height: 1.6; background: #f0fdf4; white-space: pre-wrap;">${data.recommendations || '<span style="color:#94a3b8;font-style:italic;">None.</span>'}</div>
+
+        <div class="signature-grid" style="border-top: 1.5px solid ${primaryDark}; padding-top: 25px;">
+          <div class="sig-box">
+            <span class="sig-label">Reporting Radiologist</span>
+            <div class="sig-line">${data.radiologist_name || '—'}</div>
+            <span class="sig-meta">${data.created_at ? 'Reported: ' + new Date(data.created_at).toLocaleString() : ''}</span>
+          </div>
+          <div class="sig-box" style="grid-column: span 2;">
+            <span class="sig-label">Verification</span>
+            <div class="sig-line" style="${isVerified ? '' : 'border-bottom-style: dashed; color: #94a3b8;'}">${isVerified ? (data.verified_by_name || data.radiologist_name || 'Verified') : 'Awaiting verification'}</div>
+            <span class="sig-meta">${isVerified && data.verified_at ? 'Verified: ' + new Date(data.verified_at).toLocaleString() : 'Report not yet finalised/verified'}</span>
+          </div>
+        </div>
+        ${data.checksum ? `<div style="text-align:center; margin-top:10px; font-size:6pt; color:#94a3b8; font-family:monospace;">Integrity SHA-256: ${data.checksum}</div>` : ''}
       </div>
     `;
   }

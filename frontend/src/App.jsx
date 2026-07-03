@@ -48,6 +48,7 @@ import MasterModule from './pages/MasterModule';
 import SupplierPortalPublic from './pages/SupplierPortalPublic';
 import ProcurementHub from './pages/ProcurementHub';
 import SupplierPortalManager from './pages/SupplierPortalManager';
+import ImagingHub from './pages/imaging/ImagingHub';
 
 const ShiftDashboardRedirect = () => {
   const { user } = useAuth();
@@ -102,6 +103,8 @@ function App() {
             <Route path="/master" element={<ProtectedRoute allowedRoles={['admin', 'stock-manager']}><MasterModule /></ProtectedRoute>} />
             <Route path="/procurement" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'procurement-manager']}><ProcurementHub /></ProtectedRoute>} />
             <Route path="/supplier-portal-manager" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'procurement-manager']}><SupplierPortalManager /></ProtectedRoute>} />
+
+            <Route path="/imaging" element={<ProtectedRoute allowedRoles={['radiographer', 'sonographer', 'radiologist', 'imaging_receptionist', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director', 'reviewer']}><ImagingHub /></ProtectedRoute>} />
 
             <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'medical_director']}><ClinicalSheet /></ProtectedRoute>} />
             <Route path="/clinical-sheet/:patientId" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'medical_director']}><ClinicalSheet /></ProtectedRoute>} />

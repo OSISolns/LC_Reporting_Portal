@@ -1,7 +1,7 @@
 {
   "name": "lc-reporting-portal-api",
   "version": "1.0.0",
-  "description": "Legacy Clinics Reporting Portal — REST API",
+  "description": "Legacy Clinics Lumina Portal — REST API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
