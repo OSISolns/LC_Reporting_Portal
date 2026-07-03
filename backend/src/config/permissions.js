@@ -29,6 +29,7 @@ const MODULES = [
   { name: 'compliance',       display: 'Compliance Portal',                          actions: ['view','create','edit','delete'] },
   { name: 'it_support',       display: 'IT Support Hub',                             actions: ['view','create','edit','delete'] },
   { name: 'patients',         display: 'Patient Records & Prescriptions',            actions: ['view','create'] },
+  { name: 'imaging',          display: 'Imaging (Radiology) Portal',                 actions: ['view','create','edit','acquire','report','verify','delete'] },
 ];
 
 /**
@@ -57,6 +58,7 @@ const ROLE_DEFAULTS = {
     compliance:       { view:1, create:1, edit:1, delete:1 },
     it_support:       { view:1, create:1, edit:1, delete:1 },
     patients:         { view:1, create:0 },
+    imaging:          { view:1, create:1, edit:1, acquire:0, report:0, verify:0, delete:1 },
   },
   it_officer: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -92,6 +94,7 @@ const ROLE_DEFAULTS = {
     compliance:       { view:1, create:1, edit:1, delete:1 },
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:0 },
+    imaging:          { view:1, create:0, edit:0, acquire:0, report:0, verify:0, delete:0 },
   },
   deputy_coo: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -112,6 +115,7 @@ const ROLE_DEFAULTS = {
     revenue_leakage:  { view:1, create:1, edit:1, delete:1 },
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:0 },
+    imaging:          { view:1, create:0, edit:0, acquire:0, report:0, verify:0, delete:0 },
   },
   chairman: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:0 },
@@ -343,6 +347,7 @@ const ROLE_DEFAULTS = {
     compliance:       { view:1, create:1, edit:1, delete:1 },
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:0 },
+    imaging:          { view:1, create:1, edit:1, acquire:1, report:1, verify:1, delete:1 },
   },
   'stock-manager': {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -396,6 +401,7 @@ const ROLE_DEFAULTS = {
     ai_insights:      { view:1, download:1 },
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:1 },
+    imaging:          { view:1, create:0, edit:0, acquire:0, report:1, verify:1, delete:0 },
   },
   'procurement-manager': {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -413,6 +419,65 @@ const ROLE_DEFAULTS = {
     procurement:      { view:1, create:1, edit:1 },
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:0 },
+  },
+
+  // ── Imaging (Radiology) Department roles ──────────────────────────────────
+  // Modality is a study/shift attribute, not a role: a "CT Radiographer" is a
+  // radiographer working the CT station. Sonographers both acquire and report
+  // their own ultrasound studies (per the department task sheet), so they hold
+  // the `report` action; plain radiographers acquire only.
+  radiographer: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    reports:          { view:0, download:0 },
+    staff_performance:{ view:1, create:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    inventory:        { view:1, create:1, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
+    imaging:          { view:1, create:1, edit:1, acquire:1, report:0, verify:0, delete:0 },
+  },
+  sonographer: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    reports:          { view:0, download:0 },
+    staff_performance:{ view:1, create:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    inventory:        { view:1, create:1, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
+    imaging:          { view:1, create:1, edit:1, acquire:1, report:1, verify:0, delete:0 },
+  },
+  radiologist: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    inventory:        { view:1, create:0, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
+    imaging:          { view:1, create:0, edit:1, acquire:0, report:1, verify:1, delete:0 },
+  },
+  imaging_receptionist: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    reports:          { view:0, download:0 },
+    staff_performance:{ view:1, create:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
+    imaging:          { view:1, create:1, edit:1, acquire:0, report:0, verify:0, delete:0 },
+  },
+  imaging_manager: {
+    incident_reports: { view:1, create:1, edit:1, approve:1 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:1 },
+    shifts:           { view:1, create:1, edit:1, review:1, delete:0 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
+    imaging:          { view:1, create:1, edit:1, acquire:0, report:0, verify:1, delete:1 },
   },
 };
 

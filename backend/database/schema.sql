@@ -1,5 +1,5 @@
 -- =============================================================
--- Legacy Clinics Reporting Portal — PostgreSQL Database Schema
+-- Legacy Clinics Lumina Portal — PostgreSQL Database Schema
 -- =============================================================
 
 -- Drop existing tables for clean installation

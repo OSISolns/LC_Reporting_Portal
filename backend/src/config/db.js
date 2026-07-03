@@ -30,7 +30,10 @@ const ENCRYPTED_COLUMNS = {
   shift_viplounge_close: ['vip_logs'],
   sukraa_patients: ['full_name', 'age', 'dob', 'gender', 'phone', 'insurance', 'extra_1', 'extra_2'],
   supplier_portal_sessions: ['items'],
-  users: ['full_name', 'email']
+  users: ['full_name', 'email'],
+  imaging_orders: ['patient_name', 'clinical_indication', 'indication_code_json', 'referring_provider', 'notes'],
+  imaging_studies: ['patient_name', 'technical_notes', 'consent_json', 'referring_provider', 'clinical_indication', 'sid', 'patient_age', 'patient_sex'],
+  imaging_reports: ['technique', 'findings_narrative', 'findings_code_json', 'impression', 'diagnosis_code_json', 'recommendations', 'amendment_reason']
 };
 
 const ALL_ENCRYPTED_COLS = new Set(Object.values(ENCRYPTED_COLUMNS).flat());

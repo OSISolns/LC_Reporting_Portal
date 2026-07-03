@@ -61,7 +61,25 @@ const EQUIPMENT_MAP = {
   call_center: ['PC', 'Headset'],
   nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
   vip_lounge: ['PC', 'Desk Phone'],
+  imaging: ['PC / Workstation', 'Modality Console', 'Reader / Printer', 'Archiving System'],
 };
+
+// Imaging (Radiology) 6-wave shift scheme, keyed by "start-end". Distinct from
+// the general clinic waves: some bands share a start hour but differ by end
+// hour, so both bounds are needed. Source: Imaging Department task sheet.
+const IMAGING_WAVES = {
+  '07:00-15:00': 'Wave 1',
+  '08:00-16:00': 'Wave 2',
+  '09:00-15:00': 'Wave 3',
+  '07:00-21:00': 'Wave 4',
+  '08:00-21:00': 'Wave 5',
+  '15:00-21:00': 'Wave 6',
+};
+
+function resolveImagingWave(startHour, endHour) {
+  if (!startHour || !endHour) return null;
+  return IMAGING_WAVES[`${startHour}-${endHour}`] || null;
+}
 
 /**
  * Evaluate flags for a shift after closing.
@@ -215,7 +233,7 @@ exports.openShift = async (req, res, next) => {
     }
 
     // Validate shift role
-    if (!['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge'].includes(shift_role)) {
+    if (!['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge', 'imaging'].includes(shift_role)) {
       return res.status(400).json({ success: false, message: 'Invalid shift role.' });
     }
 
@@ -223,14 +241,30 @@ exports.openShift = async (req, res, next) => {
     if (!start_hour) {
       return res.status(400).json({ success: false, message: 'Starting hour is required for wave allocation.' });
     }
-    if (!['07:00', '08:00', '09:00', '15:00'].includes(start_hour)) {
-      return res.status(400).json({ success: false, message: 'Invalid starting hour. Must be 07:00, 08:00, 09:00, or 15:00.' });
-    }
+
     let wave = null;
-    if (start_hour === '07:00') wave = 'Wave 1';
-    else if (start_hour === '08:00') wave = 'Wave 2';
-    else if (start_hour === '09:00') wave = 'Wave 4';
-    else if (start_hour === '15:00') wave = 'Wave 3';
+    if (shift_role === 'imaging') {
+      // Imaging runs its own 6-wave scheme (per the department task sheet). Some
+      // waves share a start hour but differ by end hour (e.g. 07:00–15:00 is
+      // Wave 1 while 07:00–21:00 is Wave 4), so the end hour is required to
+      // disambiguate.
+      const { end_hour } = req.body;
+      wave = resolveImagingWave(start_hour, end_hour);
+      if (!wave) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid imaging wave. Valid bands: 07:00–15:00 (W1), 08:00–16:00 (W2), 09:00–15:00 (W3), 07:00–21:00 (W4), 08:00–21:00 (W5), 15:00–21:00 (W6).',
+        });
+      }
+    } else {
+      if (!['07:00', '08:00', '09:00', '15:00'].includes(start_hour)) {
+        return res.status(400).json({ success: false, message: 'Invalid starting hour. Must be 07:00, 08:00, 09:00, or 15:00.' });
+      }
+      if (start_hour === '07:00') wave = 'Wave 1';
+      else if (start_hour === '08:00') wave = 'Wave 2';
+      else if (start_hour === '09:00') wave = 'Wave 4';
+      else if (start_hour === '15:00') wave = 'Wave 3';
+    }
 
     // Insert shift session
     const shiftResult = await db.query(

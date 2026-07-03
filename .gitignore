@@ -18,3 +18,10 @@ backend/scratch/
 frontend/test-excel.cjs
 frontend/test.xlsx
 .claude/
+
+# SQLite journal files
+*.sqlite-shm
+*.sqlite-wal
+
+# Server logs
+backend/server_log.txt

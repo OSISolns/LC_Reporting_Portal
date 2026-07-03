@@ -1,6 +1,8 @@
-# Legacy Clinics Reporting Portal
+# Legacy Clinics Lumina Portal
 
 A full-stack clinical operations management platform for Legacy Clinics & Diagnostics. It centralises financial workflows, safety reporting, lab operations, staff performance, and system governance under a unified, role-secured interface.
+
+> 📚 **Full documentation lives in [`docs/`](docs/README.md)** — architecture, module catalogue, RBAC, data model, API reference, security, integrations, and setup/deployment guides.
 
 ---
 
