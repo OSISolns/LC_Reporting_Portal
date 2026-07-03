@@ -4,7 +4,8 @@
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.js": {
-      "maxDuration": 20
+      "maxDuration": 20,
+      "includeFiles": "backend/src/assets/**"
     }
   },
   "rewrites": [

@@ -2,49 +2,26 @@
 const fs = require('fs');
 const path = require('path');
 
-// Pre-load logo to base64 for high-fidelity embedding
-let logoBase64 = 'https://i.imgur.com/rN5nO8Q.png'; // Fallback
-try {
-  const logoPath = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/src/assets/logo.png';
-  if (fs.existsSync(logoPath)) {
-    const logoBuffer = fs.readFileSync(logoPath);
-    logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+// Pre-load images to base64 for high-fidelity embedding. Paths must be
+// resolved relative to this module -- absolute developer-machine paths do
+// not exist on the deployed serverless filesystem.
+const loadAssetBase64 = (...segments) => {
+  try {
+    const assetPath = path.join(__dirname, '..', 'assets', ...segments);
+    if (fs.existsSync(assetPath)) {
+      return `data:image/png;base64,${fs.readFileSync(assetPath).toString('base64')}`;
+    }
+    console.error('PDF asset not found:', assetPath);
+  } catch (err) {
+    console.error(`Failed to load PDF asset ${segments.join('/')}:`, err);
   }
-} catch (err) {
-  console.error('Failed to load local logo for PDF:', err);
-}
+  return '';
+};
 
-// Pre-load stamps to base64 for high-fidelity embedding
-let approvedStampBase64 = '';
-let rejectedStampBase64 = '';
-let verifiedStampBase64 = '';
-
-try {
-  const approvedPath = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/src/assets/stamps/approved.png';
-  if (fs.existsSync(approvedPath)) {
-    approvedStampBase64 = `data:image/png;base64,${fs.readFileSync(approvedPath).toString('base64')}`;
-  }
-} catch (err) {
-  console.error('Failed to load local approved stamp:', err);
-}
-
-try {
-  const rejectedPath = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/src/assets/stamps/rejected.png';
-  if (fs.existsSync(rejectedPath)) {
-    rejectedStampBase64 = `data:image/png;base64,${fs.readFileSync(rejectedPath).toString('base64')}`;
-  }
-} catch (err) {
-  console.error('Failed to load local rejected stamp:', err);
-}
-
-try {
-  const verifiedPath = '/home/noble/Documents/LC_APPS/LC_Reporting_Portal/backend/src/assets/stamps/verified.png';
-  if (fs.existsSync(verifiedPath)) {
-    verifiedStampBase64 = `data:image/png;base64,${fs.readFileSync(verifiedPath).toString('base64')}`;
-  }
-} catch (err) {
-  console.error('Failed to load local verified stamp:', err);
-}
+const logoBase64 = loadAssetBase64('logo.png');
+const approvedStampBase64 = loadAssetBase64('stamps', 'approved.png');
+const rejectedStampBase64 = loadAssetBase64('stamps', 'rejected.png');
+const verifiedStampBase64 = loadAssetBase64('stamps', 'verified.png');
 
 /**
  * Modern PDF Template Generator
