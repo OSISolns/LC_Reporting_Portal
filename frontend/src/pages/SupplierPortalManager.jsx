@@ -32,6 +32,12 @@ export default function SupplierPortalManager() {
   const [setupRequestedItems, setSetupRequestedItems] = useState([]);
   const [tempPortalItemName, setTempPortalItemName] = useState('');
   const [tempPortalItemQty, setTempPortalItemQty] = useState('');
+  const [vendorSearch, setVendorSearch] = useState('');
+
+  // Submission filters
+  const [submissionSearch, setSubmissionSearch] = useState('');
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState('all');
+  const [submissionSupplierFilter, setSubmissionSupplierFilter] = useState('all');
 
   // Load Data
   const loadData = async (silent = false) => {
@@ -63,6 +69,37 @@ export default function SupplierPortalManager() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Compute supplier metrics
+  const supplierMetrics = vendors.map(v => {
+    const vendorSubmissions = submissions.filter(s => s.supplier_name === v.name);
+    const receivedSubmissions = vendorSubmissions.filter(s => s.status === 'received').length;
+    const pendingSubmissions = vendorSubmissions.filter(s => s.status === 'pending').length;
+    const totalItems = vendorSubmissions.reduce((sum, s) => sum + (s.total_items || 0), 0);
+    return {
+      ...v,
+      totalSubmissions: vendorSubmissions.length,
+      receivedSubmissions,
+      pendingSubmissions,
+      totalItems
+    };
+  });
+
+  // Filter vendors for setup dropdown
+  const filteredVendors = supplierMetrics.filter(v =>
+    v.name.toLowerCase().includes(vendorSearch.toLowerCase()) ||
+    v.id.toString().includes(vendorSearch)
+  );
+
+  // Filter submissions
+  const filteredSubmissions = submissions.filter(sub => {
+    const matchesSearch = !submissionSearch ||
+      sub.supplier_name.toLowerCase().includes(submissionSearch.toLowerCase()) ||
+      sub.id.toString().includes(submissionSearch);
+    const matchesStatus = submissionStatusFilter === 'all' || sub.status === submissionStatusFilter;
+    const matchesSupplier = submissionSupplierFilter === 'all' || sub.supplier_name === submissionSupplierFilter;
+    return matchesSearch && matchesStatus && matchesSupplier;
+  });
 
   // Handlers
   const handleAddPortalRequestedItem = () => {
@@ -221,11 +258,34 @@ export default function SupplierPortalManager() {
             <p className="text-slate-500 font-semibold animate-pulse">Loading Supplier Portals workspace...</p>
           </div>
         ) : (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="space-y-8"
           >
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-2xl p-4 shadow-sm">
+                <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider">Active Sessions</p>
+                <p className="text-3xl font-black text-indigo-900 mt-1">{portalSessions.length}</p>
+                <p className="text-[10px] text-indigo-700 font-semibold mt-1">Suppliers connected</p>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-2xl p-4 shadow-sm">
+                <p className="text-[10px] text-emerald-600 font-black uppercase tracking-wider">Received</p>
+                <p className="text-3xl font-black text-emerald-900 mt-1">{submissions.filter(s => s.status === 'received').length}</p>
+                <p className="text-[10px] text-emerald-700 font-semibold mt-1">Submissions processed</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-2xl p-4 shadow-sm">
+                <p className="text-[10px] text-amber-600 font-black uppercase tracking-wider">Pending</p>
+                <p className="text-3xl font-black text-amber-900 mt-1">{submissions.filter(s => s.status === 'pending').length}</p>
+                <p className="text-[10px] text-amber-700 font-semibold mt-1">Awaiting approval</p>
+              </div>
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <p className="text-[10px] text-slate-600 font-black uppercase tracking-wider">Suppliers</p>
+                <p className="text-3xl font-black text-slate-900 mt-1">{vendors.length}</p>
+                <p className="text-[10px] text-slate-700 font-semibold mt-1">In system</p>
+              </div>
+            </div>
             
             {/* Active sessions list */}
             {portalSessions.length > 0 && (
@@ -297,36 +357,59 @@ export default function SupplierPortalManager() {
 
               <form onSubmit={handleOpenPortal} className="space-y-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500">Select Supplier</label>
-                  <select
-                    value={setupVendorId}
-                    onChange={(e) => setSetupVendorId(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs text-slate-800 outline-none"
+                  <label className="text-xs font-bold text-slate-500">Select Supplier (Search)</label>
+                  <input
+                    type="text"
+                    placeholder="Search supplier by name..."
+                    value={vendorSearch}
+                    onChange={(e) => setVendorSearch(e.target.value)}
+                    list="vendor-list-datalist"
+                    className="bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     required
-                  >
-                    <option value="">-- Choose Vendor --</option>
-                    {vendors.map(v => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
+                  />
+                  <datalist id="vendor-list-datalist">
+                    {filteredVendors.map(v => (
+                      <option key={v.id} value={v.name} data-id={v.id} />
                     ))}
-                  </select>
+                  </datalist>
+                  {vendorSearch && filteredVendors.length > 0 && (
+                    <div className="absolute mt-1 w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-lg z-10">
+                      {filteredVendors.slice(0, 5).map(v => (
+                        <div
+                          key={v.id}
+                          onClick={() => {
+                            setSetupVendorId(v.id);
+                            setVendorSearch('');
+                          }}
+                          className="p-2.5 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors"
+                        >
+                          <p className="text-xs font-bold text-slate-800">{v.name}</p>
+                          <p className="text-[10px] text-slate-400">📊 {v.totalSubmissions} submissions • {v.pendingSubmissions} pending</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {setupVendorId && (
+                    <p className="text-[10px] text-emerald-600 font-bold">✓ Selected: {vendors.find(v => v.id == setupVendorId)?.name}</p>
+                  )}
                 </div>
 
                 <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
                   <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Item Requisitions List</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-slate-400">Product Name</label>
+                      <label className="text-[10px] font-bold text-slate-400">Product Name (Search)</label>
                       <input
                         type="text"
-                        placeholder="Type item name..."
+                        placeholder="Search item by name or SKU..."
                         list="portal-stock-items-datalist"
                         value={tempPortalItemName}
                         onChange={(e) => setTempPortalItemName(e.target.value)}
-                        className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-800 outline-none"
+                        className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                       />
                       <datalist id="portal-stock-items-datalist">
-                        {masterInventory.map((item, idx) => (
-                          <option key={idx} value={item.name} />
+                        {[...new Set(masterInventory.map(item => item.name))].sort().map((name, idx) => (
+                          <option key={idx} value={name} />
                         ))}
                       </datalist>
                     </div>
@@ -395,15 +478,65 @@ export default function SupplierPortalManager() {
 
             {/* Incoming Submission stock lists */}
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
-              <h4 className="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
-                <ClipboardList size={18} className="text-slate-550" />
-                Incoming Stock Submissions
-              </h4>
+              <div className="mb-6">
+                <h4 className="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
+                  <ClipboardList size={18} className="text-slate-550" />
+                  Incoming Stock Submissions
+                  {filteredSubmissions.length > 0 && (
+                    <span className="ml-auto text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-bold">{filteredSubmissions.length} submission(s)</span>
+                  )}
+                </h4>
+
+                {submissions.length > 0 && (
+                  <div className="flex flex-col md:flex-row gap-3 items-end">
+                    <div className="flex-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Search</label>
+                      <input
+                        type="text"
+                        placeholder="Search by ID, supplier name..."
+                        value={submissionSearch}
+                        onChange={(e) => setSubmissionSearch(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Status</label>
+                      <select
+                        value={submissionStatusFilter}
+                        onChange={(e) => setSubmissionStatusFilter(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition-all"
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="received">Received</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Supplier</label>
+                      <select
+                        value={submissionSupplierFilter}
+                        onChange={(e) => setSubmissionSupplierFilter(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition-all"
+                      >
+                        <option value="all">All Suppliers</option>
+                        {[...new Set(submissions.map(s => s.supplier_name))].sort().map((name, idx) => (
+                          <option key={idx} value={name}>{name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {submissions.length === 0 ? (
                 <div className="text-center py-16 border-2 border-dashed border-slate-150 rounded-2xl">
                   <FileText size={48} className="mx-auto text-slate-300 mb-3" />
                   <p className="text-slate-500 text-sm font-semibold">No stock submissions received yet.</p>
+                </div>
+              ) : filteredSubmissions.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-slate-150 rounded-2xl">
+                  <Search size={32} className="mx-auto text-slate-300 mb-2" />
+                  <p className="text-slate-500 text-sm font-semibold">No submissions match your filters.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-2xl border border-slate-100">
@@ -420,7 +553,7 @@ export default function SupplierPortalManager() {
                       </tr>
                     </thead>
                     <tbody>
-                      {submissions.map((sub) => (
+                      {filteredSubmissions.map((sub) => (
                         <tr key={sub.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-all">
                           <td className="p-4 font-bold text-slate-800">#SUB-{sub.id}</td>
                           <td className="p-4 font-semibold text-slate-750">{sub.supplier_name}</td>

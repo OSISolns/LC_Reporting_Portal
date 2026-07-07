@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import { Upload, Download, CheckCircle, AlertCircle, RefreshCw, FileSpreadsheet, Building2, Package, ShieldCheck } from 'lucide-react';
+import { Upload, Download, CheckCircle, AlertCircle, RefreshCw, FileSpreadsheet, Building2, Package, ShieldCheck, Lock, LockOpen, CheckCheck, Clock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 
 const SupplierPortalPublic = () => {
   const [active, setActive] = useState(null);
@@ -15,8 +17,6 @@ const SupplierPortalPublic = () => {
   const [base64Data, setBase64Data] = useState('');
   const [parsedData, setParsedData] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
 
   // API URL helper
   const API_BASE = window.location.origin.includes('localhost')
@@ -39,7 +39,7 @@ const SupplierPortalPublic = () => {
       }
     } catch (err) {
       console.error('Error checking supplier portal status:', err);
-      setErrorMsg('Failed to verify portal status. Please try again.');
+      toast.error('Failed to verify portal status. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -48,13 +48,12 @@ const SupplierPortalPublic = () => {
   const handleVerifyToken = async (e) => {
     e.preventDefault();
     if (!tokenInput.trim() || tokenInput.trim().length !== 12) {
-      setErrorMsg('Access token must be exactly 12 characters.');
+      toast.error('Access token must be exactly 12 characters.');
       return;
     }
 
     try {
       setLoading(true);
-      setErrorMsg('');
       const res = await axios.post(`${API_BASE}/clinical/inventory/supplier-portal/verify-token`, {
         token: tokenInput.trim().toUpperCase()
       });
@@ -63,10 +62,11 @@ const SupplierPortalPublic = () => {
         setRequestedItems(res.data.requestedItems);
         setVerifiedToken(tokenInput.trim().toUpperCase());
         setTokenVerified(true);
+        toast.success(`Welcome, ${res.data.vendorName}!`);
       }
     } catch (err) {
       console.error('Token verification failed:', err);
-      setErrorMsg(err.response?.data?.message || 'Verification failed. Please check your token.');
+      toast.error(err.response?.data?.message || 'Verification failed. Please check your token.');
     } finally {
       setLoading(false);
     }
@@ -124,8 +124,6 @@ const SupplierPortalPublic = () => {
     if (!selectedFile) return;
 
     setFile(selectedFile);
-    setErrorMsg('');
-    setSuccessMsg('');
 
     // Convert file to Base64
     const readerForBase64 = new FileReader();
@@ -144,9 +142,9 @@ const SupplierPortalPublic = () => {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        
+
         if (jsonData.length === 0) {
-          setErrorMsg('The selected Excel file appears to be empty.');
+          toast.error('The selected Excel file appears to be empty.');
           setParsedData([]);
           return;
         }
@@ -164,13 +162,15 @@ const SupplierPortalPublic = () => {
 
         const invalidRow = mapped.find(r => !r.name || !r.category || !r.uom || !r.batch || !r.expiry || isNaN(r.price) || isNaN(r.qty));
         if (invalidRow) {
-          setErrorMsg('Invalid template structure. Please ensure all rows contain Product Name, Category, UOM, Batch Number, Expiry Date, Price, and Quantity.');
+          toast.error('Invalid template structure. Please ensure all rows contain Product Name, Category, UOM, Batch Number, Expiry Date, Price, and Quantity.');
+        } else {
+          toast.success(`${mapped.length} items parsed successfully!`);
         }
 
         setParsedData(mapped);
       } catch (err) {
         console.error('Error parsing excel:', err);
-        setErrorMsg('Failed to parse Excel file. Please ensure it is a valid spreadsheet.');
+        toast.error('Failed to parse Excel file. Please ensure it is a valid spreadsheet.');
       }
     };
     readerForParsing.readAsArrayBuffer(selectedFile);
@@ -179,30 +179,29 @@ const SupplierPortalPublic = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file || !base64Data) {
-      setErrorMsg('Please upload a valid structured Excel file.');
+      toast.error('Please upload a valid structured Excel file.');
       return;
     }
     if (parsedData.length === 0) {
-      setErrorMsg('No valid items found to submit.');
+      toast.error('No valid items found to submit.');
       return;
     }
 
     try {
       setUploading(true);
-      setErrorMsg('');
       const res = await axios.post(`${API_BASE}/clinical/inventory/supplier-portal/upload`, {
         token: verifiedToken,
         fileData: base64Data
       });
       if (res.data.success) {
-        setSuccessMsg(res.data.message || 'Stock submitted successfully!');
+        toast.success(res.data.message || 'Stock submitted successfully!');
         setFile(null);
         setBase64Data('');
         setParsedData([]);
         setTokenVerified(false);
         setTokenInput('');
         setVerifiedToken('');
-        
+
         // Check status to trigger closed interface
         setTimeout(() => {
           checkPortalStatus();
@@ -210,7 +209,7 @@ const SupplierPortalPublic = () => {
       }
     } catch (err) {
       console.error('Error uploading stock:', err);
-      setErrorMsg(err.response?.data?.message || 'Error occurred while uploading stock.');
+      toast.error(err.response?.data?.message || 'Error occurred while uploading stock.');
     } finally {
       setUploading(false);
     }
@@ -218,481 +217,334 @@ const SupplierPortalPublic = () => {
 
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <RefreshCw style={styles.spinner} size={40} />
-        <p style={{ marginTop: '1.5rem', fontSize: '1.1rem', color: '#64748b' }}>Verifying Supplier Portal access...</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100"
+      >
+        <div className="flex flex-col items-center gap-4">
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
+            <RefreshCw className="w-12 h-12 text-indigo-600" />
+          </motion.div>
+          <p className="text-slate-600 font-semibold animate-pulse">Verifying Supplier Portal access...</p>
+        </div>
+      </motion.div>
     );
   }
 
   // PORTAL CLOSED STATE
   if (!active) {
     return (
-      <div style={styles.closedContainer}>
-        <div style={styles.closedCard}>
-          <div style={styles.iconWrapperClosed}>
-            <AlertCircle size={48} color="#ef4444" />
-          </div>
-          <h1 style={styles.closedTitle}>Supplier Portal Closed</h1>
-          <p style={styles.closedDescription}>
-            The clinical supplier reception window is currently closed. The Stock Manager will open this portal temporarily when active shipments are scheduled.
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="h-screen bg-slate-900 flex items-center justify-center p-6"
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl"
+        >
+          <motion.div
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 3, repeat: Infinity }}
+            className="w-20 h-20 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto mb-6 border border-rose-500/20"
+          >
+            <Lock className="w-10 h-10 text-rose-400" />
+          </motion.div>
+          <h1 className="text-2xl font-black text-white mb-3">Portal Closed</h1>
+          <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+            The clinical supplier reception window is currently closed. The Stock Manager will open this portal when active shipments are scheduled.
           </p>
-          <div style={styles.badgeClosed}>STATUS: INACTIVE</div>
-          <button onClick={checkPortalStatus} style={styles.retryButton}>
+          <span className="inline-block px-3 py-1 bg-rose-500/10 text-rose-300 text-xs font-black uppercase tracking-widest rounded-full border border-rose-500/20 mb-6">
+            Status: Inactive
+          </span>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={checkPortalStatus}
+            className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all"
+          >
             <RefreshCw size={16} /> Check Again
-          </button>
-        </div>
-      </div>
+          </motion.button>
+        </motion.div>
+      </motion.div>
     );
   }
 
   // TOKEN NOT VERIFIED STATE
   if (!tokenVerified) {
     return (
-      <div style={styles.closedContainer}>
-        <div style={{ ...styles.closedCard, backgroundColor: '#ffffff', color: '#0f172a', textAlign: 'left', maxWidth: '440px', padding: '2.5rem 2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1.25rem' }}>
-            <div style={{ padding: '8px', backgroundColor: '#eef2ff', borderRadius: '10px', color: '#4f46e5' }}>
-              <ShieldCheck size={28} />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6"
+      >
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full shadow-lg"
+        >
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+            <div className="w-11 h-11 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center">
+              <ShieldCheck className="w-6 h-6 text-indigo-600" />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: '#1e293b' }}>Supplier Authentication</h2>
-              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0 0' }}>Enter your 12-character token to enter</p>
+              <h2 className="text-lg font-black text-slate-900">Supplier Authentication</h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Enter your 12-character token</p>
             </div>
           </div>
-          <form onSubmit={handleVerifyToken} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {errorMsg && (
-              <div style={{ ...styles.alertError, margin: 0 }}>
-                <AlertCircle size={16} />
-                <span style={{ fontSize: '0.8rem' }}>{errorMsg}</span>
-              </div>
-            )}
-            <div style={styles.inputGroup}>
-              <label style={{ ...styles.label, color: '#475569' }}>Access Token</label>
+
+          <form onSubmit={handleVerifyToken} className="space-y-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Access Token</label>
               <input
                 type="text"
                 maxLength={12}
                 placeholder="e.g. 12-CHAR-CODE"
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
-                style={{ ...styles.input, textTransform: 'uppercase', letterSpacing: '0.075em', fontWeight: 700, borderColor: '#cbd5e1' }}
+                className="bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-sm font-bold tracking-widest text-slate-800 uppercase outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 required
               />
             </div>
-            <button type="submit" style={{ ...styles.submitButton, backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 700, fontSize: '0.9rem', padding: '0.7rem' }}>
-              Verify & Unlock Portal
-            </button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" /> Verifying...
+                </>
+              ) : (
+                <>
+                  <LockOpen className="w-4 h-4" /> Verify & Unlock Portal
+                </>
+              )}
+            </motion.button>
           </form>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     );
   }
 
   // PORTAL OPEN & VERIFIED STATE
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <div style={styles.logoAndTitle}>
-          <img src="/logo.png" alt="Legacy Clinics Logo" style={styles.logo} />
-          <div>
-            <h1 style={styles.title}>Supplier Stock Intake Portal</h1>
-            <p style={styles.subtitle}>Verified Supplier: <strong style={{ color: '#4f46e5' }}>{supplierName}</strong></p>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-screen bg-slate-50 text-slate-800 p-6 md:p-10 font-sans relative overflow-hidden"
+    >
+      {/* Background decoration */}
+      <div className="absolute top-0 right-0 -mr-48 -mt-48 w-[700px] h-[700px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 -ml-48 -mb-48 w-[700px] h-[700px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+
+      <div className="max-w-6xl mx-auto relative z-10">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8 pb-6 border-b border-slate-200"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+              <LockOpen className="w-7 h-7 text-emerald-600" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+                Supplier Stock Intake Portal
+              </h1>
+              <p className="text-sm text-slate-500 font-medium mt-0.5">
+                Verified Supplier: <span className="text-indigo-700 font-bold">{supplierName}</span>
+              </p>
+            </div>
           </div>
-        </div>
-        <button onClick={handleDownloadTemplate} style={styles.templateButton}>
-          <Download size={18} /> Download Requested Template
-        </button>
-      </header>
 
-      <div style={styles.layout}>
-        {/* Upload Form */}
-        <div style={styles.formCard}>
-          <h2 style={styles.sectionTitle}>Stock Submission</h2>
-          <form onSubmit={handleSubmit} style={styles.form}>
-            {errorMsg && (
-              <div style={styles.alertError}>
-                <AlertCircle size={18} />
-                <span>{errorMsg}</span>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleDownloadTemplate}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl flex items-center gap-2 transition-all shadow-sm"
+          >
+            <Download size={16} /> Download Template
+          </motion.button>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-6"
+        >
+          {/* Requested Items Summary */}
+          {requestedItems.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+              <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-emerald-600" />
+                Requested Items ({requestedItems.length})
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {requestedItems.map((item, idx) => (
+                  <motion.span
+                    key={idx}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200"
+                  >
+                    {item.name} <span className="font-black text-emerald-600">×{item.quantity}</span>
+                  </motion.span>
+                ))}
               </div>
-            )}
-            {successMsg && (
-              <div style={styles.alertSuccess}>
-                <CheckCircle size={18} />
-                <span>{successMsg}</span>
-              </div>
-            )}
-
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>
-                <Building2 size={16} /> Company / Supplier Name
-              </label>
-              <input
-                type="text"
-                value={supplierName}
-                style={{ ...styles.input, backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed', fontWeight: 600 }}
-                readOnly
-              />
-            </div>
-
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>
-                <FileSpreadsheet size={16} /> Excel Spreadsheet
-              </label>
-              <div style={styles.dropzone}>
-                <Upload size={32} style={{ color: '#94a3b8', marginBottom: '8px' }} />
-                <p style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'center', marginBottom: '8px' }}>
-                  {file ? `Selected file: ${file.name}` : 'Drag and drop your excel template here or click to browse'}
-                </p>
-                <input
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={handleFileChange}
-                  style={styles.fileInput}
-                />
-              </div>
-            </div>
-
-            <button type="submit" disabled={uploading || parsedData.length === 0} style={styles.submitButton}>
-              {uploading ? (
-                <>
-                  <RefreshCw style={styles.spinner} size={18} /> Submitting...
-                </>
-              ) : (
-                'Submit Stock Delivery'
-              )}
-            </button>
-          </form>
-        </div>
-
-        {/* Data Preview */}
-        <div style={styles.previewCard}>
-          <h2 style={styles.sectionTitle}>
-            <Package size={18} /> Items Preview ({parsedData.length} items parsed)
-          </h2>
-          {parsedData.length === 0 ? (
-            <div style={styles.emptyPreview}>
-              <FileSpreadsheet size={48} style={{ color: '#cbd5e1', marginBottom: '1rem' }} />
-              <p style={{ color: '#64748b' }}>Select a structured Excel file to view products preview.</p>
-            </div>
-          ) : (
-            <div style={styles.tableWrapper}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>Product Name</th>
-                    <th style={styles.th}>Category</th>
-                    <th style={styles.th}>UOM</th>
-                    <th style={styles.th}>Batch</th>
-                    <th style={styles.th}>Expiry</th>
-                    <th style={styles.th}>Price</th>
-                    <th style={styles.th}>Qty</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsedData.map((item, index) => (
-                    <tr key={index} style={styles.tr}>
-                      <td style={{ ...styles.td, fontWeight: 600 }}>{item.name}</td>
-                      <td style={styles.td}>{item.category}</td>
-                      <td style={styles.td}>{item.uom}</td>
-                      <td style={styles.td}>{item.batch}</td>
-                      <td style={styles.td}>{item.expiry}</td>
-                      <td style={styles.td}>{item.price.toLocaleString()} RWF</td>
-                      <td style={{ ...styles.td, color: 'var(--primary-color, #0284c7)', fontWeight: 600 }}>{item.qty}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  );
-};
 
-const styles = {
-  loadingContainer: {
-    height: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f8fafc',
-  },
-  spinner: {
-    animation: 'spin 1s linear infinite',
-  },
-  closedContainer: {
-    height: '100vh',
-    backgroundColor: '#0f172a',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '1.5rem',
-  },
-  closedCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: '16px',
-    padding: '3rem 2rem',
-    maxWidth: '480px',
-    width: '100%',
-    textAlign: 'center',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-    border: '1px solid rgba(255,255,255,0.05)',
-  },
-  iconWrapperClosed: {
-    width: '80px',
-    height: '80px',
-    borderRadius: '50%',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '0 auto 1.5rem',
-  },
-  closedTitle: {
-    fontSize: '1.75rem',
-    fontWeight: 700,
-    color: '#ffffff',
-    marginBottom: '1rem',
-  },
-  closedDescription: {
-    color: '#94a3b8',
-    fontSize: '0.95rem',
-    lineHeight: '1.6',
-    marginBottom: '1.5rem',
-  },
-  badgeClosed: {
-    display: 'inline-block',
-    padding: '0.35rem 1rem',
-    borderRadius: '99px',
-    backgroundColor: 'rgba(239,68,68,0.2)',
-    color: '#f87171',
-    fontWeight: 700,
-    fontSize: '0.75rem',
-    letterSpacing: '0.05em',
-    marginBottom: '2rem',
-  },
-  retryButton: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    margin: '0 auto',
-    padding: '0.65rem 1.5rem',
-    backgroundColor: '#334155',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: 600,
-    fontSize: '0.9rem',
-    transition: 'all 0.2s',
-  },
-  container: {
-    minHeight: '100vh',
-    backgroundColor: '#f8fafc',
-    padding: '2rem',
-    fontFamily: 'Inter, system-ui, sans-serif',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: '1.5rem',
-    borderBottom: '1px solid #e2e8f0',
-    paddingBottom: '1.5rem',
-    marginBottom: '2rem',
-  },
-  logoAndTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1.25rem',
-  },
-  logo: {
-    height: '45px',
-    objectFit: 'contain',
-  },
-  title: {
-    fontSize: '1.5rem',
-    fontWeight: 800,
-    color: '#0f172a',
-    margin: 0,
-  },
-  subtitle: {
-    fontSize: '0.875rem',
-    color: '#64748b',
-    margin: '0.25rem 0 0 0',
-  },
-  templateButton: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '0.65rem 1.25rem',
-    backgroundColor: '#4f46e5',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: 600,
-    fontSize: '0.9rem',
-    boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)',
-  },
-  layout: {
-    display: 'grid',
-    gridTemplateColumns: '380px 1fr',
-    gap: '2rem',
-    alignItems: 'start',
-  },
-  formCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    padding: '1.5rem',
-    boxShadow: '0 1px 3px 0 rgba(0,0,0,0.05), 0 1px 2px -1px rgba(0,0,0,0.05)',
-    border: '1px solid #e2e8f0',
-  },
-  previewCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    padding: '1.5rem',
-    boxShadow: '0 1px 3px 0 rgba(0,0,0,0.05), 0 1px 2px -1px rgba(0,0,0,0.05)',
-    border: '1px solid #e2e8f0',
-    minHeight: '400px',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  sectionTitle: {
-    fontSize: '1.1rem',
-    fontWeight: 700,
-    color: '#1e293b',
-    marginTop: 0,
-    marginBottom: '1.25rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.25rem',
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  label: {
-    fontSize: '0.85rem',
-    fontWeight: 600,
-    color: '#475569',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  input: {
-    padding: '0.65rem 0.85rem',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
-    fontSize: '0.9rem',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-  },
-  dropzone: {
-    border: '2px dashed #cbd5e1',
-    borderRadius: '12px',
-    padding: '1.75rem 1rem',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    position: 'relative',
-    backgroundColor: '#f8fafc',
-    transition: 'background-color 0.2s',
-  },
-  fileInput: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: '100%',
-    height: '100%',
-    opacity: 0,
-    cursor: 'pointer',
-  },
-  submitButton: {
-    padding: '0.75rem',
-    backgroundColor: '#10b981',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: 700,
-    fontSize: '0.95rem',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-  },
-  alertError: {
-    backgroundColor: '#fef2f2',
-    border: '1px solid #fecaca',
-    borderRadius: '8px',
-    padding: '0.75rem 1rem',
-    color: '#ef4444',
-    fontSize: '0.85rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    lineHeight: '1.4',
-  },
-  alertSuccess: {
-    backgroundColor: '#ecfdf5',
-    border: '1px solid #a7f3d0',
-    borderRadius: '8px',
-    padding: '0.75rem 1rem',
-    color: '#059669',
-    fontSize: '0.85rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  emptyPreview: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    border: '2px dashed #e2e8f0',
-    borderRadius: '8px',
-    padding: '2rem',
-  },
-  tableWrapper: {
-    overflowX: 'auto',
-    borderRadius: '8px',
-    border: '1px solid #e2e8f0',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    fontSize: '0.85rem',
-  },
-  th: {
-    backgroundColor: '#f1f5f9',
-    color: '#475569',
-    fontWeight: 700,
-    textAlign: 'left',
-    padding: '0.75rem 1rem',
-    borderBottom: '1px solid #e2e8f0',
-  },
-  tr: {
-    borderBottom: '1px solid #f1f5f9',
-    transition: 'background-color 0.2s',
-  },
-  td: {
-    padding: '0.75rem 1rem',
-    color: '#334155',
-  },
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Upload Form */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs"
+            >
+              <div className="flex items-center gap-2 mb-5 pb-3 border-b border-slate-100">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                  <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                </div>
+                <h2 className="font-bold text-slate-800 text-sm">Stock Submission</h2>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</label>
+                  <input
+                    type="text"
+                    value={supplierName}
+                    readOnly
+                    className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Excel File</label>
+                  <div className="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-lg p-3 transition-all cursor-pointer bg-slate-50 hover:bg-indigo-50/30 relative group">
+                    <Upload className="w-6 h-6 text-slate-400 group-hover:text-indigo-500 mx-auto mb-1 transition-colors" />
+                    <p className="text-xs text-slate-500 text-center font-medium leading-tight">
+                      {file ? (
+                        <>
+                          <span className="text-emerald-700 font-bold">✓</span> {file.name}
+                        </>
+                      ) : (
+                        'Drag here or click to upload'
+                      )}
+                    </p>
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={handleFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={uploading || parsedData.length === 0}
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-all mt-2"
+                >
+                  {uploading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCheck className="w-4 h-4" /> Submit Delivery
+                    </>
+                  )}
+                </motion.button>
+              </form>
+            </motion.div>
+
+            {/* Data Preview */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                    <Package className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm">Items Preview</h3>
+                </div>
+                {parsedData.length > 0 && (
+                  <span className="text-xs font-black bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full border border-indigo-200">
+                    {parsedData.length} items
+                  </span>
+                )}
+              </div>
+
+              {parsedData.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
+                    <FileSpreadsheet className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-600">No items to preview</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Upload an Excel file to see items here</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-slate-100 flex-1 min-h-0">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
+                      <tr>
+                        <th className="p-3">Product Name</th>
+                        <th className="p-3">Category</th>
+                        <th className="p-3">UOM</th>
+                        <th className="p-3">Batch</th>
+                        <th className="p-3">Expiry</th>
+                        <th className="p-3 text-right">Price</th>
+                        <th className="p-3 text-right">Qty</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedData.map((item, index) => (
+                        <motion.tr
+                          key={index}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                        >
+                          <td className="p-3 font-semibold text-slate-800">{item.name}</td>
+                          <td className="p-3 text-slate-600">{item.category}</td>
+                          <td className="p-3 text-slate-600">{item.uom}</td>
+                          <td className="p-3 font-mono text-slate-600">{item.batch}</td>
+                          <td className="p-3 font-mono text-slate-600">{item.expiry}</td>
+                          <td className="p-3 text-right text-slate-700 font-semibold">{item.price.toLocaleString()} RWF</td>
+                          <td className="p-3 text-right font-bold text-indigo-700">{item.qty}</td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
 };
 
 export default SupplierPortalPublic;
