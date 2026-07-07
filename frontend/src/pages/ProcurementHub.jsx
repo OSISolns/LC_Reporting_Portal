@@ -6068,7 +6068,7 @@ export default function ProcurementHub() {
                       const element = document.getElementById('po-print-template');
                       html2canvas(element, { scale: 2, useCORS: true }).then((canvas) => {
                         const imgData = canvas.toDataURL('image/png');
-                        const pdf = new jsPDF('p', 'mm', 'a4');
+                        const pdf = new jsPDF('p', 'mm', 'a5');
                         const pdfWidth = pdf.internal.pageSize.getWidth();
                         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
                         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
