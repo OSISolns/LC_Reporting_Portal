@@ -290,7 +290,13 @@ export default function DoctorHub() {
                   </div>
                   <div>
                     <p style={{ margin: 0, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.65rem' }}>Insurance Provider</p>
-                    <p style={{ margin: '2px 0 0', fontWeight: 800, color: '#0369a1' }}>{selectedPatient.insurance || 'Walk-in / Private'}</p>
+                    <p style={{ margin: '2px 0 0', fontWeight: 800, color: '#0369a1' }}>
+                      {selectedPatient.referrer_name ? (
+                        `${selectedPatient.referrer_name}${selectedPatient.ref_type ? ` (${selectedPatient.ref_type})` : ''}`
+                      ) : (
+                        selectedPatient.insurance || 'Walk-in / Private'
+                      )}
+                    </p>
                   </div>
                 </div>
 

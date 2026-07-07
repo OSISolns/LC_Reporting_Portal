@@ -52,18 +52,26 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
       if (form.newPassword !== form.confirmPassword) return setError('New passwords do not match.');
       if (form.newPassword.length < 6) return setError('New password must be at least 6 characters.');
       if (form.newPassword === form.oldPassword) return setError('New password cannot be the same as your current temporary password.');
-      if (strength < 3) return setError('Please choose a stronger password (at least Good).');
+      if (strength < 2) return setError('Please choose a slightly stronger password (mix letters and numbers).');
 
       setSubmitLoading(true);
       try {
-        await api.post('/auth/password/change', { 
-          oldPassword: form.oldPassword, 
-          newPassword: form.newPassword 
+        await api.post('/auth/password/change', {
+          oldPassword: form.oldPassword,
+          newPassword: form.newPassword
         });
         setSuccess(true);
-        setTimeout(() => {
-          setUser(prev => ({ ...prev, mustChangePassword: false }));
-        }, 2000);
+        // Re-sync the authoritative user from the server (mustChangePassword is
+        // now 0 in the DB) so a stale in-memory flag can never re-trigger this
+        // screen. Fall back to a local clear if the refresh fails.
+        setTimeout(async () => {
+          try {
+            const me = await api.get('/auth/me');
+            setUser(me.data.user);
+          } catch {
+            setUser(prev => ({ ...prev, mustChangePassword: false }));
+          }
+        }, 1500);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to update password. Please verify current password.');
       } finally {
@@ -248,6 +256,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                       <span style={{ fontSize: '0.7rem', fontWeight: 700, color: strengthColor }}>{strengthLabel}</span>
                     </div>
                   )}
+                  <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '6px 0 0' }}>
+                    Use at least 6 characters, mixing letters and numbers.
+                  </p>
                 </div>
 
                 {/* Confirm Password */}
@@ -293,17 +304,17 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                 {/* Submit Action */}
                 <button
                   type="submit"
-                  disabled={submitLoading || !form.oldPassword || !form.newPassword || form.newPassword !== form.confirmPassword}
+                  disabled={submitLoading || !form.oldPassword || form.newPassword.length < 6 || strength < 2 || form.newPassword !== form.confirmPassword}
                   style={{
                     marginTop: '0.5rem',
                     padding: '12px',
                     borderRadius: '12px',
                     border: 'none',
-                    backgroundColor: submitLoading || strength < 3 ? 'rgba(56, 189, 248, 0.3)' : '#0284c7',
+                    backgroundColor: submitLoading || strength < 2 ? 'rgba(56, 189, 248, 0.3)' : '#0284c7',
                     color: '#fff',
                     fontWeight: 700,
                     fontSize: '0.92rem',
-                    cursor: submitLoading || strength < 3 ? 'not-allowed' : 'pointer',
+                    cursor: submitLoading || strength < 2 ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

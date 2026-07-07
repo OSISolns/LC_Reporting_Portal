@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Stethoscope,
@@ -65,6 +65,30 @@ export default function DailyOperationalReportBoard() {
   const [dailyLogs, setDailyLogs] = useState({}); // metricName -> metricValue
   const [stockLogs, setStockLogs] = useState([]); // inventory audit logs
   const [selectedLog, setSelectedLog] = useState(null); // specific log for modal
+
+  // Per-item consumption summary for the selected date: only items actually
+  // consumed, split by session (AM/PM) and ward (Station 1 / Minor), with all
+  // contributing users. Mirrors the Daily Stock Checkup → Stock Changes view.
+  const consumptionSummary = useMemo(() => {
+    const map = new Map();
+    for (const l of stockLogs) {
+      const stnD = (Number(l.new_consumed_obs1) || 0) - (Number(l.old_consumed_obs1) || 0);
+      const minD = (Number(l.new_consumed_minor) || 0) - (Number(l.old_consumed_minor) || 0);
+      const consD = (Number(l.new_consumed) || 0) - (Number(l.old_consumed) || 0);
+      if (stnD <= 0 && minD <= 0 && consD <= 0) continue;
+      const isPM = String(l.session || '').toUpperCase() === 'PM';
+      let it = map.get(l.item_name);
+      if (!it) { it = { item_name: l.item_name, amStn: 0, amMin: 0, pmStn: 0, pmMin: 0, users: new Set(), lastStock: 0, lastBalance: 0, latest: 0 }; map.set(l.item_name, it); }
+      if (isPM) { it.pmStn += stnD; it.pmMin += minD; } else { it.amStn += stnD; it.amMin += minD; }
+      if (l.updated_by) it.users.add(l.updated_by);
+      const t = new Date(l.updated_at).getTime();
+      if (t >= it.latest) { it.latest = t; it.lastStock = Number(l.new_stock) || 0; it.lastBalance = (Number(l.new_stock) || 0) - (Number(l.new_consumed) || 0); }
+    }
+    return [...map.values()]
+      .map(it => ({ ...it, total: it.amStn + it.amMin + it.pmStn + it.pmMin, users: [...it.users] }))
+      .filter(it => it.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [stockLogs]);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
 
@@ -1397,119 +1421,64 @@ export default function DailyOperationalReportBoard() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
                 <div>
                   <h3 className="text-sm font-black text-sky-650 uppercase tracking-widest flex items-center gap-2">
-                    <Database size={16} className="text-sky-650" /> Stock Changes
+                    <Database size={16} className="text-sky-650" /> Consumption
                   </h3>
                   <p className="text-[10px] text-slate-400 font-extrabold uppercase mt-0.5">
-                    Real-time stock counting updates and consumed level adjustments log
+                    Items consumed — split by session (AM / PM) and ward (Station 1 / Minor)
                   </p>
                 </div>
                 <span className="text-[10px] font-black px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full">
-                  {stockLogs.length} CHANGES LOGGED
+                  {consumptionSummary.length} ITEMS CONSUMED
                 </span>
               </div>
 
-              {stockLogs.length === 0 ? (
+              {consumptionSummary.length === 0 ? (
                 <div className="text-center py-8 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
                   <Database size={24} className="text-slate-300 mx-auto mb-2" />
-                  <p className="text-xs text-slate-450 font-bold">No inventory stock or consumption level modifications logged today.</p>
+                  <p className="text-xs text-slate-450 font-bold">No consumption logged for this date.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 text-left border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                        <th className="px-4 py-3">Logged At</th>
-                        <th className="px-4 py-3">Item Name</th>
-                        <th className="px-4 py-3">Day / Session</th>
-                        <th className="px-4 py-3 text-left">Stock Level</th>
-                        <th className="px-4 py-3 text-left">Total Consumed</th>
-                        <th className="px-4 py-3">Ward</th>
-                        <th className="px-4 py-3">Updated By</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {stockLogs.map((log) => {
-                        const logTime = new Date(log.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {consumptionSummary.map((it) => (
+                    <div key={it.item_name} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col hover:border-slate-300 hover:shadow-md transition-all">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-black text-slate-800 text-sm leading-tight">{it.item_name}</h4>
+                        <div className="text-right shrink-0">
+                          <div className="text-2xl font-black text-amber-600 leading-none">{it.total}</div>
+                          <div className="text-[8px] font-black uppercase tracking-wider text-slate-400 mt-0.5">consumed</div>
+                        </div>
+                      </div>
 
-                        const stockDiff = log.new_stock - log.old_stock;
-                        const consumedDiff = log.new_consumed - log.old_consumed;
-
-                        return (
-                          <tr
-                            key={log.id}
-                            className="hover:bg-slate-50/40 text-xs font-bold text-slate-700 cursor-pointer"
-                            onClick={() => setSelectedLog(log)}
-                          >
-                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-400 font-mono text-[11px]">{logTime}</td>
-                            <td className="px-4 py-3.5 text-slate-900 font-black">{log.item_name}</td>
-                            <td className="px-4 py-3.5">
-                              <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100 uppercase">
-                                Day {log.day} - {log.session}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3.5 whitespace-nowrap min-w-[110px]">
-                              <div className="flex flex-col gap-1.5">
-                                <div className="flex justify-between items-center px-2 py-0.5 bg-slate-50 border border-slate-200/60 rounded">
-                                  <span className="text-[8px] uppercase tracking-widest text-slate-400 font-black">Hand</span>
-                                  <span className="font-mono text-[10px] text-slate-600 font-bold">{log.new_stock || 0}</span>
-                                </div>
-                                <div className="flex justify-between items-center px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded shadow-sm">
-                                  <span className="text-[8px] uppercase tracking-widest text-indigo-500 font-black">Balance</span>
-                                  <span className="font-mono text-[11px] text-indigo-700 font-black">{(log.new_stock || 0) - (log.new_consumed || 0)}</span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3.5 text-left">
-                              <span className="px-2 py-1 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-black rounded-lg">
-                                {log.new_consumed || 0}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3.5">
-                              {(() => {
-                                const stn1Changed = log.old_consumed_obs1 !== log.new_consumed_obs1 || log.old_user_stn1 !== log.new_user_stn1;
-                                const minorChanged = log.old_consumed_minor !== log.new_consumed_minor || log.old_user_minor !== log.new_user_minor;
-
-                                let wardLabel = "STN1";
-                                let badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
-
-                                if (stn1Changed && minorChanged) {
-                                  wardLabel = "STN1 & MINOR";
-                                  badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
-                                } else if (minorChanged) {
-                                  wardLabel = "MINOR";
-                                  badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                } else if (stn1Changed) {
-                                  wardLabel = "STN1";
-                                  badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
-                                } else {
-                                  // Aggressive fallback logic
-                                  if (log.new_user_minor && !log.new_user_stn1) {
-                                    wardLabel = "MINOR";
-                                    badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                  } else if (log.updated_by === log.new_user_minor && log.updated_by !== log.new_user_stn1) {
-                                    wardLabel = "MINOR";
-                                    badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                  }
-                                }
-
-                                return (
-                                  <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-md border ${badgeClass}`}>
-                                    {wardLabel}
-                                  </span>
-                                );
-                              })()}
-                            </td>
-                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-800">
-                              <span className="inline-flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-450" />
-                                {log.updated_by}
-                              </span>
-                            </td>
+                      <table className="w-full text-center text-[11px] mt-3 border border-slate-100 rounded-lg overflow-hidden">
+                        <thead>
+                          <tr className="bg-slate-50 text-slate-400 text-[8px] font-black uppercase tracking-wider">
+                            <th className="py-1.5 w-10"></th><th className="py-1.5 text-sky-600">Station 1</th><th className="py-1.5 text-emerald-600">Minor</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody className="font-black">
+                          <tr className="border-t border-slate-100">
+                            <td className="py-1.5 text-[8px] font-black text-slate-400 uppercase bg-slate-50/60">AM</td>
+                            <td className={it.amStn ? 'text-sky-700' : 'text-slate-300'}>{it.amStn || '·'}</td>
+                            <td className={it.amMin ? 'text-emerald-700' : 'text-slate-300'}>{it.amMin || '·'}</td>
+                          </tr>
+                          <tr className="border-t border-slate-100">
+                            <td className="py-1.5 text-[8px] font-black text-slate-400 uppercase bg-slate-50/60">PM</td>
+                            <td className={it.pmStn ? 'text-sky-700' : 'text-slate-300'}>{it.pmStn || '·'}</td>
+                            <td className={it.pmMin ? 'text-emerald-700' : 'text-slate-300'}>{it.pmMin || '·'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      <div className="flex items-center mt-3 text-[9px] font-bold text-slate-400">
+                        <span>on hand <b className="text-slate-600">{it.lastStock}</b> · bal <b className="text-indigo-600">{it.lastBalance}</b></span>
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-start gap-1.5">
+                        <User size={12} className="text-slate-400 shrink-0 mt-0.5" />
+                        <span className="text-[10px] text-slate-600 leading-snug"><span className="font-black text-slate-700">{it.users.join(', ') || '—'}</span></span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

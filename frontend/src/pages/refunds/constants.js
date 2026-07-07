@@ -1,5 +1,12 @@
 export const INSURANCES = [
-  "Private",
+  // ── Most Common (Rwandan Public / National Schemes) ──────────────────────
+  "Cash / Private (Out-of-Pocket)",
+  "RSSB (Community)",
+  "RSSB (RAMA)",
+  "RSSB (Indigent / Mutuelle)",
+  "MMI (Military Medical Insurance)",
+  "RAMA",
+  // ── Private & Corporate Insurers ─────────────────────────────────────────
   "AFRICA MEDILINK",
   "AGAHOZO SHALOM YOUTH VILLAGE",
   "ALLIANZ",
@@ -51,6 +58,7 @@ export const INSURANCES = [
   "PRICE WATER HOUSE (PWC)",
   "PRIME INSURANCE LTD",
   "Private Sector Federation",
+  "Private",
   "Radiant Insurance Company",
   "Rwanda Bar Association",
   "Rwanda Events Group",
@@ -69,5 +77,6 @@ export const INSURANCES = [
   "UNHCR",
   "UR CMHSBD LTD",
   "Urwego Opportunity",
-  "VINE PHARMACY"
+  "VINE PHARMACY",
+  "Other / Not Listed"
 ];

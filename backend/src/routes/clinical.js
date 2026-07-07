@@ -14,6 +14,9 @@ router.post('/inventory/supplier-portal/upload', clinicalController.supplierPort
 router.use(authenticateToken);
 router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'deputy_coo', 'stock-manager', 'pa', 'medical_director', 'procurement-manager']));
 
+// --- Procurement Manager Dashboard (module: procurement) ---
+router.get('/procurement/dashboard', checkPermission('procurement', 'view'), clinicalController.getProcurementDashboard);
+
 // --- Purchase Order Routes (module: procurement) ---
 router.get('/inventory/purchase-orders', checkPermission('procurement', 'view'), clinicalController.getPurchaseOrders);
 router.post('/inventory/purchase-orders', checkPermission('procurement', 'create'), clinicalController.createPurchaseOrder);
@@ -28,6 +31,15 @@ router.get('/inventory/grns/:id/items', checkPermission('procurement', 'view'), 
 router.get('/inventory/returns', checkPermission('procurement', 'view'), clinicalController.getSupplierReturns);
 router.post('/inventory/returns', checkPermission('procurement', 'create'), clinicalController.createSupplierReturn);
 router.get('/inventory/returns/:id/items', checkPermission('procurement', 'view'), clinicalController.getSupplierReturnItems);
+
+// --- Tenders & RFQ Routes (module: procurement) ---
+router.get('/inventory/rfqs', checkPermission('procurement', 'view'), clinicalController.getRFQs);
+router.get('/inventory/rfqs/:id', checkPermission('procurement', 'view'), clinicalController.getRFQById);
+router.post('/inventory/rfqs', checkPermission('procurement', 'create'), clinicalController.createRFQ);
+router.post('/inventory/rfqs/:id/quotes', checkPermission('procurement', 'edit'), clinicalController.saveRFQQuotes);
+router.post('/inventory/rfqs/:id/awards', checkPermission('procurement', 'edit'), clinicalController.saveRFQAwards);
+router.post('/inventory/rfqs/:id/generate-pos', checkPermission('procurement', 'edit'), clinicalController.generatePOsFromRFQ);
+router.get('/inventory/vendors/:id/performance', checkPermission('procurement', 'view'), clinicalController.getSupplierPerformance);
 
 // --- Supplier Portal Authenticated Routes (module: procurement) ---
 // Previously had no restriction beyond the broad router-level role gate above
@@ -56,6 +68,7 @@ router.get('/inventory/requisitions', checkPermission('inventory', 'view'), clin
 router.post('/inventory/requisitions', checkPermission('inventory', 'create'), clinicalController.createRequisition);
 router.post('/inventory/requisitions/:id/approve', checkPermission('inventory', 'edit'), clinicalController.approveRequisition);
 router.post('/inventory/requisitions/:id/reject', checkPermission('inventory', 'edit'), clinicalController.rejectRequisition);
+router.post('/inventory/requisitions/:id/receive', checkPermission('daily_stock', 'edit'), clinicalController.receiveRequisition);
 router.get('/inventory/vendors', checkPermission('inventory', 'view'), clinicalController.getVendors);
 router.post('/inventory/vendors', checkPermission('inventory', 'create'), clinicalController.createVendor);
 router.put('/inventory/vendors/:id', checkPermission('inventory', 'edit'), clinicalController.updateVendor);
@@ -111,3 +124,46 @@ router.get('/inventory/change-logs', checkPermission('daily_stock', 'view'), cli
 router.get('/medications/search', clinicalController.searchFdaMedications);
 
 module.exports = router;
+
+// --- Procurement Hub Expansion Routes (module: procurement) ---
+
+// Vendor Documents
+router.get('/inventory/vendors/:id/documents', checkPermission('procurement', 'view'), clinicalController.getVendorDocuments);
+router.post('/inventory/vendors/:id/documents', checkPermission('procurement', 'create'), clinicalController.createVendorDocument);
+router.delete('/inventory/vendors/:id/documents/:docId', checkPermission('procurement', 'delete'), clinicalController.deleteVendorDocument);
+
+// Vendor Contracts
+router.get('/inventory/vendors/:id/contracts', checkPermission('procurement', 'view'), clinicalController.getVendorContracts);
+router.post('/inventory/vendors/:id/contracts', checkPermission('procurement', 'create'), clinicalController.createVendorContract);
+router.put('/inventory/vendors/:id/contracts/:contractId/status', checkPermission('procurement', 'edit'), clinicalController.updateVendorContractStatus);
+
+// Vendor Ratings
+router.get('/inventory/vendors/:id/ratings', checkPermission('procurement', 'view'), clinicalController.getVendorRatings);
+router.post('/inventory/vendors/:id/ratings', checkPermission('procurement', 'create'), clinicalController.createVendorRating);
+
+// GRN Inspection
+router.get('/inventory/grns/:id/inspection', checkPermission('procurement', 'view'), clinicalController.getGRNInspection);
+router.post('/inventory/grns/:id/inspection', checkPermission('procurement', 'edit'), clinicalController.saveGRNInspection);
+
+// Purchase Invoices (Accounts Payable)
+router.get('/inventory/invoices', checkPermission('procurement', 'view'), clinicalController.getInvoices);
+router.get('/inventory/invoices/analytics', checkPermission('procurement', 'view'), clinicalController.getInvoiceAnalytics);
+router.get('/inventory/invoices/:id', checkPermission('procurement', 'view'), clinicalController.getInvoiceById);
+router.post('/inventory/invoices', checkPermission('procurement', 'create'), clinicalController.createInvoice);
+router.put('/inventory/invoices/:id/status', checkPermission('procurement', 'edit'), clinicalController.updateInvoiceStatus);
+router.get('/inventory/invoices/:id/match', checkPermission('procurement', 'view'), clinicalController.getThreeWayMatch);
+
+// Department Budgets
+router.get('/inventory/budgets', checkPermission('procurement', 'view'), clinicalController.getDepartmentBudgets);
+router.post('/inventory/budgets', checkPermission('procurement', 'create'), clinicalController.upsertDepartmentBudget);
+router.get('/inventory/budgets/status', checkPermission('procurement', 'view'), clinicalController.getDepartmentBudgetStatus);
+
+// Procurement Catalog
+router.get('/inventory/catalog', checkPermission('procurement', 'view'), clinicalController.getCatalog);
+router.post('/inventory/catalog', checkPermission('procurement', 'create'), clinicalController.createCatalogItem);
+router.put('/inventory/catalog/:id/toggle', checkPermission('procurement', 'edit'), clinicalController.toggleCatalogItem);
+
+// Analytics
+router.get('/inventory/analytics/spend-by-department', checkPermission('procurement', 'view'), clinicalController.getSpendByDepartment);
+router.get('/inventory/analytics/supplier-leaderboard', checkPermission('procurement', 'view'), clinicalController.getSupplierLeaderboard);
+router.get('/inventory/analytics/expiring-contracts', checkPermission('procurement', 'view'), clinicalController.getExpiringContracts);

@@ -133,7 +133,11 @@ const PatientAutocomplete = ({
                   <span>PID: <strong>{p.pid}</strong></span>
                   <span>DOB: {p.dob || 'N/A'} ({p.age || 'N/A'})</span>
                   {p.phone && <span>📞 {p.phone}</span>}
-                  {p.insurance && <span style={{ color: 'var(--primary)', fontWeight: 600 }}>🏷️ {p.insurance}</span>}
+                  {p.referrer_name ? (
+                    <span style={{ color: 'var(--primary)', fontWeight: 600 }}>🏷️ {p.referrer_name}{p.ref_type ? ` (${p.ref_type})` : ''}</span>
+                  ) : (
+                    p.insurance && <span style={{ color: 'var(--primary)', fontWeight: 600 }}>🏷️ {p.insurance}</span>
+                  )}
                 </div>
               </div>
             ))
