@@ -162,6 +162,7 @@ export default function ProcurementHub() {
   // RFQ Form States
   const [rfqTitle, setRfqTitle] = useState('');
   const [rfqCategory, setRfqCategory] = useState('medical_supplies');
+  const [rfqDepartment, setRfqDepartment] = useState('');
   const [rfqNotes, setRfqNotes] = useState('');
   const [rfqInvitedVendors, setRfqInvitedVendors] = useState([]);
   const [rfqItems, setRfqItems] = useState([]);
@@ -344,6 +345,7 @@ export default function ProcurementHub() {
   const [distributedStock, setDistributedStock] = useState([]);
   const [loadingDistStock, setLoadingDistStock] = useState(false);
   const [distStockLoaded, setDistStockLoaded] = useState(false);
+  const [uoms, setUoms] = useState([]);
   const [stockSearch, setStockSearch] = useState('');
   const [stockDeptFilter, setStockDeptFilter] = useState('all');
   const [selectedRequisition, setSelectedRequisition] = useState(null);
@@ -389,7 +391,7 @@ export default function ProcurementHub() {
       if (!silent) setLoading(true);
       else setRefreshing(true);
 
-      const [poRes, grnRes, venRes, mastRes, incRes, reqRes, retRes, dashRes, rfqRes, invRes, catRes, budRes, depRes] = await Promise.allSettled([
+      const [poRes, grnRes, venRes, mastRes, incRes, reqRes, retRes, dashRes, rfqRes, invRes, catRes, budRes, depRes, uomRes] = await Promise.allSettled([
         api.get('/clinical/inventory/purchase-orders'),
         api.get('/clinical/inventory/grns'),
         api.get('/clinical/inventory/vendors'),
@@ -403,6 +405,7 @@ export default function ProcurementHub() {
         api.get('/clinical/inventory/catalog'),
         api.get('/clinical/inventory/budgets'),
         api.get('/clinical/inventory/departments'),
+        api.get('/clinical/inventory/uoms'),
       ]);
 
       if (poRes.status === 'fulfilled' && poRes.value.data.success) setPurchaseOrders(poRes.value.data.data || []);
@@ -418,6 +421,7 @@ export default function ProcurementHub() {
       if (catRes.status === 'fulfilled' && catRes.value.data.success) setCatalog(catRes.value.data.data || []);
       if (budRes.status === 'fulfilled' && budRes.value.data.success) setBudgets(budRes.value.data.data || []);
       if (depRes.status === 'fulfilled' && depRes.value.data.success) setDepartments(depRes.value.data.data || []);
+      if (uomRes.status === 'fulfilled' && uomRes.value.data.success) setUoms(uomRes.value.data.data || []);
 
     } catch (err) {
       console.error(err);
@@ -3545,10 +3549,10 @@ export default function ProcurementHub() {
                   ) : (
                     /* RFQ List View */
                     <div className="space-y-6">
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs animate-none">
+                      <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs animate-none">
                         <div className="relative w-full md:max-w-md">
                           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                          <input 
+                          <input
                             type="text"
                             placeholder="Search RFQs / Tenders..."
                             value={rfqSearch}
@@ -3558,7 +3562,8 @@ export default function ProcurementHub() {
                         </div>
                         <button
                           onClick={() => setShowCreateRFQModal(true)}
-                          className="w-full md:w-auto bg-teal-650 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          style={{ backgroundColor: '#1B669E' }}
+                          className="w-full md:w-auto hover:opacity-90 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                         >
                           <Plus size={16} /> New RFQ / Tender
                         </button>
@@ -3670,15 +3675,31 @@ export default function ProcurementHub() {
             >
               <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
                 <h3 className="text-lg font-black text-slate-900">Launch New Tender / RFQ</h3>
-                <button onClick={() => setShowCreateRFQModal(false)} className="text-slate-400 hover:text-slate-650 cursor-pointer"><X size={20} /></button>
+                <button
+                  onClick={() => {
+                    setShowCreateRFQModal(false);
+                    setRfqDepartment('');
+                    setRfqTitle('');
+                    setRfqCategory('medical_supplies');
+                    setRfqNotes('');
+                    setRfqInvitedVendors([]);
+                    setRfqItems([]);
+                    setTempRfqItemName('');
+                    setTempRfqItemQty('');
+                    setTempRfqItemUnit('pcs');
+                  }}
+                  className="text-slate-400 hover:text-slate-650 cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
               </div>
 
               <form onSubmit={handleCreateRFQSubmit} className="flex-1 overflow-y-auto space-y-4 pr-1">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-black uppercase tracking-wider text-slate-450">Tender Title</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="e.g. Nursing Reagents, Lab consumables..."
                       required
                       value={rfqTitle}
@@ -3686,6 +3707,26 @@ export default function ProcurementHub() {
                       className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-bold outline-none focus:border-teal-350 focus:bg-white transition-all"
                     />
                   </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-450">Requesting Department</label>
+                    <select
+                      value={rfqDepartment}
+                      onChange={(e) => setRfqDepartment(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-bold outline-none focus:border-teal-350 focus:bg-white transition-all"
+                    >
+                      <option value="">-- Select Department --</option>
+                      {departments.length > 0 ? (
+                        departments.map((dept) => (
+                          <option key={dept.id} value={dept.name}>{dept.name}</option>
+                        ))
+                      ) : (
+                        <option disabled>Loading departments...</option>
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-black uppercase tracking-wider text-slate-450">Tender Category</label>
                     <select
@@ -3734,17 +3775,28 @@ export default function ProcurementHub() {
 
                 {/* RFQ Items lines */}
                 <div className="border-t border-slate-100 pt-4 space-y-3">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">Add Item Lines</h4>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">Add Item Lines {rfqDepartment && <span className="text-teal-600">from {rfqDepartment}</span>}</h4>
+                  {!rfqDepartment && (
+                    <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 p-2.5 rounded-lg">Select a department above to see available items for this tender.</p>
+                  )}
                   <div className="grid grid-cols-12 gap-3 items-end">
                     <div className="col-span-6 space-y-1">
-                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Item Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="Item name..."
+                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Item Name (Search)</label>
+                      <input
+                        type="text"
+                        placeholder="Search or select item..."
+                        list="rfq-items-list"
                         value={tempRfqItemName}
                         onChange={(e) => setTempRfqItemName(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-bold outline-none"
+                        className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-bold outline-none focus:border-teal-350 focus:bg-white transition-all"
                       />
+                      <datalist id="rfq-items-list">
+                        {masterInventory.length > 0 && (
+                          [...new Set(masterInventory.map(item => item.name))].sort().map((itemName, idx) => (
+                            <option key={idx} value={itemName} />
+                          ))
+                        )}
+                      </datalist>
                     </div>
                     <div className="col-span-2 space-y-1">
                       <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Qty</label>
@@ -3825,7 +3877,18 @@ export default function ProcurementHub() {
                 <div className="border-t border-slate-100 pt-4 flex justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowCreateRFQModal(false)}
+                    onClick={() => {
+                      setShowCreateRFQModal(false);
+                      setRfqDepartment('');
+                      setRfqTitle('');
+                      setRfqCategory('medical_supplies');
+                      setRfqNotes('');
+                      setRfqInvitedVendors([]);
+                      setRfqItems([]);
+                      setTempRfqItemName('');
+                      setTempRfqItemQty('');
+                      setTempRfqItemUnit('pcs');
+                    }}
                     className="bg-white border border-slate-200 text-slate-650 hover:bg-slate-50 px-4 py-2 rounded-xl font-bold text-xs cursor-pointer"
                   >
                     Cancel
