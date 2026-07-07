@@ -682,7 +682,27 @@ export default function ProcurementHub() {
       });
 
       if (res.data.success) {
-        toast.success('RFQ Tender created successfully.');
+        const rfqId = res.data.data.id;
+
+        // Auto-open supplier portals for invited vendors
+        const itemsForPortal = rfqItems.map(item => ({
+          id: item.item_id || item.id,
+          name: item.item_name,
+          quantity: item.quantity,
+          unit: item.unit
+        }));
+
+        const portalPromises = rfqInvitedVendors.map(vendorId =>
+          api.post('/clinical/inventory/supplier-portal/toggle', {
+            active: true,
+            vendorId: parseInt(vendorId, 10),
+            requestedItems: itemsForPortal
+          }).catch(err => console.error(`Failed to open portal for vendor ${vendorId}:`, err))
+        );
+
+        await Promise.all(portalPromises);
+
+        toast.success('RFQ Tender created & supplier portals opened.');
         setShowCreateRFQModal(false);
         // Clear form
         setRfqTitle('');
