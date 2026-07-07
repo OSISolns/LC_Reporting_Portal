@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import {
   ArrowLeft, Save, Printer, Plus, Loader2, FileText,
   Sparkles, X, ChevronRight, BookOpen, Stethoscope, ClipboardList, MessageSquare,
@@ -25,6 +25,28 @@ const TIME_OPTIONS = (() => {
   }
   return opts;
 })();
+
+// ── Insurance select that gracefully handles values synced from Sukraa ────────
+// If the current value isn't in the master INSURANCES list (e.g. a corporate
+// name pulled from referrer_name), it is injected as an extra option so the
+// select still shows the correct value rather than falling back to blank.
+const InsuranceField = ({ register, control }) => {
+  const currentValue = useWatch({ control, name: 'identification.insurance' });
+  const isInList = !currentValue || INSURANCES.includes(currentValue);
+  return (
+    <div className="row-flex">
+      <span className="form-label w-44">Health insurance</span>
+      <select {...register('identification.insurance')} className="form-input">
+        <option value="">Select Insurance / Payer</option>
+        {/* If the synced value is not in our list, show it as the first option */}
+        {!isInList && <option value={currentValue}>{currentValue}</option>}
+        {INSURANCES.map(ins => (
+          <option key={ins} value={ins}>{ins}</option>
+        ))}
+      </select>
+    </div>
+  );
+};
 
 const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embeddedTab, onSaveSuccess }) => {
   const params = useParams();
@@ -187,7 +209,9 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
             dob: sheetIdent.dob || formatDobForInput(patientObj.dob) || '',
             gender: sheetIdent.gender || patientObj.gender || '',
             pid: sheetIdent.pid || patientId,
-            insurance: sheetIdent.insurance || patientObj.insurance || patientObj.insurance_provider || '',
+            // referrer_name from Sukraa is often used to store the corporate payer / insurer;
+            // prefer it over the generic insurance field when no sheet-level value is set.
+            insurance: sheetIdent.insurance || patientObj.referrer_name || patientObj.insurance || patientObj.insurance_provider || '',
             date: sheetIdent.date || new Date().toISOString().split('T')[0],
             time: sheetIdent.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             rn: sheetIdent.rn || user?.name || ''
@@ -243,7 +267,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
               dob: sheetIdent.dob || formatDobForInput(patientObj.dob) || '',
               gender: sheetIdent.gender || patientObj.gender || '',
               pid: sheetIdent.pid || patientId,
-              insurance: sheetIdent.insurance || patientObj.insurance || patientObj.insurance_provider || '',
+              insurance: sheetIdent.insurance || patientObj.referrer_name || patientObj.insurance || patientObj.insurance_provider || '',
               date: sheetIdent.date || new Date().toISOString().split('T')[0],
               time: sheetIdent.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               rn: sheetIdent.rn || user?.name || ''
@@ -289,7 +313,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
                 gender: patientObj.gender || '',
                 pid: patientId,
                 appt_date_no: 'Walk-in / No Appointment',
-                insurance: patientObj.insurance || patientObj.insurance_provider || '',
+                insurance: patientObj.referrer_name || patientObj.insurance || patientObj.insurance_provider || '',
                 diagnosis: '',
                 medical_note: '',
                 date: new Date().toISOString().split('T')[0],
@@ -746,15 +770,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
               <div className="row-flex"><span className="form-label w-44">Gender</span><input {...register('identification.gender')} className="form-input w-[120px]" /></div>
               <div className="row-flex"><span className="form-label w-44">Patient ID (PID)</span><input {...register('identification.pid')} className="form-input" /></div>
               <div className="row-flex"><span className="form-label w-44">Appt. Date & No.</span><input {...register('identification.appt_date_no')} className="form-input" /></div>
-              <div className="row-flex">
-                <span className="form-label w-44">Health insurance</span>
-                <select {...register('identification.insurance')} className="form-input">
-                  <option value="">Select Insurance / Payer</option>
-                  {INSURANCES.map(ins => (
-                    <option key={ins} value={ins}>{ins}</option>
-                  ))}
-                </select>
-              </div>
+              <InsuranceField register={register} control={control} />
               <div className="row-flex">
                 <span className="form-label w-44">Clinical Diagnosis (ICD-11)</span>
                 <input

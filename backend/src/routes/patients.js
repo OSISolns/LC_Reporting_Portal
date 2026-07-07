@@ -18,7 +18,11 @@ const router  = express.Router();
 const db      = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
 const checkPermission = require('../middleware/permission');
-const { bulkPullAllPatients, bulkPullByPrefix, searchPatients } = require('../services/sukraaService');
+const { bulkPullAllPatients, bulkPullByPrefix, searchPatients, upsertPatientCache } = require('../services/sukraaService');
+
+// Thin wrapper so existing call sites read naturally; the shared implementation
+// lives in sukraaService so the sync script and this route can never drift.
+const upsertPatients = (patients) => upsertPatientCache(db, patients);
 
 router.use(authMiddleware);
 
@@ -51,8 +55,12 @@ router.post('/sync/trigger', async (req, res, next) => {
     const startedAt = new Date().toISOString();
     let logId;
     try {
+      // RETURNING id so we actually capture the new log row's id — a plain
+      // INSERT returns no rows here, which left logId undefined and meant the
+      // completion/failure UPDATE below silently matched nothing (every
+      // UI-triggered sync stayed stuck at status='running' forever).
       const logResult = await db.query(
-        `INSERT INTO sukraa_sync_log (started_at, status) VALUES (?, 'running')`,
+        `INSERT INTO sukraa_sync_log (started_at, status) VALUES (?, 'running') RETURNING id`,
         [startedAt]
       );
       logId = logResult.rows[0]?.id;
@@ -106,9 +114,28 @@ router.get('/search', checkPermission('patients', 'view'), async (req, res, next
       return res.json({ success: true, data: [] });
     }
 
+    // 0. PID search. PIDs are numeric and stored in plaintext, but the
+    // encrypted-column LIKE interceptor post-filters the combined
+    // (name OR pid OR phone) query as an AND against the decrypted name/phone,
+    // which silently drops rows that only match on PID. So resolve numeric
+    // queries with a dedicated PID-only lookup first.
+    if (/^\d+$/.test(q)) {
+      const byPid = await db.query(
+        `SELECT pid, full_name, age, dob, gender, phone, insurance, ref_type, referrer_name
+         FROM sukraa_patients
+         WHERE pid LIKE ?
+         ORDER BY pid ASC
+         LIMIT ?`,
+        [`%${q}%`, limit]
+      );
+      if (byPid.rows && byPid.rows.length > 0) {
+        return res.json({ success: true, data: byPid.rows, source: 'cache' });
+      }
+    }
+
     // 1. Try local cache first
     let result = await db.query(
-      `SELECT pid, full_name, age, dob, gender, phone, insurance
+      `SELECT pid, full_name, age, dob, gender, phone, insurance, ref_type, referrer_name
        FROM sukraa_patients
        WHERE full_name LIKE ? OR pid LIKE ? OR phone LIKE ?
        ORDER BY full_name ASC
@@ -186,71 +213,35 @@ router.get('/', checkPermission('patients', 'view'), async (req, res, next) => {
     const where  = q ? `WHERE full_name LIKE ? OR pid LIKE ? OR phone LIKE ?` : '';
     const args   = q ? [`%${q}%`, `%${q}%`, `%${q}%`] : [];
 
-    const [rows, count] = await Promise.all([
-      db.query(
-        `SELECT pid, full_name, age, dob, gender, phone, insurance, synced_at
-         FROM sukraa_patients ${where}
-         ORDER BY full_name ASC
-         LIMIT ? OFFSET ?`,
-        [...args, limit, offset]
-      ),
-      db.query(
-        `SELECT COUNT(*) AS cnt FROM sukraa_patients ${where}`,
-        args
-      ),
-    ]);
+    // Count strategy differs by mode: a search hits encrypted columns, so a
+    // SQL COUNT(*) can't be post-filtered in memory (it would return 0). Count
+    // the actual filtered rows instead. A plain browse (no q) uses the cheap
+    // aggregate.
+    const rowsQuery = db.query(
+      `SELECT pid, full_name, age, dob, gender, phone, insurance, ref_type, referrer_name, synced_at
+       FROM sukraa_patients ${where}
+       ORDER BY full_name ASC
+       LIMIT ? OFFSET ?`,
+      [...args, limit, offset]
+    );
+
+    const totalQuery = q
+      ? db.query(`SELECT pid FROM sukraa_patients ${where}`, args).then(r => r.rows.length)
+      : db.query(`SELECT COUNT(*) AS cnt FROM sukraa_patients`, []).then(r => Number(r.rows[0]?.cnt || 0));
+
+    const [rows, total] = await Promise.all([rowsQuery, totalQuery]);
 
     res.json({
       success: true,
       data:    rows.rows,
       meta: {
-        total:  Number(count.rows[0]?.cnt || 0),
+        total,
         page,
         limit,
       },
     });
   } catch (err) { next(err); }
 });
-
-// ── Internal: upsert an array of patients into the cache ─────────────────────
-async function upsertPatients(patients) {
-  if (!patients.length) return 0;
-
-  const valid = patients.filter(p => p.pid && p.full_name);
-  let added   = 0;
-  const CHUNK = 50;
-
-  for (let i = 0; i < valid.length; i += CHUNK) {
-    const chunk = valid.slice(i, i + CHUNK);
-    const stmts = chunk.map(p => ({
-      sql: `INSERT INTO sukraa_patients (pid, full_name, age, dob, gender, phone, insurance, extra_1, extra_2, synced_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-            ON CONFLICT(pid) DO UPDATE SET
-              full_name  = excluded.full_name,
-              age        = excluded.age,
-              dob        = excluded.dob,
-              gender     = excluded.gender,
-              phone      = excluded.phone,
-              insurance  = excluded.insurance,
-              synced_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
-              updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
-      args: [
-        p.pid, p.full_name, p.age || null, p.dob || null,
-        p.gender || null, p.phone || null, p.insurance || null,
-        p.extra_1 || null, p.extra_2 || null,
-      ],
-    }));
-
-    try {
-      await db.batch(stmts);
-      added += chunk.length;
-    } catch (err) {
-      console.error('[PatientSync] Batch error:', err.message);
-    }
-  }
-
-  return added;
-}
 
 // ── GET /api/patients/:pid/vitals ─────────────────────────────────────────────
 router.get('/:pid/vitals', checkPermission('patients', 'view'), async (req, res, next) => {

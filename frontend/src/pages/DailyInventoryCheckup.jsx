@@ -23,7 +23,10 @@ import {
   Check,
   KeyRound,
   RefreshCw,
-  Plus
+  Plus,
+  Filter,
+  User,
+  Clock
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
@@ -222,6 +225,79 @@ Object.entries(EXCEL_DATA).forEach(([item, val]) => {
   APRIL_INITIAL_STOCK[item] = val.qty;
 });
 
+// Renders a net-change badge (e.g. "Stock +20", "Consumed +5"). Hidden when
+// there is no change. Stock: up=green / down=red. Consumed: up=amber (activity)
+// / down=slate (correction).
+const DeltaChip = ({ label, delta, variant = 'stock' }) => {
+  if (!delta) return null;
+  const up = delta > 0;
+  const cls = variant === 'consumed'
+    ? (up ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200')
+    : (up ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200');
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-black ${cls}`}>
+      {label} {up ? '+' : ''}{delta}
+    </span>
+  );
+};
+
+// Tiny bar chart of daily consumption. `days` is [[dayNumber, amount], ...].
+const ConsumptionBars = ({ days, peakVal }) => {
+  if (!days || days.length === 0) return <div className="h-8" />;
+  const max = peakVal || Math.max(...days.map(d => d[1]), 1);
+  return (
+    <div className="flex items-end gap-[3px] h-8" title="Consumption by day">
+      {days.map(([day, amt]) => (
+        <div key={day} className="flex-1 min-w-[3px] bg-emerald-400/80 rounded-sm hover:bg-emerald-500 transition-colors"
+          style={{ height: `${Math.max(8, (amt / max) * 100)}%` }}
+          title={`Day ${day}: ${amt} consumed`} />
+      ))}
+    </div>
+  );
+};
+
+// Combine change-log rows for the SAME item in the SAME session into one entry:
+// net deltas are summed, every contributing user is collected (comma-listed in
+// the UI), and the individual changes are kept for the expandable detail view.
+// When consumedOnly is true, only items with actual consumption are returned.
+const buildChangeGroups = (logs, consumedOnly) => {
+  const map = new Map();
+  for (const l of logs) {
+    const key = `${l.item_name}||${l.day}||${l.session}`;
+    let g = map.get(key);
+    if (!g) {
+      g = {
+        key, item_name: l.item_name, day: l.day, session: l.session,
+        stockDelta: 0, consumedDelta: 0, stnDelta: 0, minDelta: 0,
+        lastStock: 0, lastConsumed: 0,
+        users: new Set(), stnNurses: new Set(), minNurses: new Set(),
+        changes: [], latest: 0,
+      };
+      map.set(key, g);
+    }
+    g.stockDelta    += (Number(l.new_stock) || 0)          - (Number(l.old_stock) || 0);
+    g.consumedDelta += (Number(l.new_consumed) || 0)       - (Number(l.old_consumed) || 0);
+    g.stnDelta      += (Number(l.new_consumed_obs1) || 0)  - (Number(l.old_consumed_obs1) || 0);
+    g.minDelta      += (Number(l.new_consumed_minor) || 0) - (Number(l.old_consumed_minor) || 0);
+    if (l.updated_by) g.users.add(l.updated_by);
+    if (l.new_user_stn1) g.stnNurses.add(l.new_user_stn1);
+    if (l.new_user_minor) g.minNurses.add(l.new_user_minor);
+    g.changes.push(l);
+    const t = new Date(l.updated_at).getTime();
+    if (t >= g.latest) { g.latest = t; g.lastStock = Number(l.new_stock) || 0; g.lastConsumed = Number(l.new_consumed) || 0; }
+  }
+  let arr = [...map.values()].map(g => ({
+    ...g,
+    users: [...g.users],
+    stnNurses: [...g.stnNurses],
+    minNurses: [...g.minNurses],
+    changes: g.changes.slice().sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at)),
+  }));
+  arr.sort((a, b) => b.latest - a.latest);
+  if (consumedOnly) arr = arr.filter(g => g.consumedDelta > 0 || g.stnDelta > 0 || g.minDelta > 0);
+  return arr;
+};
+
 export default function DailyInventoryCheckup() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -310,6 +386,64 @@ export default function DailyInventoryCheckup() {
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [timeFilter, setTimeFilter] = useState('all'); // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'all'
   const [logsPage, setLogsPage] = useState(1);
+  // Stock Changes tab: consumption split by day → session (AM/PM) → ward
+  // (Station 1 / Minor). Defaults to a single-day (daily) view of today.
+  const [logViewMode, setLogViewMode] = useState('daily'); // 'daily' | 'weekly' | 'monthly'
+  const [logDay, setLogDay] = useState(() => new Date().getDate());
+  const [logWeek, setLogWeek] = useState(() => Math.floor((new Date().getDate() - 1) / 7) + 1);
+
+  // Stock Change Log filters
+  const [logFilterItem, setLogFilterItem] = useState('');
+  const [logFilterNurse, setLogFilterNurse] = useState('');
+  const [logFilterWard, setLogFilterWard] = useState(''); // '', 'STN1', 'MINOR'
+  const [logFromDay, setLogFromDay] = useState('');
+  const [logToDay, setLogToDay] = useState('');
+  // Show only items that were actually consumed (default) vs every change.
+  const [logConsumedOnly, setLogConsumedOnly] = useState(true);
+  const clearLogFilters = () => {
+    setLogFilterItem(''); setLogFilterNurse(''); setLogFilterWard(''); setLogFromDay(''); setLogToDay('');
+  };
+  const anyLogFilter = logFilterItem || logFilterNurse || logFilterWard || logFromDay || logToDay;
+  // Cap how many change cards render at once — a busy month can hold tens of
+  // thousands of logs, and rendering them all would freeze the browser.
+  const LOG_PAGE_SIZE = 150;
+  const [logRenderLimit, setLogRenderLimit] = useState(LOG_PAGE_SIZE);
+  // Reset the cap whenever the filters or the underlying data change.
+  useEffect(() => { setLogRenderLimit(LOG_PAGE_SIZE); },
+    [auditLogs, logFilterItem, logFilterNurse, logFilterWard, logFromDay, logToDay, logConsumedOnly]);
+
+  // Distinct items / nurses present in the loaded change logs (for dropdowns).
+  const logItemOptions = useMemo(
+    () => [...new Set(auditLogs.map(l => l.item_name).filter(Boolean))].sort(),
+    [auditLogs]
+  );
+
+  // Apply the filters client-side over the month's already-loaded logs.
+  const stockChangeLogs = useMemo(() => auditLogs.filter(l => {
+    if (logFilterItem && l.item_name !== logFilterItem) return false;
+    if (logFilterNurse) {
+      const q = logFilterNurse.toLowerCase();
+      const nurses = [l.updated_by, l.new_user_stn1, l.new_user_minor]
+        .filter(Boolean).map(s => String(s).toLowerCase());
+      if (!nurses.some(n => n.includes(q))) return false;
+    }
+    if (logFilterWard === 'STN1'
+      && l.old_consumed_obs1 === l.new_consumed_obs1 && l.old_user_stn1 === l.new_user_stn1) return false;
+    if (logFilterWard === 'MINOR'
+      && l.old_consumed_minor === l.new_consumed_minor && l.old_user_minor === l.new_user_minor) return false;
+    if (logFromDay && Number(l.day) < Number(logFromDay)) return false;
+    if (logToDay && Number(l.day) > Number(logToDay)) return false;
+    return true;
+  }), [auditLogs, logFilterItem, logFilterNurse, logFilterWard, logFromDay, logToDay]);
+
+  // Combined entries for the "View Audit Logs" modal.
+  const groupedChangeLogs = useMemo(
+    () => buildChangeGroups(stockChangeLogs, logConsumedOnly),
+    [stockChangeLogs, logConsumedOnly]
+  );
+
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const toggleGroup = (key) => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
 
   // Requisitions State
   const [showReqListModal, setShowReqListModal] = useState(false);
@@ -544,6 +678,27 @@ export default function DailyInventoryCheckup() {
       toast.error('Could not load requisition items');
     } finally {
       setReqItemsLoading(false);
+    }
+  };
+
+  const [receivingReq, setReceivingReq] = useState(false);
+  // Accept an approved requisition's items into the current Daily Stock Checkup.
+  const handleReceiveRequisition = async (req) => {
+    if (!req?.id) return;
+    setReceivingReq(true);
+    try {
+      const res = await api.post(`/clinical/inventory/requisitions/${req.id}/receive`, {
+        month_year: monthYear,
+        day: currentDay,
+        session: currentSession,
+      });
+      toast.success(res.data.message || 'Stock accepted into checkup.');
+      setShowReqDetailModal(false);
+      await Promise.all([loadRequisitions(), loadInventory(true)]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to accept stock.');
+    } finally {
+      setReceivingReq(false);
     }
   };
 
@@ -1106,10 +1261,118 @@ export default function DailyInventoryCheckup() {
     });
   }, [auditLogs, searchTerm, timeFilter]);
 
-  const itemsPerPage = 25;
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+  // "Stock Changes" tab — consumption per item, broken down per day → session
+  // (AM/PM) → ward (Station 1 / Minor). Built from the month's logs and the
+  // search box (the updated_at time filters no longer apply here).
+  const consumptionByItem = useMemo(() => {
+    const items = new Map();
+    const term = searchTerm.trim().toLowerCase();
+    for (const l of auditLogs) {
+      if (term) {
+        const hit = (l.item_name && l.item_name.toLowerCase().includes(term)) ||
+          (l.updated_by && l.updated_by.toLowerCase().includes(term));
+        if (!hit) continue;
+      }
+      const stnD = (Number(l.new_consumed_obs1) || 0) - (Number(l.old_consumed_obs1) || 0);
+      const minD = (Number(l.new_consumed_minor) || 0) - (Number(l.old_consumed_minor) || 0);
+      const consD = (Number(l.new_consumed) || 0) - (Number(l.old_consumed) || 0);
+      if (stnD <= 0 && minD <= 0 && consD <= 0) continue;   // consumption only
+      const day = Number(l.day);
+      const isPM = String(l.session || '').toUpperCase() === 'PM';
+      let it = items.get(l.item_name);
+      if (!it) { it = { item_name: l.item_name, byDay: new Map(), users: new Set() }; items.set(l.item_name, it); }
+      let d = it.byDay.get(day);
+      if (!d) { d = { day, amStn: 0, amMin: 0, pmStn: 0, pmMin: 0, users: new Set(), latest: 0, lastStock: 0, lastBalance: 0 }; it.byDay.set(day, d); }
+      if (isPM) { d.pmStn += stnD; d.pmMin += minD; } else { d.amStn += stnD; d.amMin += minD; }
+      if (l.updated_by) { d.users.add(l.updated_by); it.users.add(l.updated_by); }
+      const t = new Date(l.updated_at).getTime();
+      if (t >= d.latest) { d.latest = t; d.lastStock = Number(l.new_stock) || 0; d.lastBalance = (Number(l.new_stock) || 0) - (Number(l.new_consumed) || 0); }
+    }
+    // finalize day totals
+    for (const it of items.values()) {
+      for (const d of it.byDay.values()) d.total = d.amStn + d.amMin + d.pmStn + d.pmMin;
+    }
+    return items;
+  }, [auditLogs, searchTerm]);
+
+  // Daily view: items consumed on the selected day, with the session×ward grid.
+  const dailyItems = useMemo(() => {
+    const arr = [];
+    for (const it of consumptionByItem.values()) {
+      const d = it.byDay.get(Number(logDay));
+      if (d && d.total > 0) arr.push({ item_name: it.item_name, ...d, users: [...d.users] });
+    }
+    arr.sort((a, b) => b.total - a.total);
+    return arr;
+  }, [consumptionByItem, logDay]);
+
+  // Monthly view: per-item totals with AM/PM + Station1/Minor split and daily chart.
+  const monthlyItems = useMemo(() => {
+    const arr = [];
+    for (const it of consumptionByItem.values()) {
+      let total = 0, amTot = 0, pmTot = 0, stnTot = 0, minTot = 0, latest = 0, lastStock = 0, lastBalance = 0;
+      const days = [];
+      for (const d of it.byDay.values()) {
+        total += d.total; amTot += d.amStn + d.amMin; pmTot += d.pmStn + d.pmMin;
+        stnTot += d.amStn + d.pmStn; minTot += d.amMin + d.pmMin;
+        if (d.total > 0) days.push([d.day, d.total]);
+        if (d.latest >= latest) { latest = d.latest; lastStock = d.lastStock; lastBalance = d.lastBalance; }
+      }
+      if (total > 0) {
+        days.sort((a, b) => a[0] - b[0]);
+        const peak = days.reduce((m, x) => (!m || x[1] > m[1] ? x : m), null);
+        arr.push({ item_name: it.item_name, total, amTot, pmTot, stnTot, minTot, days, peakDay: peak ? peak[0] : null, peakVal: peak ? peak[1] : 0, users: [...it.users], lastStock, lastBalance });
+      }
+    }
+    arr.sort((a, b) => b.total - a.total);
+    return arr;
+  }, [consumptionByItem]);
+
+  // Weekly view: weeks are day ranges within the month (1–7, 8–14, …, 29–31).
+  const weekRange = (w) => [(w - 1) * 7 + 1, Math.min(w * 7, 31)];
+  const weeklyItems = useMemo(() => {
+    const [lo, hi] = weekRange(logWeek);
+    const arr = [];
+    for (const it of consumptionByItem.values()) {
+      let amStn = 0, amMin = 0, pmStn = 0, pmMin = 0, latest = 0, lastStock = 0, lastBalance = 0;
+      const users = new Set();
+      const days = [];
+      for (const d of it.byDay.values()) {
+        if (d.day < lo || d.day > hi) continue;
+        amStn += d.amStn; amMin += d.amMin; pmStn += d.pmStn; pmMin += d.pmMin;
+        d.users.forEach(u => users.add(u));
+        if (d.total > 0) days.push([d.day, d.total]);
+        if (d.latest >= latest) { latest = d.latest; lastStock = d.lastStock; lastBalance = d.lastBalance; }
+      }
+      const total = amStn + amMin + pmStn + pmMin;
+      if (total > 0) {
+        days.sort((a, b) => a[0] - b[0]);
+        const peak = days.reduce((m, x) => (!m || x[1] > m[1] ? x : m), null);
+        arr.push({ item_name: it.item_name, amStn, amMin, pmStn, pmMin, total, users: [...users], days, peakDay: peak ? peak[0] : null, peakVal: peak ? peak[1] : 0, lastStock, lastBalance });
+      }
+    }
+    arr.sort((a, b) => b.total - a.total);
+    return arr;
+  }, [consumptionByItem, logWeek]);
+
+  // When a month's logs load, jump the daily/weekly view to the most recent day
+  // that actually has consumption, so the default view is never needlessly empty.
+  useEffect(() => {
+    if (!auditLogs || auditLogs.length === 0) return;
+    let maxDay = 0;
+    for (const l of auditLogs) {
+      const c = (Number(l.new_consumed) || 0) - (Number(l.old_consumed) || 0);
+      if (c > 0 && Number(l.day) > maxDay) maxDay = Number(l.day);
+    }
+    if (maxDay > 0) { setLogDay(maxDay); setLogWeek(Math.floor((maxDay - 1) / 7) + 1); setLogsPage(1); }
+  }, [auditLogs]);
+
+  const activeConsumptionList = logViewMode === 'daily' ? dailyItems : logViewMode === 'weekly' ? weeklyItems : monthlyItems;
+  const totalConsumedUnits = activeConsumptionList.reduce((s, it) => s + it.total, 0);
+  const itemsPerPage = 24;
+  const totalPages = Math.ceil(activeConsumptionList.length / itemsPerPage);
   const safeLogsPage = Math.max(1, Math.min(logsPage, totalPages || 1));
-  const paginatedLogs = filteredLogs.slice((safeLogsPage - 1) * itemsPerPage, safeLogsPage * itemsPerPage);
+  const paginatedItems = activeConsumptionList.slice((safeLogsPage - 1) * itemsPerPage, safeLogsPage * itemsPerPage);
 
   const resolveStatus = (balance, expiryStr) => {
     if (balance <= 0) return 'Outstock';
@@ -1558,61 +1821,174 @@ export default function DailyInventoryCheckup() {
             )}
 
             {/* Audit Logs Modal */}
-            <Modal isOpen={showLogsModal} onClose={() => setShowLogsModal(false)} title={`Audit Logs - ${getMonthLabel(monthYear)}`}>
-              <div className="p-4 max-h-[60vh] overflow-y-auto">
-                {loadingLogs ? (
-                  <div className="flex justify-center items-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
+            <Modal isOpen={showLogsModal} onClose={() => setShowLogsModal(false)} title={`Stock Change Log — ${getMonthLabel(monthYear)}`}>
+              <div className="p-4">
+                {/* ── Filter bar ── */}
+                <div className="flex flex-wrap items-end gap-2 pb-3 mb-3 border-b border-slate-100">
+                  <div className="flex-1 min-w-[150px]">
+                    <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Item</label>
+                    <select value={logFilterItem} onChange={(e) => setLogFilterItem(e.target.value)}
+                      className="w-full px-2.5 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-sky-500">
+                      <option value="">All items</option>
+                      {logItemOptions.map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
                   </div>
-                ) : auditLogs.length > 0 ? (
-                  <div className="space-y-3">
-                    {auditLogs.map((log, idx) => (
-                      <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col gap-1">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-slate-800">{log.item_name} (Day {log.day} {log.session})</span>
-                          <span className="text-[10px] text-slate-500 font-semibold">{new Date(log.updated_at).toLocaleString()}</span>
-                        </div>
-                        <div className="text-[10px] text-slate-600 space-y-1">
-                          <p>Stock in Hand: <span className="font-mono text-slate-500">{log.old_stock}</span> &rarr; <span className="font-mono font-bold text-slate-800">{log.new_stock}</span></p>
-                          <p>Total Consumed: <span className="font-mono text-slate-500">{log.old_consumed}</span> &rarr; <span className="font-mono font-bold text-slate-800">{log.new_consumed}</span></p>
+                  <div className="min-w-[130px]">
+                    <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Nurse</label>
+                    <div className="relative">
+                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input value={logFilterNurse} onChange={(e) => setLogFilterNurse(e.target.value)} placeholder="name…"
+                        className="w-full pl-7 pr-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-sky-500" />
+                    </div>
+                  </div>
+                  <div className="min-w-[90px]">
+                    <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Ward</label>
+                    <select value={logFilterWard} onChange={(e) => setLogFilterWard(e.target.value)}
+                      className="w-full px-2.5 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-sky-500">
+                      <option value="">All</option>
+                      <option value="STN1">STN1</option>
+                      <option value="MINOR">MINOR</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1">Days</label>
+                    <div className="flex items-center gap-1">
+                      <input type="number" min="1" max="31" value={logFromDay} onChange={(e) => setLogFromDay(e.target.value)} placeholder="1"
+                        className="w-14 px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-sky-500 text-center" />
+                      <span className="text-slate-300 text-xs">–</span>
+                      <input type="number" min="1" max="31" value={logToDay} onChange={(e) => setLogToDay(e.target.value)} placeholder="31"
+                        className="w-14 px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-sky-500 text-center" />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setLogConsumedOnly(v => !v)}
+                    title="Toggle between showing only consumed items and all changes"
+                    className={`flex items-center gap-1.5 px-3 py-2 text-[10px] font-black rounded-xl border transition-all ${
+                      logConsumedOnly
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                    }`}
+                  >
+                    <Check size={12} /> {logConsumedOnly ? 'Consumed only' : 'All changes'}
+                  </button>
+                  {anyLogFilter && (
+                    <button onClick={clearLogFilters}
+                      className="flex items-center gap-1 px-3 py-2 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition-all">
+                      <X size={12} /> Clear
+                    </button>
+                  )}
+                </div>
 
-                          {/* STN1 details */}
-                          {((log.old_consumed_obs1 !== undefined && log.old_consumed_obs1 !== log.new_consumed_obs1) ||
-                            (log.old_user_stn1 !== undefined && log.old_user_stn1 !== log.new_user_stn1)) && (
-                              <div className="pl-2.5 border-l-2 border-sky-400 bg-sky-50/30 py-1 my-1 rounded-r-lg">
-                                <span className="font-black text-sky-700 uppercase text-[9px] tracking-wider block mb-0.5">STATION 1 (STN1)</span>
-                                {log.old_consumed_obs1 !== log.new_consumed_obs1 && (
-                                  <p className="text-[9px]">Consumed: <span className="font-mono text-slate-400">{log.old_consumed_obs1}</span> &rarr; <span className="font-mono font-bold text-sky-850">{log.new_consumed_obs1}</span></p>
-                                )}
-                                {log.old_user_stn1 !== log.new_user_stn1 && (
-                                  <p className="text-[9px]">Nurse: <span className="font-mono text-slate-400">"{log.old_user_stn1 || 'None'}"</span> &rarr; <span className="font-mono font-bold text-sky-850">"{log.new_user_stn1 || 'None'}"</span></p>
-                                )}
-                              </div>
-                            )}
+                <div className="flex items-center gap-1.5 mb-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                  <Filter size={11} /> {groupedChangeLogs.length} item-session{groupedChangeLogs.length !== 1 ? 's' : ''} · {stockChangeLogs.length} change{stockChangeLogs.length !== 1 ? 's' : ''}
+                  {anyLogFilter && auditLogs.length !== stockChangeLogs.length && <span className="text-slate-300 normal-case font-bold">(of {auditLogs.length})</span>}
+                </div>
 
-                          {/* MINOR details */}
-                          {((log.old_consumed_minor !== undefined && log.old_consumed_minor !== log.new_consumed_minor) ||
-                            (log.old_user_minor !== undefined && log.old_user_minor !== log.new_user_minor)) && (
-                              <div className="pl-2.5 border-l-2 border-emerald-400 bg-emerald-50/30 py-1 my-1 rounded-r-lg">
-                                <span className="font-black text-emerald-700 uppercase text-[9px] tracking-wider block mb-0.5">Minor Surgery (MINOR)</span>
-                                {log.old_consumed_minor !== log.new_consumed_minor && (
-                                  <p className="text-[9px]">Consumed: <span className="font-mono text-slate-400">{log.old_consumed_minor}</span> &rarr; <span className="font-mono font-bold text-emerald-850">{log.new_consumed_minor}</span></p>
-                                )}
-                                {log.old_user_minor !== log.new_user_minor && (
-                                  <p className="text-[9px]">Nurse: <span className="font-mono text-slate-400">"{log.old_user_minor || 'None'}"</span> &rarr; <span className="font-mono font-bold text-emerald-850">"{log.new_user_minor || 'None'}"</span></p>
-                                )}
-                              </div>
+                <div className="max-h-[52vh] overflow-y-auto space-y-2.5 pr-1">
+                  {loadingLogs ? (
+                    <div className="flex justify-center items-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
+                    </div>
+                  ) : groupedChangeLogs.length > 0 ? (
+                    groupedChangeLogs.slice(0, logRenderLimit).map((g) => {
+                      const noQty = !g.stockDelta && !g.consumedDelta && !g.stnDelta && !g.minDelta;
+                      const nurses = [...new Set([...g.stnNurses, ...g.minNurses])];
+                      const isOpen = !!expandedGroups[g.key];
+                      const multi = g.changes.length > 1;
+                      return (
+                        <div key={g.key} className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
+                          <div className="flex justify-between items-start gap-2 mb-2">
+                            <div>
+                              <span className="font-black text-slate-800 text-xs">{g.item_name}</span>
+                              <span className="ml-2 text-[10px] text-slate-400 font-bold">Day {g.day} · {g.session}</span>
+                              {multi && (
+                                <span className="ml-2 text-[9px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-full px-1.5 py-0.5">
+                                  {g.changes.length} changes
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 shrink-0">
+                              <Clock size={10} /> {new Date(g.latest).toLocaleString()}
+                            </span>
+                          </div>
+
+                          {/* Combined net change for the whole session */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <DeltaChip label="Stock" delta={g.stockDelta} variant="stock" />
+                            <DeltaChip label="Consumed" delta={g.consumedDelta} variant="consumed" />
+                            <DeltaChip label="STN1" delta={g.stnDelta} variant="consumed" />
+                            <DeltaChip label="MINOR" delta={g.minDelta} variant="consumed" />
+                            {noQty && nurses.length === 0 && (
+                              <span className="text-[10px] text-slate-400 italic">Adjustment (no quantity change)</span>
                             )}
+                          </div>
+
+                          {nurses.length > 0 && (
+                            <p className="mt-1.5 text-[10px] text-slate-500">Nurses: <span className="font-semibold text-slate-700">{nurses.join(', ')}</span></p>
+                          )}
+
+                          <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 text-[10px] text-slate-500 min-w-0">
+                              <User size={11} className="text-slate-400 shrink-0" />
+                              <span className="truncate">Users: <span className="font-black text-slate-700">{g.users.length ? g.users.join(', ') : '—'}</span></span>
+                            </span>
+                            {multi && (
+                              <button onClick={() => toggleGroup(g.key)}
+                                className="shrink-0 inline-flex items-center gap-1 text-[10px] font-black text-sky-700 hover:text-sky-800">
+                                {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />} {isOpen ? 'Hide' : 'Full'} details
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Expandable full detail: every individual change in this session */}
+                          {isOpen && multi && (
+                            <div className="mt-2 space-y-2 border-l-2 border-slate-100 pl-2.5">
+                              {g.changes.map((log, i) => {
+                                const sD = (log.new_stock || 0) - (log.old_stock || 0);
+                                const cD = (log.new_consumed || 0) - (log.old_consumed || 0);
+                                const snD = (log.new_consumed_obs1 || 0) - (log.old_consumed_obs1 || 0);
+                                const mD = (log.new_consumed_minor || 0) - (log.old_consumed_minor || 0);
+                                return (
+                                  <div key={i} className="text-[10px]">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="font-black text-slate-600">{log.updated_by}</span>
+                                      <span className="text-slate-400">{new Date(log.updated_at).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                      <DeltaChip label="Stock" delta={sD} variant="stock" />
+                                      <DeltaChip label="Consumed" delta={cD} variant="consumed" />
+                                      <DeltaChip label="STN1" delta={snD} variant="consumed" />
+                                      <DeltaChip label="MINOR" delta={mD} variant="consumed" />
+                                    </div>
+                                    <div className="text-slate-400 mt-0.5">
+                                      Stock {log.old_stock}→{log.new_stock} · Consumed {log.old_consumed}→{log.new_consumed}
+                                      {log.old_user_stn1 !== log.new_user_stn1 && <> · STN1 nurse → <b className="text-sky-700">{log.new_user_stn1 || 'None'}</b></>}
+                                      {log.old_user_minor !== log.new_user_minor && <> · MINOR nurse → <b className="text-emerald-700">{log.new_user_minor || 'None'}</b></>}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-[10px] text-slate-500 mt-1">Updated by: <span className="font-bold">{log.updated_by}</span></div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-slate-500 font-semibold text-xs">
-                    No change logs found for this month.
-                  </div>
-                )}
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8 text-slate-500 font-semibold text-xs">
+                      {auditLogs.length === 0 ? 'No change logs found for this month.' : 'No changes match these filters.'}
+                    </div>
+                  )}
+
+                  {!loadingLogs && groupedChangeLogs.length > logRenderLimit && (
+                    <div className="pt-2 text-center">
+                      <button onClick={() => setLogRenderLimit(l => l + LOG_PAGE_SIZE)}
+                        className="px-4 py-2 text-[10px] font-black uppercase tracking-wider text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-xl border border-sky-200 transition-all">
+                        Show more ({groupedChangeLogs.length - logRenderLimit} remaining)
+                      </button>
+                      <p className="mt-1.5 text-[9px] text-slate-400 font-bold">Tip: use the filters above to narrow this down.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </Modal>
           </div>
@@ -2076,177 +2452,184 @@ export default function DailyInventoryCheckup() {
                     <div>
                       <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
                         <Activity className="h-4.5 w-4.5 text-[#003A44]" />
-                        Stock Changes Overview
+                        Consumption {logViewMode === 'daily' ? `— Day ${logDay}` : logViewMode === 'weekly' ? `— Week ${logWeek} (days ${weekRange(logWeek)[0]}–${weekRange(logWeek)[1]})` : '— Whole Month'}
                       </h3>
-                      <p className="text-[11px] text-slate-500 font-bold mt-1">Lightweight audit timeline tracking stock additions, edits, and ward consumptions.</p>
+                      <p className="text-[11px] text-slate-500 font-bold mt-1">Per item, split by session (AM / PM) and ward (Station 1 / Minor).</p>
                     </div>
 
-                    {/* Time Filters buttons */}
-                    <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl border border-slate-200/50">
-                      {[
-                        { label: 'Daily', value: 'daily' },
-                        { label: 'Weekly', value: 'weekly' },
-                        { label: 'Monthly', value: 'monthly' },
-                        { label: 'Quarterly', value: 'quarterly' },
-                        { label: 'Yearly', value: 'yearly' },
-                        { label: 'All Time', value: 'all' }
-                      ].map((itemFilter) => (
-                        <button
-                          key={itemFilter.value}
-                          onClick={() => setTimeFilter(itemFilter.value)}
-                          className={`px-3.5 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${timeFilter === itemFilter.value
-                            ? 'bg-[#003A44] text-white shadow-sm font-black'
-                            : 'text-slate-655 hover:text-slate-900 hover:bg-white/50'
-                            }`}
-                        >
-                          {itemFilter.label}
-                        </button>
-                      ))}
+                    <div className="flex items-center gap-3">
+                      {/* Day navigator (daily mode) */}
+                      {logViewMode === 'daily' && (
+                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/50">
+                          <button onClick={() => { setLogDay(d => Math.max(1, d - 1)); setLogsPage(1); }}
+                            className="p-1.5 rounded-lg text-slate-600 hover:bg-white disabled:opacity-40" disabled={logDay <= 1}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                          <span className="px-2 text-[11px] font-black text-slate-700 tabular-nums">Day {logDay}</span>
+                          <button onClick={() => { setLogDay(d => Math.min(31, d + 1)); setLogsPage(1); }}
+                            className="p-1.5 rounded-lg text-slate-600 hover:bg-white disabled:opacity-40" disabled={logDay >= 31}>
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                      {/* Week navigator (weekly mode) */}
+                      {logViewMode === 'weekly' && (
+                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/50">
+                          <button onClick={() => { setLogWeek(w => Math.max(1, w - 1)); setLogsPage(1); }}
+                            className="p-1.5 rounded-lg text-slate-600 hover:bg-white disabled:opacity-40" disabled={logWeek <= 1}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                          <span className="px-2 text-[11px] font-black text-slate-700 tabular-nums">Week {logWeek}</span>
+                          <button onClick={() => { setLogWeek(w => Math.min(5, w + 1)); setLogsPage(1); }}
+                            className="p-1.5 rounded-lg text-slate-600 hover:bg-white disabled:opacity-40" disabled={logWeek >= 5}>
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                      {/* Daily / Weekly / Monthly toggle */}
+                      <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/50">
+                        {[{ label: 'Daily', value: 'daily' }, { label: 'Weekly', value: 'weekly' }, { label: 'Monthly', value: 'monthly' }].map(m => (
+                          <button key={m.value}
+                            onClick={() => { setLogViewMode(m.value); setLogsPage(1); }}
+                            className={`px-3.5 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${logViewMode === m.value
+                              ? 'bg-[#003A44] text-white shadow-sm'
+                              : 'text-slate-655 hover:text-slate-900 hover:bg-white/50'}`}>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Summary Stats Grid */}
+                  {/* Summary Stats Grid — split by session and ward */}
                   {(() => {
-                    const totalOperations = filteredLogs.length;
-                    const itemsAffected = new Set(filteredLogs.map(l => l.item_name)).size;
-                    const uniqueUsers = new Set(filteredLogs.map(l => l.updated_by)).size;
-
+                    const amTot = activeConsumptionList.reduce((s, it) => s + (logViewMode === 'monthly' ? it.amTot : it.amStn + it.amMin), 0);
+                    const pmTot = activeConsumptionList.reduce((s, it) => s + (logViewMode === 'monthly' ? it.pmTot : it.pmStn + it.pmMin), 0);
+                    const stnTot = activeConsumptionList.reduce((s, it) => s + (logViewMode === 'monthly' ? it.stnTot : it.amStn + it.pmStn), 0);
+                    const minTot = activeConsumptionList.reduce((s, it) => s + (logViewMode === 'monthly' ? it.minTot : it.amMin + it.pmMin), 0);
                     return (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-center">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Total Operations</span>
-                          <span className="text-xl font-black text-slate-800 leading-none mt-1.5">{totalOperations}</span>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Items Consumed</span>
+                          <div className="text-xl font-black text-[#003A44] leading-none mt-1.5">{activeConsumptionList.length}</div>
                         </div>
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-center">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Items Affected</span>
-                          <span className="text-xl font-black text-[#003A44] leading-none mt-1.5">{itemsAffected}</span>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Total Consumed</span>
+                          <div className="text-xl font-black text-amber-600 leading-none mt-1.5">{totalConsumedUnits}</div>
                         </div>
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-center">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Active Auditors</span>
-                          <span className="text-xl font-black text-slate-700 leading-none mt-1.5">{uniqueUsers}</span>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">AM / PM</span>
+                          <div className="text-lg font-black leading-none mt-1.5"><span className="text-slate-700">{amTot}</span> <span className="text-slate-300">/</span> <span className="text-slate-700">{pmTot}</span></div>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-sm">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Station 1 / Minor</span>
+                          <div className="text-lg font-black leading-none mt-1.5"><span className="text-sky-700">{stnTot}</span> <span className="text-slate-300">/</span> <span className="text-emerald-700">{minTot}</span></div>
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* Search filter for changes */}
+                  {/* Search filter */}
                   <div className="relative mb-4">
                     <Search className="absolute left-3.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Search log by item name or username..."
+                      placeholder="Search by item name or username..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full pl-9 pr-4 py-2 text-xs font-bold text-slate-700 placeholder-slate-400 bg-slate-50/80 border border-slate-200 rounded-xl outline-none focus:border-sky-500 focus:bg-white transition-all shadow-sm"
                     />
                   </div>
 
-                  {/* Audit Logs Timeline Table */}
-                  <div className="overflow-x-auto rounded-xl border border-slate-200/80 shadow-sm">
-                    {loadingLogs ? (
-                      <div className="flex justify-center items-center py-12 bg-white">
-                        <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
-                      </div>
-                    ) : filteredLogs.length > 0 ? (
-                      <table className="w-full text-left text-xs bg-white">
-                        <thead>
-                          <tr className="bg-slate-50 text-slate-500 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
-                            <th className="py-3 px-4">Date / Time</th>
-                            <th className="py-3 px-4">Item Name</th>
-                            <th className="py-3 px-4">Period</th>
-                            <th className="py-3 px-4">Stock Level</th>
-                            <th className="py-3 px-4">Total Consumed</th>
-                            <th className="py-3 px-4">Ward</th>
-                            <th className="py-3 px-4">Audited By</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                          {paginatedLogs.map((log, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="py-3 px-4 text-[10px] text-slate-500 whitespace-nowrap">
-                                {new Date(log.updated_at).toLocaleString()}
-                              </td>
-                              <td className="py-3 px-4 font-bold text-slate-900 text-[11px]">
-                                {log.item_name}
-                              </td>
-                              <td className="py-3 px-4 whitespace-nowrap">
-                                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-extrabold text-[9px] uppercase tracking-wider">
-                                  Day {log.day} &bull; {log.session}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4 whitespace-nowrap min-w-[110px]">
-                                <div className="flex flex-col gap-1.5">
-                                  <div className="flex justify-between items-center px-2 py-0.5 bg-slate-50 border border-slate-200/60 rounded">
-                                    <span className="text-[8px] uppercase tracking-widest text-slate-400 font-black">Hand</span>
-                                    <span className="font-mono text-[10px] text-slate-600 font-bold">{log.new_stock || 0}</span>
-                                  </div>
-                                  <div className="flex justify-between items-center px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded shadow-sm">
-                                    <span className="text-[8px] uppercase tracking-widest text-indigo-500 font-black">Balance</span>
-                                    <span className="font-mono text-[11px] text-indigo-700 font-black">{(log.new_stock || 0) - (log.new_consumed || 0)}</span>
+                  {/* Per-item consumption cards */}
+                  {loadingLogs ? (
+                    <div className="flex justify-center items-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sky-600" /></div>
+                  ) : paginatedItems.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {paginatedItems.map((it) => (
+                        <div key={it.item_name} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col hover:border-slate-300 hover:shadow-md transition-all">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="font-black text-slate-800 text-sm leading-tight">{it.item_name}</h4>
+                            <div className="text-right shrink-0">
+                              <div className="text-2xl font-black text-amber-600 leading-none">{it.total}</div>
+                              <div className="text-[8px] font-black uppercase tracking-wider text-slate-400 mt-0.5">consumed</div>
+                            </div>
+                          </div>
+
+                          {logViewMode === 'monthly' ? (
+                            /* Monthly: chart + session/ward split */
+                            <div className="mt-3">
+                              <ConsumptionBars days={it.days} peakVal={it.peakVal} />
+                              <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 mt-1">
+                                <span>{it.days.length} active day{it.days.length !== 1 ? 's' : ''}</span>
+                                {it.peakDay != null && <span>peak Day {it.peakDay} ({it.peakVal})</span>}
+                              </div>
+                              <div className="flex items-center flex-wrap gap-1.5 mt-2">
+                                <span className="px-2 py-0.5 rounded-lg text-[9px] font-black bg-slate-100 text-slate-600 border border-slate-200">AM {it.amTot} · PM {it.pmTot}</span>
+                                {it.stnTot > 0 && <span className="px-2 py-0.5 rounded-lg text-[9px] font-black bg-sky-50 text-sky-700 border border-sky-200">STN1 {it.stnTot}</span>}
+                                {it.minTot > 0 && <span className="px-2 py-0.5 rounded-lg text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">MINOR {it.minTot}</span>}
+                              </div>
+                            </div>
+                          ) : (
+                            /* Daily / Weekly: Session × Ward grid (weekly is summed over the week) */
+                            <>
+                              <table className="w-full text-center text-[11px] mt-3 border border-slate-100 rounded-lg overflow-hidden">
+                                <thead>
+                                  <tr className="bg-slate-50 text-slate-400 text-[8px] font-black uppercase tracking-wider">
+                                    <th className="py-1.5 w-10"></th><th className="py-1.5 text-sky-600">Station 1</th><th className="py-1.5 text-emerald-600">Minor</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="font-black">
+                                  <tr className="border-t border-slate-100">
+                                    <td className="py-1.5 text-[8px] font-black text-slate-400 uppercase bg-slate-50/60">AM</td>
+                                    <td className={it.amStn ? 'text-sky-700' : 'text-slate-300'}>{it.amStn || '·'}</td>
+                                    <td className={it.amMin ? 'text-emerald-700' : 'text-slate-300'}>{it.amMin || '·'}</td>
+                                  </tr>
+                                  <tr className="border-t border-slate-100">
+                                    <td className="py-1.5 text-[8px] font-black text-slate-400 uppercase bg-slate-50/60">PM</td>
+                                    <td className={it.pmStn ? 'text-sky-700' : 'text-slate-300'}>{it.pmStn || '·'}</td>
+                                    <td className={it.pmMin ? 'text-emerald-700' : 'text-slate-300'}>{it.pmMin || '·'}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                              {logViewMode === 'weekly' && it.days && it.days.length > 1 && (
+                                <div className="mt-2">
+                                  <ConsumptionBars days={it.days} peakVal={it.peakVal} />
+                                  <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 mt-1">
+                                    <span>{it.days.length} active days</span>
+                                    {it.peakDay != null && <span>peak Day {it.peakDay} ({it.peakVal})</span>}
                                   </div>
                                 </div>
-                              </td>
-                              <td className="py-3 px-4 whitespace-nowrap">
-                                <span className="px-2 py-1 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-black rounded-lg">
-                                  {log.new_consumed || 0}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4">
-                                {(() => {
-                                  const stn1Changed = log.old_consumed_obs1 !== log.new_consumed_obs1 || log.old_user_stn1 !== log.new_user_stn1;
-                                  const minorChanged = log.old_consumed_minor !== log.new_consumed_minor || log.old_user_minor !== log.new_user_minor;
-                                  
-                                  let wardLabel = "STN1";
-                                  let badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
+                              )}
+                            </>
+                          )}
 
-                                  if (stn1Changed && minorChanged) {
-                                    wardLabel = "STN1 & MINOR";
-                                    badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
-                                  } else if (minorChanged) {
-                                    wardLabel = "MINOR";
-                                    badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                  } else if (stn1Changed) {
-                                    wardLabel = "STN1";
-                                    badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
-                                  } else {
-                                    // Aggressive fallback logic
-                                    if (log.new_user_minor && !log.new_user_stn1) {
-                                      wardLabel = "MINOR";
-                                      badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                    } else if (log.updated_by === log.new_user_minor && log.updated_by !== log.new_user_stn1) {
-                                      wardLabel = "MINOR";
-                                      badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                    }
-                                  }
+                          <div className="flex items-center mt-3 text-[9px] font-bold text-slate-400">
+                            <span>on hand <b className="text-slate-600">{it.lastStock}</b> · bal <b className="text-indigo-600">{it.lastBalance}</b></span>
+                          </div>
 
-                                  return (
-                                    <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-md border ${badgeClass}`}>
-                                      {wardLabel}
-                                    </span>
-                                  );
-                                })()}
-                              </td>
-                              <td className="py-3 px-4 font-bold text-slate-800 text-[10px]">
-                                {log.updated_by}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <div className="text-center py-12 bg-white text-slate-400 font-bold">
-                        No stock changes found for the selected time filter.
-                      </div>
-                    )}
-                  </div>
+                          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-start gap-1.5">
+                            <User size={12} className="text-slate-400 shrink-0 mt-0.5" />
+                            <span className="text-[10px] text-slate-600 leading-snug">
+                              <span className="font-black text-slate-700">{it.users.join(', ') || '—'}</span>
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 text-slate-400 font-bold">
+                      {logViewMode === 'daily' ? `No consumption recorded on Day ${logDay}.` : logViewMode === 'weekly' ? `No consumption recorded in Week ${logWeek}.` : 'No consumption recorded this month.'}
+                    </div>
+                  )}
 
                   {/* Pagination Controls */}
-                  {filteredLogs.length > 0 && (
+                  {activeConsumptionList.length > 0 && (
                     <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 mt-2 border-t border-slate-100 select-none">
                       <div className="text-[11px] text-slate-500 font-medium">
-                        Showing <span className="font-extrabold text-slate-750">{Math.min(filteredLogs.length, (safeLogsPage - 1) * itemsPerPage + 1)}</span> to{' '}
-                        <span className="font-extrabold text-slate-750">{Math.min(filteredLogs.length, safeLogsPage * itemsPerPage)}</span> of{' '}
-                        <span className="font-extrabold text-slate-750">{filteredLogs.length}</span> operations
+                        Showing <span className="font-extrabold text-slate-750">{Math.min(activeConsumptionList.length, (safeLogsPage - 1) * itemsPerPage + 1)}</span> to{' '}
+                        <span className="font-extrabold text-slate-750">{Math.min(activeConsumptionList.length, safeLogsPage * itemsPerPage)}</span> of{' '}
+                        <span className="font-extrabold text-slate-750">{activeConsumptionList.length}</span> consumed items
                       </div>
 
                       <div className="flex items-center gap-1">
@@ -2682,9 +3065,10 @@ export default function DailyInventoryCheckup() {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <Badge className={
-                          req.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            req.status === 'Rejected' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                              'bg-amber-50 text-amber-700 border-amber-200'
+                          req.status === 'Received' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                            req.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              req.status === 'Rejected' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                'bg-amber-50 text-amber-700 border-amber-200'
                         }>
                           {req.status}
                         </Badge>
@@ -2773,7 +3157,8 @@ export default function DailyInventoryCheckup() {
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-slate-50 border border-slate-200/50 rounded-xl p-3 text-center">
               <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Status</p>
-              <Badge className={`mt-1 font-black uppercase tracking-wider text-[9px] ${selectedReq?.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+              <Badge className={`mt-1 font-black uppercase tracking-wider text-[9px] ${selectedReq?.status === 'Received' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                selectedReq?.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                 selectedReq?.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' :
                   'bg-amber-50 text-amber-700 border-amber-200'
                 }`}>{selectedReq?.status}</Badge>
@@ -2840,6 +3225,29 @@ export default function DailyInventoryCheckup() {
             )}
           </div>
  
+          {selectedReq?.status === 'Approved' && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-3">
+              <p className="text-[11px] font-bold text-emerald-800 leading-snug">
+                This stock has been dispatched from the Central Store. Accept it to add these
+                quantities into your Daily Stock Checkup for <span className="font-black">{monthYear} · Day {currentDay} · {currentSession}</span>.
+              </p>
+              <Button
+                type="button"
+                disabled={receivingReq}
+                onClick={() => handleReceiveRequisition(selectedReq)}
+                className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-emerald-500/10 active:scale-[0.98] border-0 disabled:opacity-60"
+              >
+                {receivingReq ? 'Accepting…' : 'Accept into Stock'}
+              </Button>
+            </div>
+          )}
+
+          {selectedReq?.status === 'Received' && (
+            <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 text-[11px] font-bold text-sky-800">
+              ✓ This requisition has been received and its items added to the Daily Stock Checkup.
+            </div>
+          )}
+
           <div className="flex justify-end pt-2 border-t border-slate-100 mt-4">
             <Button
               type="button"

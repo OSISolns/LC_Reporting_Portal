@@ -19,7 +19,7 @@
 
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
-const { bulkPullAllPatients, bulkPullByPrefix } = require('../src/services/sukraaService');
+const { bulkPullAllPatients, bulkPullByPrefix, upsertPatientCache } = require('../src/services/sukraaService');
 
 // ── Parse CLI flags ──────────────────────────────────────────────────────────
 const args       = process.argv.slice(2);
@@ -46,6 +46,8 @@ async function ensureSchema() {
       gender        TEXT,
       phone         TEXT,
       insurance     TEXT,
+      ref_type      TEXT,
+      referrer_name TEXT,
       extra_1       TEXT,
       extra_2       TEXT,
       source        TEXT NOT NULL DEFAULT 'sukraa',
@@ -55,9 +57,22 @@ async function ensureSchema() {
     )
   `);
 
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_sukraa_patients_name  ON sukraa_patients(full_name)`);
+  // Backfill columns on tables that predate the ref_type / referrer_name fields
+  // so the upsert below doesn't fail with "no such column" on an older cache.
+  for (const col of ['ref_type', 'referrer_name']) {
+    try {
+      await db.execute(`ALTER TABLE sukraa_patients ADD COLUMN ${col} TEXT`);
+    } catch (err) {
+      if (!/duplicate column name|already exists/i.test(err.message)) throw err;
+    }
+  }
+
+  // full_name / phone are encrypted at rest, so indexing them is useless for
+  // LIKE search and only adds write cost on every bulk upsert — drop if present.
+  // Only pid (plaintext) benefits from an index.
+  await db.execute(`DROP INDEX IF EXISTS idx_sukraa_patients_name`);
+  await db.execute(`DROP INDEX IF EXISTS idx_sukraa_patients_phone`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_sukraa_patients_pid   ON sukraa_patients(pid)`);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_sukraa_patients_phone ON sukraa_patients(phone)`);
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS sukraa_sync_log (
@@ -74,46 +89,8 @@ async function ensureSchema() {
   console.log('✅ Schema verified');
 }
 
-// ── Upsert a batch of patients ───────────────────────────────────────────────
-async function upsertBatch(patients, stats) {
-  if (!patients.length || isDryRun) {
-    stats.added += patients.length;
-    return;
-  }
-
-  const statements = patients
-    .filter(p => p.pid && p.full_name)
-    .map(p => ({
-      sql: `INSERT INTO sukraa_patients 
-              (pid, full_name, age, dob, gender, phone, insurance, extra_1, extra_2, synced_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-            ON CONFLICT(pid) DO UPDATE SET
-              full_name  = excluded.full_name,
-              age        = excluded.age,
-              dob        = excluded.dob,
-              gender     = excluded.gender,
-              phone      = excluded.phone,
-              insurance  = excluded.insurance,
-              extra_1    = excluded.extra_1,
-              extra_2    = excluded.extra_2,
-              synced_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
-              updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
-      args: [
-        p.pid, p.full_name, p.age || null, p.dob || null,
-        p.gender || null, p.phone || null, p.insurance || null,
-        p.extra_1 || null, p.extra_2 || null,
-      ],
-    }));
-
-  if (statements.length === 0) return;
-
-  // Batch in chunks of 50 to avoid LibSQL limits
-  const CHUNK = 50;
-  for (let i = 0; i < statements.length; i += CHUNK) {
-    await db.batch(statements.slice(i, i + CHUNK), 'write');
-    stats.added += Math.min(CHUNK, statements.length - i);
-  }
-}
+// Patient upserts are handled by the shared upsertPatientCache() helper in
+// sukraaService so this script and the /sync route stay in lock-step.
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
@@ -128,18 +105,15 @@ async function main() {
 
   await ensureSchema();
 
-  // Insert sync log entry
+  // Insert sync log entry. RETURNING id captures the new row directly instead
+  // of a racy "latest running row" re-select.
   let logId = null;
   if (!isDryRun) {
-    await db.execute({
-      sql:  `INSERT INTO sukraa_sync_log (started_at, status) VALUES (?, 'running')`,
+    const logRes = await db.execute({
+      sql:  `INSERT INTO sukraa_sync_log (started_at, status) VALUES (?, 'running') RETURNING id`,
       args: [startTime],
     });
-    const latestLog = await db.execute({
-      sql: `SELECT id FROM sukraa_sync_log WHERE started_at = ? AND status = 'running' ORDER BY id DESC LIMIT 1`,
-      args: [startTime]
-    });
-    logId = latestLog.rows?.[0]?.id || latestLog[0]?.id;
+    logId = logRes.rows?.[0]?.id ?? logRes[0]?.id ?? null;
   }
 
   const stats = { added: 0, errors: 0 };
@@ -154,7 +128,7 @@ async function main() {
         seen.add(p.pid);
         return true;
       });
-      await upsertBatch(unique, stats);
+      stats.added += await upsertPatientCache(db, unique, { dryRun: isDryRun });
     } else {
       // Full sweep: A–Z + 0–9
       for await (const { prefix, patients } of bulkPullAllPatients()) {
@@ -163,7 +137,7 @@ async function main() {
           seen.add(p.pid);
           return true;
         });
-        await upsertBatch(unique, stats);
+        stats.added += await upsertPatientCache(db, unique, { dryRun: isDryRun });
         process.stdout.write(`\r  Progress: ${seen.size.toLocaleString()} unique patients found...`);
       }
       process.stdout.write('\n');

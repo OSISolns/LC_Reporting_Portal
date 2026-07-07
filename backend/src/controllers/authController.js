@@ -22,10 +22,18 @@ exports.login = async (req, res, next) => {
     // Check if locked out
     if (user.lockout_until && new Date(user.lockout_until) > new Date()) {
       const waitTime = Math.ceil((new Date(user.lockout_until) - new Date()) / 60000);
-      return res.status(403).json({ 
-        success: false, 
-        message: `Account is temporarily locked due to multiple failed attempts. Please try again in ${waitTime} minutes.` 
+      return res.status(403).json({
+        success: false,
+        message: `Account is temporarily locked due to multiple failed attempts. Please try again in ${waitTime} minutes.`
       });
+    } else if (user.lockout_until || (user.failed_attempts || 0) >= 5) {
+      // A previous lockout has expired (or a stale count of >=5 lingered).
+      // Clear the counter so the user gets a FRESH set of attempts — otherwise
+      // a single mistype after the lock expires would instantly re-lock them
+      // (5 + 1 >= 5). Only reset on expiry, never while still locked above.
+      await User.resetAttempts(user.id);
+      user.failed_attempts = 0;
+      user.lockout_until = null;
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);

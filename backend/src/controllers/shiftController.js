@@ -664,7 +664,7 @@ exports.getLatestHandover = async (req, res, next) => {
     if (!isAuthorized) {
       if (req.user.role === shiftRole) {
         isAuthorized = true;
-      } else if (req.user.role === 'customer_care' && (shiftRole === 'customer_care' || shiftRole === 'vip_lounge' || shiftRole === 'helpdesk' || shiftRole === 'call_center')) {
+      } else if (req.user.role === 'customer_care' && (shiftRole === 'customer_care' || shiftRole === 'vip_lounge' || shiftRole === 'helpdesk' || shiftRole === 'call_center' || shiftRole === 'cashier')) {
         isAuthorized = true;
       }
     }

@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS sukraa_patients (
   gender        TEXT,                          -- "Male" or "Female"
   phone         TEXT,                          -- Primary phone number
   insurance     TEXT,                          -- Insurance provider if available
+  ref_type      TEXT,                          -- Reference type from SUKRAA (e.g. RSSB, cash, corporate)
+  referrer_name TEXT,                          -- Referrer Name / Insurance Provider
   extra_1       TEXT,                          -- Spare field from SUKRAA pipe (position 8)
   extra_2       TEXT,                          -- Spare field from SUKRAA pipe (position 9)
   source        TEXT NOT NULL DEFAULT 'sukraa',-- Data origin tag
@@ -21,10 +23,12 @@ CREATE TABLE IF NOT EXISTS sukraa_patients (
   updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
--- Index for fast full-text name searching
-CREATE INDEX IF NOT EXISTS idx_sukraa_patients_name ON sukraa_patients(full_name);
-CREATE INDEX IF NOT EXISTS idx_sukraa_patients_pid  ON sukraa_patients(pid);
-CREATE INDEX IF NOT EXISTS idx_sukraa_patients_phone ON sukraa_patients(phone);
+-- full_name / phone are encrypted at rest, so an index on them can't serve a
+-- LIKE search (searches are resolved by in-memory decryption instead) and only
+-- adds write overhead. Drop any that exist and index only the plaintext pid.
+DROP INDEX IF EXISTS idx_sukraa_patients_name;
+DROP INDEX IF EXISTS idx_sukraa_patients_phone;
+CREATE INDEX IF NOT EXISTS idx_sukraa_patients_pid ON sukraa_patients(pid);
 
 -- Sync log: tracks when syncs ran and how many records were pulled
 CREATE TABLE IF NOT EXISTS sukraa_sync_log (

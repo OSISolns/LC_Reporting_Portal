@@ -2050,7 +2050,13 @@ exports.getRequisitionItems = async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await db.query(`
-      SELECT ri.*, mi.name as item_name, mi.unit_of_measure, COALESCE(SUM(sb.quantity), 0) as central_stock
+      SELECT ri.*, mi.name as item_name, mi.sku, mi.category, mi.unit_of_measure, 
+             COALESCE(SUM(sb.quantity), 0) as central_stock,
+             COALESCE(
+               (SELECT last_unit_price FROM procurement_catalog WHERE master_item_id = ri.item_id AND is_active = 1 LIMIT 1),
+               (SELECT purchase_price FROM stock_batches WHERE item_id = ri.item_id AND purchase_price IS NOT NULL AND purchase_price > 0 ORDER BY id DESC LIMIT 1),
+               0
+             ) as purchase_price
       FROM requisition_items ri
       JOIN master_inventory mi ON ri.item_id = mi.id
       LEFT JOIN stock_batches sb ON mi.id = sb.item_id
@@ -2229,6 +2235,85 @@ exports.approveRequisition = async (req, res) => {
     res.json({ success: true, message: 'Requisition approved and stock transferred successfully' });
   } catch (error) {
     console.error('Error in approveRequisition:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Accept an APPROVED requisition into the department's working stock.
+ *
+ * Approval already moved the goods from Central Store batches into
+ * department_stock. This lets the receiving department (e.g. a nurse) confirm
+ * receipt and pull those approved quantities into the current Daily Stock
+ * Checkup (nursing_monthly_stock), adding to whatever is already counted, and
+ * marks the requisition 'Received'.
+ */
+exports.receiveRequisition = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { month_year, day, session } = req.body;
+    if (!month_year || day === undefined || day === null || !session) {
+      return res.status(400).json({ success: false, message: 'month_year, day, and session are required to accept stock into the checkup.' });
+    }
+
+    const { rows: reqRows } = await db.query('SELECT status FROM requisitions WHERE id = $1', [id]);
+    if (reqRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Requisition not found.' });
+    }
+    if (reqRows[0].status === 'Received') {
+      return res.status(400).json({ success: false, message: 'This requisition has already been received.' });
+    }
+    if (reqRows[0].status !== 'Approved') {
+      return res.status(400).json({ success: false, message: `Only approved requisitions can be received (current status: ${reqRows[0].status}).` });
+    }
+
+    // Approved items + their master names. Use approved_quantity (what was
+    // actually transferred), falling back to requested_quantity.
+    const { rows: items } = await db.query(
+      `SELECT COALESCE(ri.approved_quantity, ri.requested_quantity) AS qty, mi.name AS item_name
+         FROM requisition_items ri
+         JOIN master_inventory mi ON ri.item_id = mi.id
+        WHERE ri.requisition_id = $1`,
+      [id]
+    );
+
+    const statements = [];
+    let added = 0;
+    for (const it of items) {
+      const qty = Number(it.qty) || 0;
+      if (qty <= 0) continue;
+      // Add the received quantity to the current period's stock-in-hand,
+      // recomputing balance against whatever has already been consumed.
+      statements.push({
+        sql: `INSERT INTO nursing_monthly_stock (
+                month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, updated_at
+              ) VALUES ($1, $2, $3, $4, $5, 0, $5, $6, CURRENT_TIMESTAMP)
+              ON CONFLICT(month_year, item_name, day, session) DO UPDATE SET
+                stock_in_hands = nursing_monthly_stock.stock_in_hands + $5,
+                balance = (nursing_monthly_stock.stock_in_hands + $5) - nursing_monthly_stock.consumed,
+                updated_at = CURRENT_TIMESTAMP`,
+        args: [month_year, it.item_name, day, session, qty, `Received via Requisition #${id}`],
+      });
+      added += 1;
+    }
+
+    if (statements.length > 0) {
+      await db.batch(statements);
+    }
+
+    await db.query(
+      "UPDATE requisitions SET status = 'Received', received_at = CURRENT_TIMESTAMP, received_by = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+      [req.user?.id || null, id]
+    );
+
+    try {
+      const { logAction } = require('../middleware/audit');
+      await logAction(req, 'REQUISITION_RECEIVED', 'requisitions', id, { items: added, month_year, day, session });
+    } catch (e) { /* audit best-effort */ }
+
+    res.json({ success: true, message: `Accepted ${added} item(s) into the Daily Stock Checkup.`, added });
+  } catch (error) {
+    console.error('Error in receiveRequisition:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -3220,3 +3305,956 @@ exports.createSupplierReturn = async (req, res) => {
 
 
 
+
+/**
+ * GET /api/clinical/procurement/dashboard
+ * Aggregated KPIs for the Procurement Manager dashboard. Each section is
+ * resolved independently (Promise.allSettled) so a missing table/column (e.g.
+ * the rfq_* layer on an environment that hasn't migrated it yet) degrades to a
+ * safe default instead of failing the whole dashboard.
+ */
+exports.getProcurementDashboard = async (req, res) => {
+  const q = (sql, args = []) => db.query(sql, args).then(r => r.rows);
+  const num = (v) => Number(v || 0);
+  const toMap = (rows, keyCol = 'status', valCol = 'c') =>
+    rows.reduce((acc, r) => { acc[r[keyCol] || 'Unknown'] = num(r[valCol]); return acc; }, {});
+
+  // Period boundaries (ISO date strings; created_at etc. are ISO so lexical compare is safe).
+  const now = new Date();
+  const isoDay = (d) => d.toISOString().slice(0, 10);
+  const mStart = isoDay(new Date(now.getFullYear(), now.getMonth(), 1));
+  const lmStart = isoDay(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const qStart = isoDay(new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1));
+  const yStart = `${now.getFullYear()}-01-01`;
+  // One-row multi-period aggregate (this month / last month / quarter-to-date / year-to-date).
+  const periodAgg = (table, dateCol, valCol) => q(
+    `SELECT
+       COALESCE(SUM(CASE WHEN ${dateCol} >= ? THEN ${valCol} END),0) mtd_v,
+       COALESCE(SUM(CASE WHEN ${dateCol} >= ? THEN 1 END),0) mtd_c,
+       COALESCE(SUM(CASE WHEN ${dateCol} >= ? AND ${dateCol} < ? THEN ${valCol} END),0) lm_v,
+       COALESCE(SUM(CASE WHEN ${dateCol} >= ? AND ${dateCol} < ? THEN 1 END),0) lm_c,
+       COALESCE(SUM(CASE WHEN ${dateCol} >= ? THEN ${valCol} END),0) qtd_v,
+       COALESCE(SUM(CASE WHEN ${dateCol} >= ? THEN 1 END),0) qtd_c,
+       COALESCE(SUM(CASE WHEN ${dateCol} >= ? THEN ${valCol} END),0) ytd_v,
+       COALESCE(SUM(CASE WHEN ${dateCol} >= ? THEN 1 END),0) ytd_c
+     FROM ${table}`,
+    [mStart, mStart, lmStart, mStart, lmStart, mStart, qStart, qStart, yStart, yStart]
+  );
+
+  const tasks = {
+    spend: q(`SELECT
+                COALESCE(SUM(total_amount),0) AS total,
+                COALESCE(SUM(CASE WHEN created_at >= strftime('%Y-%m-01','now') THEN total_amount ELSE 0 END),0) AS this_month,
+                COALESCE(SUM(CASE WHEN created_at >= strftime('%Y-%m-01','now','-1 month')
+                                   AND created_at <  strftime('%Y-%m-01','now') THEN total_amount ELSE 0 END),0) AS last_month,
+                COUNT(*) AS po_count
+              FROM purchase_orders`),
+    poByStatus:  q(`SELECT status, COUNT(*) c, COALESCE(SUM(total_amount),0) v FROM purchase_orders GROUP BY status`),
+    reqByStatus: q(`SELECT status, COUNT(*) c FROM requisitions GROUP BY status`),
+    subByStatus: q(`SELECT status, COUNT(*) c FROM supplier_submissions GROUP BY status`),
+    portal:      q(`SELECT COUNT(*) c FROM supplier_portal_sessions WHERE is_active = 1`),
+    grns:        q(`SELECT COUNT(*) total,
+                           COALESCE(SUM(CASE WHEN received_at >= strftime('%Y-%m-01','now') THEN 1 ELSE 0 END),0) this_month
+                    FROM goods_receipt_notes`),
+    returns:     q(`SELECT COUNT(*) total,
+                           COALESCE(SUM(CASE WHEN returned_at >= strftime('%Y-%m-01','now') THEN 1 ELSE 0 END),0) this_month
+                    FROM supplier_returns`),
+    vendors:     q(`SELECT COUNT(*) total, COALESCE(SUM(CASE WHEN is_active=1 THEN 1 ELSE 0 END),0) active FROM vendors`),
+    topSuppliers: q(`SELECT v.name, COUNT(po.id) po_count, COALESCE(SUM(po.total_amount),0) spend
+                     FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id
+                     GROUP BY v.id, v.name ORDER BY spend DESC LIMIT 6`),
+    spendTrend:  q(`SELECT strftime('%Y-%m', created_at) ym, COALESCE(SUM(total_amount),0) total, COUNT(*) c
+                    FROM purchase_orders
+                    WHERE created_at >= strftime('%Y-%m-01','now','-5 months')
+                    GROUP BY ym ORDER BY ym`),
+    rfqByStatus: q(`SELECT status, COUNT(*) c FROM rfqs GROUP BY status`),
+    rfqAward:    q(`SELECT COUNT(*) c FROM rfq_awards`),
+    recentPOs:   q(`SELECT po.po_number ref, v.name vendor, po.total_amount amount, po.status, po.created_at date
+                    FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id
+                    ORDER BY po.created_at DESC LIMIT 6`),
+    recentGRNs:  q(`SELECT grn.grn_number ref, v.name vendor, grn.received_at date
+                    FROM goods_receipt_notes grn JOIN vendors v ON grn.vendor_id = v.id
+                    ORDER BY grn.received_at DESC LIMIT 6`),
+    recentSubs:  q(`SELECT supplier_name vendor, status, uploaded_at date FROM supplier_submissions ORDER BY uploaded_at DESC LIMIT 6`),
+    poPeriods:   periodAgg('purchase_orders', 'created_at', 'total_amount'),
+    grnPeriods:  periodAgg('goods_receipt_notes', 'received_at', 'total_amount'),
+    retPeriods:  periodAgg('supplier_returns', 'returned_at', '1'),
+  };
+
+  const keys = Object.keys(tasks);
+  const settled = await Promise.allSettled(keys.map(k => tasks[k]));
+  const R = {};
+  keys.forEach((k, i) => { R[k] = settled[i].status === 'fulfilled' ? settled[i].value : []; });
+
+  const spendRow = R.spend[0] || {};
+  const grnRow = R.grns[0] || {};
+  const retRow = R.returns[0] || {};
+  const venRow = R.vendors[0] || {};
+  const subMap = toMap(R.subByStatus);
+  const reqMap = toMap(R.reqByStatus);
+  const rfqMap = toMap(R.rfqByStatus);
+  const poP = R.poPeriods[0] || {};
+  const grnP = R.grnPeriods[0] || {};
+  const retP = R.retPeriods[0] || {};
+
+  // Build a unified recent-activity feed
+  const recent = [
+    ...R.recentPOs.map(r => ({ type: 'po', ref: r.ref, vendor: r.vendor, amount: num(r.amount), status: r.status, date: r.date })),
+    ...R.recentGRNs.map(r => ({ type: 'grn', ref: r.ref, vendor: r.vendor, date: r.date })),
+    ...R.recentSubs.map(r => ({ type: 'submission', vendor: r.vendor, status: r.status, date: r.date })),
+  ].filter(x => x.date).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 10);
+
+  res.json({
+    success: true,
+    data: {
+      generatedAt: new Date().toISOString(),
+      spend: {
+        total: num(spendRow.total),
+        thisMonth: num(spendRow.this_month),
+        lastMonth: num(spendRow.last_month),
+        poCount: num(spendRow.po_count),
+      },
+      purchaseOrders: { byStatus: toMap(R.poByStatus), valueByStatus: toMap(R.poByStatus, 'status', 'v'), total: R.poByStatus.reduce((s, r) => s + num(r.c), 0) },
+      requisitions: { byStatus: reqMap, pending: num(reqMap.Pending) },
+      submissions: { byStatus: subMap, pending: num(subMap.pending), received: num(subMap.received), total: Object.values(subMap).reduce((s, v) => s + v, 0) },
+      portal: { activeSessions: num((R.portal[0] || {}).c) },
+      grns: { total: num(grnRow.total), thisMonth: num(grnRow.this_month) },
+      returns: { total: num(retRow.total), thisMonth: num(retRow.this_month) },
+      vendors: { total: num(venRow.total), active: num(venRow.active), inactive: num(venRow.total) - num(venRow.active) },
+      rfqs: {
+        byStatus: rfqMap,
+        total: Object.values(rfqMap).reduce((s, v) => s + v, 0),
+        awaitingAward: num(rfqMap.UnderReview),
+        awards: num((R.rfqAward[0] || {}).c),
+      },
+      topSuppliers: R.topSuppliers.map(s => ({ name: s.name, spend: num(s.spend), poCount: num(s.po_count) })),
+      spendTrend: R.spendTrend.map(t => ({ month: t.ym, total: num(t.total), count: num(t.c) })),
+      comparison: {
+        poCount:  { current: num(poP.mtd_c), previous: num(poP.lm_c) },
+        poValue:  { current: num(poP.mtd_v), previous: num(poP.lm_v) },
+        grnValue: { current: num(grnP.mtd_v), previous: num(grnP.lm_v) },
+        returns:  { current: num(retP.mtd_c), previous: num(retP.lm_c) },
+      },
+      financials: {
+        poValue:  { mtd: num(poP.mtd_v), lastMonth: num(poP.lm_v), qtd: num(poP.qtd_v), ytd: num(poP.ytd_v) },
+        poCount:  { mtd: num(poP.mtd_c), lastMonth: num(poP.lm_c), qtd: num(poP.qtd_c), ytd: num(poP.ytd_c) },
+        grnValue: { mtd: num(grnP.mtd_v), lastMonth: num(grnP.lm_v), qtd: num(grnP.qtd_v), ytd: num(grnP.ytd_v) },
+        returns:  { mtd: num(retP.mtd_c), lastMonth: num(retP.lm_c), qtd: num(retP.qtd_c), ytd: num(retP.ytd_c) },
+      },
+      recent,
+    },
+  });
+};
+
+// ─── RFQ / Comparative Matrix Endpoints ─────────────────────────────────────────
+
+exports.getRFQs = async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT r.*, 
+        COUNT(DISTINCT ri.id) as item_count, 
+        COUNT(DISTINCT rs.vendor_id) as supplier_count 
+      FROM rfqs r 
+      LEFT JOIN rfq_items ri ON r.id = ri.rfq_id 
+      LEFT JOIN rfq_suppliers rs ON r.id = rs.rfq_id 
+      GROUP BY r.id 
+      ORDER BY r.created_at DESC
+    `);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getRFQs:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.getRFQById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows: rfqRows } = await db.query('SELECT * FROM rfqs WHERE id = $1', [id]);
+    if (rfqRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'RFQ not found.' });
+    }
+
+    const { rows: suppliers } = await db.query(`
+      SELECT rs.*, v.name as vendor_name, v.contact as vendor_contact
+      FROM rfq_suppliers rs
+      JOIN vendors v ON rs.vendor_id = v.id
+      WHERE rs.rfq_id = $1
+      ORDER BY rs.column_order
+    `, [id]);
+
+    const { rows: items } = await db.query('SELECT * FROM rfq_items WHERE rfq_id = $1 ORDER BY line_no', [id]);
+    
+    const { rows: quotes } = await db.query(`
+      SELECT rq.* 
+      FROM rfq_quotes rq
+      JOIN rfq_items ri ON rq.rfq_item_id = ri.id
+      WHERE ri.rfq_id = $1
+    `, [id]);
+
+    const { rows: awards } = await db.query('SELECT * FROM rfq_awards WHERE rfq_id = $1', [id]);
+    const { rows: committee } = await db.query('SELECT * FROM rfq_committee WHERE rfq_id = $1', [id]);
+
+    res.json({
+      success: true,
+      data: {
+        rfq: rfqRows[0],
+        suppliers,
+        items,
+        quotes,
+        awards,
+        committee
+      }
+    });
+  } catch (error) {
+    console.error('Error in getRFQById:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.createRFQ = async (req, res) => {
+  try {
+    const { title, category, requisitionId, location, notes, invitedVendorIds, items } = req.body;
+    if (!title || !Array.isArray(invitedVendorIds) || invitedVendorIds.length === 0 || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'title, invitedVendorIds, and items are required.' });
+    }
+
+    const refNo = `RFQ-${Date.now()}`;
+    const { rows } = await db.query(`
+      INSERT INTO rfqs (reference_no, title, category, requisition_id, location, notes, created_by, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'Draft')
+      RETURNING id, reference_no
+    `, [refNo, title, category || null, requisitionId || null, location || 'Kigali', notes || '', req.user?.id || null]);
+
+    const rfqId = rows[0].id;
+
+    // Insert suppliers
+    for (let i = 0; i < invitedVendorIds.length; i++) {
+      await db.query(`
+        INSERT INTO rfq_suppliers (rfq_id, vendor_id, column_order, responded)
+        VALUES ($1, $2, $3, 0)
+      `, [rfqId, invitedVendorIds[i], i]);
+    }
+
+    // Insert items
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const { rows: itemRows } = await db.query(`
+        INSERT INTO rfq_items (rfq_id, line_no, item_id, item_name, quantity, unit, quantity_label)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+      `, [
+        rfqId, item.line_no || (i + 1), item.item_id || null, 
+        item.item_name, item.quantity || null, item.unit || null, item.quantity_label || null
+      ]);
+
+      const itemId = itemRows[0].id;
+
+      // Populate default quotes for each supplier (so they exist in comparative matrix)
+      const { rows: rfqSups } = await db.query('SELECT id FROM rfq_suppliers WHERE rfq_id = $1', [rfqId]);
+      for (const sup of rfqSups) {
+        await db.query(`
+          INSERT INTO rfq_quotes (rfq_item_id, rfq_supplier_id, unit_price, total_price, no_bid)
+          VALUES ($1, $2, NULL, NULL, 0)
+        `, [itemId, sup.id]);
+      }
+    }
+
+    res.json({ success: true, data: { id: rfqId, reference_no: refNo } });
+  } catch (error) {
+    console.error('Error in createRFQ:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.saveRFQQuotes = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quotes, supplierId } = req.body; // quotes = [{ rfq_item_id, unit_price, total_price, no_bid }]
+    if (!Array.isArray(quotes)) {
+      return res.status(400).json({ success: false, message: 'quotes array is required.' });
+    }
+
+    // Lookup supplier record ID for this RFQ + vendor
+    const { rows: supRows } = await db.query(
+      'SELECT id FROM rfq_suppliers WHERE rfq_id = $1 AND vendor_id = $2',
+      [id, supplierId]
+    );
+    if (supRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Supplier association not found for this RFQ.' });
+    }
+    const rfqSupplierId = supRows[0].id;
+
+    for (const q of quotes) {
+      await db.query(`
+        INSERT INTO rfq_quotes (rfq_item_id, rfq_supplier_id, unit_price, total_price, no_bid)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (rfq_item_id, rfq_supplier_id) DO UPDATE SET
+          unit_price = EXCLUDED.unit_price,
+          total_price = EXCLUDED.total_price,
+          no_bid = EXCLUDED.no_bid
+      `, [q.rfq_item_id, rfqSupplierId, q.unit_price, q.total_price, q.no_bid ? 1 : 0]);
+    }
+
+    // Mark supplier as responded
+    await db.query(
+      'UPDATE rfq_suppliers SET responded = 1 WHERE id = $1',
+      [rfqSupplierId]
+    );
+
+    // Update status to Collecting if it was Draft
+    await db.query(
+      "UPDATE rfqs SET status = 'Collecting' WHERE id = $1 AND status = 'Draft'",
+      [id]
+    );
+
+    res.json({ success: true, message: 'Quotes saved successfully.' });
+  } catch (error) {
+    console.error('Error in saveRFQQuotes:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.saveRFQAwards = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { awards } = req.body; // awards = [{ rfq_item_id, vendor_id, awarded_quote_id, awarded_price, reason, reason_note }]
+    if (!Array.isArray(awards)) {
+      return res.status(400).json({ success: false, message: 'awards array is required.' });
+    }
+    // An empty array used to no-op the loop but still flip the RFQ to
+    // UnderReview and return success — a silent nothing-saved that later
+    // surfaces as "no awards found" at PO generation. Reject it explicitly.
+    if (awards.length === 0) {
+      return res.status(400).json({ success: false, message: 'No award selections provided — choose a winning vendor for at least one item before saving.' });
+    }
+
+    for (const a of awards) {
+      await db.query(`
+        INSERT INTO rfq_awards (rfq_id, rfq_item_id, vendor_id, awarded_quote_id, awarded_price, reason, reason_note)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (rfq_item_id) DO UPDATE SET
+          vendor_id = EXCLUDED.vendor_id,
+          awarded_quote_id = EXCLUDED.awarded_quote_id,
+          awarded_price = EXCLUDED.awarded_price,
+          reason = EXCLUDED.reason,
+          reason_note = EXCLUDED.reason_note
+      `, [id, a.rfq_item_id, a.vendor_id || null, a.awarded_quote_id || null, a.awarded_price || null, a.reason || 'lowest', a.reason_note || '']);
+    }
+
+    // Update status to UnderReview when awards are first populated
+    await db.query(
+      "UPDATE rfqs SET status = 'UnderReview' WHERE id = $1 AND status IN ('Draft', 'Collecting')",
+      [id]
+    );
+
+    res.json({ success: true, message: 'Awards saved successfully.' });
+  } catch (error) {
+    console.error('Error in saveRFQAwards:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.generatePOsFromRFQ = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if RFQ exists and is not already closed
+    const { rows: rfqRows } = await db.query('SELECT * FROM rfqs WHERE id = $1', [id]);
+    if (rfqRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'RFQ not found.' });
+    }
+
+    // Get all awards. awarded_price can be NULL (older award rows saved
+    // before the price was resolved), so fall back to the linked quote's
+    // unit_price. If both are missing or 0, fall back to the catalog last unit price
+    // or most recent stock batch price to prevent POs with zero price.
+    const { rows: awards } = await db.query(`
+      SELECT ra.*, ri.item_name, ri.quantity, ri.unit,
+             COALESCE(
+               NULLIF(ra.awarded_price, 0),
+               NULLIF(rq.unit_price, 0),
+               (SELECT last_unit_price FROM procurement_catalog WHERE master_item_id = ri.item_id AND is_active = 1 LIMIT 1),
+               (SELECT purchase_price FROM stock_batches WHERE item_id = ri.item_id AND purchase_price IS NOT NULL AND purchase_price > 0 ORDER BY id DESC LIMIT 1),
+               0
+             ) AS effective_price
+      FROM rfq_awards ra
+      JOIN rfq_items ri ON ra.rfq_item_id = ri.id
+      LEFT JOIN rfq_quotes rq ON ra.awarded_quote_id = rq.id
+      WHERE ra.rfq_id = $1 AND ra.vendor_id IS NOT NULL
+    `, [id]);
+
+    if (awards.length === 0) {
+      return res.status(400).json({ success: false, message: 'No vendor awards found for this RFQ — save award selections (with a winning vendor per item) before generating POs.' });
+    }
+
+    // Group items by vendor
+    const vendorMap = {};
+    for (const a of awards) {
+      if (!vendorMap[a.vendor_id]) {
+        vendorMap[a.vendor_id] = [];
+      }
+      vendorMap[a.vendor_id].push(a);
+    }
+
+    const createdPOs = [];
+
+    // Create a PO for each vendor
+    for (const vendorId of Object.keys(vendorMap)) {
+      const items = vendorMap[vendorId];
+      const timestamp = Date.now();
+      const poNumber = `PO-RFQ-${timestamp}-${vendorId}`;
+      const totalAmount = items.reduce((sum, item) => sum + (Number(item.quantity || 1) * Number(item.effective_price || 0)), 0);
+
+      const { rows: poRows } = await db.query(`
+        INSERT INTO purchase_orders (po_number, vendor_id, created_by, status, total_amount, notes)
+        VALUES ($1, $2, $3, 'Draft', $4, $5)
+        RETURNING id, po_number
+      `, [poNumber, Number(vendorId), req.user?.id || null, totalAmount, `Generated from Comparative Tender RFQ reference: ${rfqRows[0].reference_no}`]);
+
+      const poId = poRows[0].id;
+      createdPOs.push({ id: poId, po_number: poNumber });
+
+      for (const item of items) {
+        await db.query(`
+          INSERT INTO purchase_order_items (po_id, item_name, quantity, unit_price, unit_of_measure)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [poId, item.item_name, Number(item.quantity || 1), Number(item.effective_price || 0), item.unit || 'Unit']);
+
+        // Update award record with PO link
+        await db.query(`
+          UPDATE rfq_awards SET purchase_order_id = $1 WHERE id = $2
+        `, [poId, item.id]);
+      }
+    }
+
+    // Update RFQ status to 'Awarded'
+    await db.query("UPDATE rfqs SET status = 'Awarded' WHERE id = $1", [id]);
+
+    res.json({ success: true, message: 'Purchase Orders auto-generated successfully.', data: createdPOs });
+  } catch (error) {
+    console.error('Error in generatePOsFromRFQ:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.getSupplierPerformance = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Spend stats
+    const { rows: spendRows } = await db.query(`
+      SELECT 
+        COALESCE(SUM(total_amount), 0) as total_spend,
+        COUNT(id) as total_pos,
+        COALESCE(SUM(CASE WHEN created_at >= strftime('%Y-%m-01', 'now') THEN total_amount ELSE 0 END), 0) as spend_this_month
+      FROM purchase_orders 
+      WHERE vendor_id = $1
+    `, [id]);
+
+    // 2. Average Lead time
+    const { rows: leadRows } = await db.query(`
+      SELECT 
+        AVG(julianday(grn.received_at) - julianday(po.created_at)) as avg_lead_days
+      FROM goods_receipt_notes grn
+      JOIN purchase_orders po ON grn.purchase_order_id = po.id
+      WHERE po.vendor_id = $1
+    `, [id]);
+
+    // 3. Quality incidents (check in incident_reports by searching for vendor name in description or names_involved)
+    const { rows: vendorRows } = await db.query('SELECT name FROM vendors WHERE id = $1', [id]);
+    let qualityIncidents = 0;
+    if (vendorRows.length > 0) {
+      const vendorName = vendorRows[0].name;
+      const { rows: incidentRows } = await db.query(`
+        SELECT COUNT(*) as cnt 
+        FROM incident_reports 
+        WHERE names_involved LIKE $1 OR description LIKE $1 OR department LIKE $1
+      `, [`%${vendorName}%`]);
+      qualityIncidents = incidentRows[0]?.cnt || 0;
+    }
+
+    // 4. Fulfillment rate (comparing PO item quantities vs GRN item quantities received)
+    const { rows: fulfillmentRows } = await db.query(`
+      SELECT 
+        COALESCE(SUM(poi.quantity), 0) as ordered,
+        COALESCE(SUM(grni.quantity_received), 0) as received
+      FROM purchase_orders po
+      JOIN purchase_order_items poi ON po.id = poi.po_id
+      LEFT JOIN goods_receipt_notes grn ON po.id = grn.purchase_order_id
+      LEFT JOIN goods_receipt_note_items grni ON grn.id = grni.grn_id AND grni.item_name = poi.item_name
+      WHERE po.vendor_id = $1
+    `, [id]);
+
+    const orderedQty = Number(fulfillmentRows[0]?.ordered || 0);
+    const receivedQty = Number(fulfillmentRows[0]?.received || 0);
+    const fulfillmentRate = orderedQty > 0 ? Math.min(100, Math.round((receivedQty / orderedQty) * 100)) : 100;
+
+    res.json({
+      success: true,
+      data: {
+        totalSpend: spendRows[0]?.total_spend || 0,
+        totalPOs: spendRows[0]?.total_pos || 0,
+        spendThisMonth: spendRows[0]?.spend_this_month || 0,
+        avgLeadDays: leadRows[0]?.avg_lead_days ? Math.round(leadRows[0].avg_lead_days * 10) / 10 : null,
+        qualityIncidents,
+        fulfillmentRate
+      }
+    });
+  } catch (error) {
+    console.error('Error in getSupplierPerformance:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Vendor Documents ─────────────────────────────────────────────────────────
+
+exports.getVendorDocuments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(`
+      SELECT vd.*, u.full_name as uploaded_by_name
+      FROM vendor_documents vd
+      LEFT JOIN users u ON vd.uploaded_by = u.id
+      WHERE vd.vendor_id = $1
+      ORDER BY vd.created_at DESC
+    `, [id]);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getVendorDocuments:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.createVendorDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { doc_type, doc_name, file_ref, issued_date, expiry_date, notes } = req.body;
+    if (!doc_name || !doc_type) return res.status(400).json({ success: false, message: 'doc_name and doc_type are required.' });
+    const { rows } = await db.query(`
+      INSERT INTO vendor_documents (vendor_id, doc_type, doc_name, file_ref, issued_date, expiry_date, notes, uploaded_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
+    `, [id, doc_type, doc_name, file_ref||null, issued_date||null, expiry_date||null, notes||null, req.user?.id||null]);
+    res.status(201).json({ success: true, data: rows[0] });
+  } catch (error) {
+    console.error('Error in createVendorDocument:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.deleteVendorDocument = async (req, res) => {
+  try {
+    const { id, docId } = req.params;
+    await db.query('DELETE FROM vendor_documents WHERE id = $1 AND vendor_id = $2', [docId, id]);
+    res.json({ success: true, message: 'Document deleted.' });
+  } catch (error) {
+    console.error('Error in deleteVendorDocument:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Vendor Contracts ─────────────────────────────────────────────────────────
+
+exports.getVendorContracts = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(`
+      SELECT vc.*, u.full_name as created_by_name
+      FROM vendor_contracts vc
+      LEFT JOIN users u ON vc.created_by = u.id
+      WHERE vc.vendor_id = $1
+      ORDER BY vc.created_at DESC
+    `, [id]);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getVendorContracts:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.createVendorContract = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { contract_no, title, start_date, end_date, contract_value, currency, status, terms, notes } = req.body;
+    if (!title || !start_date) return res.status(400).json({ success: false, message: 'title and start_date are required.' });
+    const { rows } = await db.query(`
+      INSERT INTO vendor_contracts (vendor_id, contract_no, title, start_date, end_date, contract_value, currency, status, terms, notes, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *
+    `, [id, contract_no||null, title, start_date, end_date||null, contract_value||0, currency||'RWF', status||'active', terms||null, notes||null, req.user?.id||null]);
+    res.status(201).json({ success: true, data: rows[0] });
+  } catch (error) {
+    console.error('Error in createVendorContract:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.updateVendorContractStatus = async (req, res) => {
+  try {
+    const { id, contractId } = req.params;
+    const { status } = req.body;
+    await db.query("UPDATE vendor_contracts SET status=$1, updated_at=(strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE id=$2 AND vendor_id=$3", [status, contractId, id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error in updateVendorContractStatus:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Vendor Ratings ───────────────────────────────────────────────────────────
+
+exports.getVendorRatings = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(`
+      SELECT vr.*, u.full_name as rated_by_name, grn.reference_no as grn_ref
+      FROM vendor_ratings vr
+      LEFT JOIN users u ON vr.rated_by = u.id
+      LEFT JOIN goods_receipt_notes grn ON vr.grn_id = grn.id
+      WHERE vr.vendor_id = $1 ORDER BY vr.created_at DESC
+    `, [id]);
+    const { rows: avgs } = await db.query('SELECT category, AVG(rating) as avg_rating, COUNT(*) as count FROM vendor_ratings WHERE vendor_id=$1 GROUP BY category', [id]);
+    res.json({ success: true, data: rows, averages: avgs });
+  } catch (error) {
+    console.error('Error in getVendorRatings:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.createVendorRating = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { grn_id, rating, category, comment } = req.body;
+    if (!rating || rating < 1 || rating > 5) return res.status(400).json({ success: false, message: 'rating must be 1-5.' });
+    const { rows } = await db.query(`
+      INSERT INTO vendor_ratings (vendor_id, grn_id, rating, category, comment, rated_by)
+      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
+    `, [id, grn_id||null, rating, category||'overall', comment||null, req.user?.id||null]);
+    res.status(201).json({ success: true, data: rows[0] });
+  } catch (error) {
+    console.error('Error in createVendorRating:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── GRN Inspection ───────────────────────────────────────────────────────────
+
+exports.getGRNInspection = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(`
+      SELECT gi.*, u.full_name as inspected_by_name
+      FROM grn_inspection_items gi
+      LEFT JOIN users u ON gi.inspected_by = u.id
+      WHERE gi.grn_id=$1 ORDER BY gi.id ASC
+    `, [id]);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getGRNInspection:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.saveGRNInspection = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ success: false, message: 'items array required.' });
+    await db.query('DELETE FROM grn_inspection_items WHERE grn_id=$1', [id]);
+    for (const item of items) {
+      await db.query('INSERT INTO grn_inspection_items (grn_id, grn_item_id, item_name, inspection_pass, rejection_reason, inspected_by) VALUES ($1,$2,$3,$4,$5,$6)',
+        [id, item.grn_item_id||null, item.item_name, item.inspection_pass ? 1 : 0, item.rejection_reason||null, req.user?.id||null]);
+    }
+    res.json({ success: true, message: 'Inspection saved.' });
+  } catch (error) {
+    console.error('Error in saveGRNInspection:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Purchase Invoices (Accounts Payable) ─────────────────────────────────────
+
+const performThreeWayMatch = async (invoiceId, poId, grnId, invoiceItems) => {
+  try {
+    const { rows: poItems } = await db.query('SELECT * FROM purchase_order_items WHERE po_id=$1', [poId]);
+    const { rows: grnItems } = await db.query('SELECT * FROM goods_receipt_note_items WHERE grn_id=$1', [grnId]);
+    let hasDiscrepancy = false;
+    for (const invItem of invoiceItems) {
+      const poItem = poItems.find(p => p.item_name && invItem.item_name && p.item_name.toLowerCase() === invItem.item_name.toLowerCase());
+      const grnItem = grnItems.find(g => g.item_name && invItem.item_name && g.item_name.toLowerCase() === invItem.item_name.toLowerCase());
+      const invQty = parseFloat(invItem.quantity)||0;
+      const poQty = parseFloat(poItem && poItem.quantity ? poItem.quantity : 0);
+      const grnQty = parseFloat(grnItem && grnItem.quantity_received ? grnItem.quantity_received : 0);
+      if ((poQty > 0 && Math.abs(invQty - poQty) > 0.01) || (grnQty > 0 && Math.abs(invQty - grnQty) > 0.01)) hasDiscrepancy = true;
+      await db.query('UPDATE invoice_line_items SET po_quantity=$1, grn_quantity=$2 WHERE invoice_id=$3 AND item_name=$4',
+        [poQty||null, grnQty||null, invoiceId, invItem.item_name]);
+    }
+    return hasDiscrepancy ? 'discrepancy' : 'matched';
+  } catch (e) { console.error('3-way match error:', e.message); return 'unmatched'; }
+};
+
+exports.getInvoices = async (req, res) => {
+  try {
+    const { status, vendor_id } = req.query;
+    let sql = `SELECT pi.*, v.name as vendor_name, po.reference_no as po_reference, grn.reference_no as grn_reference,
+        sb.full_name as submitted_by_name, ab.full_name as approved_by_name
+      FROM purchase_invoices pi
+      LEFT JOIN vendors v ON pi.vendor_id=v.id
+      LEFT JOIN purchase_orders po ON pi.po_id=po.id
+      LEFT JOIN goods_receipt_notes grn ON pi.grn_id=grn.id
+      LEFT JOIN users sb ON pi.submitted_by=sb.id
+      LEFT JOIN users ab ON pi.approved_by=ab.id`;
+    const params = []; const conds = [];
+    if (status) { conds.push('pi.status=$' + (params.length+1)); params.push(status); }
+    if (vendor_id) { conds.push('pi.vendor_id=$' + (params.length+1)); params.push(vendor_id); }
+    if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
+    sql += ' ORDER BY pi.created_at DESC';
+    const { rows } = await db.query(sql, params);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getInvoices:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.getInvoiceById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows: invRows } = await db.query(`
+      SELECT pi.*, v.name as vendor_name, po.reference_no as po_reference, grn.reference_no as grn_reference
+      FROM purchase_invoices pi
+      LEFT JOIN vendors v ON pi.vendor_id=v.id
+      LEFT JOIN purchase_orders po ON pi.po_id=po.id
+      LEFT JOIN goods_receipt_notes grn ON pi.grn_id=grn.id
+      WHERE pi.id=$1
+    `, [id]);
+    if (!invRows.length) return res.status(404).json({ success: false, message: 'Invoice not found.' });
+    const { rows: lineItems } = await db.query('SELECT * FROM invoice_line_items WHERE invoice_id=$1 ORDER BY id ASC', [id]);
+    res.json({ success: true, data: Object.assign({}, invRows[0], { line_items: lineItems }) });
+  } catch (error) {
+    console.error('Error in getInvoiceById:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.createInvoice = async (req, res) => {
+  try {
+    const { invoice_no, po_id, grn_id, vendor_id, invoice_date, due_date, subtotal, tax_amount, total_amount, currency, payment_terms, notes, items } = req.body;
+    if (!vendor_id || !invoice_date || !total_amount) return res.status(400).json({ success: false, message: 'vendor_id, invoice_date, and total_amount are required.' });
+    const { rows } = await db.query(
+      "INSERT INTO purchase_invoices (invoice_no,po_id,grn_id,vendor_id,invoice_date,due_date,subtotal,tax_amount,total_amount,currency,payment_terms,notes,status,submitted_by,submitted_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'draft',$13,(strftime('%Y-%m-%dT%H:%M:%fZ','now'))) RETURNING *",
+      [invoice_no||null, po_id||null, grn_id||null, vendor_id, invoice_date, due_date||null, subtotal||0, tax_amount||0, total_amount, currency||'RWF', payment_terms||null, notes||null, req.user && req.user.id ? req.user.id : null]);
+    const invoiceId = rows[0].id;
+    if (Array.isArray(items) && items.length) {
+      for (const item of items) {
+        const qty = parseFloat(item.quantity)||0; const price = parseFloat(item.unit_price)||0;
+        await db.query('INSERT INTO invoice_line_items (invoice_id,item_name,quantity,unit_price,total_price) VALUES ($1,$2,$3,$4,$5)',
+          [invoiceId, item.item_name, qty, price, qty*price]);
+      }
+    }
+    let matchStatus = 'unmatched';
+    if (po_id && grn_id && Array.isArray(items) && items.length) matchStatus = await performThreeWayMatch(invoiceId, po_id, grn_id, items);
+    await db.query('UPDATE purchase_invoices SET match_status=$1 WHERE id=$2', [matchStatus, invoiceId]);
+    res.status(201).json({ success: true, data: Object.assign({}, rows[0], { match_status: matchStatus }) });
+  } catch (error) {
+    console.error('Error in createInvoice:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.updateInvoiceStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, rejection_reason } = req.body;
+    const valid = ['draft','submitted','under_review','approved','rejected','paid'];
+    if (!valid.includes(status)) return res.status(400).json({ success: false, message: 'Invalid status.' });
+    const tsMap = { submitted:'submitted_at', approved:'approved_at', paid:'paid_at', under_review:'reviewed_at' };
+    const actorMap = { submitted:'submitted_by', approved:'approved_by', paid:'paid_by', under_review:'reviewed_by' };
+    let sql = "UPDATE purchase_invoices SET status=$1, updated_at=(strftime('%Y-%m-%dT%H:%M:%fZ','now'))";
+    const params = [status];
+    if (rejection_reason) { sql += ',rejection_reason=$' + (params.length+1); params.push(rejection_reason); }
+    if (tsMap[status]) sql += "," + tsMap[status] + "=(strftime('%Y-%m-%dT%H:%M:%fZ','now'))";
+    if (actorMap[status] && req.user && req.user.id) { sql += ',' + actorMap[status] + '=$' + (params.length+1); params.push(req.user.id); }
+    sql += ' WHERE id=$' + (params.length+1); params.push(id);
+    await db.query(sql, params);
+    res.json({ success: true, message: 'Invoice ' + status + '.' });
+  } catch (error) {
+    console.error('Error in updateInvoiceStatus:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.getThreeWayMatch = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows: invRows } = await db.query('SELECT * FROM purchase_invoices WHERE id=$1', [id]);
+    if (!invRows.length) return res.status(404).json({ success: false, message: 'Invoice not found.' });
+    const inv = invRows[0];
+    const { rows: lineItems } = await db.query('SELECT * FROM invoice_line_items WHERE invoice_id=$1', [id]);
+    let poItems = [], grnItems = [];
+    if (inv.po_id) { const r = await db.query('SELECT * FROM purchase_order_items WHERE po_id=$1', [inv.po_id]); poItems = r.rows; }
+    if (inv.grn_id) { const r = await db.query('SELECT * FROM goods_receipt_note_items WHERE grn_id=$1', [inv.grn_id]); grnItems = r.rows; }
+    const allItems = new Map();
+    for (const item of poItems) allItems.set(item.item_name ? item.item_name.toLowerCase() : '', { item_name:item.item_name, po_quantity:item.quantity, po_unit_price:item.unit_price, grn_quantity:null, inv_quantity:null });
+    for (const item of grnItems) {
+      const k = item.item_name ? item.item_name.toLowerCase() : '';
+      if (allItems.has(k)) allItems.get(k).grn_quantity = item.quantity_received;
+      else allItems.set(k, { item_name:item.item_name, po_quantity:null, po_unit_price:null, grn_quantity:item.quantity_received, inv_quantity:null });
+    }
+    for (const item of lineItems) {
+      const k = item.item_name ? item.item_name.toLowerCase() : '';
+      if (allItems.has(k)) { allItems.get(k).inv_quantity = item.quantity; allItems.get(k).inv_unit_price = item.unit_price; }
+      else allItems.set(k, { item_name:item.item_name, po_quantity:null, po_unit_price:null, grn_quantity:null, inv_quantity:item.quantity, inv_unit_price:item.unit_price });
+    }
+    const matchRows = Array.from(allItems.values()).map(function(r) {
+      return Object.assign({}, r, { discrepancy: (r.grn_quantity!==null && r.inv_quantity!==null && Math.abs(r.grn_quantity-r.inv_quantity)>0.01) || (r.po_quantity!==null && r.inv_quantity!==null && Math.abs(r.po_quantity-r.inv_quantity)>0.01) });
+    });
+    res.json({ success: true, data: { invoice: inv, match_rows: matchRows } });
+  } catch (error) {
+    console.error('Error in getThreeWayMatch:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Department Budgets ───────────────────────────────────────────────────────
+
+exports.getDepartmentBudgets = async (req, res) => {
+  try {
+    const { year, month } = req.query;
+    let sql = 'SELECT * FROM department_budgets WHERE 1=1';
+    const params = [];
+    if (year) { sql += ' AND period_year=$' + (params.length+1); params.push(year); }
+    if (month) { sql += ' AND period_month=$' + (params.length+1); params.push(month); }
+    sql += ' ORDER BY department_name, period_year DESC, period_month DESC';
+    const { rows } = await db.query(sql, params);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getDepartmentBudgets:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.upsertDepartmentBudget = async (req, res) => {
+  try {
+    const { department_name, period_type, period_year, period_month, period_quarter, budget_amount, currency, department_id } = req.body;
+    if (!department_name || !period_year || !budget_amount) return res.status(400).json({ success: false, message: 'department_name, period_year, budget_amount required.' });
+    await db.query(
+      "INSERT INTO department_budgets (department_id,department_name,period_type,period_year,period_month,period_quarter,budget_amount,currency,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(department_name,period_type,period_year,period_month,period_quarter) DO UPDATE SET budget_amount=EXCLUDED.budget_amount, updated_at=(strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+      [department_id||null, department_name, period_type||'monthly', period_year, period_month||null, period_quarter||null, budget_amount, currency||'RWF', req.user && req.user.id ? req.user.id : null]);
+    res.json({ success: true, message: 'Budget saved.' });
+  } catch (error) {
+    console.error('Error in upsertDepartmentBudget:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.getDepartmentBudgetStatus = async (req, res) => {
+  try {
+    const { department_name } = req.query;
+    const now = new Date(); const year = now.getFullYear(); const month = now.getMonth() + 1;
+    const { rows: budgetRows } = await db.query("SELECT budget_amount FROM department_budgets WHERE department_name=$1 AND period_year=$2 AND period_month=$3 AND period_type='monthly'", [department_name, year, month]);
+    const budget = Number(budgetRows[0] ? budgetRows[0].budget_amount : 0);
+    const { rows: spendRows } = await db.query(
+      "SELECT COALESCE(SUM(r.total_amount),0) as spent FROM requisitions r WHERE r.department_name=$1 AND r.status IN ('approved','received') AND strftime('%Y',r.created_at)=$2 AND strftime('%m',r.created_at)=$3",
+      [department_name, String(year), String(month).padStart(2,'0')]);
+    const spent = Number(spendRows[0] ? spendRows[0].spent : 0);
+    res.json({ success: true, data: { budget, spent, remaining: Math.max(0, budget-spent), utilization: budget>0 ? Math.min(100,Math.round((spent/budget)*100)) : 0, year, month } });
+  } catch (error) {
+    console.error('Error in getDepartmentBudgetStatus:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Procurement Catalog ──────────────────────────────────────────────────────
+
+exports.getCatalog = async (req, res) => {
+  try {
+    const { category, search } = req.query;
+    let sql = 'SELECT pc.*, v.name as preferred_vendor_name FROM procurement_catalog pc LEFT JOIN vendors v ON pc.preferred_vendor=v.id WHERE pc.is_active=1';
+    const params = [];
+    if (category) { sql += ' AND pc.category=$' + (params.length+1); params.push(category); }
+    if (search) { sql += ' AND pc.item_name LIKE $' + (params.length+1); params.push('%' + search + '%'); }
+    sql += ' ORDER BY pc.item_name ASC';
+    const { rows } = await db.query(sql, params);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getCatalog:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.createCatalogItem = async (req, res) => {
+  try {
+    const { item_name, category, sku, unit_of_measure, preferred_vendor, last_unit_price, notes, master_item_id } = req.body;
+    if (!item_name) return res.status(400).json({ success: false, message: 'item_name is required.' });
+    const { rows } = await db.query('INSERT INTO procurement_catalog (item_name,category,sku,unit_of_measure,preferred_vendor,last_unit_price,notes,master_item_id,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+      [item_name, category||'medical_supplies', sku||null, unit_of_measure||'Unit', preferred_vendor||null, last_unit_price||null, notes||null, master_item_id||null, req.user && req.user.id ? req.user.id : null]);
+    res.status(201).json({ success: true, data: rows[0] });
+  } catch (error) {
+    console.error('Error in createCatalogItem:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.toggleCatalogItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    await db.query("UPDATE procurement_catalog SET is_active=$1, updated_at=(strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE id=$2", [is_active ? 1 : 0, id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error in toggleCatalogItem:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Analytics ───────────────────────────────────────────────────────────────
+
+exports.getSpendByDepartment = async (req, res) => {
+  try {
+    const { year } = req.query;
+    const filterYear = year || String(new Date().getFullYear());
+    const { rows } = await db.query(
+      "SELECT COALESCE(r.department_name,'Unknown') as department, COALESCE(SUM(r.total_amount),0) as total_spend, COUNT(*) as total_requisitions, SUM(CASE WHEN r.status='approved' THEN 1 ELSE 0 END) as approved_count, SUM(CASE WHEN r.status='rejected' THEN 1 ELSE 0 END) as rejected_count FROM requisitions r WHERE strftime('%Y',r.created_at)=$1 GROUP BY COALESCE(r.department_name,'Unknown') ORDER BY total_spend DESC",
+      [String(filterYear)]);
+    const { rows: monthRows } = await db.query(
+      "SELECT strftime('%Y-%m',po.created_at) as month, COALESCE(SUM(poi.quantity*poi.unit_price),0) as total FROM purchase_orders po JOIN purchase_order_items poi ON po.id=poi.po_id WHERE strftime('%Y',po.created_at)=$1 AND po.status!='Cancelled' GROUP BY strftime('%Y-%m',po.created_at) ORDER BY month ASC",
+      [String(filterYear)]);
+    res.json({ success: true, data: { by_department: rows, by_month: monthRows } });
+  } catch (error) {
+    console.error('Error in getSpendByDepartment:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.getSupplierLeaderboard = async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      "SELECT v.id, v.name, v.contact, COUNT(DISTINCT po.id) as total_pos, COUNT(DISTINCT grn.id) as total_grns, COALESCE(SUM(poi.quantity*poi.unit_price),0) as total_spend, COALESCE(AVG(vr.rating),0) as avg_rating, COUNT(DISTINCT vr.id) as rating_count FROM vendors v LEFT JOIN purchase_orders po ON po.vendor_id=v.id AND po.status!='Cancelled' LEFT JOIN purchase_order_items poi ON poi.po_id=po.id LEFT JOIN goods_receipt_notes grn ON grn.vendor_id=v.id LEFT JOIN vendor_ratings vr ON vr.vendor_id=v.id GROUP BY v.id, v.name, v.contact ORDER BY total_spend DESC");
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getSupplierLeaderboard:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.getInvoiceAnalytics = async (req, res) => {
+  try {
+    const { rows: byStatus } = await db.query('SELECT status, COUNT(*) as count, COALESCE(SUM(total_amount),0) as total FROM purchase_invoices GROUP BY status');
+    const { rows: overdue } = await db.query("SELECT COUNT(*) as count, COALESCE(SUM(total_amount),0) as total FROM purchase_invoices WHERE status NOT IN ('paid','rejected') AND due_date < (strftime('%Y-%m-%dT%H:%M:%fZ','now'))");
+    const { rows: upcoming } = await db.query("SELECT pi.*, v.name as vendor_name FROM purchase_invoices pi LEFT JOIN vendors v ON pi.vendor_id=v.id WHERE pi.status NOT IN ('paid','rejected') AND pi.due_date>=(strftime('%Y-%m-%dT%H:%M:%fZ','now')) AND pi.due_date<=(strftime('%Y-%m-%dT%H:%M:%fZ','now','+30 days')) ORDER BY pi.due_date ASC LIMIT 10");
+    res.json({ success: true, data: { by_status: byStatus, overdue: overdue[0], upcoming_due: upcoming } });
+  } catch (error) {
+    console.error('Error in getInvoiceAnalytics:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.getExpiringContracts = async (req, res) => {
+  try {
+    const { rows } = await db.query("SELECT vc.*, v.name as vendor_name FROM vendor_contracts vc LEFT JOIN vendors v ON vc.vendor_id=v.id WHERE vc.status='active' AND vc.end_date IS NOT NULL AND vc.end_date<=(strftime('%Y-%m-%dT%H:%M:%fZ','now','+90 days')) ORDER BY vc.end_date ASC");
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getExpiringContracts:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
