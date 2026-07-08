@@ -2,6 +2,8 @@
 const User = require('../models/user');
 const db = require('../config/db');
 const { logAction } = require('../middleware/audit');
+const emailService = require('../services/emailService');
+const { decryptField } = require('../utils/crypto');
 
 exports.getAllUsers = async (req, res, next) => {
   try {
@@ -16,7 +18,24 @@ exports.createUser = async (req, res, next) => {
   try {
     const user = await User.create(req.body);
     await logAction(req, 'CREATE', 'user', user.id, { email: user.email });
-    res.status(201).json({ success: true, data: user });
+
+    // Decrypt email before sending
+    const decryptedEmail = decryptField(user.email);
+
+    // Send welcome email with credentials
+    const emailResult = await emailService.sendUserCredentials(
+      decryptedEmail,
+      user.username,
+      req.body.password,
+      'Welcome to Local Clinic - Your Account Credentials'
+    );
+
+    res.status(201).json({
+      success: true,
+      data: user,
+      emailSent: emailResult.success,
+      emailError: emailResult.error || null
+    });
   } catch (err) {
     if (err.message && (err.message.includes('UNIQUE constraint failed: users.username') || err.message.includes('users_username_key'))) {
       return res.status(400).json({ success: false, message: 'Username is already taken.' });
@@ -87,7 +106,24 @@ exports.resetPassword = async (req, res, next) => {
 
     await User.resetPassword(req.params.id, password);
     await logAction(req, 'RESET_PASSWORD', 'user', user.id, { email: user.email, action: 'Admin initiated reset' });
-    res.json({ success: true, message: 'Password reset successfully' });
+
+    // Decrypt email before sending
+    const decryptedEmail = decryptField(user.email);
+
+    // Send email with new password
+    const emailResult = await emailService.sendUserCredentials(
+      decryptedEmail,
+      user.username,
+      password,
+      'Password Reset - Your New Login Credentials'
+    );
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully',
+      emailSent: emailResult.success,
+      emailError: emailResult.error || null
+    });
   } catch (err) {
     next(err);
   }

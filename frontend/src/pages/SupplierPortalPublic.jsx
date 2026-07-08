@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { Upload, Download, CheckCircle, AlertCircle, RefreshCw, FileSpreadsheet, Building2, Package, ShieldCheck, Lock, LockOpen, CheckCheck, Clock } from 'lucide-react';
@@ -17,6 +17,7 @@ const SupplierPortalPublic = () => {
   const [base64Data, setBase64Data] = useState('');
   const [parsedData, setParsedData] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   // API URL helper
   const API_BASE = window.location.origin.includes('localhost')
@@ -149,6 +150,15 @@ const SupplierPortalPublic = () => {
           return;
         }
 
+        const rawPrice = (row) => {
+          const v = row['Purchase Price'] ?? row['purchase_price'] ?? row['Price'] ?? row['price'];
+          return (v === undefined || v === null || v === '') ? NaN : parseFloat(v);
+        };
+        const rawQty = (row) => {
+          const v = row['Quantity'] ?? row['quantity'] ?? row['Qty'] ?? row['qty'];
+          return (v === undefined || v === null || v === '') ? NaN : parseInt(v, 10);
+        };
+
         const mapped = jsonData.map((row) => ({
           name: row['Product Name'] || row['product_name'] || row['Product'] || row['Name'] || '',
           sku: row['SKU'] || row['sku'] || '',
@@ -156,17 +166,18 @@ const SupplierPortalPublic = () => {
           uom: row['Unit of Measure'] || row['unit_of_measure'] || row['UOM'] || row['uom'] || '',
           batch: row['Batch Number'] || row['batch_number'] || row['Batch'] || row['batch'] || '',
           expiry: row['Expiry Date'] || row['expiry_date'] || row['Expiry'] || row['expiry'] || '',
-          price: parseFloat(row['Purchase Price'] || row['purchase_price'] || row['Price'] || row['price'] || 0),
-          qty: parseInt(row['Quantity'] || row['quantity'] || row['Qty'] || row['qty'] || 0, 10),
+          price: rawPrice(row),
+          qty: rawQty(row),
         }));
 
-        const invalidRow = mapped.find(r => !r.name || !r.category || !r.uom || !r.batch || !r.expiry || isNaN(r.price) || isNaN(r.qty));
+        const invalidRow = mapped.find(r => !r.name || !r.category || !r.uom || !r.batch || !r.expiry || isNaN(r.price) || isNaN(r.qty) || r.price < 0 || r.qty <= 0);
         if (invalidRow) {
-          toast.error('Invalid template structure. Please ensure all rows contain Product Name, Category, UOM, Batch Number, Expiry Date, Price, and Quantity.');
-        } else {
-          toast.success(`${mapped.length} items parsed successfully!`);
+          toast.error('Invalid template structure. Please ensure every row has Product Name, Category, UOM, Batch Number, Expiry Date, a valid Price, and a Quantity greater than 0.');
+          setParsedData([]);
+          return;
         }
 
+        toast.success(`${mapped.length} items parsed successfully!`);
         setParsedData(mapped);
       } catch (err) {
         console.error('Error parsing excel:', err);
@@ -201,6 +212,7 @@ const SupplierPortalPublic = () => {
         setTokenVerified(false);
         setTokenInput('');
         setVerifiedToken('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
 
         // Check status to trigger closed interface
         setTimeout(() => {
@@ -445,6 +457,7 @@ const SupplierPortalPublic = () => {
                       )}
                     </p>
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept=".xlsx, .xls"
                       onChange={handleFileChange}
