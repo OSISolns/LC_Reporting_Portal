@@ -52,10 +52,20 @@ export default function SupplierPortalManager() {
         api.get('/clinical/inventory/supplier-portal/submissions')
       ]);
 
-      if (venRes.status === 'fulfilled' && venRes.value.data.success) setVendors(venRes.value.data.data || []);
-      if (mastRes.status === 'fulfilled' && mastRes.value.data.success) setMasterInventory(mastRes.value.data.data || []);
-      if (portRes.status === 'fulfilled' && portRes.value.data.success) setPortalSessions(portRes.value.sessions || []);
-      if (subRes.status === 'fulfilled' && subRes.value.data.success) setSubmissions(subRes.value.data.data || []);
+      if (venRes.status === 'fulfilled' && venRes.value?.data?.success) setVendors(venRes.value.data.data || []);
+      if (mastRes.status === 'fulfilled' && mastRes.value?.data?.success) setMasterInventory(mastRes.value.data.data || []);
+      if (portRes.status === 'fulfilled' && portRes.value?.data?.success) {
+        const sessions = portRes.value.data.data || [];
+        setPortalSessions(sessions.map(s => {
+          let requestedItems = s.items;
+          if (typeof s.items === 'string') {
+            try { requestedItems = JSON.parse(s.items); }
+            catch { requestedItems = []; }
+          }
+          return { ...s, requestedItems: requestedItems || [] };
+        }));
+      }
+      if (subRes.status === 'fulfilled' && subRes.value?.data?.success) setSubmissions(subRes.value.data.data || []);
 
     } catch (err) {
       console.error(err);
@@ -390,7 +400,7 @@ export default function SupplierPortalManager() {
                     </div>
                   )}
                   {setupVendorId && (
-                    <p className="text-[10px] text-emerald-600 font-bold">✓ Selected: {vendors.find(v => v.id == setupVendorId)?.name}</p>
+                    <p className="text-[10px] text-emerald-600 font-bold">✓ Selected: {vendors.find(v => String(v.id) === String(setupVendorId))?.name}</p>
                   )}
                 </div>
 

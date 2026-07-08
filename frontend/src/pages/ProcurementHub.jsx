@@ -365,8 +365,22 @@ export default function ProcurementHub() {
   const [tempReqItemUom, setTempReqItemUom] = useState('Unit');
 
   const handleReceiveStock = async (id) => {
-    // Stub for processing submission
-    toast.error('Supplier submissions functionality not fully implemented yet.');
+    setProcessingReceive(true);
+    try {
+      const res = await api.post(`/clinical/inventory/supplier-portal/submissions/${id}/receive`);
+      if (res.data.success) {
+        toast.success(res.data.message || 'Stock received and inventory successfully updated.');
+        setSelectedSubmission(null);
+        await loadData(true);
+      } else {
+        toast.error(res.data.message || 'Failed to receive stock.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to intake supplier stock.');
+    } finally {
+      setProcessingReceive(false);
+    }
   };
   const [showCreateReturnModal, setShowCreateReturnModal] = useState(false);
   const [returnVendorId, setReturnVendorId] = useState('');
@@ -634,7 +648,7 @@ export default function ProcurementHub() {
         // Populate inputs from existing quotes
         const inputs = {};
         const noBids = {};
-        res.data.data.quotes.forEach(q => {
+        (res.data.data.quotes || []).forEach(q => {
           inputs[`${q.rfq_item_id}_${q.rfq_supplier_id}`] = q.unit_price !== null ? q.unit_price : '';
           noBids[`${q.rfq_item_id}_${q.rfq_supplier_id}`] = q.no_bid === 1;
         });
@@ -643,7 +657,7 @@ export default function ProcurementHub() {
 
         // Populate award selections
         const awards = {};
-        res.data.data.awards.forEach(a => {
+        (res.data.data.awards || []).forEach(a => {
           awards[a.rfq_item_id] = {
             vendor_id: a.vendor_id,
             reason: a.reason,
@@ -690,23 +704,33 @@ export default function ProcurementHub() {
 
         // Auto-open supplier portals for invited vendors
         const itemsForPortal = rfqItems.map(item => ({
-          id: item.item_id || item.id,
+          id: item.item_id,
           name: item.item_name,
           quantity: item.quantity,
           unit: item.unit
         }));
 
-        const portalPromises = rfqInvitedVendors.map(vendorId =>
-          api.post('/clinical/inventory/supplier-portal/toggle', {
-            active: true,
-            vendorId: parseInt(vendorId, 10),
-            requestedItems: itemsForPortal
-          }).catch(err => console.error(`Failed to open portal for vendor ${vendorId}:`, err))
+        const portalResults = await Promise.allSettled(
+          rfqInvitedVendors.map(vendorId =>
+            api.post('/clinical/inventory/supplier-portal/toggle', {
+              active: true,
+              vendorId: parseInt(vendorId, 10),
+              requestedItems: itemsForPortal
+            })
+          )
         );
 
-        await Promise.all(portalPromises);
+        const failedPortals = portalResults
+          .map((result, idx) => ({ result, vendorId: rfqInvitedVendors[idx] }))
+          .filter(({ result }) => result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.data.success));
 
-        toast.success('RFQ Tender created & supplier portals opened.');
+        if (failedPortals.length > 0) {
+          const failedVendorIds = failedPortals.map(f => f.vendorId).join(', ');
+          toast.error(`RFQ created, but portals failed for vendors: ${failedVendorIds}. Open manually from Supplier Portal Manager.`, { duration: 8000 });
+        } else {
+          toast.success('RFQ Tender created & supplier portals opened.');
+        }
+
         setShowCreateRFQModal(false);
         // Clear form
         setRfqTitle('');
@@ -717,6 +741,7 @@ export default function ProcurementHub() {
       }
     } catch (err) {
       console.error(err);
+      toast.error('Failed to create RFQ: ' + (err.response?.data?.message || err.message));
       toast.error('Failed to create RFQ.');
     } finally {
       setSubmittingRFQ(false);
@@ -896,7 +921,11 @@ export default function ProcurementHub() {
       return;
     }
     const deptObj = departments.find(d => d.name?.toUpperCase() === customReqDept?.toUpperCase());
-    const department_id = deptObj ? deptObj.id : 1;
+    if (!deptObj) {
+      toast.error(`Could not resolve the "${customReqDept}" department. Please re-select a valid requesting department.`);
+      return;
+    }
+    const department_id = deptObj.id;
     try {
       const res = await api.post('/clinical/inventory/requisitions', {
         department_id,
@@ -940,12 +969,16 @@ export default function ProcurementHub() {
 
   const handleSaveQuotesSubmit = async (vendorId) => {
     if (!rfqDetails) return;
-    setSubmittingQuotes(true);
 
     const rfqId = rfqDetails.rfq.id;
     // Extract quotes only for this vendor
     const invitedSup = rfqDetails.suppliers.find(s => s.vendor_id === vendorId);
-    if (!invitedSup) return;
+    if (!invitedSup) {
+      toast.error('Selected supplier is not part of this RFQ. Please refresh and try again.');
+      return;
+    }
+
+    setSubmittingQuotes(true);
 
     const supplierQuotes = rfqDetails.items.map(item => {
       const key = `${item.id}_${invitedSup.id}`;
@@ -1098,10 +1131,11 @@ export default function ProcurementHub() {
                 active: true,
                 vendorId: po.vendor_id,
                 requestedItems: po.items.map(i => ({
+                  id: i.item_id || i.id,
                   name: i.item_name,
                   sku: i.sku || '',
                   category: i.category || '',
-                  unit_of_measure: i.unit_of_measure || '',
+                  unit: i.unit_of_measure || i.uom || 'pcs',
                   quantity: i.quantity || 0
                 }))
               });
@@ -1723,7 +1757,7 @@ export default function ProcurementHub() {
                               {l.label} <ArrowRight size={13} className="text-slate-300 group-hover:text-teal-500" />
                             </button>
                           ))}
-                          <Link to="/supplier-portal-manager" className="flex items-center justify-between py-2 hover:text-teal-700 transition-all group no-underline text-slate-600">Supplier Portal <ArrowUpRight size={13} className="text-slate-300 group-hover:text-teal-500" /></Link>
+                          <Link to="/supplier-portal-manager" className="flex items-center justify-between py-2 hover:text-teal-700 transition-all group no-underline text-slate-600">Supplier Portal Management <ArrowUpRight size={13} className="text-slate-300 group-hover:text-teal-500" /></Link>
                         </div>
                       </div>
                     </aside>
@@ -3822,12 +3856,15 @@ export default function ProcurementHub() {
                       type="button"
                       onClick={() => {
                         if (!tempRfqItemName.trim() || !tempRfqItemQty) return;
+                        // Look up item_id from masterInventory by name
+                        const selectedItem = masterInventory.find(item => item.name === tempRfqItemName.trim());
                         setRfqItems(prev => [...prev, {
                           line_no: prev.length + 1,
+                          item_id: selectedItem?.id,
                           item_name: tempRfqItemName,
                           quantity: parseFloat(tempRfqItemQty),
-                          unit: tempRfqItemUnit,
-                          quantity_label: `${tempRfqItemQty} ${tempRfqItemUnit}`
+                          unit: tempRfqItemUnit || selectedItem?.uom || 'pcs',
+                          quantity_label: `${tempRfqItemQty} ${tempRfqItemUnit || selectedItem?.uom || 'pcs'}`
                         }]);
                         setTempRfqItemName('');
                         setTempRfqItemQty('');

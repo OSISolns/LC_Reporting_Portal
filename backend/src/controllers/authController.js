@@ -3,6 +3,7 @@ const User = require('../models/user');
 const { logAction } = require('../middleware/audit');
 const generateToken = require('../utils/generateToken');
 const bcrypt = require('bcryptjs');
+const { decryptField } = require('../utils/crypto');
 
 exports.login = async (req, res, next) => {
   try {
@@ -113,7 +114,7 @@ exports.login = async (req, res, next) => {
         id: user.id,
         fullName: user.full_name,
         username: user.username,
-        email: user.email,
+        email: decryptField(user.email),
         role: user.role,
         mustChangePassword: user.must_change_password === 1,
         permissions: await Permission.getEffectivePermissions(user.id, user.role)
@@ -138,7 +139,7 @@ exports.getMe = async (req, res, next) => {
         id: user.id,
         fullName: user.full_name,
         username: user.username,
-        email: user.email,
+        email: decryptField(user.email),
         role: user.role,
         mustChangePassword: user.must_change_password === 1,
         permissions: await Permission.getEffectivePermissions(user.id, user.role)
@@ -183,7 +184,7 @@ exports.devLogin = async (req, res, next) => {
         id: user.id,
         fullName: user.full_name,
         username: user.username,
-        email: user.email,
+        email: decryptField(user.email),
         role: user.role,
         mustChangePassword: user.must_change_password === 1,
         permissions: await require('../models/permission').getEffectivePermissions(user.id, user.role)
