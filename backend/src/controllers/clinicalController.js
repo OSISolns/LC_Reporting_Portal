@@ -1130,23 +1130,36 @@ exports.saveInventoryBulk = async (req, res) => {
 // ─── Inventory: Get audit change logs ──────────────────────────────────────────
 exports.getInventoryChangeLogs = async (req, res) => {
   try {
-    const { date, month_year } = req.query;
+    const { date, month_year, consumed_only } = req.query;
     let sql = `
       SELECT l.*, u.full_name as user_full_name 
       FROM nursing_stock_change_logs l
       LEFT JOIN users u ON LOWER(l.updated_by) = LOWER(u.username)
     `;
     let params = [];
+    let conditions = [];
 
     if (date) {
-      sql += ' WHERE date(l.updated_at) = $1';
+      conditions.push(`date(l.updated_at) = $${params.length + 1}`);
       params.push(date);
     } else if (month_year) {
-      sql += ' WHERE l.month_year = $1';
+      conditions.push(`l.month_year = $${params.length + 1}`);
       params.push(month_year);
     }
 
+    if (consumed_only === 'true') {
+      conditions.push('(l.new_consumed > l.old_consumed OR l.new_consumed_obs1 > l.old_consumed_obs1 OR l.new_consumed_minor > l.old_consumed_minor)');
+    }
+
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
     sql += ' ORDER BY l.updated_at DESC';
+
+    if (consumed_only !== 'true') {
+      sql += ' LIMIT 3000';
+    }
 
     const { rows } = await db.query(sql, params);
     const data = rows.map(row => ({
