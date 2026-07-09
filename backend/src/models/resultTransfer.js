@@ -21,15 +21,15 @@ class ResultTransfer {
     const { rows } = await db.query(
       `INSERT INTO results_transfers (
         transfer_date, old_sid, new_sid, reason,
-        created_by, status, is_mock
-      ) VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+        created_by, status
+      ) VALUES ($1, $2, $3, $4, $5, 'pending')
       RETURNING *`,
-      [transferDate, oldSid, newSid, reason, userId, data.isReviewer ? 1 : 0]
+      [transferDate, oldSid, newSid, reason, userId]
     );
     return rows[0];
   }
 
-  static async getAll(filters = {}, user = null) {
+  static async getAll(filters = {}) {
     let query = `
       SELECT t.*,
              u1.full_name AS creator_name,
@@ -42,11 +42,6 @@ class ResultTransfer {
       WHERE 1=1
     `;
     const params = [];
-
-    // Reviewer Isolation
-    if (user && user.role === 'reviewer') {
-      query += ` AND t.is_mock = 1`;
-    }
 
     if (filters.status) {
       params.push(filters.status);
@@ -63,7 +58,7 @@ class ResultTransfer {
     return rows;
   }
 
-  static async findById(id, user = null) {
+  static async findById(id) {
     let query = `SELECT t.*,
               u1.full_name AS creator_name,
               u2.full_name AS reviewer_name,
@@ -77,54 +72,46 @@ class ResultTransfer {
        WHERE t.id = $1`;
     const params = [id];
 
-    if (user && user.role === 'reviewer') {
-      query += ` AND t.is_mock = 1`;
-    }
-
     const { rows } = await db.query(query, params);
     return rows[0];
   }
 
-  static async review(id, userId, user = null) {
-    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
+  static async review(id, userId) {
     const { rows } = await db.query(
       `UPDATE results_transfers
        SET status = 'reviewed', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2 AND status = 'pending'${reviewerGuard}
+       WHERE id = $2 AND status = 'pending'
        RETURNING *`,
       [userId, id]
     );
     return rows[0];
   }
 
-  static async approve(id, userId, editedByName, user = null) {
-    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
+  static async approve(id, userId, editedByName) {
     const { rows } = await db.query(
       `UPDATE results_transfers
        SET status = 'approved', approved_by = $1, edited_by_name = $2, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3 AND status = 'reviewed'${reviewerGuard}
+       WHERE id = $3 AND status = 'reviewed'
        RETURNING *`,
       [userId, editedByName, id]
     );
     return rows[0];
   }
 
-  static async reject(id, userId, comment, user = null) {
-    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
+  static async reject(id, userId, comment) {
     const { rows } = await db.query(
       `UPDATE results_transfers
        SET status = 'rejected', rejected_by = $1, rejection_comment = $2, rejected_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3 AND status IN ('pending','reviewed')${reviewerGuard}
+       WHERE id = $3 AND status IN ('pending','reviewed')
        RETURNING *`,
       [userId, comment, id]
     );
     return rows[0];
   }
 
-  static async delete(id, user = null) {
-    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
+  static async delete(id) {
     const { rows } = await db.query(
-      `DELETE FROM results_transfers WHERE id = $1 AND status = 'pending'${reviewerGuard} RETURNING *`,
+      `DELETE FROM results_transfers WHERE id = $1 AND status = 'pending' RETURNING *`,
       [id]
     );
     return rows[0];

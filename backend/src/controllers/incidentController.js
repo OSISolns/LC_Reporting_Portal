@@ -7,7 +7,7 @@ const cache = require('../utils/cache');
 
 exports.createReport = async (req, res, next) => {
   try {
-    const report = await Incident.create({ ...req.body, isReviewer: req.user.role === 'reviewer' }, req.user.id);
+    const report = await Incident.create(req.body, req.user.id);
     try { await logAction(req, 'CREATE', 'incident_report', report.id, { type: report.incident_type }); } catch (e) {}
     
     // Notify Admins, Supervisors, and IT/QA Team
@@ -58,7 +58,7 @@ exports.approveReport = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'HSFP safety assessment and comments are required before approving.' });
     }
 
-    const report = await Incident.approve(req.params.id, req.user.id, req.body, req.user);
+    const report = await Incident.approve(req.params.id, req.user.id, req.body);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found or not in pending status.' });
 
     // Notify management
@@ -89,7 +89,7 @@ exports.approveReport = async (req, res, next) => {
 
 exports.getReportById = async (req, res, next) => {
   try {
-    const report = await Incident.findById(req.params.id, req.user);
+    const report = await Incident.findById(req.params.id);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
     res.json({ success: true, data: report });
   } catch (err) {
@@ -99,7 +99,7 @@ exports.getReportById = async (req, res, next) => {
 
 exports.getPDF = async (req, res, next) => {
   try {
-    const report = await Incident.findById(req.params.id, req.user);
+    const report = await Incident.findById(req.params.id);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
     
     res.setHeader('Content-Type', 'application/pdf');
@@ -113,7 +113,7 @@ exports.getPDF = async (req, res, next) => {
 
 exports.deleteReport = async (req, res, next) => {
   try {
-    const existing = await Incident.findById(req.params.id, req.user);
+    const existing = await Incident.findById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: 'Report not found.' });
     if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending reports can be deleted.' });
 
@@ -121,7 +121,7 @@ exports.deleteReport = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own reports.' });
     }
 
-    const report = await Incident.delete(req.params.id, req.user);
+    const report = await Incident.delete(req.params.id);
     if (!report) return res.status(400).json({ success: false, message: 'Report could not be deleted.' });
     await logAction(req, 'DELETE', 'incident_report', req.params.id);
     cache.invalidatePattern('incident:list');

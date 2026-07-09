@@ -252,6 +252,7 @@ export default function ProcurementHub() {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [supplierLeaderboard, setSupplierLeaderboard] = useState([]);
   const [expiringContracts, setExpiringContracts] = useState([]);
+  const [deptUsage, setDeptUsage] = useState(null);
 
   // ── Catalog State ────────────────────────────────────────────────────────
   const [catalog, setCatalog] = useState([]);
@@ -450,16 +451,18 @@ export default function ProcurementHub() {
   const loadAnalytics = async () => {
     setLoadingAnalytics(true);
     try {
-      const [analyticsRes, leaderRes, contractRes, invoiceAnaRes] = await Promise.allSettled([
+      const [analyticsRes, leaderRes, contractRes, invoiceAnaRes, deptUsageRes] = await Promise.allSettled([
         api.get(`/clinical/inventory/analytics/spend-by-department?year=${analyticsYear}`),
         api.get('/clinical/inventory/analytics/supplier-leaderboard'),
         api.get('/clinical/inventory/analytics/expiring-contracts'),
         api.get('/clinical/inventory/invoices/analytics'),
+        api.get('/clinical/inventory/analytics/department-usage?months=12'),
       ]);
       if (analyticsRes.status === 'fulfilled' && analyticsRes.value.data.success) setAnalyticsData(analyticsRes.value.data.data);
       if (leaderRes.status === 'fulfilled' && leaderRes.value.data.success) setSupplierLeaderboard(leaderRes.value.data.data || []);
       if (contractRes.status === 'fulfilled' && contractRes.value.data.success) setExpiringContracts(contractRes.value.data.data || []);
       if (invoiceAnaRes.status === 'fulfilled' && invoiceAnaRes.value.data.success) setInvoiceAnalytics(invoiceAnaRes.value.data.data);
+      if (deptUsageRes.status === 'fulfilled' && deptUsageRes.value.data.success) setDeptUsage(deptUsageRes.value.data.data);
     } catch (e) { console.error(e); }
     finally { setLoadingAnalytics(false); }
   };
@@ -3077,6 +3080,90 @@ export default function ProcurementHub() {
                               </div>
                             )}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Department Usage & Requisition Forecast */}
+                      {deptUsage && deptUsage.departments && (
+                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                              <TrendingUp size={16} className="text-teal-600" /> Department Usage & Requisition Forecast
+                            </h4>
+                            <span className="text-[10px] font-bold text-slate-400">Last {deptUsage.months_back} months • predicts next stock request</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 font-semibold mb-5">
+                            Forecast uses each department's historical requisition cadence. Overdue departments are highlighted for proactive restocking.
+                          </p>
+
+                          {deptUsage.departments.length === 0 ? (
+                            <p className="text-xs text-slate-400 py-8 text-center">No requisition history to analyze yet.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              {deptUsage.departments.map((d) => {
+                                const maxQty = Math.max(1, ...d.monthly_series.map(m => m.qty));
+                                const confColors = {
+                                  high: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                  medium: 'bg-amber-50 text-amber-700 border-amber-200',
+                                  low: 'bg-orange-50 text-orange-700 border-orange-200',
+                                  insufficient: 'bg-slate-100 text-slate-500 border-slate-200',
+                                };
+                                const forecastLabel = d.next_expected_date
+                                  ? (d.overdue
+                                      ? `Overdue by ${Math.abs(d.days_until_next)} day${Math.abs(d.days_until_next) === 1 ? '' : 's'}`
+                                      : `~${d.days_until_next} day${d.days_until_next === 1 ? '' : 's'} (${new Date(d.next_expected_date).toLocaleDateString()})`)
+                                  : 'Not enough history';
+                                return (
+                                  <div key={d.department_id} className={`border rounded-2xl p-4 ${d.overdue ? 'border-rose-200 bg-rose-50/40' : 'border-slate-150 bg-slate-50/40'}`}>
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                      <div>
+                                        <p className="font-black text-slate-800 text-sm leading-tight">{d.department_name}</p>
+                                        <p className="text-[10px] text-slate-400 font-bold mt-0.5">
+                                          {d.total_requisitions} reqs • {Number(d.total_quantity).toLocaleString()} units total
+                                        </p>
+                                      </div>
+                                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${confColors[d.confidence] || confColors.insufficient}`}>
+                                        {d.confidence === 'insufficient' ? 'No forecast' : `${d.confidence} conf`}
+                                      </span>
+                                    </div>
+
+                                    {/* Monthly usage sparkbars (present + past) */}
+                                    <div className="flex items-end justify-between gap-0.5 h-14 mb-2">
+                                      {d.monthly_series.map((m, i) => (
+                                        <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                                          <div
+                                            className={`w-full rounded-t ${m.qty > 0 ? (d.overdue ? 'bg-rose-300' : 'bg-teal-400') : 'bg-slate-200'} transition-all`}
+                                            style={{ height: `${Math.max(4, (m.qty / maxQty) * 100)}%` }}
+                                            title={`${m.month}: ${m.qty} units across ${m.count} req(s)`}
+                                          />
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="flex justify-between text-[8px] font-bold text-slate-300 mb-3">
+                                      <span>{d.monthly_series[0]?.month}</span>
+                                      <span>{d.monthly_series[d.monthly_series.length - 1]?.month}</span>
+                                    </div>
+
+                                    {/* Forecast row */}
+                                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-150">
+                                      <div>
+                                        <p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Avg cycle</p>
+                                        <p className="text-xs font-black text-slate-700">{d.avg_interval_days != null ? `${d.avg_interval_days}d` : '—'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Last req</p>
+                                        <p className="text-xs font-black text-slate-700">{d.last_requisition ? new Date(d.last_requisition).toLocaleDateString() : '—'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Next expected</p>
+                                        <p className={`text-xs font-black ${d.overdue ? 'text-rose-600' : 'text-teal-700'}`}>{forecastLabel}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
 

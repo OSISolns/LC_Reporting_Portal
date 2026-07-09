@@ -50,7 +50,6 @@ model cancellation_requests {
   created_at                                     DateTime? @default(now())
   updated_at                                     DateTime? @default(now())
   billed_by                                      Int?
-  is_mock                                        Int?      @default(0)
   original_receipt_amount                        Float?
   rectified_receipt_amount                       Float?
   users_cancellation_requests_rejected_byTousers users?    @relation("cancellation_requests_rejected_byTousers", fields: [rejected_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -79,7 +78,6 @@ model clinical_observations {
   created_by          Int?
   created_at          DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
   updated_at          DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
-  is_mock             Int?      @default(0)
   users               users?    @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([updated_at(sort: Desc)], map: "idx_co_updated_at")
@@ -188,7 +186,6 @@ model incident_reports {
   rca_policy                                String?
   rca_verification_json                     String?
   corrective_actions_json                   String?
-  is_mock                                   Int?      @default(0)
   users_incident_reports_approved_byTousers users?    @relation("incident_reports_approved_byTousers", fields: [approved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_incident_reports_reviewed_byTousers users?    @relation("incident_reports_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_incident_reports_created_byTousers  users?    @relation("incident_reports_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -389,7 +386,6 @@ model refund_requests {
   rejected_at                              String?
   updated_at                               String? @default("DATETIME('now')")
   billed_by                                Int?
-  is_mock                                  Int?    @default(0)
   users_refund_requests_rejected_byTousers users?  @relation("refund_requests_rejected_byTousers", fields: [rejected_by], references: [id], onUpdate: NoAction)
   users_refund_requests_approved_byTousers users?  @relation("refund_requests_approved_byTousers", fields: [approved_by], references: [id], onUpdate: NoAction)
   users_refund_requests_verified_byTousers users?  @relation("refund_requests_verified_byTousers", fields: [verified_by], references: [id], onUpdate: NoAction)
@@ -446,7 +442,6 @@ model results_transfers {
   approved_at                                DateTime?
   rejected_at                                DateTime?
   updated_at                                 DateTime? @default(now())
-  is_mock                                    Int?      @default(0)
   users_results_transfers_rejected_byTousers users?    @relation("results_transfers_rejected_byTousers", fields: [rejected_by], references: [id], onUpdate: NoAction)
   users_results_transfers_approved_byTousers users?    @relation("results_transfers_approved_byTousers", fields: [approved_by], references: [id], onUpdate: NoAction)
   users_results_transfers_reviewed_byTousers users?    @relation("results_transfers_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)

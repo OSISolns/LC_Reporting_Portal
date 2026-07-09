@@ -17,8 +17,6 @@ Two enforced layers (see [RBAC](rbac.md) for detail):
 1. **Role guards** — `roleGuard()` / `authorizeRoles()` reject disallowed roles with `403`. `authorizeRoles` additionally raises a **`SECURITY_VIOLATION`** audit event and **notifies all admins** in-app when someone attempts an unauthorised module.
 2. **Access Control Matrix** — fine-grained `module × action` checks with role defaults and per-user overrides.
 
-**Reviewer isolation:** the `reviewer` (external auditor) role is confined to `is_mock = 1` rows at the SQL level, so auditors can exercise the system without ever reading or mutating real patient/financial data.
-
 **Segregation of duties:** initiators of financial requests cannot approve them; approval requires a distinct executive role, and each transition is a separate audited action.
 
 ## Data-at-rest encryption

@@ -61,7 +61,6 @@ const SQL_OVERRIDES = {
       reviewed_by              INTEGER REFERENCES users(id) ON DELETE SET NULL,
       approved_by              INTEGER REFERENCES users(id) ON DELETE SET NULL,
       rejected_by              INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      is_mock                  INTEGER DEFAULT 0,
       created_at               DATETIME DEFAULT CURRENT_TIMESTAMP,
       reviewed_at              DATETIME,
       approved_at              DATETIME,

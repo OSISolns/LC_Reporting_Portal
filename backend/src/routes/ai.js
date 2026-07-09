@@ -13,7 +13,7 @@ router.use(authMiddleware);
 // below -- left on the existing hardcoded gate, not part of the new
 // "AI Insights" module, since these are in-workflow drafting aids, not a
 // distinct navigable page)
-const CLINICAL_ROLES = ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'medical_director'];
+const CLINICAL_ROLES = ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'medical_director'];
 
 // The AI Insights page (management analytics): view = stats/classify,
 // download = executive briefing

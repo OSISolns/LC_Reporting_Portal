@@ -20,7 +20,7 @@ const ImagingHub = () => {
   const available = useMemo(
     () => TABS.filter((t) => t.perm === 'view' || hasPermission('imaging', t.perm)),
     // hasPermission is stable per user; recompute when role changes
-    [user?.role] // eslint-disable-line react-hooks/exhaustive-deps
+    [user?.role]
   );
 
   // Role-aware default landing tab.
@@ -38,7 +38,7 @@ const ImagingHub = () => {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <span className="text-indigo-600">LUMINA</span> Imaging Portal
+          <span className="text-indigo-600">LUMINA</span> Imaging Hub
         </h1>
         <p className="text-sm text-slate-500">Radiology worklist, acquisition and daily exam logging.</p>
       </div>

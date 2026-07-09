@@ -67,7 +67,7 @@ Incident/sentinel-event **safety reports** distinct from the incident module —
 
 - Create, list, view, delete safety reports; per-report PDF.
 - Includes the **Risk Register** and **Infection Control Tracker** views.
-- Restricted to HSFP, Admin, Reviewer, Deputy COO.
+- Restricted to HSFP, Admin, Deputy COO.
 
 ### Incidents
 General incident & sentinel event reporting with RCA (root-cause analysis).
@@ -81,7 +81,7 @@ Institutional compliance tracking.
 
 - **Audits**, **licenses**, and **facility certifications** with expiry tracking.
 - Full CRUD for licenses and facility certs; audit updates.
-- Restricted to Admin, HSFP, Reviewer.
+- Restricted to Admin, HSFP.
 
 ## Inventory, procurement & suppliers
 
@@ -138,4 +138,4 @@ A **public** (token-gated) portal for suppliers plus an internal manager view.
 
 ## Role-specific dashboards & hubs (frontend)
 
-The frontend ships tailored landing experiences per role, e.g. `DoctorDashboard`, `ManagementDashboard`, `QADashboard`, `HSFPDashboard`, `ITDashboard`, `StockManagerDashboard`, `ReviewerDashboard`, `StaffDashboard`, plus the module "hubs" (`NursingHub`, `DoctorHub`, `CentralStoreHub`, `ProcurementHub`). The generic `Dashboard` routes users to the right home based on their role.
+The frontend ships tailored landing experiences per role, e.g. `DoctorDashboard`, `ManagementDashboard`, `QADashboard`, `HSFPDashboard`, `ITDashboard`, `StockManagerDashboard`, `StaffDashboard`, plus the module "hubs" (`NursingHub`, `DoctorHub`, `CentralStoreHub`, `ProcurementHub`). The generic `Dashboard` routes users to the right home based on their role.

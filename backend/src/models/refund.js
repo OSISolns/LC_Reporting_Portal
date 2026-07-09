@@ -32,8 +32,8 @@ class Refund {
         momo_code, total_amount_paid, amount_to_be_refunded,
         amount_paid_by, original_receipt_number,
         initial_transaction_date, reason_for_refund,
-        created_by, status, billed_by, is_mock
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending',$14,$15)
+        created_by, status, billed_by
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending',$14)
       RETURNING *`,
       [
         patientFullName, pidNumber, sidNumber,
@@ -41,14 +41,13 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        userId, billedBy || null,
-        data.isReviewer ? 1 : 0
+        userId, billedBy || null
       ]
     );
     return rows[0];
   }
 
-  static async getAll(filters = {}, user = null) {
+  static async getAll(filters = {}) {
     let query = `
       SELECT r.*,
              u1.full_name AS creator_name,
@@ -69,11 +68,6 @@ class Refund {
       WHERE 1=1
     `;
     const params = [];
-
-    // Reviewer Isolation
-    if (user && user.role === 'reviewer') {
-      query += ` AND r.is_mock = 1`;
-    }
 
     if (filters.status) {
       params.push(filters.status);
@@ -97,7 +91,7 @@ class Refund {
     return rows;
   }
 
-  static async findById(id, user = null) {
+  static async findById(id) {
     let query = `SELECT r.*,
               u1.full_name AS creator_name,
               u2.full_name AS verifier_name,
@@ -115,54 +109,46 @@ class Refund {
        WHERE r.id = $1`;
     const params = [id];
 
-    if (user && user.role === 'reviewer') {
-      query += ` AND r.is_mock = 1`;
-    }
-
     const { rows } = await db.query(query, params);
     return rows[0];
   }
 
-  static async verify(id, userId, user = null) {
-    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
+  static async verify(id, userId) {
     const { rows } = await db.query(
       `UPDATE refund_requests
        SET status = 'verified', verified_by = $1, verified_at = NOW(), updated_at = NOW()
-       WHERE id = $2 AND status = 'pending'${reviewerGuard}
+       WHERE id = $2 AND status = 'pending'
        RETURNING *`,
       [userId, id]
     );
     return rows[0];
   }
 
-  static async approve(id, userId, user = null) {
-    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
+  static async approve(id, userId) {
     const { rows } = await db.query(
       `UPDATE refund_requests
        SET status = 'approved', approved_by = $1, approved_at = NOW(), updated_at = NOW()
-       WHERE id = $2 AND status = 'verified'${reviewerGuard}
+       WHERE id = $2 AND status = 'verified'
        RETURNING *`,
       [userId, id]
     );
     return rows[0];
   }
 
-  static async reject(id, userId, comment, user = null) {
-    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
+  static async reject(id, userId, comment) {
     const { rows } = await db.query(
       `UPDATE refund_requests
        SET status = 'rejected', rejected_by = $1, rejection_comment = $2, rejected_at = NOW(), updated_at = NOW()
-       WHERE id = $3 AND status IN ('pending','verified')${reviewerGuard}
+       WHERE id = $3 AND status IN ('pending','verified')
        RETURNING *`,
       [userId, comment, id]
     );
     return rows[0];
   }
 
-  static async delete(id, user = null) {
-    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
+  static async delete(id) {
     const { rows } = await db.query(
-      `DELETE FROM refund_requests WHERE id = $1 AND status = 'pending'${reviewerGuard} RETURNING *`,
+      `DELETE FROM refund_requests WHERE id = $1 AND status = 'pending' RETURNING *`,
       [id]
     );
     return rows[0];

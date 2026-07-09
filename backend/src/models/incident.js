@@ -13,14 +13,13 @@ class Incident {
       `INSERT INTO incident_reports (
         incident_type, department, area_of_incident, names_involved,
         pid_number, description, contributing_factors,
-        immediate_actions, prevention_measures, created_by, status, is_mock
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', $11)
+        immediate_actions, prevention_measures, created_by, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending')
       RETURNING *`,
       [
         incidentType, department, areaOfIncident, namesInvolved,
         pidNumber, description, contributingFactors,
-        immediateActions, preventionMeasures, userId,
-        data.isReviewer ? 1 : 0
+        immediateActions, preventionMeasures, userId
       ]
     );
     return rows[0];
@@ -37,17 +36,9 @@ class Incident {
     const params = [];
 
     // Access control: regular users only see their own reports
-    if (user && !['coo', 'chairman', 'deputy_coo', 'admin', 'it_officer', 'principal_cashier', 'sales_manager', 'hsfp', 'reviewer'].includes(user.role)) {
+    if (user && !['coo', 'chairman', 'deputy_coo', 'admin', 'it_officer', 'principal_cashier', 'sales_manager', 'hsfp'].includes(user.role)) {
       params.push(user.id);
       query += ` AND i.created_by = $${params.length}`;
-    }
-
-    // Reviewer Isolation: ONLY see mock data
-    if (user && user.role === 'reviewer') {
-      query += ` AND i.is_mock = 1`;
-    } else {
-      // Non-reviewers should generally NOT see mock data in production lists (optional but cleaner)
-      // query += ` AND i.is_mock = 0`; 
     }
 
     if (filters.status) {
@@ -68,7 +59,7 @@ class Incident {
     return rows;
   }
 
-  static async findById(id, user = null) {
+  static async findById(id) {
     let query = `SELECT i.*,
               u.full_name as creator_name,
               a.full_name as approver_name
@@ -78,15 +69,11 @@ class Incident {
        WHERE i.id = $1`;
     const params = [id];
 
-    if (user && user.role === 'reviewer') {
-      query += ` AND i.is_mock = 1`;
-    }
-
     const { rows } = await db.query(query, params);
     return rows[0];
   }
 
-  static async approve(id, approverId, data, user = null) {
+  static async approve(id, approverId, data) {
     const {
       comments,
       rca_environment,
@@ -96,7 +83,6 @@ class Incident {
       rca_verification_json,
       corrective_actions_json
     } = data;
-    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
 
     const { rows } = await db.query(
       `UPDATE incident_reports
@@ -111,7 +97,7 @@ class Incident {
            rca_verification_json = $7,
            corrective_actions_json = $8,
            updated_at = NOW()
-       WHERE id = $9 AND status = 'pending'${reviewerGuard}
+       WHERE id = $9 AND status = 'pending'
        RETURNING *`,
       [
         approverId,
@@ -128,10 +114,9 @@ class Incident {
     return rows[0];
   }
 
-  static async delete(id, user = null) {
-    const reviewerGuard = (user && user.role === 'reviewer') ? ' AND is_mock = 1' : '';
+  static async delete(id) {
     const { rows } = await db.query(
-      `DELETE FROM incident_reports WHERE id = $1 AND status = 'pending'${reviewerGuard} RETURNING *`,
+      `DELETE FROM incident_reports WHERE id = $1 AND status = 'pending' RETURNING *`,
       [id]
     );
     return rows[0];

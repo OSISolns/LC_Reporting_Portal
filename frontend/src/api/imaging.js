@@ -3,6 +3,9 @@ import api from './axios';
 // Reference data
 export const getModalities = () => api.get('/imaging/modalities');
 
+// Manager analytics dashboard
+export const getImagingDashboard = (months = 12) => api.get('/imaging/dashboard', { params: { months } });
+
 // Daily exam board (the 4 units)
 export const getDailyBoard = (date) => api.get('/imaging/daily-board', { params: { date } });
 export const getDailyRegister = (date, modality) => api.get('/imaging/daily-register', { params: { date, modality } });

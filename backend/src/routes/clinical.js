@@ -12,7 +12,7 @@ router.post('/inventory/supplier-portal/verify-token', clinicalController.verify
 router.post('/inventory/supplier-portal/upload', clinicalController.supplierPortalUpload);
 
 router.use(authenticateToken);
-router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'chef-nurse', 'deputy_coo', 'stock-manager', 'pa', 'medical_director', 'procurement-manager']));
+router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_coo', 'stock-manager', 'pa', 'medical_director', 'procurement-manager']));
 
 // --- Procurement Manager Dashboard (module: procurement) ---
 router.get('/procurement/dashboard', checkPermission('procurement', 'view'), clinicalController.getProcurementDashboard);
@@ -55,6 +55,11 @@ router.post('/inventory/supplier-portal/submissions/:id/receive', checkPermissio
 // --- Stock Management Relational Routes (module: inventory -- Central Store / Master Module) ---
 router.get('/inventory/master', checkPermission('inventory', 'view'), clinicalController.getmasterInventory);
 router.get('/inventory/distributed-stock', checkPermission('inventory', 'view'), clinicalController.getDistributedStock);
+
+// Consumables consumption log (syncs with Stock Manager via department_stock)
+router.get('/inventory/consumables', checkPermission('inventory', 'view'), clinicalController.getConsumablesLog);
+router.get('/inventory/consumables/summary', checkPermission('inventory', 'view'), clinicalController.getConsumablesSummary);
+router.post('/inventory/consumables', checkPermission('inventory', 'edit'), clinicalController.logConsumable);
 router.post('/inventory/master', checkPermission('inventory', 'create'), clinicalController.createmasterInventory);
 router.put('/inventory/master/:id', checkPermission('inventory', 'edit'), clinicalController.updatemasterInventory);
 router.delete('/inventory/master/:id', checkPermission('inventory', 'delete'), clinicalController.deletemasterInventory);
@@ -107,7 +112,7 @@ router.post('/inventory/sync-central-stock', checkPermission('daily_stock', 'edi
 // /inventory/items is a shared reference lookup used broadly (nursing MAR,
 // e-prescriptions autocomplete) -- left on its existing role list rather
 // than folded into daily_stock, so prescribing roles keep access.
-router.get('/inventory/items', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'reviewer', 'medical_director', 'pa', 'stock-manager', 'procurement-manager']), clinicalController.getInventoryItems);
+router.get('/inventory/items', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'medical_director', 'pa', 'stock-manager', 'procurement-manager']), clinicalController.getInventoryItems);
 router.post('/inventory/bulk', checkPermission('daily_stock', 'edit'), clinicalController.saveInventoryBulk);
 router.get('/inventory/deleted-items', checkPermission('daily_stock', 'view'), clinicalController.getDeletedItems);
 router.post('/inventory/deleted-items', checkPermission('daily_stock', 'edit'), clinicalController.saveDeletedItems);
@@ -165,5 +170,6 @@ router.put('/inventory/catalog/:id/toggle', checkPermission('procurement', 'edit
 
 // Analytics
 router.get('/inventory/analytics/spend-by-department', checkPermission('procurement', 'view'), clinicalController.getSpendByDepartment);
+router.get('/inventory/analytics/department-usage', checkPermission('procurement', 'view'), clinicalController.getDepartmentUsageAnalytics);
 router.get('/inventory/analytics/supplier-leaderboard', checkPermission('procurement', 'view'), clinicalController.getSupplierLeaderboard);
 router.get('/inventory/analytics/expiring-contracts', checkPermission('procurement', 'view'), clinicalController.getExpiringContracts);

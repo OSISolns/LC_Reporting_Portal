@@ -14,7 +14,7 @@ The portal digitises the day-to-day operational paperwork of a multi-department 
 At a glance:
 
 - **~20 functional modules** (finance, clinical, nursing, inventory, procurement, compliance, safety, IT, HR/performance).
-- **19 roles** governed by a configurable, per-user-overridable Access Control Matrix.
+- **18 roles** governed by a configurable, per-user-overridable Access Control Matrix.
 - **53 database tables** on Turso (cloud SQLite / libSQL).
 - **Field-level AES-256-GCM encryption** for all patient-identifying and sensitive data.
 - **High-fidelity PDF** report/voucher generation and **Excel** exports.
@@ -29,7 +29,7 @@ At a glance:
 |---|---|
 | [Architecture](architecture.md) | System topology, request lifecycle, tech stack, repo layout, runtime model |
 | [Modules & Features](modules.md) | Every functional area, its workflow, state machine, and roles |
-| [Roles & Permissions (RBAC)](rbac.md) | The 19 roles, the Access Control Matrix, per-user overrides, reviewer isolation |
+| [Roles & Permissions (RBAC)](rbac.md) | The 18 roles, the Access Control Matrix, and per-user overrides |
 | [Data Model](data-model.md) | Database engine, the 53 tables by domain, field-level encryption |
 | [API Reference](api-reference.md) | REST endpoints grouped by module, auth, conventions |
 | [Security](security.md) | Auth, encryption, audit logging, rate limiting, CORS, hardening |

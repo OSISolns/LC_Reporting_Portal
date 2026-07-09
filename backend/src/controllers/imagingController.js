@@ -59,14 +59,14 @@ exports.scheduleStudy = async (req, res, next) => {
 // ── Worklist / list ────────────────────────────────────────────────────────────
 exports.listStudies = async (req, res, next) => {
   try {
-    const rows = await ImagingStudy.list(req.query, req.user);
+    const rows = await ImagingStudy.list(req.query);
     res.json({ success: true, data: rows });
   } catch (err) { next(err); }
 };
 
 exports.getStudy = async (req, res, next) => {
   try {
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
     res.json({ success: true, data: study });
   } catch (err) { next(err); }
@@ -109,7 +109,7 @@ exports.completeAcquisition = (req, res, next) =>
 
 exports.cancelStudy = async (req, res, next) => {
   try {
-    const study = await ImagingStudy.cancel(req.params.id, req.user);
+    const study = await ImagingStudy.cancel(req.params.id);
     if (!study) {
       return res.status(409).json({ success: false, message: 'Only scheduled or checked-in studies can be cancelled.' });
     }
@@ -122,7 +122,7 @@ exports.cancelStudy = async (req, res, next) => {
 exports.dailyBoard = async (req, res, next) => {
   try {
     const date = req.query.date || new Date().toISOString().slice(0, 10);
-    const counts = await ImagingStudy.dailyCounts(date, req.user);
+    const counts = await ImagingStudy.dailyCounts(date);
 
     // Ensure all 4 canonical units appear even with zero exams.
     const byModality = Object.fromEntries(counts.map((c) => [c.modality, c]));
@@ -160,8 +160,160 @@ exports.dailyRegister = async (req, res, next) => {
   try {
     const date = req.query.date || new Date().toISOString().slice(0, 10);
     const modality = req.query.modality || null;
-    const rows = await ImagingStudy.dailyRegister(date, modality, req.user);
+    const rows = await ImagingStudy.dailyRegister(date, modality);
     res.json({ success: true, data: { date, modality, entries: rows } });
+  } catch (err) { next(err); }
+};
+
+// ── Manager analytics dashboard ────────────────────────────────────────────────
+// Aggregates operational KPIs, modality utilization, report turnaround time and
+// 12-month volume trends for the imaging department overview.
+exports.dashboard = async (req, res, next) => {
+  try {
+    const monthsBack = Math.min(Math.max(parseInt(req.query.months || '12', 10) || 12, 3), 24);
+    const today = new Date().toISOString().slice(0, 10);
+
+    // 1. Overall status funnel (all-time, excluding cancelled from "active" view)
+    const { rows: statusRows } = await db.query(
+      `SELECT status, COUNT(*) AS count FROM imaging_studies GROUP BY status`
+    );
+    const statusCounts = Object.fromEntries(statusRows.map((r) => [r.status, Number(r.count)]));
+
+    // 2. KPI headline numbers
+    const totalExams = statusRows.reduce((s, r) => s + (r.status !== 'cancelled' ? Number(r.count) : 0), 0);
+    const reported = (statusCounts.reported || 0) + (statusCounts.verified || 0);
+    const acquired = statusCounts.acquired || 0; // acquired but not yet reported = reporting backlog
+    const inProgress = (statusCounts.scheduled || 0) + (statusCounts.checked_in || 0) + (statusCounts.in_progress || 0);
+    const cancelled = statusCounts.cancelled || 0;
+
+    // 3. Today snapshot
+    const { rows: todayRows } = await db.query(
+      `SELECT COUNT(*) AS total,
+              SUM(CASE WHEN status IN ('acquired','reported','verified') THEN 1 ELSE 0 END) AS acquired,
+              SUM(CASE WHEN status IN ('reported','verified') THEN 1 ELSE 0 END) AS reported
+         FROM imaging_studies
+        WHERE date(COALESCE(acquired_at, scheduled_at, created_at)) = date($1)
+          AND status != 'cancelled'`,
+      [today]
+    );
+    const todaySnapshot = {
+      total: Number(todayRows[0]?.total || 0),
+      acquired: Number(todayRows[0]?.acquired || 0),
+      reported: Number(todayRows[0]?.reported || 0),
+    };
+
+    // 4. Modality utilization (all-time, non-cancelled)
+    const { rows: modRows } = await db.query(
+      `SELECT modality,
+              COUNT(*) AS total,
+              SUM(CASE WHEN status IN ('reported','verified') THEN 1 ELSE 0 END) AS reported
+         FROM imaging_studies
+        WHERE status != 'cancelled'
+        GROUP BY modality`
+    );
+    const modByCode = Object.fromEntries(modRows.map((r) => [r.modality, r]));
+    const modalityUtilization = ImagingStudy.MODALITIES.map((code) => {
+      const row = modByCode[code] || {};
+      const total = Number(row.total || 0);
+      return {
+        modality: code,
+        label: ImagingStudy.MODALITY_LABELS[code] || code,
+        total,
+        reported: Number(row.reported || 0),
+        share: totalExams > 0 ? Math.round((total / totalExams) * 100) : 0,
+      };
+    });
+
+    // 5. Report turnaround time (hours from acquisition → report finalization)
+    const { rows: tatRows } = await db.query(
+      `SELECT s.acquired_at AS acquired_at,
+              COALESCE(rep.verified_at, rep.updated_at) AS reported_at
+         FROM imaging_studies s
+         JOIN imaging_reports rep ON rep.study_id = s.id
+        WHERE rep.status IN ('final','verified','amended')
+          AND s.acquired_at IS NOT NULL`
+    );
+    let tatHoursList = [];
+    for (const r of tatRows) {
+      const a = new Date(r.acquired_at);
+      const b = new Date(r.reported_at);
+      if (!isNaN(a) && !isNaN(b) && b >= a) {
+        tatHoursList.push((b - a) / (1000 * 60 * 60));
+      }
+    }
+    tatHoursList.sort((x, y) => x - y);
+    const avgTatHours = tatHoursList.length
+      ? tatHoursList.reduce((s, h) => s + h, 0) / tatHoursList.length
+      : null;
+    const medianTatHours = tatHoursList.length
+      ? tatHoursList[Math.floor(tatHoursList.length / 2)]
+      : null;
+
+    // 6. Volume trend — exams per month for the last N months (present + past)
+    const { rows: trendRows } = await db.query(
+      `SELECT strftime('%Y-%m', COALESCE(acquired_at, scheduled_at, created_at)) AS month,
+              COUNT(*) AS total,
+              SUM(CASE WHEN status IN ('reported','verified') THEN 1 ELSE 0 END) AS reported
+         FROM imaging_studies
+        WHERE status != 'cancelled'
+        GROUP BY month`
+    );
+    const trendByMonth = Object.fromEntries(trendRows.map((r) => [r.month, r]));
+    const now = new Date();
+    const volumeTrend = [];
+    for (let i = monthsBack - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      volumeTrend.push({
+        month: ym,
+        total: Number(trendByMonth[ym]?.total || 0),
+        reported: Number(trendByMonth[ym]?.reported || 0),
+      });
+    }
+
+    // 7. Top referring providers (non-cancelled)
+    const { rows: refRows } = await db.query(
+      `SELECT COALESCE(referring_provider, 'Unspecified') AS provider, COUNT(*) AS total
+         FROM imaging_studies
+        WHERE status != 'cancelled'
+        GROUP BY COALESCE(referring_provider, 'Unspecified')
+        ORDER BY total DESC
+        LIMIT 5`
+    );
+    const topReferrers = refRows.map((r) => ({ provider: r.provider, total: Number(r.total) }));
+
+    res.json({
+      success: true,
+      data: {
+        generated_at: now.toISOString(),
+        months_back: monthsBack,
+        kpis: {
+          total_exams: totalExams,
+          reported,
+          reporting_backlog: acquired,
+          in_pipeline: inProgress,
+          cancelled,
+          report_rate: totalExams > 0 ? Math.round((reported / totalExams) * 100) : 0,
+        },
+        today: todaySnapshot,
+        status_funnel: {
+          scheduled: statusCounts.scheduled || 0,
+          checked_in: statusCounts.checked_in || 0,
+          in_progress: statusCounts.in_progress || 0,
+          acquired: statusCounts.acquired || 0,
+          reported: statusCounts.reported || 0,
+          verified: statusCounts.verified || 0,
+        },
+        modality_utilization: modalityUtilization,
+        turnaround: {
+          avg_hours: avgTatHours != null ? Math.round(avgTatHours * 10) / 10 : null,
+          median_hours: medianTatHours != null ? Math.round(medianTatHours * 10) / 10 : null,
+          sample_size: tatHoursList.length,
+        },
+        volume_trend: volumeTrend,
+        top_referrers: topReferrers,
+      },
+    });
   } catch (err) { next(err); }
 };
 
@@ -182,8 +334,8 @@ exports.searchTerminology = async (req, res, next) => {
 // ── Radiologist reporting queue (acquired + reported) ──────────────────────────
 exports.reportingQueue = async (req, res, next) => {
   try {
-    const acquired = await ImagingStudy.list({ status: 'acquired' }, req.user);
-    const reported = await ImagingStudy.list({ status: 'reported' }, req.user);
+    const acquired = await ImagingStudy.list({ status: 'acquired' });
+    const reported = await ImagingStudy.list({ status: 'reported' });
     res.json({ success: true, data: { acquired, reported } });
   } catch (err) { next(err); }
 };
@@ -191,7 +343,7 @@ exports.reportingQueue = async (req, res, next) => {
 // ── Get study + its report (for the reporting editor) ──────────────────────────
 exports.getReport = async (req, res, next) => {
   try {
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
     const report = await ImagingReport.getByStudy(study.id);
     res.json({ success: true, data: { study, report } });
@@ -201,7 +353,7 @@ exports.getReport = async (req, res, next) => {
 // ── Save (draft) report ────────────────────────────────────────────────────────
 exports.saveReport = async (req, res, next) => {
   try {
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
     const result = await ImagingReport.save(study.id, req.body, req.user);
     if (result && result.locked) {
@@ -215,7 +367,7 @@ exports.saveReport = async (req, res, next) => {
 // ── Finalise report → study 'reported' ─────────────────────────────────────────
 exports.finalizeReport = async (req, res, next) => {
   try {
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
     const result = await ImagingReport.finalize(study.id, req.user);
     if (result.error === 'no_report') return res.status(409).json({ success: false, message: 'Save a report before finalising.' });
@@ -228,7 +380,7 @@ exports.finalizeReport = async (req, res, next) => {
 // ── Verify report → study 'verified' ───────────────────────────────────────────
 exports.verifyReport = async (req, res, next) => {
   try {
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
     const result = await ImagingReport.verify(study.id, req.user);
     if (result.error === 'no_report') return res.status(409).json({ success: false, message: 'No report to verify.' });
@@ -241,13 +393,17 @@ exports.verifyReport = async (req, res, next) => {
 // ── Amend a finalised/verified report ──────────────────────────────────────────
 exports.amendReport = async (req, res, next) => {
   try {
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
     const result = await ImagingReport.amend(study.id, req.body, req.user);
     if (result.error === 'no_report') return res.status(409).json({ success: false, message: 'No report to amend.' });
     await logAction(req, 'IMAGING_REPORT_AMEND', 'imaging_reports', study.id, { reason: req.body.amendment_reason });
     res.json({ success: true, message: 'Report amended.', data: result });
   } catch (err) { next(err); }
+};
+
+const safeParse = (str, fallback = []) => {
+  try { return str ? JSON.parse(str) : fallback; } catch { return fallback; }
 };
 
 // ── Assemble the flat data object the PDF template expects ──────────────────────
@@ -265,6 +421,7 @@ function assembleReportData(study, report) {
     acquired_at: study.acquired_at,
     referring_provider: study.referrer || study.referring_provider,
     clinical_indication: study.indication || study.clinical_indication,
+    indication_codes: safeParse(study.indication_code_json, []),
     exam_type_loinc: study.exam_loinc || study.exam_type_loinc,
     exam_type_display: study.exam_display || study.exam_type_display,
     exam_type_codes: (study.exam_loinc || study.exam_type_loinc)
@@ -287,7 +444,7 @@ function assembleReportData(study, report) {
 // ── Report PDF ─────────────────────────────────────────────────────────────────
 exports.reportPdf = async (req, res, next) => {
   try {
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
     const report = await ImagingReport.getByStudy(study.id);
     const data = assembleReportData(study, report);
@@ -306,7 +463,7 @@ exports.dicomStatus = async (_req, res) => {
 // ── DICOM: link a study's images from the PACS ─────────────────────────────────
 exports.linkDicom = async (req, res, next) => {
   try {
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
 
     const studyUID = req.body.study_instance_uid || study.study_instance_uid;
@@ -327,7 +484,7 @@ exports.linkDicom = async (req, res, next) => {
 // ── DICOM: list a study's series + instances (for the viewer) ──────────────────
 exports.getDicomImages = async (req, res, next) => {
   try {
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
     const series = await ImagingDicom.getStudyImages(study.id);
     res.json({ success: true, data: { study_instance_uid: study.study_instance_uid, series } });
@@ -338,8 +495,12 @@ exports.getDicomImages = async (req, res, next) => {
 exports.renderedFrame = async (req, res, next) => {
   try {
     if (!dicomweb.isConfigured()) return res.status(503).json({ success: false, message: 'No PACS configured.' });
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
+
+    if (!study.study_instance_uid) {
+      return res.status(400).json({ success: false, message: 'Study is not linked to PACS images.' });
+    }
 
     const { series, sop, frame } = req.query;
     if (!series || !sop) return res.status(400).json({ success: false, message: 'series and sop are required.' });
@@ -363,7 +524,7 @@ exports.renderedFrame = async (req, res, next) => {
 exports.stowUpload = async (req, res, next) => {
   try {
     if (!dicomweb.isConfigured()) return res.status(503).json({ success: false, message: 'No PACS configured.' });
-    const study = await ImagingStudy.findById(req.params.id, req.user);
+    const study = await ImagingStudy.findById(req.params.id);
     if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
 
     // Accept base64-encoded DICOM instances in the JSON body (files: [b64, ...]).

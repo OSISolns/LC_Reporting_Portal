@@ -23,7 +23,7 @@ A `GET /api/health` endpoint returns `{ success, status: 'ok', timestamp }` for 
 ## Cancellations — `/api/cancellations`
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/` | List (reviewer sees mock only) |
+| GET | `/` | List |
 | POST | `/` | Create request (`pending`) |
 | GET | `/:id` | Get one |
 | PATCH | `/:id/verify` | `pending → verified` (Sales Manager) |

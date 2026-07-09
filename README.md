@@ -59,7 +59,6 @@ The system uses a granular permission matrix, configurable by Administrators. Th
 | `chef-nurse` | Chef Nurse | Manages nursing shifts, clinical observations, and safety reports |
 | `hsfp` | Health & Safety Focal Person | Manages clinical safety workspace, reviews/approves incident and sentinel event reports |
 | `consultant` | Consultant | Read-only access across all modules |
-| `reviewer` | External Auditor/Reviewer | Sandbox/isolated role for auditing and workflow reviews (restricted to mock data) |
 
 ---
 
