@@ -855,7 +855,7 @@ export default function DailyInventoryCheckup() {
       const fetchMatrixLogs = async () => {
         try {
           setLoadingLogs(true);
-          const res = await api.get(`/clinical/inventory/change-logs?month_year=${monthYear}`);
+          const res = await api.get(`/clinical/inventory/change-logs?month_year=${monthYear}&consumed_only=true`);
           if (res.data.success) {
             setAuditLogs(res.data.data);
           }
