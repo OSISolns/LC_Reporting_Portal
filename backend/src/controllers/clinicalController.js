@@ -2319,9 +2319,24 @@ exports.getRequisitionItems = async (req, res) => {
 // one-row-per-batch shape, which can't show that). Excludes the internal
 // "Central Store" pseudo-department used by supplier-receiving/GRN to track
 // stock that hasn't actually been distributed anywhere.
+// Helper to map role to department
+const getDepartmentForRole = (role) => {
+  const r = String(role || '').toLowerCase();
+  if (r === 'admin') return null;
+  if (r.includes('nurse')) return { id: 121, name: 'NURSING' };
+  if (r.includes('lab')) return { id: 123, name: 'LABORATORY' };
+  if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') return { id: 130, name: 'CENTRAL STORE' };
+  if (r.includes('physio')) return { id: 120, name: 'PHYSIO' };
+  if (r.includes('dental') || r.includes('dentist')) return { id: 129, name: 'DENTAL' };
+  if (r.includes('operations') || r.includes('ops') || r === 'coo') return { id: 122, name: 'OPERATIONS' };
+  if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) return { id: 124, name: 'IMAGING' };
+  return null;
+};
+
 exports.getDistributedStock = async (req, res) => {
   try {
-    const { rows } = await db.query(`
+    const { include_central } = req.query;
+    let sql = `
       SELECT
         ds.id as dept_stock_id,
         ds.department_id,
@@ -2346,8 +2361,38 @@ exports.getDistributedStock = async (req, res) => {
       LEFT JOIN vendors v ON sb.vendor_id = v.id
       WHERE ds.quantity > 0
         AND (d.name IS NULL OR (d.name NOT LIKE '%Central%' AND d.name NOT LIKE '%Store%'))
-      ORDER BY d.name ASC, mi.name ASC
-    `);
+    `;
+
+    if (include_central === 'true') {
+      sql += `
+      UNION ALL
+      SELECT
+        sb.id as dept_stock_id,
+        130 as department_id,
+        'CENTRAL STORE' as department,
+        mi.id as item_id,
+        mi.name,
+        mi.sku,
+        mi.unit_of_measure,
+        mi.category,
+        sb.id as batch_id,
+        sb.batch_number,
+        sb.lot_number,
+        sb.expiry_date,
+        sb.created_at as purchase_time,
+        sb.purchase_price as price,
+        sb.quantity,
+        v.name as vendor
+      FROM stock_batches sb
+      JOIN master_inventory mi ON sb.item_id = mi.id
+      LEFT JOIN vendors v ON sb.vendor_id = v.id
+      WHERE sb.quantity > 0
+      `;
+    }
+
+    sql += ' ORDER BY department ASC, name ASC';
+
+    const { rows } = await db.query(sql);
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error in getDistributedStock:', error);
@@ -2362,6 +2407,11 @@ exports.getDistributedStock = async (req, res) => {
 exports.getConsumablesLog = async (req, res) => {
   try {
     const { department_id, from, to } = req.query;
+    
+    // Role-based department restriction for non-admins
+    const deptLimit = getDepartmentForRole(req.user.role);
+    const targetDeptId = deptLimit ? deptLimit.id : department_id;
+
     const params = [];
     let sql = `
       SELECT cl.id, cl.department_id, cl.department_name, cl.item_id, cl.item_name,
@@ -2369,7 +2419,7 @@ exports.getConsumablesLog = async (req, res) => {
              cl.logged_by, cl.logged_by_name, cl.consumed_at
         FROM consumables_log cl
        WHERE 1=1`;
-    if (department_id) { params.push(department_id); sql += ` AND cl.department_id = $${params.length}`; }
+    if (targetDeptId) { params.push(targetDeptId); sql += ` AND cl.department_id = $${params.length}`; }
     if (from) { params.push(from); sql += ` AND date(cl.consumed_at) >= date($${params.length})`; }
     if (to) { params.push(to); sql += ` AND date(cl.consumed_at) <= date($${params.length})`; }
     sql += ' ORDER BY cl.consumed_at DESC, cl.id DESC LIMIT 500';
@@ -2384,19 +2434,38 @@ exports.getConsumablesLog = async (req, res) => {
 exports.getConsumablesSummary = async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const { rows: todayRows } = await db.query(
-      `SELECT COUNT(*) AS entries, COALESCE(SUM(quantity),0) AS units
-         FROM consumables_log WHERE date(consumed_at) = date($1)`, [today]);
-    const { rows: topItems } = await db.query(
-      `SELECT item_name, COALESCE(SUM(quantity),0) AS units
-         FROM consumables_log
-        WHERE consumed_at >= datetime('now','-30 days')
-        GROUP BY item_name ORDER BY units DESC LIMIT 5`);
-    const { rows: byDept } = await db.query(
-      `SELECT COALESCE(department_name,'Unknown') AS department, COALESCE(SUM(quantity),0) AS units
-         FROM consumables_log
-        WHERE consumed_at >= datetime('now','-30 days')
-        GROUP BY COALESCE(department_name,'Unknown') ORDER BY units DESC LIMIT 8`);
+    const { department_id } = req.query;
+
+    const deptLimit = getDepartmentForRole(req.user.role);
+    const targetDeptId = deptLimit ? deptLimit.id : (department_id ? parseInt(department_id, 10) : null);
+
+    let todaySql = `SELECT COUNT(*) AS entries, COALESCE(SUM(quantity),0) AS units FROM consumables_log WHERE date(consumed_at) = date($1)`;
+    let todayParams = [today];
+    if (targetDeptId) {
+      todayParams.push(targetDeptId);
+      todaySql += ` AND department_id = $2`;
+    }
+
+    let topSql = `SELECT item_name, COALESCE(SUM(quantity),0) AS units FROM consumables_log WHERE consumed_at >= datetime('now','-30 days')`;
+    let topParams = [];
+    if (targetDeptId) {
+      topParams.push(targetDeptId);
+      topSql += ` AND department_id = $1`;
+    }
+    topSql += ` GROUP BY item_name ORDER BY units DESC LIMIT 5`;
+
+    let byDeptSql = `SELECT COALESCE(department_name,'Unknown') AS department, COALESCE(SUM(quantity),0) AS units FROM consumables_log WHERE consumed_at >= datetime('now','-30 days')`;
+    let byDeptParams = [];
+    if (targetDeptId) {
+      byDeptParams.push(targetDeptId);
+      byDeptSql += ` AND department_id = $1`;
+    }
+    byDeptSql += ` GROUP BY COALESCE(department_name,'Unknown') ORDER BY units DESC LIMIT 8`;
+
+    const { rows: todayRows } = await db.query(todaySql, todayParams);
+    const { rows: topItems } = await db.query(topSql, topParams);
+    const { rows: byDept } = await db.query(byDeptSql, byDeptParams);
+
     res.json({
       success: true,
       data: {
@@ -2419,6 +2488,12 @@ exports.logConsumable = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Department, item and a positive quantity are required.' });
     }
 
+    // Role-based department restriction check for non-admins
+    const deptLimit = getDepartmentForRole(req.user.role);
+    if (deptLimit && Number(deptLimit.id) !== Number(department_id)) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to log consumables for this department.' });
+    }
+
     // Resolve names for the log + total available stock across batches
     const { rows: itemRows } = await db.query(
       'SELECT id, name, unit_of_measure FROM master_inventory WHERE id = $1', [item_id]);
@@ -2426,14 +2501,29 @@ exports.logConsumable = async (req, res) => {
     const { rows: deptRows } = await db.query('SELECT id, name FROM departments WHERE id = $1', [department_id]);
     if (deptRows.length === 0) return res.status(404).json({ success: false, message: 'Department not found.' });
 
-    // FEFO: pull this department's stock rows for the item, earliest expiry first
-    const { rows: stockRows } = await db.query(`
-      SELECT ds.id AS dept_stock_id, ds.batch_id, ds.quantity, sb.batch_number, sb.expiry_date
-        FROM department_stock ds
-        LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
-       WHERE ds.department_id = $1 AND ds.item_id = $2 AND ds.quantity > 0
-       ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, ds.id ASC
-    `, [department_id, item_id]);
+    const isCentralStore = Number(department_id) === 130 || (deptRows[0] && deptRows[0].name.toUpperCase().includes('CENTRAL STORE'));
+
+    let stockRows = [];
+    if (isCentralStore) {
+      // FEFO: pull from stock_batches directly for central store
+      const { rows } = await db.query(`
+        SELECT sb.id AS dept_stock_id, sb.id AS batch_id, sb.quantity, sb.batch_number, sb.expiry_date
+          FROM stock_batches sb
+         WHERE sb.item_id = $1 AND sb.quantity > 0
+         ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, sb.id ASC
+      `, [item_id]);
+      stockRows = rows;
+    } else {
+      // FEFO: pull this department's stock rows for the item, earliest expiry first from department_stock
+      const { rows } = await db.query(`
+        SELECT ds.id AS dept_stock_id, ds.batch_id, ds.quantity, sb.batch_number, sb.expiry_date
+          FROM department_stock ds
+          LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
+         WHERE ds.department_id = $1 AND ds.item_id = $2 AND ds.quantity > 0
+         ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, ds.id ASC
+      `, [department_id, item_id]);
+      stockRows = rows;
+    }
 
     const available = stockRows.reduce((s, r) => s + Number(r.quantity || 0), 0);
     if (available < qty) {
@@ -2450,7 +2540,11 @@ exports.logConsumable = async (req, res) => {
     for (const row of stockRows) {
       if (remaining <= 0) break;
       const take = Math.min(remaining, Number(row.quantity));
-      await db.query('UPDATE department_stock SET quantity = quantity - $1 WHERE id = $2', [take, row.dept_stock_id]);
+      if (isCentralStore) {
+        await db.query('UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2', [take, row.dept_stock_id]);
+      } else {
+        await db.query('UPDATE department_stock SET quantity = quantity - $1 WHERE id = $2', [take, row.dept_stock_id]);
+      }
       if (primaryBatchId === null) { primaryBatchId = row.batch_id; primaryBatchNumber = row.batch_number; }
       remaining -= take;
     }
