@@ -25,13 +25,16 @@ import {
   Check,
   ChevronDown,
   Edit2,
-  CornerUpLeft
+  CornerUpLeft,
+  FileSpreadsheet,
+  Download
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 import { Card, Badge } from '../components/ui/index.jsx';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
+import ExcelJS from 'exceljs/dist/exceljs.min.js';
 
 // ── Expiry helpers ────────────────────────────────────────────────────────────
 const getExpiryStatus = (expiryDate) => {
@@ -544,6 +547,172 @@ export default function CentralStoreHub() {
     }
   };
 
+  const handleExportDistributedStockXlsx = async () => {
+    if (filteredDistributedStock.length === 0) {
+      toast.error('No distributed stock data to export.');
+      return;
+    }
+
+    try {
+      toast.loading("Generating distributed stock Excel workbook...", { id: 'excel-dist-toast' });
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Distributed Stock');
+      sheet.views = [{ showGridLines: true }];
+
+      // Define Columns widths
+      sheet.getColumn(1).width = 30; // Item Name
+      sheet.getColumn(2).width = 15; // SKU
+      sheet.getColumn(3).width = 18; // Batch
+      sheet.getColumn(4).width = 12; // UoM
+      sheet.getColumn(5).width = 15; // Expiry
+      sheet.getColumn(6).width = 25; // Vendor
+      sheet.getColumn(7).width = 20; // Department
+      sheet.getColumn(8).width = 18; // Category
+      sheet.getColumn(9).width = 12; // Qty
+      sheet.getColumn(10).width = 15; // Unit Price
+      sheet.getColumn(11).width = 18; // Total Price
+
+      // Header Block (Corporate Navy Blue Theme)
+      const titleCell = sheet.getCell('A1');
+      titleCell.value = 'LEGACY CLINICS & DIAGNOSTICS';
+      sheet.mergeCells('A1:K1');
+      titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(1).height = 35;
+
+      const subCell = sheet.getCell('A2');
+      subCell.value = 'DISTRIBUTED STOCK PER DEPARTMENT REPORT';
+      sheet.mergeCells('A2:K2');
+      subCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4A90E2' } };
+      subCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(2).height = 25;
+
+      // Filter details
+      const filterCell = sheet.getCell('A3');
+      const deptText = activeDept === 'All Departments' ? 'All' : activeDept;
+      const catText = stockCategoryFilter === 'All' ? 'All' : stockCategoryFilter;
+      const statusText = stockStatusFilter === 'All' ? 'All' : stockStatusFilter;
+      const searchTxt = searchTerm ? `"${searchTerm}"` : 'None';
+      filterCell.value = `Export Date: ${new Date().toLocaleDateString()} | Active Filters - Dept: ${deptText}, Category: ${catText}, Status: ${statusText}, Search: ${searchTxt}`;
+      sheet.mergeCells('A3:K3');
+      filterCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '555555' } };
+      filterCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(3).height = 20;
+
+      sheet.getRow(4).height = 15; // Spacer
+
+      // Table Headers (Row 5)
+      const headerRow = sheet.getRow(5);
+      headerRow.height = 25;
+      const headers = [
+        'Item Name', 'SKU', 'Batch Number', 'UoM', 'Expiry Date',
+        'Vendor', 'Department', 'Category', 'Quantity', 'Unit Price', 'Total Price'
+      ];
+      headers.forEach((h, colIdx) => {
+        const cell = headerRow.getCell(colIdx + 1);
+        cell.value = h;
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+        cell.alignment = { 
+          horizontal: colIdx >= 8 ? 'right' : 'left', 
+          vertical: 'middle' 
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '1B365D' } },
+          bottom: { style: 'medium', color: { argb: '1B365D' } }
+        };
+      });
+
+      // Data Rows
+      let currentRow = 6;
+      filteredDistributedStock.forEach(item => {
+        const r = sheet.getRow(currentRow);
+        r.height = 20;
+        r.getCell(1).value = item.name;
+        r.getCell(2).value = item.sku || '—';
+        r.getCell(3).value = item.batch_number || '—';
+        r.getCell(4).value = item.unit_of_measure || '—';
+        r.getCell(5).value = item.expiry_date ? fmt(item.expiry_date) : 'N/A';
+        r.getCell(6).value = item.vendor || '—';
+        r.getCell(7).value = item.department || '—';
+        r.getCell(8).value = item.category?.replace(/_/g, ' ') || '—';
+        r.getCell(9).value = Number(item.quantity);
+        r.getCell(10).value = Number(item.price);
+        
+        // Dynamic Excel Formula for Row SUM (Column K = Column I * Column J)
+        r.getCell(11).value = { formula: `=I${currentRow}*J${currentRow}` };
+
+        // Formatting
+        for (let col = 1; col <= 11; col++) {
+          const cell = r.getCell(col);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+
+          if (col === 9) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+            cell.numFmt = '#,##0';
+            const qty = Number(item.quantity);
+            if (qty === 0) {
+              cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF0000' }, bold: true };
+            } else if (qty < 20) {
+              cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF9900' }, bold: true };
+            }
+          } else if (col === 10) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+            cell.numFmt = '#,##0" RWF"';
+          } else if (col === 11) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+            cell.numFmt = '#,##0" RWF"';
+            cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+          }
+        }
+        currentRow++;
+      });
+
+      // Total Row
+      const totalRow = sheet.getRow(currentRow);
+      totalRow.height = 25;
+      totalRow.getCell(1).value = 'TOTAL';
+      sheet.mergeCells(`A${currentRow}:H${currentRow}`);
+
+      totalRow.getCell(9).value = { formula: `=SUM(I6:I${currentRow - 1})` };
+      totalRow.getCell(11).value = { formula: `=SUM(K6:K${currentRow - 1})` };
+
+      for (let col = 1; col <= 11; col++) {
+        const cell = totalRow.getCell(col);
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '1B365D' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'ECF2F9' } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '1B365D' } },
+          bottom: { style: 'double', color: { argb: '1B365D' } }
+        };
+
+        if (col === 9) {
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          cell.numFmt = '#,##0';
+        } else if (col === 11) {
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          cell.numFmt = '#,##0" RWF"';
+        }
+      }
+
+      // Save and Download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      const filename = `Distributed_Stock_Report_${new Date().toISOString().split('T')[0]}`;
+      link.download = `${filename}.xlsx`;
+      link.click();
+      toast.success("Excel exported successfully!", { id: 'excel-dist-toast' });
+    } catch (err) {
+      console.error("Excel generation failed:", err);
+      toast.error("Failed to generate Excel workbook.", { id: 'excel-dist-toast' });
+    }
+  };
+
   const handleCreateRequisition = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -938,6 +1107,14 @@ export default function CentralStoreHub() {
                       <option value="Expired">Expired</option>
                       <option value="Out of Stock">Out of Stock</option>
                     </select>
+
+                    {/* Export Excel Button */}
+                    <button
+                      onClick={handleExportDistributedStockXlsx}
+                      className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-black text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition-all cursor-pointer shadow-sm shadow-emerald-100"
+                    >
+                      <FileSpreadsheet size={13} /> Export Excel
+                    </button>
 
                     {/* Department filter pills */}
                     <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl scrollbar-none max-w-full overflow-x-auto">
