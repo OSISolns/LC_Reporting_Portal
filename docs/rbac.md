@@ -7,7 +7,7 @@ Access control has **two layers**:
 
 The defaults for both live in `backend/src/config/permissions.js`.
 
-## The 19 roles
+## The 18 roles
 
 | Role key | Display name | Purpose |
 |---|---|---|
@@ -30,7 +30,6 @@ The defaults for both live in `backend/src/config/permissions.js`.
 | `chef-nurse` | Chef Nurse | Nursing leadership: shifts, observations, safety, feedback |
 | `doctor` | Doctor | Doctor hub, e-prescriptions, clinical records |
 | `medical_director` | Medical Director | Senior clinical oversight (legacy key `M.D`, normalised in auth) |
-| `reviewer` | External Auditor / Reviewer | **Isolated sandbox** role — sees only mock data |
 | `stock-manager` | Stock Manager | Master inventory & central store |
 | `procurement-manager` | Procurement Manager | Procurement, purchase orders, supplier portal |
 
@@ -100,13 +99,6 @@ On top of role defaults, an Admin can grant or revoke a specific `module × acti
 
 All permission management is **Admin-only**.
 
-## Reviewer isolation (sandbox auditing)
-
-The `reviewer` role is a security-sensitive design element: external auditors must be able to exercise the system **without touching real patient/financial data**. This is enforced in the data layer, not just the UI:
-
-- Records carry an `is_mock` flag.
-- Every reviewer-scoped query appends `AND is_mock = 1` (see e.g. cancellation verify/approve/reject/delete: `reviewerGuard = user.role === 'reviewer' ? ' AND is_mock = 1' : ''`).
-- Reviewers therefore can only read and act on mock rows — real records are invisible and immutable to them.
 
 ## How the two layers interact
 

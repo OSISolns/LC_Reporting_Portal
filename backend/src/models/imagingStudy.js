@@ -34,9 +34,6 @@ const STATUS_FLOW = {
   reported: 'verified',
 };
 
-// Reviewers are sandboxed to mock rows only (see RBAC docs).
-const reviewerGuard = (user) => (user && user.role === 'reviewer' ? ' AND is_mock = 1' : '');
-
 class ImagingStudy {
   static get MODALITIES() { return MODALITIES; }
   static get MODALITY_LABELS() { return MODALITY_LABELS; }
@@ -62,8 +59,8 @@ class ImagingStudy {
         room, equipment, performed_by, scheduled_at, technical_notes, consent_json,
         referring_provider, clinical_indication, exam_type_loinc, exam_type_display,
         sid, exam_region, patient_age, patient_sex,
-        status, is_mock, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+        status, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
       RETURNING *`,
       [
         data.order_id || null,
@@ -87,31 +84,31 @@ class ImagingStudy {
         data.patient_age != null ? String(data.patient_age) : null,
         data.patient_sex || null,
         data.status || 'scheduled',
-        user && user.role === 'reviewer' ? 1 : 0,
         (user && user.id) || null,
       ]
     );
     return rows[0];
   }
 
-  static async findById(id, user) {
+  static async findById(id) {
     const { rows } = await db.query(
       `SELECT s.*, u.full_name AS performed_by_name, o.priority,
               COALESCE(s.clinical_indication, o.clinical_indication) AS indication,
               COALESCE(s.referring_provider, o.referring_provider) AS referrer,
               COALESCE(s.exam_type_display, o.exam_type_display) AS exam_display,
-              COALESCE(s.exam_type_loinc, o.exam_type_loinc) AS exam_loinc
+              COALESCE(s.exam_type_loinc, o.exam_type_loinc) AS exam_loinc,
+              o.indication_code_json AS indication_code_json
          FROM imaging_studies s
          LEFT JOIN users u ON s.performed_by = u.id
          LEFT JOIN imaging_orders o ON s.order_id = o.id
-        WHERE s.id = $1${reviewerGuard(user)}`,
+        WHERE s.id = $1`,
       [id]
     );
     return rows[0] || null;
   }
 
   // ── Worklist / list with filters ────────────────────────────────────────────
-  static async list(filters = {}, user) {
+  static async list(filters = {}) {
     let sql = `
       SELECT s.id, s.accession_number, s.sid, s.patient_id, s.patient_name, s.patient_age,
              s.patient_sex, s.modality, s.sub_unit, s.exam_region, s.exam_type_display,
@@ -120,7 +117,7 @@ class ImagingStudy {
              s.created_at
         FROM imaging_studies s
         LEFT JOIN users u ON s.performed_by = u.id
-       WHERE 1=1${reviewerGuard(user)}`;
+       WHERE 1=1`;
     const params = [];
 
     if (filters.status) { params.push(filters.status); sql += ` AND s.status = $${params.length}`; }
@@ -141,7 +138,7 @@ class ImagingStudy {
   }
 
   // ── Daily exam register (line items, like the paper logbook) ────────────────
-  static async dailyRegister(date, modality, user) {
+  static async dailyRegister(date, modality) {
     const params = [date];
     let sql = `
       SELECT s.id, s.sid, s.accession_number, s.patient_id, s.patient_name, s.patient_age,
@@ -150,7 +147,7 @@ class ImagingStudy {
              COALESCE(s.acquired_at, s.scheduled_at, s.created_at) AS logged_at
         FROM imaging_studies s
        WHERE date(COALESCE(s.acquired_at, s.scheduled_at, s.created_at)) = date($1)
-         AND s.status != 'cancelled'${reviewerGuard(user)}`;
+          AND s.status != 'cancelled'`;
     if (modality) {
       params.push(this.normalizeModality(modality));
       sql += ` AND s.modality = $${params.length}`;
@@ -186,7 +183,7 @@ class ImagingStudy {
 
     const { rows } = await db.query(
       `UPDATE imaging_studies SET ${sets.join(', ')}
-        WHERE id = $${idIdx} AND status = $${fromIdx}${reviewerGuard(user)}
+        WHERE id = $${idIdx} AND status = $${fromIdx}
         RETURNING *`,
       params
     );
@@ -194,14 +191,14 @@ class ImagingStudy {
   }
 
   // ── Daily exam counts per unit (the "4 units log exams daily" board) ────────
-  static async dailyCounts(date, user) {
+  static async dailyCounts(date) {
     const { rows } = await db.query(
       `SELECT modality,
-              COUNT(*) AS total,
-              SUM(CASE WHEN status IN ('acquired','reported','verified') THEN 1 ELSE 0 END) AS completed,
-              SUM(CASE WHEN status = 'verified' THEN 1 ELSE 0 END) AS reported
+               COUNT(*) AS total,
+               SUM(CASE WHEN status IN ('acquired','reported','verified') THEN 1 ELSE 0 END) AS completed,
+               SUM(CASE WHEN status = 'verified' THEN 1 ELSE 0 END) AS reported
          FROM imaging_studies
-        WHERE date(COALESCE(acquired_at, scheduled_at, created_at)) = date($1)${reviewerGuard(user)}
+        WHERE date(COALESCE(acquired_at, scheduled_at, created_at)) = date($1)
         GROUP BY modality
         ORDER BY modality`,
       [date]
@@ -209,10 +206,10 @@ class ImagingStudy {
     return rows;
   }
 
-  static async cancel(id, user) {
+  static async cancel(id) {
     const { rows } = await db.query(
       `UPDATE imaging_studies SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 AND status IN ('scheduled','checked_in')${reviewerGuard(user)}
+        WHERE id = $1 AND status IN ('scheduled','checked_in')
         RETURNING *`,
       [id]
     );

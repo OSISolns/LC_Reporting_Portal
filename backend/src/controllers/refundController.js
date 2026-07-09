@@ -10,7 +10,7 @@ const User = require('../models/user');
 
 exports.createRequest = async (req, res, next) => {
   try {
-    const request = await Refund.create({ ...req.body, isReviewer: req.user.role === 'reviewer' }, req.user.id);
+    const request = await Refund.create(req.body, req.user.id);
     try { await logAction(req, 'CREATE', 'refund_request', request.id, { patient: request.patient_full_name }); } catch (e) {}
     
     // Notify Operations and Management
@@ -55,14 +55,14 @@ exports.getAllRequests = async (req, res, next) => {
       filters.created_by = req.user.id;
     }
     const cacheKey = `ref:list:${req.user.role}:${req.user.id}:${JSON.stringify(filters)}`;
-    const data = await cache.getOrSet(cacheKey, () => Refund.getAll(filters, req.user), 15_000);
+    const data = await cache.getOrSet(cacheKey, () => Refund.getAll(filters), 15_000);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };
 
 exports.getRequestById = async (req, res, next) => {
   try {
-    const request = await Refund.findById(req.params.id, req.user);
+    const request = await Refund.findById(req.params.id);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
 
     const privilegedRoles = ['sales_manager', 'coo', 'deputy_coo', 'admin', 'chairman', 'principal_cashier', 'operations_staff'];
@@ -79,7 +79,7 @@ exports.getRequestById = async (req, res, next) => {
 
 exports.verifyRequest = async (req, res, next) => {
   try {
-    const request = await Refund.verify(req.params.id, req.user.id, req.user);
+    const request = await Refund.verify(req.params.id, req.user.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be verified' });
     await logAction(req, 'VERIFY', 'refund_request', request.id);
     
@@ -102,7 +102,7 @@ exports.verifyRequest = async (req, res, next) => {
 
 exports.approveRequest = async (req, res, next) => {
   try {
-    const request = await Refund.approve(req.params.id, req.user.id, req.user);
+    const request = await Refund.approve(req.params.id, req.user.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be approved' });
     await logAction(req, 'APPROVE', 'refund_request', request.id);
     
@@ -126,13 +126,13 @@ exports.approveRequest = async (req, res, next) => {
 exports.rejectRequest = async (req, res, next) => {
   try {
     const { comment } = req.body;
-    const requestToCheck = await Refund.findById(req.params.id, req.user);
+    const requestToCheck = await Refund.findById(req.params.id);
     if (!requestToCheck) return res.status(404).json({ success: false, message: 'Request not found' });
     if (req.user.role === 'coo' && requestToCheck.status === 'pending') {
       return res.status(403).json({ success: false, message: 'COO cannot reject a pending request before verification' });
     }
 
-    const request = await Refund.reject(req.params.id, req.user.id, comment, req.user);
+    const request = await Refund.reject(req.params.id, req.user.id, comment);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be rejected' });
     await logAction(req, 'REJECT', 'refund_request', request.id, { reason: comment });
     
@@ -155,7 +155,7 @@ exports.rejectRequest = async (req, res, next) => {
 
 exports.deleteRequest = async (req, res, next) => {
   try {
-    const existing = await Refund.findById(req.params.id, req.user);
+    const existing = await Refund.findById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
     if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending requests can be deleted.' });
 
@@ -163,7 +163,7 @@ exports.deleteRequest = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own requests.' });
     }
 
-    const request = await Refund.delete(req.params.id, req.user);
+    const request = await Refund.delete(req.params.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be deleted' });
     await logAction(req, 'DELETE', 'refund_request', req.params.id);
     cache.invalidatePattern('refund:list');
@@ -173,7 +173,7 @@ exports.deleteRequest = async (req, res, next) => {
 
 exports.getPDF = async (req, res, next) => {
   try {
-    const request = await Refund.findById(req.params.id, req.user);
+    const request = await Refund.findById(req.params.id);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -187,7 +187,7 @@ exports.getPDF = async (req, res, next) => {
 
 exports.exportExcel = async (req, res, next) => {
   try {
-    const requests = await Refund.getAll(req.query, req.user);
+    const requests = await Refund.getAll(req.query);
 
     const columns = [
       { header: 'ID',             key: 'id' },

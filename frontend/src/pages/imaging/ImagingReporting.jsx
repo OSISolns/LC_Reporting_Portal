@@ -198,9 +198,20 @@ const ImagingReporting = () => {
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Findings</label>
                 <textarea disabled={locked} value={report.findings_narrative} onChange={(e) => set('findings_narrative', e.target.value)} rows={4}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm disabled:bg-slate-50 mb-2" />
-                {!locked && (
+                {!locked ? (
                   <TerminologyPicker system="snomed" label="Coded findings (SNOMED CT)"
                     value={report.findings_codes} onChange={(v) => set('findings_codes', v)} />
+                ) : (
+                  report.findings_codes && report.findings_codes.length > 0 && (
+                    <>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Coded findings (SNOMED CT)</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {report.findings_codes.map((c) => (
+                          <span key={c.code} className="text-xs bg-teal-50 text-teal-700 border border-teal-200 rounded px-2 py-0.5 font-semibold">{c.display} [{c.code}]</span>
+                        ))}
+                      </div>
+                    </>
+                  )
                 )}
               </div>
 

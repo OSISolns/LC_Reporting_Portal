@@ -10,6 +10,9 @@ router.use(authMiddleware);
 // ── Reference data ─────────────────────────────────────────────────────────────
 router.get('/modalities', checkPermission('imaging', 'view'), imagingController.getModalities);
 
+// ── Manager analytics dashboard ────────────────────────────────────────────────
+router.get('/dashboard', checkPermission('imaging', 'view'), imagingController.dashboard);
+
 // ── Daily exam board (the 4 units) ─────────────────────────────────────────────
 router.get('/daily-board', checkPermission('imaging', 'view'), imagingController.dailyBoard);
 router.get('/daily-register', checkPermission('imaging', 'view'), imagingController.dailyRegister);

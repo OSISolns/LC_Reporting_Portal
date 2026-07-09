@@ -316,7 +316,7 @@ exports.saveObservation = async (req, res) => {
     const { patientId } = req.params;
     const { queue_id } = req.body;
 
-    const existing = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id, req.user);
+    const existing = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id);
 
     // Enforce that only doctors and medical directors can set or update the diagnosis field
     const isDoctorOrMD = ['doctor', 'consultant', 'medical_director'].includes(req.user.role);
@@ -388,7 +388,7 @@ exports.saveObservation = async (req, res) => {
         existing.patient_name = pName;
       }
 
-      result = await ClinicalObservation.update(patientId, queue_id, { ...req.body, patient_name: existing.patient_name, status: statusToSave, isReviewer: req.user.role === 'reviewer' }, req.user);
+      result = await ClinicalObservation.update(patientId, queue_id, { ...req.body, patient_name: existing.patient_name, status: statusToSave });
     } else {
       const statusToSave = req.body.status || 'Draft';
 
@@ -404,7 +404,7 @@ exports.saveObservation = async (req, res) => {
         patientName = patientRes.rows[0] ? patientRes.rows[0].full_name : 'Unknown Patient';
       }
 
-      result = await ClinicalObservation.create({ ...req.body, patient_name: patientName, status: statusToSave, patient_id: patientId, isReviewer: req.user.role === 'reviewer' }, req.user.id);
+      result = await ClinicalObservation.create({ ...req.body, patient_name: patientName, status: statusToSave, patient_id: patientId }, req.user.id);
     }
 
     // Sync medicines & consumables to daily stock in background (non-blocking)
@@ -423,7 +423,7 @@ exports.getObservation = async (req, res) => {
     const { patientId } = req.params;
     const { queue_id } = req.query;
 
-    const result = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id, req.user);
+    const result = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id);
     if (!result) {
       return res.status(404).json({ success: false, message: 'Observation not found' });
     }
@@ -438,7 +438,7 @@ exports.getObservation = async (req, res) => {
 // ─── Clinical Observation: Get recent ─────────────────────────────────────────
 exports.getRecentObservations = async (req, res) => {
   try {
-    const rows = await ClinicalObservation.getRecent(req.user.id, req.user.role);
+    const rows = await ClinicalObservation.getRecent(req.user.id);
     // identification_json/triage_json are stored as raw JSON strings -- flatten
     // the fields callers actually need (dob, gender, insurance, allergies) so
     // consumers don't have to know the storage shape or guess at key names.
@@ -481,7 +481,7 @@ exports.getPDF = async (req, res) => {
     const { patientId } = req.params;
     const { queue_id } = req.query;
 
-    const observation = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id, req.user);
+    const observation = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id);
     if (!observation) {
       return res.status(404).json({ success: false, message: 'Observation records not found' });
     }
@@ -518,7 +518,7 @@ exports.verifyDocument = async (req, res) => {
       return res.status(400).json({ success: false, message: 'checksum query parameter is required' });
     }
 
-    const observation = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id, req.user);
+    const observation = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id);
     if (!observation) {
       return res.status(404).json({ success: false, verified: false, message: 'Document not found' });
     }
@@ -565,7 +565,7 @@ exports.getDocChecksum = async (req, res) => {
     const { patientId } = req.params;
     const { queue_id } = req.query;
 
-    const observation = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id, req.user);
+    const observation = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id);
     if (!observation) {
       return res.status(404).json({ success: false, message: 'Observation not found' });
     }
@@ -1224,7 +1224,7 @@ exports.syncClinicalUsagesToInventory = syncClinicalUsagesToInventory;
 exports.getAllObservationsList = async (req, res) => {
   try {
     const { search = '', status = '', from = '', to = '' } = req.query;
-    const isPrivileged = ['admin', 'chef-nurse', 'doctor', 'consultant', 'reviewer', 'medical_director'].includes(req.user.role);
+    const isPrivileged = ['admin', 'chef-nurse', 'doctor', 'consultant', 'medical_director'].includes(req.user.role);
 
     let sql = `
       SELECT
@@ -1441,7 +1441,10 @@ exports.exportInventoryExcel = async (req, res) => {
     const itemsToExport = uniqueItems.length > 0 ? uniqueItems : INVENTORY_ITEMS;
 
     monthList.forEach((my) => {
-      const sheetName = getMonthLabel(my) || my;
+      const baseSheetName = getMonthLabel(my) || my;
+      const dailySheetName = `${baseSheetName} - DAILY`;
+      const weeklySheetName = `${baseSheetName} - WEEKLY`;
+      const sheetName = baseSheetName; // for compatibility in daily sheet header
 
       // Determine if previous month exists in selected months list for inter-sheet linkage
       const [year, month] = my.split('-');
@@ -1453,10 +1456,10 @@ exports.exportInventoryExcel = async (req, res) => {
       const prevMyStr = `${prevYr}-${prevMo}`;
 
       const hasPrevSheet = monthList.includes(prevMyStr);
-      const prevSheetName = hasPrevSheet ? (getMonthLabel(prevMyStr) || prevMyStr).substring(0, 31) : null;
+      const prevSheetName = hasPrevSheet ? `${getMonthLabel(prevMyStr) || prevMyStr} - DAILY` : null;
 
       // Excel limits sheet names to 31 chars
-      const worksheet = workbook.addWorksheet(sheetName.substring(0, 31));
+      const worksheet = workbook.addWorksheet(dailySheetName.substring(0, 31));
 
       // Setup worksheet properties
       worksheet.views = [{ showGridLines: true }];
@@ -1723,6 +1726,231 @@ exports.exportInventoryExcel = async (req, res) => {
             right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
             bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } }
           };
+        }
+
+        row.height = 20;
+      });
+
+      // Create Weekly Summary sheet
+      const weeklyWorksheet = workbook.addWorksheet(weeklySheetName.substring(0, 31));
+      weeklyWorksheet.views = [{ showGridLines: true }];
+
+      // Header Title Blocks
+      weeklyWorksheet.mergeCells('A1:B1');
+      weeklyWorksheet.getCell('A1').value = "WEEKLY STOCK LEDGER";
+      weeklyWorksheet.getCell('A1').font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
+      weeklyWorksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } }; // Teal-700
+      weeklyWorksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+
+      weeklyWorksheet.mergeCells('C1:J1');
+      weeklyWorksheet.getCell('C1').value = `${baseSheetName} (WEEKLY SUMMARY)`;
+      weeklyWorksheet.getCell('C1').font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
+      weeklyWorksheet.getCell('C1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } };
+      weeklyWorksheet.getCell('C1').alignment = { vertical: 'middle', horizontal: 'right' };
+
+      weeklyWorksheet.getRow(1).height = 40;
+
+      weeklyWorksheet.mergeCells('A2:J2');
+      weeklyWorksheet.getCell('A2').value = "WEEKLY & MONTHLY STOCK STATUS REPORT - RECONCILED VIA FORMULA SUMMARY";
+      weeklyWorksheet.getCell('A2').font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FF475569' } }; // slate-600
+      weeklyWorksheet.getCell('A2').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; // slate-100
+      weeklyWorksheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      weeklyWorksheet.getRow(2).height = 20;
+
+      // Define columns for weeklyWorksheet
+      const weeklyColumns = [
+        { header: 'ITEMS master', key: 'item_name', width: 28 },
+        { header: 'SPC', key: 'spc', width: 6 },
+        { header: 'W1 CONS', width: 12 },
+        { header: 'W2 CONS', width: 12 },
+        { header: 'W3 CONS', width: 12 },
+        { header: 'W4 CONS', width: 12 },
+        { header: 'W5 CONS', width: 12 },
+        { header: 'START STOCK', width: 14 },
+        { header: 'TOTAL CONS', width: 14 },
+        { header: 'END BALANCE', width: 14 }
+      ];
+      weeklyWorksheet.columns = weeklyColumns;
+
+      weeklyWorksheet.getRow(3).height = 24;
+      weeklyWorksheet.getRow(4).height = 20;
+      weeklyWorksheet.getRow(5).height = 22;
+
+      // Item Name and SPC headers in Row 3 (merged to row 4)
+      weeklyWorksheet.mergeCells('A3:A4');
+      weeklyWorksheet.getCell('A3').value = "ITEMS master LIST";
+      weeklyWorksheet.getCell('A3').font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+      weeklyWorksheet.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      weeklyWorksheet.getCell('A3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+      weeklyWorksheet.getCell('A3').border = {
+        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        bottom: { style: 'medium', color: { argb: 'FF94A3B8' } },
+        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+      };
+
+      weeklyWorksheet.mergeCells('B3:B4');
+      weeklyWorksheet.getCell('B3').value = "SPC";
+      weeklyWorksheet.getCell('B3').font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FF475569' } };
+      weeklyWorksheet.getCell('B3').alignment = { vertical: 'middle', horizontal: 'center' };
+      weeklyWorksheet.getCell('B3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+      weeklyWorksheet.getCell('B3').border = {
+        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        bottom: { style: 'medium', color: { argb: 'FF94A3B8' } },
+        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+      };
+
+      // Set headers for Weeks 1-5
+      for (let w = 1; w <= 5; w++) {
+        const colIdx = 3 + (w - 1);
+        const colL = colLetter(colIdx);
+        weeklyWorksheet.mergeCells(`${colL}3:${colL}4`);
+        const cell = weeklyWorksheet.getCell(`${colL}3`);
+        cell.value = `W${w} CONS`;
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F766E' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } }; // teal-50
+      }
+
+      // START STOCK
+      weeklyWorksheet.mergeCells('H3:H4');
+      weeklyWorksheet.getCell('H3').value = "START STOCK";
+      weeklyWorksheet.getCell('H3').font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF3730A3' } };
+      weeklyWorksheet.getCell('H3').alignment = { vertical: 'middle', horizontal: 'center' };
+      weeklyWorksheet.getCell('H3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF2FF' } };
+
+      // TOTAL CONS
+      weeklyWorksheet.mergeCells('I3:I4');
+      weeklyWorksheet.getCell('I3').value = "TOTAL CONS";
+      weeklyWorksheet.getCell('I3').font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF3730A3' } };
+      weeklyWorksheet.getCell('I3').alignment = { vertical: 'middle', horizontal: 'center' };
+      weeklyWorksheet.getCell('I3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF2FF' } };
+
+      // END BALANCE
+      weeklyWorksheet.mergeCells('J3:J4');
+      weeklyWorksheet.getCell('J3').value = "END BALANCE";
+      weeklyWorksheet.getCell('J3').font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF3730A3' } };
+      weeklyWorksheet.getCell('J3').alignment = { vertical: 'middle', horizontal: 'center' };
+      weeklyWorksheet.getCell('J3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF2FF' } };
+
+      // Row 5 subheaders
+      for (let w = 1; w <= 5; w++) {
+        const colIdx = 3 + (w - 1);
+        const colL = colLetter(colIdx);
+        const cell = weeklyWorksheet.getCell(`${colL}5`);
+        cell.value = w === 5 ? `Days 29-${daysInMonth}` : `Days ${(w - 1) * 7 + 1}-${w * 7}`;
+        cell.font = { name: 'Calibri', size: 8, bold: true, color: { argb: 'FF0D9488' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCFBF1' } }; // teal-100
+        cell.border = {
+          bottom: { style: 'medium', color: { argb: 'FF94A3B8' } },
+          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        };
+      }
+
+      const monthlySubHeaders = ['MONTH START', 'SUM(W1-W5)', 'MONTH END'];
+      for (let c = 0; c < 3; c++) {
+        const cell = weeklyWorksheet.getCell(5, 8 + c);
+        cell.value = monthlySubHeaders[c];
+        cell.font = { name: 'Calibri', size: 8, bold: true, color: { argb: 'FF4F46E5' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } }; // indigo-105
+        cell.border = {
+          bottom: { style: 'medium', color: { argb: 'FF94A3B8' } },
+          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        };
+      }
+
+      // Populate Weekly Data Rows
+      itemsToExport.forEach((itemName, index) => {
+        const itemIndex = index + 1;
+        const rowIndex = 6 + index;
+
+        const row = weeklyWorksheet.addRow([]);
+        row.getCell(1).value = itemName;
+        row.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+        row.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' };
+        row.getCell(1).border = {
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFF1F5F9' } }
+        };
+
+        row.getCell(2).value = itemIndex;
+        row.getCell(2).font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FF64748B' } };
+        row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        row.getCell(2).border = {
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFF1F5F9' } }
+        };
+
+        const borderStyle = {
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFF1F5F9' } }
+        };
+
+        for (let w = 1; w <= 5; w++) {
+          const colIdx = 3 + (w - 1);
+          const startDay = (w - 1) * 7 + 1;
+          const endDay = Math.min(w * 7, daysInMonth);
+
+          const cell = row.getCell(colIdx);
+          cell.font = { name: 'Calibri', size: 9 };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.border = borderStyle;
+
+          if (startDay > daysInMonth) {
+            cell.value = 0;
+          } else {
+            // Consumed SUM formula: sum of daily AM + PM consumed for days startDay to endDay
+            const sumRefs = [];
+            for (let d = startDay; d <= endDay; d++) {
+              const dailyAmConsColRef = `${colLetter(3 + (d - 1) * 9 + 1)}${rowIndex}`;
+              const dailyPmConsColRef = `${colLetter(3 + (d - 1) * 9 + 5)}${rowIndex}`;
+              sumRefs.push(`'${dailySheetName.substring(0, 31)}'!${dailyAmConsColRef}`);
+              sumRefs.push(`'${dailySheetName.substring(0, 31)}'!${dailyPmConsColRef}`);
+            }
+            cell.value = {
+              formula: `SUM(${sumRefs.join(',')})`,
+              result: 0
+            };
+          }
+        }
+
+        // START STOCK: links to Daily sheet Day 1 AM Stock
+        const startStockRef = `${colLetter(3)}${rowIndex}`;
+        row.getCell(8).value = {
+          formula: `'${dailySheetName.substring(0, 31)}'!${startStockRef}`,
+          result: 0
+        };
+
+        // TOTAL CONS: `=SUM(C[row]:G[row])`
+        row.getCell(9).value = {
+          formula: `SUM(C${rowIndex}:G${rowIndex})`,
+          result: 0
+        };
+
+        // END BALANCE: links to Daily sheet Last Day PM Balance
+        const lastDayPmBalColIdx = 3 + (daysInMonth - 1) * 9 + 6;
+        const endBalRef = `${colLetter(lastDayPmBalColIdx)}${rowIndex}`;
+        row.getCell(10).value = {
+          formula: `'${dailySheetName.substring(0, 31)}'!${endBalRef}`,
+          result: 0
+        };
+
+        // Style Monthly Total columns (H, I, J)
+        for (let c = 0; c < 3; c++) {
+          const cell = row.getCell(8 + c);
+          cell.font = { name: 'Calibri', size: 9, bold: true };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.border = borderStyle;
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF2FF' } }; // indigo-50
         }
 
         row.height = 20;
@@ -2110,6 +2338,134 @@ exports.getDistributedStock = async (req, res) => {
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error in getDistributedStock:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ── Consumables Log ────────────────────────────────────────────────────────────
+// Reads shared inventory (master_inventory, departments, department_stock) so it
+// stays in sync with the Stock Manager portal; logging consumption deducts from
+// department_stock (FEFO — earliest expiry first).
+exports.getConsumablesLog = async (req, res) => {
+  try {
+    const { department_id, from, to } = req.query;
+    const params = [];
+    let sql = `
+      SELECT cl.id, cl.department_id, cl.department_name, cl.item_id, cl.item_name,
+             cl.batch_id, cl.batch_number, cl.quantity, cl.unit, cl.notes,
+             cl.logged_by, cl.logged_by_name, cl.consumed_at
+        FROM consumables_log cl
+       WHERE 1=1`;
+    if (department_id) { params.push(department_id); sql += ` AND cl.department_id = $${params.length}`; }
+    if (from) { params.push(from); sql += ` AND date(cl.consumed_at) >= date($${params.length})`; }
+    if (to) { params.push(to); sql += ` AND date(cl.consumed_at) <= date($${params.length})`; }
+    sql += ' ORDER BY cl.consumed_at DESC, cl.id DESC LIMIT 500';
+    const { rows } = await db.query(sql, params);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getConsumablesLog:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.getConsumablesSummary = async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { rows: todayRows } = await db.query(
+      `SELECT COUNT(*) AS entries, COALESCE(SUM(quantity),0) AS units
+         FROM consumables_log WHERE date(consumed_at) = date($1)`, [today]);
+    const { rows: topItems } = await db.query(
+      `SELECT item_name, COALESCE(SUM(quantity),0) AS units
+         FROM consumables_log
+        WHERE consumed_at >= datetime('now','-30 days')
+        GROUP BY item_name ORDER BY units DESC LIMIT 5`);
+    const { rows: byDept } = await db.query(
+      `SELECT COALESCE(department_name,'Unknown') AS department, COALESCE(SUM(quantity),0) AS units
+         FROM consumables_log
+        WHERE consumed_at >= datetime('now','-30 days')
+        GROUP BY COALESCE(department_name,'Unknown') ORDER BY units DESC LIMIT 8`);
+    res.json({
+      success: true,
+      data: {
+        today: { entries: Number(todayRows[0]?.entries || 0), units: Number(todayRows[0]?.units || 0) },
+        top_items: topItems.map(r => ({ item_name: r.item_name, units: Number(r.units) })),
+        by_department: byDept.map(r => ({ department: r.department, units: Number(r.units) })),
+      },
+    });
+  } catch (error) {
+    console.error('Error in getConsumablesSummary:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.logConsumable = async (req, res) => {
+  try {
+    const { department_id, item_id, quantity, notes } = req.body;
+    const qty = parseInt(quantity, 10);
+    if (!department_id || !item_id || !qty || qty <= 0) {
+      return res.status(400).json({ success: false, message: 'Department, item and a positive quantity are required.' });
+    }
+
+    // Resolve names for the log + total available stock across batches
+    const { rows: itemRows } = await db.query(
+      'SELECT id, name, unit_of_measure FROM master_inventory WHERE id = $1', [item_id]);
+    if (itemRows.length === 0) return res.status(404).json({ success: false, message: 'Item not found.' });
+    const { rows: deptRows } = await db.query('SELECT id, name FROM departments WHERE id = $1', [department_id]);
+    if (deptRows.length === 0) return res.status(404).json({ success: false, message: 'Department not found.' });
+
+    // FEFO: pull this department's stock rows for the item, earliest expiry first
+    const { rows: stockRows } = await db.query(`
+      SELECT ds.id AS dept_stock_id, ds.batch_id, ds.quantity, sb.batch_number, sb.expiry_date
+        FROM department_stock ds
+        LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
+       WHERE ds.department_id = $1 AND ds.item_id = $2 AND ds.quantity > 0
+       ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, ds.id ASC
+    `, [department_id, item_id]);
+
+    const available = stockRows.reduce((s, r) => s + Number(r.quantity || 0), 0);
+    if (available < qty) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient stock for ${itemRows[0].name} in ${deptRows[0].name}. Available: ${available}, requested: ${qty}.`,
+      });
+    }
+
+    // Deduct across batches (FEFO)
+    let remaining = qty;
+    let primaryBatchId = null;
+    let primaryBatchNumber = null;
+    for (const row of stockRows) {
+      if (remaining <= 0) break;
+      const take = Math.min(remaining, Number(row.quantity));
+      await db.query('UPDATE department_stock SET quantity = quantity - $1 WHERE id = $2', [take, row.dept_stock_id]);
+      if (primaryBatchId === null) { primaryBatchId = row.batch_id; primaryBatchNumber = row.batch_number; }
+      remaining -= take;
+    }
+
+    // Record the consumption log entry
+    const { rows: logRows } = await db.query(`
+      INSERT INTO consumables_log
+        (department_id, department_name, item_id, item_name, batch_id, batch_number,
+         quantity, unit, notes, logged_by, logged_by_name)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING id, consumed_at
+    `, [
+      department_id, deptRows[0].name, item_id, itemRows[0].name,
+      primaryBatchId, primaryBatchNumber, qty, itemRows[0].unit_of_measure || null,
+      notes || null, req.user?.id || null, req.user?.full_name || req.user?.username || null,
+    ]);
+
+    await logAction(req, 'CONSUME', 'consumables_log', logRows[0].id, {
+      item: itemRows[0].name, department: deptRows[0].name, quantity: qty,
+    });
+
+    res.json({
+      success: true,
+      message: `Logged consumption of ${qty} ${itemRows[0].unit_of_measure || 'unit(s)'} of ${itemRows[0].name}.`,
+      data: { id: logRows[0].id, remaining_stock: available - qty },
+    });
+  } catch (error) {
+    console.error('Error in logConsumable:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -4222,6 +4578,111 @@ exports.getSpendByDepartment = async (req, res) => {
     res.json({ success: true, data: { by_department: rows, by_month: monthRows } });
   } catch (error) {
     console.error('Error in getSpendByDepartment:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// Department consumption trends (present + past) and a forecast of when each
+// department is next expected to raise a requisition. The forecast is derived
+// from the historical cadence (average interval between past requisitions),
+// with a confidence rating based on how regular that cadence is.
+exports.getDepartmentUsageAnalytics = async (req, res) => {
+  try {
+    const monthsBack = Math.min(Math.max(parseInt(req.query.months || '12', 10) || 12, 3), 36);
+
+    const { rows: reqs } = await db.query(`
+      SELECT r.id, r.department_id, d.name AS department_name, r.created_at,
+             COALESCE(SUM(ri.requested_quantity), 0) AS total_qty
+      FROM requisitions r
+      JOIN departments d ON r.department_id = d.id
+      LEFT JOIN requisition_items ri ON ri.requisition_id = r.id
+      GROUP BY r.id
+      ORDER BY r.created_at ASC
+    `);
+
+    // Group requisitions per department
+    const byDept = {};
+    for (const row of reqs) {
+      const key = row.department_id;
+      if (!byDept[key]) {
+        byDept[key] = { department_id: key, department_name: row.department_name, requisitions: [] };
+      }
+      byDept[key].requisitions.push({ id: row.id, date: row.created_at, qty: Number(row.total_qty) || 0 });
+    }
+
+    const now = new Date();
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+    const departments = Object.values(byDept).map((dept) => {
+      const list = dept.requisitions;
+      const dates = list.map((r) => new Date(r.date)).filter((d) => !isNaN(d)).sort((a, b) => a - b);
+      const count = list.length;
+      const totalQty = list.reduce((s, r) => s + r.qty, 0);
+
+      // Continuous monthly series for the last N months (present + past)
+      const monthly = {};
+      for (const r of list) {
+        const d = new Date(r.date);
+        if (isNaN(d)) continue;
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthly[ym]) monthly[ym] = { count: 0, qty: 0 };
+        monthly[ym].count += 1;
+        monthly[ym].qty += r.qty;
+      }
+      const series = [];
+      for (let i = monthsBack - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        series.push({ month: ym, count: monthly[ym]?.count || 0, qty: monthly[ym]?.qty || 0 });
+      }
+
+      // Cadence-based forecast
+      let avgGapDays = null, stdGapDays = null, nextExpected = null, daysUntilNext = null, confidence = 'insufficient';
+      if (dates.length >= 2) {
+        const gaps = [];
+        for (let i = 1; i < dates.length; i++) gaps.push((dates[i] - dates[i - 1]) / MS_PER_DAY);
+        avgGapDays = gaps.reduce((s, g) => s + g, 0) / gaps.length;
+        const variance = gaps.reduce((s, g) => s + Math.pow(g - avgGapDays, 2), 0) / gaps.length;
+        stdGapDays = Math.sqrt(variance);
+        const last = dates[dates.length - 1];
+        nextExpected = new Date(last.getTime() + avgGapDays * MS_PER_DAY);
+        daysUntilNext = Math.round((nextExpected - now) / MS_PER_DAY);
+        // Coefficient of variation → how regular is the cadence
+        const cv = avgGapDays > 0 ? stdGapDays / avgGapDays : 1;
+        if (gaps.length >= 4 && cv < 0.4) confidence = 'high';
+        else if (gaps.length >= 2 && cv < 0.75) confidence = 'medium';
+        else confidence = 'low';
+      }
+
+      const lastReq = dates.length ? dates[dates.length - 1] : null;
+
+      return {
+        department_id: dept.department_id,
+        department_name: dept.department_name,
+        total_requisitions: count,
+        total_quantity: totalQty,
+        avg_quantity_per_req: count ? Math.round(totalQty / count) : 0,
+        last_requisition: lastReq ? lastReq.toISOString() : null,
+        avg_interval_days: avgGapDays !== null ? Math.round(avgGapDays) : null,
+        interval_stddev_days: stdGapDays !== null ? Math.round(stdGapDays) : null,
+        next_expected_date: nextExpected ? nextExpected.toISOString() : null,
+        days_until_next: daysUntilNext,
+        overdue: daysUntilNext !== null && daysUntilNext < 0,
+        confidence,
+        monthly_series: series,
+      };
+    });
+
+    // Soonest / overdue first; departments with no forecast go last
+    departments.sort((a, b) => {
+      if (a.days_until_next === null) return 1;
+      if (b.days_until_next === null) return -1;
+      return a.days_until_next - b.days_until_next;
+    });
+
+    res.json({ success: true, data: { departments, months_back: monthsBack, generated_at: now.toISOString() } });
+  } catch (error) {
+    console.error('Error in getDepartmentUsageAnalytics:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

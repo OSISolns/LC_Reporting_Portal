@@ -160,7 +160,6 @@ const EPrescriptions = () => {
       }
     }, 300);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [medSuggestIndex, medSuggestIndex !== null ? medications[medSuggestIndex]?.name : null]);
 
   const selectMedName = (index, name) => {

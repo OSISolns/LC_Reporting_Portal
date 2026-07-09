@@ -623,7 +623,7 @@ const getMedicalReportHTML = (type, data) => {
           ${c.display || c.code}${c.code ? ` <span style="opacity:0.7;font-family:monospace;">[${c.code}]</span>` : ''}${c.system ? ` <span style="opacity:0.55;">· ${c.system}</span>` : ''}
         </span>`).join('');
     };
-    const isVerified = data.status === 'final' || data.status === 'verified' || !!data.verified_at;
+    const isVerified = data.status === 'verified' && !!data.verified_at;
 
     content = `
       <div class="medical-form-modern">

@@ -148,7 +148,7 @@ export default function ProcurementDashboard() {
   const navGroups = [
     { title: 'Lists', links: [['Suppliers', '/procurement?tab=suppliers'], ['Procurement Catalog', '/procurement?tab=catalog'], ['Requisitions', '/procurement?tab=store_requisitions'], ['Department Budgets', '/procurement?tab=budgets']] },
     { title: 'Transactions', links: [['Purchase Order', '/procurement?tab=purchase_orders'], ['Goods Receipt', '/procurement?tab=goods_receipts'], ['Supplier Return', '/procurement?tab=returns'], ['RFQ / Tender', '/procurement?tab=tenders']] },
-    { title: 'Reports', links: [['Analytics', '/procurement?tab=analytics'], ['AP Invoices', '/procurement?tab=invoices'], ['Supplier Portal', '/supplier-portal-manager']] },
+    { title: 'Reports', links: [['Analytics', '/procurement?tab=analytics'], ['AP Invoices', '/procurement?tab=invoices'], ['Supplier Portal Management', '/supplier-portal-manager']] },
   ];
 
   const tiles = [

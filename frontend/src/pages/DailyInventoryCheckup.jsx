@@ -1771,7 +1771,7 @@ export default function DailyInventoryCheckup() {
 
                   <div className="space-y-4 text-left">
                     <p className="text-[10px] text-slate-500 font-bold leading-normal">
-                      Export high-fidelity spreadsheets with reactive formulas. Select a single month, or bundle every recorded period as dedicated tabs in a single workbook.
+                      Export high-fidelity spreadsheets with daily grids and weekly summaries linked by reactive formulas. Select a single month, or bundle every recorded period in a single workbook.
                     </p>
 
                     <div className="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl">

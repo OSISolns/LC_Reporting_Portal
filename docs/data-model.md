@@ -93,5 +93,4 @@ The 53 tables (Prisma models) grouped by functional area:
 - **Timestamps** — most tables carry `created_at` / `updated_at`; workflow tables also carry per-transition timestamps (`verified_at`, `approved_at`, `rejected_at`).
 - **Actor references** — workflow rows store `created_by`, `verified_by`, `approved_by`, `rejected_by` as FK-style user IDs, joined to `users` for display names.
 - **Status enums** — financial workflows use `pending | verified | approved | rejected`. Transitions are guarded in SQL (`WHERE status = <expected>`), so illegal jumps simply affect zero rows.
-- **Mock flag** — `is_mock` marks sandbox data for the [reviewer isolation](rbac.md#reviewer-isolation-sandbox-auditing) model.
 - **JSON blobs** — complex sub-structures (RCA, MAR, SBAR, corrective actions, verification steps) are stored as encrypted JSON strings in `*_json` columns.

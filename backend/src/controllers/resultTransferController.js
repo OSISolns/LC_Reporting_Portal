@@ -9,7 +9,7 @@ const User = require('../models/user');
 
 exports.createRequest = async (req, res, next) => {
   try {
-    const request = await ResultTransfer.create({ ...req.body, isReviewer: req.user.role === 'reviewer' }, req.user.id);
+    const request = await ResultTransfer.create(req.body, req.user.id);
     if (request) {
       try { 
         await logAction(req, 'CREATE', 'result_transfer', request.id, { 
@@ -50,14 +50,14 @@ exports.createRequest = async (req, res, next) => {
 exports.getAllRequests = async (req, res, next) => {
   try {
     const cacheKey = `rt:list:${req.user.role}:${JSON.stringify(req.query)}`;
-    const data = await cache.getOrSet(cacheKey, () => ResultTransfer.getAll(req.query, req.user), 15_000);
+    const data = await cache.getOrSet(cacheKey, () => ResultTransfer.getAll(req.query), 15_000);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };
 
 exports.getRequestById = async (req, res, next) => {
   try {
-    const request = await ResultTransfer.findById(req.params.id, req.user);
+    const request = await ResultTransfer.findById(req.params.id);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
     res.json({ success: true, data: request });
   } catch (err) { next(err); }
@@ -65,7 +65,7 @@ exports.getRequestById = async (req, res, next) => {
 
 exports.reviewRequest = async (req, res, next) => {
   try {
-    const request = await ResultTransfer.review(req.params.id, req.user.id, req.user);
+    const request = await ResultTransfer.review(req.params.id, req.user.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be reviewed' });
     await logAction(req, 'REVIEW', 'result_transfer', request.id);
     
@@ -88,7 +88,7 @@ exports.reviewRequest = async (req, res, next) => {
 exports.approveRequest = async (req, res, next) => {
   try {
     const { editedByName } = req.body;
-    const request = await ResultTransfer.approve(req.params.id, req.user.id, editedByName, req.user);
+    const request = await ResultTransfer.approve(req.params.id, req.user.id, editedByName);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be approved' });
     await logAction(req, 'APPROVE', 'result_transfer', request.id);
     
@@ -111,13 +111,13 @@ exports.approveRequest = async (req, res, next) => {
 exports.rejectRequest = async (req, res, next) => {
   try {
     const { comment } = req.body;
-    const requestToCheck = await ResultTransfer.findById(req.params.id, req.user);
+    const requestToCheck = await ResultTransfer.findById(req.params.id);
     if (!requestToCheck) return res.status(404).json({ success: false, message: 'Request not found' });
     if (req.user.role === 'coo' && requestToCheck.status === 'pending') {
       return res.status(403).json({ success: false, message: 'COO cannot reject a pending request before review' });
     }
 
-    const request = await ResultTransfer.reject(req.params.id, req.user.id, comment, req.user);
+    const request = await ResultTransfer.reject(req.params.id, req.user.id, comment);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be rejected' });
     await logAction(req, 'REJECT', 'result_transfer', request.id, { reason: comment });
     
@@ -139,7 +139,7 @@ exports.rejectRequest = async (req, res, next) => {
 
 exports.deleteRequest = async (req, res, next) => {
   try {
-    const existing = await ResultTransfer.findById(req.params.id, req.user);
+    const existing = await ResultTransfer.findById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
     if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending requests can be deleted.' });
 
@@ -147,7 +147,7 @@ exports.deleteRequest = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own requests.' });
     }
 
-    const request = await ResultTransfer.delete(req.params.id, req.user);
+    const request = await ResultTransfer.delete(req.params.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be deleted' });
     await logAction(req, 'DELETE', 'result_transfer', req.params.id);
     cache.invalidatePattern('rt:list');
@@ -157,7 +157,7 @@ exports.deleteRequest = async (req, res, next) => {
 
 exports.getPDF = async (req, res, next) => {
   try {
-    const request = await ResultTransfer.findById(req.params.id, req.user);
+    const request = await ResultTransfer.findById(req.params.id);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
 
     res.setHeader('Content-Type', 'application/pdf');
