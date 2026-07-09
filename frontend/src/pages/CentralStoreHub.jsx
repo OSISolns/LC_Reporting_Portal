@@ -634,7 +634,20 @@ export default function CentralStoreHub() {
         r.getCell(2).value = item.sku || '—';
         r.getCell(3).value = item.batch_number || '—';
         r.getCell(4).value = item.unit_of_measure || '—';
-        r.getCell(5).value = item.expiry_date ? fmt(item.expiry_date) : 'N/A';
+
+        // Expiry Date robust formatting (resolves formatting/N/A issues)
+        if (item.expiry_date) {
+          const d = new Date(item.expiry_date);
+          if (!isNaN(d)) {
+            // Write standard YYYY-MM-DD string representation directly
+            r.getCell(5).value = d.toISOString().split('T')[0];
+          } else {
+            r.getCell(5).value = String(item.expiry_date).split('T')[0];
+          }
+        } else {
+          r.getCell(5).value = '—';
+        }
+
         r.getCell(6).value = item.vendor || '—';
         r.getCell(7).value = item.department || '—';
         r.getCell(8).value = item.category?.replace(/_/g, ' ') || '—';
@@ -650,7 +663,9 @@ export default function CentralStoreHub() {
           cell.font = { name: 'Calibri', size: 10 };
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
 
-          if (col === 9) {
+          if (col === 5) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else if (col === 9) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
             cell.numFmt = '#,##0';
             const qty = Number(item.quantity);
