@@ -9,13 +9,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
-const { createClient } = require('@libsql/client');
-
-const db = createClient({
-  url:       process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+const { client: db } = require('../src/config/db');
 
 async function main() {
   console.log('🧹 Preparing to purge mock transactional data...');
