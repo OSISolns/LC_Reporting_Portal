@@ -213,12 +213,12 @@ const IncidentList = () => {
                       borderRadius: '6px',
                       fontSize: '0.75rem',
                       fontWeight: 700,
-                      backgroundColor: r.status === 'reviewed' ? 'rgba(7, 137, 107, 0.1)' : 'rgba(255, 193, 7, 0.1)',
-                      color: r.status === 'reviewed' ? '#07896b' : '#cc9a06',
-                      border: `1px solid ${r.status === 'reviewed' ? 'rgba(7, 137, 107, 0.2)' : 'rgba(255, 193, 7, 0.2)'}`,
+                      backgroundColor: r.status === 'approved' || r.status === 'reviewed' ? 'rgba(22, 163, 74, 0.1)' : 'rgba(255, 193, 7, 0.1)',
+                      color: r.status === 'approved' || r.status === 'reviewed' ? '#15803d' : '#cc9a06',
+                      border: `1px solid ${r.status === 'approved' || r.status === 'reviewed' ? 'rgba(22, 163, 74, 0.2)' : 'rgba(255, 193, 7, 0.2)'}`,
                       textTransform: 'uppercase'
                     }}>
-                      {r.status === 'reviewed' ? '✅ Reviewed' : '⏳ Pending'}
+                      {r.status === 'approved' ? '✅ Approved' : r.status === 'reviewed' ? '✅ Reviewed' : '⏳ Pending'}
                     </span>
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>

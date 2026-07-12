@@ -38,14 +38,14 @@ const IncidentDetailsView = ({ data, onReviewComplete, onExport }) => {
 
   if (!data) return null;
 
-  const isHSFP = user?.role === 'hsfp';
+  const isHSFP = user?.role === 'hsfp' || user?.role === 'medical_director';
   const isPending  = data.status === 'pending';
   const isApproved = data.status === 'approved';
 
   const handleAction = async () => {
     setError('');
     if (!comments.trim()) {
-      setError('HSFP summary assessment is mandatory before approving.');
+      setError('Summary assessment is mandatory before approving.');
       return;
     }
     setSubmitting(true);

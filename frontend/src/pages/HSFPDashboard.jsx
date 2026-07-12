@@ -7,7 +7,8 @@ import {
   AlertTriangle, CheckCircle, Clock, Eye,
   ShieldCheck, Brain, TrendingUp,
   Stethoscope, Monitor, Package, Users2, Layers,
-  RefreshCw, ExternalLink, Zap, Activity, HeartPulse
+  RefreshCw, ExternalLink, Zap, Activity, HeartPulse,
+  PenTool, ShieldAlert
 } from 'lucide-react';
 
 // ── Severity map from taxonomy ────────────────────────────────────────────────
@@ -264,17 +265,24 @@ const HSFPDashboard = () => {
 
       {/* ── HSFP Utility Platforms ── */}
       <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-dark)' }}>Safety Utility Suite</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
         {[
-          { label: 'Safety Registry', icon: <AlertTriangle size={24} />, color: '#b91c1c', path: '/incidents' },
+          { label: 'Safety Registry', icon: <AlertTriangle size={24} />, color: '#e11d48', path: '/incidents', desc: 'Inspect logged incident registry and clinical alerts' },
+          { label: 'Safety Workspace', icon: <PenTool size={24} />, color: '#0284c7', path: '/safety-management', desc: 'Manage safety guidelines, reporting forms, and worksheets' },
+          { label: 'Risk Register', icon: <ShieldAlert size={24} />, color: '#d97706', path: '/risk-register', desc: 'Log, track, and grade clinical and facility risks' },
+          { label: 'Infection Control', icon: <Activity size={24} />, color: '#db2777', path: '/infection-control', desc: 'Track sanitation metrics and active control measures' },
+          { label: 'Compliance Portal', icon: <ShieldCheck size={24} />, color: '#16a34a', path: '/compliance', desc: 'Audit facility licenses, certificates, and compliance audits' },
         ].map(btn => (
           <button key={btn.label} onClick={() => navigate(btn.path)}
-            style={{ width: 'fit-content', minWidth: '220px', padding: '1.75rem', borderRadius: '20px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', cursor: 'pointer', transition: 'all 0.3s' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = btn.color; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+            style={{ width: '100%', padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.85rem', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'left', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.03)' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 20px -5px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = btn.color; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
           >
-            <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: `${btn.color}08`, color: btn.color }}>{btn.icon}</div>
-            <span style={{ fontWeight: 800, color: 'var(--primary-dark)', fontSize: '1rem' }}>{btn.label}</span>
+            <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: `${btn.color}10`, color: btn.color }}>{btn.icon}</div>
+            <div>
+              <span style={{ fontWeight: 800, color: 'var(--primary-dark)', fontSize: '1.05rem', display: 'block', marginBottom: '4px' }}>{btn.label}</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500, lineHeight: 1.4 }}>{btn.desc}</span>
+            </div>
           </button>
         ))}
       </div>
