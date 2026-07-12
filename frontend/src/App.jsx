@@ -105,7 +105,7 @@ function App() {
             <Route path="/procurement" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'procurement-manager']}><ProcurementHub /></ProtectedRoute>} />
             <Route path="/supplier-portal-manager" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'procurement-manager']}><SupplierPortalManager /></ProtectedRoute>} />
 
-            <Route path="/consumables-log" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'stock-manager', 'chef-nurse', 'nurse']}><ConsumablesLog /></ProtectedRoute>} />
+            <Route path="/consumables-log" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'chef-nurse', 'nurse']}><ConsumablesLog /></ProtectedRoute>} />
 
             <Route path="/imaging" element={<ProtectedRoute allowedRoles={['radiographer', 'sonographer', 'radiologist', 'imaging_receptionist', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director']}><ImagingHub /></ProtectedRoute>} />
 
