@@ -50,12 +50,12 @@ exports.getAllReports = async (req, res, next) => {
 
 exports.approveReport = async (req, res, next) => {
   try {
-    if (req.user.role !== 'hsfp') {
-      return res.status(403).json({ success: false, message: 'Only the Health & Safety Focal Person can approve incident reports.' });
+    if (!['hsfp', 'medical_director'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Only the Health & Safety Focal Person or Medical Director can approve incident reports.' });
     }
     const { comments } = req.body;
     if (!comments || !comments.trim()) {
-      return res.status(400).json({ success: false, message: 'HSFP safety assessment and comments are required before approving.' });
+      return res.status(400).json({ success: false, message: 'Safety assessment and comments are required before approving.' });
     }
 
     const report = await Incident.approve(req.params.id, req.user.id, req.body);

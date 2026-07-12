@@ -1008,7 +1008,9 @@ exports.saveInventoryBulk = async (req, res) => {
         const currentEntry = latestBalancesMap[name];
         const sessionPriority = (s) => {
           const lower = String(s).toLowerCase();
-          if (lower.includes('night') || lower.includes('evening')) return 2;
+          // PM/night/evening are the day's later (closing) session and must
+          // outrank AM so the reverse-sync uses the true latest balance.
+          if (lower.includes('pm') || lower.includes('night') || lower.includes('evening')) return 2;
           if (lower.includes('afternoon')) return 1.5;
           return 1;
         };
@@ -1029,56 +1031,24 @@ exports.saveInventoryBulk = async (req, res) => {
 
       const itemNames = Object.keys(latestBalancesMap);
       if (itemNames.length > 0) {
-        const nameMapping = {
-          'EXAMINATION GLOVES': 'Examination Gloves',
-          'ADRENALINE': 'Adrenaline inj',
-          'ADRENALINE 1ML': 'Adrenaline inj',
-          'ADRENALINE INJ': 'Adrenaline inj',
-          'APRON': 'Apron',
-          'AQUABLOCK PLASTER 15*10': 'Aquablock plaster 15*10',
-          'AQUABLOC 15CM': 'Aquablock plaster 15*10',
-          'PLASTER': 'Sparadra 18*5M',
-          'SPARADRA': 'Sparadra 18*5M',
-          'ATROPINE 1MG': 'Atropine inj 1gr',
-          'ATROPINE INJ/1MG': 'Atropine inj 1gr',
-          'ATROPINE INJ 1GR': 'Atropine inj 1gr',
-          'ACCU-CHECK STRIPS': 'Accu-check strips',
-          'ACCU-CHECK': 'Accu-check strips',
-          'BUSCOPAN': 'Buscopam inj 20mg',
-          'BUSCOPAN 20MG': 'Buscopam inj 20mg',
-          'CEFTRIAXONE 1G': 'Cefotriaxone inj 1g',
-          'CEFOTRIAXONE INJ 1G': 'Cefotriaxone inj 1g',
-          'GLUCOSE 5%': 'Dextrose5%',
-          'DEXTROSE 5%': 'Dextrose5%',
-          'DEXTROSE 50%': 'Dextrose D50%',
-          'DEXAMETHASONE': 'Dexamethasone inj 4mg',
-          'DEXAMETHASONE 4MG': 'Dexamethasone inj 4mg',
-          'DEXAMETHASONE 8MG': 'Dexamethasone inj 4mg',
-          'DIAZEPAM 10MG': 'Diazepam inj 10mg',
-          'DIAZEPAM INJ 10MG': 'Diazepam inj 10mg',
-          'DICYNONE 250MG': 'Dycinone inj',
-          'DYCINONE INJ': 'Dycinone inj'
-        };
-
-        const searchNames = Array.from(new Set(itemNames.map(name => {
-          const upper = name.toUpperCase();
-          return (nameMapping[upper] || name).toUpperCase();
-        })));
+        // Normalized exact-name match. All Nursing daily-stock items are
+        // registered in master_inventory with matching names (see
+        // scripts/reconcile_nursing_stock.js), so a direct upper/trim match
+        // covers all 91 items — no hardcoded per-item mapping needed.
+        const norm = (s) => String(s || '').toUpperCase().trim();
+        const searchNames = Array.from(new Set(itemNames.map(norm)));
 
         const placeholders = searchNames.map((_, idx) => `$${idx + 1}`).join(', ');
         const { rows: matchedItems } = await db.query(
-          `SELECT id, name FROM master_inventory WHERE UPPER(name) IN (${placeholders})`,
+          `SELECT id, name FROM master_inventory WHERE UPPER(TRIM(name)) IN (${placeholders})`,
           searchNames
         );
-        
+
         const itemMap = {};
-        matchedItems.forEach(mi => {
-          itemMap[mi.name.toUpperCase()] = mi.id;
-        });
+        matchedItems.forEach(mi => { itemMap[norm(mi.name)] = mi.id; });
 
         for (const name of itemNames) {
-          const mappedName = nameMapping[name.toUpperCase()] || name;
-          const itemId = itemMap[mappedName.toUpperCase()];
+          const itemId = itemMap[norm(name)];
           if (!itemId) continue;
 
           const newQty = latestBalancesMap[name].balance;
@@ -2230,7 +2200,15 @@ exports.createBatch = async (req, res) => {
 exports.getRequisitions = async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT r.*, d.name as department_name, COUNT(ri.id) as items_count
+      SELECT r.*, d.name as department_name, COUNT(ri.id) as items_count,
+        (SELECT json_group_array(json_object(
+            'item_id', ri2.item_id,
+            'item_name', mi.name,
+            'quantity', ri2.requested_quantity,
+            'approved_quantity', ri2.approved_quantity))
+         FROM requisition_items ri2
+         JOIN master_inventory mi ON ri2.item_id = mi.id
+         WHERE ri2.requisition_id = r.id) AS items
       FROM requisitions r
       JOIN departments d ON r.department_id = d.id
       LEFT JOIN requisition_items ri ON r.id = ri.requisition_id
@@ -2360,7 +2338,9 @@ exports.getDistributedStock = async (req, res) => {
         LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
         LEFT JOIN departments d ON ds.department_id = d.id
         LEFT JOIN vendors v ON sb.vendor_id = v.id
-        WHERE ds.quantity > 0
+        -- Include zero-stock items (>= 0) so the Stock Manager can see what has
+        -- run out and needs re-ordering; only negatives (anomalies) are hidden.
+        WHERE ds.quantity >= 0
           AND (d.name IS NULL OR (d.name NOT LIKE '%Central%' AND d.name NOT LIKE '%Store%'))
     `;
 
@@ -2417,7 +2397,7 @@ exports.getConsumablesLog = async (req, res) => {
     let sql = `
       SELECT cl.id, cl.department_id, cl.department_name, cl.item_id, cl.item_name,
              cl.batch_id, cl.batch_number, cl.quantity, cl.unit, cl.notes,
-             cl.logged_by, cl.logged_by_name, cl.consumed_at
+             cl.logged_by, cl.logged_by_name, cl.ward, cl.session, cl.consumed_at
         FROM consumables_log cl
        WHERE 1=1`;
     if (targetDeptId) { params.push(targetDeptId); sql += ` AND cl.department_id = $${params.length}`; }
@@ -2425,7 +2405,70 @@ exports.getConsumablesLog = async (req, res) => {
     if (to) { params.push(to); sql += ` AND date(cl.consumed_at) <= date($${params.length})`; }
     sql += ' ORDER BY cl.consumed_at DESC, cl.id DESC LIMIT 500';
     const { rows } = await db.query(sql, params);
-    res.json({ success: true, data: rows });
+    const logEntries = rows.map(r => ({ ...r, source: 'log' }));
+
+    // ── For NURSING, also surface the Daily Stock Checkup consumption ──────────
+    // (recorded per item/day/session split by ward: consumed_obs1 = Station 1,
+    // consumed_minor = Minor Surgery). This is the department's real historical
+    // consumption, which lives in nursing_monthly_stock rather than consumables_log.
+    let dailyEntries = [];
+    if (String(targetDeptId) === '121') {
+      const dParams = [];
+      let dSql = `SELECT id, month_year, day, session, item_name, consumed_obs1, consumed_minor, user_stn1, user_minor, responsible_name
+                    FROM nursing_monthly_stock WHERE consumed > 0`;
+      if (from) { dParams.push(from); dSql += ` AND date(month_year || '-' || printf('%02d', day)) >= date($${dParams.length})`; }
+      if (to)   { dParams.push(to);   dSql += ` AND date(month_year || '-' || printf('%02d', day)) <= date($${dParams.length})`; }
+      dSql += ` ORDER BY month_year DESC, day DESC LIMIT 1000`;
+      const { rows: dRows } = await db.query(dSql, dParams); // db.query decrypts consumed_obs1 / user_*
+
+      // The responsible-nurse field was usually left blank on daily entries, so
+      // fall back to WHO RECORDED the consumption — the change-log updated_by on
+      // the edit that increased consumption for that item/day/session/ward.
+      const recS1 = {}, recMin = {};
+      try {
+        const { rows: cl } = await db.query(`
+          SELECT item_name, month_year, day, session, updated_by,
+                 old_consumed_obs1, new_consumed_obs1, old_consumed_minor, new_consumed_minor
+            FROM nursing_stock_change_logs
+           WHERE (new_consumed_obs1 > old_consumed_obs1 OR new_consumed_minor > old_consumed_minor)
+           ORDER BY updated_at DESC LIMIT 8000`); // updated_by is decrypted by db.query
+        for (const c of cl) {
+          if (!c.updated_by) continue;
+          const k = `${c.item_name}|${c.month_year}|${c.day}|${c.session}`;
+          if (Number(c.new_consumed_obs1) > Number(c.old_consumed_obs1) && !recS1[k]) recS1[k] = c.updated_by;
+          if (Number(c.new_consumed_minor) > Number(c.old_consumed_minor) && !recMin[k]) recMin[k] = c.updated_by;
+        }
+      } catch (e) { /* non-fatal — recorder attribution is best-effort */ }
+
+      for (const r of dRows) {
+        const obs1 = parseInt(r.consumed_obs1, 10) || 0;
+        const minor = parseInt(r.consumed_minor, 10) || 0;
+        const hour = String(r.session || '').toUpperCase().includes('PM') ? '15' : '08';
+        const at = `${r.month_year}-${String(r.day).padStart(2, '0')}T${hour}:00:00`;
+        const key = `${r.item_name}|${r.month_year}|${r.day}|${r.session}`;
+        const nameStn1 = (r.user_stn1 || '').trim() || (r.responsible_name || '').trim() || recS1[key] || null;
+        const nameMinor = (r.user_minor || '').trim() || (r.responsible_name || '').trim() || recMin[key] || null;
+        if (obs1 > 0) dailyEntries.push({ id: `d-${r.id}-s1`, department_id: 121, department_name: 'NURSING', item_id: null, item_name: r.item_name, batch_number: null, quantity: obs1, unit: null, notes: null, logged_by_name: nameStn1, ward: 'Station 1', session: r.session, consumed_at: at, source: 'daily' });
+        if (minor > 0) dailyEntries.push({ id: `d-${r.id}-ms`, department_id: 121, department_name: 'NURSING', item_id: null, item_name: r.item_name, batch_number: null, quantity: minor, unit: null, notes: null, logged_by_name: nameMinor, ward: 'Minor Surgery', session: r.session, consumed_at: at, source: 'daily' });
+      }
+
+      // NOTE: nursing_stock_change_logs (stock-edit audit trail) is intentionally
+      // NOT surfaced here — those rows have no real consumed quantity (they log
+      // every grid edit) and are attributed to whoever saved the grid, which
+      // produced misleading "−0 / <saver>" rows. Actual daily-checkup consumption
+      // is already captured above from nursing_monthly_stock (the 'daily' source),
+      // with correct per-ward quantities and the responsible nurse.
+    }
+
+    // For Nursing, every Consumables Log entry is written through to the daily
+    // checkup, so the 'daily' source already accounts for it — using only the
+    // daily entries there avoids double-counting the same consumption. Other
+    // departments (no daily checkup) rely on the consumables_log entries.
+    const isNursingView = String(targetDeptId) === '121';
+    const merged = [...(isNursingView ? [] : logEntries), ...dailyEntries]
+      .sort((a, b) => new Date(b.consumed_at) - new Date(a.consumed_at))
+      .slice(0, 500);
+    res.json({ success: true, data: merged });
   } catch (error) {
     console.error('Error in getConsumablesLog:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -2481,9 +2524,20 @@ exports.getConsumablesSummary = async (req, res) => {
   }
 };
 
+// Session boundaries for Nursing: AM = 07:00–14:59, PM = 15:00–late.
+const sessionFromServerTime = () => (new Date().getHours() < 15 ? 'AM' : 'PM');
+
+// Nursing wards → the nursing_monthly_stock consumption/user columns they map to.
+const NURSING_WARDS = {
+  'STATION 1': { consumedCol: 'consumed_obs1', userCol: 'user_stn1' },
+  'STN1':      { consumedCol: 'consumed_obs1', userCol: 'user_stn1' },
+  'MINOR SURGERY': { consumedCol: 'consumed_minor', userCol: 'user_minor' },
+  'MINOR':         { consumedCol: 'consumed_minor', userCol: 'user_minor' },
+};
+
 exports.logConsumable = async (req, res) => {
   try {
-    const { department_id, item_id, quantity, notes } = req.body;
+    const { department_id, item_id, quantity, notes, ward, session } = req.body;
     const qty = parseInt(quantity, 10);
     if (!department_id || !item_id || !qty || qty <= 0) {
       return res.status(400).json({ success: false, message: 'Department, item and a positive quantity are required.' });
@@ -2503,6 +2557,15 @@ exports.logConsumable = async (req, res) => {
     if (deptRows.length === 0) return res.status(404).json({ success: false, message: 'Department not found.' });
 
     const isCentralStore = Number(department_id) === 130 || (deptRows[0] && deptRows[0].name.toUpperCase().includes('CENTRAL STORE'));
+    const isNursing = Number(department_id) === 121 || (deptRows[0] && deptRows[0].name.toUpperCase() === 'NURSING');
+
+    // Nursing consumption must be attributed to a ward (Station 1 / Minor Surgery).
+    const wardKey = ward ? String(ward).toUpperCase().trim() : null;
+    const wardMap = wardKey ? NURSING_WARDS[wardKey] : null;
+    if (isNursing && !wardMap) {
+      return res.status(400).json({ success: false, message: 'Select a ward (Station 1 or Minor Surgery) for Nursing consumption.' });
+    }
+    const logSession = session || sessionFromServerTime();
 
     let stockRows = [];
     if (isCentralStore) {
@@ -2551,20 +2614,75 @@ exports.logConsumable = async (req, res) => {
     }
 
     // Record the consumption log entry
+    const loggerName = req.user?.full_name || req.user?.username || null;
     const { rows: logRows } = await db.query(`
       INSERT INTO consumables_log
         (department_id, department_name, item_id, item_name, batch_id, batch_number,
-         quantity, unit, notes, logged_by, logged_by_name)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         quantity, unit, notes, logged_by, logged_by_name, ward, session)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING id, consumed_at
     `, [
       department_id, deptRows[0].name, item_id, itemRows[0].name,
       primaryBatchId, primaryBatchNumber, qty, itemRows[0].unit_of_measure || null,
-      notes || null, req.user?.id || null, req.user?.full_name || req.user?.username || null,
+      notes || null, req.user?.id || null, loggerName,
+      isNursing ? (wardKey === 'STN1' ? 'Station 1' : wardKey === 'MINOR' ? 'Minor Surgery' : ward) : null,
+      isNursing ? logSession : null,
     ]);
 
+    // ─── Two-way link: reflect Nursing consumption into Daily Stock Checkup ──────
+    // Adds qty to the ward's consumed column (consumed_obs1=Station 1 /
+    // consumed_minor=Minor Surgery) for today's month/day/session, recomputing
+    // consumed + balance. Keeps nursing_monthly_stock in sync with department_stock.
+    if (isNursing && wardMap) {
+      try {
+        const now = new Date();
+        const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const day = now.getDate();
+        const { consumedCol, userCol } = wardMap;
+
+        // consumed_obs1 / user_stn1 / user_minor are ENCRYPTED at rest, so we
+        // must NOT do SQL arithmetic on them. Read the decrypted row (db.query
+        // decrypts), compute in JS, then write final values — same pattern as
+        // saveInventoryBulk.
+        const { rows: existRows } = await db.query(
+          'SELECT id, stock_in_hands, consumed_obs1, consumed_minor FROM nursing_monthly_stock WHERE month_year = $1 AND item_name = $2 AND day = $3 AND session = $4',
+          [monthYear, itemRows[0].name, day, logSession]
+        );
+
+        const prev = existRows[0] || {};
+        const prevStock = prev.id ? (parseInt(prev.stock_in_hands, 10) || 0) : available;
+        const prevObs1 = parseInt(prev.consumed_obs1, 10) || 0;
+        const prevMinor = parseInt(prev.consumed_minor, 10) || 0;
+        const newObs1 = prevObs1 + (consumedCol === 'consumed_obs1' ? qty : 0);
+        const newMinor = prevMinor + (consumedCol === 'consumed_minor' ? qty : 0);
+        const newConsumed = newObs1 + newMinor;
+        const newBalance = prevStock - newConsumed;
+
+        if (prev.id) {
+          await db.query(
+            `UPDATE nursing_monthly_stock
+                SET consumed_obs1 = $1, consumed_minor = $2, consumed = $3, balance = $4,
+                    ${userCol} = $5, manually_edited = 1, updated_at = CURRENT_TIMESTAMP
+              WHERE id = $6`,
+            [newObs1, newMinor, newConsumed, newBalance, loggerName, prev.id]
+          );
+        } else {
+          await db.query(
+            `INSERT INTO nursing_monthly_stock
+               (month_year, item_name, day, session, stock_in_hands, consumed_obs1, consumed_minor,
+                consumed, balance, ${userCol}, responsible_name, status, manually_edited)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, 'Available', 1)`,
+            [monthYear, itemRows[0].name, day, logSession, prevStock, newObs1, newMinor, newConsumed, newBalance, loggerName]
+          );
+        }
+      } catch (syncErr) {
+        console.error('⚠️ Nursing consumption write-through to daily stock failed (non-fatal):', syncErr.message);
+      }
+    }
+
+    const { logAction } = require('../middleware/audit');
     await logAction(req, 'CONSUME', 'consumables_log', logRows[0].id, {
-      item: itemRows[0].name, department: deptRows[0].name, quantity: qty,
+      item: itemRows[0].name, department: deptRows[0].name, quantity: qty, ward: ward || null, session: isNursing ? logSession : null,
     });
 
     res.json({

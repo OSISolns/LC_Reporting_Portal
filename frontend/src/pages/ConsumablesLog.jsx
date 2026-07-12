@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   ClipboardList, Package, Boxes, TrendingDown, RefreshCw, Loader2,
-  Plus, Search, Calendar, Building, AlertCircle, CheckCircle2, FileSpreadsheet
+  Plus, Search, Calendar, Building, AlertCircle, CheckCircle2, FileSpreadsheet,
+  ArrowRight, X, Send, Clock
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../api/axios';
@@ -55,6 +56,10 @@ export default function ConsumablesLog() {
   const [formItemSearch, setFormItemSearch] = useState('');
   const [formQty, setFormQty] = useState('');
   const [formNotes, setFormNotes] = useState('');
+  // Nursing wards + session (AM 07:00–14:59 / PM 15:00–late, auto by time).
+  const currentSession = () => (new Date().getHours() < 15 ? 'AM' : 'PM');
+  const [formWard, setFormWard] = useState('');
+  const [formSession, setFormSession] = useState(currentSession());
 
   // Filters
   const [filterDept, setFilterDept] = useState(userDept ? userDept.id : '');
@@ -62,8 +67,22 @@ export default function ConsumablesLog() {
   const [filterTo, setFilterTo] = useState('');
 
   // Tabs
-  const [activeSubTab, setActiveSubTab] = useState('history'); // 'history', 'stock'
+  const [activeSubTab, setActiveSubTab] = useState('history'); // 'history', 'stock', 'requisitions'
+  const [stockTab, setStockTab] = useState('local'); // 'local', 'central'
   const [stockSearchTerm, setStockSearchTerm] = useState('');
+
+  // Consumption History pagination (15 rows per page)
+  const HISTORY_PAGE_SIZE = 15;
+  const [historyPage, setHistoryPage] = useState(1);
+
+  // Requisitions to Stock Manager
+  const [requisitions, setRequisitions] = useState([]);
+  const [reqCart, setReqCart] = useState([]);        // [{ item_id, name, quantity, unit }]
+  const [reqItemId, setReqItemId] = useState('');
+  const [reqQty, setReqQty] = useState('');
+  const [reqUrgency, setReqUrgency] = useState('Normal');
+  const [reqNotes, setReqNotes] = useState('');
+  const [submittingReq, setSubmittingReq] = useState(false);
 
   // Sync role-based department restrictions when user object is loaded
   useEffect(() => {
@@ -77,7 +96,7 @@ export default function ConsumablesLog() {
     silent ? setRefreshing(true) : setLoading(true);
     try {
       const targetDept = userDept ? userDept.id : filterDept;
-      const [deptRes, stockRes, logRes, sumRes] = await Promise.allSettled([
+      const [deptRes, stockRes, logRes, sumRes, reqRes] = await Promise.allSettled([
         api.get('/clinical/inventory/departments'),
         api.get('/clinical/inventory/distributed-stock?include_central=true'),
         api.get('/clinical/inventory/consumables', {
@@ -86,11 +105,13 @@ export default function ConsumablesLog() {
         api.get('/clinical/inventory/consumables/summary', {
           params: { department_id: targetDept || undefined }
         }),
+        api.get('/clinical/inventory/requisitions'),
       ]);
       if (deptRes.status === 'fulfilled' && deptRes.value.data.success) setDepartments(deptRes.value.data.data || []);
       if (stockRes.status === 'fulfilled' && stockRes.value.data.success) setDistributedStock(stockRes.value.data.data || []);
       if (logRes.status === 'fulfilled' && logRes.value.data.success) setEntries(logRes.value.data.data || []);
       if (sumRes.status === 'fulfilled' && sumRes.value.data.success) setSummary(sumRes.value.data.data);
+      if (reqRes.status === 'fulfilled' && reqRes.value.data.success) setRequisitions(reqRes.value.data.data || []);
     } catch (err) {
       console.error(err);
       toast.error('Failed to load consumables data.');
@@ -123,17 +144,30 @@ export default function ConsumablesLog() {
 
   const selectedItem = deptStockItems.find(i => String(i.item_id) === String(formItemId));
 
+  // Is the active department Nursing? (drives the Ward/Session inputs)
+  const activeDeptId = userDept ? userDept.id : formDept;
+  const isNursingActive = String(activeDeptId) === '121' ||
+    (departments.find(d => String(d.id) === String(activeDeptId))?.name || '').toUpperCase() === 'NURSING';
+
   const filteredStockItems = useMemo(() => {
     if (!formItemSearch.trim()) return deptStockItems;
     const q = formItemSearch.toLowerCase();
     return deptStockItems.filter(i => i.name.toLowerCase().includes(q));
   }, [deptStockItems, formItemSearch]);
 
+  // Consumption history paging — reset to page 1 whenever the data changes.
+  useEffect(() => { setHistoryPage(1); }, [entries]);
+  const totalHistoryPages = Math.max(1, Math.ceil(entries.length / HISTORY_PAGE_SIZE));
+  const pagedEntries = entries.slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE);
+
   const currentDeptStock = useMemo(() => {
+    if (stockTab === 'central') {
+      return distributedStock.filter(row => String(row.department_id) === '130' || row.department === 'CENTRAL STORE');
+    }
     const activeD = userDept ? userDept.id : filterDept;
     if (!activeD) return [];
     return distributedStock.filter(row => String(row.department_id) === String(activeD));
-  }, [userDept, filterDept, distributedStock]);
+  }, [userDept, filterDept, distributedStock, stockTab]);
 
   const filteredDeptStock = useMemo(() => {
     let list = currentDeptStock;
@@ -158,6 +192,9 @@ export default function ConsumablesLog() {
     if (selectedItem && qty > selectedItem.available) {
       return toast.error(`Only ${selectedItem.available} ${selectedItem.unit || 'unit(s)'} available.`);
     }
+    if (isNursingActive && !formWard) {
+      return toast.error('Select a ward (Station 1 or Minor Surgery).');
+    }
 
     setSubmitting(true);
     try {
@@ -166,6 +203,8 @@ export default function ConsumablesLog() {
         item_id: parseInt(formItemId, 10),
         quantity: qty,
         notes: formNotes || undefined,
+        ward: isNursingActive ? formWard : undefined,
+        session: isNursingActive ? formSession : undefined,
       });
       if (res.data.success) {
         toast.success(res.data.message || 'Consumption logged.');
@@ -173,6 +212,8 @@ export default function ConsumablesLog() {
         setFormItemSearch('');
         setFormQty('');
         setFormNotes('');
+        setFormWard('');
+        setFormSession(currentSession());
         await loadData(true);
       }
     } catch (err) {
@@ -180,6 +221,56 @@ export default function ConsumablesLog() {
       toast.error(err.response?.data?.message || 'Failed to log consumption.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // ── Requisitions to Stock Manager ──────────────────────────────────────────
+  const activeReqDeptId = userDept ? userDept.id : filterDept;
+  const deptRequisitions = useMemo(
+    () => requisitions.filter(r => !activeReqDeptId || String(r.department_id) === String(activeReqDeptId)),
+    [requisitions, activeReqDeptId]
+  );
+
+  const handleAddReqItem = () => {
+    const item = deptStockItems.find(i => String(i.item_id) === String(reqItemId));
+    if (!item) return toast.error('Select an item to request.');
+    const qty = parseInt(reqQty, 10);
+    if (!qty || qty <= 0) return toast.error('Enter a quantity greater than 0.');
+    if (reqCart.some(c => String(c.item_id) === String(item.item_id))) {
+      return toast.error('Item already added — remove it first to change the quantity.');
+    }
+    setReqCart(prev => [...prev, { item_id: item.item_id, name: item.name, quantity: qty, unit: item.unit }]);
+    setReqItemId('');
+    setReqQty('');
+  };
+
+  const handleRemoveReqItem = (itemId) => setReqCart(prev => prev.filter(c => String(c.item_id) !== String(itemId)));
+
+  const handleSubmitRequisition = async (e) => {
+    e.preventDefault();
+    const deptId = userDept ? userDept.id : formDept;
+    if (!deptId) return toast.error('Select a department.');
+    if (reqCart.length === 0) return toast.error('Add at least one item to the requisition.');
+    setSubmittingReq(true);
+    try {
+      const res = await api.post('/clinical/inventory/requisitions', {
+        department_id: parseInt(deptId, 10),
+        urgency: reqUrgency,
+        notes: reqNotes || undefined,
+        items: reqCart.map(c => ({ item_id: c.item_id, quantity: c.quantity })),
+      });
+      if (res.data.success) {
+        toast.success('Requisition sent to Stock Manager.');
+        setReqCart([]);
+        setReqNotes('');
+        setReqUrgency('Normal');
+        await loadData(true);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to submit requisition.');
+    } finally {
+      setSubmittingReq(false);
     }
   };
 
@@ -385,86 +476,117 @@ export default function ConsumablesLog() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Log form */}
-          <div className="lg:col-span-1 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs h-fit">
+        <div className="space-y-6">
+          {/* Log form — full width, on top */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
             <h3 className="font-bold text-slate-800 text-base flex items-center gap-2 mb-4">
               <Plus size={18} className="text-teal-600" /> Log Consumption
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Department</label>
-                {userDept ? (
-                  <div className="w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700">
-                    {userDept.name}
-                  </div>
-                ) : (
-                  <select value={formDept}
-                    onChange={(e) => { setFormDept(e.target.value); setFormItemId(''); setFormItemSearch(''); }}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold outline-none focus:border-teal-400 focus:bg-white">
-                    <option value="">Select department…</option>
-                    {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Item (in stock)</label>
-                {!(userDept ? userDept.id : formDept) ? (
-                  <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-xl p-2.5 mt-1">
-                    Select a department to see its available consumables.
-                  </p>
-                ) : deptStockItems.length === 0 ? (
-                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl p-2.5 mt-1">
-                    No distributed stock found for this department.
-                  </p>
-                ) : (
-                  <>
-                    <input type="text" placeholder="Search item…" value={formItemSearch}
-                      onChange={(e) => setFormItemSearch(e.target.value)}
-                      className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-teal-400 focus:bg-white" />
-                    <select value={formItemId} onChange={(e) => setFormItemId(e.target.value)}
-                      size={Math.min(6, Math.max(3, filteredStockItems.length))}
-                      className="w-full mt-1.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-teal-400">
-                      {filteredStockItems.map(i => (
-                        <option key={i.item_id} value={i.item_id}>
-                          {i.name} — {i.available} {i.unit || ''} avail.
-                        </option>
-                      ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+                <div>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Department</label>
+                  {userDept ? (
+                    <div className="w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700">
+                      {userDept.name}
+                    </div>
+                  ) : (
+                    <select value={formDept}
+                      onChange={(e) => { setFormDept(e.target.value); setFormItemId(''); setFormItemSearch(''); }}
+                      className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold outline-none focus:border-teal-400 focus:bg-white">
+                      <option value="">Select department…</option>
+                      {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
-                  </>
-                )}
-              </div>
-
-              {selectedItem && (
-                <div className="flex items-center gap-2 text-xs bg-teal-50 border border-teal-200 rounded-xl px-3 py-2 text-teal-700 font-bold">
-                  <Boxes size={14} /> {selectedItem.available} {selectedItem.unit || 'unit(s)'} available
+                  )}
                 </div>
-              )}
 
-              <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Quantity Consumed</label>
-                <input type="number" min="1" max={selectedItem?.available || undefined} value={formQty}
-                  onChange={(e) => setFormQty(e.target.value)} placeholder="0"
-                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-400 focus:bg-white" />
+                <div>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Item (in stock)</label>
+                  {!(userDept ? userDept.id : formDept) ? (
+                    <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-xl p-2.5 mt-1">
+                      Select a department to see its available consumables.
+                    </p>
+                  ) : deptStockItems.length === 0 ? (
+                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl p-2.5 mt-1">
+                      No distributed stock found for this department.
+                    </p>
+                  ) : (
+                    <>
+                      <input type="text" placeholder="Search item…" value={formItemSearch}
+                        onChange={(e) => setFormItemSearch(e.target.value)}
+                        className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-teal-400 focus:bg-white" />
+                      <select value={formItemId} onChange={(e) => setFormItemId(e.target.value)}
+                        className="w-full mt-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-teal-400">
+                        <option value="">Select item…</option>
+                        {filteredStockItems.map(i => (
+                          <option key={i.item_id} value={i.item_id}>
+                            {i.name} — {i.available} {i.unit || ''} avail.
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                </div>
+
+                {isNursingActive && (
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Ward</label>
+                    <select value={formWard} onChange={(e) => setFormWard(e.target.value)}
+                      className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold outline-none focus:border-teal-400 focus:bg-white">
+                      <option value="">Select ward…</option>
+                      <option value="Station 1">Station 1</option>
+                      <option value="Minor Surgery">Minor Surgery</option>
+                    </select>
+                  </div>
+                )}
+
+                {isNursingActive && (
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Session</label>
+                    <div className="mt-1 flex gap-1.5">
+                      {['AM', 'PM'].map((s) => (
+                        <button key={s} type="button" onClick={() => setFormSession(s)}
+                          className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all cursor-pointer ${formSession === s ? 'bg-teal-700 text-white border-teal-700' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[9px] text-slate-400 mt-1 font-semibold">AM 07:00–15:00 · PM 15:00–late</p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Quantity Consumed</label>
+                  <input type="number" min="1" max={selectedItem?.available || undefined} value={formQty}
+                    onChange={(e) => setFormQty(e.target.value)} placeholder="0"
+                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-400 focus:bg-white" />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Notes (optional)</label>
+                  <input type="text" value={formNotes} onChange={(e) => setFormNotes(e.target.value)}
+                    placeholder="e.g. used in procedure room"
+                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-teal-400 focus:bg-white" />
+                </div>
               </div>
 
-              <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Notes (optional)</label>
-                <input type="text" value={formNotes} onChange={(e) => setFormNotes(e.target.value)}
-                  placeholder="e.g. used in procedure room"
-                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-teal-400 focus:bg-white" />
+              {/* Availability + submit */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-slate-100">
+                {selectedItem && (
+                  <div className="flex items-center gap-2 text-xs bg-teal-50 border border-teal-200 rounded-xl px-3 py-2 text-teal-700 font-bold">
+                    <Boxes size={14} /> {selectedItem.available} {selectedItem.unit || 'unit(s)'} available
+                  </div>
+                )}
+                <button type="submit" disabled={submitting || !formItemId}
+                  className="sm:ml-auto py-3 px-10 bg-teal-700 hover:bg-teal-600 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all">
+                  {submitting ? <Loader2 size={15} className="animate-spin" /> : <TrendingDown size={15} />} Record Consumption
+                </button>
               </div>
-
-              <button type="submit" disabled={submitting || !formItemId}
-                className="w-full py-3 bg-teal-700 hover:bg-teal-600 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all">
-                {submitting ? <Loader2 size={15} className="animate-spin" /> : <TrendingDown size={15} />} Record Consumption
-              </button>
             </form>
           </div>
 
-          {/* Right side (History and Stock tabs) */}
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
+          {/* History and Stock tabs — full width, below the log form */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
             {/* Tabs switcher */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4 gap-3 flex-wrap">
               <div className="flex gap-2">
@@ -487,6 +609,16 @@ export default function ConsumablesLog() {
                   }`}
                 >
                   Available Items
+                </button>
+                <button
+                  onClick={() => setActiveSubTab('requisitions')}
+                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeSubTab === 'requisitions'
+                      ? 'bg-teal-700 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
+                  }`}
+                >
+                  <ArrowRight size={14} /> Requisitions
                 </button>
               </div>
 
@@ -530,38 +662,91 @@ export default function ConsumablesLog() {
                         <th className="text-left px-3 py-2.5">Department</th>
                         <th className="text-left px-3 py-2.5">Item</th>
                         <th className="text-center px-3 py-2.5">Qty</th>
+                        <th className="text-left px-3 py-2.5">Ward / Session</th>
                         <th className="text-left px-3 py-2.5">Batch</th>
                         <th className="text-left px-3 py-2.5">By</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {entries.map((e) => (
+                      {pagedEntries.map((e) => (
                         <tr key={e.id} className="border-t border-slate-100 hover:bg-slate-50/60">
                           <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{new Date(e.consumed_at).toLocaleString()}</td>
                           <td className="px-3 py-2.5 font-semibold text-slate-700">{e.department_name || '—'}</td>
                           <td className="px-3 py-2.5 text-slate-800">
                             {e.item_name}
+                            <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${e.source === 'daily' ? 'bg-indigo-50 text-indigo-600' : e.source === 'audit' ? 'bg-amber-50 text-amber-600' : 'bg-teal-50 text-teal-600'}`}>
+                              {e.source === 'daily' ? 'Daily Checkup' : e.source === 'audit' ? 'Stock Edit' : 'Log'}
+                            </span>
                             {e.notes && <span className="block text-[11px] text-slate-400 font-normal">{e.notes}</span>}
                           </td>
-                          <td className="px-3 py-2.5 text-center font-black text-rose-600">−{e.quantity} <span className="text-slate-400 font-semibold text-xs">{e.unit || ''}</span></td>
+                          <td className="px-3 py-2.5 text-center font-black text-rose-600">
+                            {e.source === 'audit' ? <span className="text-slate-400 font-bold">—</span> : `−${e.quantity}`}
+                            {e.source !== 'audit' && <span className="ml-1 text-slate-400 font-semibold text-xs">{e.unit || ''}</span>}
+                          </td>
+                          <td className="px-3 py-2.5 text-[11px]">
+                            {e.ward ? <span className="font-bold text-slate-700">{e.ward}</span> : <span className="text-slate-300">—</span>}
+                            {e.session && <span className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-bold">{e.session}</span>}
+                          </td>
                           <td className="px-3 py-2.5 font-mono text-[11px] text-slate-500">{e.batch_number || '—'}</td>
                           <td className="px-3 py-2.5 text-slate-500 text-xs">{e.logged_by_name || '—'}</td>
                         </tr>
                       ))}
                       {entries.length === 0 && (
-                        <tr><td colSpan={6} className="px-3 py-10 text-center text-slate-400 italic">No consumption logged for this filter.</td></tr>
+                        <tr><td colSpan={7} className="px-3 py-10 text-center text-slate-400 italic">No consumption logged for this filter.</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination — 15 rows per page */}
+                {entries.length > HISTORY_PAGE_SIZE && (
+                  <div className="flex items-center justify-between mt-3 text-xs">
+                    <span className="text-slate-500 font-semibold">
+                      Showing {(historyPage - 1) * HISTORY_PAGE_SIZE + 1}–{Math.min(historyPage * HISTORY_PAGE_SIZE, entries.length)} of {entries.length}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" onClick={() => setHistoryPage(p => Math.max(1, p - 1))} disabled={historyPage === 1}
+                        className="px-3 py-1.5 rounded-lg font-bold border border-slate-200 bg-white text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 cursor-pointer transition-all">
+                        Prev
+                      </button>
+                      <span className="px-2 font-bold text-slate-600">Page {historyPage} / {totalHistoryPages}</span>
+                      <button type="button" onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))} disabled={historyPage >= totalHistoryPages}
+                        className="px-3 py-1.5 rounded-lg font-bold border border-slate-200 bg-white text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 cursor-pointer transition-all">
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
             {/* Available Items Tab */}
             {activeSubTab === 'stock' && (
               <>
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setStockTab('local')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      stockTab === 'local'
+                        ? 'bg-slate-700 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Local Items
+                  </button>
+                  <button
+                    onClick={() => setStockTab('central')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      stockTab === 'central'
+                        ? 'bg-slate-700 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Central Store Items
+                  </button>
+                </div>
                 <div className="flex flex-wrap items-center gap-2 mb-4">
-                  {isAdmin && (
+                  {isAdmin && stockTab === 'local' && (
                     <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}
                       className="bg-slate-50 border border-slate-200 rounded-lg text-xs px-2.5 py-1.5 outline-none font-semibold">
                       <option value="">Select department…</option>
@@ -630,6 +815,168 @@ export default function ConsumablesLog() {
                   </table>
                 </div>
               </>
+            )}
+
+            {/* Requisitions Tab */}
+            {activeSubTab === 'requisitions' && (
+              <div className="space-y-6">
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Left: Requisition Form */}
+                  <div className="w-full lg:w-1/3 bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                    <h4 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
+                      <Send size={16} className="text-teal-600" /> New Requisition
+                    </h4>
+                    <form onSubmit={handleSubmitRequisition} className="space-y-4">
+                      <div>
+                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Department</label>
+                        {userDept ? (
+                          <div className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700">
+                            {userDept.name}
+                          </div>
+                        ) : (
+                          <select value={formDept}
+                            onChange={(e) => { setFormDept(e.target.value); setReqCart([]); }}
+                            className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:border-teal-400">
+                            <option value="">Select department…</option>
+                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          </select>
+                        )}
+                      </div>
+
+                      <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Add Item</label>
+                          <select value={reqItemId} onChange={(e) => setReqItemId(e.target.value)}
+                            className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-teal-400">
+                            <option value="">Select item…</option>
+                            {deptStockItems.map(i => (
+                              <option key={i.item_id} value={i.item_id}>{i.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase">Quantity</label>
+                            <input type="number" min="1" value={reqQty} onChange={(e) => setReqQty(e.target.value)} placeholder="0"
+                              className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-teal-400" />
+                          </div>
+                          <div className="flex items-end">
+                            <button type="button" onClick={handleAddReqItem}
+                              className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer">
+                              Add
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {reqCart.length > 0 && (
+                        <div className="bg-teal-50 border border-teal-100 rounded-xl p-3">
+                          <h5 className="text-[10px] font-black uppercase text-teal-800 mb-2">Cart ({reqCart.length} items)</h5>
+                          <div className="space-y-2">
+                            {reqCart.map(c => (
+                              <div key={c.item_id} className="flex items-center justify-between bg-white px-2 py-1.5 rounded border border-teal-100">
+                                <span className="text-xs font-semibold text-slate-700 truncate">{c.name}</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs font-black text-teal-700">{c.quantity} {c.unit}</span>
+                                  <button type="button" onClick={() => handleRemoveReqItem(c.item_id)} className="text-rose-500 hover:text-rose-700 cursor-pointer">
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Urgency</label>
+                          <select value={reqUrgency} onChange={(e) => setReqUrgency(e.target.value)}
+                            className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:border-teal-400">
+                            <option value="Normal">Normal</option>
+                            <option value="Urgent">Urgent</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Notes</label>
+                          <input type="text" value={reqNotes} onChange={(e) => setReqNotes(e.target.value)} placeholder="Optional..."
+                            className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-teal-400" />
+                        </div>
+                      </div>
+
+                      <button type="submit" disabled={submittingReq || reqCart.length === 0}
+                        className="w-full py-2.5 bg-teal-700 hover:bg-teal-600 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all">
+                        {submittingReq ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} Submit Requisition
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Right: Requisition History */}
+                  <div className="w-full lg:w-2/3">
+                    <h4 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
+                      <Clock size={16} className="text-teal-600" /> Recent Requisitions
+                    </h4>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-black tracking-wider">
+                          <tr>
+                            <th className="text-left px-4 py-3">Date</th>
+                            <th className="text-left px-4 py-3">Department</th>
+                            <th className="text-left px-4 py-3">Items</th>
+                            <th className="text-center px-4 py-3">Urgency</th>
+                            <th className="text-center px-4 py-3">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {deptRequisitions.map(req => {
+                            let items = [];
+                            try { items = typeof req.items === 'string' ? JSON.parse(req.items) : (req.items || []); } catch(e){}
+                            return (
+                              <tr key={req.id} className="border-t border-slate-100 hover:bg-slate-50/60">
+                                <td className="px-4 py-3 text-slate-600 font-medium whitespace-nowrap">
+                                  {new Date(req.created_at).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-3 font-bold text-slate-700">{req.department_name || '—'}</td>
+                                <td className="px-4 py-3 text-xs text-slate-600">
+                                  {items.length > 0 ? (
+                                    <div className="space-y-1">
+                                      {items.map((i, idx) => (
+                                        <div key={idx} className="flex gap-2">
+                                          <span className="font-semibold text-slate-800">{i.quantity}x</span>
+                                          <span className="truncate max-w-[150px]" title={i.item_name || i.name}>{i.item_name || i.name || `Item #${i.item_id}`}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${req.urgency === 'Urgent' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                                    {req.urgency || 'Normal'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
+                                    ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
+                                      req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
+                                      req.status === 'Completed' ? 'bg-blue-100 text-blue-700' :
+                                      req.status === 'Rejected' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                                    {req.status || 'Pending'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {deptRequisitions.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-10 text-center text-slate-400 italic">No requisitions found.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

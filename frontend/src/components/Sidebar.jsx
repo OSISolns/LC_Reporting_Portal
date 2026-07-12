@@ -44,9 +44,9 @@ const Sidebar = ({ onClose }) => {
     { configKey: 'cancellations', name: 'Cancellations',    icon: <FileText size={20} />,        path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
     { configKey: 'refunds',       name: 'Refunds',          icon: <ReceiptText size={20} />,     path: '/refunds',      requiredPerm: { mod: 'refunds', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
     { configKey: 'incidents',     name: 'Incident Reports', icon: <AlertTriangle size={20} />,   path: '/incidents',    requiredPerm: { mod: 'incident_reports', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo', 'medical_director', 'procurement-manager'] },
-    { configKey: 'safety',        name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo'] },
-    { configKey: 'risk',          name: 'Risk Register',    icon: <ShieldAlert size={20} />,     path: '/risk-register', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo'] },
-    { configKey: 'infection',     name: 'Infection Control',icon: <Activity size={20} />,         path: '/infection-control', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo'] },
+    { configKey: 'safety',        name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director'] },
+    { configKey: 'risk',          name: 'Risk Register',    icon: <ShieldAlert size={20} />,     path: '/risk-register', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director'] },
+    { configKey: 'infection',     name: 'Infection Control',icon: <Activity size={20} />,         path: '/infection-control', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director'] },
     { configKey: 'results',       name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
     { configKey: 'performance',   name: 'Performance',      icon: <Award size={20} />,           path: '/performance',  requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff'] },
     { configKey: 'nursing_hub',   name: 'Nursing Hub',      icon: <Stethoscope size={20} />,     path: '/nursing-hub',  requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'chef-nurse'] },
@@ -88,7 +88,10 @@ const Sidebar = ({ onClose }) => {
     // ── Gate 3: Admin sidebar config override (localStorage) ─────────────────
     // Admin can additionally hide items per-role via Permissions > Sidebar Config.
     const roleCfg = sidebarConfigState[user?.role];
-    if (roleCfg && item.configKey && roleCfg[item.configKey] === false) return false;
+    if (roleCfg && item.configKey && roleCfg[item.configKey] === false) {
+      const isHsfpsCore = user?.role === 'hsfp' && ['incidents', 'safety', 'risk', 'infection', 'compliance'].includes(item.configKey);
+      if (!isHsfpsCore) return false;
+    }
 
     return true;
   });

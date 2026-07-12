@@ -1976,10 +1976,17 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         notes           TEXT,
         logged_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
         logged_by_name  TEXT,
+        ward            TEXT,
+        session         TEXT,
         consumed_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
         created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+      // Ward (e.g. Station 1 / Minor Surgery) + Session (AM/PM) — added for
+      // Nursing consumption attribution; guarded ALTERs for pre-existing DBs.
+      for (const col of ['ward TEXT', 'session TEXT']) {
+        try { await client.execute(`ALTER TABLE consumables_log ADD COLUMN ${col}`); } catch (e) { /* already exists */ }
+      }
       await client.execute('CREATE INDEX IF NOT EXISTS idx_consumables_log_dept ON consumables_log(department_id)');
       await client.execute('CREATE INDEX IF NOT EXISTS idx_consumables_log_consumed ON consumables_log(consumed_at)');
       console.log('✅ SQLite Schema Migration: created/verified consumables_log table');
