@@ -5024,6 +5024,7 @@ exports.aiClassifyMasterItems = async (req, res) => {
       const laboratoryDept = depts.find(d => d.name === 'LABORATORY');
       const imagingDept = depts.find(d => d.name === 'IMAGING');
       const generalStoreDept = depts.find(d => d.name === 'GENERAL STORE');
+      const operationsDept = depts.find(d => d.name === 'OPERATIONS');
 
       if (trainingMatch) {
         deptName = trainingMatch.department;
@@ -5037,10 +5038,14 @@ exports.aiClassifyMasterItems = async (req, res) => {
         deptId = dentalDept?.id || null;
         deptName = 'DENTAL';
         deptReason = "Matches dental clinic chairside keywords";
-      } else if (nameLower.includes('physio') || nameLower.includes('exercise') || nameLower.includes('rehab') || nameLower.includes('tens') || nameLower.includes('therapy') || nameLower.includes('elastic')) {
+      } else if (nameLower.includes('physio') || nameLower.includes('exercise') || nameLower.includes('rehab') || nameLower.includes('tens unit') || nameLower.includes('tens machine') || nameLower.includes('theraband') || nameLower.includes('parallel bars') || nameLower.includes('goniometer') || nameLower.includes('walking frame') || nameLower.includes('crutches') || nameLower.includes('wheelchair') || nameLower.includes('traction') || nameLower.includes('hot pack') || nameLower.includes('cold pack') || nameLower.includes('therapy') || nameLower.includes('elastic')) {
         deptId = physioDept?.id || null;
         deptName = 'PHYSIO';
-        deptReason = "Matches physical therapy keywords";
+        deptReason = "Matches physiotherapy/rehabilitation keywords";
+      } else if (nameLower.includes('theatre') || nameLower.includes('operating room') || nameLower.includes('operating theatre') || nameLower.includes('surgical gown') || nameLower.includes('surgical drape') || nameLower.includes('sterile drape') || nameLower.includes('scrub suit') || nameLower.includes('diathermy') || nameLower.includes('electrocautery') || nameLower.includes('anesthesia machine') || nameLower.includes('instrument tray') || nameLower.includes('surgical mesh') || nameLower.includes('skin stapler')) {
+        deptId = operationsDept?.id || null;
+        deptName = 'OPERATIONS';
+        deptReason = "Matches operating theatre/surgical keywords";
       } else if (nameLower.includes('lab') || nameLower.includes('reagent') || nameLower.includes('pipette') || nameLower.includes('cuvette') || nameLower.includes('blood') || nameLower.includes('urine') || nameLower.includes('serum') || nameLower.includes('stool')) {
         deptId = laboratoryDept?.id || null;
         deptName = 'LABORATORY';
@@ -5082,26 +5087,49 @@ exports.aiClassifyMasterItems = async (req, res) => {
         return uomsList.find(u => u.abbreviation.toLowerCase() === abbr.toLowerCase())?.abbreviation;
       };
 
-      if (nameLower.includes('inj') || nameLower.includes('vial') || nameLower.includes('amp') || nameLower.includes('ampoule')) {
-        uom = findUomAbbr('amp') || findUomAbbr('vial') || findUomAbbr('pc') || 'pc';
+      if (trainingMatch && trainingMatch.uom && findUomAbbr(trainingMatch.uom)) {
+        uom = trainingMatch.uom;
+        uomReason = `Matched verified unit of measure from physical inventory records (${trainingMatch.department} log)`;
+      } else if (nameLower.includes('kit')) {
+        uom = findUomAbbr('kit') || 'pc';
+        uomReason = "Keywords suggest kit unit";
+      } else if (nameLower.includes('set')) {
+        uom = findUomAbbr('set') || 'pc';
+        uomReason = "Keywords suggest set unit";
+      } else if (nameLower.includes('ream')) {
+        uom = findUomAbbr('rm') || 'pc';
+        uomReason = "Keywords suggest ream unit";
+      } else if (nameLower.includes('inj') || nameLower.includes('vial') || nameLower.includes('amp') || nameLower.includes('ampoule')) {
+        uom = findUomAbbr('vl') || 'pc';
         uomReason = "Keywords suggest ampoule/vial unit";
       } else if (nameLower.includes('tab') || nameLower.includes('tablet')) {
-        uom = findUomAbbr('tab') || findUomAbbr('pc') || 'pc';
+        uom = findUomAbbr('Tbts') || 'pc';
         uomReason = "Keywords suggest tablet unit";
       } else if (nameLower.includes('cap') || nameLower.includes('capsule')) {
-        uom = findUomAbbr('cap') || findUomAbbr('pc') || 'pc';
+        uom = 'pc';
         uomReason = "Keywords suggest capsule unit";
+      } else if (nameLower.includes('oil tube')) {
+        // "tube" as packaging for a substance (e.g. "Dycal oil tube") — not device tubes
+        // (catheters, endotracheal/feeding/suction tubes), which are counted per piece
+        uom = findUomAbbr('tb') || 'pc';
+        uomReason = "Keywords suggest tube unit";
       } else if (nameLower.includes('roll') || nameLower.includes('tape')) {
-        uom = findUomAbbr('roll') || findUomAbbr('pc') || 'pc';
+        uom = findUomAbbr('rl') || 'pc';
         uomReason = "Keywords suggest roll unit";
+      } else if (nameLower.includes('pack') || nameLower.includes('pqt') || nameLower.includes('emballage')) {
+        uom = findUomAbbr('pk') || 'pc';
+        uomReason = "Keywords suggest pack unit";
       } else if (nameLower.includes('pair') || nameLower.includes('gloves')) {
-        uom = findUomAbbr('pair') || findUomAbbr('pc') || 'pc';
+        uom = 'pc';
         uomReason = "Keywords suggest pair unit";
-      } else if (nameLower.includes('box') || nameLower.includes('bx')) {
-        uom = findUomAbbr('bx') || findUomAbbr('box') || 'bx';
+      } else if (/\/\s*b(o)?x\b|\bbox of\b/.test(nameLower)) {
+        // Only when "box"/"bx" denotes packaging (e.g. "/bx of 5") — not when the
+        // product itself is a box (e.g. "Denture box", "Safety box"), which is
+        // counted per piece
+        uom = findUomAbbr('bx') || 'pc';
         uomReason = "Keywords suggest box unit";
       } else if (nameLower.includes('bottle') || nameLower.includes('bot') || nameLower.includes('syrup')) {
-        uom = findUomAbbr('bot') || findUomAbbr('bottle') || 'bot';
+        uom = findUomAbbr('btl') || 'pc';
         uomReason = "Keywords suggest bottle unit";
       }
 
