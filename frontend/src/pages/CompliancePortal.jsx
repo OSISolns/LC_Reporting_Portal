@@ -246,7 +246,7 @@ const CompliancePortal = () => {
       </div>
 
       {/* ── Upcoming Audit Hero ── */}
-      <div className="bg-[#0f172a] rounded-[24px] p-8 text-white relative overflow-hidden shadow-xl shadow-slate-900/10">
+      <div className="bg-gradient-to-r from-[#1b669d] to-[#0f172a] rounded-[24px] p-8 text-white relative overflow-hidden shadow-xl shadow-slate-900/10">
         <div className="absolute top-0 right-0 p-6 opacity-10">
           <ShieldCheck size={200} />
         </div>
