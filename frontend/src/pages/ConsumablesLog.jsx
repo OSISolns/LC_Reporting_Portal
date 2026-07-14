@@ -780,7 +780,16 @@ export default function ConsumablesLog() {
                   <input type="number" min="1" max={selectedItem?.available || undefined} value={formQty}
                     disabled={!selectedItem || selectedItem.available <= 0}
                     onChange={(e) => setFormQty(e.target.value)} placeholder={!selectedItem ? "0" : selectedItem.available <= 0 ? "Unavailable" : "0"}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-400 focus:bg-white disabled:opacity-55 disabled:cursor-not-allowed" />
+                    className={`w-full mt-1 bg-slate-50 border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:bg-white disabled:opacity-55 disabled:cursor-not-allowed ${
+                      selectedItem && parseInt(formQty, 10) > selectedItem.available
+                        ? 'border-rose-300 text-rose-600 focus:border-rose-400 focus:ring-1 focus:ring-rose-400'
+                        : 'border-slate-200 focus:border-teal-400'
+                    }`} />
+                  {selectedItem && parseInt(formQty, 10) > selectedItem.available && (
+                    <p className="text-[10px] text-rose-600 font-extrabold mt-1">
+                      Cannot exceed available stock ({selectedItem.available} {selectedItem.unit || 'unit(s)'}).
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -802,7 +811,7 @@ export default function ConsumablesLog() {
                     <Boxes size={14} /> {selectedItem.available} {selectedItem.unit || 'unit(s)'} available
                   </div>
                 ) : null}
-                <button type="submit" disabled={submitting || !formItemId || !selectedItem || selectedItem.available <= 0}
+                <button type="submit" disabled={submitting || !formItemId || !selectedItem || selectedItem.available <= 0 || parseInt(formQty, 10) > selectedItem.available}
                   className="sm:ml-auto py-3 px-10 bg-teal-700 hover:bg-teal-600 disabled:bg-slate-350 text-white font-bold text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed disabled:opacity-55">
                   {submitting ? <Loader2 size={15} className="animate-spin" /> : <TrendingDown size={15} />} Record Consumption
                 </button>
