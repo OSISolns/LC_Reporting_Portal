@@ -71,7 +71,7 @@ const SIDEBAR_ITEMS = [
   { key: 'nursing_hub',     name: 'Nursing Hub',         Icon: Stethoscope,     path: '/nursing-hub',              allowedRoles: ['nurse','admin','chef-nurse'] },
   { key: 'doctor_hub',      name: 'Doctor Hub',          Icon: Stethoscope,     path: '/doctor-hub',               allowedRoles: ['doctor','consultant','admin','medical_director'] },
   { key: 'daily_stock',     name: 'Daily Stock',         Icon: Database,        path: '/nursing-hub/inventory',    allowedRoles: ['nurse','chef-nurse','admin'] },
-  { key: 'central_store',   name: 'Central Store',       Icon: Database,        path: '/central-store',            allowedRoles: ['admin','deputy_coo','stock-manager'] },
+  { key: 'central_store',   name: 'General Store',       Icon: Database,        path: '/central-store',            allowedRoles: ['admin','deputy_coo','stock-manager'] },
   { key: 'master',          name: 'Master Module',       Icon: Database,        path: '/master',                   allowedRoles: ['admin','stock-manager'] },
   { key: 'procurement',     name: 'Procurement Hub',     Icon: Building,        path: '/procurement',              allowedRoles: ['admin','procurement-manager','deputy_coo'] },
   { key: 'supplier',        name: 'Supplier Portal',     Icon: Building,        path: '/supplier-portal-manager',  allowedRoles: ['admin','procurement-manager','deputy_coo'] },

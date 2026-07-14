@@ -61,6 +61,8 @@ router.get('/inventory/consumables', checkPermission('inventory', 'view'), clini
 router.get('/inventory/consumables/summary', checkPermission('inventory', 'view'), clinicalController.getConsumablesSummary);
 router.post('/inventory/consumables', checkPermission('inventory', 'edit'), clinicalController.logConsumable);
 router.post('/inventory/master', checkPermission('inventory', 'create'), clinicalController.createmasterInventory);
+router.get('/inventory/master/ai-classify', checkPermission('inventory', 'edit'), clinicalController.aiClassifyMasterItems);
+router.post('/inventory/master/ai-apply', checkPermission('inventory', 'edit'), clinicalController.aiApplyMasterItemsClassifications);
 router.put('/inventory/master/:id', checkPermission('inventory', 'edit'), clinicalController.updatemasterInventory);
 router.delete('/inventory/master/:id', checkPermission('inventory', 'delete'), clinicalController.deletemasterInventory);
 router.post('/inventory/master/bulk-delete', checkPermission('inventory', 'delete'), clinicalController.bulkDeleteMasterInventory);

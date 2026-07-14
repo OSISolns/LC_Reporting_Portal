@@ -324,7 +324,7 @@ export default function ProcurementHub() {
   // Incident Form
   const [incidentFormData, setIncidentFormData] = useState({
     incidentType: 'Equipment',
-    department: 'Central Store',
+    department: 'General Store',
     areaOfIncident: '',
     namesInvolved: '',
     pidNumber: '',
@@ -504,6 +504,19 @@ export default function ProcurementHub() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (departments.length > 0) {
+      const match = departments.some(d => d.name?.toUpperCase() === customReqDept?.toUpperCase());
+      if (!match) {
+        setCustomReqDept(departments[0].name);
+      }
+      const matchBudget = departments.some(d => d.name?.toUpperCase() === budgetDept?.toUpperCase());
+      if (!matchBudget) {
+        setBudgetDept(departments[0].name);
+      }
+    }
+  }, [departments]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -1326,7 +1339,7 @@ export default function ProcurementHub() {
       toast.error('Please enter name, qty, and price.');
       return;
     }
-    const qty = parseInt(tempGrnItemQty, 15);
+    const qty = parseInt(tempGrnItemQty, 10);
     const price = parseFloat(tempGrnItemPrice);
     if (qty <= 0 || price < 0) {
       toast.error('Enter valid quantity and price.');
@@ -1457,7 +1470,7 @@ export default function ProcurementHub() {
         setShowCreateIncidentModal(false);
         setIncidentFormData({
           incidentType: 'Equipment',
-          department: 'Central Store',
+          department: 'General Store',
           areaOfIncident: '',
           namesInvolved: '',
           pidNumber: '',
@@ -1658,7 +1671,7 @@ export default function ProcurementHub() {
                activeTab === 'analytics' ? 'Analytics & Reporting' :
                activeTab === 'catalog' ? 'Procurement Catalog' :
                activeTab === 'budgets' ? 'Department Budgets' :
-               activeTab === 'central_stock' ? 'Central Store Stock' :
+               activeTab === 'central_stock' ? 'General Store Stock' :
                activeTab === 'department_stocks' ? 'Departmental Stocks' :
                activeTab.replace(/_/g, ' ')}
             </span>
@@ -1753,7 +1766,7 @@ export default function ProcurementHub() {
                             { label: 'Supplier Returns', id: 'returns' },
                             { label: 'Tenders & RFQs', id: 'tenders' },
                             { label: 'Suppliers & Vendors', id: 'suppliers' },
-                            { label: 'Central Store Stock', id: 'central_stock' },
+                            { label: 'General Store Stock', id: 'central_stock' },
                             { label: 'Department Stocks', id: 'department_stocks' },
                           ].map((l, i) => (
                             <button key={i} onClick={() => setActiveTab(l.id)} className="flex items-center justify-between py-2 border-b border-slate-100 hover:text-teal-700 transition-all group text-left cursor-pointer">
@@ -1946,7 +1959,7 @@ export default function ProcurementHub() {
                           onChange={(e) => setCustomReqDept(e.target.value)} 
                           className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none"
                         >
-                          {['NURSING', 'PHARMACY', 'LABORATORY', 'DENTAL', 'RADIOLOGY', 'ADMINISTRATION'].map(d => (
+                          {(departments.length > 0 ? departments.map(d => d.name) : ['NURSING', 'PHARMACY', 'LABORATORY', 'DENTAL', 'RADIOLOGY', 'ADMINISTRATION']).map(d => (
                             <option key={d} value={d}>{d}</option>
                           ))}
                         </select>
@@ -2127,7 +2140,7 @@ export default function ProcurementHub() {
                               onChange={(e) => setCustomReqDept(e.target.value)} 
                               className="bg-slate-50 border border-slate-250 rounded-xl px-3.5 py-3 text-xs outline-none"
                             >
-                              {['NURSING', 'PHARMACY', 'LABORATORY', 'DENTAL', 'RADIOLOGY', 'ADMINISTRATION'].map(d => (
+                              {(departments.length > 0 ? departments.map(d => d.name) : ['NURSING', 'PHARMACY', 'LABORATORY', 'DENTAL', 'RADIOLOGY', 'ADMINISTRATION']).map(d => (
                                 <option key={d} value={d}>{d}</option>
                               ))}
                             </select>
@@ -2542,7 +2555,7 @@ export default function ProcurementHub() {
                         <input value={stockSearch} onChange={e => setStockSearch(e.target.value)} placeholder="Search item, SKU, category or vendor…"
                           className="w-full bg-slate-50 border border-slate-200 pl-9 pr-3 py-2 rounded-xl text-xs outline-none focus:border-teal-300 focus:bg-white" />
                       </div>
-                      <p className="text-[11px] font-bold text-slate-400 md:ml-auto">Central Store stock-in-hand · batch level</p>
+                      <p className="text-[11px] font-bold text-slate-400 md:ml-auto">General Store stock-in-hand · batch level</p>
                     </div>
 
                     {/* Table */}
@@ -2558,7 +2571,7 @@ export default function ProcurementHub() {
                           </tr></thead>
                           <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
                             {rows.length === 0 && (
-                              <tr><td colSpan={10} className="p-10 text-center text-slate-400"><Database className="mx-auto opacity-30 mb-2" size={32} />No stock in the Central Store{q ? ' matching your search' : ''}.</td></tr>
+                              <tr><td colSpan={10} className="p-10 text-center text-slate-400"><Database className="mx-auto opacity-30 mb-2" size={32} />No stock in the General Store{q ? ' matching your search' : ''}.</td></tr>
                             )}
                             {rows.map((r, i) => {
                               const d = daysTo(r.expiry_date);
@@ -2625,7 +2638,7 @@ export default function ProcurementHub() {
                         <input value={stockSearch} onChange={e => setStockSearch(e.target.value)} placeholder="Search item, SKU or category…"
                           className="w-full bg-slate-50 border border-slate-200 pl-9 pr-3 py-2 rounded-xl text-xs outline-none focus:border-teal-300 focus:bg-white" />
                       </div>
-                      <p className="text-[11px] font-bold text-slate-400 md:ml-auto">Stock distributed out of Central Store</p>
+                      <p className="text-[11px] font-bold text-slate-400 md:ml-auto">Stock distributed out of General Store</p>
                     </div>
 
                     {/* Table */}
@@ -4588,12 +4601,9 @@ export default function ProcurementHub() {
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] uppercase text-slate-450">Department</label>
                   <select value={budgetDept} onChange={e => setBudgetDept(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none">
-                    <option value="NURSING">Nursing</option>
-                    <option value="PHARMACY">Pharmacy</option>
-                    <option value="LABORATORY">Laboratory</option>
-                    <option value="DENTAL">Dental</option>
-                    <option value="RADIOLOGY">Radiology</option>
-                    <option value="ADMINISTRATION">Administration</option>
+                    {(departments.length > 0 ? departments.map(d => d.name) : ['NURSING', 'PHARMACY', 'LABORATORY', 'DENTAL', 'RADIOLOGY', 'ADMINISTRATION']).map(d => (
+                      <option key={d} value={d}>{d.charAt(0) + d.slice(1).toLowerCase()}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -5307,7 +5317,7 @@ export default function ProcurementHub() {
                     <input 
                       type="text" 
                       required
-                      placeholder="e.g. Central Store Shelf B"
+                      placeholder="e.g. General Store Shelf B"
                       value={incidentFormData.areaOfIncident}
                       onChange={(e) => setIncidentFormData({...incidentFormData, areaOfIncident: e.target.value})}
                       className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none"
@@ -5651,7 +5661,7 @@ export default function ProcurementHub() {
                 <div className="mt-6 space-y-3">
                   <div className="p-3.5 bg-amber-50 border border-amber-150 rounded-2xl text-xs flex gap-2 text-amber-800 leading-relaxed font-semibold">
                     <ShieldAlert className="flex-shrink-0" size={18} />
-                    Confirming will automatically register these batch numbers and expiry records and merge received quantities into the Central Store inventory.
+                    Confirming will automatically register these batch numbers and expiry records and merge received quantities into the General Store inventory.
                   </div>
                   <button 
                     onClick={() => handleReceiveStock(selectedSubmission.id)}
@@ -6242,7 +6252,7 @@ export default function ProcurementHub() {
                       </div>
                       <div>
                         <span style={{ fontWeight: 700 }}>Department: </span>
-                        <span style={{ borderBottom: '1px solid #000', minWidth: '130px', display: 'inline-block' }}>Central Store</span>
+                        <span style={{ borderBottom: '1px solid #000', minWidth: '130px', display: 'inline-block' }}>General Store</span>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>

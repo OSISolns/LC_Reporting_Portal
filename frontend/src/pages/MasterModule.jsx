@@ -22,7 +22,10 @@ import {
   SlidersHorizontal,
   Layers,
   MapPin,
-  ClipboardList
+  ClipboardList,
+  Sparkles,
+  Brain,
+  Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
@@ -105,6 +108,15 @@ export default function MasterModule() {
   const [uomForm, setUomForm] = useState({ name: '', abbreviation: '', description: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // AI Agent States
+  const [isAIModalOpen, setAIModalOpen] = useState(false);
+  const [aiSuggestions, setAISuggestions] = useState([]);
+  const [selectedAISuggestions, setSelectedAISuggestions] = useState([]);
+  const [aiStep, setAIStep] = useState(0); // 0 = Intro, 1 = Classifying, 2 = Review Table
+  const [aiProgress, setAIProgress] = useState(0);
+  const [currentAIItemName, setCurrentAIItemName] = useState('');
+  const [isAIApplying, setIsAIApplying] = useState(false);
+
   // Categories definition
   const categoriesList = [
     { id: 'medical_supplies', label: 'Medical Supplies' },
@@ -115,7 +127,9 @@ export default function MasterModule() {
     { id: 'antidotes', label: 'Antidotes' },
     { id: 'stationery', label: 'Stationery' },
     { id: 'consumables', label: 'Consumables' },
-    { id: 'suppository', label: 'Suppository' }
+    { id: 'suppository', label: 'Suppository' },
+    { id: 'housekeeping', label: 'Housekeeping' },
+    { id: 'cafetariat', label: 'Cafetariat' }
   ];
 
   // Mirrors the backend SKU algorithm for live preview.
@@ -172,6 +186,94 @@ export default function MasterModule() {
       toast.error('Failed to load master data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenAIClassifier = () => {
+    setAISuggestions([]);
+    setSelectedAISuggestions([]);
+    setAIStep(0);
+    setAIProgress(0);
+    setCurrentAIItemName('');
+    setAIModalOpen(true);
+  };
+
+  const handleStartAIClassification = async () => {
+    try {
+      setAIStep(1);
+      setAIProgress(0);
+      setCurrentAIItemName('Initializing AI Agent...');
+      
+      const res = await api.get('/clinical/inventory/master/ai-classify');
+      if (res.data && res.data.success) {
+        const data = res.data.data;
+        setAISuggestions(data);
+        // By default, select all items that have different recommendations from current values
+        setSelectedAISuggestions(data.filter(s => s.isDifferent).map(s => s.itemId));
+
+        if (data.length === 0) {
+          setAIProgress(100);
+          setAIStep(2);
+          return;
+        }
+
+        let currentIdx = 0;
+        const totalItems = data.length;
+        const intervalTime = Math.max(15, Math.min(100, 2500 / totalItems));
+
+        const timer = setInterval(() => {
+          if (currentIdx < totalItems) {
+            setCurrentAIItemName(`Analyzing item ${currentIdx + 1} of ${totalItems}: ${data[currentIdx].name}`);
+            setAIProgress(Math.round(((currentIdx + 1) / totalItems) * 100));
+            currentIdx++;
+          } else {
+            clearInterval(timer);
+            setAIStep(2);
+          }
+        }, intervalTime);
+      } else {
+        toast.error('Failed to start AI classification');
+        setAIStep(0);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error during AI classification');
+      setAIStep(0);
+    }
+  };
+
+  const handleApplyAISuggestions = async () => {
+    try {
+      setIsAIApplying(true);
+      const suggestionsToApply = aiSuggestions.filter(s => selectedAISuggestions.includes(s.itemId));
+      
+      if (suggestionsToApply.length === 0) {
+        toast.error('No recommendations selected');
+        setIsAIApplying(false);
+        return;
+      }
+
+      const payload = suggestionsToApply.map(s => ({
+        itemId: s.itemId,
+        category: s.suggestedCategory,
+        departmentId: s.suggestedDepartmentId,
+        storage: s.suggestedStorage,
+        uom: s.suggestedUom
+      }));
+
+      const res = await api.post('/clinical/inventory/master/ai-apply', { suggestions: payload });
+      if (res.data && res.data.success) {
+        toast.success(`Successfully applied AI recommendations to ${suggestionsToApply.length} items`);
+        setAIModalOpen(false);
+        loadMasterData();
+      } else {
+        toast.error('Failed to apply suggestions');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error applying AI recommendations');
+    } finally {
+      setIsAIApplying(false);
     }
   };
 
@@ -495,6 +597,10 @@ export default function MasterModule() {
       return 'bg-rose-50 text-rose-700 border-rose-200/50';
     } else if (cat.includes('stationery')) {
       return 'bg-slate-100 text-slate-700 border-slate-300/50';
+    } else if (cat.includes('housekeeping')) {
+      return 'bg-orange-50 text-orange-700 border-orange-200/50';
+    } else if (cat.includes('cafetariat')) {
+      return 'bg-pink-50 text-pink-700 border-pink-200/50';
     } else {
       return 'bg-slate-50 text-slate-600 border-slate-200/50';
     }
@@ -707,20 +813,20 @@ export default function MasterModule() {
                     </div>
                   </div>
 
-                  {/* Location select filter */}
+                  {/* Department select filter */}
                   <div className="relative flex-1 md:w-44 md:flex-initial">
                     <select
                       value={selectedDepartment}
                       onChange={e => setSelectedDepartment(e.target.value)}
                       className="w-full pl-3 pr-8 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 text-xs font-bold text-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors appearance-none"
                     >
-                      <option value="">All Locations</option>
+                      <option value="">All Departments</option>
                       {departments.map(dept => (
                         <option key={dept.id} value={dept.id}>{dept.name}</option>
                       ))}
                     </select>
                     <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
-                      <MapPin size={14} />
+                      <Building2 size={14} />
                     </div>
                   </div>
                 </div>
@@ -745,6 +851,15 @@ export default function MasterModule() {
                   className="bg-indigo-55 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <Plus size={15} className="stroke-[2.5]" /> {currentAddAction.label}
+                </button>
+              )}
+
+              {activeTab === 'items' && (
+                <button
+                  onClick={handleOpenAIClassifier}
+                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border border-emerald-200 flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                >
+                  <Sparkles size={15} className="stroke-[2.5] text-emerald-600 animate-pulse" /> AI Auto-Classify
                 </button>
               )}
             </div>
@@ -1222,7 +1337,7 @@ export default function MasterModule() {
             <div>
               <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Department <span className="text-indigo-400 normal-case font-semibold">(tracking only)</span></label>
               <select value={itemForm.department_id} onChange={e => setItemForm({ ...itemForm, department_id: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none font-semibold text-slate-800 cursor-pointer">
-                <option value="">- Central Store Hub (Global) -</option>
+                <option value="">- General Store (Global) -</option>
                 {departments.map(dept => (
                   <option key={dept.id} value={dept.id}>{dept.name}</option>
                 ))}
@@ -1369,6 +1484,221 @@ export default function MasterModule() {
             {isSubmitting && <Loader2 size={14} className="animate-spin" />} Delete Permanently
           </button>
         </div>
+      </Modal>
+
+      {/* AI CLASSIFIER MODAL */}
+      <Modal isOpen={isAIModalOpen} onClose={() => setAIModalOpen(false)} title="Lumina AI Auto-Classifier">
+        {aiStep === 0 && (
+          <div className="space-y-6 py-2">
+            <div className="flex items-center gap-4 bg-indigo-50 border border-indigo-150 rounded-2xl p-5 shadow-sm">
+              <div className="p-3 bg-indigo-600 text-white rounded-xl shadow-md">
+                <Brain size={24} className="animate-pulse" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-800 text-sm tracking-tight">AI Reference Item Classifier</h3>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">Automated heuristics and UOM resolution</p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 text-xs text-slate-650 leading-relaxed font-semibold">
+              <p>
+                The Lumina AI Agent will inspect every product and service in your Master Catalog database. By parsing titles, keywords, dosage formats, and suffixes, it will automatically propose standard classifications:
+              </p>
+              <div className="grid grid-cols-2 gap-3.5 pt-2">
+                <div className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl space-y-1">
+                  <span className="font-extrabold text-indigo-600">🏷️ CATEGORY</span>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Medications, Consumables, Sutures, Anesthetics, Antiseptics...</p>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl space-y-1">
+                  <span className="font-extrabold text-indigo-600">🏥 DEPARTMENT</span>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Nursing, Dental, Physio, Laboratory, Imaging, General Store...</p>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl space-y-1">
+                  <span className="font-extrabold text-indigo-600">❄️ STORAGE TYPE</span>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Medical vs. Non-Medical storage environment requirements</p>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl space-y-1">
+                  <span className="font-extrabold text-indigo-600">⚖️ MEASUREMENT UOM</span>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Standardizing items into tablets, vials, pieces, boxes...</p>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 font-extrabold mt-3 border-t border-slate-100 pt-3">
+                Note: No data will be written until you review and confirm the classifications on the next step.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setAIModalOpen(false)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Cancel</button>
+              <button type="button" onClick={handleStartAIClassification} className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-150 border-0">
+                <Sparkles size={14} className="stroke-[2.5]" /> Start AI Classification
+              </button>
+            </div>
+          </div>
+        )}
+
+        {aiStep === 1 && (
+          <div className="flex flex-col items-center justify-center py-12 space-y-6">
+            <div className="relative animate-bounce">
+              <div className="absolute inset-0 bg-indigo-200 rounded-full blur-xl animate-pulse"></div>
+              <div className="relative p-5 bg-indigo-600 text-white rounded-full shadow-lg">
+                <Brain size={36} className="animate-spin" />
+              </div>
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">AI Agent Working...</h3>
+              <p className="text-xs text-indigo-600 font-extrabold font-mono tracking-widest">{aiProgress}%</p>
+              <p className="text-[11px] text-slate-400 font-semibold max-w-sm truncate px-4">{currentAIItemName}</p>
+            </div>
+            <div className="w-64 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+              <div className="h-full bg-indigo-600 transition-all duration-100 rounded-full" style={{ width: `${aiProgress}%` }}></div>
+            </div>
+          </div>
+        )}
+
+        {aiStep === 2 && (
+          <div className="space-y-6 py-2">
+            <div className="flex items-center justify-between border-b border-slate-150 pb-4">
+              <div>
+                <h3 className="font-black text-slate-800 text-sm tracking-tight">AI Suggested Classifications</h3>
+                <p className="text-xs text-slate-400 font-bold mt-0.5">
+                  Showing {aiSuggestions.length} items parsed. {aiSuggestions.filter(s => s.isDifferent).length} recommend changes.
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => {
+                  const hasDiff = aiSuggestions.filter(s => s.isDifferent).map(s => s.itemId);
+                  setSelectedAISuggestions(selectedAISuggestions.length === hasDiff.length ? [] : hasDiff);
+                }} 
+                className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl text-[10px] font-black text-slate-650 transition-colors uppercase tracking-wider cursor-pointer"
+              >
+                Toggle Only Changed Items
+              </button>
+            </div>
+
+            <div className="max-h-[380px] overflow-y-auto border border-slate-150 rounded-2xl bg-slate-50/50 p-2 space-y-2.5">
+              {aiSuggestions.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 font-semibold">No items available for classification.</div>
+              ) : (
+                aiSuggestions.map(s => {
+                  const isSelected = selectedAISuggestions.includes(s.itemId);
+                  return (
+                    <div 
+                      key={s.itemId}
+                      onClick={() => {
+                        setSelectedAISuggestions(prev => 
+                          prev.includes(s.itemId) ? prev.filter(id => id !== s.itemId) : [...prev, s.itemId]
+                        );
+                      }}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex gap-3 text-xs ${
+                        isSelected 
+                          ? 'bg-white border-indigo-300 shadow-sm shadow-indigo-50/50' 
+                          : 'bg-white/60 border-slate-205 border-slate-200 hover:border-slate-350'
+                      }`}
+                    >
+                      <input 
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}} // handled by div onClick
+                        className="w-4 h-4 rounded accent-indigo-600 mt-0.5 cursor-pointer shrink-0"
+                      />
+                      <div className="flex-1 space-y-2.5">
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="font-black text-slate-800 tracking-tight leading-snug">{s.name}</span>
+                          <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${
+                            s.confidence > 0.7 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                              : 'bg-amber-50 text-amber-705 text-amber-700 border-amber-100'
+                          }`}>
+                            {Math.round(s.confidence * 100)}% Conf
+                          </span>
+                        </div>
+
+                        {/* Suggestions list */}
+                        <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-150">
+                          {/* Category change */}
+                          <div className="space-y-0.5">
+                            <span className="text-[9px] uppercase font-black text-slate-400 block">Category</span>
+                            {s.currentCategory === s.suggestedCategory ? (
+                              <span className="text-slate-650">{formatCategoryName(s.suggestedCategory)}</span>
+                            ) : (
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="text-slate-450 text-slate-400 line-through truncate max-w-[80px]">{formatCategoryName(s.currentCategory)}</span>
+                                <span className="text-indigo-600 font-black">➜ {formatCategoryName(s.suggestedCategory)}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Department change */}
+                          <div className="space-y-0.5">
+                            <span className="text-[9px] uppercase font-black text-slate-400 block">Department</span>
+                            {s.currentDepartmentId === s.suggestedDepartmentId ? (
+                              <span className="text-slate-650">{s.suggestedDepartmentName}</span>
+                            ) : (
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="text-slate-455 text-slate-400 line-through truncate max-w-[80px]">{s.currentDepartmentName}</span>
+                                <span className="text-indigo-600 font-black">➜ {s.suggestedDepartmentName}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Storage change */}
+                          <div className="space-y-0.5">
+                            <span className="text-[9px] uppercase font-black text-slate-400 block">Storage</span>
+                            {s.currentStorage === s.suggestedStorage ? (
+                              <span className="text-slate-650">{s.suggestedStorage}</span>
+                            ) : (
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="text-slate-455 text-slate-400 line-through">{s.currentStorage}</span>
+                                <span className="text-indigo-600 font-black">➜ {s.suggestedStorage}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* UOM change */}
+                          <div className="space-y-0.5">
+                            <span className="text-[9px] uppercase font-black text-slate-400 block">UOM</span>
+                            {s.currentUom === s.suggestedUom ? (
+                              <span className="text-slate-650">{s.suggestedUom}</span>
+                            ) : (
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="text-slate-455 text-slate-400 line-through">{s.currentUom}</span>
+                                <span className="text-indigo-600 font-black">➜ {s.suggestedUom}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Rationale explanation */}
+                        <p className="text-[10px] text-slate-400 italic leading-normal border-l-2 border-indigo-300 pl-2">
+                          {s.categoryReason}. {s.departmentReason}.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+              <span className="text-xs font-black text-indigo-700">
+                {selectedAISuggestions.length} recommendations selected to apply
+              </span>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setAIStep(0)} className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0">Back</button>
+                <button 
+                  type="button" 
+                  onClick={handleApplyAISuggestions} 
+                  disabled={isAIApplying || selectedAISuggestions.length === 0}
+                  className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-150 border-0"
+                >
+                  {isAIApplying && <Loader2 size={14} className="animate-spin" />}
+                  Apply Suggestions
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <style jsx>{`

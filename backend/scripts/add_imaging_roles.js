@@ -15,11 +15,8 @@ const db = require('../src/config/db');
 const bcrypt = require('bcryptjs');
 
 const IMAGING_ROLES = [
-  { name: 'radiographer',         display: 'Radiographer',          user: ['Radiographer Rita',    'radiographer_rita',  'rita@legacyclinics.rw'] },
-  { name: 'sonographer',          display: 'Sonographer',           user: ['Sonographer Simon',    'sonographer_simon',  'simon@legacyclinics.rw'] },
-  { name: 'radiologist',          display: 'Radiologist',           user: ['Dr. Radiologist Rose', 'radiologist_rose',   'rose@legacyclinics.rw'] },
-  { name: 'imaging_receptionist', display: 'Imaging Receptionist',  user: ['Imaging Reception Rene','imaging_reception', 'rene@legacyclinics.rw'] },
-  { name: 'imaging_manager',      display: 'Imaging Manager',       user: ['Imaging Manager Max',  'imaging_manager_max','max@legacyclinics.rw'] },
+  { name: 'imaging_tech',    display: 'Imaging Tech',    user: ['Imaging Tech Tara',    'imaging_tech_tara',  'tara@legacyclinics.rw'] },
+  { name: 'imaging_manager', display: 'Imaging Manager', user: ['Imaging Manager Max',  'imaging_manager_max','max@legacyclinics.rw'] },
 ];
 
 const DEFAULT_PASSWORD = 'imaging123';

@@ -21,7 +21,7 @@ const MODULES = [
   // area's existing hardcoded authorizeRoles()/allowedRoles lists exactly, so
   // adding these does not change anyone's access on its own.
   { name: 'safety',           display: 'Safety Management (Risk/Infection Control)', actions: ['view','create','delete'] },
-  { name: 'inventory',        display: 'Central Store & Master Inventory',           actions: ['view','create','edit','delete'] },
+  { name: 'inventory',        display: 'General Store & Master Inventory',           actions: ['view','create','edit','delete'] },
   { name: 'daily_stock',      display: 'Daily Stock Checkup',                        actions: ['view','edit'] },
   { name: 'procurement',      display: 'Procurement & Purchase Orders',              actions: ['view','create','edit'] },
   { name: 'ai_insights',      display: 'AI Insights',                                actions: ['view','download'] },
@@ -401,51 +401,21 @@ const ROLE_DEFAULTS = {
   },
 
   // ── Imaging (Radiology) Department roles ──────────────────────────────────
-  // Modality is a study/shift attribute, not a role: a "CT Radiographer" is a
-  // radiographer working the CT station. Sonographers both acquire and report
-  // their own ultrasound studies (per the department task sheet), so they hold
-  // the `report` action; plain radiographers acquire only.
-  radiographer: {
-    incident_reports: { view:1, create:1, edit:0, approve:0 },
-    reports:          { view:0, download:0 },
-    staff_performance:{ view:1, create:0 },
-    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
-    inventory:        { view:1, create:1, edit:0, delete:0 },
-    daily_stock:      { view:1, edit:1 },
-    it_support:       { view:1, create:1 },
-    patients:         { view:1, create:0 },
-    imaging:          { view:1, create:1, edit:1, acquire:1, report:0, verify:0, delete:0 },
-  },
-  sonographer: {
-    incident_reports: { view:1, create:1, edit:0, approve:0 },
-    reports:          { view:0, download:0 },
-    staff_performance:{ view:1, create:0 },
-    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
-    inventory:        { view:1, create:1, edit:0, delete:0 },
-    daily_stock:      { view:1, edit:1 },
-    it_support:       { view:1, create:1 },
-    patients:         { view:1, create:0 },
-    imaging:          { view:1, create:1, edit:1, acquire:1, report:1, verify:0, delete:0 },
-  },
-  radiologist: {
+  // Modality is a study/shift attribute, not a role: a "CT Imaging Tech" is an
+  // imaging tech working the CT station. Imaging Tech covers the full
+  // operational workflow — scheduling, acquisition, reporting and
+  // verification — while Imaging Manager adds department oversight
+  // (approvals, staffing, inventory control).
+  imaging_tech: {
     incident_reports: { view:1, create:1, edit:0, approve:0 },
     reports:          { view:1, download:1 },
     staff_performance:{ view:1, create:0 },
     shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
-    inventory:        { view:1, create:0, edit:0, delete:0 },
-    daily_stock:      { view:1, edit:0 },
-    it_support:       { view:1, create:1 },
-    patients:         { view:1, create:0 },
-    imaging:          { view:1, create:0, edit:1, acquire:0, report:1, verify:1, delete:0 },
-  },
-  imaging_receptionist: {
-    incident_reports: { view:1, create:1, edit:0, approve:0 },
-    reports:          { view:0, download:0 },
-    staff_performance:{ view:1, create:0 },
-    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    inventory:        { view:1, create:1, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:1 },
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:1 },
-    imaging:          { view:1, create:1, edit:1, acquire:0, report:0, verify:0, delete:0 },
+    imaging:          { view:1, create:1, edit:1, acquire:1, report:1, verify:1, delete:0 },
   },
   imaging_manager: {
     incident_reports: { view:1, create:1, edit:1, approve:1 },

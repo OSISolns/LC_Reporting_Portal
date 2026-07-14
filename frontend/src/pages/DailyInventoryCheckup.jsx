@@ -643,7 +643,7 @@ export default function DailyInventoryCheckup() {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to sync central store stock');
+      toast.error(err.response?.data?.message || 'Failed to sync general store stock');
       setLoading(false);
     }
   };
@@ -729,7 +729,7 @@ export default function DailyInventoryCheckup() {
         notes: newReqNotes,
         items: validLines.map(l => ({ item_id: l.item_id, quantity: Number(l.quantity) }))
       });
-      toast.success('Requisition submitted to Central Store successfully!');
+      toast.success('Requisition submitted to General Store successfully!');
       setShowCreateReqModal(false);
       setNewReqUrgency('Normal');
       setNewReqNotes('');
@@ -1688,7 +1688,7 @@ export default function DailyInventoryCheckup() {
                     className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all border-none bg-transparent"
                   >
                     <span className="p-1 bg-sky-105 text-sky-700 rounded-lg"><RotateCw size={14} /></span>
-                    Sync Central Store Stock
+                    Sync General Store Stock
                   </button>
 
                   {/* Action Requisition Stock */}
@@ -2999,7 +2999,7 @@ export default function DailyInventoryCheckup() {
 
           <div className="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-2">
             <p className="text-[11px] text-slate-500 font-bold leading-normal">
-              Track stock requests sent to the Central Store Hub, or request additional inventory items.
+              Track stock requests sent to the General Store Hub, or request additional inventory items.
             </p>
             <Button
               onClick={() => {
@@ -3228,7 +3228,7 @@ export default function DailyInventoryCheckup() {
           {selectedReq?.status === 'Approved' && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-3">
               <p className="text-[11px] font-bold text-emerald-800 leading-snug">
-                This stock has been dispatched from the Central Store. Accept it to add these
+                This stock has been dispatched from the General Store. Accept it to add these
                 quantities into your Daily Stock Checkup for <span className="font-black">{monthYear} · Day {currentDay} · {currentSession}</span>.
               </p>
               <Button
@@ -3275,7 +3275,7 @@ export default function DailyInventoryCheckup() {
       >
         <form onSubmit={handleCreateRequisition} className="space-y-4 text-left p-2">
           <p className="text-[11px] text-slate-500 font-bold leading-normal mb-4">
-            Select items from the master catalog and request their transfer from the Central Store to the NURSING department.
+            Select items from the master catalog and request their transfer from the General Store to the NURSING department.
           </p>
 
           <div className="grid grid-cols-2 gap-4">

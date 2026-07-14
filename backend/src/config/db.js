@@ -435,13 +435,16 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       }
       
       console.log('⚙️ Running custom department cleanup migration...');
-      // CENTRAL STORE must exist as a real department row -- several code
+      // Rename CENTRAL STORE to GENERAL STORE if it exists in the database
+      await client.execute("UPDATE departments SET name = 'GENERAL STORE' WHERE name = 'CENTRAL STORE'");
+
+      // GENERAL STORE must exist as a real department row -- several code
       // paths (Purchase Requests from Stock Manager, approveRequisition's
       // "is this a self-requisition to Procurement" check, supplier receiving)
-      // look it up by name via LIKE '%Central%'/'%Store%' and need a real id
+      // look it up by name via LIKE '%General%'/'%Store%' and need a real id
       // to attach requisitions/department_stock rows to. Without it here, it
       // would get deleted by this same cleanup pass as a "non-target" dept.
-      const targetDepts = ['DENTAL', 'PHYSIO', 'NURSING', 'OPERATIONS', 'LABORATORY', 'IMAGING', 'CENTRAL STORE'];
+      const targetDepts = ['DENTAL', 'PHYSIO', 'NURSING', 'OPERATIONS', 'LABORATORY', 'IMAGING', 'GENERAL STORE', 'DENTAL LAB'];
       
       // Get all current departments
       const { rows: depts } = await client.execute("SELECT id, name FROM departments");

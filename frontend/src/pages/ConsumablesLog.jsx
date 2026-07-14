@@ -17,7 +17,7 @@ const getDepartmentForRole = (role) => {
   if (r === 'admin') return null;
   if (r.includes('nurse')) return { id: '121', name: 'NURSING' };
   if (r.includes('lab')) return { id: '123', name: 'LABORATORY' };
-  if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') return { id: '130', name: 'CENTRAL STORE' };
+  if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') return { id: '130', name: 'GENERAL STORE' };
   if (r.includes('physio')) return { id: '120', name: 'PHYSIO' };
   if (r.includes('dental') || r.includes('dentist')) return { id: '129', name: 'DENTAL' };
   if (r.includes('operations') || r.includes('ops') || r === 'coo') return { id: '122', name: 'OPERATIONS' };
@@ -162,7 +162,7 @@ export default function ConsumablesLog() {
 
   const currentDeptStock = useMemo(() => {
     if (stockTab === 'central') {
-      return distributedStock.filter(row => String(row.department_id) === '130' || row.department === 'CENTRAL STORE');
+      return distributedStock.filter(row => String(row.department_id) === '130' || row.department === 'GENERAL STORE');
     }
     const activeD = userDept ? userDept.id : filterDept;
     if (!activeD) return [];
@@ -434,7 +434,7 @@ export default function ConsumablesLog() {
             <div>
               <h1 className="text-3xl font-black tracking-tight text-slate-900">Consumables Log</h1>
               <p className="text-sm text-slate-500 mt-0.5 font-medium">
-                Record consumable usage per department — synced live with Central Store stock.
+                Record consumable usage per department — synced live with General Store stock.
               </p>
             </div>
           </div>
@@ -742,7 +742,7 @@ export default function ConsumablesLog() {
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
-                    Central Store Items
+                    General Store Items
                   </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mb-4">

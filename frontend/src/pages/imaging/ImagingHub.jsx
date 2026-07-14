@@ -25,9 +25,7 @@ const ImagingHub = () => {
 
   // Role-aware default landing tab.
   const defaultTab = useMemo(() => {
-    if (user?.role === 'radiologist' && available.some((t) => t.key === 'reporting')) return 'reporting';
-    if (['radiographer', 'sonographer'].includes(user?.role) && available.some((t) => t.key === 'console')) return 'console';
-    if (user?.role === 'imaging_receptionist' && available.some((t) => t.key === 'worklist')) return 'worklist';
+    if (user?.role === 'imaging_tech' && available.some((t) => t.key === 'console')) return 'console';
     return available[0]?.key || 'board';
   }, [user?.role, available]);
 

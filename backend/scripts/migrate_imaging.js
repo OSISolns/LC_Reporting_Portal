@@ -96,6 +96,11 @@ async function up() {
       'exam_region TEXT',      // body region shorthand: C-S, L-S, Brain, Knee, ...
       'patient_age TEXT',      // as logged, e.g. "26" / "27Y"
       'patient_sex TEXT',      // M / F
+      // Modality-specific acquisition parameters captured at the Console
+      // (views/kV/mAs for X-Ray, contrast/protocol for CT, sequences/coil for
+      // MRI, probe/doppler for Ultrasound). Shape varies by modality, so it's
+      // a JSON blob rather than a fixed set of columns.
+      'acquisition_params_json TEXT',
     ]) {
       try { await db.query(`ALTER TABLE imaging_studies ADD COLUMN ${col}`); }
       catch (e) { /* column already exists */ }

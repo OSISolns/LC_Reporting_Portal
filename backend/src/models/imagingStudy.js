@@ -34,6 +34,17 @@ const STATUS_FLOW = {
   reported: 'verified',
 };
 
+// Attach a parsed `acquisition_params` object and drop the raw JSON column
+// from any row that carries it, so callers get a consistent shape.
+function withParsedParams(row) {
+  if (!row) return row;
+  let acquisition_params = {};
+  if (row.acquisition_params_json) {
+    try { acquisition_params = JSON.parse(row.acquisition_params_json); } catch { /* leave empty */ }
+  }
+  return { ...row, acquisition_params };
+}
+
 class ImagingStudy {
   static get MODALITIES() { return MODALITIES; }
   static get MODALITY_LABELS() { return MODALITY_LABELS; }
@@ -104,7 +115,7 @@ class ImagingStudy {
         WHERE s.id = $1`,
       [id]
     );
-    return rows[0] || null;
+    return withParsedParams(rows[0]) || null;
   }
 
   // ── Worklist / list with filters ────────────────────────────────────────────
@@ -114,7 +125,7 @@ class ImagingStudy {
              s.patient_sex, s.modality, s.sub_unit, s.exam_region, s.exam_type_display,
              s.referring_provider, s.clinical_indication, s.status, s.scheduled_at,
              s.checked_in_at, s.acquired_at, s.performed_by, u.full_name AS performed_by_name,
-             s.created_at
+             s.acquisition_params_json, s.created_at
         FROM imaging_studies s
         LEFT JOIN users u ON s.performed_by = u.id
        WHERE 1=1`;
@@ -134,7 +145,7 @@ class ImagingStudy {
     if (filters.limit) { params.push(Number(filters.limit)); sql += ` LIMIT $${params.length}`; }
 
     const { rows } = await db.query(sql, params);
-    return rows;
+    return rows.map(withParsedParams);
   }
 
   // ── Daily exam register (line items, like the paper logbook) ────────────────
@@ -176,6 +187,10 @@ class ImagingStudy {
       params.push(extra.technical_notes);
       sets.push(`technical_notes = $${params.length}`);
     }
+    if (extra.acquisition_params !== undefined) {
+      params.push(JSON.stringify(extra.acquisition_params || {}));
+      sets.push(`acquisition_params_json = $${params.length}`);
+    }
     params.push(id);
     const idIdx = params.length;
     params.push(fromStatus);
@@ -187,7 +202,7 @@ class ImagingStudy {
         RETURNING *`,
       params
     );
-    return rows[0] || null;
+    return withParsedParams(rows[0]) || null;
   }
 
   // ── Daily exam counts per unit (the "4 units log exams daily" board) ────────
