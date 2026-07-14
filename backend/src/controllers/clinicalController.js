@@ -5029,14 +5029,14 @@ exports.aiClassifyMasterItems = async (req, res) => {
         deptName = trainingMatch.department;
         deptId = depts.find(d => d.name === deptName)?.id || null;
         deptReason = `Matched item name against verified physical inventory records for ${deptName}`;
-      } else if (nameLower.includes('prosthesis') || nameLower.includes('prosthetic') || nameLower.includes('crown') || nameLower.includes('bridge') || nameLower.includes('acrylic') || nameLower.includes('impression') || nameLower.includes('milling') || nameLower.includes('wax') || nameLower.includes('dental lab')) {
+      } else if (nameLower.includes('prosthesis') || nameLower.includes('prosthetic') || nameLower.includes('crown') || nameLower.includes('bridge') || nameLower.includes('acrylic') || nameLower.includes('acry-rock') || nameLower.includes('acry rock') || nameLower.includes('artificial teeth') || nameLower.includes('denture') || nameLower.includes('dental stone') || nameLower.includes('die stone') || nameLower.includes('dental plaster') || nameLower.includes('crucible') || nameLower.includes('invest') || nameLower.includes('casting') || nameLower.includes('porcelain') || nameLower.includes('ceramic') || nameLower.includes('sprue') || nameLower.includes('grinding disc') || nameLower.includes('nightguard') || nameLower.includes('night guard') || nameLower.includes('milling') || nameLower.includes('wax') || nameLower.includes('dental lab')) {
         deptId = dentalLabDept?.id || null;
         deptName = 'DENTAL LAB';
-        deptReason = "Matches dental prosthesis or lab keywords";
-      } else if (nameLower.includes('dental') || nameLower.includes('composite') || nameLower.includes('denture') || nameLower.includes('molar') || nameLower.includes('gutta') || nameLower.includes('tooth') || nameLower.includes('teeth')) {
+        deptReason = "Matches dental prosthesis, casting, or lab fabrication keywords";
+      } else if (nameLower.includes('dental') || nameLower.includes('composite') || nameLower.includes('impression') || nameLower.includes('molar') || nameLower.includes('gutta') || nameLower.includes('tooth') || nameLower.includes('teeth')) {
         deptId = dentalDept?.id || null;
         deptName = 'DENTAL';
-        deptReason = "Matches dental keywords";
+        deptReason = "Matches dental clinic chairside keywords";
       } else if (nameLower.includes('physio') || nameLower.includes('exercise') || nameLower.includes('rehab') || nameLower.includes('tens') || nameLower.includes('therapy') || nameLower.includes('elastic')) {
         deptId = physioDept?.id || null;
         deptName = 'PHYSIO';
