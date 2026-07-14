@@ -177,6 +177,17 @@ const ImagingReporting = () => {
                   {(selected.exam_display) && <> · Exam: {selected.exam_display}</>}
                 </div>
                 {selected.indication && <div className="text-xs text-slate-500 mt-0.5">Indication: {selected.indication}</div>}
+                {selected.acquisition_params && Object.keys(selected.acquisition_params).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {Object.entries(selected.acquisition_params).map(([k, v]) => {
+                      if (v === '' || v == null || (Array.isArray(v) && v.length === 0) || v === false) return null;
+                      const label = Array.isArray(v) ? v.join(', ') : v === true ? k.replace(/_/g, ' ') : `${k.replace(/_/g, ' ')}: ${v}`;
+                      return (
+                        <span key={k} className="text-[11px] bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 font-medium capitalize">{label}</span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <button onClick={doDownload} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
                 <Download size={15} /> PDF
