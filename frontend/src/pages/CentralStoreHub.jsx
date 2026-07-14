@@ -302,6 +302,13 @@ export default function CentralStoreHub() {
     return ['All Departments', ...order];
   }, [departments]);
 
+  const isDeptActive = (dept) => {
+    if (dept === 'DENTAL') {
+      return activeDept === 'DENTAL' || activeDept === 'DENTAL LAB';
+    }
+    return activeDept === dept;
+  };
+
   const stockCategories = useMemo(() => {
     return ['All', ...new Set(stockItems.map(i => i.category).filter(Boolean))];
   }, [stockItems]);
@@ -403,15 +410,18 @@ export default function CentralStoreHub() {
         matchStatus = expStatus && expStatus.days >= 0 && expStatus.days <= 90;
       }
 
+      const itemDept = item.department ? item.department.toUpperCase() : 'GENERAL STORE';
+      const matchDept = activeDept === 'All Departments' || itemDept === activeDept.toUpperCase();
+
       const matchSearch = !searchTerm ||
         item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.batch_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.vendor?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      return matchCategory && matchStatus && matchSearch;
+      return matchCategory && matchStatus && matchDept && matchSearch;
     });
-  }, [stockItems, stockCategoryFilter, stockStatusFilter, searchTerm]);
+  }, [stockItems, stockCategoryFilter, stockStatusFilter, searchTerm, activeDept]);
 
   // Distributed Stock: read-only echo of department_stock, sourced from its
   // own endpoint (not stockItems) since it's a genuinely different dataset --
@@ -994,6 +1004,49 @@ export default function CentralStoreHub() {
                       <option value="Expired">Expired</option>
                       <option value="Out of Stock">Out of Stock</option>
                     </select>
+
+                    {/* Department filter pills */}
+                    <div className="flex flex-col gap-2 items-end">
+                      <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl scrollbar-none max-w-full overflow-x-auto">
+                        {stockDepts.map(dept => (
+                          <button
+                            key={dept}
+                            onClick={() => setActiveDept(dept)}
+                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                              isDeptActive(dept)
+                                ? 'bg-white text-sky-700 shadow-xs'
+                                : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            {dept}
+                          </button>
+                        ))}
+                      </div>
+                      {(activeDept === 'DENTAL' || activeDept === 'DENTAL LAB') && (
+                        <div className="flex gap-1 bg-slate-100 border border-slate-200/50 p-1 rounded-lg animate-fadeIn text-[9px]">
+                          <button
+                            onClick={() => setActiveDept('DENTAL')}
+                            className={`px-2.5 py-1 font-extrabold uppercase rounded-md transition-all cursor-pointer ${
+                              activeDept === 'DENTAL'
+                                ? 'bg-white text-sky-700 shadow-2xs border border-sky-100'
+                                : 'text-slate-400 hover:text-slate-600'
+                            }`}
+                          >
+                            Dental Clinic
+                          </button>
+                          <button
+                            onClick={() => setActiveDept('DENTAL LAB')}
+                            className={`px-2.5 py-1 font-extrabold uppercase rounded-md transition-all cursor-pointer ${
+                              activeDept === 'DENTAL LAB'
+                                ? 'bg-white text-sky-700 shadow-2xs border border-sky-100'
+                                : 'text-slate-400 hover:text-slate-600'
+                            }`}
+                          >
+                            Dental Lab
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1132,20 +1185,46 @@ export default function CentralStoreHub() {
                     </button>
 
                     {/* Department filter pills */}
-                    <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl scrollbar-none max-w-full overflow-x-auto">
-                      {stockDepts.map(dept => (
-                        <button
-                          key={dept}
-                          onClick={() => setActiveDept(dept)}
-                          className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                            activeDept === dept
-                              ? 'bg-white text-sky-700 shadow-xs'
-                              : 'text-slate-500 hover:text-slate-700'
-                          }`}
-                        >
-                          {dept}
-                        </button>
-                      ))}
+                    <div className="flex flex-col gap-2 items-end">
+                      <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl scrollbar-none max-w-full overflow-x-auto">
+                        {stockDepts.map(dept => (
+                          <button
+                            key={dept}
+                            onClick={() => setActiveDept(dept)}
+                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                              isDeptActive(dept)
+                                ? 'bg-white text-sky-700 shadow-xs'
+                                : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            {dept}
+                          </button>
+                        ))}
+                      </div>
+                      {(activeDept === 'DENTAL' || activeDept === 'DENTAL LAB') && (
+                        <div className="flex gap-1 bg-slate-100 border border-slate-200/50 p-1 rounded-lg animate-fadeIn text-[9px]">
+                          <button
+                            onClick={() => setActiveDept('DENTAL')}
+                            className={`px-2.5 py-1 font-extrabold uppercase rounded-md transition-all cursor-pointer ${
+                              activeDept === 'DENTAL'
+                                ? 'bg-white text-sky-700 shadow-2xs border border-sky-100'
+                                : 'text-slate-400 hover:text-slate-600'
+                            }`}
+                          >
+                            Dental Clinic
+                          </button>
+                          <button
+                            onClick={() => setActiveDept('DENTAL LAB')}
+                            className={`px-2.5 py-1 font-extrabold uppercase rounded-md transition-all cursor-pointer ${
+                              activeDept === 'DENTAL LAB'
+                                ? 'bg-white text-sky-700 shadow-2xs border border-sky-100'
+                                : 'text-slate-400 hover:text-slate-600'
+                            }`}
+                          >
+                            Dental Lab
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
