@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ClipboardList, Package, Boxes, TrendingDown, RefreshCw, Loader2,
   Plus, Search, Calendar, Building, AlertCircle, CheckCircle2, FileSpreadsheet,
-  ArrowRight, X, Send, Clock
+  ArrowRight, X, Send, Clock, ChevronDown
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../api/axios';
@@ -84,6 +84,13 @@ export default function ConsumablesLog() {
   const [reqNotes, setReqNotes] = useState('');
   const [submittingReq, setSubmittingReq] = useState(false);
 
+  const [masterItems, setMasterItems] = useState([]);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [pickerTab, setPickerTab] = useState('All');
+  const [reqDropdownOpen, setReqDropdownOpen] = useState(false);
+  const [reqItemSearch, setReqItemSearch] = useState('');
+  const [reqPickerTab, setReqPickerTab] = useState('All');
+
   // Sync role-based department restrictions when user object is loaded
   useEffect(() => {
     if (userDept) {
@@ -96,7 +103,7 @@ export default function ConsumablesLog() {
     silent ? setRefreshing(true) : setLoading(true);
     try {
       const targetDept = userDept ? userDept.id : filterDept;
-      const [deptRes, stockRes, logRes, sumRes, reqRes] = await Promise.allSettled([
+      const [deptRes, stockRes, logRes, sumRes, reqRes, masterRes] = await Promise.allSettled([
         api.get('/clinical/inventory/departments'),
         api.get('/clinical/inventory/distributed-stock?include_central=true'),
         api.get('/clinical/inventory/consumables', {
@@ -106,12 +113,14 @@ export default function ConsumablesLog() {
           params: { department_id: targetDept || undefined }
         }),
         api.get('/clinical/inventory/requisitions'),
+        api.get('/clinical/inventory/master'),
       ]);
       if (deptRes.status === 'fulfilled' && deptRes.value.data.success) setDepartments(deptRes.value.data.data || []);
       if (stockRes.status === 'fulfilled' && stockRes.value.data.success) setDistributedStock(stockRes.value.data.data || []);
       if (logRes.status === 'fulfilled' && logRes.value.data.success) setEntries(logRes.value.data.data || []);
       if (sumRes.status === 'fulfilled' && sumRes.value.data.success) setSummary(sumRes.value.data.data);
       if (reqRes.status === 'fulfilled' && reqRes.value.data.success) setRequisitions(reqRes.value.data.data || []);
+      if (masterRes.status === 'fulfilled' && masterRes.value.data.success) setMasterItems(masterRes.value.data.data || []);
     } catch (err) {
       console.error(err);
       toast.error('Failed to load consumables data.');
@@ -126,21 +135,58 @@ export default function ConsumablesLog() {
   }, [filterDept, filterFrom, filterTo, userDept]);
 
   // Items available in the selected department (from shared department_stock + stock_batches),
-  // aggregated across batches so the picker shows total on-hand per item.
+  // aggregated across batches so the picker shows total on-hand per item, cross-referenced with all masterItems.
   const deptStockItems = useMemo(() => {
     const activeD = userDept ? userDept.id : formDept;
     if (!activeD) return [];
-    const map = new Map();
+
+    const deptStockMap = new Map();
+    const centralStockMap = new Map();
+
     for (const row of distributedStock) {
-      if (String(row.department_id) !== String(activeD)) continue;
-      const key = row.item_id;
-      if (!map.has(key)) {
-        map.set(key, { item_id: row.item_id, name: row.name, unit: row.unit_of_measure, available: 0 });
+      const itemId = row.item_id;
+      const qty = Number(row.quantity || 0);
+
+      if (String(row.department_id) === String(activeD)) {
+        deptStockMap.set(itemId, (deptStockMap.get(itemId) || 0) + qty);
+      } else if (String(row.department_id) === '130' || row.department === 'GENERAL STORE') {
+        centralStockMap.set(itemId, (centralStockMap.get(itemId) || 0) + qty);
       }
-      map.get(key).available += Number(row.quantity || 0);
     }
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [userDept, formDept, distributedStock]);
+
+    const list = [];
+    if (masterItems && masterItems.length > 0) {
+      for (const item of masterItems) {
+        const available = deptStockMap.get(item.id) || 0;
+        const central = centralStockMap.get(item.id) || 0;
+        list.push({
+          item_id: item.id,
+          name: item.name,
+          unit: item.unit_of_measure,
+          category: item.category || 'medical_supplies',
+          available: available,
+          central: central
+        });
+      }
+    } else {
+      const uniqueItemIds = new Set(distributedStock.map(r => r.item_id));
+      for (const itemId of uniqueItemIds) {
+        const matchingRow = distributedStock.find(r => r.item_id === itemId);
+        if (!matchingRow) continue;
+        const available = deptStockMap.get(itemId) || 0;
+        const central = centralStockMap.get(itemId) || 0;
+        list.push({
+          item_id: itemId,
+          name: matchingRow.name,
+          unit: matchingRow.unit_of_measure,
+          category: matchingRow.category || 'medical_supplies',
+          available: available,
+          central: central
+        });
+      }
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [userDept, formDept, distributedStock, masterItems]);
 
   const selectedItem = deptStockItems.find(i => String(i.item_id) === String(formItemId));
 
@@ -149,11 +195,85 @@ export default function ConsumablesLog() {
   const isNursingActive = String(activeDeptId) === '121' ||
     (departments.find(d => String(d.id) === String(activeDeptId))?.name || '').toUpperCase() === 'NURSING';
 
-  const filteredStockItems = useMemo(() => {
-    if (!formItemSearch.trim()) return deptStockItems;
-    const q = formItemSearch.toLowerCase();
-    return deptStockItems.filter(i => i.name.toLowerCase().includes(q));
-  }, [deptStockItems, formItemSearch]);
+  const groupedAndFilteredItems = useMemo(() => {
+    let items = deptStockItems;
+    if (formItemSearch.trim()) {
+      const q = formItemSearch.toLowerCase();
+      items = items.filter(i => i.name.toLowerCase().includes(q));
+    }
+    if (pickerTab === 'In Stock') {
+      items = items.filter(i => i.available > 0);
+    } else if (pickerTab === 'General Store') {
+      items = items.filter(i => i.central > 0);
+    } else if (pickerTab === 'Medications') {
+      items = items.filter(i => i.category === 'medications');
+    } else if (pickerTab === 'Consumables') {
+      items = items.filter(i => i.category === 'consumables');
+    } else if (pickerTab === 'Sutures') {
+      items = items.filter(i => i.category === 'sutures');
+    }
+
+    const groupsMap = new Map();
+    for (const item of items) {
+      const cat = item.category || 'medical_supplies';
+      if (!groupsMap.has(cat)) groupsMap.set(cat, []);
+      groupsMap.get(cat).push(item);
+    }
+
+    const groups = [];
+    for (const [cat, catItems] of groupsMap.entries()) {
+      groups.push({ category: cat, items: catItems });
+    }
+
+    const categoryOrder = ['medications', 'consumables', 'sutures', 'anesthetics', 'antiseptics', 'antidotes', 'housekeeping', 'cafetariat', 'stationery', 'suppository', 'medical_supplies'];
+    return groups.sort((a, b) => {
+      const indexA = categoryOrder.indexOf(a.category);
+      const indexB = categoryOrder.indexOf(b.category);
+      const valA = indexA === -1 ? 999 : indexA;
+      const valB = indexB === -1 ? 999 : indexB;
+      return valA - valB;
+    });
+  }, [deptStockItems, formItemSearch, pickerTab]);
+
+  const reqGroupedAndFilteredItems = useMemo(() => {
+    let items = deptStockItems;
+    if (reqItemSearch.trim()) {
+      const q = reqItemSearch.toLowerCase();
+      items = items.filter(i => i.name.toLowerCase().includes(q));
+    }
+    if (reqPickerTab === 'In Stock') {
+      items = items.filter(i => i.available > 0);
+    } else if (reqPickerTab === 'General Store') {
+      items = items.filter(i => i.central > 0);
+    } else if (reqPickerTab === 'Medications') {
+      items = items.filter(i => i.category === 'medications');
+    } else if (reqPickerTab === 'Consumables') {
+      items = items.filter(i => i.category === 'consumables');
+    } else if (reqPickerTab === 'Sutures') {
+      items = items.filter(i => i.category === 'sutures');
+    }
+
+    const groupsMap = new Map();
+    for (const item of items) {
+      const cat = item.category || 'medical_supplies';
+      if (!groupsMap.has(cat)) groupsMap.set(cat, []);
+      groupsMap.get(cat).push(item);
+    }
+
+    const groups = [];
+    for (const [cat, catItems] of groupsMap.entries()) {
+      groups.push({ category: cat, items: catItems });
+    }
+
+    const categoryOrder = ['medications', 'consumables', 'sutures', 'anesthetics', 'antiseptics', 'antidotes', 'housekeeping', 'cafetariat', 'stationery', 'suppository', 'medical_supplies'];
+    return groups.sort((a, b) => {
+      const indexA = categoryOrder.indexOf(a.category);
+      const indexB = categoryOrder.indexOf(b.category);
+      const valA = indexA === -1 ? 999 : indexA;
+      const valB = indexB === -1 ? 999 : indexB;
+      return valA - valB;
+    });
+  }, [deptStockItems, reqItemSearch, reqPickerTab]);
 
   // Consumption history paging — reset to page 1 whenever the data changes.
   useEffect(() => { setHistoryPage(1); }, [entries]);
@@ -511,20 +631,117 @@ export default function ConsumablesLog() {
                       No distributed stock found for this department.
                     </p>
                   ) : (
-                    <>
-                      <input type="text" placeholder="Search item…" value={formItemSearch}
-                        onChange={(e) => setFormItemSearch(e.target.value)}
-                        className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-teal-400 focus:bg-white" />
-                      <select value={formItemId} onChange={(e) => setFormItemId(e.target.value)}
-                        className="w-full mt-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-teal-400">
-                        <option value="">Select item…</option>
-                        {filteredStockItems.map(i => (
-                          <option key={i.item_id} value={i.item_id}>
-                            {i.name} — {i.available} {i.unit || ''} avail.
-                          </option>
-                        ))}
-                      </select>
-                    </>
+                    <div className="relative">
+                      {dropdownOpen && (
+                        <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-left flex justify-between items-center outline-none focus:border-teal-400 z-10 relative"
+                      >
+                        {selectedItem ? (
+                          <span className="font-bold text-slate-800">
+                            {selectedItem.name} {selectedItem.available > 0 ? (
+                              <span className="ml-2 px-1.5 py-0.5 text-[10px] font-black bg-teal-50 text-teal-700 rounded-md">
+                                {selectedItem.available} {selectedItem.unit || ''} in stock
+                              </span>
+                            ) : (
+                              <span className="ml-2 px-1.5 py-0.5 text-[10px] font-black bg-slate-50 text-slate-500 rounded-md">
+                                0 in stock
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-semibold">Select item…</span>
+                        )}
+                        <ChevronDown size={16} className="text-slate-400" />
+                      </button>
+
+                      {dropdownOpen && (
+                        <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-slate-200 shadow-xl rounded-2xl p-3 space-y-3 animate-fadeIn max-h-[380px] flex flex-col">
+                          {/* Search Input */}
+                          <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                              type="text"
+                              placeholder="Type to search registry..."
+                              value={formItemSearch}
+                              onChange={(e) => setFormItemSearch(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl pl-9 pr-3 py-2 text-xs font-semibold outline-none focus:border-teal-400 focus:bg-white"
+                              autoFocus
+                            />
+                          </div>
+
+                          {/* Tabs / Filters inside dropdown */}
+                          <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider self-start max-w-full overflow-x-auto scrollbar-none">
+                            {['All', 'In Stock', 'General Store', 'Medications', 'Consumables', 'Sutures'].map(tab => (
+                              <button
+                                key={tab}
+                                type="button"
+                                onClick={() => setPickerTab(tab)}
+                                className={`px-2 py-1 rounded-md transition-all cursor-pointer whitespace-nowrap ${
+                                  pickerTab === tab
+                                    ? 'bg-white text-teal-700 shadow-2xs'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                              >
+                                {tab}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Scrollable List of options grouped by category */}
+                          <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
+                            {groupedAndFilteredItems.length === 0 ? (
+                              <p className="text-[11px] text-slate-400 text-center py-6 font-semibold">No items match your filters.</p>
+                            ) : (
+                              groupedAndFilteredItems.map(group => (
+                                <div key={group.category} className="space-y-1">
+                                  <h5 className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">
+                                    {group.category.replace(/_/g, ' ')}
+                                  </h5>
+                                  <div className="space-y-0.5">
+                                    {group.items.map(item => (
+                                      <button
+                                        key={item.item_id}
+                                        type="button"
+                                        onClick={() => {
+                                          setFormItemId(item.item_id);
+                                          setDropdownOpen(false);
+                                        }}
+                                        className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex justify-between items-center ${
+                                          String(formItemId) === String(item.item_id)
+                                            ? 'bg-slate-800 text-white'
+                                            : 'text-slate-700 hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        <span className="truncate pr-4">{item.name}</span>
+                                        <div className="flex items-center gap-1.5 shrink-0 text-[10px]">
+                                          {item.available > 0 ? (
+                                            <span className="px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 font-extrabold border border-teal-100">
+                                              {item.available} {item.unit || 'pcs'}
+                                            </span>
+                                          ) : item.central > 0 ? (
+                                            <span className="px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-extrabold border border-sky-100">
+                                              {item.central} in General Store
+                                            </span>
+                                          ) : (
+                                            <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 font-extrabold border border-rose-100">
+                                              Out of Stock
+                                            </span>
+                                          )}
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -844,15 +1061,108 @@ export default function ConsumablesLog() {
                       </div>
 
                       <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-3">
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Add Item</label>
-                          <select value={reqItemId} onChange={(e) => setReqItemId(e.target.value)}
-                            className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-teal-400">
-                            <option value="">Select item…</option>
-                            {deptStockItems.map(i => (
-                              <option key={i.item_id} value={i.item_id}>{i.name}</option>
-                            ))}
-                          </select>
+                        <div className="relative">
+                          {reqDropdownOpen && (
+                            <div className="fixed inset-0 z-40" onClick={() => setReqDropdownOpen(false)} />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setReqDropdownOpen(!reqDropdownOpen)}
+                            className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-left flex justify-between items-center outline-none focus:border-teal-400 z-10 relative"
+                          >
+                            {reqItemId ? (
+                              <span className="font-bold text-slate-800 truncate pr-2">
+                                {deptStockItems.find(i => String(i.item_id) === String(reqItemId))?.name || 'Selected Item'}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">Select item…</span>
+                            )}
+                            <ChevronDown size={14} className="text-slate-400" />
+                          </button>
+
+                          {reqDropdownOpen && (
+                            <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 shadow-xl rounded-xl p-2.5 space-y-2.5 animate-fadeIn max-h-[300px] flex flex-col w-[300px]">
+                              {/* Search Input */}
+                              <div className="relative">
+                                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                  type="text"
+                                  placeholder="Search items..."
+                                  value={reqItemSearch}
+                                  onChange={(e) => setReqItemSearch(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200/80 rounded-lg pl-8 pr-2.5 py-1.5 text-[11px] font-semibold outline-none focus:border-teal-400 focus:bg-white"
+                                  autoFocus
+                                />
+                              </div>
+
+                              {/* Tabs inside dropdown */}
+                              <div className="flex gap-1 bg-slate-100 p-0.5 rounded-md text-[8px] font-black uppercase tracking-wider self-start max-w-full overflow-x-auto scrollbar-none">
+                                {['All', 'In Stock', 'General Store', 'Medications', 'Consumables', 'Sutures'].map(tab => (
+                                  <button
+                                    key={tab}
+                                    type="button"
+                                    onClick={() => setReqPickerTab(tab)}
+                                    className={`px-1.5 py-0.5 rounded transition-all cursor-pointer whitespace-nowrap ${
+                                      reqPickerTab === tab
+                                        ? 'bg-white text-teal-700 shadow-2xs'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                  >
+                                    {tab}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Scrollable list */}
+                              <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                                {reqGroupedAndFilteredItems.length === 0 ? (
+                                  <p className="text-[10px] text-slate-400 text-center py-4 font-semibold">No matching items.</p>
+                                ) : (
+                                  reqGroupedAndFilteredItems.map(group => (
+                                    <div key={group.category} className="space-y-0.5">
+                                      <h5 className="text-[8px] font-black text-slate-400 uppercase tracking-widest pl-1">
+                                        {group.category.replace(/_/g, ' ')}
+                                      </h5>
+                                      <div className="space-y-0.5">
+                                        {group.items.map(item => (
+                                          <button
+                                            key={item.item_id}
+                                            type="button"
+                                            onClick={() => {
+                                              setReqItemId(item.item_id);
+                                              setReqDropdownOpen(false);
+                                            }}
+                                            className={`w-full text-left px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer flex justify-between items-center ${
+                                              String(reqItemId) === String(item.item_id)
+                                                ? 'bg-slate-800 text-white'
+                                                : 'text-slate-700 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            <span className="truncate pr-3">{item.name}</span>
+                                            <div className="flex items-center gap-1 shrink-0 text-[9px]">
+                                              {item.available > 0 ? (
+                                                <span className="px-1 rounded bg-teal-50 text-teal-700 font-extrabold">
+                                                  {item.available} {item.unit || 'pcs'}
+                                                </span>
+                                              ) : item.central > 0 ? (
+                                                <span className="px-1 rounded bg-sky-50 text-sky-700 font-extrabold">
+                                                  {item.central} in General
+                                                </span>
+                                              ) : (
+                                                <span className="px-1 rounded bg-rose-50 text-rose-600 font-extrabold">
+                                                  Out
+                                                </span>
+                                              )}
+                                            </div>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="flex gap-2">
                           <div className="flex-1">
