@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FlaskConical, ClipboardList, Activity, Lock, Search, Plus, CheckCircle, Save, HelpCircle, Barcode, AlertTriangle, Play } from 'lucide-react';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import ConsumablesLog from '../ConsumablesLog';
 
 const LabHub = () => {
   const [active, setActive] = useState('worklist'); // 'worklist', 'consumables', 'analyzers'
@@ -266,15 +265,6 @@ const LabHub = () => {
         </button>
 
         <button
-          onClick={() => setActive('consumables')}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-            active === 'consumables' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <ClipboardList size={16} /> Consumables Log
-        </button>
-
-        <button
           onClick={() => setActive('analyzers')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
             active === 'analyzers' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -286,8 +276,6 @@ const LabHub = () => {
 
       {/* Tab content */}
       <div>
-        {active === 'consumables' && <ConsumablesLog />}
-
         {active === 'worklist' && (
           <div className="space-y-6">
             {/* Registration Form Modal/Accordion */}
