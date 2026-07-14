@@ -142,6 +142,7 @@ export default function ConsumablesLog() {
 
     const deptStockMap = new Map();
     const centralStockMap = new Map();
+    const allowedItemIds = new Set();
 
     for (const row of distributedStock) {
       const itemId = row.item_id;
@@ -149,14 +150,17 @@ export default function ConsumablesLog() {
 
       if (String(row.department_id) === String(activeD)) {
         deptStockMap.set(itemId, (deptStockMap.get(itemId) || 0) + qty);
+        allowedItemIds.add(itemId);
       } else if (String(row.department_id) === '130' || row.department === 'GENERAL STORE') {
         centralStockMap.set(itemId, (centralStockMap.get(itemId) || 0) + qty);
+        allowedItemIds.add(itemId);
       }
     }
 
     const list = [];
     if (masterItems && masterItems.length > 0) {
       for (const item of masterItems) {
+        if (!allowedItemIds.has(item.id)) continue;
         const available = deptStockMap.get(item.id) || 0;
         const central = centralStockMap.get(item.id) || 0;
         list.push({
@@ -169,8 +173,7 @@ export default function ConsumablesLog() {
         });
       }
     } else {
-      const uniqueItemIds = new Set(distributedStock.map(r => r.item_id));
-      for (const itemId of uniqueItemIds) {
+      for (const itemId of allowedItemIds) {
         const matchingRow = distributedStock.find(r => r.item_id === itemId);
         if (!matchingRow) continue;
         const available = deptStockMap.get(itemId) || 0;
