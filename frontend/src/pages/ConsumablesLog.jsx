@@ -778,8 +778,9 @@ export default function ConsumablesLog() {
                 <div>
                   <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Quantity Consumed</label>
                   <input type="number" min="1" max={selectedItem?.available || undefined} value={formQty}
-                    onChange={(e) => setFormQty(e.target.value)} placeholder="0"
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-400 focus:bg-white" />
+                    disabled={!selectedItem || selectedItem.available <= 0}
+                    onChange={(e) => setFormQty(e.target.value)} placeholder={!selectedItem ? "0" : selectedItem.available <= 0 ? "Unavailable" : "0"}
+                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-400 focus:bg-white disabled:opacity-55 disabled:cursor-not-allowed" />
                 </div>
 
                 <div>
@@ -792,13 +793,17 @@ export default function ConsumablesLog() {
 
               {/* Availability + submit */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-slate-100">
-                {selectedItem && (
+                {selectedItem && selectedItem.available <= 0 ? (
+                  <div className="flex items-center gap-2 text-xs bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 text-rose-700 font-extrabold">
+                    <AlertCircle size={14} /> Out of stock in this department. Please request a transfer first.
+                  </div>
+                ) : selectedItem ? (
                   <div className="flex items-center gap-2 text-xs bg-teal-50 border border-teal-200 rounded-xl px-3 py-2 text-teal-700 font-bold">
                     <Boxes size={14} /> {selectedItem.available} {selectedItem.unit || 'unit(s)'} available
                   </div>
-                )}
-                <button type="submit" disabled={submitting || !formItemId}
-                  className="sm:ml-auto py-3 px-10 bg-teal-700 hover:bg-teal-600 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all">
+                ) : null}
+                <button type="submit" disabled={submitting || !formItemId || !selectedItem || selectedItem.available <= 0}
+                  className="sm:ml-auto py-3 px-10 bg-teal-700 hover:bg-teal-600 disabled:bg-slate-350 text-white font-bold text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed disabled:opacity-55">
                   {submitting ? <Loader2 size={15} className="animate-spin" /> : <TrendingDown size={15} />} Record Consumption
                 </button>
               </div>
