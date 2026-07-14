@@ -12,7 +12,45 @@ router.post('/inventory/supplier-portal/verify-token', clinicalController.verify
 router.post('/inventory/supplier-portal/upload', clinicalController.supplierPortalUpload);
 
 router.use(authenticateToken);
-router.use(authorizeRoles(['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_coo', 'stock-manager', 'pa', 'medical_director', 'procurement-manager']));
+router.use(authorizeRoles([
+  'nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_coo', 'stock-manager', 
+  'pa', 'medical_director', 'procurement-manager', 'lab_team_lead', 'lab_tech', 'lab', 
+  'dental', 'dentist', 'dental_tech', 'physiotherapist', 'physio', 'operations_staff', 
+  'imaging_tech', 'imaging_manager', 'hsfp', 'coo'
+]));
+
+// Helper: Allow clinical department roles to view/edit inventory transactions for their own log modules
+const checkInventoryOrClinicalRole = (action) => {
+  return async (req, res, next) => {
+    if (req.user?.role === 'admin') return next();
+    const CLINICAL_ROLES = [
+      'nurse', 'chef-nurse', 'lab_team_lead', 'lab_tech', 'lab', 
+      'dental', 'dentist', 'dental_tech', 'imaging_tech', 'imaging_manager', 
+      'physiotherapist', 'physio', 'operations_staff', 'hsfp',
+      'coo', 'deputy_coo', 'stock-manager', 'procurement-manager'
+    ];
+    if (CLINICAL_ROLES.includes(req.user?.role)) {
+      return next();
+    }
+    return checkPermission('inventory', action)(req, res, next);
+  };
+};
+
+const checkDailyStockOrClinicalRole = (action) => {
+  return async (req, res, next) => {
+    if (req.user?.role === 'admin') return next();
+    const CLINICAL_ROLES = [
+      'nurse', 'chef-nurse', 'lab_team_lead', 'lab_tech', 'lab', 
+      'dental', 'dentist', 'dental_tech', 'imaging_tech', 'imaging_manager', 
+      'physiotherapist', 'physio', 'operations_staff', 'hsfp',
+      'coo', 'deputy_coo', 'stock-manager', 'procurement-manager'
+    ];
+    if (CLINICAL_ROLES.includes(req.user?.role)) {
+      return next();
+    }
+    return checkPermission('daily_stock', action)(req, res, next);
+  };
+};
 
 // --- Procurement Manager Dashboard (module: procurement) ---
 router.get('/procurement/dashboard', checkPermission('procurement', 'view'), clinicalController.getProcurementDashboard);
@@ -54,12 +92,12 @@ router.post('/inventory/supplier-portal/submissions/:id/receive', checkPermissio
 
 // --- Stock Management Relational Routes (module: inventory -- Central Store / Master Module) ---
 router.get('/inventory/master', checkPermission('inventory', 'view'), clinicalController.getmasterInventory);
-router.get('/inventory/distributed-stock', checkPermission('inventory', 'view'), clinicalController.getDistributedStock);
+router.get('/inventory/distributed-stock', checkInventoryOrClinicalRole('view'), clinicalController.getDistributedStock);
 
 // Consumables consumption log (syncs with Stock Manager via department_stock)
-router.get('/inventory/consumables', checkPermission('inventory', 'view'), clinicalController.getConsumablesLog);
-router.get('/inventory/consumables/summary', checkPermission('inventory', 'view'), clinicalController.getConsumablesSummary);
-router.post('/inventory/consumables', checkPermission('inventory', 'edit'), clinicalController.logConsumable);
+router.get('/inventory/consumables', checkInventoryOrClinicalRole('view'), clinicalController.getConsumablesLog);
+router.get('/inventory/consumables/summary', checkInventoryOrClinicalRole('view'), clinicalController.getConsumablesSummary);
+router.post('/inventory/consumables', checkInventoryOrClinicalRole('edit'), clinicalController.logConsumable);
 router.post('/inventory/master', checkPermission('inventory', 'create'), clinicalController.createmasterInventory);
 router.get('/inventory/master/ai-classify', checkPermission('inventory', 'edit'), clinicalController.aiClassifyMasterItems);
 router.post('/inventory/master/ai-apply', checkPermission('inventory', 'edit'), clinicalController.aiApplyMasterItemsClassifications);
@@ -70,12 +108,12 @@ router.post('/inventory/master/bulk-delete', checkPermission('inventory', 'delet
 router.get('/inventory/batches', checkPermission('inventory', 'view'), clinicalController.getBatches);
 router.post('/inventory/batches', checkPermission('inventory', 'create'), clinicalController.createBatch);
 router.post('/inventory/reconcile', checkPermission('inventory', 'edit'), clinicalController.reconcileInventory);
-router.get('/inventory/requisitions/:id/items', checkPermission('inventory', 'view'), clinicalController.getRequisitionItems);
-router.get('/inventory/requisitions', checkPermission('inventory', 'view'), clinicalController.getRequisitions);
-router.post('/inventory/requisitions', checkPermission('inventory', 'create'), clinicalController.createRequisition);
+router.get('/inventory/requisitions/:id/items', checkInventoryOrClinicalRole('view'), clinicalController.getRequisitionItems);
+router.get('/inventory/requisitions', checkInventoryOrClinicalRole('view'), clinicalController.getRequisitions);
+router.post('/inventory/requisitions', checkInventoryOrClinicalRole('create'), clinicalController.createRequisition);
 router.post('/inventory/requisitions/:id/approve', checkPermission('inventory', 'edit'), clinicalController.approveRequisition);
 router.post('/inventory/requisitions/:id/reject', checkPermission('inventory', 'edit'), clinicalController.rejectRequisition);
-router.post('/inventory/requisitions/:id/receive', checkPermission('daily_stock', 'edit'), clinicalController.receiveRequisition);
+router.post('/inventory/requisitions/:id/receive', checkDailyStockOrClinicalRole('edit'), clinicalController.receiveRequisition);
 router.get('/inventory/vendors', checkPermission('inventory', 'view'), clinicalController.getVendors);
 router.post('/inventory/vendors', checkPermission('inventory', 'create'), clinicalController.createVendor);
 router.put('/inventory/vendors/:id', checkPermission('inventory', 'edit'), clinicalController.updateVendor);
