@@ -50,6 +50,8 @@ import ProcurementHub from './pages/ProcurementHub';
 import SupplierPortalManager from './pages/SupplierPortalManager';
 import ConsumablesLog from './pages/ConsumablesLog';
 import ImagingHub from './pages/imaging/ImagingHub';
+import LabHub from './pages/lab/LabHub';
+import DentalHub from './pages/dental/DentalHub';
 
 const ShiftDashboardRedirect = () => {
   const { user } = useAuth();
@@ -105,7 +107,32 @@ function App() {
             <Route path="/procurement" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'procurement-manager']}><ProcurementHub /></ProtectedRoute>} />
             <Route path="/supplier-portal-manager" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'procurement-manager']}><SupplierPortalManager /></ProtectedRoute>} />
 
-            <Route path="/consumables-log" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'chef-nurse', 'nurse']}><ConsumablesLog /></ProtectedRoute>} />
+            <Route path="/consumables-log" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'chef-nurse', 'nurse',
+                'lab_team_lead', 'lab_tech', 'lab',
+                'dental', 'dentist', 'dental_tech',
+                'imaging_tech', 'imaging_manager', 'sono', 'radiologist'
+              ]}>
+                <ConsumablesLog />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/lab" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'lab_team_lead', 'lab_tech', 'lab'
+              ]}>
+                <LabHub />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/dental" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech'
+              ]}>
+                <DentalHub />
+              </ProtectedRoute>
+            } />
 
             <Route path="/imaging" element={<ProtectedRoute allowedRoles={['imaging_tech', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director']}><ImagingHub /></ProtectedRoute>} />
 

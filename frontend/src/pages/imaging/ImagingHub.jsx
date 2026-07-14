@@ -5,6 +5,7 @@ import ImagingDailyBoard from './ImagingDailyBoard';
 import ImagingWorklist from './ImagingWorklist';
 import ModalityConsole from './ModalityConsole';
 import ImagingReporting from './ImagingReporting';
+import ConsumablesLog from '../ConsumablesLog';
 
 // Tab definitions gated by the imaging permission action they require.
 const TABS = [
@@ -12,6 +13,7 @@ const TABS = [
   { key: 'worklist',  label: 'Worklist',       icon: ClipboardList, perm: 'create', Component: ImagingWorklist },
   { key: 'console',   label: 'Console',        icon: MonitorPlay,   perm: 'acquire', Component: ModalityConsole },
   { key: 'reporting', label: 'Reporting',      icon: FileText,      perm: 'report',  Component: ImagingReporting },
+  { key: 'consumables', label: 'Consumables Log', icon: ClipboardList, perm: 'view', Component: ConsumablesLog },
 ];
 
 const ImagingHub = () => {
