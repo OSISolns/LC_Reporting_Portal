@@ -34,6 +34,7 @@ const itSupportRoutes = require('./src/routes/itSupport');
 const complianceRoutes = require('./src/routes/compliance');
 const revenueLeakageRoutes = require('./src/routes/revenueLeakage');
 const imagingRoutes = require('./src/routes/imaging');
+const labRoutes = require('./src/routes/lab');
 
 const app = express();
 
@@ -113,6 +114,7 @@ app.use('/api/it-support', itSupportRoutes);
 app.use('/api/compliance', complianceRoutes);
 app.use('/api/revenue-leakage', revenueLeakageRoutes);
 app.use('/api/imaging', imagingRoutes);
+app.use('/api/lab', labRoutes);
 
 
 
