@@ -107,7 +107,7 @@ function App() {
 
             <Route path="/consumables-log" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'chef-nurse', 'nurse']}><ConsumablesLog /></ProtectedRoute>} />
 
-            <Route path="/imaging" element={<ProtectedRoute allowedRoles={['radiographer', 'sonographer', 'radiologist', 'imaging_receptionist', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director']}><ImagingHub /></ProtectedRoute>} />
+            <Route path="/imaging" element={<ProtectedRoute allowedRoles={['imaging_tech', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director']}><ImagingHub /></ProtectedRoute>} />
 
             <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director']}><ClinicalSheet /></ProtectedRoute>} />
             <Route path="/clinical-sheet/:patientId" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director']}><ClinicalSheet /></ProtectedRoute>} />

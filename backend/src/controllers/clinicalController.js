@@ -4,6 +4,7 @@ const QRCode = require('qrcode');
 const ExcelJS = require('exceljs');
 const ClinicalObservation = require('../models/clinicalObservation');
 const db = require('../config/db');
+const itemClassificationTraining = require('../data/itemClassificationTraining.json');
 
 // ─── Document Authenticity ─────────────────────────────────────────────────────
 /**
@@ -767,7 +768,7 @@ exports.unlockInventory = async (req, res) => {
       // Store in dedicated unlock logs table
       try {
         await db.query(
-          `INSERT INTO nursing_stock_unlocks (month_year, user_id, username, full_name) VALUES (?, ?, ?, ?)`,
+          `INSERT INTO nursing_stock_unlocks (month_year, user_id, username, full_name) VALUES ($1, $2, $3, $4)`,
           [month_year, req.user.id, req.user.username, req.user.full_name || req.user.fullName]
         );
       } catch (dbErr) {
@@ -2303,7 +2304,7 @@ const getDepartmentForRole = (role) => {
   if (r === 'admin') return null;
   if (r.includes('nurse')) return { id: 121, name: 'NURSING' };
   if (r.includes('lab')) return { id: 123, name: 'LABORATORY' };
-  if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') return { id: 130, name: 'CENTRAL STORE' };
+  if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') return { id: 130, name: 'GENERAL STORE' };
   if (r.includes('physio')) return { id: 120, name: 'PHYSIO' };
   if (r.includes('dental') || r.includes('dentist')) return { id: 129, name: 'DENTAL' };
   if (r.includes('operations') || r.includes('ops') || r === 'coo') return { id: 122, name: 'OPERATIONS' };
@@ -2350,7 +2351,7 @@ exports.getDistributedStock = async (req, res) => {
       SELECT
         sb.id as dept_stock_id,
         130 as department_id,
-        'CENTRAL STORE' as department,
+        'GENERAL STORE' as department,
         mi.id as item_id,
         mi.name,
         mi.sku,
@@ -2556,7 +2557,7 @@ exports.logConsumable = async (req, res) => {
     const { rows: deptRows } = await db.query('SELECT id, name FROM departments WHERE id = $1', [department_id]);
     if (deptRows.length === 0) return res.status(404).json({ success: false, message: 'Department not found.' });
 
-    const isCentralStore = Number(department_id) === 130 || (deptRows[0] && deptRows[0].name.toUpperCase().includes('CENTRAL STORE'));
+    const isCentralStore = Number(department_id) === 130 || (deptRows[0] && (deptRows[0].name.toUpperCase().includes('CENTRAL STORE') || deptRows[0].name.toUpperCase().includes('GENERAL STORE')));
     const isNursing = Number(department_id) === 121 || (deptRows[0] && deptRows[0].name.toUpperCase() === 'NURSING');
 
     // Nursing consumption must be attributed to a ward (Station 1 / Minor Surgery).
@@ -3140,7 +3141,7 @@ exports.syncCentralStockToNursing = async (req, res) => {
     `, [deptId]);
 
     if (deptStocks.length === 0) {
-      return res.json({ success: true, message: 'No department stock found in Central Store for NURSING.', updatedCount: 0 });
+      return res.json({ success: true, message: 'No department stock found in General Store for NURSING.', updatedCount: 0 });
     }
 
     const statements = [];
@@ -3148,7 +3149,7 @@ exports.syncCentralStockToNursing = async (req, res) => {
       statements.push({
         sql: `INSERT INTO nursing_monthly_stock (
           month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, 0, $5, 'Central Store Sync', CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, 0, $5, 'General Store Sync', CURRENT_TIMESTAMP)
         ON CONFLICT(month_year, item_name, day, session) DO UPDATE SET
           stock_in_hands = $5,
           balance = $5 - consumed,
@@ -3159,7 +3160,7 @@ exports.syncCentralStockToNursing = async (req, res) => {
 
     await db.batch(statements);
 
-    res.json({ success: true, message: `Successfully synchronized ${deptStocks.length} stock items with Central Store Hub!`, updatedCount: deptStocks.length });
+    res.json({ success: true, message: `Successfully synchronized ${deptStocks.length} stock items with General Store Hub!`, updatedCount: deptStocks.length });
   } catch (error) {
     console.error('Error in syncCentralStockToNursing:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -4945,3 +4946,251 @@ exports.getExpiringContracts = async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+// ── AI Agent: Auto-Classify Master Reference Items ──────────────────────────
+exports.aiClassifyMasterItems = async (req, res) => {
+  try {
+    const { rows: depts } = await db.query("SELECT id, name FROM departments");
+    const { rows: uomsList } = await db.query("SELECT id, name, abbreviation FROM uoms");
+    
+    const { rows: masterItems } = await db.query(`
+      SELECT
+        mi.id,
+        mi.name,
+        mi.unit_of_measure,
+        mi.category,
+        MAX(sb.id) as batch_id,
+        MAX(sb.department_id) as department_id,
+        MAX(sb.storage) as storage
+      FROM master_inventory mi
+      LEFT JOIN stock_batches sb ON mi.id = sb.item_id
+      GROUP BY mi.id, mi.name, mi.unit_of_measure, mi.category
+      ORDER BY mi.id DESC
+    `);
+
+    const suggestions = masterItems.map(item => {
+      const nameLower = item.name.toLowerCase();
+      const normalizedName = nameLower.replace(/\s+/g, ' ').trim();
+      const trainingMatch = itemClassificationTraining[normalizedName] || null;
+
+      // 1. Determine Category
+      let category = 'medical_supplies';
+      let categoryReason = 'Default fallback category';
+
+      if (trainingMatch && trainingMatch.category) {
+        category = trainingMatch.category;
+        categoryReason = `Matched verified category from physical inventory records (${trainingMatch.department} log)`;
+      } else if (nameLower.includes('inj') || nameLower.includes('amp') || nameLower.includes('vial') || nameLower.includes('tab') || nameLower.includes('cap') || nameLower.includes('tablet') || nameLower.includes('capsule') || nameLower.includes('syrup') || nameLower.includes('suspension') || nameLower.includes('paracetamol') || nameLower.includes('amoxicillin') || nameLower.includes('ceftriaxone') || nameLower.includes('diclofenac') || nameLower.includes('metronidazole') || nameLower.includes('infusion')) {
+        category = 'medications';
+        categoryReason = "Matches medication keywords (tablet, injection, vial, capsule, etc.)";
+      } else if (nameLower.includes('anesthes') || nameLower.includes('propofol') || nameLower.includes('lidocaine') || nameLower.includes('bupivacaine') || nameLower.includes('halothane') || nameLower.includes('ketamine')) {
+        category = 'anesthetics';
+        categoryReason = "Matches anesthetic keywords (lidocaine, propofol, etc.)";
+      } else if (nameLower.includes('antiseptic') || nameLower.includes('spirit') || nameLower.includes('betadine') || nameLower.includes('iodine') || nameLower.includes('chlorhexidine') || nameLower.includes('dettol')) {
+        category = 'antiseptics';
+        categoryReason = "Matches antiseptic keywords (spirit, iodine, etc.)";
+      } else if (nameLower.includes('suture') || nameLower.includes('vicryl') || nameLower.includes('silk') || nameLower.includes('chromic')) {
+        category = 'sutures';
+        categoryReason = "Matches suture keywords (vicryl, suture, etc.)";
+      } else if (nameLower.includes('antidote') || nameLower.includes('atropine') || nameLower.includes('naloxone') || nameLower.includes('charcoal')) {
+        category = 'antidotes';
+        categoryReason = "Matches antidote keywords (atropine, charcoal, etc.)";
+      } else if (nameLower.includes('suppo') || nameLower.includes('pessary') || nameLower.includes('cytotec')) {
+        category = 'suppository';
+        categoryReason = "Matches suppository keywords (suppo, cytotec, etc.)";
+      } else if (nameLower.includes('paper') || nameLower.includes('pen') || nameLower.includes('pencil') || nameLower.includes('file') || nameLower.includes('toner') || nameLower.includes('register') || nameLower.includes('book') || nameLower.includes('envelope')) {
+        category = 'stationery';
+        categoryReason = "Matches stationery keywords (paper, pen, register, etc.)";
+      } else if (nameLower.includes('gloves') || nameLower.includes('syringe') || nameLower.includes('mask') || nameLower.includes('gauze') || nameLower.includes('cotton') || nameLower.includes('bandage') || nameLower.includes('plaster') || nameLower.includes('catheter') || nameLower.includes('tube') || nameLower.includes('cannula')) {
+        category = 'consumables';
+        categoryReason = "Matches clinical consumables keywords (gloves, syringe, mask, etc.)";
+      } else if (nameLower.includes('soap') || nameLower.includes('detergent') || nameLower.includes('broom') || nameLower.includes('mop') || nameLower.includes('cleaning') || nameLower.includes('bleach') || nameLower.includes('disinfectant') || nameLower.includes('cleaner') || nameLower.includes('harpic') || nameLower.includes('sanitizer') || nameLower.includes('housekeeping')) {
+        category = 'housekeeping';
+        categoryReason = "Matches housekeeping or sanitation keywords";
+      } else if (nameLower.includes('food') || nameLower.includes('drink') || nameLower.includes('water') || nameLower.includes('sugar') || nameLower.includes('tea') || nameLower.includes('coffee') || nameLower.includes('milk') || nameLower.includes('juice') || nameLower.includes('soda') || nameLower.includes('bread') || nameLower.includes('cereal') || nameLower.includes('cup') || nameLower.includes('plate') || nameLower.includes('spoon') || nameLower.includes('cafeteria') || nameLower.includes('cafetariat')) {
+        category = 'cafetariat';
+        categoryReason = "Matches cafeteria food or beverage keywords";
+      }
+
+      // 2. Determine Department
+      let deptId = null;
+      let deptName = 'GENERAL STORE';
+      let deptReason = 'Default fallback to General Store';
+
+      const dentalDept = depts.find(d => d.name === 'DENTAL');
+      const dentalLabDept = depts.find(d => d.name === 'DENTAL LAB');
+      const physioDept = depts.find(d => d.name === 'PHYSIO');
+      const nursingDept = depts.find(d => d.name === 'NURSING');
+      const laboratoryDept = depts.find(d => d.name === 'LABORATORY');
+      const imagingDept = depts.find(d => d.name === 'IMAGING');
+      const generalStoreDept = depts.find(d => d.name === 'GENERAL STORE');
+
+      if (trainingMatch) {
+        deptName = trainingMatch.department;
+        deptId = depts.find(d => d.name === deptName)?.id || null;
+        deptReason = `Matched item name against verified physical inventory records for ${deptName}`;
+      } else if (nameLower.includes('prosthesis') || nameLower.includes('prosthetic') || nameLower.includes('crown') || nameLower.includes('bridge') || nameLower.includes('acrylic') || nameLower.includes('impression') || nameLower.includes('milling') || nameLower.includes('wax') || nameLower.includes('dental lab')) {
+        deptId = dentalLabDept?.id || null;
+        deptName = 'DENTAL LAB';
+        deptReason = "Matches dental prosthesis or lab keywords";
+      } else if (nameLower.includes('dental') || nameLower.includes('composite') || nameLower.includes('denture') || nameLower.includes('molar') || nameLower.includes('gutta') || nameLower.includes('tooth') || nameLower.includes('teeth')) {
+        deptId = dentalDept?.id || null;
+        deptName = 'DENTAL';
+        deptReason = "Matches dental keywords";
+      } else if (nameLower.includes('physio') || nameLower.includes('exercise') || nameLower.includes('rehab') || nameLower.includes('tens') || nameLower.includes('therapy') || nameLower.includes('elastic')) {
+        deptId = physioDept?.id || null;
+        deptName = 'PHYSIO';
+        deptReason = "Matches physical therapy keywords";
+      } else if (nameLower.includes('lab') || nameLower.includes('reagent') || nameLower.includes('pipette') || nameLower.includes('cuvette') || nameLower.includes('blood') || nameLower.includes('urine') || nameLower.includes('serum') || nameLower.includes('stool')) {
+        deptId = laboratoryDept?.id || null;
+        deptName = 'LABORATORY';
+        deptReason = "Matches laboratory keywords";
+      } else if (nameLower.includes('xray') || nameLower.includes('x-ray') || nameLower.includes('ultrasound') || nameLower.includes('mri') || nameLower.includes('ct') || nameLower.includes('film') || nameLower.includes('contrast') || nameLower.includes('imaging')) {
+        deptId = imagingDept?.id || null;
+        deptName = 'IMAGING';
+        deptReason = "Matches radiology/imaging keywords";
+      } else if (category === 'medications' || category === 'anesthetics' || category === 'antidotes' || nameLower.includes('syringe') || nameLower.includes('needle') || nameLower.includes('infusion') || nameLower.includes('cannula') || nameLower.includes('catheter')) {
+        deptId = nursingDept?.id || null;
+        deptName = 'NURSING';
+        deptReason = "Matches clinical nursing or medication keywords";
+      } else if (category === 'stationery' || category === 'housekeeping' || category === 'cafetariat' || nameLower.includes('soap') || nameLower.includes('detergent') || nameLower.includes('broom') || nameLower.includes('cleaner') || nameLower.includes('tissue') || nameLower.includes('water')) {
+        deptId = generalStoreDept?.id || null;
+        deptName = 'GENERAL STORE';
+        deptReason = "Matches stationery, housekeeping, cafeteria, or general utility keywords";
+      } else {
+        deptId = generalStoreDept?.id || null;
+        deptName = 'GENERAL STORE';
+        deptReason = "Default department assignment";
+      }
+
+      // 3. Determine Storage
+      let storage = 'Medical';
+      let storageReason = 'Default for clinical items';
+      if (trainingMatch && trainingMatch.storage) {
+        storage = trainingMatch.storage;
+        storageReason = `Matched verified storage type from physical inventory records (${trainingMatch.department} log)`;
+      } else if (category === 'stationery' || category === 'housekeeping' || category === 'cafetariat' || nameLower.includes('cleaning') || nameLower.includes('soap') || nameLower.includes('detergent') || nameLower.includes('broom') || nameLower.includes('register') || nameLower.includes('paper') || nameLower.includes('file')) {
+        storage = 'Non-Medical';
+        storageReason = "Item classified as stationery, housekeeping, cafeteria, or general facility utility";
+      }
+
+      // 4. Determine UOM (Unit of Measure)
+      let uom = 'pc';
+      let uomReason = 'Default standard abbreviation';
+
+      const findUomAbbr = (abbr) => {
+        return uomsList.find(u => u.abbreviation.toLowerCase() === abbr.toLowerCase())?.abbreviation;
+      };
+
+      if (nameLower.includes('inj') || nameLower.includes('vial') || nameLower.includes('amp') || nameLower.includes('ampoule')) {
+        uom = findUomAbbr('amp') || findUomAbbr('vial') || findUomAbbr('pc') || 'pc';
+        uomReason = "Keywords suggest ampoule/vial unit";
+      } else if (nameLower.includes('tab') || nameLower.includes('tablet')) {
+        uom = findUomAbbr('tab') || findUomAbbr('pc') || 'pc';
+        uomReason = "Keywords suggest tablet unit";
+      } else if (nameLower.includes('cap') || nameLower.includes('capsule')) {
+        uom = findUomAbbr('cap') || findUomAbbr('pc') || 'pc';
+        uomReason = "Keywords suggest capsule unit";
+      } else if (nameLower.includes('roll') || nameLower.includes('tape')) {
+        uom = findUomAbbr('roll') || findUomAbbr('pc') || 'pc';
+        uomReason = "Keywords suggest roll unit";
+      } else if (nameLower.includes('pair') || nameLower.includes('gloves')) {
+        uom = findUomAbbr('pair') || findUomAbbr('pc') || 'pc';
+        uomReason = "Keywords suggest pair unit";
+      } else if (nameLower.includes('box') || nameLower.includes('bx')) {
+        uom = findUomAbbr('bx') || findUomAbbr('box') || 'bx';
+        uomReason = "Keywords suggest box unit";
+      } else if (nameLower.includes('bottle') || nameLower.includes('bot') || nameLower.includes('syrup')) {
+        uom = findUomAbbr('bot') || findUomAbbr('bottle') || 'bot';
+        uomReason = "Keywords suggest bottle unit";
+      }
+
+      // Calculate confidence score
+      let confidence = 0.5;
+      if (categoryReason !== 'Default fallback category') confidence += 0.2;
+      if (deptReason !== 'Default department assignment') confidence += 0.2;
+      if (uomReason !== 'Default standard abbreviation') confidence += 0.1;
+      if (trainingMatch) confidence = Math.min(0.98, confidence + 0.3);
+
+      const currentDeptName = depts.find(d => d.id === item.department_id)?.name || 'GENERAL STORE';
+
+      return {
+        itemId: item.id,
+        name: item.name,
+        currentCategory: item.category || 'medical_supplies',
+        suggestedCategory: category,
+        categoryReason,
+        currentDepartmentId: item.department_id,
+        currentDepartmentName: currentDeptName,
+        suggestedDepartmentId: deptId,
+        suggestedDepartmentName: deptName,
+        departmentReason: deptReason,
+        currentStorage: item.storage || 'Medical',
+        suggestedStorage: storage,
+        storageReason,
+        currentUom: item.unit_of_measure || 'pc',
+        suggestedUom: uom,
+        uomReason,
+        confidence,
+        isDifferent: (
+          (item.category || 'medical_supplies') !== category ||
+          (item.department_id || null) !== deptId ||
+          (item.storage || 'Medical') !== storage ||
+          (item.unit_of_measure || 'pc') !== uom
+        )
+      };
+    });
+
+    res.json({ success: true, data: suggestions });
+  } catch (error) {
+    console.error('Error in aiClassifyMasterItems:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.aiApplyMasterItemsClassifications = async (req, res) => {
+  try {
+    const { suggestions } = req.body;
+    if (!suggestions || !Array.isArray(suggestions)) {
+      return res.status(400).json({ success: false, message: 'suggestions array is required' });
+    }
+
+    const statements = [];
+
+    for (const sugg of suggestions) {
+      const { itemId, category, departmentId, storage, uom } = sugg;
+
+      // 1. Update master_inventory
+      statements.push({
+        sql: "UPDATE master_inventory SET category = $1, unit_of_measure = $2 WHERE id = $3",
+        args: [category, uom, itemId]
+      });
+
+      // 2. Check if a batch exists in stock_batches
+      const { rows: batchRows } = await db.query("SELECT id FROM stock_batches WHERE item_id = $1 LIMIT 1", [itemId]);
+
+      if (batchRows.length > 0) {
+        // Update existing batches
+        statements.push({
+          sql: "UPDATE stock_batches SET department_id = $1, storage = $2 WHERE item_id = $3",
+          args: [departmentId, storage, itemId]
+        });
+      } else {
+        // Insert a default sequential batch
+        statements.push({
+          sql: "INSERT INTO stock_batches (item_id, lot_number, quantity, department_id, storage, created_at) VALUES ($1, '01', 0, $2, $3, CURRENT_TIMESTAMP)",
+          args: [itemId, departmentId, storage]
+        });
+      }
+    }
+
+    // Run bulk db batch statements
+    await db.batch(statements);
+
+    res.json({ success: true, message: `Successfully updated ${suggestions.length} items using AI suggestions` });
+  } catch (error) {
+    console.error('Error in aiApplyMasterItemsClassifications:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+

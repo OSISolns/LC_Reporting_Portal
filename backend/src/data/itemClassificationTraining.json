@@ -1,0 +1,3968 @@
+{
+  "accu-chek instant strips": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Accu-chek instant strips"
+  },
+  "acetone 2.5l": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acetone 2.5L"
+  },
+  "acry-rock /d39lpa3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /D39LPA3"
+  },
+  "acry-rock /d46lpb3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /D46LPB3"
+  },
+  "acry-rock /d46upa1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /D46UPA1"
+  },
+  "acry-rock /d46upa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /D46UPA2"
+  },
+  "acry-rock /d46upa3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /D46UPA3"
+  },
+  "acry-rock /d46upa3.5": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /D46UPA3.5"
+  },
+  "acry-rock /s18la1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18LA1"
+  },
+  "acry-rock /s18la2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18LA2"
+  },
+  "acry-rock /s18la3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18LA3"
+  },
+  "acry-rock /s18la3.5": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18LA3.5"
+  },
+  "acry-rock /s18laa4": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18LAA4"
+  },
+  "acry-rock /s18lab1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18LAB1"
+  },
+  "acry-rock /s18lab2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18LAB2"
+  },
+  "acry-rock /s18lab3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18LAB3"
+  },
+  "acry-rock /s18lad2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18LAD2"
+  },
+  "acry-rock /s18lad3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18LAD3"
+  },
+  "acry-rock /s18uab1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S18UAB1"
+  },
+  "acry-rock /s25uaa1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S25UAA1"
+  },
+  "acry-rock /s25uaa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S25UAA2"
+  },
+  "acry-rock /s25uab1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S25UAB1"
+  },
+  "acry-rock /s25uab2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S25UAB2"
+  },
+  "acry-rock /s25uab3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S25UAB3"
+  },
+  "acry-rock /s25uad2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S25UAD2"
+  },
+  "acry-rock /s25upb2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S25UPB2"
+  },
+  "acry-rock /s25upb3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S25UPB3"
+  },
+  "acry-rock /s26uaa1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S26UAA1"
+  },
+  "acry-rock /s26uaa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S26UAA2"
+  },
+  "acry-rock /s26uaa3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S26UAA3"
+  },
+  "acry-rock /s26uab1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S26UAB1"
+  },
+  "acry-rock /s26uab2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S26UAB2"
+  },
+  "acry-rock /s26uab3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S26UAB3"
+  },
+  "acry-rock /s26uad2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S26UAD2"
+  },
+  "acry-rock /s26uad3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S26UAD3"
+  },
+  "acry-rock /s46laa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S46LAA2"
+  },
+  "acry-rock /s46lab2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S46LAB2"
+  },
+  "acry-rock /s46lad2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S46LAD2"
+  },
+  "acry-rock /s46lad3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S46LAD3"
+  },
+  "acry-rock /s56uaa1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S56UAA1"
+  },
+  "acry-rock /s56uaa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S56UAA2"
+  },
+  "acry-rock /s56uaa3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S56UAA3"
+  },
+  "acry-rock /s56uab1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S56UAB1"
+  },
+  "acry-rock /s56uab2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S56UAB2"
+  },
+  "acry-rock /s56uab3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S56UAB3"
+  },
+  "acry-rock /s56uad2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S56UAD2"
+  },
+  "acry-rock /s56uad3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S56UAD3"
+  },
+  "acry-rock /s66uaa1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S66UAA1"
+  },
+  "acry-rock /s66uaa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S66UAA2"
+  },
+  "acry-rock /s66uaa3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S66UAA3"
+  },
+  "acry-rock /s66uaa3.5": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S66UAA3.5"
+  },
+  "acry-rock /s66uab1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S66UAB1"
+  },
+  "acry-rock /s66uad2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S66UAD2"
+  },
+  "acry-rock /s66uad3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S66UAD3"
+  },
+  "acry-rock /s66ub3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock /S66UB3"
+  },
+  "acry-rock v6l": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock V6L"
+  },
+  "acry-rock v6u": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock V6U"
+  },
+  "acry-rock v8l": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock V8L"
+  },
+  "acry-rock v8u": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock V8U"
+  },
+  "acry-rock/d33upa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D33UPA2"
+  },
+  "acry-rock/d43upa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D43UPA2"
+  },
+  "acry-rock/d45lpa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45LPA2"
+  },
+  "acry-rock/d45lpa3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45LPA3"
+  },
+  "acry-rock/d45lpa3.5": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45LPA3.5"
+  },
+  "acry-rock/d45upa1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45UPA1"
+  },
+  "acry-rock/d45upa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45UPA2"
+  },
+  "acry-rock/d45upa3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45UPA3"
+  },
+  "acry-rock/d45upa4": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45UPA4"
+  },
+  "acry-rock/d45upb1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45UPB1"
+  },
+  "acry-rock/d45upb2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45UPB2"
+  },
+  "acry-rock/d45upb3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45UPB3"
+  },
+  "acry-rock/d45upd2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45UPD2"
+  },
+  "acry-rock/d45upd3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D45UPD3"
+  },
+  "acry-rock/d46laa1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46LAA1"
+  },
+  "acry-rock/d46lab2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46LAB2"
+  },
+  "acry-rock/d46lpa1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46LPA1"
+  },
+  "acry-rock/d46lpa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46LPA2"
+  },
+  "acry-rock/d46lpa3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46LPA3"
+  },
+  "acry-rock/d46lpa4": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46LPA4"
+  },
+  "acry-rock/d46lpb1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46LPB1"
+  },
+  "acry-rock/d46lpb2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46LPB2"
+  },
+  "acry-rock/d46lpb3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46LPB3"
+  },
+  "acry-rock/d46upa1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46UPA1"
+  },
+  "acry-rock/d46upa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46UPA2"
+  },
+  "acry-rock/d46upa3.5": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46UPA3.5"
+  },
+  "acry-rock/d46upa4": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46UPA4"
+  },
+  "acry-rock/d46upb1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46UPB1"
+  },
+  "acry-rock/d46upb2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46UPB2"
+  },
+  "acry-rock/d46upb3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46UPB3"
+  },
+  "acry-rock/d46upd2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46UPD2"
+  },
+  "acry-rock/d46upd3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/D46UPD3"
+  },
+  "acry-rock/s46laa2": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/S46LAA2"
+  },
+  "acry-rock/s46lab1": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/S46LAB1"
+  },
+  "acry-rock/s46lp": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/S46LP"
+  },
+  "acry-rock/s46upa3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Acry-rock/S46UPA3"
+  },
+  "adrenaline 1mg/1ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ADRENALINE 1MG/1ML"
+  },
+  "alcohol pads/200pcs": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ALCOHOL PADS/200pcs"
+  },
+  "alginate/t20": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Alginate/T20"
+  },
+  "alpha-check instant strips": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Alpha-check instant strips"
+  },
+  "ambou bag resuscitor self inflation/ad": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Ambou bag resuscitor self inflation/Ad"
+  },
+  "ammonium": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Ammonium"
+  },
+  "anestesia cream": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Anestesia cream"
+  },
+  "anesthesie inj(lidocaine& epinephrine)/ dental cartirage/1pc": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Anesthesie inj(Lidocaine& epinephrine)/ Dental cartirage/1pc"
+  },
+  "anesthesie inj(lidocaine)/ dental cartirage/1pc": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Anesthesie inj(Lidocaine)/ Dental cartirage/1pc"
+  },
+  "aniosyme desinfectant 1l": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Aniosyme desinfectant 1L"
+  },
+  "aperture adhesive plaster 18*5m": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "APERTURE ADHESIVE PLASTER 18*5M"
+  },
+  "apron": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Apron"
+  },
+  "aqua block plasters 10*10cm/t5": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Aqua block plasters 10*10cm/T5"
+  },
+  "aqua block plasters 15*10cm/t50": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Aqua block plasters 15*10cm/T50"
+  },
+  "aqua block plasters 25*10cm/t6": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Aqua block plasters 25*10cm/T6"
+  },
+  "ariel (savon pour machine a laver)": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Ariel (savon pour machine a laver)"
+  },
+  "arrache agraffes": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Arrache agraffes"
+  },
+  "artifical teeth": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Artifical teeth"
+  },
+  "atropine inj 1mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Atropine inj 1mg"
+  },
+  "attaches tout 33mm (pqt de 10 boites)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Attaches tout 33MM (Pqt de 10 boites)"
+  },
+  "attaches tout 50mm (pqt de 10 boites)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Attaches tout 50MM (Pqt de 10 boites)"
+  },
+  "autoclave tape 19mm*50m": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Autoclave tape 19mm*50m"
+  },
+  "barbed broaches 25mm": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Barbed broaches 25mm"
+  },
+  "barium chrolide 10%": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Barium chrolide 10%"
+  },
+  "barole inj 20mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Barole inj 20mg"
+  },
+  "barrier roll": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Barrier roll"
+  },
+  "benedict solution": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "BENEDICT SOLUTION"
+  },
+  "biopsy punche/4mm": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Biopsy punche/4mm"
+  },
+  "biosoft": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Biosoft"
+  },
+  "bips holder": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Bips holder"
+  },
+  "block note 5*8": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Block note 5*8"
+  },
+  "blood agar base 500g": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Blood Agar base 500g"
+  },
+  "blue tips": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "BLUE TIPS"
+  },
+  "bonding": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Bonding"
+  },
+  "bonding agent 2.1": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Bonding agent 2.1"
+  },
+  "brain heart infusion both": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Brain Heart Infusion Both"
+  },
+  "brancho": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Brancho"
+  },
+  "bucall tubes ur,ul,ll,lr/b4pcs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Bucall tubes UR,UL,LL,LR/B4pcs"
+  },
+  "build-up liquid": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Build-up liquid"
+  },
+  "burs/1pc": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Burs/1pc"
+  },
+  "buscopam. inj.20mg/1ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "BUSCOPAM. INJ.20mg/1ml"
+  },
+  "butterfly g23/b50": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Butterfly G23/B50"
+  },
+  "c.l.e.d agar": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "C.L.E.D AGAR"
+  },
+  "calcium gluconate 10% 10ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Calcium gluconate 10% 10ml"
+  },
+  "calcium hydroxyide": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Calcium hydroxyide"
+  },
+  "carnets de route": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Carnets de route"
+  },
+  "cd80": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CD80"
+  },
+  "cedex 3l": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CEDEX 3L"
+  },
+  "ceftriaxone inj .1g": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CEFTRIAXONE INJ .1g"
+  },
+  "cell clean 50ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Cell clean 50ml"
+  },
+  "cell pack dcl 20l": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Cell pack DCL 20L"
+  },
+  "ceramic (porcelain) materials": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Ceramic (Porcelain) materials"
+  },
+  "ceramic bonding dental alloys": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Ceramic Bonding Dental alloys"
+  },
+  "cervical dentin d2/d3": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Cervical dentin D2/D3"
+  },
+  "cheek rectractor medium": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Cheek Rectractor Medium"
+  },
+  "cheek rectractor medium/unite": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Cheek Rectractor Medium/unite"
+  },
+  "chemise transparentes": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Chemise Transparentes"
+  },
+  "chlamydia test device(urine/swab)25t": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Chlamydia test device(urine/swab)25T"
+  },
+  "chocolate agar base": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Chocolate Agar Base"
+  },
+  "chrolopromazine inj 50mg/ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Chrolopromazine inj 50mg/ml"
+  },
+  "classeurs": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Classeurs"
+  },
+  "cmv antibodies rt igm/g t25": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CMV antibodies RT IgM/G T25"
+  },
+  "coffe gorilla 500gr": {
+    "department": "GENERAL STORE",
+    "category": "cafetariat",
+    "storage": "Non-Medical",
+    "displayName": "Coffe gorilla 500gr"
+  },
+  "cold mold seal": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Cold Mold Seal"
+  },
+  "conical tubes": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CONICAL TUBES"
+  },
+  "contrast 100ml/omnipaque": {
+    "department": "IMAGING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Contrast 100ml/Omnipaque"
+  },
+  "contrast omniscan 0.5mmol/20ml": {
+    "department": "IMAGING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CONTRAST OMNISCAN 0.5mmol/20ml"
+  },
+  "cotton roll,500g": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "COTTON ROLL,500G"
+  },
+  "cove a4": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Cove A4"
+  },
+  "cover glass 22*22mm": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "COVER GLASS 22*22MM"
+  },
+  "cover glass 24*50mm": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "COVER GLASS 24*50MM"
+  },
+  "crepe bandage 10*4.5m": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CREPE BANDAGE 10*4.5M"
+  },
+  "crepe bandage 15*4.5m": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CREPE BANDAGE 15*4.5M"
+  },
+  "crepe bandage 7.5cm*4.5m": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CREPE BANDAGE 7.5cm*4.5M"
+  },
+  "crp direct latex": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CRP Direct Latex"
+  },
+  "crucibles": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Crucibles"
+  },
+  "ct connecters": {
+    "department": "IMAGING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CT Connecters"
+  },
+  "ct syringue/1paire": {
+    "department": "IMAGING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CT SYRINGUE/1paire"
+  },
+  "culturemannitol salt agar base 500mg": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CultureMannitol salt agar base 500mg"
+  },
+  "cutgut/absorbale surgical suture/4/0/reverse cutting": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Cutgut/absorbale surgical suture/4/0/reverse cutting"
+  },
+  "cytotec": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "CYTOTEC"
+  },
+  "d5%": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "D5%"
+  },
+  "d50": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "D50"
+  },
+  "damper": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Damper"
+  },
+  "demecryl 2/0 75cm 36mm 1/2 round body plus": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Demecryl 2/0 75cm 36mm 1/2 round body plus"
+  },
+  "demecryl 3/0 75cm 17mm 1/2 round body plus": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Demecryl 3/0 75cm 17mm 1/2 round body plus"
+  },
+  "demecryl 4/0 75cm 20mm 1/2 round body plus": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Demecryl 4/0 75cm 20mm 1/2 round body plus"
+  },
+  "demecryl 5/0 75cm 17mm 1/2 round body plus": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Demecryl 5/0 75cm  17mm 1/2 round body plus"
+  },
+  "demelon/nylon 2/0 24mmrc": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Demelon/Nylon 2/0 24mmRC"
+  },
+  "demelon/nylon 3/0 26mmrc": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Demelon/Nylon 3/0 26mmRC"
+  },
+  "demelon/nylon 4/0 24mmrc": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Demelon/Nylon 4/0 24mmRC"
+  },
+  "dental clips for bips": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental clips for bips"
+  },
+  "dental cotton roll": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental cotton roll"
+  },
+  "dental face shield": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental face shield"
+  },
+  "dental face shield/bx of 5": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental face shield/bx of 5"
+  },
+  "dental floss": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental floss"
+  },
+  "dental floss/pqt": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental floss/Pqt"
+  },
+  "dental mirror": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental mirror"
+  },
+  "dental needles short: gauge 27": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental needles short: Gauge 27"
+  },
+  "dental needles short: gauge 30": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental needles short: Gauge 30"
+  },
+  "dental orthodontic typodont": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental orthodontic typodont"
+  },
+  "dental plaster": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental plaster"
+  },
+  "dental stone": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dental stone"
+  },
+  "dentine": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dentine"
+  },
+  "denture box": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Denture box"
+  },
+  "detex jick (javel)/bidon de 20l": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Detex Jick (Javel)/Bidon de 20L"
+  },
+  "dexamethasone inj.4mg/1ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "DEXAMETHASONE INJ.4mg/1ml"
+  },
+  "diafil composite kit": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "DIAFIL COMPOSITE KIT"
+  },
+  "diafil composite kit/pcs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "DIAFIL COMPOSITE KIT/Pcs"
+  },
+  "diamond burs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Diamond burs"
+  },
+  "diamond burs/1pc": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Diamond  burs/1Pc"
+  },
+  "diamond finishing polish": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Diamond finishing polish"
+  },
+  "diamond inverted": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Diamond inverted"
+  },
+  "diamond round": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Diamond round"
+  },
+  "diazepam inj.10mg/2ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "DIAZEPAM INJ.10mg/2ml"
+  },
+  "diclofenac inj 75mg/im,iv": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "DICLOFENAC INJ 75MG/IM,IV"
+  },
+  "diclofenac suppo 100mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "DICLOFENAC SUPPO 100MG"
+  },
+  "dicynone inj .250mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "DICYNONE INJ .250MG"
+  },
+  "die stone": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Die stone"
+  },
+  "disposable impression bite/metal": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Disposable impression bite/Metal"
+  },
+  "disposable impression bite/plastic": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Disposable impression bite/Plastic"
+  },
+  "dpx mountain 250ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "DPX Mountain 250ml"
+  },
+  "ds diluent 20l": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "DS Diluent 20L"
+  },
+  "dvd": {
+    "department": "IMAGING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "DVD"
+  },
+  "dvd cover/1pc": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "DVD cover/1Pc"
+  },
+  "dycal oil": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dycal oil"
+  },
+  "dycal oil tube": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Dycal oil tube"
+  },
+  "eau oxygenee 3% 120ml/10 vol": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Eau oxygenee 3% 120ml/10 vol"
+  },
+  "echo gel 5l": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Echo gel 5l"
+  },
+  "edta gel for rc": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "EDTA gel for RC"
+  },
+  "edta gel for rc 1pc": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "EDTA gel for RC 1pc"
+  },
+  "elastics": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Elastics"
+  },
+  "elastics chipmark": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Elastics Chipmark"
+  },
+  "elastics fox": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Elastics fox"
+  },
+  "elastics penguin": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Elastics penguin"
+  },
+  "elastics rabbits": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Elastics Rabbits"
+  },
+  "electrocardiogram paper z fold 210*300-200's": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Electrocardiogram paper Z fold 210*300-200's"
+  },
+  "elite vest liquid/ for investement": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Elite vest liquid/ for investement"
+  },
+  "elite vest plus powder / for investement": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Elite vest Plus powder / for investement"
+  },
+  "emitino inj/ondansetron 2mg/ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Emitino inj/Ondansetron 2mg/ml"
+  },
+  "encre pour les cachets bleu": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Encre pour les cachets bleu"
+  },
+  "encre pour les cachets vert": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Encre pour les cachets  vert"
+  },
+  "endotracheal tube5.0": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Endotracheal tube5.0"
+  },
+  "endotracheal tube7.0 cuffed": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Endotracheal tube7.0 Cuffed"
+  },
+  "enveloppe a4 (pqt de 50)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Enveloppe A4 (pqt de 50)"
+  },
+  "enveloppe white/imag&labo/pc": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Enveloppe white/imag&labo/pc"
+  },
+  "enveloppes big sac": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Enveloppes BIG SAC"
+  },
+  "eosin 1%": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Eosin 1%"
+  },
+  "eraser/gomme": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Eraser/Gomme"
+  },
+  "esr solution reagent": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ESR Solution Reagent"
+  },
+  "esr tube 4ml 100pcs/vs": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ESR tube 4ml 100pcs/VS"
+  },
+  "ethion 2/0": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Ethion 2/0"
+  },
+  "ethion 5/0": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Ethion 5/0"
+  },
+  "ethion 6/0": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Ethion 6/0"
+  },
+  "examination gloves/large": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Examination gloves/Large"
+  },
+  "examination gloves/medium": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Examination gloves/Medium"
+  },
+  "face masks": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FACE MASKS"
+  },
+  "farde perforee (pqt de 20pces)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Farde perforee (pqt de 20pces)"
+  },
+  "farde suspender": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Farde suspender"
+  },
+  "feeding tube no 10": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Feeding tube No 10"
+  },
+  "feeding tube no 6": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Feeding tube No 6"
+  },
+  "feeding tube no 8": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Feeding tube No 8"
+  },
+  "fentanyl citrate inj.100mcg 2ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FENTANYL citrate INJ.100mcg 2ml"
+  },
+  "fimbo/pqt": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Fimbo/Pqt"
+  },
+  "finishing burs/1pc": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Finishing burs/1Pc"
+  },
+  "flexibles tube": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Flexibles tube"
+  },
+  "flowable composite": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Flowable composite"
+  },
+  "flowable composite/pcs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Flowable composite/Pcs"
+  },
+  "fob 50t": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FOB 50T"
+  },
+  "folley catheter size 10": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FOLLEY CATHETER SIZE 10"
+  },
+  "folley catheter size 12": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FOLLEY CATHETER SIZE 12"
+  },
+  "folley catheter size 14": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FOLLEY CATHETER SIZE 14"
+  },
+  "folley catheter size 16": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FOLLEY CATHETER SIZE 16"
+  },
+  "folley catheter size 18": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FOLLEY CATHETER SIZE 18"
+  },
+  "folley catheter size 20": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FOLLEY CATHETER SIZE 20"
+  },
+  "formacresol 15ml": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FORMACRESOL 15ML"
+  },
+  "formacresol 15ml /bottle": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "FORMACRESOL 15ML /bottle"
+  },
+  "fugi 9 golden label": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Fugi 9 Golden label"
+  },
+  "fugi 9golden label": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Fugi 9Golden label"
+  },
+  "furosemide inj 40mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Furosemide inj 40mg"
+  },
+  "gauze roll (90cmx10) 1.5kg*100 yards": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gauze roll (90cmx10) 1.5kg*100 yards"
+  },
+  "gauze swab": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gauze swab"
+  },
+  "giemsa stain": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "GIEMSA STAIN"
+  },
+  "giving set": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "GIVING SET"
+  },
+  "glass dappen dishes": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Glass Dappen Dishes"
+  },
+  "glass ionomer cement fuji i (luting)": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Glass Ionomer Cement Fuji I (Luting)"
+  },
+  "glassionomer ciment fuji 9": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Glassionomer ciment fuji 9"
+  },
+  "glassionomer ciment fuji 9/bottle": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Glassionomer ciment fuji 9/bottle"
+  },
+  "glue sticks/colle (15g)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Glue sticks/Colle (15g)"
+  },
+  "glue sticks/colle (5g)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Glue sticks/Colle (5g)"
+  },
+  "glue sticks/colle (8g)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Glue sticks/Colle (8g)"
+  },
+  "gome": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Gome"
+  },
+  "gram stain/pvp(hucker) 4*250ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gram stain/PVP(Hucker) 4*250ml"
+  },
+  "grinding disc": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Grinding disc"
+  },
+  "gutta percha 15": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 15"
+  },
+  "gutta percha 20": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 20"
+  },
+  "gutta percha 25": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 25"
+  },
+  "gutta percha 30": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 30"
+  },
+  "gutta percha 35": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 35"
+  },
+  "gutta percha 40": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 40"
+  },
+  "gutta percha 45": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 45"
+  },
+  "gutta percha 45-80": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 45-80"
+  },
+  "gutta percha 50": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 50"
+  },
+  "gutta percha 55": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 55"
+  },
+  "gutta percha 60": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 60"
+  },
+  "gutta percha 70": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 70"
+  },
+  "gutta percha 80": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha 80"
+  },
+  "gutta percha f1-f3": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha F1-F3"
+  },
+  "gutta percha points 15-40 kit": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha Points 15-40 Kit"
+  },
+  "gutta percha points 45-80 kit": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha Points 45-80 Kit"
+  },
+  "gutta percha solvent": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Gutta Percha Solvent"
+  },
+  "h.pylori test rapid 20t": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "H.PYLORI TEST RAPID 20T"
+  },
+  "hand piece oil spray 500ml": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Hand Piece Oil Spray 500ml"
+  },
+  "hand sanitizer 500ml": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Hand sanitizer 500ml"
+  },
+  "harris'hematoxylin 1000ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Harris'Hematoxylin 1000ml"
+  },
+  "hav rt40t": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "HAV RT40T"
+  },
+  "hbsag rt 50t": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "HBsAg RT 50T"
+  },
+  "hcg rapid test 50t": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "HCG RAPID TEST 50T"
+  },
+  "hcv rt50t": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "HCV RT50T"
+  },
+  "hemostal solution": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Hemostal solution"
+  },
+  "hiv 1/2 stat pack 20t": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "HIV 1/2 STAT PACK 20T"
+  },
+  "hiv combo set 100t": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "HIV COMBO SET 100T"
+  },
+  "hydralazine 20mg/ml inj": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Hydralazine 20mg/ml inj"
+  },
+  "hydrocortisone /100mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "HYDROCORTISONE /100MG"
+  },
+  "immersion oil": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "IMMERSION OIL"
+  },
+  "impressions and casting materials": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Impressions and casting materials"
+  },
+  "inoculating loops": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Inoculating loops"
+  },
+  "insulin syringue": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Insulin syringue"
+  },
+  "investigation form/booklet/1": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Investigation form/booklet/1"
+  },
+  "inyange water/box": {
+    "department": "GENERAL STORE",
+    "category": "cafetariat",
+    "storage": "Non-Medical",
+    "displayName": "Inyange water/Box"
+  },
+  "inyange water/galot": {
+    "department": "GENERAL STORE",
+    "category": "cafetariat",
+    "storage": "Non-Medical",
+    "displayName": "Inyange water/Galot"
+  },
+  "iv cannula catheter g 16": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "IV CANNULA CATHETER G 16"
+  },
+  "iv cannula catheter g 18": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "IV CANNULA CATHETER G 18"
+  },
+  "iv cannula catheter g20": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "IV CANNULA CATHETER G20"
+  },
+  "iv cannula catheter g22": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "IV CANNULA CATHETER G22"
+  },
+  "iv cannula catheter g24": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "IV CANNULA CATHETER G24"
+  },
+  "jersa15cm": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Jersa15cm"
+  },
+  "jersay 10cm": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Jersay 10cm"
+  },
+  "jersay 5cm": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Jersay 5cm"
+  },
+  "kangaro punch/ dp-700 - perforateur": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "kangaro Punch/ DP-700 - Perforateur"
+  },
+  "kangaro punch/ fp-20 - perforateur single": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Kangaro Punch/ FP-20 - Perforateur single"
+  },
+  "ketamine inj 50mg/ml 10ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Ketamine inj 50mg/ml 10ml"
+  },
+  "kligler agar": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Kligler agar"
+  },
+  "kovac's indole reagent": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Kovac's Indole Reagent"
+  },
+  "lab request form": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Lab request form"
+  },
+  "lab sample collection/lab books transport log specimen": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Lab sample  collection/Lab books transport log specimen"
+  },
+  "latte": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Latte"
+  },
+  "lidocaine inj.30ml/2%": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "LIDOCAINE INJ.30ml/2%"
+  },
+  "ligature wire": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Ligature  wire"
+  },
+  "light cure machine": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Light cure machine"
+  },
+  "lingua batton/": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Lingua batton/"
+  },
+  "lithium heparin": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "LITHIUM HEPARIN"
+  },
+  "lugol labo 1l": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Lugol labo 1l"
+  },
+  "m-6 dr diluent/4pcs": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "M-6 DR Diluent/4pcs"
+  },
+  "m-6 fr dye 12ml*4/4pcs": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "M-6 FR Dye 12ml*4/4pcs"
+  },
+  "m-6fd dye12ml*4 /4pcs": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "M-6FD Dye12ml*4 /4pcs"
+  },
+  "m-6ld lyse1l/4pcs": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "M-6LD Lyse1L/4pcs"
+  },
+  "m-6lh lyser 1l/4pcs": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "M-6LH Lyser 1L/4pcs"
+  },
+  "macconkey agar 500mg": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "MACCONKEY AGAR 500mg"
+  },
+  "malaria rapid test 25t": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Malaria Rapid test 25T"
+  },
+  "mangesium sulfate 50% inj": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Mangesium  sulfate 50% inj"
+  },
+  "marker": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Marker"
+  },
+  "medical tower": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Medical tower"
+  },
+  "methanol 99% 2.5l": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Methanol 99% 2.5L"
+  },
+  "metoclopramide inj10mg/2ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Metoclopramide inj10mg/2ml"
+  },
+  "metronidazole inj.500mg/100ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "METRONIDAZOLE INJ.500MG/100ML"
+  },
+  "micro applicator 1000/bx": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Micro Applicator 1000/bx"
+  },
+  "micro applicator 100t": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Micro Applicator 100T"
+  },
+  "micropipette (100-1000ul)": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "MICROPIPETTE (100-1000UL)"
+  },
+  "micropipette single channel pipettor": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "MICROPIPETTE SINGLE CHANNEL PIPETTOR"
+  },
+  "microscope slides 76.2*25.4mm/50pcs": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "MICROSCOPE SLIDES 76.2*25.4mm/50pcs"
+  },
+  "midazolam inj 5mg/1ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Midazolam inj 5mg/1ml"
+  },
+  "modelling wax": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Modelling wax"
+  },
+  "morphine inj.10mg/1ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "MORPHINE INJ.10mg/1ml"
+  },
+  "mta root-xpro": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "MTA Root-Xpro"
+  },
+  "mueller hinton agar 500g": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Mueller hinton Agar 500g"
+  },
+  "naloxone inj 0.4mg/ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Naloxone inj 0.4mg/ml"
+  },
+  "nasal oxygen cannula (adult)": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Nasal oxygen cannula (Adult)"
+  },
+  "nasal oxygen cannula (pediatric)": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Nasal oxygen cannula (Pediatric)"
+  },
+  "nebulizer mask adult": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NEBULIZER MASK ADULT"
+  },
+  "nebulizer mask ped": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NEBULIZER MASK PED"
+  },
+  "needle g18": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NEEDLE G18"
+  },
+  "needle g21": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NEEDLE G21"
+  },
+  "needle g23": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NEEDLE G23"
+  },
+  "needle holder": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Needle holder"
+  },
+  "nescafe 200gr": {
+    "department": "GENERAL STORE",
+    "category": "cafetariat",
+    "storage": "Non-Medical",
+    "displayName": "Nescafe 200gr"
+  },
+  "nido small": {
+    "department": "GENERAL STORE",
+    "category": "cafetariat",
+    "storage": "Non-Medical",
+    "displayName": "Nido small"
+  },
+  "nightguards sheets (2mm)": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Nightguards sheets (2mm)"
+  },
+  "niti k-files 15-40 25mm": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI K-Files 15-40 25mm"
+  },
+  "niti k-files 15-40 31mm": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI K-Files 15-40 31mm"
+  },
+  "niti k-files 45-80 25mm": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI K-Files 45-80 25mm"
+  },
+  "niti wire 012 lower/b10pcs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 012 lower/B10pcs"
+  },
+  "niti wire 012 upper/b10pcs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 012 upper/B10pcs"
+  },
+  "niti wire 014lower/b10pcs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 014Lower/B10pcs"
+  },
+  "niti wire 014upper/b10pcs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 014upper/B10pcs"
+  },
+  "niti wire 016 *022l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 016 *022L"
+  },
+  "niti wire 016 *022u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 016 *022U"
+  },
+  "niti wire 016 lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 016 lower"
+  },
+  "niti wire 016 upper/b 10pcs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 016 upper/B 10PCS"
+  },
+  "niti wire 016.22 ul": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 016.22 UL"
+  },
+  "niti wire 017 *025l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 017 *025L"
+  },
+  "niti wire 017*025u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 017*025U"
+  },
+  "niti wire 017.25 ul": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 017.25 UL"
+  },
+  "niti wire 018 *025l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 018 *025L"
+  },
+  "niti wire 018 *025u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 018 *025U"
+  },
+  "niti wire 018 lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 018 Lower"
+  },
+  "niti wire 018 upper": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 018 upper"
+  },
+  "niti wire 018.22 ul": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 018.22 UL"
+  },
+  "niti wire 019 l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 019 L"
+  },
+  "niti wire 019 u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 019 U"
+  },
+  "niti wire 020lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 020lower"
+  },
+  "niti wire 020upper": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 020upper"
+  },
+  "niti wire 021lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 021Lower"
+  },
+  "niti wire 021upper": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 021upper"
+  },
+  "niti wire 022 lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire 022 lower"
+  },
+  "niti wire rc 0014l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire Rc 0014L"
+  },
+  "niti wire rc 0016l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire Rc 0016L"
+  },
+  "niti wire rc 0016u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire Rc 0016U"
+  },
+  "niti wire rc 0018l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire Rc 0018L"
+  },
+  "niti wire rc 0018u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI Wire Rc 0018U"
+  },
+  "niti(archwire)": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI(Archwire)"
+  },
+  "niti(archwire) close": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI(Archwire) close"
+  },
+  "niti(archwire) open": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "NITI(Archwire) open"
+  },
+  "office tray": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Office Tray"
+  },
+  "omoprazole 40mg inj": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "omoprazole 40mg inj"
+  },
+  "opaque": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Opaque"
+  },
+  "opaque liquid": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Opaque liquid"
+  },
+  "open coil": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Open coil"
+  },
+  "orthodontic bracket kit": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Orthodontic Bracket kit"
+  },
+  "orthodontic composite": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Orthodontic composite"
+  },
+  "orthodontic materials": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Orthodontic materials"
+  },
+  "orthodontic wax": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Orthodontic Wax"
+  },
+  "orthodontic wires": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Orthodontic Wires"
+  },
+  "orthopedic padding 20cm*2.7m": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Orthopedic padding 20cm*2.7m"
+  },
+  "otoscope": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Otoscope"
+  },
+  "oxygen mask (adult)": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Oxygen mask (Adult)"
+  },
+  "oxygen mask (peadiatric)": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Oxygen mask (Peadiatric)"
+  },
+  "pap smear kit": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "PAP SMEAR KIT"
+  },
+  "papaniclou ea50 500l": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Papaniclou EA50 500l"
+  },
+  "papaniclou og -6 1000ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Papaniclou OG -6 1000ml"
+  },
+  "paper point 15": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 15"
+  },
+  "paper point 15-40": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 15-40"
+  },
+  "paper point 15/kit": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 15/kit"
+  },
+  "paper point 20": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 20"
+  },
+  "paper point 25": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 25"
+  },
+  "paper point 30": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 30"
+  },
+  "paper point 35": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 35"
+  },
+  "paper point 40": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 40"
+  },
+  "paper point 45": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 45"
+  },
+  "paper point 45-80": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 45-80"
+  },
+  "paper point 50": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 50"
+  },
+  "paper point 55": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 55"
+  },
+  "paper point 60": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 60"
+  },
+  "paper point 70": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 70"
+  },
+  "paper point 80": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point 80"
+  },
+  "paper point f1-f3": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paper point F1-F3"
+  },
+  "papier duplicateur/ ream": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Papier duplicateur/ REAM"
+  },
+  "paracetamol inj 100ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Paracetamol inj 100ml"
+  },
+  "paracetamol suppo,125mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "PARACETAMOL SUPPO,125mg"
+  },
+  "paracetamol suppo,250 mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "PARACETAMOL  SUPPO,250 mg"
+  },
+  "paracetamol tablet 500mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "PARACETAMOL TABLET 500MG"
+  },
+  "parafine gauze (10x10cm)/sterile": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "PARAFINE GAUZE (10x10cm)/sterile"
+  },
+  "patient bips": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Patient bips"
+  },
+  "patient information form": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Patient information form"
+  },
+  "pause inj.5mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "PAUSE INJ.5mg"
+  },
+  "payment voucher": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Payment voucher"
+  },
+  "pediatric k2 edtea tube 0.5ml pet": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Pediatric K2 EDTEA Tube 0.5ml PET"
+  },
+  "pediatric k2 plain tube with clot activator 0.5ml pet": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Pediatric K2 Plain Tube with clot activator 0.5ml PET"
+  },
+  "pethidine inj 100mg in 2ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Pethidine inj 100mg in 2ml"
+  },
+  "petridish 90m*15mm": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "PETRIDISH 90M*15mm"
+  },
+  "phenytoin inj 250mg/5ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Phenytoin inj 250mg/5ml"
+  },
+  "phospholic acid etchant ,37%": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Phospholic acid etchant ,37%"
+  },
+  "picette graduated 250ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Picette graduated 250ml"
+  },
+  "picette graduated 500ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Picette graduated 500ml"
+  },
+  "pipette pasteur non sterile 3ml/b 500": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Pipette Pasteur non sterile 3ml/B 500"
+  },
+  "plaster of paris 10 cm*3m b/120": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Plaster of paris 10 cm*3M B/120"
+  },
+  "plaster of paris15cm*3m": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "PLASTER OF PARIS15CM*3M"
+  },
+  "plaster of paris20cm*3m": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "PLASTER OF PARIS20CM*3M"
+  },
+  "plastic bags( black)": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Plastic bags( Black)"
+  },
+  "plastic bags( red)": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Plastic bags( Red)"
+  },
+  "plastic bags( white)": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Plastic bags( White)"
+  },
+  "plastic cups (pqt de 50 pcs)": {
+    "department": "GENERAL STORE",
+    "category": "cafetariat",
+    "storage": "Non-Medical",
+    "displayName": "Plastic cups (Pqt de 50 pcs)"
+  },
+  "polishing burs/1pc": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polishing burs/1Pc"
+  },
+  "polishing clorus": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polishing clorus"
+  },
+  "polishing materials": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polishing materials"
+  },
+  "polishing paste 340g": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "POLISHING PASTE 340G"
+  },
+  "polishing paste 340g/cup": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "POLISHING PASTE 340G/cup"
+  },
+  "polishing strip clothe": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polishing strip clothe"
+  },
+  "polushing hand peace": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polushing hand peace"
+  },
+  "polushing hand peace slow speed": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polushing hand peace slow speed"
+  },
+  "polushing strips / metal": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polushing Strips / Metal"
+  },
+  "polushing strips / orthopolishing strips": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polushing Strips / Orthopolishing strips"
+  },
+  "polushing strips / plastics": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polushing Strips / Plastics"
+  },
+  "polyglactin 3/0 r bodied": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polyglactin 3/0 R bodied"
+  },
+  "polyglactin 4/0 r bodied": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polyglactin 4/0 R bodied"
+  },
+  "polypropylene blue 4/0 1/2 cir taper bodied 20mm/75cm": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polypropylene Blue 4/0 1/2 cir taper bodied 20mm/75cm"
+  },
+  "polypropylene blue 6/0 1/2 round bodied 10mm/75cm": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Polypropylene Blue 6/0 1/2 round bodied 10mm/75cm"
+  },
+  "post-it (pqt de 12 pces)/color": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Post-it (pqt de 12 pces)/COLOR"
+  },
+  "potassium hydroxide": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Potassium hydroxide"
+  },
+  "povidone iodine 200ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Povidone iodine 200ml"
+  },
+  "powder (veined pink)": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Powder (veined pink)"
+  },
+  "power chain black continous": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Power chain black continous"
+  },
+  "power chain black long": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Power chain black long"
+  },
+  "power chain black short": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Power chain  black short"
+  },
+  "power chain gray continous": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Power chain gray continous"
+  },
+  "power chain gray long": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Power chain gray long"
+  },
+  "power chain gray short": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Power chain gray short"
+  },
+  "power chain roll": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Power chain roll"
+  },
+  "prepared by alice abayisenga": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Prepared by Alice Abayisenga"
+  },
+  "prescription form": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Prescription form"
+  },
+  "presept": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Presept"
+  },
+  "primipole20*10": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Primipole20*10"
+  },
+  "probe cleanser 50ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Probe cleanser 50ml"
+  },
+  "prophy brush": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Prophy brush"
+  },
+  "prophylaxie paste 200gr": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Prophylaxie paste 200gr"
+  },
+  "propofol-lipuro1% inj.ga 10mg/ml,200mg/20ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "PROPOFOL-Lipuro1% INJ.GA 10mg/ml,200mg/20ml"
+  },
+  "protaper file 25mm": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Protaper file 25mm"
+  },
+  "pulpotec": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Pulpotec"
+  },
+  "pulpotec/bottle": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Pulpotec/bottle"
+  },
+  "punching machine dp 520": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Punching machine DP 520"
+  },
+  "purchase order": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Purchase order"
+  },
+  "rc-cream 3 gr(edta)": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "RC-CREAM 3 gr(EDTA)"
+  },
+  "rct file 15-40 kit": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "RCT File 15-40 Kit"
+  },
+  "rct file 45-80 kit": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "RCT File 45-80 Kit"
+  },
+  "rct sealer": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "RCT sealer"
+  },
+  "rct sealer/pc": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "RCT sealer/Pc"
+  },
+  "registres": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Registres"
+  },
+  "requisition cum issue slip": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Requisition CUM ISSUE SLIP"
+  },
+  "retainer boxes": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Retainer boxes"
+  },
+  "retainer boxes/pcs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Retainer boxes/Pcs"
+  },
+  "retainer sheet": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Retainer sheet"
+  },
+  "retraction cord 250cm": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Retraction Cord 250cm"
+  },
+  "reverse curve 012 upper": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Reverse curve 012 upper"
+  },
+  "reverse curve 018": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Reverse curve 018"
+  },
+  "ringer lactate/25": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "RINGER  LACTATE/25"
+  },
+  "rubber ties": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Rubber ties"
+  },
+  "rwanda tea": {
+    "department": "GENERAL STORE",
+    "category": "cafetariat",
+    "storage": "Non-Medical",
+    "displayName": "Rwanda tea"
+  },
+  "sabouround dextrose agar": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SABOUROUND Dextrose Agar"
+  },
+  "safety box": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SAFETY BOX"
+  },
+  "salutamol nebuliser 2.5mg": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Salutamol nebuliser 2.5mg"
+  },
+  "savon liquide/ multipurpose (bidon de 20l)": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Savon liquide/ Multipurpose (bidon de 20L)"
+  },
+  "sensocaine isobar 0.5% inj(buvicaine isobar)": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sensocaine isobar 0.5% inj(Buvicaine isobar)"
+  },
+  "serviettes": {
+    "department": "GENERAL STORE",
+    "category": "cafetariat",
+    "storage": "Non-Medical",
+    "displayName": "Serviettes"
+  },
+  "sheet protector": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Sheet protector"
+  },
+  "sick leave form": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Sick leave form"
+  },
+  "silicon impression putty": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Silicon impression Putty"
+  },
+  "silicon impression putty/bottle": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Silicon impression Putty/bottle"
+  },
+  "single ties": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Single ties"
+  },
+  "single ties/emballage of 47 pcs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Single ties/Emballage of 47 Pcs"
+  },
+  "sliver diamine fluoride 38%": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sliver diamine fluoride 38%"
+  },
+  "sodium chloride 0.9% perfusion 500ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sodium chloride 0.9% perfusion 500ml"
+  },
+  "sodium citrate tube": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sodium citrate tube"
+  },
+  "sonny roll": {
+    "department": "IMAGING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SONNY ROLL"
+  },
+  "spirale (gris)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Spirale (Gris)"
+  },
+  "spirale (noir)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Spirale (Noir)"
+  },
+  "spirale enroulee noir (grand)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Spirale Enroulee Noir (Grand)"
+  },
+  "spirale enroulee noir (moyen)": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Spirale Enroulee Noir (moyen)"
+  },
+  "sprue wax 2.5mm": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "sprue wax 2.5mm"
+  },
+  "ss agar": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SS Agar"
+  },
+  "ss wire 0016*22lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0016*22Lower"
+  },
+  "ss wire 0016*22upper": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0016*22Upper"
+  },
+  "ss wire 0017*022l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0017*022L"
+  },
+  "ss wire 0017*022u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0017*022U"
+  },
+  "ss wire 0017*025 u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0017*025 U"
+  },
+  "ss wire 0017*025l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0017*025L"
+  },
+  "ss wire 0018*022l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0018*022L"
+  },
+  "ss wire 0018*022u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0018*022U"
+  },
+  "ss wire 0018*025u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0018*025U"
+  },
+  "ss wire 0019*025l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0019*025L"
+  },
+  "ss wire 0019*025u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0019*025U"
+  },
+  "ss wire 0021*025l": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0021*025L"
+  },
+  "ss wire 0021*025u": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 0021*025U"
+  },
+  "ss wire 012 lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 012 Lower"
+  },
+  "ss wire 012 upper": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 012 upper"
+  },
+  "ss wire 014 lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 014 lower"
+  },
+  "ss wire 014 upper": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 014 upper"
+  },
+  "ss wire 016 lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 016 Lower"
+  },
+  "ss wire 016 upper": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 016 upper"
+  },
+  "ss wire 018 lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 018 Lower"
+  },
+  "ss wire 018 upper": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 018 Upper"
+  },
+  "ss wire 020 lower": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 020 Lower"
+  },
+  "ss wire 020 upper": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ss wire 020 Upper"
+  },
+  "staples 24/6/pqt/b100": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Staples 24/6/Pqt/B100"
+  },
+  "steranios 5l": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Steranios 5L"
+  },
+  "sterile gloves 7.5": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "STERILE GLOVES 7.5"
+  },
+  "sterile gloves 8": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "STERILE GLOVES 8"
+  },
+  "sterilization pauches 150mm*200": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sterilization Pauches 150mm*200"
+  },
+  "sterilization pauches 200mm*200": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sterilization Pauches 200mm*200"
+  },
+  "sterilization pauches 250mm*200": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sterilization Pauches 250mm*200"
+  },
+  "stool container": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Stool container"
+  },
+  "straight elevator": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Straight elevator"
+  },
+  "stylos": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Stylos"
+  },
+  "sucre (kgs)": {
+    "department": "GENERAL STORE",
+    "category": "cafetariat",
+    "storage": "Non-Medical",
+    "displayName": "Sucre (KGS)"
+  },
+  "suction tips": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Suction tips"
+  },
+  "suction tips/salivor ejector": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Suction tips/Salivor ejector"
+  },
+  "sugical burs": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SUGICAL BURS"
+  },
+  "sulfolyser sls-210 b/500ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sulfolyser SLS-210 B/500ml"
+  },
+  "sulphosalicylic acid 3%": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sulphosalicylic Acid 3%"
+  },
+  "sunction catheter no10": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sunction catheter No10"
+  },
+  "sunction catheter no14": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sunction catheter No14"
+  },
+  "sunction catheter no16": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sunction catheter No16"
+  },
+  "sunction catheter no18": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Sunction catheter No18"
+  },
+  "sunlight seau(5kg)": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Sunlight seau(5kg)"
+  },
+  "surfa safe 750ml": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Surfa Safe 750ml"
+  },
+  "surgical blade no11": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SURGICAL Blade no11"
+  },
+  "surgical blade no12": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SURGICAL Blade no12"
+  },
+  "surgical blade no15": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SURGICAL Blade no15"
+  },
+  "surgical blade no21": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SURGICAL Blade no21"
+  },
+  "surgical blade no22": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SURGICAL Blade no22"
+  },
+  "surgical blade no23": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SURGICAL Blade no23"
+  },
+  "surgical bonet": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SURGICAL BONET"
+  },
+  "surgicrly/polygractine 5/0": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Surgicrly/Polygractine 5/0"
+  },
+  "surgicrly/polygractine 6/0": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Surgicrly/Polygractine 6/0"
+  },
+  "syphilis test rapidt50": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SYPHILIS TEST RAPIDT50"
+  },
+  "syringe 20ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SYRINGE 20ML"
+  },
+  "syringe 2ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SYRINGE 2ML"
+  },
+  "syringes 10ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SYRINGES 10ml"
+  },
+  "syringes 5ml/t100": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "SYRINGES 5ml/T100"
+  },
+  "tea bag (pack of 50 sachets)": {
+    "department": "GENERAL STORE",
+    "category": "cafetariat",
+    "storage": "Non-Medical",
+    "displayName": "Tea bag (pack of 50 sachets)"
+  },
+  "temporary filling material": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "TEMPORARY FILLING MATERIAL"
+  },
+  "thermometer digital": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Thermometer Digital"
+  },
+  "tofflemire matrix bands/universal matrix band 1pc": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Tofflemire Matrix Bands/Universal matrix band 1Pc"
+  },
+  "token machine paper roll": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Token machine Paper Roll"
+  },
+  "tourniquet belt": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "TOURNIQUET BELT"
+  },
+  "tramadol inj 100mg/ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "TRAMADOL INJ 100mg/ML"
+  },
+  "transfert form": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Transfert form"
+  },
+  "transpa clear": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Transpa clear"
+  },
+  "transparent a4": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Transparent A4"
+  },
+  "treatment form": {
+    "department": "GENERAL STORE",
+    "category": "stationery",
+    "storage": "Non-Medical",
+    "displayName": "Treatment form"
+  },
+  "troponin i testt25": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Troponin I testT25"
+  },
+  "tungsten carble bur fg,round": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Tungsten carble bur FG,Round"
+  },
+  "typhoid ab igg/m 30t/antigen": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Typhoid Ab IgG/M 30T/Antigen"
+  },
+  "typhoid ab igg/m 50t/antibody": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Typhoid Ab IgG/M 50T/Antibody"
+  },
+  "ultra sonic scaler key": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Ultra sonic scaler key"
+  },
+  "urea agar base": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Urea agar base"
+  },
+  "urinary bag/2l": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Urinary bag/2L"
+  },
+  "urine sample container 60ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "URINE SAMPLE CONTAINER 60ml"
+  },
+  "urine strips t100": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "URINE STRIPS T100"
+  },
+  "vacc tube sec with clot act (plain tube)": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "VACC TUBE SEC with clot act (Plain tube)"
+  },
+  "vaccutainer needle": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "VACCUTAINER NEEDLE"
+  },
+  "vacutainer tubes edta": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "VACUTAINER TUBES EDTA"
+  },
+  "vaginal swab": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "VAGINAL SWAB"
+  },
+  "vaseline blanche": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Vaseline blanche"
+  },
+  "vicryl 1/0": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Vicryl 1/0"
+  },
+  "vicryl 3/0 round 30mm,1/2,75cm": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Vicryl 3/0 round 30mm,1/2,75cm"
+  },
+  "vilvex": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Vilvex"
+  },
+  "vinaigre": {
+    "department": "GENERAL STORE",
+    "category": "housekeeping",
+    "storage": "Non-Medical",
+    "displayName": "Vinaigre"
+  },
+  "visipaque 320mg": {
+    "department": "IMAGING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Visipaque 320mg"
+  },
+  "vitamin bco inj": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Vitamin Bco inj"
+  },
+  "vitamin k1 inj/phytomenadioma 10mg 1ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Vitamin K1 inj/Phytomenadioma 10mg 1ml"
+  },
+  "water for injection,10ml": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "WATER FOR INJECTION,10ml"
+  },
+  "water proof plasters 72*19mm": {
+    "department": "NURSING",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Water proof plasters 72*19mm"
+  },
+  "wax": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Wax"
+  },
+  "wdf fluorocell 22ml": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "WDF Fluorocell 22ml"
+  },
+  "wdf lsercell/2l": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "WDF Lsercell/2L"
+  },
+  "wire diameter 0.6": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "wire diameter 0.6"
+  },
+  "wire diameter 0.7": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "wire diameter 0.7"
+  },
+  "wire diameter 0.8": {
+    "department": "DENTAL LAB",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "wire diameter 0.8"
+  },
+  "wood wedges": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Wood wedges"
+  },
+  "woodpecker light machine": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Woodpecker light machine"
+  },
+  "xld agar": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "XLD Agar"
+  },
+  "xylocaine spray 15%7.5mg": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "Xylocaine spray 15%7.5mg"
+  },
+  "xylose lysine": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "XYLOSE LYSINE"
+  },
+  "yellow tips": {
+    "department": "LABORATORY",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "YELLOW TIPS"
+  },
+  "zoe cement bottle": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ZOE Cement bottle"
+  },
+  "zoe cement kit": {
+    "department": "DENTAL",
+    "category": null,
+    "storage": "Medical",
+    "displayName": "ZOE Cement KIT"
+  }
+}

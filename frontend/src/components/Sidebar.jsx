@@ -21,8 +21,7 @@ const ALL_ROLES = [
   'cashier', 'principal_cashier', 'customer_care', 'lab_team_lead',
   'consultant', 'operations_staff', 'pa', 'staff', 'hsfp', 'nurse',
   'chef-nurse', 'stock-manager', 'doctor', 'medical_director',
-  'procurement-manager', 'radiographer', 'sonographer', 'radiologist',
-  'imaging_receptionist', 'imaging_manager',
+  'procurement-manager', 'imaging_tech', 'imaging_manager',
 ];
 
 const Sidebar = ({ onClose }) => {
@@ -51,9 +50,9 @@ const Sidebar = ({ onClose }) => {
     { configKey: 'performance',   name: 'Performance',      icon: <Award size={20} />,           path: '/performance',  requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff'] },
     { configKey: 'nursing_hub',   name: 'Nursing Hub',      icon: <Stethoscope size={20} />,     path: '/nursing-hub',  requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'chef-nurse'] },
     { configKey: 'doctor_hub',    name: 'Doctor Hub',       icon: <Stethoscope size={20} />,     path: '/doctor-hub',   requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director'] },
-    { configKey: 'imaging',       name: 'Imaging Hub',      icon: <ScanLine size={20} />,        path: '/imaging',      requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['radiographer', 'sonographer', 'radiologist', 'imaging_receptionist', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director'] },
+    { configKey: 'imaging',       name: 'Imaging Hub',      icon: <ScanLine size={20} />,        path: '/imaging',      requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director'] },
     { configKey: 'daily_stock',   name: 'Daily Stock Checkup', icon: <Database size={20} />,     path: '/nursing-hub/inventory', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'admin'] },
-    { configKey: 'central_store', name: 'Central Store Hub', icon: <Database size={20} />,       path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'stock-manager'] },
+    { configKey: 'central_store', name: 'General Store Hub', icon: <Database size={20} />,       path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'stock-manager'] },
     { configKey: 'consumables',   name: 'Consumables Log',  icon: <ClipboardList size={20} />,   path: '/consumables-log', requiredPerm: { mod: 'inventory', act: 'view' }, allowedRoles: ['admin', 'deputy_coo', 'chef-nurse', 'nurse', 'lab_team_lead', 'operations_staff', 'procurement-manager', 'coo'] },
     { configKey: 'master',        name: 'master',            icon: <Database size={20} />,       path: '/master',       requiredPerm: null, allowedRoles: ['admin', 'stock-manager'] },
     { configKey: 'procurement',   name: 'Procurement Hub',   icon: <Building size={20} />,       path: '/procurement',  requiredPerm: null, allowedRoles: ['admin', 'procurement-manager', 'deputy_coo'] },

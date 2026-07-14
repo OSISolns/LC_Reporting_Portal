@@ -10,12 +10,103 @@ const STATUS_STYLE = {
   acquired:    'bg-blue-100 text-blue-700',
 };
 
+// Modality-specific acquisition parameters captured when completing a study.
+// Field shape mirrors what each unit's physical logbook records.
+const PARAM_FIELDS = {
+  'X-Ray': [
+    { key: 'views', label: 'Views', type: 'chips', options: ['AP', 'PA', 'Lateral', 'Oblique', 'Axial'] },
+    { key: 'exposure_kv', label: 'kV', type: 'text', width: 'sm' },
+    { key: 'exposure_mas', label: 'mAs', type: 'text', width: 'sm' },
+    { key: 'exposures', label: '# Exposures', type: 'text', width: 'sm' },
+  ],
+  CT: [
+    { key: 'contrast_used', label: 'Contrast used', type: 'checkbox' },
+    { key: 'contrast_type', label: 'Contrast type', type: 'text' },
+    { key: 'protocol', label: 'Protocol', type: 'text' },
+    { key: 'slice_thickness_mm', label: 'Slice thickness (mm)', type: 'text', width: 'sm' },
+  ],
+  MRI: [
+    { key: 'sequences', label: 'Sequences', type: 'chips', options: ['T1', 'T2', 'FLAIR', 'DWI', 'T1+C', 'STIR'] },
+    { key: 'contrast_used', label: 'Contrast (Gadolinium)', type: 'checkbox' },
+    { key: 'coil', label: 'Coil', type: 'text' },
+  ],
+  Ultrasound: [
+    { key: 'probe', label: 'Probe', type: 'select', options: ['Convex', 'Linear', 'Endocavitary', 'Sector'] },
+    { key: 'frequency_mhz', label: 'Frequency (MHz)', type: 'text', width: 'sm' },
+    { key: 'doppler_used', label: 'Doppler used', type: 'checkbox' },
+  ],
+};
+
+const AcquisitionParamsForm = ({ modality, values, onChange }) => {
+  const fields = PARAM_FIELDS[modality] || [];
+  if (fields.length === 0) return null;
+
+  const set = (key, val) => onChange({ ...values, [key]: val });
+  const toggleChip = (key, opt) => {
+    const current = Array.isArray(values[key]) ? values[key] : [];
+    set(key, current.includes(opt) ? current.filter((v) => v !== opt) : [...current, opt]);
+  };
+
+  return (
+    <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      {fields.map((f) => {
+        if (f.type === 'chips') {
+          return (
+            <div key={f.key} className="col-span-2 sm:col-span-4">
+              <div className="text-xs font-semibold text-slate-500 mb-1">{f.label}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {f.options.map((opt) => {
+                  const active = (values[f.key] || []).includes(opt);
+                  return (
+                    <button key={opt} type="button" onClick={() => toggleChip(f.key, opt)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300'}`}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
+        if (f.type === 'checkbox') {
+          return (
+            <label key={f.key} className="col-span-2 sm:col-span-1 flex items-center gap-2 text-xs font-semibold text-slate-600">
+              <input type="checkbox" checked={!!values[f.key]} onChange={(e) => set(f.key, e.target.checked)} />
+              {f.label}
+            </label>
+          );
+        }
+        if (f.type === 'select') {
+          return (
+            <div key={f.key} className={f.width === 'sm' ? '' : 'col-span-2'}>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">{f.label}</label>
+              <select value={values[f.key] || ''} onChange={(e) => set(f.key, e.target.value)}
+                className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm">
+                <option value="">—</option>
+                {f.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            </div>
+          );
+        }
+        return (
+          <div key={f.key} className={f.width === 'sm' ? '' : 'col-span-2'}>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">{f.label}</label>
+            <input value={values[f.key] || ''} onChange={(e) => set(f.key, e.target.value)}
+              className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm" />
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const ModalityConsole = () => {
   const [modality, setModality] = useState('');
   const [modalities, setModalities] = useState([]);
   const [studies, setStudies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [notesById, setNotesById] = useState({});
+  const [paramsById, setParamsById] = useState({});
   const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
@@ -51,7 +142,10 @@ const ModalityConsole = () => {
   };
   const doComplete = async (id) => {
     try {
-      await completeStudy(id, { technical_notes: notesById[id] || '' });
+      await completeStudy(id, {
+        technical_notes: notesById[id] || '',
+        acquisition_params: paramsById[id] || {},
+      });
       toast.success('Exam logged — radiologists notified.');
       load();
     } catch (err) { toast.error(err.response?.data?.message || 'Could not complete.'); }
@@ -116,12 +210,19 @@ const ModalityConsole = () => {
               </div>
             </div>
             {s.status === 'in_progress' && (
-              <input
-                value={notesById[s.id] || ''}
-                onChange={(e) => setNotesById((n) => ({ ...n, [s.id]: e.target.value }))}
-                placeholder="Technical notes (kV/mAs, contrast, sequences…)"
-                className="mt-3 w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm"
-              />
+              <>
+                <AcquisitionParamsForm
+                  modality={s.modality}
+                  values={paramsById[s.id] || {}}
+                  onChange={(v) => setParamsById((p) => ({ ...p, [s.id]: v }))}
+                />
+                <input
+                  value={notesById[s.id] || ''}
+                  onChange={(e) => setNotesById((n) => ({ ...n, [s.id]: e.target.value }))}
+                  placeholder="Additional technical notes…"
+                  className="mt-2.5 w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm"
+                />
+              </>
             )}
             {expandedId === s.id && (
               <div className="mt-3">

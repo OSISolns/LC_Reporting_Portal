@@ -694,7 +694,7 @@ export default function SupplierPortalManager() {
                 <div className="mt-6 space-y-3">
                   <div className="p-3.5 bg-amber-50 border border-amber-150 rounded-2xl text-xs flex gap-2 text-amber-800 leading-relaxed font-semibold">
                     <AlertTriangle className="flex-shrink-0" size={18} />
-                    Confirming will automatically register these batch numbers and expiry records and merge received quantities into the Central Store inventory.
+                    Confirming will automatically register these batch numbers and expiry records and merge received quantities into the General Store inventory.
                   </div>
                   <button 
                     onClick={() => handleReceiveStock(selectedSubmission.id)}

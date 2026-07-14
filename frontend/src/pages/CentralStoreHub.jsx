@@ -158,7 +158,7 @@ export default function CentralStoreHub() {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Failed to load Central Store Hub data.');
+      toast.error('Failed to load General Store Hub data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -328,7 +328,7 @@ export default function CentralStoreHub() {
     stockItems.forEach(item => {
       const val = item.quantity * item.price;
       if (val > 0) {
-        const dept = item.department || 'Central Store';
+        const dept = item.department || 'General Store';
         map[dept] = (map[dept] || 0) + val;
       }
     });
@@ -812,7 +812,7 @@ export default function CentralStoreHub() {
           <div>
             <div className="flex items-center gap-2">
               <span className="p-1.5 bg-sky-700 text-white rounded-xl"><Database size={18} /></span>
-              <h1 className="text-lg font-black text-slate-900 tracking-tight">Central Store Hub</h1>
+              <h1 className="text-lg font-black text-slate-900 tracking-tight">General Store Hub</h1>
             </div>
             <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mt-0.5">Global Stock & Procurement Management</p>
           </div>
@@ -959,7 +959,7 @@ export default function CentralStoreHub() {
               <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-2xl">
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-5 pb-4 border-b border-slate-100">
                   <div>
-                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5"><Package size={16} className="text-sky-700" /> Stock In Hand (Central Store)</h3>
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5"><Package size={16} className="text-sky-700" /> Stock In Hand (General Store)</h3>
                     <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">
                       Showing {filteredStock.length} of {stockItems.length} items
                     </p>
@@ -2130,7 +2130,7 @@ export default function CentralStoreHub() {
             <div><strong className="text-sky-950">Item:</strong> {rectifyingItem?.name}</div>
             <div><strong className="text-sky-950">SKU:</strong> {rectifyingItem?.sku || '—'}</div>
             <div><strong className="text-sky-950">Batch Code:</strong> {rectifyingItem?.batch_number || '—'}</div>
-            <div><strong className="text-sky-950">Department:</strong> {rectifyingItem?.department || 'Central Store'}</div>
+            <div><strong className="text-sky-950">Department:</strong> {rectifyingItem?.department || 'General Store'}</div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -5,7 +5,7 @@ import {
   TrendingUp, Activity, CheckCircle, Clock, Search, 
   ArrowRightLeft, FileWarning, Calendar, Loader2, Plus,
   Eye, RefreshCw, BarChart2, ListFilter, Check, X, ClipboardList,
-  AlertCircle, Filter, ArrowUpRight, FileText, Sparkles, Building, Key
+  AlertCircle, Filter, ArrowUpRight, FileText, Sparkles, Building, Key, XCircle
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -69,7 +69,7 @@ export default function StockManagerDashboard() {
   const [submittingIncident, setSubmittingIncident] = useState(false);
   const [incidentFormData, setIncidentFormData] = useState({
     incidentType: 'Equipment',
-    department: 'Central Store',
+    department: 'General Store',
     areaOfIncident: '',
     namesInvolved: '',
     pidNumber: '',
@@ -122,7 +122,7 @@ export default function StockManagerDashboard() {
           sku: item.sku || 'N/A',
           batchNumber: item.batch_number || 'N/A',
           expiryDate: item.expiry_date || 'N/A',
-          department: item.department || 'Central Store',
+          department: item.department || 'General Store',
           quantity: item.quantity || 0,
           price: item.price || 0,
           vendor: item.vendor || 'N/A',
@@ -184,6 +184,10 @@ export default function StockManagerDashboard() {
     }
   }, [activeTab]);
 
+  // Requisition Action States
+  const [processingAction, setProcessingAction] = useState(false);
+  const [approvedQtys, setApprovedQtys] = useState({});
+
   // Fetch requisition items when one is selected
   useEffect(() => {
     if (!selectedRequisition) {
@@ -210,6 +214,72 @@ export default function StockManagerDashboard() {
 
     fetchReqItems();
   }, [selectedRequisition]);
+
+  // Sync approved quantities when items are fetched or changed
+  useEffect(() => {
+    if (requisitionItems && requisitionItems.length > 0) {
+      const qtys = {};
+      requisitionItems.forEach(item => {
+        qtys[item.id] = item.requested_quantity !== undefined ? item.requested_quantity : (item.quantity || 0);
+      });
+      setApprovedQtys(qtys);
+    } else {
+      setApprovedQtys({});
+    }
+  }, [requisitionItems]);
+
+  const handleApproveRequisition = async (reqId) => {
+    setProcessingAction(true);
+    try {
+      const payload = {
+        items: requisitionItems.map(item => ({
+          id: item.id,
+          approved_quantity: approvedQtys[item.id] !== undefined ? approvedQtys[item.id] : (item.requested_quantity || item.quantity || 0)
+        }))
+      };
+      const res = await api.post(`/clinical/inventory/requisitions/${reqId}/approve`, payload);
+      if (res.data.success) {
+        toast.success('Requisition approved successfully!');
+        setSelectedRequisition(null);
+        // Refresh requisitions list
+        const reqRes = await api.get('/clinical/inventory/requisitions');
+        if (reqRes.data.success) {
+          setRequisitions(reqRes.data.data || []);
+        }
+      } else {
+        toast.error(res.data.message || 'Failed to approve requisition.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Error approving requisition.');
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  const handleRejectRequisition = async (reqId) => {
+    if (!window.confirm('Are you sure you want to reject this requisition?')) return;
+    setProcessingAction(true);
+    try {
+      const res = await api.post(`/clinical/inventory/requisitions/${reqId}/reject`);
+      if (res.data.success) {
+        toast.success('Requisition rejected.');
+        setSelectedRequisition(null);
+        // Refresh requisitions list
+        const reqRes = await api.get('/clinical/inventory/requisitions');
+        if (reqRes.data.success) {
+          setRequisitions(reqRes.data.data || []);
+        }
+      } else {
+        toast.error(res.data.message || 'Failed to reject requisition.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Error rejecting requisition.');
+    } finally {
+      setProcessingAction(false);
+    }
+  };
 
   // Handle Sync
   const handleSync = async () => {
@@ -316,7 +386,7 @@ export default function StockManagerDashboard() {
         setShowIncidentModal(false);
         setIncidentFormData({
           incidentType: 'Equipment',
-          department: 'Central Store',
+          department: 'General Store',
           areaOfIncident: '',
           namesInvolved: '',
           pidNumber: '',
@@ -546,7 +616,7 @@ export default function StockManagerDashboard() {
     stockInHand.forEach(item => {
       const val = item.quantity * item.price;
       if (val > 0) {
-        const dept = item.department || 'Central Store';
+        const dept = item.department || 'General Store';
         map[dept] = (map[dept] || 0) + val;
       }
     });
@@ -1803,11 +1873,25 @@ export default function StockManagerDashboard() {
                             <h5 className="font-bold text-slate-800 text-sm">{item.item_name}</h5>
                             <p className="text-[10px] text-slate-450 font-mono mt-0.5">SKU: {item.sku || 'N/A'}</p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right text-xs">
                             <span className="text-xs text-slate-400 font-medium font-bold">Requested:</span>
-                            <p className="text-sm font-black text-slate-800">{item.quantity} {item.unit_of_measure || 'Unit'}</p>
-                            {selectedRequisition.status === 'Approved' && (
-                              <p className="text-[10px] text-emerald-600 font-bold mt-0.5">Approved: {item.approved_quantity || item.quantity}</p>
+                            <p className="text-sm font-black text-slate-800">{item.requested_quantity || item.quantity || 0} {item.unit_of_measure || 'Unit'}</p>
+                            {selectedRequisition.status === 'Pending' ? (
+                              <div className="flex items-center gap-1.5 justify-end mt-1">
+                                <label className="text-[10px] text-slate-500 font-bold">Approve Qty:</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={approvedQtys[item.id] !== undefined ? approvedQtys[item.id] : (item.requested_quantity || item.quantity || 0)}
+                                  onChange={(e) => setApprovedQtys({
+                                    ...approvedQtys,
+                                    [item.id]: Math.max(0, parseInt(e.target.value, 10) || 0)
+                                  })}
+                                  className="w-16 bg-white border border-slate-200 rounded px-1.5 py-0.5 text-center text-xs font-bold text-slate-800 outline-none focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                            ) : selectedRequisition.status === 'Approved' && (
+                              <p className="text-[10px] text-emerald-600 font-bold mt-0.5">Approved: {item.approved_quantity || item.requested_quantity || item.quantity}</p>
                             )}
                           </div>
                         </div>
@@ -1818,20 +1902,47 @@ export default function StockManagerDashboard() {
               </div>
 
               {/* Action Buttons */}
-              <div className="mt-6 border-t border-slate-200 pt-5 flex gap-3">
-                <button
-                  onClick={() => setSelectedRequisition(null)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm py-3 rounded-xl transition-all cursor-pointer text-center"
-                >
-                  Close Drawer
-                </button>
-                <button
-                  onClick={() => navigate('/central-store')}
-                  className="flex-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow"
-                >
-                  Manage in Store Hub
-                  <ArrowUpRight size={16} />
-                </button>
+              <div className="mt-6 border-t border-slate-200 pt-5 flex flex-col gap-3">
+                {selectedRequisition.status === 'Pending' && (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleRejectRequisition(selectedRequisition.id)}
+                      disabled={processingAction}
+                      className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-sm py-3 rounded-xl border border-rose-200 transition-all cursor-pointer text-center flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <XCircle size={16} />
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => handleApproveRequisition(selectedRequisition.id)}
+                      disabled={processingAction}
+                      className="flex-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow disabled:opacity-50"
+                    >
+                      {processingAction ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-white" />
+                      ) : (
+                        <CheckCircle size={16} />
+                      )}
+                      Approve Requisition
+                    </button>
+                  </div>
+                )}
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedRequisition(null)}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm py-3 rounded-xl transition-all cursor-pointer text-center"
+                  >
+                    Close Drawer
+                  </button>
+                  <button
+                    onClick={() => navigate('/central-store')}
+                    className="flex-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow"
+                  >
+                    Manage in Store Hub
+                    <ArrowUpRight size={16} />
+                  </button>
+                </div>
               </div>
 
             </motion.div>
@@ -2096,7 +2207,7 @@ export default function StockManagerDashboard() {
                       <input 
                         type="text" 
                         disabled
-                        value="Central Store -> Procurement Hub" 
+                        value="General Store -> Procurement Hub" 
                         className="bg-slate-150 border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-500 outline-none"
                       />
                     </div>

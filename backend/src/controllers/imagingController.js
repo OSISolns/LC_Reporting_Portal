@@ -15,8 +15,11 @@ const accessionFor = (id) => `IMG-${new Date().getFullYear()}-${String(id).padSt
 
 async function notifyRadiologists(title, message, link) {
   try {
-    const radiologists = await User.findByRole('radiologist');
-    for (const r of radiologists) {
+    const [techs, managers] = await Promise.all([
+      User.findByRole('imaging_tech'),
+      User.findByRole('imaging_manager'),
+    ]);
+    for (const r of [...techs, ...managers]) {
       await Notification.create({ userId: r.id, title, message, type: 'info', link });
     }
   } catch (e) { /* notification failure must not break the workflow */ }
@@ -72,7 +75,7 @@ exports.getStudy = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── Radiographer: workflow transitions ─────────────────────────────────────────
+// ── Imaging Tech: workflow transitions ──────────────────────────────────────────
 async function doTransition(req, res, next, fromStatus, toStatus, { audit, afterNotify } = {}) {
   try {
     const study = await ImagingStudy.transition(req.params.id, fromStatus, toStatus, req.user, req.body);
@@ -331,7 +334,7 @@ exports.searchTerminology = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── Radiologist reporting queue (acquired + reported) ──────────────────────────
+// ── Imaging reporting queue (acquired + reported) ───────────────────────────────
 exports.reportingQueue = async (req, res, next) => {
   try {
     const acquired = await ImagingStudy.list({ status: 'acquired' });
@@ -520,7 +523,7 @@ exports.renderedFrame = async (req, res, next) => {
   }
 };
 
-// ── DICOM: STOW upload (radiographer pushes acquired images) ───────────────────
+// ── DICOM: STOW upload (imaging tech pushes acquired images) ────────────────────
 exports.stowUpload = async (req, res, next) => {
   try {
     if (!dicomweb.isConfigured()) return res.status(503).json({ success: false, message: 'No PACS configured.' });
