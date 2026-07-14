@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine, ClipboardList, FlaskConical, Heart
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine, ClipboardList, FlaskConical, Heart, Dumbbell, Settings
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -22,6 +22,7 @@ const ALL_ROLES = [
   'consultant', 'operations_staff', 'pa', 'staff', 'hsfp', 'nurse',
   'chef-nurse', 'stock-manager', 'doctor', 'medical_director',
   'procurement-manager', 'imaging_tech', 'imaging_manager',
+  'physiotherapist', 'physio',
 ];
 
 const Sidebar = ({ onClose }) => {
@@ -53,6 +54,8 @@ const Sidebar = ({ onClose }) => {
     { configKey: 'imaging',       name: 'Imaging Hub',      icon: <ScanLine size={20} />,        path: '/imaging',      requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director'] },
     { configKey: 'lab_hub',       name: 'Laboratory Hub',   icon: <FlaskConical size={20} />,    path: '/lab',          requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_tech', 'lab'] },
     { configKey: 'dental_hub',    name: 'Dental Hub',       icon: <Heart size={20} />,           path: '/dental',       requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech'] },
+    { configKey: 'physio_hub',     name: 'Physio Hub',       icon: <Dumbbell size={20} />,        path: '/physio',       requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physiotherapist', 'physio'] },
+    { configKey: 'operations_hub',  name: 'Operations Hub',   icon: <Settings size={20} />,        path: '/operations',   requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'operations_staff', 'coo'] },
     { configKey: 'daily_stock',   name: 'Daily Stock Checkup', icon: <Database size={20} />,     path: '/nursing-hub/inventory', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'admin'] },
     { configKey: 'central_store', name: 'General Store Hub', icon: <Database size={20} />,       path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'stock-manager'] },
     { configKey: 'consumables',   name: 'Consumables Log',  icon: <ClipboardList size={20} />,   path: '/consumables-log', requiredPerm: { mod: 'inventory', act: 'view' }, allowedRoles: ['admin', 'deputy_coo', 'chef-nurse', 'nurse', 'lab_team_lead', 'lab_tech', 'lab', 'dental', 'dentist', 'dental_tech', 'imaging_tech', 'imaging_manager', 'operations_staff', 'procurement-manager', 'coo'] },
