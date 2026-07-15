@@ -1062,6 +1062,7 @@ export default function CentralStoreHub() {
                         <th className="py-3.5 px-4">Purchase Date</th>
                         <th className="py-3.5 px-4">Vendor</th>
                         <th className="py-3.5 px-4">Category</th>
+                        <th className="py-3.5 px-4">Department</th>
                         <th className="py-3.5 px-4 text-center">Qty</th>
                         <th className="py-3.5 px-4 text-right">Unit Price</th>
                         {canRectify ? (
@@ -1076,7 +1077,7 @@ export default function CentralStoreHub() {
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                       {filteredStock.length === 0
-                        ? <EmptyRow cols={canRectify ? 12 : 11} message="No stock items found." />
+                        ? <EmptyRow cols={canRectify ? 13 : 12} message="No stock items found." />
                         : filteredStock.map((item, idx) => {
                             const expStatus = getExpiryStatus(item.expiry_date);
                             const isLow = item.quantity > 0 && item.quantity < 20;
@@ -1096,6 +1097,11 @@ export default function CentralStoreHub() {
                                 <td className="py-3 px-4 text-slate-500 font-normal">{fmt(item.purchase_time)}</td>
                                 <td className="py-3 px-4 text-slate-600 font-semibold">{item.vendor || '—'}</td>
                                 <td className="py-3 px-4 capitalize text-slate-500 font-normal">{item.category?.replace(/_/g, ' ') || '—'}</td>
+                                <td className="py-3 px-4">
+                                  <span className={`px-2 py-0.5 text-[9px] font-black rounded-lg border uppercase tracking-wider ${getDeptColorBg(item.department)} ${getDeptColorText(item.department)}`}>
+                                    {item.department || 'GENERAL STORE'}
+                                  </span>
+                                </td>
                                 <td className="py-3 px-4 text-center">
                                   <span className={`text-[13px] font-black px-2 py-0.5 rounded-lg ${
                                     isOut ? 'bg-red-50 text-red-655 border border-red-100' :
