@@ -8,6 +8,7 @@ const checkPermission = require('../middleware/permission');
 
 // --- Public Supplier Portal Routes (No Auth) ---
 router.get('/inventory/supplier-portal/public-status', clinicalController.getSupplierPortalPublicStatus);
+router.get('/inventory/supplier-portal/public-rfqs', clinicalController.getPublicOpenRFQs);
 router.post('/inventory/supplier-portal/verify-token', clinicalController.verifySupplierToken);
 router.post('/inventory/supplier-portal/upload', clinicalController.supplierPortalUpload);
 

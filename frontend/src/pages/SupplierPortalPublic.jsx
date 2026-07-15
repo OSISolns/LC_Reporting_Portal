@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import { Upload, Download, CheckCircle, AlertCircle, RefreshCw, FileSpreadsheet, Building2, Package, ShieldCheck, Lock, LockOpen, CheckCheck, Clock } from 'lucide-react';
+import { Upload, Download, CheckCircle, AlertCircle, RefreshCw, FileSpreadsheet, Building2, Package, ShieldCheck, Lock, LockOpen, CheckCheck, Clock, ChevronDown, ChevronUp, Mail, Calendar, Gavel, FileText, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 
@@ -19,6 +19,13 @@ const SupplierPortalPublic = () => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  // New state variables for open tenders / RFQs
+  const [openRFQs, setOpenRFQs] = useState([]);
+  const [currentTab, setCurrentTab] = useState('tenders'); // 'tenders' or 'delivery'
+  const [expandedRFQs, setExpandedRFQs] = useState({});
+  const [bidModalRFQ, setBidModalRFQ] = useState(null);
+  const [loadingRFQs, setLoadingRFQs] = useState(false);
+
   // API URL helper
   const API_BASE = window.location.origin.includes('localhost')
     ? 'http://localhost:5000/api'
@@ -26,7 +33,22 @@ const SupplierPortalPublic = () => {
 
   useEffect(() => {
     checkPortalStatus();
+    fetchOpenRFQs();
   }, []);
+
+  const fetchOpenRFQs = async () => {
+    try {
+      setLoadingRFQs(true);
+      const res = await axios.get(`${API_BASE}/clinical/inventory/supplier-portal/public-rfqs`);
+      if (res.data.success) {
+        setOpenRFQs(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching open RFQs:', err);
+    } finally {
+      setLoadingRFQs(false);
+    }
+  };
 
   const checkPortalStatus = async () => {
     try {
@@ -244,109 +266,6 @@ const SupplierPortalPublic = () => {
     );
   }
 
-  // PORTAL CLOSED STATE
-  if (!active) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="h-screen bg-slate-900 flex items-center justify-center p-6"
-      >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl"
-        >
-          <motion.div
-            animate={{ y: [0, -8, 0] }}
-            transition={{ duration: 3, repeat: Infinity }}
-            className="w-20 h-20 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto mb-6 border border-rose-500/20"
-          >
-            <Lock className="w-10 h-10 text-rose-400" />
-          </motion.div>
-          <h1 className="text-2xl font-black text-white mb-3">Portal Closed</h1>
-          <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-            The clinical supplier reception window is currently closed. The Stock Manager will open this portal when active shipments are scheduled.
-          </p>
-          <span className="inline-block px-3 py-1 bg-rose-500/10 text-rose-300 text-xs font-black uppercase tracking-widest rounded-full border border-rose-500/20 mb-6">
-            Status: Inactive
-          </span>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={checkPortalStatus}
-            className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all"
-          >
-            <RefreshCw size={16} /> Check Again
-          </motion.button>
-        </motion.div>
-      </motion.div>
-    );
-  }
-
-  // TOKEN NOT VERIFIED STATE
-  if (!tokenVerified) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6"
-      >
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full shadow-lg"
-        >
-          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-            <div className="w-11 h-11 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center">
-              <ShieldCheck className="w-6 h-6 text-indigo-600" />
-            </div>
-            <div>
-              <h2 className="text-lg font-black text-slate-900">Supplier Authentication</h2>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">Enter your 12-character token</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleVerifyToken} className="space-y-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Access Token</label>
-              <input
-                type="text"
-                maxLength={12}
-                placeholder="e.g. 12-CHAR-CODE"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
-                className="bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-sm font-bold tracking-widest text-slate-800 uppercase outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                required
-              />
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" /> Verifying...
-                </>
-              ) : (
-                <>
-                  <LockOpen className="w-4 h-4" /> Verify & Unlock Portal
-                </>
-              )}
-            </motion.button>
-          </form>
-        </motion.div>
-      </motion.div>
-    );
-  }
-
-  // PORTAL OPEN & VERIFIED STATE
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -365,197 +284,496 @@ const SupplierPortalPublic = () => {
           className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8 pb-6 border-b border-slate-200"
         >
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-              <LockOpen className="w-7 h-7 text-emerald-600" />
+            <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-sm">
+              <Building2 className="w-7 h-7 text-indigo-600" />
             </div>
             <div>
               <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-                Supplier Stock Intake Portal
+                Legacy Clinics & Diagnostics
               </h1>
               <p className="text-sm text-slate-500 font-medium mt-0.5">
-                Verified Supplier: <span className="text-indigo-700 font-bold">{supplierName}</span>
+                Official Supplier & Procurement Portal
               </p>
             </div>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleDownloadTemplate}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl flex items-center gap-2 transition-all shadow-sm"
-          >
-            <Download size={16} /> Download Template
-          </motion.button>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="space-y-6"
-        >
-          {/* Requested Items Summary */}
-          {requestedItems.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-              <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-emerald-600" />
-                Requested Items ({requestedItems.length})
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {requestedItems.map((item, idx) => (
-                  <motion.span
-                    key={idx}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200"
-                  >
-                    {item.name} <span className="font-black text-emerald-600">×{item.quantity}</span>
-                  </motion.span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Upload Form */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs"
+          {/* Tab Switcher */}
+          <div className="flex bg-slate-200/80 p-1 rounded-xl border border-slate-300/40">
+            <button
+              onClick={() => setCurrentTab('tenders')}
+              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                currentTab === 'tenders'
+                  ? 'bg-white text-indigo-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              <div className="flex items-center gap-2 mb-5 pb-3 border-b border-slate-100">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                  <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
-                </div>
-                <h2 className="font-bold text-slate-800 text-sm">Stock Submission</h2>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</label>
-                  <input
-                    type="text"
-                    value={supplierName}
-                    readOnly
-                    className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 cursor-not-allowed"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Excel File</label>
-                  <div className="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-lg p-3 transition-all cursor-pointer bg-slate-50 hover:bg-indigo-50/30 relative group">
-                    <Upload className="w-6 h-6 text-slate-400 group-hover:text-indigo-500 mx-auto mb-1 transition-colors" />
-                    <p className="text-xs text-slate-500 text-center font-medium leading-tight">
-                      {file ? (
-                        <>
-                          <span className="text-emerald-700 font-bold">✓</span> {file.name}
-                        </>
-                      ) : (
-                        'Drag here or click to upload'
-                      )}
-                    </p>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".xlsx, .xls"
-                      onChange={handleFileChange}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={uploading || parsedData.length === 0}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-all mt-2"
-                >
-                  {uploading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" /> Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCheck className="w-4 h-4" /> Submit Delivery
-                    </>
-                  )}
-                </motion.button>
-              </form>
-            </motion.div>
-
-            {/* Data Preview */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col"
+              <Gavel size={14} /> Open Tenders & RFQs ({openRFQs.length})
+            </button>
+            <button
+              onClick={() => setCurrentTab('delivery')}
+              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                currentTab === 'delivery'
+                  ? 'bg-white text-indigo-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                    <Package className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <h3 className="font-bold text-slate-800 text-sm">Items Preview</h3>
-                </div>
-                {parsedData.length > 0 && (
-                  <span className="text-xs font-black bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full border border-indigo-200">
-                    {parsedData.length} items
-                  </span>
-                )}
-              </div>
-
-              {parsedData.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
-                    <FileSpreadsheet className="w-8 h-8 text-slate-300" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-600">No items to preview</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Upload an Excel file to see items here</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-lg border border-slate-100 flex-1 min-h-0">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
-                      <tr>
-                        <th className="p-3">Product Name</th>
-                        <th className="p-3">Category</th>
-                        <th className="p-3">UOM</th>
-                        <th className="p-3">Batch</th>
-                        <th className="p-3">Expiry</th>
-                        <th className="p-3 text-right">Price</th>
-                        <th className="p-3 text-right">Qty</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {parsedData.map((item, index) => (
-                        <motion.tr
-                          key={index}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                        >
-                          <td className="p-3 font-semibold text-slate-800">{item.name}</td>
-                          <td className="p-3 text-slate-600">{item.category}</td>
-                          <td className="p-3 text-slate-600">{item.uom}</td>
-                          <td className="p-3 font-mono text-slate-600">{item.batch}</td>
-                          <td className="p-3 font-mono text-slate-600">{item.expiry}</td>
-                          <td className="p-3 text-right text-slate-700 font-semibold">{item.price.toLocaleString()} RWF</td>
-                          <td className="p-3 text-right font-bold text-indigo-700">{item.qty}</td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </motion.div>
+              <LockOpen size={14} /> Delivery Intake
+            </button>
           </div>
         </motion.div>
+
+        {/* TAB 1: OPEN TENDERS & RFQS */}
+        {currentTab === 'tenders' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Active Bidding & RFQs</h2>
+                <p className="text-xs text-slate-500">Publicly listing all current requests looking for supplier proposals.</p>
+              </div>
+              <button
+                onClick={fetchOpenRFQs}
+                disabled={loadingRFQs}
+                className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all flex items-center gap-2 text-xs font-bold text-slate-700"
+              >
+                <RefreshCw size={14} className={loadingRFQs ? 'animate-spin' : ''} /> Refresh List
+              </button>
+            </div>
+
+            {loadingRFQs ? (
+              <div className="py-20 flex justify-center items-center">
+                <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin" />
+              </div>
+            ) : openRFQs.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                <FileText className="w-16 h-16 text-slate-350 mx-auto mb-4" />
+                <h3 className="text-lg font-black text-slate-800">No Active Tenders</h3>
+                <p className="text-sm text-slate-500 max-w-md mx-auto mt-1">
+                  We are not currently collecting quotes for new tenders or RFQs. Registered vendors will be notified via email when request cycles launch.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {openRFQs.map((rfq) => (
+                  <motion.div
+                    key={rfq.id}
+                    layout
+                    className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden"
+                  >
+                    <div className="space-y-4">
+                      {/* Badge / Header */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200/50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                          {rfq.reference_no}
+                        </span>
+                        <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200/50 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                          Collecting Quotes
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900 leading-snug">{rfq.title}</h3>
+                        <div className="flex items-center gap-4 mt-2 text-slate-500 text-xs font-semibold">
+                          <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px] uppercase font-bold text-slate-600">
+                            {rfq.category.replace('_', ' ')}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar size={12} /> {new Date(rfq.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Notes */}
+                      {rfq.notes && (
+                        <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          {rfq.notes}
+                        </p>
+                      )}
+
+                      {/* Items Accordion */}
+                      <div className="pt-2 border-t border-slate-100">
+                        <button
+                          onClick={() => toggleRFQExpanded(rfq.id)}
+                          className="flex items-center justify-between w-full text-xs font-black text-slate-700 hover:text-indigo-600 transition-colors uppercase tracking-wider"
+                        >
+                          <span>Requested Products ({rfq.items ? rfq.items.length : 0})</span>
+                          {expandedRFQs[rfq.id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+
+                        <AnimatePresence>
+                          {expandedRFQs[rfq.id] && rfq.items && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden mt-3"
+                            >
+                              <div className="border border-slate-100 rounded-lg overflow-x-auto">
+                                <table className="w-full text-left text-[11px] border-collapse bg-slate-50">
+                                  <thead>
+                                    <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold">
+                                      <th className="p-2">Item Name</th>
+                                      <th className="p-2 text-right">Quantity</th>
+                                      <th className="p-2 text-center">Unit</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {rfq.items.map((item) => (
+                                      <tr key={item.id} className="border-b border-slate-200/50 text-slate-700">
+                                        <td className="p-2 font-semibold">{item.item_name}</td>
+                                        <td className="p-2 text-right font-bold text-indigo-700">{item.quantity}</td>
+                                        <td className="p-2 text-center text-slate-500">{item.unit}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="mt-6 pt-4 border-t border-slate-100">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setBidModalRFQ(rfq)}
+                        className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
+                      >
+                        <Gavel size={14} /> Submit Proposal / Quotation
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* TAB 2: DELIVERY INTAKE */}
+        {currentTab === 'delivery' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            {/* INACTIVE STATE */}
+            {!active ? (
+              <div className="bg-white border border-slate-200 rounded-3xl p-10 max-w-lg mx-auto text-center shadow-md">
+                <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto mb-6 border border-rose-500/20 animate-pulse">
+                  <Lock className="w-8 h-8 text-rose-500" />
+                </div>
+                <h2 className="text-xl font-black text-slate-900 mb-2">Delivery Intake Closed</h2>
+                <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                  The clinical reception window for scheduled deliveries is currently closed. If you have been issued a delivery token, please wait until the Stock Manager re-opens portal reception, or contact the central warehouse.
+                </p>
+                <span className="inline-block px-3 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-black uppercase tracking-widest rounded-full border border-rose-500/20 mb-6">
+                  Intake Status: Inactive
+                </span>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={checkPortalStatus}
+                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all"
+                >
+                  <RefreshCw size={16} /> Check Again
+                </motion.button>
+              </div>
+            ) : (
+              /* PORTAL OPEN STATE */
+              <>
+                {/* TOKEN NOT YET VERIFIED */}
+                {!tokenVerified ? (
+                  <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md mx-auto shadow-md">
+                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                      <div className="w-11 h-11 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center">
+                        <ShieldCheck className="w-6 h-6 text-indigo-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-black text-slate-900">Supplier Authentication</h2>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">Enter your 12-character token</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleVerifyToken} className="space-y-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Access Token</label>
+                        <input
+                          type="text"
+                          maxLength={12}
+                          placeholder="e.g. 12-CHAR-CODE"
+                          value={tokenInput}
+                          onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
+                          className="bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-sm font-bold tracking-widest text-slate-800 uppercase outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                          required
+                        />
+                      </div>
+
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                      >
+                        {loading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" /> Verifying...
+                          </>
+                        ) : (
+                          <>
+                            <LockOpen className="w-4 h-4" /> Verify & Unlock Portal
+                          </>
+                        )}
+                      </motion.button>
+                    </form>
+                  </div>
+                ) : (
+                  /* TOKEN VERIFIED - UPLOAD INTERFACE */
+                  <div className="space-y-6">
+                    {/* Welcome Banner */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-base">Welcome, {supplierName}</h3>
+                        <p className="text-xs text-slate-500 font-medium">Please download the template, fill in details, and upload your delivery list below.</p>
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleDownloadTemplate}
+                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-sm"
+                      >
+                        <Download size={14} /> Download Template
+                      </motion.button>
+                    </div>
+
+                    {/* Requested Items Summary */}
+                    {requestedItems.length > 0 && (
+                      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                        <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                          <CheckCircle className="w-5 h-5 text-emerald-600" />
+                          Requested Items ({requestedItems.length})
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {requestedItems.map((item, idx) => (
+                            <span
+                              key={idx}
+                              className="text-xs font-semibold bg-emerald-50 text-emerald-750 px-3 py-1.5 rounded-lg border border-emerald-200"
+                            >
+                              {item.name} <span className="font-black text-emerald-600">×{item.quantity}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Main Content Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Upload Form */}
+                      <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+                        <div className="flex items-center gap-2 mb-5 pb-3 border-b border-slate-100">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                            <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                          </div>
+                          <h2 className="font-bold text-slate-800 text-sm">Stock Submission</h2>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</label>
+                            <input
+                              type="text"
+                              value={supplierName}
+                              readOnly
+                              className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-semibold text-slate-650 cursor-not-allowed"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Excel File</label>
+                            <div className="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-lg p-3 transition-all cursor-pointer bg-slate-50 hover:bg-indigo-50/30 relative group">
+                              <Upload className="w-6 h-6 text-slate-400 group-hover:text-indigo-500 mx-auto mb-1 transition-colors" />
+                              <p className="text-xs text-slate-500 text-center font-medium leading-tight">
+                                {file ? (
+                                  <>
+                                    <span className="text-emerald-700 font-bold">✓</span> {file.name}
+                                  </>
+                                ) : (
+                                  'Drag here or click to upload'
+                                )}
+                              </p>
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".xlsx, .xls"
+                                onChange={handleFileChange}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                              />
+                            </div>
+                          </div>
+
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="submit"
+                            disabled={uploading || parsedData.length === 0}
+                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-all mt-2"
+                          >
+                            {uploading ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 animate-spin" /> Submitting...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCheck className="w-4 h-4" /> Submit Delivery
+                              </>
+                            )}
+                          </motion.button>
+                        </form>
+                      </div>
+
+                      {/* Data Preview */}
+                      <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col">
+                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                              <Package className="w-4 h-4 text-emerald-600" />
+                            </div>
+                            <h3 className="font-bold text-slate-800 text-sm">Items Preview</h3>
+                          </div>
+                          {parsedData.length > 0 && (
+                            <span className="text-xs font-black bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full border border-indigo-200">
+                              {parsedData.length} items
+                            </span>
+                          )}
+                        </div>
+
+                        {parsedData.length === 0 ? (
+                          <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-250">
+                            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center">
+                              <FileSpreadsheet className="w-6 h-6 text-slate-355" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-slate-600">No items to preview</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">Upload an Excel file to see items here</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto rounded-lg border border-slate-150 flex-1 min-h-0">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
+                                <tr>
+                                  <th className="p-3">Product Name</th>
+                                  <th className="p-3">Category</th>
+                                  <th className="p-3">UOM</th>
+                                  <th className="p-3">Batch</th>
+                                  <th className="p-3">Expiry</th>
+                                  <th className="p-3 text-right">Price</th>
+                                  <th className="p-3 text-right">Qty</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {parsedData.map((item, index) => (
+                                  <tr key={index} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                    <td className="p-3 font-semibold text-slate-800">{item.name}</td>
+                                    <td className="p-3 text-slate-600">{item.category}</td>
+                                    <td className="p-3 text-slate-600">{item.uom}</td>
+                                    <td className="p-3 font-mono text-slate-600">{item.batch}</td>
+                                    <td className="p-3 font-mono text-slate-600">{item.expiry}</td>
+                                    <td className="p-3 text-right text-slate-750 font-semibold">{item.price.toLocaleString()} RWF</td>
+                                    <td className="p-3 text-right font-bold text-indigo-700">{item.qty}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </motion.div>
+        )}
       </div>
+
+      {/* BID SUBMISSION MODAL */}
+      <AnimatePresence>
+        {bidModalRFQ && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6"
+            >
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+                  <Gavel size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">RFQ Bid Proposal</h3>
+                  <p className="text-xs text-indigo-650 font-semibold tracking-wider uppercase mt-0.5">{bidModalRFQ.reference_no}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 text-xs text-slate-600 leading-relaxed">
+                <p>
+                  To submit a formal quotation or tender bid for <strong className="text-slate-800">{bidModalRFQ.title}</strong>, please review the requested products and follow the instructions below:
+                </p>
+                
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3 font-semibold text-slate-700">
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] shrink-0 font-bold">1</span>
+                    <p>Ensure your company profile and trade licenses are valid.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] shrink-0 font-bold">2</span>
+                    <p>Format your unit pricing clearly matching the requested UOMs.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] shrink-0 font-bold">3</span>
+                    <p>Send your PDF quotation to: <strong className="text-indigo-600 font-bold">procurement@legacyclinics.rw</strong></p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-450 uppercase tracking-wide">
+                  <Mail size={12} className="text-slate-400" />
+                  Subject line: Bidding Proposal [{bidModalRFQ.reference_no}]
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex gap-3">
+                <button
+                  onClick={() => setBidModalRFQ(null)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
+                >
+                  Close
+                </button>
+                <a
+                  href={`mailto:procurement@legacyclinics.rw?subject=Bidding Proposal [${bidModalRFQ.reference_no}]&body=Dear Procurement Team,%0D%0A%0D%0AWe are interested in submitting our quotation for Tender Reference ${bidModalRFQ.reference_no} (${bidModalRFQ.title}). Please find our proposal attached.%0D%0A%0D%0ABest regards,%0D%0A[Supplier Name]`}
+                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all text-center"
+                >
+                  <Mail size={13} /> Email Quote
+                </a>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

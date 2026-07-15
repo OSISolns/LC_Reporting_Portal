@@ -3182,6 +3182,33 @@ exports.getSupplierPortalPublicStatus = async (req, res) => {
   }
 };
 
+/** Public: returns all open RFQs / tenders */
+exports.getPublicOpenRFQs = async (req, res) => {
+  try {
+    const { rows: rfqs } = await db.query(`
+      SELECT r.id, r.reference_no, r.title, r.category, r.status, r.pricing_mode, r.currency, r.created_at, r.notes,
+        COUNT(DISTINCT ri.id) as item_count, 
+        COUNT(DISTINCT rs.vendor_id) as supplier_count 
+      FROM rfqs r 
+      LEFT JOIN rfq_items ri ON r.id = ri.rfq_id 
+      LEFT JOIN rfq_suppliers rs ON r.id = rs.rfq_id 
+      WHERE r.status = 'Collecting'
+      GROUP BY r.id 
+      ORDER BY r.created_at DESC
+    `);
+    
+    for (const rfq of rfqs) {
+      const { rows: items } = await db.query('SELECT id, item_name, quantity, unit, quantity_label FROM rfq_items WHERE rfq_id = $1 ORDER BY line_no', [rfq.id]);
+      rfq.items = items;
+    }
+
+    res.json({ success: true, data: rfqs });
+  } catch (error) {
+    console.error('Error in getPublicOpenRFQs:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 /** Open a new portal session for a vendor (or close one by sessionId) */
 exports.toggleSupplierPortal = async (req, res) => {
   try {
