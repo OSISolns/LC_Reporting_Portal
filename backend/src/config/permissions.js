@@ -30,6 +30,10 @@ const MODULES = [
   { name: 'it_support',       display: 'IT Support Hub',                             actions: ['view','create','edit','delete'] },
   { name: 'patients',         display: 'Patient Records & Prescriptions',            actions: ['view','create'] },
   { name: 'imaging',          display: 'Imaging (Radiology) Portal',                 actions: ['view','create','edit','acquire','report','verify','delete'] },
+  { name: 'lab',              display: 'Laboratory Portal',                          actions: ['view','create','edit','verify','delete'] },
+  { name: 'dental',           display: 'Dental Portal',                              actions: ['view','create','edit','delete'] },
+  { name: 'physio',           display: 'Physiotherapy Portal',                       actions: ['view','create','edit','delete'] },
+  { name: 'operations',       display: 'Operations Portal',                          actions: ['view','create','edit','delete'] },
 ];
 
 /**
@@ -59,6 +63,10 @@ const ROLE_DEFAULTS = {
     it_support:       { view:1, create:1, edit:1, delete:1 },
     patients:         { view:1, create:0 },
     imaging:          { view:1, create:1, edit:1, acquire:0, report:0, verify:0, delete:1 },
+    lab:              { view:1, create:1, edit:1, verify:1, delete:1 },
+    dental:           { view:1, create:1, edit:1, delete:1 },
+    physio:           { view:1, create:1, edit:1, delete:1 },
+    operations:       { view:1, create:1, edit:1, delete:1 },
   },
   it_officer: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -95,6 +103,10 @@ const ROLE_DEFAULTS = {
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:0 },
     imaging:          { view:1, create:0, edit:0, acquire:0, report:0, verify:0, delete:0 },
+    lab:              { view:1, create:0, edit:0, verify:0, delete:0 },
+    dental:           { view:1, create:0, edit:0, delete:0 },
+    physio:           { view:1, create:0, edit:0, delete:0 },
+    operations:       { view:1, create:1, edit:1, delete:0 },
   },
   deputy_coo: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:1 },
@@ -116,6 +128,10 @@ const ROLE_DEFAULTS = {
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:0 },
     imaging:          { view:1, create:0, edit:0, acquire:0, report:0, verify:0, delete:0 },
+    lab:              { view:1, create:0, edit:0, verify:0, delete:0 },
+    dental:           { view:1, create:0, edit:0, delete:0 },
+    physio:           { view:1, create:0, edit:0, delete:0 },
+    operations:       { view:1, create:1, edit:1, delete:0 },
   },
   chairman: {
     cancellations:    { view:1, create:0, edit:0, approve:1, reject:0 },
@@ -212,6 +228,9 @@ const ROLE_DEFAULTS = {
     feedbacks:        { view:0, delete:0 },
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:0 },
+    inventory:        { view:1, create:0, edit:1, delete:0 },
+    daily_stock:      { view:1, edit:1 },
+    lab:              { view:1, create:1, edit:1, verify:1, delete:1 },
   },
   consultant: {
     cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
@@ -246,6 +265,9 @@ const ROLE_DEFAULTS = {
     feedbacks:        { view:0, delete:0 },
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:0 },
+    inventory:        { view:1, create:0, edit:1, delete:0 },
+    daily_stock:      { view:1, edit:1 },
+    operations:       { view:1, create:1, edit:1, delete:0 },
   },
   pa: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
@@ -380,6 +402,10 @@ const ROLE_DEFAULTS = {
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:1 },
     imaging:          { view:1, create:0, edit:0, acquire:0, report:1, verify:1, delete:0 },
+    lab:              { view:1, create:0, edit:0, verify:1, delete:0 },
+    dental:           { view:1, create:0, edit:0, delete:0 },
+    physio:           { view:1, create:0, edit:0, delete:0 },
+    operations:       { view:1, create:0, edit:0, delete:0 },
   },
   'procurement-manager': {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
