@@ -8,21 +8,29 @@ async function seed() {
     await db.query('CREATE TABLE IF NOT EXISTS goods_receipt_note_items (id INTEGER PRIMARY KEY)');
 
     // 1. Get or create required vendors
-    const vendorNames = ['KIPHARMA', 'Rugero Med Ltd', 'SOFTLINE', 'Best stationary', 'Aegis Diagnostics'];
+    const vendorsToSeed = [
+      { name: 'KIPHARMA', category: 'Medical' },
+      { name: 'Rugero Med Ltd', category: 'Medical' },
+      { name: 'SOFTLINE', category: 'IT Equipment' },
+      { name: 'Best stationary', category: 'Non-Medical' },
+      { name: 'Aegis Diagnostics', category: 'Medical' },
+      { name: 'Elite Facility Services', category: 'Services' }
+    ];
     const vendorMap = {};
 
-    for (const name of vendorNames) {
-      let { rows } = await db.query('SELECT id FROM vendors WHERE name = ?', [name]);
+    for (const v of vendorsToSeed) {
+      let { rows } = await db.query('SELECT id FROM vendors WHERE name = ?', [v.name]);
       if (rows.length === 0) {
         const { rows: inserted } = await db.query(
-          'INSERT INTO vendors (name, is_active) VALUES (?, 1) RETURNING id',
-          [name]
+          'INSERT INTO vendors (name, category, is_active) VALUES (?, ?, 1) RETURNING id',
+          [v.name, v.category]
         );
-        vendorMap[name] = inserted[0].id;
-        console.log(`+ Created vendor: ${name} (ID: ${vendorMap[name]})`);
+        vendorMap[v.name] = inserted[0].id;
+        console.log(`+ Created vendor: ${v.name} (${v.category}) (ID: ${vendorMap[v.name]})`);
       } else {
-        vendorMap[name] = rows[0].id;
-        console.log(`* Found existing vendor: ${name} (ID: ${vendorMap[name]})`);
+        await db.query('UPDATE vendors SET category = ? WHERE id = ?', [v.category, rows[0].id]);
+        vendorMap[v.name] = rows[0].id;
+        console.log(`* Found and updated existing vendor: ${v.name} (${v.category}) (ID: ${vendorMap[v.name]})`);
       }
     }
 

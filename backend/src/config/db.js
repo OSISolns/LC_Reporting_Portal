@@ -1627,6 +1627,10 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       )
     `);
 
+      await client.execute("ALTER TABLE vendors ADD COLUMN category TEXT DEFAULT 'Medical'").catch((err) => {
+        // ignore if already exists
+      });
+
       await client.execute(`
       CREATE TABLE IF NOT EXISTS master_inventory (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -774,7 +774,13 @@ export default function DailyInventoryCheckup() {
     isHydratingRef.current = true;
     try {
       setLoading(true);
-      const promises = DYNAMIC_MONTHS.map(m => api.get(`/clinical/inventory?month_year=${m}`));
+      const promises = DYNAMIC_MONTHS.map(m => 
+        api.get(`/clinical/inventory?month_year=${m}`)
+          .catch(err => {
+            console.error(`Failed to load inventory for month ${m}:`, err);
+            return { data: { success: false, data: [] } };
+          })
+      );
       // Fetch the persisted deleted items list for the target month
       const deletedPromise = api.get(`/clinical/inventory/deleted-items?month_year=${targetMonth}`).catch(() => ({ data: { success: false, data: [] } }));
       const [responses, deletedRes] = await Promise.all([Promise.all(promises), deletedPromise]);
@@ -783,20 +789,24 @@ export default function DailyInventoryCheckup() {
       DYNAMIC_MONTHS.forEach(m => allMap[m] = {});
 
       const parseRows = (rows, month) => {
+        if (!allMap[month]) allMap[month] = {};
         rows.forEach(row => {
+          if (!row.item_name) return;
           if (!allMap[month][row.item_name]) allMap[month][row.item_name] = {};
-          if (!allMap[month][row.item_name][row.day]) allMap[month][row.item_name][row.day] = {};
-          allMap[month][row.item_name][row.day][row.session] = row;
+          const d = row.day || 1;
+          if (!allMap[month][row.item_name][d]) allMap[month][row.item_name][d] = {};
+          const s = row.session || 'AM';
+          allMap[month][row.item_name][d][s] = row;
         });
       };
 
       const discoveredItems = new Set();
       responses.forEach((res, i) => {
-        if (res.data.success && res.data.data) {
+        if (res.data && res.data.success && Array.isArray(res.data.data)) {
           parseRows(res.data.data, DYNAMIC_MONTHS[i]);
           res.data.data.forEach(row => {
             const name = (row.item_name || '').trim();
-            if (name && !ALL_ITEMS.some(i => i.trim() === name)) {
+            if (name && !ALL_ITEMS.some(itemVal => itemVal.trim() === name)) {
               discoveredItems.add(name);
             }
           });
@@ -812,18 +822,20 @@ export default function DailyInventoryCheckup() {
       }
 
       // Seed April 1 opening stock values if empty
-      Object.entries(APRIL_INITIAL_STOCK).forEach(([item, val]) => {
-        if (!allMap['2026-04'][item]) allMap['2026-04'][item] = {};
-        if (!allMap['2026-04'][item][1]) allMap['2026-04'][item][1] = {};
-        if (!allMap['2026-04'][item][1]['AM']) {
-          allMap['2026-04'][item][1]['AM'] = {
-            stock_in_hands: val,
-            consumed: 0,
-            balance: val,
-            responsible_name: ''
-          };
-        }
-      });
+      if (allMap['2026-04']) {
+        Object.entries(APRIL_INITIAL_STOCK).forEach(([item, val]) => {
+          if (!allMap['2026-04'][item]) allMap['2026-04'][item] = {};
+          if (!allMap['2026-04'][item][1]) allMap['2026-04'][item][1] = {};
+          if (!allMap['2026-04'][item][1]['AM']) {
+            allMap['2026-04'][item][1]['AM'] = {
+              stock_in_hands: val,
+              consumed: 0,
+              balance: val,
+              responsible_name: ''
+            };
+          }
+        });
+      }
 
       setAllMonthsMap(allMap);
       if (isManual) {

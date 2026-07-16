@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  Building, FileText, ClipboardList, ShieldAlert, Plus, Eye, Check, X,
+  Building, FileText, ClipboardList, ShieldAlert, Plus, Eye, EyeOff, Check, X,
   Trash2, RefreshCw, BarChart2, CheckCircle, Clock, AlertTriangle,
   TrendingUp, Search, Calendar, Loader2, ArrowRight, ArrowLeft, User, AlertCircle,
   Truck, ArrowUpRight, DollarSign, Tag, Info, ArrowRightLeft, Printer, Download,
@@ -219,10 +219,17 @@ export default function ProcurementHub() {
   const [vendorDocuments, setVendorDocuments] = useState([]);
   const [vendorContracts, setVendorContracts] = useState([]);
   const [vendorRatings, setVendorRatings] = useState([]);
+  const [vendorActiveSession, setVendorActiveSession] = useState(null);
   const [loadingVendorProfile, setLoadingVendorProfile] = useState(false);
+  const [showDrawerToken, setShowDrawerToken] = useState(false);
+  const [showModalTokens, setShowModalTokens] = useState({});
   const [showAddDocModal, setShowAddDocModal] = useState(false);
   const [showAddContractModal, setShowAddContractModal] = useState(false);
   const [showAddRatingModal, setShowAddRatingModal] = useState(false);
+
+  const toggleModalToken = (token) => {
+    setShowModalTokens(prev => ({ ...prev, [token]: !prev[token] }));
+  };
   // Doc form
   const [docType, setDocType] = useState('contract');
   const [docName, setDocName] = useState('');
@@ -471,16 +478,25 @@ export default function ProcurementHub() {
   const loadVendorProfile = async (vendor) => {
     setSelectedVendorProfile(vendor);
     setVendorProfileTab('documents');
+    setShowDrawerToken(false);
     setLoadingVendorProfile(true);
     try {
-      const [docsRes, contractsRes, ratingsRes] = await Promise.allSettled([
+      const [docsRes, contractsRes, ratingsRes, portalRes] = await Promise.allSettled([
         api.get(`/clinical/inventory/vendors/${vendor.id}/documents`),
         api.get(`/clinical/inventory/vendors/${vendor.id}/contracts`),
         api.get(`/clinical/inventory/vendors/${vendor.id}/ratings`),
+        api.get('/clinical/inventory/supplier-portal/settings'),
       ]);
       if (docsRes.status === 'fulfilled' && docsRes.value.data.success) setVendorDocuments(docsRes.value.data.data || []);
       if (contractsRes.status === 'fulfilled' && contractsRes.value.data.success) setVendorContracts(contractsRes.value.data.data || []);
       if (ratingsRes.status === 'fulfilled' && ratingsRes.value.data.success) setVendorRatings(ratingsRes.value.data.data || []);
+      if (portalRes.status === 'fulfilled' && portalRes.value.data.success) {
+        const activeSessions = portalRes.value.data.sessions || [];
+        const vendorSession = activeSessions.find(s => Number(s.vendorId) === Number(vendor.id));
+        setVendorActiveSession(vendorSession || null);
+      } else {
+        setVendorActiveSession(null);
+      }
     } catch (e) { console.error(e); }
     finally { setLoadingVendorProfile(false); }
   };
@@ -4221,7 +4237,8 @@ export default function ProcurementHub() {
                   { id: 'scorecard', label: 'Scorecard', icon: Star },
                   { id: 'contracts', label: 'Contracts', icon: FileCheck },
                   { id: 'documents', label: 'Compliance Docs', icon: ClipboardList },
-                  { id: 'ratings', label: 'Reviews', icon: Star }
+                  { id: 'ratings', label: 'Reviews', icon: Star },
+                  ...(vendorActiveSession ? [{ id: 'portal', label: 'Unlock Code', icon: KeyRound }] : [])
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -4377,6 +4394,67 @@ export default function ProcurementHub() {
                         <div className="p-8 text-center text-slate-400 text-xs font-bold">No reviews recorded.</div>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {vendorProfileTab === 'portal' && vendorActiveSession && (
+                  <div className="space-y-4 animate-none">
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Active Supplier Portal</h4>
+                    
+                    <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 shadow-xs relative overflow-hidden">
+                      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-200">
+                        <div className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl">
+                          <KeyRound size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider leading-none">Authentication Token / Unlock Code</p>
+                          <p className="text-xs text-slate-500 font-bold mt-1.5">This code allows the supplier to authenticate and upload deliveries.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-3 mb-4">
+                        <span className="flex-1 font-mono font-black text-sm tracking-widest text-slate-800">
+                          {showDrawerToken ? vendorActiveSession.token : '••••••••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowDrawerToken(!showDrawerToken)}
+                          className="p-2 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors text-slate-500 hover:text-slate-700"
+                          title={showDrawerToken ? "Hide token" : "Show token"}
+                        >
+                          {showDrawerToken ? <EyeOff size={13} /> : <Eye size={13} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(vendorActiveSession.token);
+                            toast.success('Token copied to clipboard!');
+                          }}
+                          className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors"
+                          title="Copy token"
+                        >
+                          <Copy size={13} className="text-slate-600" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-2 text-xs text-slate-655 font-medium leading-relaxed">
+                        <p><strong>Created At:</strong> {new Date(vendorActiveSession.createdAt).toLocaleString()}</p>
+                        <p><strong>Intake Status:</strong> <span className="text-emerald-700 font-bold">Active / Open</span></p>
+                      </div>
+                    </div>
+
+                    {vendorActiveSession.requestedItems && vendorActiveSession.requestedItems.length > 0 && (
+                      <div className="border border-slate-150 rounded-2xl p-5 space-y-3">
+                        <h5 className="text-[11px] font-black text-slate-800 uppercase tracking-wider">Requested Items ({vendorActiveSession.requestedItems.length})</h5>
+                        <div className="flex flex-wrap gap-1.5">
+                          {vendorActiveSession.requestedItems.map((item, idx) => (
+                            <span key={idx} className="text-[10px] font-semibold bg-slate-150/70 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200">
+                              {item.name || item.item_name} <span className="text-teal-650 font-black">×{item.quantity}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -4908,7 +4986,7 @@ export default function ProcurementHub() {
         )}
       </AnimatePresence>
 
-      {/* ─── SUPPLIER PORTAL AUTO-OPENED (after PO sent) ─── */}
+      {/* ─── SUPPLIER PORTAL AUTO-OPENED (after PO/RFQ sent) ─── */}
       <AnimatePresence>
         {openedPortalSession && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -4916,48 +4994,113 @@ export default function ProcurementHub() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
-              onClick={() => setOpenedPortalSession(null)}
+              onClick={() => { setOpenedPortalSession(null); setShowModalTokens({}); }}
               className="absolute inset-0 bg-slate-900"
             />
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 text-slate-800"
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 text-slate-800 z-50"
             >
-              <div className="flex items-center gap-3 mb-4">
-                <span className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl">
-                  <KeyRound size={22} />
-                </span>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">Supplier Portal Opened</h3>
-                  <p className="text-xs text-slate-500 font-semibold">{openedPortalSession.vendorName}</p>
-                </div>
-              </div>
+              {Array.isArray(openedPortalSession) ? (
+                <>
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl">
+                      <KeyRound size={22} />
+                    </span>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900">Supplier Portals Opened</h3>
+                      <p className="text-xs text-slate-500 font-semibold">{openedPortalSession.length} suppliers invited</p>
+                    </div>
+                  </div>
 
-              <p className="text-xs text-slate-500 font-medium mb-4">
-                Share this access token with the supplier. They'll enter it at the public
-                supplier portal to upload the delivery for this PO.
-              </p>
+                  <p className="text-xs text-slate-500 font-medium mb-4">
+                    Access codes have been generated for all invited suppliers. Share these codes with each vendor to allow them to bid or interact with this request.
+                  </p>
 
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-4">
-                <span className="flex-1 font-mono font-black text-sm tracking-widest text-slate-800">{openedPortalSession.token}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(openedPortalSession.token);
-                    toast.success('Token copied to clipboard!');
-                  }}
-                  className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors"
-                  title="Copy token"
-                >
-                  <Copy size={14} className="text-slate-600" />
-                </button>
-              </div>
+                  <div className="max-h-60 overflow-y-auto space-y-3 mb-6 pr-1">
+                    {openedPortalSession.map((sess, idx) => (
+                      <div key={idx} className="bg-slate-50 border border-slate-150 rounded-xl p-3 flex items-center justify-between gap-3 animate-none">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Supplier</p>
+                          <p className="text-xs font-black text-slate-800 mt-1 truncate">{sess.vendorName}</p>
+                          <p className="text-xs font-mono font-black text-teal-700 mt-0.5 tracking-widest">
+                            {showModalTokens[sess.token] ? sess.token : '••••••••••••'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleModalToken(sess.token)}
+                            className="p-2 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors text-slate-500 hover:text-slate-700"
+                            title={showModalTokens[sess.token] ? "Hide token" : "Show token"}
+                          >
+                            {showModalTokens[sess.token] ? <EyeOff size={13} /> : <Eye size={13} />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(sess.token);
+                              toast.success(`Token for ${sess.vendorName} copied!`);
+                            }}
+                            className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors"
+                            title="Copy token"
+                          >
+                            <Copy size={13} className="text-slate-655" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl">
+                      <KeyRound size={22} />
+                    </span>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900">Supplier Portal Opened</h3>
+                      <p className="text-xs text-slate-500 font-semibold">{openedPortalSession.vendorName}</p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-500 font-medium mb-4">
+                    Share this access token with the supplier. They'll enter it at the public
+                    supplier portal to upload the delivery for this PO.
+                  </p>
+
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-4 animate-none">
+                    <span className="flex-1 font-mono font-black text-sm tracking-widest text-slate-800">
+                      {showModalTokens[openedPortalSession.token] ? openedPortalSession.token : '••••••••••••'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleModalToken(openedPortalSession.token)}
+                      className="p-2 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors text-slate-500 hover:text-slate-700"
+                      title={showModalTokens[openedPortalSession.token] ? "Hide token" : "Show token"}
+                    >
+                      {showModalTokens[openedPortalSession.token] ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(openedPortalSession.token);
+                        toast.success('Token copied to clipboard!');
+                      }}
+                      className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors"
+                      title="Copy token"
+                    >
+                      <Copy size={14} className="text-slate-600" />
+                    </button>
+                  </div>
+                </>
+              )}
 
               <button
                 type="button"
-                onClick={() => setOpenedPortalSession(null)}
+                onClick={() => { setOpenedPortalSession(null); setShowModalTokens({}); }}
                 className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl cursor-pointer"
               >Done</button>
             </motion.div>
