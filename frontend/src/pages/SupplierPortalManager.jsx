@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
-  Building, FileText, ClipboardList, Plus, Eye, Check, X, 
+  Building, FileText, ClipboardList, Plus, Eye, EyeOff, Check, X, 
   RefreshCw, CheckCircle, Clock, AlertTriangle, 
-  Search, Loader2, ArrowRight, User, AlertCircle, Link
+  Search, Loader2, ArrowRight, User, AlertCircle, Link,
+  KeyRound, Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
@@ -33,6 +34,13 @@ export default function SupplierPortalManager() {
   const [tempPortalItemName, setTempPortalItemName] = useState('');
   const [tempPortalItemQty, setTempPortalItemQty] = useState('');
   const [vendorSearch, setVendorSearch] = useState('');
+  const [openedPortalSession, setOpenedPortalSession] = useState(null);
+  const [showOpenedToken, setShowOpenedToken] = useState(false);
+
+  const handleCloseOpenedPortalModal = () => {
+    setOpenedPortalSession(null);
+    setShowOpenedToken(false);
+  };
 
   // Submission filters
   const [submissionSearch, setSubmissionSearch] = useState('');
@@ -165,7 +173,9 @@ export default function SupplierPortalManager() {
       });
       if (res.data.success) {
         setSetupVendorId('');
+        setVendorSearch('');
         setSetupRequestedItems([]);
+        setOpenedPortalSession(res.data.session);
         toast.success(`Portal opened successfully!`);
         await loadData(true);
       }
@@ -366,13 +376,22 @@ export default function SupplierPortalManager() {
               </div>
 
               <form onSubmit={handleOpenPortal} className="space-y-4">
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1.5 relative">
                   <label className="text-xs font-bold text-slate-500">Select Supplier (Search)</label>
                   <input
                     type="text"
                     placeholder="Search supplier by name..."
                     value={vendorSearch}
-                    onChange={(e) => setVendorSearch(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setVendorSearch(val);
+                      const matched = vendors.find(v => v.name.toLowerCase() === val.trim().toLowerCase());
+                      if (matched) {
+                        setSetupVendorId(matched.id);
+                      } else {
+                        setSetupVendorId('');
+                      }
+                    }}
                     list="vendor-list-datalist"
                     className="bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     required
@@ -382,14 +401,14 @@ export default function SupplierPortalManager() {
                       <option key={v.id} value={v.name} data-id={v.id} />
                     ))}
                   </datalist>
-                  {vendorSearch && filteredVendors.length > 0 && (
-                    <div className="absolute mt-1 w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-lg z-10">
+                  {vendorSearch && !setupVendorId && filteredVendors.length > 0 && (
+                    <div className="absolute mt-1 w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-lg z-20">
                       {filteredVendors.slice(0, 5).map(v => (
                         <div
                           key={v.id}
                           onClick={() => {
                             setSetupVendorId(v.id);
-                            setVendorSearch('');
+                            setVendorSearch(v.name);
                           }}
                           className="p-2.5 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors"
                         >
@@ -707,6 +726,73 @@ export default function SupplierPortalManager() {
               )}
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── SUPPLIER PORTAL AUTO-OPENED (after manual session creation) ─── */}
+      <AnimatePresence>
+        {openedPortalSession && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 0.4 }}
+               exit={{ opacity: 0 }}
+               onClick={handleCloseOpenedPortalModal}
+               className="absolute inset-0 bg-slate-900"
+             />
+             <motion.div
+               initial={{ scale: 0.95, opacity: 0 }}
+               animate={{ scale: 1, opacity: 1 }}
+               exit={{ scale: 0.95, opacity: 0 }}
+               className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 text-slate-800 z-50"
+             >
+               <div className="flex items-center gap-3 mb-4">
+                 <span className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl">
+                   <KeyRound size={22} />
+                 </span>
+                 <div>
+                   <h3 className="text-base font-black text-slate-900">Supplier Portal Opened</h3>
+                   <p className="text-xs text-slate-500 font-semibold">{openedPortalSession.vendorName}</p>
+                 </div>
+               </div>
+ 
+               <p className="text-xs text-slate-500 font-medium mb-4">
+                 Share this access token with the supplier. They'll enter it at the public
+                 supplier portal to upload their delivery sheet.
+               </p>
+ 
+               <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-4 animate-none">
+                 <span className="flex-1 font-mono font-black text-sm tracking-widest text-slate-800">
+                   {showOpenedToken ? openedPortalSession.token : '••••••••••••'}
+                 </span>
+                 <button
+                   type="button"
+                   onClick={() => setShowOpenedToken(!showOpenedToken)}
+                   className="p-2 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors text-slate-500 hover:text-slate-700"
+                   title={showOpenedToken ? "Hide token" : "Show token"}
+                 >
+                   {showOpenedToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => {
+                     navigator.clipboard.writeText(openedPortalSession.token);
+                     toast.success('Token copied to clipboard!');
+                   }}
+                   className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors"
+                   title="Copy token"
+                 >
+                   <Copy size={14} className="text-slate-600" />
+                 </button>
+               </div>
+ 
+               <button
+                 type="button"
+                 onClick={handleCloseOpenedPortalModal}
+                 className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl cursor-pointer"
+               >Done</button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

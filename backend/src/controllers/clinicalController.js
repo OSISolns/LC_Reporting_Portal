@@ -693,38 +693,38 @@ exports.getInventory = async (req, res) => {
         `INSERT INTO nursing_unlock_passwords (month_year, password) VALUES ($1, $2)`,
         [month_year, currentPassword]
       );
+
+      // Always ensure admins have a notification with this month's password
+      try {
+        const Notification = require('../models/notification');
+        const User = require('../models/user');
+        const admins = await User.findByRole('admin');
+
+        const monthLabel = formatMonthYear(month_year);
+        const title = `Stock Unlock Password Generated`;
+        const message = `The stock unlock password for ${monthLabel} has been generated: ${currentPassword}`;
+
+        for (const admin of admins) {
+          // Query if notification already exists for this admin
+          const { rows: existingNotifs } = await db.query(
+            `SELECT id FROM notifications WHERE user_id = $1 AND title = $2`,
+            [admin.id, title]
+          );
+          if (existingNotifs.length === 0) {
+            await Notification.create({
+              userId: admin.id,
+              title,
+              message,
+              type: 'info',
+              link: '/clinical/inventory-checkup'
+            });
+          }
+        }
+      } catch (notifyErr) {
+        console.error('Failed to notify admins of stock password:', notifyErr);
+      }
     } else {
       currentPassword = pwdRows[0].password;
-    }
-
-    // Always ensure admins have a notification with this month's password
-    try {
-      const Notification = require('../models/notification');
-      const User = require('../models/user');
-      const admins = await User.findByRole('admin');
-
-      const monthLabel = formatMonthYear(month_year);
-      const title = `Stock Unlock Password Generated`;
-      const message = `The stock unlock password for ${monthLabel} has been generated: ${currentPassword}`;
-
-      for (const admin of admins) {
-        // Query if notification already exists for this admin
-        const { rows: existingNotifs } = await db.query(
-          `SELECT id FROM notifications WHERE user_id = $1 AND title = $2`,
-          [admin.id, title]
-        );
-        if (existingNotifs.length === 0) {
-          await Notification.create({
-            userId: admin.id,
-            title,
-            message,
-            type: 'info',
-            link: '/clinical/inventory-checkup'
-          });
-        }
-      }
-    } catch (notifyErr) {
-      console.error('Failed to notify admins of stock password:', notifyErr);
     }
 
     const { rows } = await db.query(
@@ -2298,23 +2298,38 @@ exports.getRequisitionItems = async (req, res) => {
 // one-row-per-batch shape, which can't show that). Excludes the internal
 // "Central Store" pseudo-department used by supplier-receiving/GRN to track
 // stock that hasn't actually been distributed anywhere.
-// Helper to map role to department
-const getDepartmentForRole = (role) => {
+// Helper to map role to department dynamically
+const getDepartmentForRole = async (role) => {
   const r = String(role || '').toLowerCase();
   if (r === 'admin') return null;
-  if (r.includes('nurse')) return { id: 121, name: 'NURSING' };
-  if (r.includes('lab')) return { id: 123, name: 'LABORATORY' };
-  if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') return { id: 130, name: 'GENERAL STORE' };
-  if (r.includes('physio')) return { id: 120, name: 'PHYSIO' };
-  if (r.includes('dental') || r.includes('dentist')) return { id: 129, name: 'DENTAL' };
-  if (r.includes('operations') || r.includes('ops') || r === 'coo') return { id: 122, name: 'OPERATIONS' };
-  if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) return { id: 124, name: 'IMAGING' };
-  return null;
+  let name = null;
+  if (r.includes('nurse')) name = 'NURSING';
+  else if (r.includes('lab') && !r.includes('dental')) name = 'LABORATORY';
+  else if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') name = 'GENERAL STORE';
+  else if (r.includes('physio')) name = 'PHYSIO';
+  else if (r.includes('dental') || r.includes('dentist')) name = 'DENTAL';
+  else if (r.includes('operations') || r.includes('ops') || r === 'coo') name = 'OPERATIONS';
+  else if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) name = 'IMAGING';
+
+  if (!name) return null;
+
+  try {
+    const { rows } = await db.query("SELECT id, name FROM departments WHERE UPPER(name) = $1 LIMIT 1", [name]);
+    return rows[0] || null;
+  } catch (err) {
+    console.error('Error resolving department for role:', err);
+    return null;
+  }
 };
 
 exports.getDistributedStock = async (req, res) => {
   try {
     const { include_central } = req.query;
+    
+    // Fetch General Store ID dynamically
+    const { rows: gsRows } = await db.query("SELECT id FROM departments WHERE UPPER(name) = 'GENERAL STORE' LIMIT 1");
+    const gsId = gsRows[0]?.id || 134; // Fallback to 134 if not found
+
     let sql = `
       SELECT * FROM (
         SELECT
@@ -2350,7 +2365,7 @@ exports.getDistributedStock = async (req, res) => {
       UNION ALL
       SELECT
         sb.id as dept_stock_id,
-        130 as department_id,
+        ${gsId} as department_id,
         'GENERAL STORE' as department,
         mi.id as item_id,
         mi.name,
@@ -2391,7 +2406,7 @@ exports.getConsumablesLog = async (req, res) => {
     const { department_id, from, to } = req.query;
     
     // Role-based department restriction for non-admins
-    const deptLimit = getDepartmentForRole(req.user.role);
+    const deptLimit = await getDepartmentForRole(req.user.role);
     const targetDeptId = deptLimit ? deptLimit.id : department_id;
 
     const params = [];
@@ -2481,7 +2496,7 @@ exports.getConsumablesSummary = async (req, res) => {
     const today = new Date().toISOString().slice(0, 10);
     const { department_id } = req.query;
 
-    const deptLimit = getDepartmentForRole(req.user.role);
+    const deptLimit = await getDepartmentForRole(req.user.role);
     const targetDeptId = deptLimit ? deptLimit.id : (department_id ? parseInt(department_id, 10) : null);
 
     let todaySql = `SELECT COUNT(*) AS entries, COALESCE(SUM(quantity),0) AS units FROM consumables_log WHERE date(consumed_at) = date($1)`;
@@ -2545,7 +2560,7 @@ exports.logConsumable = async (req, res) => {
     }
 
     // Role-based department restriction check for non-admins
-    const deptLimit = getDepartmentForRole(req.user.role);
+    const deptLimit = await getDepartmentForRole(req.user.role);
     if (deptLimit && Number(deptLimit.id) !== Number(department_id)) {
       return res.status(403).json({ success: false, message: 'You are not authorized to log consumables for this department.' });
     }
@@ -2913,8 +2928,9 @@ exports.getVendors = async (req, res) => {
 
 exports.createVendor = async (req, res) => {
   try {
-    const { name, contact, contractTerms } = req.body;
-    await db.query("INSERT INTO vendors (name, contact, contract_terms) VALUES ($1, $2, $3)", [name, contact, contractTerms]);
+    const { name, contact, contractTerms, category } = req.body;
+    const finalTerms = contractTerms || req.body.terms || req.body.contract_terms || null;
+    await db.query("INSERT INTO vendors (name, contact, contract_terms, category) VALUES ($1, $2, $3, $4)", [name, contact, finalTerms, category || 'Medical']);
     res.json({ success: true, message: 'Vendor added successfully' });
   } catch (error) {
     console.error('Error in createVendor:', error);
@@ -2925,10 +2941,11 @@ exports.createVendor = async (req, res) => {
 exports.updateVendor = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, contact, contractTerms } = req.body;
+    const { name, contact, contractTerms, category } = req.body;
+    const finalTerms = contractTerms || req.body.terms || req.body.contract_terms || null;
     await db.query(
-      "UPDATE vendors SET name = $1, contact = $2, contract_terms = $3 WHERE id = $4",
-      [name, contact, contractTerms, id]
+      "UPDATE vendors SET name = $1, contact = $2, contract_terms = $3, category = $4 WHERE id = $5",
+      [name, contact, finalTerms, category || 'Medical', id]
     );
     res.json({ success: true, message: 'Vendor updated successfully' });
   } catch (error) {
@@ -3182,9 +3199,27 @@ exports.getSupplierPortalPublicStatus = async (req, res) => {
   }
 };
 
-/** Public: returns all open RFQs / tenders */
+/** Public: returns all open RFQs / tenders where the vendor is invited */
 exports.getPublicOpenRFQs = async (req, res) => {
   try {
+    const { token } = req.query;
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Authentication token required.' });
+    }
+
+    // Lookup vendor_id from token
+    const { rows: sessionRows } = await db.query(
+      "SELECT vendor_id FROM supplier_portal_sessions WHERE UPPER(token) = $1 AND is_active = 1 LIMIT 1",
+      [token.trim().toUpperCase()]
+    );
+
+    if (sessionRows.length === 0) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired authentication token.' });
+    }
+
+    const vendorId = sessionRows[0].vendor_id;
+
+    // Retrieve only RFQs where the authenticated vendor is invited
     const { rows: rfqs } = await db.query(`
       SELECT r.id, r.reference_no, r.title, r.category, r.status, r.pricing_mode, r.currency, r.created_at, r.notes,
         COUNT(DISTINCT ri.id) as item_count, 
@@ -3193,9 +3228,10 @@ exports.getPublicOpenRFQs = async (req, res) => {
       LEFT JOIN rfq_items ri ON r.id = ri.rfq_id 
       LEFT JOIN rfq_suppliers rs ON r.id = rs.rfq_id 
       WHERE r.status = 'Collecting'
+        AND r.id IN (SELECT rfq_id FROM rfq_suppliers WHERE vendor_id = $1)
       GROUP BY r.id 
       ORDER BY r.created_at DESC
-    `);
+    `, [vendorId]);
     
     for (const rfq of rfqs) {
       const { rows: items } = await db.query('SELECT id, item_name, quantity, unit, quantity_label FROM rfq_items WHERE rfq_id = $1 ORDER BY line_no', [rfq.id]);
@@ -3209,6 +3245,60 @@ exports.getPublicOpenRFQs = async (req, res) => {
   }
 };
 
+async function helperOpenSupplierPortalSession(vendorId, items) {
+  // Fetch vendor name
+  const { rows: vendRows } = await db.query("SELECT name FROM vendors WHERE id = $1", [vendorId]);
+  if (!vendRows[0]) return null;
+  const vendorName = vendRows[0].name;
+
+  // Generate unique 12-char alphanumeric token (retry on collision)
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let token = '';
+  let attempts = 0;
+  while (attempts < 10) {
+    token = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const { rows: existing } = await db.query(
+      "SELECT id FROM supplier_portal_sessions WHERE token = $1", [token]
+    );
+    if (existing.length === 0) break;
+    attempts++;
+  }
+
+  // Normalize items array to have all key aliases (name/item_name, unit/unit_of_measure)
+  const normalizedItems = (items || []).map(item => {
+    const nameVal = item.name || item.item_name || '';
+    const qtyVal = item.quantity !== undefined ? item.quantity : 0;
+    const uomVal = item.unit_of_measure || item.unit || 'Unit';
+    const skuVal = item.sku || null;
+    const categoryVal = item.category || 'medical_supplies';
+    return {
+      name: nameVal,
+      item_name: nameVal,
+      quantity: Number(qtyVal),
+      sku: skuVal,
+      category: categoryVal,
+      unit_of_measure: uomVal,
+      unit: uomVal
+    };
+  });
+
+  const { rows: newRows } = await db.query(
+    `INSERT INTO supplier_portal_sessions (vendor_id, vendor_name, token, items, is_active)
+     VALUES ($1, $2, $3, $4, 1) RETURNING id, created_at`,
+    [vendorId, vendorName, token, JSON.stringify(normalizedItems)]
+  );
+
+  return {
+    id: newRows[0].id,
+    vendorId,
+    vendorName,
+    token,
+    requestedItems: normalizedItems,
+    createdAt: newRows[0].created_at,
+    isActive: true
+  };
+}
+
 /** Open a new portal session for a vendor (or close one by sessionId) */
 exports.toggleSupplierPortal = async (req, res) => {
   try {
@@ -3220,44 +3310,15 @@ exports.toggleSupplierPortal = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Vendor selection and requested items are required to open the portal.' });
       }
 
-      // Fetch vendor name
-      const { rows: vendRows } = await db.query("SELECT name FROM vendors WHERE id = $1", [vendorId]);
-      if (!vendRows[0]) {
+      const session = await helperOpenSupplierPortalSession(vendorId, requestedItems);
+      if (!session) {
         return res.status(404).json({ success: false, message: 'Vendor not found.' });
       }
-      const vendorName = vendRows[0].name;
-
-      // Generate unique 12-char alphanumeric token (retry on collision)
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      let token = '';
-      let attempts = 0;
-      while (attempts < 10) {
-        token = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        const { rows: existing } = await db.query(
-          "SELECT id FROM supplier_portal_sessions WHERE token = $1", [token]
-        );
-        if (existing.length === 0) break;
-        attempts++;
-      }
-
-      const { rows: newRows } = await db.query(
-        `INSERT INTO supplier_portal_sessions (vendor_id, vendor_name, token, items, is_active)
-         VALUES ($1, $2, $3, $4, 1) RETURNING id, created_at`,
-        [vendorId, vendorName, token, JSON.stringify(requestedItems)]
-      );
 
       return res.json({
         success: true,
-        message: `Supplier portal opened for ${vendorName}.`,
-        session: {
-          id: newRows[0].id,
-          vendorId,
-          vendorName,
-          token,
-          requestedItems,
-          createdAt: newRows[0].created_at,
-          isActive: true
-        }
+        message: `Supplier portal opened for ${session.vendorName}.`,
+        session
       });
 
     } else {
@@ -3544,11 +3605,11 @@ exports.receiveSupplierStock = async (req, res) => {
       const { rows: batchMatch } = await db.query(`
         SELECT id, quantity FROM stock_batches 
         WHERE item_id = $1 
-          AND batch_number = $2 
-          AND expiry_date = $3 
+          AND (batch_number = $2 OR (batch_number IS NULL AND $2 IS NULL))
+          AND (expiry_date = $3 OR (expiry_date IS NULL AND $3 IS NULL))
           AND ABS(purchase_price - $4) < 0.001
         LIMIT 1
-      `, [itemId, item.batch_number, item.expiry_date, item.purchase_price]);
+      `, [itemId, item.batch_number || null, item.expiry_date || null, item.purchase_price]);
 
       let batchId = null;
       if (batchMatch.length > 0) {
@@ -3559,11 +3620,19 @@ exports.receiveSupplierStock = async (req, res) => {
           [item.quantity, batchId]
         );
       } else {
+        // Create new lot number
+        const { rows: batchCount } = await db.query(
+          "SELECT COUNT(*) as cnt FROM stock_batches WHERE item_id = $1",
+          [itemId]
+        );
+        const nextLotInt = (Number(batchCount[0]?.cnt) || 0) + 1;
+        const lotNumber = String(nextLotInt).padStart(2, '0');
+
         // Create new batch
         const { rows: newBatchRows } = await db.query(`
-          INSERT INTO stock_batches (item_id, vendor_id, batch_number, expiry_date, purchase_price, quantity)
-          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
-        `, [itemId, vendorId, item.batch_number, item.expiry_date, item.purchase_price, item.quantity]);
+          INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, expiry_date, purchase_price, quantity)
+          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
+        `, [itemId, vendorId, item.batch_number || null, lotNumber, item.expiry_date || null, item.purchase_price, item.quantity]);
         batchId = newBatchRows[0].id;
       }
 
@@ -3653,7 +3722,17 @@ exports.createPurchaseOrder = async (req, res) => {
       ]);
     }
 
-    res.json({ success: true, data: { id: poId, po_number: poNumber } });
+    // Automatically open supplier portal for the vendor and generate a code
+    const portalItems = items.map(item => ({
+      item_name: item.item_name,
+      quantity: item.quantity,
+      sku: item.sku || null,
+      unit_of_measure: item.unit_of_measure || 'Unit',
+      unit_price: item.unit_price || 0
+    }));
+    const portalSession = await helperOpenSupplierPortalSession(vendorId, portalItems);
+
+    res.json({ success: true, data: { id: poId, po_number: poNumber, portalSession } });
   } catch (error) {
     console.error('Error in createPurchaseOrder:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -3987,7 +4066,7 @@ exports.getProcurementDashboard = async (req, res) => {
                     ORDER BY grn.received_at DESC LIMIT 6`),
     recentSubs:  q(`SELECT supplier_name vendor, status, uploaded_at date FROM supplier_submissions ORDER BY uploaded_at DESC LIMIT 6`),
     poPeriods:   periodAgg('purchase_orders', 'created_at', 'total_amount'),
-    grnPeriods:  periodAgg('goods_receipt_notes', 'received_at', 'total_amount'),
+    grnPeriods:  periodAgg('(SELECT grn.id, grn.received_at, COALESCE(SUM(gri.quantity_received * gri.purchase_price), 0) as total_amount FROM goods_receipt_notes grn LEFT JOIN goods_receipt_items gri ON grn.id = gri.grn_id GROUP BY grn.id)', 'received_at', 'total_amount'),
     retPeriods:  periodAgg('supplier_returns', 'returned_at', '1'),
   };
 
@@ -4170,7 +4249,21 @@ exports.createRFQ = async (req, res) => {
       }
     }
 
-    res.json({ success: true, data: { id: rfqId, reference_no: refNo } });
+    // Automatically open supplier portals for all invited vendors
+    const portalItems = items.map(item => ({
+      item_name: item.item_name,
+      quantity: item.quantity || 0,
+      unit: item.unit || 'Unit'
+    }));
+    const portalSessions = [];
+    for (const vendorId of invitedVendorIds) {
+      const session = await helperOpenSupplierPortalSession(vendorId, portalItems);
+      if (session) {
+        portalSessions.push(session);
+      }
+    }
+
+    res.json({ success: true, data: { id: rfqId, reference_no: refNo, portalSessions } });
   } catch (error) {
     console.error('Error in createRFQ:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -4367,7 +4460,7 @@ exports.getSupplierPerformance = async (req, res) => {
       SELECT 
         AVG(julianday(grn.received_at) - julianday(po.created_at)) as avg_lead_days
       FROM goods_receipt_notes grn
-      JOIN purchase_orders po ON grn.purchase_order_id = po.id
+      JOIN purchase_orders po ON grn.po_id = po.id
       WHERE po.vendor_id = $1
     `, [id]);
 
@@ -4391,8 +4484,8 @@ exports.getSupplierPerformance = async (req, res) => {
         COALESCE(SUM(grni.quantity_received), 0) as received
       FROM purchase_orders po
       JOIN purchase_order_items poi ON po.id = poi.po_id
-      LEFT JOIN goods_receipt_notes grn ON po.id = grn.purchase_order_id
-      LEFT JOIN goods_receipt_note_items grni ON grn.id = grni.grn_id AND grni.item_name = poi.item_name
+      LEFT JOIN goods_receipt_notes grn ON po.id = grn.po_id
+      LEFT JOIN goods_receipt_items grni ON grn.id = grni.grn_id AND grni.item_name = poi.item_name
       WHERE po.vendor_id = $1
     `, [id]);
 
@@ -4516,7 +4609,7 @@ exports.getVendorRatings = async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await db.query(`
-      SELECT vr.*, u.full_name as rated_by_name, grn.reference_no as grn_ref
+      SELECT vr.*, u.full_name as rated_by_name, grn.grn_number as grn_ref
       FROM vendor_ratings vr
       LEFT JOIN users u ON vr.rated_by = u.id
       LEFT JOIN goods_receipt_notes grn ON vr.grn_id = grn.id
@@ -4586,7 +4679,7 @@ exports.saveGRNInspection = async (req, res) => {
 const performThreeWayMatch = async (invoiceId, poId, grnId, invoiceItems) => {
   try {
     const { rows: poItems } = await db.query('SELECT * FROM purchase_order_items WHERE po_id=$1', [poId]);
-    const { rows: grnItems } = await db.query('SELECT * FROM goods_receipt_note_items WHERE grn_id=$1', [grnId]);
+    const { rows: grnItems } = await db.query('SELECT * FROM goods_receipt_items WHERE grn_id=$1', [grnId]);
     let hasDiscrepancy = false;
     for (const invItem of invoiceItems) {
       const poItem = poItems.find(p => p.item_name && invItem.item_name && p.item_name.toLowerCase() === invItem.item_name.toLowerCase());
@@ -4605,7 +4698,7 @@ const performThreeWayMatch = async (invoiceId, poId, grnId, invoiceItems) => {
 exports.getInvoices = async (req, res) => {
   try {
     const { status, vendor_id } = req.query;
-    let sql = `SELECT pi.*, v.name as vendor_name, po.reference_no as po_reference, grn.reference_no as grn_reference,
+    let sql = `SELECT pi.*, v.name as vendor_name, po.po_number as po_reference, grn.grn_number as grn_reference,
         sb.full_name as submitted_by_name, ab.full_name as approved_by_name
       FROM purchase_invoices pi
       LEFT JOIN vendors v ON pi.vendor_id=v.id
@@ -4630,7 +4723,7 @@ exports.getInvoiceById = async (req, res) => {
   try {
     const { id } = req.params;
     const { rows: invRows } = await db.query(`
-      SELECT pi.*, v.name as vendor_name, po.reference_no as po_reference, grn.reference_no as grn_reference
+      SELECT pi.*, v.name as vendor_name, po.po_number as po_reference, grn.grn_number as grn_reference
       FROM purchase_invoices pi
       LEFT JOIN vendors v ON pi.vendor_id=v.id
       LEFT JOIN purchase_orders po ON pi.po_id=po.id
@@ -4702,7 +4795,7 @@ exports.getThreeWayMatch = async (req, res) => {
     const { rows: lineItems } = await db.query('SELECT * FROM invoice_line_items WHERE invoice_id=$1', [id]);
     let poItems = [], grnItems = [];
     if (inv.po_id) { const r = await db.query('SELECT * FROM purchase_order_items WHERE po_id=$1', [inv.po_id]); poItems = r.rows; }
-    if (inv.grn_id) { const r = await db.query('SELECT * FROM goods_receipt_note_items WHERE grn_id=$1', [inv.grn_id]); grnItems = r.rows; }
+    if (inv.grn_id) { const r = await db.query('SELECT * FROM goods_receipt_items WHERE grn_id=$1', [inv.grn_id]); grnItems = r.rows; }
     const allItems = new Map();
     for (const item of poItems) allItems.set(item.item_name ? item.item_name.toLowerCase() : '', { item_name:item.item_name, po_quantity:item.quantity, po_unit_price:item.unit_price, grn_quantity:null, inv_quantity:null });
     for (const item of grnItems) {

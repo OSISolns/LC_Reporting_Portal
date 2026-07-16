@@ -12,19 +12,6 @@ import ExcelJS from 'exceljs/dist/exceljs.min.js';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-const getDepartmentForRole = (role) => {
-  const r = String(role || '').toLowerCase();
-  if (r === 'admin') return null;
-  if (r.includes('nurse')) return { id: '121', name: 'NURSING' };
-  if (r.includes('lab')) return { id: '123', name: 'LABORATORY' };
-  if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') return { id: '130', name: 'GENERAL STORE' };
-  if (r.includes('physio')) return { id: '120', name: 'PHYSIO' };
-  if (r.includes('dental') || r.includes('dentist')) return { id: '129', name: 'DENTAL' };
-  if (r.includes('operations') || r.includes('ops') || r === 'coo') return { id: '122', name: 'OPERATIONS' };
-  if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) return { id: '124', name: 'IMAGING' };
-  return null;
-};
-
 const getItemStatus = (expiryDate) => {
   if (!expiryDate) return { text: 'Active', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
   const exp = new Date(expiryDate);
@@ -37,15 +24,37 @@ const getItemStatus = (expiryDate) => {
 
 export default function ConsumablesLog() {
   const { user } = useAuth();
-  const userDept = useMemo(() => getDepartmentForRole(user?.role), [user]);
+  
+  // Shared inventory (synced with Stock Manager portal)
+  const [departments, setDepartments] = useState([]);
+  
+  const userDept = useMemo(() => {
+    const r = String(user?.role || '').toLowerCase();
+    if (r === 'admin') return null;
+    let deptName = null;
+    if (r.includes('nurse')) deptName = 'NURSING';
+    else if (r.includes('lab') && !r.includes('dental')) deptName = 'LABORATORY';
+    else if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') deptName = 'GENERAL STORE';
+    else if (r.includes('physio')) deptName = 'PHYSIO';
+    else if (r.includes('dental') || r.includes('dentist')) deptName = 'DENTAL';
+    else if (r.includes('operations') || r.includes('ops') || r === 'coo') deptName = 'OPERATIONS';
+    else if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) deptName = 'IMAGING';
+
+    if (!deptName) return null;
+    const found = departments.find(d => d.name.toUpperCase() === deptName.toUpperCase());
+    return found ? { id: String(found.id), name: found.name } : null;
+  }, [user, departments]);
+
+  const generalStoreDept = useMemo(() => {
+    return departments.find(d => d.name.toUpperCase() === 'GENERAL STORE') || null;
+  }, [departments]);
+
   const isAdmin = user?.role === 'admin';
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Shared inventory (synced with Stock Manager portal)
-  const [departments, setDepartments] = useState([]);
   const [distributedStock, setDistributedStock] = useState([]);
   const [entries, setEntries] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -97,7 +106,7 @@ export default function ConsumablesLog() {
       setFormDept(userDept.id);
       setFilterDept(userDept.id);
     }
-  }, [userDept]);
+  }, [userDept?.id]);
 
   const loadData = async (silent = false) => {
     silent ? setRefreshing(true) : setLoading(true);
@@ -132,7 +141,7 @@ export default function ConsumablesLog() {
 
   useEffect(() => {
     loadData();
-  }, [filterDept, filterFrom, filterTo, userDept]);
+  }, [filterDept, filterFrom, filterTo, userDept?.id]);
 
   // Items available in the selected department (from shared department_stock + stock_batches),
   // aggregated across batches so the picker shows total on-hand per item, cross-referenced with all masterItems.
@@ -143,6 +152,7 @@ export default function ConsumablesLog() {
     const deptStockMap = new Map();
     const centralStockMap = new Map();
     const allowedItemIds = new Set();
+    const gsId = generalStoreDept ? String(generalStoreDept.id) : '134';
 
     for (const row of distributedStock) {
       const itemId = row.item_id;
@@ -151,7 +161,7 @@ export default function ConsumablesLog() {
       if (String(row.department_id) === String(activeD)) {
         deptStockMap.set(itemId, (deptStockMap.get(itemId) || 0) + qty);
         allowedItemIds.add(itemId);
-      } else if (String(row.department_id) === '130' || row.department === 'GENERAL STORE') {
+      } else if (String(row.department_id) === gsId || row.department === 'GENERAL STORE') {
         centralStockMap.set(itemId, (centralStockMap.get(itemId) || 0) + qty);
         allowedItemIds.add(itemId);
       }
@@ -169,7 +179,8 @@ export default function ConsumablesLog() {
           unit: item.unit_of_measure,
           category: item.category || 'medical_supplies',
           available: available,
-          central: central
+          central: central,
+          isLocal: deptStockMap.has(item.id)
         });
       }
     } else {
@@ -184,12 +195,39 @@ export default function ConsumablesLog() {
           unit: matchingRow.unit_of_measure,
           category: matchingRow.category || 'medical_supplies',
           available: available,
-          central: central
+          central: central,
+          isLocal: deptStockMap.has(itemId)
         });
       }
     }
     return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [userDept, formDept, distributedStock, masterItems]);
+  }, [userDept, formDept, distributedStock, masterItems, generalStoreDept]);
+
+  const requisitionItems = useMemo(() => {
+    const gsId = generalStoreDept ? String(generalStoreDept.id) : '134';
+    const gsStockMap = new Map();
+    for (const row of distributedStock) {
+      if (String(row.department_id) === gsId || row.department === 'GENERAL STORE') {
+        const qty = Number(row.quantity || 0);
+        gsStockMap.set(row.item_id, (gsStockMap.get(row.item_id) || 0) + qty);
+      }
+    }
+
+    const list = [];
+    if (masterItems && masterItems.length > 0) {
+      for (const item of masterItems) {
+        const gsQty = gsStockMap.get(item.id) || 0;
+        list.push({
+          item_id: item.id,
+          name: item.name,
+          unit: item.unit_of_measure,
+          category: item.category || 'medical_supplies',
+          available: gsQty,
+        });
+      }
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [masterItems, distributedStock, generalStoreDept]);
 
   const selectedItem = deptStockItems.find(i => String(i.item_id) === String(formItemId));
 
@@ -200,14 +238,22 @@ export default function ConsumablesLog() {
 
   const groupedAndFilteredItems = useMemo(() => {
     let items = deptStockItems;
+    
+    // Filter out items that do not belong to the local department
+    // (unless the active department is General Store).
+    const activeD = userDept ? userDept.id : formDept;
+    const gsId = generalStoreDept ? String(generalStoreDept.id) : '134';
+    const isGS = String(activeD) === gsId;
+    if (activeD && !isGS) {
+      items = items.filter(i => i.isLocal);
+    }
+
     if (formItemSearch.trim()) {
       const q = formItemSearch.toLowerCase();
       items = items.filter(i => i.name.toLowerCase().includes(q));
     }
     if (pickerTab === 'In Stock') {
       items = items.filter(i => i.available > 0);
-    } else if (pickerTab === 'General Store') {
-      items = items.filter(i => i.central > 0);
     } else if (pickerTab === 'Medications') {
       items = items.filter(i => i.category === 'medications');
     } else if (pickerTab === 'Consumables') {
@@ -239,15 +285,13 @@ export default function ConsumablesLog() {
   }, [deptStockItems, formItemSearch, pickerTab]);
 
   const reqGroupedAndFilteredItems = useMemo(() => {
-    let items = deptStockItems;
+    let items = requisitionItems;
     if (reqItemSearch.trim()) {
       const q = reqItemSearch.toLowerCase();
       items = items.filter(i => i.name.toLowerCase().includes(q));
     }
-    if (reqPickerTab === 'In Stock') {
+    if (reqPickerTab === 'In Stock' || reqPickerTab === 'General Store') {
       items = items.filter(i => i.available > 0);
-    } else if (reqPickerTab === 'General Store') {
-      items = items.filter(i => i.central > 0);
     } else if (reqPickerTab === 'Medications') {
       items = items.filter(i => i.category === 'medications');
     } else if (reqPickerTab === 'Consumables') {
@@ -276,7 +320,7 @@ export default function ConsumablesLog() {
       const valB = indexB === -1 ? 999 : indexB;
       return valA - valB;
     });
-  }, [deptStockItems, reqItemSearch, reqPickerTab]);
+  }, [requisitionItems, reqItemSearch, reqPickerTab]);
 
   // Consumption history paging — reset to page 1 whenever the data changes.
   useEffect(() => { setHistoryPage(1); }, [entries]);
@@ -284,13 +328,14 @@ export default function ConsumablesLog() {
   const pagedEntries = entries.slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE);
 
   const currentDeptStock = useMemo(() => {
+    const gsId = generalStoreDept ? String(generalStoreDept.id) : '134';
     if (stockTab === 'central') {
-      return distributedStock.filter(row => String(row.department_id) === '130' || row.department === 'GENERAL STORE');
+      return distributedStock.filter(row => String(row.department_id) === gsId || row.department === 'GENERAL STORE');
     }
     const activeD = userDept ? userDept.id : filterDept;
     if (!activeD) return [];
     return distributedStock.filter(row => String(row.department_id) === String(activeD));
-  }, [userDept, filterDept, distributedStock, stockTab]);
+  }, [userDept, filterDept, distributedStock, stockTab, generalStoreDept]);
 
   const filteredDeptStock = useMemo(() => {
     let list = currentDeptStock;
@@ -355,7 +400,7 @@ export default function ConsumablesLog() {
   );
 
   const handleAddReqItem = () => {
-    const item = deptStockItems.find(i => String(i.item_id) === String(reqItemId));
+    const item = requisitionItems.find(i => String(i.item_id) === String(reqItemId));
     if (!item) return toast.error('Select an item to request.');
     const qty = parseInt(reqQty, 10);
     if (!qty || qty <= 0) return toast.error('Enter a quantity greater than 0.');
@@ -394,6 +439,134 @@ export default function ConsumablesLog() {
       toast.error(err.response?.data?.message || 'Failed to submit requisition.');
     } finally {
       setSubmittingReq(false);
+    }
+  };
+
+  const handleExportRequisitionsXlsx = async () => {
+    if (deptRequisitions.length === 0) {
+      toast.error('No requisitions to export.');
+      return;
+    }
+
+    try {
+      toast.loading("Generating requisitions Excel report...", { id: 'excel-req-toast' });
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Requisitions Report');
+      sheet.views = [{ showGridLines: true }];
+
+      // Define Columns widths
+      sheet.getColumn(1).width = 25; // Date & Time
+      sheet.getColumn(2).width = 20; // Department
+      sheet.getColumn(3).width = 45; // Requested Items
+      sheet.getColumn(4).width = 15; // Urgency
+      sheet.getColumn(5).width = 15; // Status
+      sheet.getColumn(6).width = 35; // Notes / Comments
+
+      // Header Block (Teal branding theme)
+      const titleCell = sheet.getCell('A1');
+      titleCell.value = 'LEGACY CLINICS - REQUISITIONS REPORT';
+      sheet.mergeCells('A1:F1');
+      titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F766E' } }; // Teal-700
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(1).height = 35;
+
+      // Metadata block
+      sheet.getCell('A2').value = `Generated: ${new Date().toLocaleString()}`;
+      sheet.getCell('A2').font = { italic: true, size: 10, color: { argb: '475569' } };
+      sheet.getCell('F2').value = `Total Requisitions: ${deptRequisitions.length}`;
+      sheet.getCell('F2').font = { bold: true, size: 10, color: { argb: '475569' } };
+      sheet.getCell('F2').alignment = { horizontal: 'right' };
+      sheet.getRow(2).height = 20;
+
+      // Table Header Row
+      const headers = ['Date & Time', 'Department', 'Requested Items', 'Urgency', 'Status', 'Notes'];
+      const headerRow = sheet.getRow(3);
+      headerRow.values = headers;
+      headerRow.height = 25;
+
+      headers.forEach((_, colIndex) => {
+        const cell = headerRow.getCell(colIndex + 1);
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '115E59' } }; // Teal-800
+        cell.alignment = { vertical: 'middle', horizontal: colIndex === 3 || colIndex === 4 ? 'center' : 'left' };
+      });
+
+      // Populate Data Rows
+      let currentRowIdx = 4;
+      deptRequisitions.forEach((req) => {
+        let itemsList = [];
+        try {
+          itemsList = typeof req.items === 'string' ? JSON.parse(req.items) : (req.items || []);
+        } catch (e) {
+          itemsList = [];
+        }
+
+        const itemsString = itemsList
+          .map(i => `${i.quantity}x ${i.item_name || i.name || `Item #${i.item_id}`}`)
+          .join('\n');
+
+        const row = sheet.getRow(currentRowIdx);
+        row.values = [
+          new Date(req.created_at).toLocaleString(),
+          req.department_name || '—',
+          itemsString,
+          req.urgency || 'Normal',
+          req.status || 'Pending',
+          req.notes || '—'
+        ];
+
+        // Alignment and wraps
+        row.getCell(1).alignment = { vertical: 'middle' };
+        row.getCell(2).alignment = { vertical: 'middle' };
+        row.getCell(3).alignment = { wrapText: true, vertical: 'middle' }; // Wrap text for items list
+        row.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(6).alignment = { wrapText: true, vertical: 'middle' };
+
+        // Status coloring
+        const statusCell = row.getCell(5);
+        if (req.status === 'Approved') {
+          statusCell.font = { color: { argb: '166534' }, bold: true }; // Emerald-800
+        } else if (req.status === 'Pending') {
+          statusCell.font = { color: { argb: '9A3412' }, bold: true }; // Amber-800
+        } else if (req.status === 'Completed') {
+          statusCell.font = { color: { argb: '1E40AF' }, bold: true }; // Blue-800
+        } else if (req.status === 'Rejected') {
+          statusCell.font = { color: { argb: '9F1239' }, bold: true }; // Rose-800
+        }
+
+        // Urgency styling
+        const urgencyCell = row.getCell(4);
+        if (req.urgency === 'Urgent') {
+          urgencyCell.font = { color: { argb: '9F1239' }, bold: true }; // Rose-800
+        }
+
+        // Apply grid borders to cells
+        for (let colIdx = 1; colIdx <= 6; colIdx++) {
+          row.getCell(colIdx).border = {
+            top: { style: 'thin', color: { argb: 'CBD5E1' } },
+            left: { style: 'thin', color: { argb: 'CBD5E1' } },
+            bottom: { style: 'thin', color: { argb: 'CBD5E1' } },
+            right: { style: 'thin', color: { argb: 'CBD5E1' } }
+          };
+        }
+
+        currentRowIdx++;
+      });
+
+      // Write to buffer and download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `requisitions_report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
+
+      toast.success("Excel report generated successfully!", { id: 'excel-req-toast' });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate requisitions report.", { id: 'excel-req-toast' });
     }
   };
 
@@ -678,7 +851,7 @@ export default function ConsumablesLog() {
 
                           {/* Tabs / Filters inside dropdown */}
                           <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider self-start max-w-full overflow-x-auto scrollbar-none">
-                            {['All', 'In Stock', 'General Store', 'Medications', 'Consumables', 'Sutures'].map(tab => (
+                            {['All', 'In Stock', 'Medications', 'Consumables', 'Sutures'].map(tab => (
                               <button
                                 key={tab}
                                 type="button"
@@ -864,6 +1037,15 @@ export default function ConsumablesLog() {
                   >
                     <FileSpreadsheet size={14} />
                     Export Excel
+                  </button>
+                )}
+                {activeSubTab === 'requisitions' && (
+                  <button
+                    onClick={handleExportRequisitionsXlsx}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                  >
+                    <FileSpreadsheet size={14} />
+                    Export Requisitions
                   </button>
                 )}
               </div>
@@ -1089,7 +1271,7 @@ export default function ConsumablesLog() {
                           >
                             {reqItemId ? (
                               <span className="font-bold text-slate-800 truncate pr-2">
-                                {deptStockItems.find(i => String(i.item_id) === String(reqItemId))?.name || 'Selected Item'}
+                                {requisitionItems.find(i => String(i.item_id) === String(reqItemId))?.name || 'Selected Item'}
                               </span>
                             ) : (
                               <span className="text-slate-400">Select item…</span>
@@ -1160,10 +1342,6 @@ export default function ConsumablesLog() {
                                               {item.available > 0 ? (
                                                 <span className="px-1 rounded bg-teal-50 text-teal-700 font-extrabold">
                                                   {item.available} {item.unit || 'pcs'}
-                                                </span>
-                                              ) : item.central > 0 ? (
-                                                <span className="px-1 rounded bg-sky-50 text-sky-700 font-extrabold">
-                                                  {item.central} in General
                                                 </span>
                                               ) : (
                                                 <span className="px-1 rounded bg-rose-50 text-rose-600 font-extrabold">
