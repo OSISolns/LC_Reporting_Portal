@@ -92,7 +92,7 @@ router.get('/inventory/supplier-portal/submissions/:id/items', checkPermission('
 router.post('/inventory/supplier-portal/submissions/:id/receive', checkPermission('procurement', 'edit'), clinicalController.receiveSupplierStock);
 
 // --- Stock Management Relational Routes (module: inventory -- Central Store / Master Module) ---
-router.get('/inventory/master', checkPermission('inventory', 'view'), clinicalController.getmasterInventory);
+router.get('/inventory/master', checkInventoryOrClinicalRole('view'), clinicalController.getmasterInventory);
 router.get('/inventory/distributed-stock', checkInventoryOrClinicalRole('view'), clinicalController.getDistributedStock);
 
 // Consumables consumption log (syncs with Stock Manager via department_stock)
