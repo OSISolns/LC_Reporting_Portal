@@ -1143,9 +1143,8 @@ exports.getInventoryChangeLogs = async (req, res) => {
   try {
     const { date, month_year, consumed_only } = req.query;
     let sql = `
-      SELECT l.*, u.full_name as user_full_name 
+      SELECT l.* 
       FROM nursing_stock_change_logs l
-      LEFT JOIN users u ON LOWER(l.updated_by) = LOWER(u.username)
     `;
     let params = [];
     let conditions = [];
@@ -1173,10 +1172,25 @@ exports.getInventoryChangeLogs = async (req, res) => {
     }
 
     const { rows } = await db.query(sql, params);
-    const data = rows.map(row => ({
-      ...row,
-      updated_by: row.user_full_name || row.updated_by || 'System'
-    }));
+
+    // Fetch all users to map encrypted updated_by usernames to full names in memory
+    const { rows: users } = await db.query('SELECT username, full_name FROM users');
+    const userMap = new Map();
+    users.forEach(u => {
+      if (u.username) {
+        userMap.set(u.username.toLowerCase(), u.full_name);
+      }
+    });
+
+    const data = rows.map(row => {
+      const updater = row.updated_by || '';
+      const mappedFullName = userMap.get(updater.toLowerCase());
+      return {
+        ...row,
+        updated_by: mappedFullName || updater || 'System'
+      };
+    });
+
     res.json({ success: true, data });
   } catch (error) {
     console.error('Error in getInventoryChangeLogs:', error);
