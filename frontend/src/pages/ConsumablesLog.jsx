@@ -53,6 +53,7 @@ export default function ConsumablesLog() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [distributedStock, setDistributedStock] = useState([]);
@@ -109,7 +110,8 @@ export default function ConsumablesLog() {
   }, [userDept?.id]);
 
   const loadData = async (silent = false) => {
-    silent ? setRefreshing(true) : setLoading(true);
+    const isSilent = silent || initialLoaded;
+    isSilent ? setRefreshing(true) : setLoading(true);
     try {
       const targetDept = userDept ? userDept.id : filterDept;
       const [deptRes, stockRes, logRes, sumRes, reqRes, masterRes] = await Promise.allSettled([
@@ -136,6 +138,7 @@ export default function ConsumablesLog() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setInitialLoaded(true);
     }
   };
 
@@ -646,7 +649,9 @@ export default function ConsumablesLog() {
       entries.forEach(e => {
         const r = sheet.getRow(currentRow);
         r.height = 20;
-        r.getCell(1).value = new Date(e.consumed_at).toLocaleString();
+        r.getCell(1).value = e.source === 'daily' || e.source === 'audit'
+          ? new Date(e.consumed_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+          : new Date(e.consumed_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         r.getCell(2).value = e.department_name || '—';
         r.getCell(3).value = e.item_name;
         r.getCell(4).value = Number(e.quantity);
@@ -1086,7 +1091,11 @@ export default function ConsumablesLog() {
                     <tbody>
                       {pagedEntries.map((e) => (
                         <tr key={e.id} className="border-t border-slate-100 hover:bg-slate-50/60">
-                          <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{new Date(e.consumed_at).toLocaleString()}</td>
+                           <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
+                             {e.source === 'daily' || e.source === 'audit'
+                               ? new Date(e.consumed_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                               : new Date(e.consumed_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                           </td>
                           <td className="px-3 py-2.5 font-semibold text-slate-700">{e.department_name || '—'}</td>
                           <td className="px-3 py-2.5 text-slate-800">
                             {e.item_name}

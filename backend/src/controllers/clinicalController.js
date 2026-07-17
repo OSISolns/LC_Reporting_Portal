@@ -2460,7 +2460,7 @@ exports.getConsumablesLog = async (req, res) => {
         const obs1 = parseInt(r.consumed_obs1, 10) || 0;
         const minor = parseInt(r.consumed_minor, 10) || 0;
         const hour = String(r.session || '').toUpperCase().includes('PM') ? '15' : '08';
-        const at = `${r.month_year}-${String(r.day).padStart(2, '0')}T${hour}:00:00`;
+        const at = `${r.month_year}-${String(r.day).padStart(2, '0')} ${hour}:00:00`;
         const key = `${r.item_name}|${r.month_year}|${r.day}|${r.session}`;
         const nameStn1 = (r.user_stn1 || '').trim() || (r.responsible_name || '').trim() || recS1[key] || null;
         const nameMinor = (r.user_minor || '').trim() || (r.responsible_name || '').trim() || recMin[key] || null;
@@ -2476,12 +2476,43 @@ exports.getConsumablesLog = async (req, res) => {
       // with correct per-ward quantities and the responsible nurse.
     }
 
-    // For Nursing, every Consumables Log entry is written through to the daily
-    // checkup, so the 'daily' source already accounts for it — using only the
-    // daily entries there avoids double-counting the same consumption. Other
-    // departments (no daily checkup) rely on the consumables_log entries.
     const isNursingView = String(targetDeptId) === '121';
-    const merged = [...(isNursingView ? [] : logEntries), ...dailyEntries]
+    
+    // Group and subtract real-time logs from Nursing's daily checkup entries to show accurate timestamps without double-counting
+    if (isNursingView && logEntries.length > 0) {
+      const logGroupMap = new Map();
+      logEntries.forEach(log => {
+        if (!log.consumed_at) return;
+        const dt = new Date(log.consumed_at);
+        // Adjust UTC date to Kigali (UTC+2) to match monthly stock date grouping
+        const kigaliTime = new Date(dt.getTime() + (2 * 60 * 60 * 1000));
+        const y = kigaliTime.getUTCFullYear();
+        const m = String(kigaliTime.getUTCMonth() + 1).padStart(2, '0');
+        const day = kigaliTime.getUTCDate();
+        const monthYear = `${y}-${m}`;
+        const wardStr = log.ward || 'Station 1';
+        const sessionStr = log.session || 'AM';
+        const key = `${log.item_name}|${monthYear}|${day}|${sessionStr.toUpperCase()}|${wardStr}`;
+        logGroupMap.set(key, (logGroupMap.get(key) || 0) + Number(log.quantity || 0));
+      });
+
+      const adjustedDailyEntries = [];
+      dailyEntries.forEach(entry => {
+        const wardStr = entry.ward;
+        const key = `${entry.item_name}|${entry.consumed_at.substring(0, 7)}|${Number(entry.consumed_at.substring(8, 10))}|${String(entry.session).toUpperCase()}|${wardStr}`;
+        const loggedQty = logGroupMap.get(key) || 0;
+        const remaining = Number(entry.quantity) - loggedQty;
+        if (remaining > 0) {
+          adjustedDailyEntries.push({
+            ...entry,
+            quantity: remaining
+          });
+        }
+      });
+      dailyEntries = adjustedDailyEntries;
+    }
+
+    const merged = [...logEntries, ...dailyEntries]
       .sort((a, b) => new Date(b.consumed_at) - new Date(a.consumed_at))
       .slice(0, 500);
     res.json({ success: true, data: merged });
