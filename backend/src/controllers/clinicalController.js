@@ -259,6 +259,17 @@ const syncClinicalUsagesToInventory = async () => {
 
     console.log(`📊 ${Object.keys(aggregates).length} usage records aggregated from clinical sheets.`);
 
+    // Fetch existing records for comparison
+    const { rows: existingRows } = await db.query(
+      `SELECT month_year, item_name, day, session, stock_in_hands, consumed, consumed_obs1, consumed_minor, user_stn1, user_minor 
+       FROM nursing_monthly_stock`
+    );
+    const existingMap = new Map();
+    existingRows.forEach(r => {
+      const key = `${r.month_year}||${r.item_name}||${r.day}||${r.session}`;
+      existingMap.set(key, r);
+    });
+
     const statements = [];
     for (const key of Object.keys(aggregates)) {
       const parts = key.split('||');
@@ -297,11 +308,40 @@ const syncClinicalUsagesToInventory = async () => {
           userMinor
         ]
       });
+
+      const prevKey = `${month_year}||${item_name}||${day}||${session}`;
+      const prev = existingMap.get(prevKey) || {};
+      const oldStock = Number(prev.stock_in_hands) || 0;
+      const oldObs1 = Number(prev.consumed_obs1) || 0;
+      const oldMinor = Number(prev.consumed_minor) || 0;
+      
+      const newObs1 = val.consumed_obs1;
+      const newMinor = val.consumed_minor;
+
+      if (oldObs1 !== newObs1 || oldMinor !== newMinor) {
+        statements.push({
+          sql: `INSERT INTO nursing_stock_change_logs (
+              month_year, item_name, day, session, old_stock, new_stock, old_consumed, new_consumed, updated_by,
+              old_consumed_obs1, new_consumed_obs1, old_consumed_minor, new_consumed_minor,
+              old_user_stn1, new_user_stn1, old_user_minor, new_user_minor
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+          args: [
+            month_year, item_name, day, session,
+            oldStock, oldStock,
+            oldObs1 + oldMinor, newObs1 + newMinor,
+            'Clinical Sheet Sync',
+            oldObs1, newObs1,
+            oldMinor, newMinor,
+            prev.user_stn1 || null, userStn1 || null,
+            prev.user_minor || null, userMinor || null
+          ]
+        });
+      }
     }
 
     if (statements.length > 0) {
       await db.batch(statements);
-      console.log('✅ Daily stock synchronized from clinical sheets.');
+      console.log('✅ Daily stock and change logs synchronized from clinical sheets.');
     } else {
       console.log('ℹ️  No matching inventory items found in clinical sheets.');
     }
@@ -2692,7 +2732,7 @@ exports.logConsumable = async (req, res) => {
         // decrypts), compute in JS, then write final values — same pattern as
         // saveInventoryBulk.
         const { rows: existRows } = await db.query(
-          'SELECT id, stock_in_hands, consumed_obs1, consumed_minor FROM nursing_monthly_stock WHERE month_year = $1 AND item_name = $2 AND day = $3 AND session = $4',
+          'SELECT id, stock_in_hands, consumed_obs1, consumed_minor, user_stn1, user_minor FROM nursing_monthly_stock WHERE month_year = $1 AND item_name = $2 AND day = $3 AND session = $4',
           [monthYear, itemRows[0].name, day, logSession]
         );
 
@@ -2722,6 +2762,24 @@ exports.logConsumable = async (req, res) => {
             [monthYear, itemRows[0].name, day, logSession, prevStock, newObs1, newMinor, newConsumed, newBalance, loggerName]
           );
         }
+
+        // Write to change logs so it syncs with the Daily Report Board / audit trails
+        await db.query(`
+          INSERT INTO nursing_stock_change_logs (
+            month_year, item_name, day, session, old_stock, new_stock, old_consumed, new_consumed, updated_by,
+            old_consumed_obs1, new_consumed_obs1, old_consumed_minor, new_consumed_minor,
+            old_user_stn1, new_user_stn1, old_user_minor, new_user_minor
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        `, [
+          monthYear, itemRows[0].name, day, logSession,
+          prevStock, prevStock,
+          prevObs1 + prevMinor, newConsumed,
+          loggerName,
+          prevObs1, newObs1,
+          prevMinor, newMinor,
+          prev.user_stn1 || null, consumedCol === 'consumed_obs1' ? loggerName : (prev.user_stn1 || null),
+          prev.user_minor || null, consumedCol === 'consumed_minor' ? loggerName : (prev.user_minor || null)
+        ]);
       } catch (syncErr) {
         console.error('⚠️ Nursing consumption write-through to daily stock failed (non-fatal):', syncErr.message);
       }
@@ -2906,11 +2964,31 @@ exports.receiveRequisition = async (req, res) => {
       [id]
     );
 
+    // Fetch existing records for comparison
+    const { rows: existingRows } = await db.query(
+      `SELECT item_name, stock_in_hands, consumed, consumed_obs1, consumed_minor, user_stn1, user_minor 
+       FROM nursing_monthly_stock 
+       WHERE month_year = $1 AND day = $2 AND session = $3`,
+      [month_year, day, session]
+    );
+    const existingMap = {};
+    existingRows.forEach(row => {
+      existingMap[row.item_name] = row;
+    });
+
     const statements = [];
     let added = 0;
     for (const it of items) {
       const qty = Number(it.qty) || 0;
       if (qty <= 0) continue;
+
+      const existing = existingMap[it.item_name];
+      const oldStock = existing ? (parseInt(existing.stock_in_hands, 10) || 0) : 0;
+      const oldConsumed = existing ? (parseInt(existing.consumed, 10) || 0) : 0;
+      const oldObs1 = existing ? (parseInt(existing.consumed_obs1, 10) || 0) : 0;
+      const oldMinor = existing ? (parseInt(existing.consumed_minor, 10) || 0) : 0;
+      const newStock = oldStock + qty;
+
       // Add the received quantity to the current period's stock-in-hand,
       // recomputing balance against whatever has already been consumed.
       statements.push({
@@ -2918,11 +2996,31 @@ exports.receiveRequisition = async (req, res) => {
                 month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, updated_at
               ) VALUES ($1, $2, $3, $4, $5, 0, $5, $6, CURRENT_TIMESTAMP)
               ON CONFLICT(month_year, item_name, day, session) DO UPDATE SET
-                stock_in_hands = nursing_monthly_stock.stock_in_hands + $5,
-                balance = (nursing_monthly_stock.stock_in_hands + $5) - nursing_monthly_stock.consumed,
+                stock_in_hands = $5,
+                balance = $5 - consumed,
                 updated_at = CURRENT_TIMESTAMP`,
-        args: [month_year, it.item_name, day, session, qty, `Received via Requisition #${id}`],
+        args: [month_year, it.item_name, day, session, newStock, `Received via Requisition #${id}`],
       });
+
+      // Insert audit change log
+      statements.push({
+        sql: `INSERT INTO nursing_stock_change_logs (
+            month_year, item_name, day, session, old_stock, new_stock, old_consumed, new_consumed, updated_by,
+            old_consumed_obs1, new_consumed_obs1, old_consumed_minor, new_consumed_minor,
+            old_user_stn1, new_user_stn1, old_user_minor, new_user_minor
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+        args: [
+          month_year, it.item_name, day, session,
+          oldStock, newStock,
+          oldConsumed, oldConsumed,
+          req.user?.fullName || req.user?.username || 'System',
+          oldObs1, oldObs1,
+          oldMinor, oldMinor,
+          existing?.user_stn1 || null, existing?.user_stn1 || null,
+          existing?.user_minor || null, existing?.user_minor || null
+        ]
+      });
+
       added += 1;
     }
 
@@ -3192,8 +3290,29 @@ exports.syncCentralStockToNursing = async (req, res) => {
       return res.json({ success: true, message: 'No department stock found in General Store for NURSING.', updatedCount: 0 });
     }
 
+    // Fetch existing records for comparison
+    const { rows: existingRows } = await db.query(
+      `SELECT item_name, stock_in_hands, consumed, consumed_obs1, consumed_minor, user_stn1, user_minor 
+       FROM nursing_monthly_stock 
+       WHERE month_year = $1 AND day = $2 AND session = $3`,
+      [month_year, day, session]
+    );
+    const existingMap = {};
+    existingRows.forEach(row => {
+      existingMap[row.item_name] = row;
+    });
+
+    const updater = req.user?.fullName || req.user?.username || 'System';
     const statements = [];
     for (const stock of deptStocks) {
+      const existing = existingMap[stock.item_name];
+      const oldStock = existing ? (parseInt(existing.stock_in_hands, 10) || 0) : 0;
+      const oldConsumed = existing ? (parseInt(existing.consumed, 10) || 0) : 0;
+      const oldObs1 = existing ? (parseInt(existing.consumed_obs1, 10) || 0) : 0;
+      const oldMinor = existing ? (parseInt(existing.consumed_minor, 10) || 0) : 0;
+      
+      const newStock = stock.total_qty;
+
       statements.push({
         sql: `INSERT INTO nursing_monthly_stock (
           month_year, item_name, day, session, stock_in_hands, consumed, balance, responsible_name, updated_at
@@ -3202,8 +3321,28 @@ exports.syncCentralStockToNursing = async (req, res) => {
           stock_in_hands = $5,
           balance = $5 - consumed,
           updated_at = CURRENT_TIMESTAMP`,
-        args: [month_year, stock.item_name, day, session, stock.total_qty]
+        args: [month_year, stock.item_name, day, session, newStock]
       });
+
+      if (oldStock !== newStock) {
+        statements.push({
+          sql: `INSERT INTO nursing_stock_change_logs (
+              month_year, item_name, day, session, old_stock, new_stock, old_consumed, new_consumed, updated_by,
+              old_consumed_obs1, new_consumed_obs1, old_consumed_minor, new_consumed_minor,
+              old_user_stn1, new_user_stn1, old_user_minor, new_user_minor
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+          args: [
+            month_year, stock.item_name, day, session,
+            oldStock, newStock,
+            oldConsumed, oldConsumed,
+            updater,
+            oldObs1, oldObs1,
+            oldMinor, oldMinor,
+            existing?.user_stn1 || null, existing?.user_stn1 || null,
+            existing?.user_minor || null, existing?.user_minor || null
+          ]
+        });
+      }
     }
 
     await db.batch(statements);
