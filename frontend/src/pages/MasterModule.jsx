@@ -434,9 +434,19 @@ export default function MasterModule() {
     try {
       if (editingRecord) {
         const payload = {
-          ...itemForm,
-          quantity: 0,
-          price: 0
+          name: itemForm.name,
+          sku: itemForm.sku || undefined,
+          category: itemForm.category,
+          unit_of_measure: itemForm.unit_of_measure,
+          ...(itemForm.batch_id ? { batch_id: itemForm.batch_id } : {}),
+          ...(itemForm.batch_number ? { batch_number: itemForm.batch_number } : {}),
+          ...(itemForm.lot_number ? { lot_number: itemForm.lot_number } : {}),
+          ...(itemForm.expiry_date ? { expiry_date: itemForm.expiry_date } : {}),
+          ...(itemForm.purchase_time ? { purchase_time: itemForm.purchase_time } : {}),
+          ...(itemForm.department_id ? { department_id: itemForm.department_id } : {}),
+          ...(itemForm.storage ? { storage: itemForm.storage } : {}),
+          ...(itemForm.quantity !== '' && itemForm.quantity !== undefined && itemForm.quantity !== null ? { quantity: Number(itemForm.quantity) } : {}),
+          ...(itemForm.price !== '' && itemForm.price !== undefined && itemForm.price !== null ? { price: Number(itemForm.price) } : {})
         };
         await api.put(`/clinical/inventory/master/${editingRecord.id}`, payload);
         toast.success('Item updated successfully');
