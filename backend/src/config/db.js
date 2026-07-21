@@ -579,6 +579,24 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.warn('⚠️ Permission module sync warning:', err.message);
     }
 
+    // ─── Dental Roles Sync: ensure Dental HoD, Dental Tech, Dental Lab Manager roles exist ───
+    try {
+      const dentalRoles = [
+        { name: 'dental_hod',         display_name: 'Dental HoD' },
+        { name: 'dental_tech',        display_name: 'Dental Tech' },
+        { name: 'dental_lab_manager', display_name: 'Dental Lab Manager' },
+      ];
+      for (const r of dentalRoles) {
+        await client.execute({
+          sql: `INSERT INTO roles (name, display_name) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET display_name = EXCLUDED.display_name`,
+          args: [r.name, r.display_name],
+        });
+      }
+      console.log('✅ Dental roles sync complete.');
+    } catch (err) {
+      console.warn('⚠️ Dental roles sync warning:', err.message);
+    }
+
     // ─── Provider Specialization Migration ───────────────────────────────────────────────
     try {
       // Step 1: Add specialization column (safe - catches error if already exists)

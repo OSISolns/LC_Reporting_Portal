@@ -42,7 +42,7 @@ const STATUS_CONFIG = {
 
 export default function DentalWorklist() {
   const { user } = useAuth();
-  const canEdit = ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech'].includes(user?.role);
+  const canEdit = ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'].includes(user?.role);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [entries, setEntries] = useState([]);

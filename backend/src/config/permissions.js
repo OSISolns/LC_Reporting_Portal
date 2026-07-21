@@ -454,6 +454,42 @@ const ROLE_DEFAULTS = {
     patients:         { view:1, create:0 },
     imaging:          { view:1, create:1, edit:1, acquire:1, report:1, verify:1, delete:1 },
   },
+
+  // ── Dental Department Roles ──────────────────────────────────────────────
+  dental_hod: {
+    incident_reports: { view:1, create:1, edit:1, approve:1 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:1 },
+    shifts:           { view:1, create:1, edit:1, review:1, delete:0 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
+    dental:           { view:1, create:1, edit:1, delete:1 },
+  },
+  dental_tech: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    inventory:        { view:1, create:1, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
+    dental:           { view:1, create:1, edit:1, delete:0 },
+  },
+  dental_lab_manager: {
+    incident_reports: { view:1, create:1, edit:1, approve:1 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:1 },
+    shifts:           { view:1, create:1, edit:1, review:1, delete:0 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+    procurement:      { view:1, create:1, edit:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
+    dental:           { view:1, create:1, edit:1, delete:1 },
+  },
 };
 
 module.exports = {
