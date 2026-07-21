@@ -370,6 +370,7 @@ export default function ConsumablesLog() {
           item.quantity += Number(row.quantity || 0);
           item.batches.push(row);
         }
+      }
       for (const item of itemMap.values()) {
         item.batches.sort((a, b) => {
           if (a.expiry_date && b.expiry_date) {
