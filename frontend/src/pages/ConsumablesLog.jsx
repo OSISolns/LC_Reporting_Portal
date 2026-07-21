@@ -1317,8 +1317,6 @@ export default function ConsumablesLog() {
                                           <tr>
                                             <th className="px-2.5 py-1.5">Batch / Lot Code</th>
                                             <th className="px-2.5 py-1.5">Exp. Date</th>
-                                            <th className="px-2.5 py-1.5">Unit Price</th>
-                                            <th className="px-2.5 py-1.5">Vendor</th>
                                             <th className="px-2.5 py-1.5 text-center">Status</th>
                                             <th className="px-2.5 py-1.5 text-right">Quantity</th>
                                           </tr>
@@ -1334,12 +1332,6 @@ export default function ConsumablesLog() {
                                                 </td>
                                                 <td className="px-2.5 py-1.5 text-slate-600">
                                                   {b.expiry_date ? b.expiry_date.split('T')[0] : 'N/A'}
-                                                </td>
-                                                <td className="px-2.5 py-1.5 text-slate-600 font-mono">
-                                                  {b.price ? `${Number(b.price).toLocaleString()} RWF` : '—'}
-                                                </td>
-                                                <td className="px-2.5 py-1.5 text-slate-600">
-                                                  {b.vendor || '—'}
                                                 </td>
                                                 <td className="px-2.5 py-1.5 text-center">
                                                   <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${bStatus.color}`}>
