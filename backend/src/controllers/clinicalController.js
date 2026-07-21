@@ -2943,9 +2943,9 @@ exports.approveRequisition = async (req, res) => {
         }
 
         if (allocPairs.length === 0) {
-          // Fall back to FEFO auto-selection (original behaviour).
+          // Fall back to FIFO auto-selection by expiration date (FEFO).
           const { rows: batches } = await db.query(
-            "SELECT id, quantity FROM stock_batches WHERE item_id = $1 AND quantity > 0 ORDER BY expiry_date ASC",
+            "SELECT id, quantity FROM stock_batches WHERE item_id = $1 AND quantity > 0 ORDER BY (expiry_date IS NULL) ASC, expiry_date ASC, id ASC",
             [item.item_id]
           );
           let remaining = approvedQty;

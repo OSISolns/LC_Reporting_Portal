@@ -2121,17 +2121,25 @@ export default function StockManagerDashboard() {
                                 {batches.length > 0 && !loadingBatches[item.item_id] && (
                                   <div className="px-3 py-2 border-t border-slate-100 flex items-center gap-2">
                                     <button
-                                      type="button"
-                                      onClick={() => {
-                                        // Fill from first batch (FEFO) up to approved qty
-                                        const first = batches[0];
-                                        const fillQty = Math.min(approvedQty, first.available_qty);
-                                        setBatchAllocations(prev => ({ ...prev, [item.item_id]: [{ batch_id: first.batch_id, qty: fillQty }] }));
-                                      }}
-                                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-all cursor-pointer"
-                                    >
-                                      Use Earliest Expiry
-                                    </button>
+                                       type="button"
+                                       onClick={() => {
+                                         // Fill across batches in FIFO order by expiration date (earliest expiring first)
+                                         let remaining = approvedQty;
+                                         const allocs = [];
+                                         for (const b of batches) {
+                                           if (remaining <= 0) break;
+                                           const take = Math.min(remaining, b.available_qty);
+                                           if (take > 0) {
+                                             allocs.push({ batch_id: b.batch_id, qty: take });
+                                             remaining -= take;
+                                           }
+                                         }
+                                         setBatchAllocations(prev => ({ ...prev, [item.item_id]: allocs }));
+                                       }}
+                                       className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-all cursor-pointer flex items-center gap-1"
+                                     >
+                                       <Clock size={10} /> Auto-allocate FIFO (Earliest Expiry)
+                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => setBatchAllocations(prev => ({ ...prev, [item.item_id]: [] }))}
