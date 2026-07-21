@@ -2133,14 +2133,26 @@ exports.updatemasterInventory = async (req, res) => {
     const {
       name, sku, unit_of_measure, category,
       batch_id, batch_number, lot_number, expiry_date, purchase_time, price,
-      department_id, storage, quantity, vendor_id
+      department_id, storage, quantity, vendor_id, dept_stock_id
     } = req.body;
 
-    const skuPrefix = sku || generateSkuPrefix(name);
+    const skuPrefix = sku || (name ? generateSkuPrefix(name) : null);
+
+    // Fetch existing master record to preserve values if unpassed
+    const { rows: currentMaster } = await db.query("SELECT * FROM master_inventory WHERE id = $1", [id]);
+    if (currentMaster.length === 0) {
+      return res.status(404).json({ success: false, message: 'Master item not found' });
+    }
+    const itemToSave = currentMaster[0];
+
+    const finalName = name !== undefined ? name : itemToSave.name;
+    const finalSku = skuPrefix !== null ? skuPrefix : itemToSave.sku;
+    const finalUom = unit_of_measure !== undefined ? unit_of_measure : itemToSave.unit_of_measure;
+    const finalCategory = category !== undefined ? category : itemToSave.category;
 
     await db.query(
       "UPDATE master_inventory SET name = $1, sku = $2, unit_of_measure = $3, category = $4 WHERE id = $5",
-      [name, skuPrefix, unit_of_measure, category, id]
+      [finalName, finalSku, finalUom, finalCategory, id]
     );
 
     // Helper: format purchase_time to ISO string
@@ -2149,31 +2161,28 @@ exports.updatemasterInventory = async (req, res) => {
       formattedPurchaseTime = `${formattedPurchaseTime}T00:00:00.000Z`;
     }
 
-    // department_id/storage are descriptive tracking fields on the batch only
-    // (which department nominally owns it, and whether it's physically in
-    // Medical or Non-Medical storage) -- they must NOT create or modify
-    // department_stock (distributed stock). Distribution only ever happens
-    // through an approved requisition (see approveRequisition), which is the
-    // sole writer of department_stock.
     if (batch_id) {
-      // --- Existing batch: update it ---
-      let lotToSave = lot_number;
-      if (!lotToSave) {
-        const { rows: batchCount } = await db.query(
-          "SELECT COUNT(*) as cnt FROM stock_batches WHERE item_id = $1 AND id != $2",
-          [id, batch_id]
+      // --- Existing batch: preserve existing fields if unpassed ---
+      const { rows: existingBatches } = await db.query("SELECT * FROM stock_batches WHERE id = $1", [batch_id]);
+      if (existingBatches.length > 0) {
+        const b = existingBatches[0];
+        const finalVendorId = vendor_id !== undefined ? (vendor_id || null) : b.vendor_id;
+        const finalBatchNum = batch_number !== undefined ? (batch_number || null) : b.batch_number;
+        const finalLotNum = lot_number !== undefined ? (lot_number || null) : b.lot_number;
+        const finalExpiry = expiry_date !== undefined ? (expiry_date || null) : b.expiry_date;
+        const finalPrice = (price !== undefined && price !== '' && price !== null) ? Number(price) : b.purchase_price;
+        const finalQty = (quantity !== undefined && quantity !== '' && quantity !== null) ? Number(quantity) : b.quantity;
+        const finalDeptId = department_id !== undefined ? (department_id || null) : b.department_id;
+        const finalStorage = storage !== undefined ? (storage || null) : b.storage;
+        const finalPurchaseTime = formattedPurchaseTime || b.created_at;
+
+        await db.query(
+          "UPDATE stock_batches SET vendor_id = $1, batch_number = $2, lot_number = $3, expiry_date = $4, purchase_price = $5, quantity = $6, department_id = $7, storage = $8, created_at = $9 WHERE id = $10",
+          [finalVendorId, finalBatchNum, finalLotNum, finalExpiry, finalPrice, finalQty, finalDeptId, finalStorage, finalPurchaseTime, batch_id]
         );
-        const nextLotInt = (Number(batchCount[0]?.cnt) || 0) + 1;
-        lotToSave = String(nextLotInt).padStart(2, '0');
       }
-
-      await db.query(
-        "UPDATE stock_batches SET vendor_id = $1, batch_number = $2, lot_number = $3, expiry_date = $4, purchase_price = $5, quantity = $6, department_id = $7, storage = $8, created_at = COALESCE($9, created_at) WHERE id = $10",
-        [vendor_id || null, batch_number || null, lotToSave, expiry_date || null, price || 0, quantity || 0, department_id || null, storage || null, formattedPurchaseTime, batch_id]
-      );
-
     } else if (expiry_date || purchase_time || batch_number || department_id) {
-      // --- No existing batch, but user provided batch fields: create a new batch ---
+      // --- Create a new batch if batch fields are explicitly provided ---
       const { rows: batchCount } = await db.query(
         "SELECT COUNT(*) as cnt FROM stock_batches WHERE item_id = $1",
         [id]
@@ -2183,7 +2192,14 @@ exports.updatemasterInventory = async (req, res) => {
 
       await db.query(
         "INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, expiry_date, purchase_price, quantity, department_id, storage, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, CURRENT_TIMESTAMP))",
-        [id, vendor_id || null, batch_number || null, lotToSave, expiry_date || null, price || 0, quantity || 0, department_id || null, storage || null, formattedPurchaseTime]
+        [id, vendor_id || null, batch_number || null, lotToSave, expiry_date || null, price ? Number(price) : 0, quantity ? Number(quantity) : 0, department_id || null, storage || null, formattedPurchaseTime]
+      );
+    }
+
+    if (dept_stock_id && quantity !== undefined && quantity !== '' && quantity !== null) {
+      await db.query(
+        "UPDATE department_stock SET quantity = $1 WHERE id = $2",
+        [Number(quantity), dept_stock_id]
       );
     }
 
