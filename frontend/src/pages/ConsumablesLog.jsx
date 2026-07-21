@@ -370,6 +370,17 @@ export default function ConsumablesLog() {
           item.quantity += Number(row.quantity || 0);
           item.batches.push(row);
         }
+      for (const item of itemMap.values()) {
+        item.batches.sort((a, b) => {
+          if (a.expiry_date && b.expiry_date) {
+            return new Date(a.expiry_date) - new Date(b.expiry_date);
+          }
+          if (a.expiry_date) return -1;
+          if (b.expiry_date) return 1;
+          const lotA = String(a.lot_number || a.batch_number || '');
+          const lotB = String(b.lot_number || b.batch_number || '');
+          return lotA.localeCompare(lotB, undefined, { numeric: true });
+        });
       }
       return Array.from(itemMap.values()).sort((a, b) =>
         (a.name || '').localeCompare(b.name || '')
