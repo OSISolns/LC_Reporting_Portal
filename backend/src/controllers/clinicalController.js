@@ -2489,7 +2489,7 @@ exports.getDistributedStock = async (req, res) => {
       `;
     }
 
-    sql += ') AS stock_combined ORDER BY department ASC, name ASC';
+    sql += ') AS stock_combined ORDER BY department ASC, name ASC, (expiry_date IS NULL) ASC, expiry_date ASC, lot_number ASC, dept_stock_id ASC';
 
     const { rows } = await db.query(sql);
     res.json({ success: true, data: rows });
@@ -2718,22 +2718,22 @@ exports.logConsumable = async (req, res) => {
 
     let stockRows = [];
     if (isCentralStore) {
-      // FEFO: pull from stock_batches directly for central store
+      // FIFO: pull from stock_batches directly for central store: earliest expiry date first; if none, sort by lot number
       const { rows } = await db.query(`
-        SELECT sb.id AS dept_stock_id, sb.id AS batch_id, sb.quantity, sb.batch_number, sb.expiry_date
+        SELECT sb.id AS dept_stock_id, sb.id AS batch_id, sb.quantity, sb.batch_number, sb.lot_number, sb.expiry_date
           FROM stock_batches sb
          WHERE sb.item_id = $1 AND sb.quantity > 0
-         ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, sb.id ASC
+         ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, sb.lot_number ASC, sb.id ASC
       `, [item_id]);
       stockRows = rows;
     } else {
-      // FEFO: pull this department's stock rows for the item, earliest expiry first from department_stock
+      // FIFO: pull this department's stock rows for the item: earliest expiry date first; if none, sort by lot number
       const { rows } = await db.query(`
-        SELECT ds.id AS dept_stock_id, ds.batch_id, ds.quantity, sb.batch_number, sb.expiry_date
+        SELECT ds.id AS dept_stock_id, ds.batch_id, ds.quantity, sb.batch_number, sb.lot_number, sb.expiry_date
           FROM department_stock ds
           LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
          WHERE ds.department_id = $1 AND ds.item_id = $2 AND ds.quantity > 0
-         ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, ds.id ASC
+         ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, sb.lot_number ASC, ds.id ASC
       `, [department_id, item_id]);
       stockRows = rows;
     }
