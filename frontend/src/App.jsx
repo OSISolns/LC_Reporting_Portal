@@ -113,7 +113,7 @@ function App() {
               <ProtectedRoute allowedRoles={[
                 'admin', 'deputy_coo', 'chef-nurse', 'nurse',
                 'lab_team_lead', 'lab_tech', 'lab',
-                'dental', 'dentist', 'dental_tech',
+                'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager',
                 'imaging_tech', 'imaging_manager', 'sono', 'radiologist',
                 'physiotherapist', 'physio', 'operations_staff', 'coo'
               ]}>
@@ -131,7 +131,7 @@ function App() {
 
             <Route path="/dental" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech'
+                'admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'
               ]}>
                 <DentalHub />
               </ProtectedRoute>
