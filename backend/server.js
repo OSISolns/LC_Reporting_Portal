@@ -35,6 +35,7 @@ const complianceRoutes = require('./src/routes/compliance');
 const revenueLeakageRoutes = require('./src/routes/revenueLeakage');
 const imagingRoutes = require('./src/routes/imaging');
 const labRoutes = require('./src/routes/lab');
+const dentalRoutes = require('./src/routes/dental');
 
 const app = express();
 
@@ -115,6 +116,7 @@ app.use('/api/compliance', complianceRoutes);
 app.use('/api/revenue-leakage', revenueLeakageRoutes);
 app.use('/api/imaging', imagingRoutes);
 app.use('/api/lab', labRoutes);
+app.use('/api/dental', dentalRoutes);
 
 
 

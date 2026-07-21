@@ -1,13 +1,17 @@
+// Force the database wrapper to connect to production Turso database
+process.env.lcreporting_TURSO_DATABASE_URL = "libsql://reporting-1-enigmatic-gemini-qt.aws-us-east-2.turso.io";
+process.env.lcreporting_TURSO_AUTH_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3ODE1MzkxOTIsImlkIjoiMDE5ZWNiYmQtMDgwMS03ZDJmLTk2YjAtOWRiNGJiYWU0MWJmIiwicmlkIjoiYzgxNjNiNDktYTdhNi00MWI1LWExN2YtMzk5ZTEzNjJhZTQwIn0.Y_U-Sac5yphSFgvSLL3EfhUwMsctm8CanKYRHu8xKTJq-1ZLgODvtNWmYQqsuu5lZ8zI3BmwsVKCkeS81qjuDg";
+
 const db = require('../src/config/db');
 
 async function run() {
-  console.log("Starting backfill of nursing change logs...");
+  console.log("Starting backfill of nursing change logs in production...");
 
   // 1. Get all log entries for Nursing (department 121)
   const { rows: logs } = await db.query(
     "SELECT * FROM consumables_log WHERE department_id = 121"
   );
-  console.log(`Found ${logs.length} total nursing consumables log entries.`);
+  console.log(`Found ${logs.length} total nursing consumables log entries in production.`);
 
   // Group logs by month_year, item_name, day, session, isStn1
   const groups = {};
@@ -61,7 +65,7 @@ async function run() {
     if (!stockRow) {
       // Create missing stock row first
       const fallbackStock = qty * 2;
-      console.log(`Creating missing stock row for ${itemName} on day ${day} (${session}) with stock ${fallbackStock}`);
+      console.log(`Creating missing stock row in prod for ${itemName} on day ${day} (${session}) with stock ${fallbackStock}`);
       const { rows: newRows } = await db.query(
         `INSERT INTO nursing_monthly_stock (
           month_year, item_name, day, session, stock_in_hands, consumed, balance,
@@ -80,7 +84,7 @@ async function run() {
 
     if (currentQty < qty) {
       const diff = qty - currentQty;
-      console.log(`Missing consumption detected for ${itemName} on day ${day} (${session}, ward: ${isStn1 ? 'STN1' : 'MINOR'}). Current: ${currentQty}, Expected: ${qty}. Backfilling...`);
+      console.log(`Missing consumption detected in prod for ${itemName} on day ${day} (${session}, ward: ${isStn1 ? 'STN1' : 'MINOR'}). Current: ${currentQty}, Expected: ${qty}. Backfilling...`);
 
       const newObs1 = isStn1 ? qty : currentObs1;
       const newMinor = !isStn1 ? qty : currentMinor;
@@ -142,7 +146,7 @@ async function run() {
     }
   }
 
-  console.log(`Backfill complete. Backfilled ${backfilledCount} missing change log rows.`);
+  console.log(`Backfill complete in prod. Backfilled ${backfilledCount} missing change log rows.`);
 }
 
 run().then(() => process.exit(0)).catch(err => {

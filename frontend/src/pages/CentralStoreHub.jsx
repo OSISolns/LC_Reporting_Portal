@@ -24,6 +24,9 @@ import {
   Filter,
   Check,
   ChevronDown,
+  ChevronUp,
+  Layers,
+  Boxes,
   Edit2,
   CornerUpLeft,
   FileSpreadsheet,
@@ -94,6 +97,11 @@ export default function CentralStoreHub() {
   // Store's own stock-in-hand -- they are no longer the same data filtered
   // two ways.
   const [distributedStock, setDistributedStock] = useState([]);
+  const [expandedDistributedItems, setExpandedDistributedItems] = useState({});
+
+  const toggleExpandDistributedItem = (key) => {
+    setExpandedDistributedItems(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // ── modal states ──────────────────────────────────────────────────────────
   const [receiveOpen, setReceiveOpen]           = useState(false);
@@ -453,6 +461,28 @@ export default function CentralStoreHub() {
       return matchDept && matchCategory && matchStatus && matchSearch;
     });
   }, [distributedStock, activeDept, stockCategoryFilter, stockStatusFilter, searchTerm]);
+
+  const groupedDistributedStock = useMemo(() => {
+    const map = new Map();
+    for (const item of filteredDistributedStock) {
+      const key = `${item.department_id || item.department}-${item.item_id}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          ...item,
+          group_key: key,
+          quantity: Number(item.quantity || 0),
+          total_value: Number(item.quantity || 0) * Number(item.price || 0),
+          batches: [item]
+        });
+      } else {
+        const existing = map.get(key);
+        existing.quantity += Number(item.quantity || 0);
+        existing.total_value += Number(item.quantity || 0) * Number(item.price || 0);
+        existing.batches.push(item);
+      }
+    }
+    return Array.from(map.values());
+  }, [filteredDistributedStock]);
 
   const filteredVendors = useMemo(() => {
     return vendors.filter(v =>
@@ -1241,53 +1271,138 @@ export default function CentralStoreHub() {
                       <tr className="bg-slate-50 text-slate-500 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
                         <th className="py-3.5 px-4 rounded-l-xl">Item Name</th>
                         <th className="py-3.5 px-4">SKU</th>
-                        <th className="py-3.5 px-4">Batch</th>
-                        <th className="py-3.5 px-4">UoM</th>
-                        <th className="py-3.5 px-4">Expiry</th>
-                        <th className="py-3.5 px-4">Vendor</th>
                         <th className="py-3.5 px-4">Department</th>
                         <th className="py-3.5 px-4">Category</th>
-                        <th className="py-3.5 px-4 text-center">Qty</th>
+                        <th className="py-3.5 px-4 text-center">Batches / Details</th>
+                        <th className="py-3.5 px-4 text-center">Total Qty</th>
                         <th className="py-3.5 px-4 text-right">Unit Price</th>
                         <th className="py-3.5 px-4 text-right rounded-r-xl">Tot Price</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                      {filteredDistributedStock.length === 0
-                        ? <EmptyRow cols={11} message="No distributed stock found." />
-                        : filteredDistributedStock.slice((distributedStockPage - 1) * DISTRIBUTED_ITEMS_PER_PAGE, distributedStockPage * DISTRIBUTED_ITEMS_PER_PAGE).map((item) => {
-                            const expStatus = getExpiryStatus(item.expiry_date);
+                      {groupedDistributedStock.length === 0
+                        ? <EmptyRow cols={8} message="No distributed stock found." />
+                        : groupedDistributedStock.slice((distributedStockPage - 1) * DISTRIBUTED_ITEMS_PER_PAGE, distributedStockPage * DISTRIBUTED_ITEMS_PER_PAGE).map((item) => {
                             const isLow = item.quantity > 0 && item.quantity < 20;
                             const isOut = item.quantity === 0;
+                            const batchCount = item.batches ? item.batches.length : 1;
+                            const isExpanded = !!expandedDistributedItems[item.group_key];
+
                             return (
-                              <tr key={item.dept_stock_id} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="py-3 px-4 text-slate-900 font-black text-[13px] max-w-[200px] truncate">{item.name}</td>
-                                <td className="py-3 px-4 font-mono text-slate-450 text-[11px]">{item.sku || '—'}</td>
-                                <td className="py-3 px-4 font-mono text-sky-700 text-[11px]">{item.batch_number || '—'}</td>
-                                <td className="py-3 px-4 text-slate-600">{item.unit_of_measure || '—'}</td>
-                                <td className="py-3 px-4">
-                                  {expStatus
-                                    ? <Badge className={`font-black uppercase tracking-wider text-[9px] ${expStatus.cls}`}>{item.expiry_date ? fmt(item.expiry_date) : 'N/A'}</Badge>
-                                    : <span className="text-slate-400">—</span>
-                                  }
-                                </td>
-                                <td className="py-3 px-4 text-slate-600 font-semibold">{item.vendor || '—'}</td>
-                                <td className="py-3 px-4">
-                                  <span className={`px-2.5 py-1 text-[10px] font-black rounded-lg border uppercase tracking-wider ${getDeptColorBg(item.department)} ${getDeptColorText(item.department)}`}>
-                                    {item.department || '—'}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-4 capitalize text-slate-500 font-normal">{item.category?.replace(/_/g, ' ') || '—'}</td>
-                                <td className="py-3 px-4 text-center">
-                                  <span className={`text-[13px] font-black px-2 py-0.5 rounded-lg ${
-                                    isOut ? 'bg-red-50 text-red-655 border border-red-100' :
-                                    isLow ? 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse' :
-                                    'text-slate-900'
-                                  }`}>{fmtNum(item.quantity)}</span>
-                                </td>
-                                <td className="py-3 px-4 text-right font-mono text-slate-550 font-bold">{fmtNum(item.price)} RWF</td>
-                                <td className="py-3 px-4 text-right font-mono text-slate-800 font-black">{fmtNum(item.quantity * item.price)} RWF</td>
-                              </tr>
+                              <React.Fragment key={item.group_key}>
+                                <tr
+                                  className="hover:bg-slate-50/70 transition-colors cursor-pointer"
+                                  onClick={() => toggleExpandDistributedItem(item.group_key)}
+                                >
+                                  <td className="py-3 px-4 text-slate-900 font-black text-[13px] max-w-[220px]">
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleExpandDistributedItem(item.group_key);
+                                        }}
+                                        className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-all cursor-pointer"
+                                      >
+                                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                      </button>
+                                      <span className="truncate">{item.name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-4 font-mono text-slate-450 text-[11px]">{item.sku || '—'}</td>
+                                  <td className="py-3 px-4">
+                                    <span className={`px-2.5 py-1 text-[10px] font-black rounded-lg border uppercase tracking-wider ${getDeptColorBg(item.department)} ${getDeptColorText(item.department)}`}>
+                                      {item.department || '—'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 capitalize text-slate-500 font-normal">{item.category?.replace(/_/g, ' ') || '—'}</td>
+                                  <td className="py-3 px-4 text-center">
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                        batchCount > 1
+                                          ? 'bg-sky-50 text-sky-700 border border-sky-200'
+                                          : 'bg-slate-100 text-slate-600'
+                                      }`}
+                                    >
+                                      <Layers size={10} />
+                                      {batchCount} {batchCount === 1 ? 'batch' : 'batches'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 text-center">
+                                    <span className={`text-[13px] font-black px-2 py-0.5 rounded-lg ${
+                                      isOut ? 'bg-red-50 text-red-655 border border-red-100' :
+                                      isLow ? 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse' :
+                                      'text-slate-900'
+                                    }`}>{fmtNum(item.quantity)}</span>
+                                  </td>
+                                  <td className="py-3 px-4 text-right font-mono text-slate-550 font-bold">{fmtNum(item.price)} RWF</td>
+                                  <td className="py-3 px-4 text-right font-mono text-slate-800 font-black">{fmtNum(item.total_value)} RWF</td>
+                                </tr>
+
+                                {/* Sub-row with batch breakdown */}
+                                {isExpanded && item.batches && (
+                                  <tr className="bg-slate-50/70 border-t border-slate-100">
+                                    <td colSpan={8} className="p-3 pl-10">
+                                      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2">
+                                        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
+                                          <Boxes size={12} className="text-sky-700" />
+                                          Batch Details for {item.name} ({item.department})
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full text-xs text-left">
+                                            <thead className="bg-slate-50 text-slate-500 text-[9px] uppercase font-bold">
+                                              <tr>
+                                                <th className="px-2.5 py-1.5">Batch / Lot Code</th>
+                                                <th className="px-2.5 py-1.5">Exp. Date</th>
+                                                <th className="px-2.5 py-1.5">Vendor</th>
+                                                <th className="px-2.5 py-1.5 text-center">Status</th>
+                                                <th className="px-2.5 py-1.5 text-right">Quantity</th>
+                                                <th className="px-2.5 py-1.5 text-right">Unit Price</th>
+                                                <th className="px-2.5 py-1.5 text-right">Batch Value</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 font-medium">
+                                              {item.batches.map((b, bIdx) => {
+                                                const bStatus = getExpiryStatus(b.expiry_date);
+                                                return (
+                                                  <tr key={b.dept_stock_id || bIdx} className="hover:bg-slate-50">
+                                                    <td className="px-2.5 py-1.5 font-mono text-[11px] text-sky-700 font-bold">
+                                                      {b.batch_number || 'No batch #'}
+                                                      {b.lot_number && <span className="text-slate-400 font-normal ml-1">(Lot: {b.lot_number})</span>}
+                                                    </td>
+                                                    <td className="px-2.5 py-1.5 text-slate-600">
+                                                      {b.expiry_date ? fmt(b.expiry_date) : '—'}
+                                                    </td>
+                                                    <td className="px-2.5 py-1.5 text-slate-600">
+                                                      {b.vendor || '—'}
+                                                    </td>
+                                                    <td className="px-2.5 py-1.5 text-center">
+                                                      {bStatus ? (
+                                                        <Badge className={`font-black uppercase tracking-wider text-[8px] ${bStatus.cls}`}>{b.expiry_date ? fmt(b.expiry_date) : 'N/A'}</Badge>
+                                                      ) : (
+                                                        <span className="text-slate-400 text-[10px]">Active</span>
+                                                      )}
+                                                    </td>
+                                                    <td className="px-2.5 py-1.5 text-right font-black text-slate-800">
+                                                      {fmtNum(b.quantity)} {b.unit_of_measure || ''}
+                                                    </td>
+                                                    <td className="px-2.5 py-1.5 text-right font-mono text-slate-600">
+                                                      {fmtNum(b.price)} RWF
+                                                    </td>
+                                                    <td className="px-2.5 py-1.5 text-right font-mono font-bold text-slate-800">
+                                                      {fmtNum(b.quantity * b.price)} RWF
+                                                    </td>
+                                                  </tr>
+                                                );
+                                              })}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
                             );
                           })
                       }
