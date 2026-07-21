@@ -5,7 +5,8 @@ import {
   TrendingUp, Activity, CheckCircle, Clock, Search, 
   ArrowRightLeft, FileWarning, Calendar, Loader2, Plus,
   Eye, RefreshCw, BarChart2, ListFilter, Check, X, ClipboardList,
-  AlertCircle, Filter, ArrowUpRight, FileText, Sparkles, Building, Key, XCircle
+  AlertCircle, Filter, ArrowUpRight, FileText, Sparkles, Building, Key, XCircle,
+  ChevronDown, ChevronUp, Layers, ShieldCheck, Tag
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -187,11 +188,22 @@ export default function StockManagerDashboard() {
   // Requisition Action States
   const [processingAction, setProcessingAction] = useState(false);
   const [approvedQtys, setApprovedQtys] = useState({});
+  // batchAllocations: { [item_id]: [ { batch_id, qty } ] } — explicit allocations chosen by Stock Manager
+  const [batchAllocations, setBatchAllocations] = useState({});
+  // availableBatches: { [item_id]: [ batch ] } — fetched from API
+  const [availableBatches, setAvailableBatches] = useState({});
+  // loadingBatches: { [item_id]: boolean }
+  const [loadingBatches, setLoadingBatches] = useState({});
+  // expandedBatchPicker: { [item_id]: boolean } — toggle batch panel per item
+  const [expandedBatchPicker, setExpandedBatchPicker] = useState({});
 
   // Fetch requisition items when one is selected
   useEffect(() => {
     if (!selectedRequisition) {
       setRequisitionItems([]);
+      setBatchAllocations({});
+      setAvailableBatches({});
+      setExpandedBatchPicker({});
       return;
     }
 
@@ -223,20 +235,82 @@ export default function StockManagerDashboard() {
         qtys[item.id] = item.requested_quantity !== undefined ? item.requested_quantity : (item.quantity || 0);
       });
       setApprovedQtys(qtys);
+      setBatchAllocations({});
+      setAvailableBatches({});
+      setExpandedBatchPicker({});
     } else {
       setApprovedQtys({});
     }
   }, [requisitionItems]);
 
+  // Fetch available Central Store batches for a specific item on demand
+  const loadBatchesForItem = async (item_id) => {
+    if (availableBatches[item_id]) return; // already loaded
+    setLoadingBatches(prev => ({ ...prev, [item_id]: true }));
+    try {
+      const res = await api.get(`/clinical/inventory/items/${item_id}/central-batches`);
+      if (res.data.success) {
+        setAvailableBatches(prev => ({ ...prev, [item_id]: res.data.data || [] }));
+        // Pre-populate allocations: default to first batch (FEFO order) if only one batch
+        const batches = res.data.data || [];
+        if (batches.length === 1) {
+          setBatchAllocations(prev => ({
+            ...prev,
+            [item_id]: [{ batch_id: batches[0].batch_id, qty: 0 }]
+          }));
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load batch details');
+    } finally {
+      setLoadingBatches(prev => ({ ...prev, [item_id]: false }));
+    }
+  };
+
+  const toggleBatchPicker = (item_id) => {
+    const next = !expandedBatchPicker[item_id];
+    setExpandedBatchPicker(prev => ({ ...prev, [item_id]: next }));
+    if (next) loadBatchesForItem(item_id);
+  };
+
+  const setBatchAllocQty = (item_id, batch_id, qty) => {
+    setBatchAllocations(prev => {
+      const existing = (prev[item_id] || []).filter(a => a.batch_id !== batch_id);
+      if (qty > 0) existing.push({ batch_id, qty });
+      return { ...prev, [item_id]: existing };
+    });
+  };
+
+  const getAllocQty = (item_id, batch_id) => {
+    const alloc = (batchAllocations[item_id] || []).find(a => a.batch_id === batch_id);
+    return alloc ? alloc.qty : 0;
+  };
+
+  const getTotalAllocated = (item_id) => {
+    return (batchAllocations[item_id] || []).reduce((s, a) => s + Number(a.qty || 0), 0);
+  };
+
   const handleApproveRequisition = async (reqId) => {
     setProcessingAction(true);
     try {
+      // Build payload — if the Stock Manager has set explicit batch allocations for
+      // any item, include them so the backend can fulfil from the chosen batches.
+      // Items with no explicit allocation fall back to server-side FEFO auto-pick.
+      const hasExplicitAllocations = Object.values(batchAllocations).some(
+        allocs => allocs && allocs.length > 0 && allocs.some(a => a.qty > 0)
+      );
+
       const payload = {
         items: requisitionItems.map(item => ({
           id: item.id,
-          approved_quantity: approvedQtys[item.id] !== undefined ? approvedQtys[item.id] : (item.requested_quantity || item.quantity || 0)
-        }))
+          approved_quantity: approvedQtys[item.id] !== undefined
+            ? approvedQtys[item.id]
+            : (item.requested_quantity || item.quantity || 0)
+        })),
+        ...(hasExplicitAllocations && { batch_allocations: batchAllocations })
       };
+
       const res = await api.post(`/clinical/inventory/requisitions/${reqId}/approve`, payload);
       if (res.data.success) {
         toast.success('Requisition approved successfully!');
@@ -1863,39 +1937,215 @@ export default function StockManagerDashboard() {
                     <span className="text-xs text-slate-500 font-medium">Loading items...</span>
                   </div>
                 ) : (
-                  <div className="flex-1 overflow-y-auto pr-1 border border-slate-200 rounded-2xl custom-scrollbar divide-y divide-slate-150 bg-slate-50/50">
+                  <div className="flex-1 overflow-y-auto pr-1 border border-slate-200 rounded-2xl custom-scrollbar divide-y divide-slate-100 bg-slate-50/40">
                     {requisitionItems.length === 0 ? (
                       <p className="p-6 text-center text-xs text-slate-400 font-bold">No item details recorded.</p>
                     ) : (
-                      requisitionItems.map((item, idx) => (
-                        <div key={idx} className="p-4 flex items-center justify-between">
-                          <div>
-                            <h5 className="font-bold text-slate-800 text-sm">{item.item_name}</h5>
-                            <p className="text-[10px] text-slate-450 font-mono mt-0.5">SKU: {item.sku || 'N/A'}</p>
-                          </div>
-                          <div className="text-right text-xs">
-                            <span className="text-xs text-slate-400 font-medium font-bold">Requested:</span>
-                            <p className="text-sm font-black text-slate-800">{item.requested_quantity || item.quantity || 0} {item.unit_of_measure || 'Unit'}</p>
-                            {selectedRequisition.status === 'Pending' ? (
-                              <div className="flex items-center gap-1.5 justify-end mt-1">
-                                <label className="text-[10px] text-slate-500 font-bold">Approve Qty:</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={approvedQtys[item.id] !== undefined ? approvedQtys[item.id] : (item.requested_quantity || item.quantity || 0)}
-                                  onChange={(e) => setApprovedQtys({
-                                    ...approvedQtys,
-                                    [item.id]: Math.max(0, parseInt(e.target.value, 10) || 0)
-                                  })}
-                                  className="w-16 bg-white border border-slate-200 rounded px-1.5 py-0.5 text-center text-xs font-bold text-slate-800 outline-none focus:ring-1 focus:ring-indigo-500"
-                                />
+                      requisitionItems.map((item, idx) => {
+                        const reqQty = item.requested_quantity || item.quantity || 0;
+                        const isPending = selectedRequisition.status === 'Pending';
+                        const totalAlloc = getTotalAllocated(item.item_id);
+                        const batches = availableBatches[item.item_id] || [];
+                        const isExpanded = expandedBatchPicker[item.item_id];
+                        const approvedQty = approvedQtys[item.id] !== undefined ? approvedQtys[item.id] : reqQty;
+
+                        return (
+                          <div key={idx} className="p-4">
+                            {/* Item Header Row */}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <h5 className="font-bold text-slate-800 text-sm truncate">{item.item_name}</h5>
+                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                  {item.sku && <span className="text-[9px] font-mono text-slate-400">{item.sku}</span>}
+                                  {item.central_stock !== undefined && (
+                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                                      Number(item.central_stock) > 0
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                        : 'bg-rose-50 text-rose-600 border-rose-100'
+                                    }`}>
+                                      Store: {item.central_stock} {item.unit_of_measure || 'units'}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            ) : selectedRequisition.status === 'Approved' && (
-                              <p className="text-[10px] text-emerald-600 font-bold mt-0.5">Approved: {item.approved_quantity || item.requested_quantity || item.quantity}</p>
+
+                              <div className="text-right shrink-0">
+                                <p className="text-[10px] text-slate-400 font-bold">Requested</p>
+                                <p className="text-sm font-black text-slate-800">{reqQty} <span className="text-[10px] text-slate-400 font-semibold">{item.unit_of_measure || ''}</span></p>
+                              </div>
+                            </div>
+
+                            {/* Approve qty input (non-batch mode) */}
+                            {isPending && (
+                              <div className="mt-2 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <label className="text-[10px] text-slate-500 font-bold">Approve Qty:</label>
+                                  <input
+                                    type="number" min="0"
+                                    value={approvedQty}
+                                    onChange={(e) => setApprovedQtys({ ...approvedQtys, [item.id]: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                                    className="w-16 bg-white border border-slate-200 rounded px-1.5 py-0.5 text-center text-xs font-bold text-slate-800 outline-none focus:ring-1 focus:ring-indigo-400"
+                                  />
+                                </div>
+
+                                {/* Batch Picker Toggle */}
+                                <button
+                                  type="button"
+                                  onClick={() => toggleBatchPicker(item.item_id)}
+                                  className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border transition-all cursor-pointer ${
+                                    isExpanded
+                                      ? 'bg-indigo-600 text-white border-indigo-600'
+                                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
+                                  }`}
+                                >
+                                  <Layers size={11} />
+                                  Choose Batch
+                                  {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Already-approved display */}
+                            {!isPending && selectedRequisition.status === 'Approved' && (
+                              <p className="text-[10px] text-emerald-600 font-bold mt-1">
+                                Approved: {item.approved_quantity || reqQty}
+                              </p>
+                            )}
+
+                            {/* ─── Batch Picker Panel ─── */}
+                            {isPending && isExpanded && (
+                              <div className="mt-3 bg-white border border-slate-200 rounded-xl overflow-hidden">
+                                <div className="px-3 py-2 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+                                  <span className="text-[10px] font-black text-indigo-700 uppercase tracking-wider flex items-center gap-1">
+                                    <ShieldCheck size={11} /> Select Source Batch
+                                  </span>
+                                  {totalAlloc > 0 && (
+                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                                      totalAlloc === approvedQty
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : totalAlloc > approvedQty
+                                        ? 'bg-rose-100 text-rose-700'
+                                        : 'bg-amber-100 text-amber-700'
+                                    }`}>
+                                      Allocated: {totalAlloc} / {approvedQty}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {loadingBatches[item.item_id] ? (
+                                  <div className="flex items-center justify-center py-4 gap-2 text-slate-400">
+                                    <Loader2 size={14} className="animate-spin" />
+                                    <span className="text-xs font-medium">Loading batches...</span>
+                                  </div>
+                                ) : batches.length === 0 ? (
+                                  <p className="text-xs text-rose-500 font-bold p-3 text-center">No stock available in Central Store for this item.</p>
+                                ) : (
+                                  <div className="divide-y divide-slate-100">
+                                    {batches.map(batch => {
+                                      const allocQty = getAllocQty(item.item_id, batch.batch_id);
+                                      const isNearExpiry = batch.expiry_date && (() => {
+                                        const exp = new Date(batch.expiry_date);
+                                        const now = new Date();
+                                        const diffDays = (exp - now) / (1000 * 60 * 60 * 24);
+                                        return diffDays < 180;
+                                      })();
+
+                                      return (
+                                        <div key={batch.batch_id} className={`px-3 py-2.5 flex items-center gap-3 ${
+                                          allocQty > 0 ? 'bg-indigo-50/60' : 'hover:bg-slate-50'
+                                        } transition-colors`}>
+                                          {/* Batch info */}
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <span className="font-mono text-[11px] font-bold text-slate-700">
+                                                {batch.batch_number || `Batch #${batch.batch_id}`}
+                                              </span>
+                                              {batch.lot_number && (
+                                                <span className="text-[9px] text-slate-400 font-mono">LOT: {batch.lot_number}</span>
+                                              )}
+                                              {isNearExpiry && (
+                                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">Exp Soon</span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                                              {batch.expiry_date && (
+                                                <span className="text-[9px] text-slate-400 flex items-center gap-1">
+                                                  <Calendar size={8} />
+                                                  {new Date(batch.expiry_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                </span>
+                                              )}
+                                              {batch.purchase_price > 0 && (
+                                                <span className="text-[9px] text-slate-500 flex items-center gap-1">
+                                                  <Tag size={8} />
+                                                  ${Number(batch.purchase_price).toFixed(2)}/unit
+                                                </span>
+                                              )}
+                                              {batch.vendor_name && (
+                                                <span className="text-[9px] text-slate-400">{batch.vendor_name}</span>
+                                              )}
+                                              <span className={`text-[9px] font-bold ${
+                                                batch.available_qty > 20 ? 'text-emerald-600' :
+                                                batch.available_qty > 0 ? 'text-amber-600' : 'text-rose-600'
+                                              }`}>
+                                                Avail: {batch.available_qty}
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          {/* Qty input for this batch */}
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <label className="text-[10px] text-slate-400 font-bold">Qty:</label>
+                                            <input
+                                              type="number" min="0" max={batch.available_qty}
+                                              value={allocQty || ''}
+                                              placeholder="0"
+                                              onChange={(e) => setBatchAllocQty(
+                                                item.item_id,
+                                                batch.batch_id,
+                                                Math.min(Number(e.target.value) || 0, batch.available_qty)
+                                              )}
+                                              className={`w-16 text-center text-xs font-bold rounded-lg border px-1.5 py-1 outline-none transition-all ${
+                                                allocQty > 0
+                                                  ? 'bg-indigo-100 border-indigo-300 text-indigo-800 focus:ring-1 focus:ring-indigo-400'
+                                                  : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-indigo-300'
+                                              }`}
+                                            />
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {/* Quick-fill buttons */}
+                                {batches.length > 0 && !loadingBatches[item.item_id] && (
+                                  <div className="px-3 py-2 border-t border-slate-100 flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        // Fill from first batch (FEFO) up to approved qty
+                                        const first = batches[0];
+                                        const fillQty = Math.min(approvedQty, first.available_qty);
+                                        setBatchAllocations(prev => ({ ...prev, [item.item_id]: [{ batch_id: first.batch_id, qty: fillQty }] }));
+                                      }}
+                                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-all cursor-pointer"
+                                    >
+                                      Use Earliest Expiry
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setBatchAllocations(prev => ({ ...prev, [item.item_id]: [] }))}
+                                      className="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+                                    >
+                                      Clear
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 )}

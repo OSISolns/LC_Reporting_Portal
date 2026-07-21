@@ -2344,6 +2344,38 @@ exports.getRequisitionItems = async (req, res) => {
   }
 };
 
+/**
+ * Returns all available Central Store batches for a given master_inventory item.
+ * Used by the Stock Manager to select which batch(es) to fulfil a requisition from.
+ */
+exports.getCentralBatchesForItem = async (req, res) => {
+  try {
+    const { item_id } = req.params;
+    const { rows } = await db.query(`
+      SELECT
+        sb.id          AS batch_id,
+        sb.batch_number,
+        sb.lot_number,
+        sb.expiry_date,
+        sb.purchase_price,
+        sb.quantity    AS available_qty,
+        v.name         AS vendor_name,
+        sb.created_at  AS received_at
+      FROM stock_batches sb
+      LEFT JOIN vendors v ON sb.vendor_id = v.id
+      WHERE sb.item_id = $1 AND sb.quantity > 0
+      ORDER BY
+        (sb.expiry_date IS NULL) ASC,
+        sb.expiry_date ASC,
+        sb.id ASC
+    `, [item_id]);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getCentralBatchesForItem:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 // ─── Distributed Stock: read-only echo of department_stock ────────────────────
 // department_stock is written to exclusively by approveRequisition's batch
 // allocation -- this endpoint just reads it back, one row per
@@ -2889,47 +2921,72 @@ exports.approveRequisition = async (req, res) => {
 
     await db.query("UPDATE requisitions SET status = 'Approved', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
 
+    // The frontend may send explicit batch allocations so the Stock Manager
+    // can choose which batch(es) to fulfil from (instead of auto-FEFO).
+    // Shape: { batch_allocations: { [item_id]: [ { batch_id, qty } ] } }
+    const explicitAllocations = req.body?.batch_allocations || null;
+
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       let approvedQty = plannedQtys[i];
 
       if (approvedQty > 0) {
-        // Fulfil from as many batches as needed, earliest-expiry first. A
-        // request that exceeds any single batch's quantity must be split
-        // across batches -- crediting the department with more than what
-        // was actually deducted from Central Store creates phantom stock
-        // (the same units counted as both still-in-store and transferred).
-        const { rows: batches } = await db.query(
-          "SELECT id, quantity FROM stock_batches WHERE item_id = $1 AND quantity > 0 ORDER BY expiry_date ASC",
-          [item.item_id]
-        );
+        // Build the list of (batch_id, qty) pairs to deduct, either from
+        // explicit Stock Manager selection or FEFO auto-pick.
+        let allocPairs = [];
 
-        let remaining = approvedQty;
-        for (const b of batches) {
-          if (remaining <= 0) break;
-          const deductQty = Math.min(remaining, b.quantity);
+        if (explicitAllocations && explicitAllocations[item.item_id]) {
+          // Stock Manager picked specific batches — validate & use them.
+          allocPairs = explicitAllocations[item.item_id]
+            .filter(a => a.batch_id && Number(a.qty) > 0)
+            .map(a => ({ batch_id: Number(a.batch_id), qty: Number(a.qty) }));
+        }
+
+        if (allocPairs.length === 0) {
+          // Fall back to FEFO auto-selection (original behaviour).
+          const { rows: batches } = await db.query(
+            "SELECT id, quantity FROM stock_batches WHERE item_id = $1 AND quantity > 0 ORDER BY expiry_date ASC",
+            [item.item_id]
+          );
+          let remaining = approvedQty;
+          for (const b of batches) {
+            if (remaining <= 0) break;
+            const deductQty = Math.min(remaining, b.quantity);
+            if (deductQty <= 0) continue;
+            allocPairs.push({ batch_id: b.id, qty: deductQty });
+            remaining -= deductQty;
+          }
+        }
+
+        // Execute the deductions.
+        let totalActuallyTransferred = 0;
+        for (const alloc of allocPairs) {
+          // Verify actual available qty to prevent over-deduction.
+          const { rows: batchCheck } = await db.query(
+            "SELECT quantity FROM stock_batches WHERE id = $1 AND item_id = $2",
+            [alloc.batch_id, item.item_id]
+          );
+          const availableInBatch = Number(batchCheck[0]?.quantity || 0);
+          const deductQty = Math.min(alloc.qty, availableInBatch);
           if (deductQty <= 0) continue;
 
-          await db.query("UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2", [deductQty, b.id]);
+          await db.query("UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2", [deductQty, alloc.batch_id]);
 
           await db.query(`
             INSERT INTO department_stock (department_id, item_id, batch_id, quantity)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT(department_id, item_id, batch_id) DO UPDATE SET
               quantity = department_stock.quantity + $4
-          `, [deptId, item.item_id, b.id, deductQty]);
+          `, [deptId, item.item_id, alloc.batch_id, deductQty]);
 
-          remaining -= deductQty;
+          totalActuallyTransferred += deductQty;
         }
 
-        // approvedQty was already clamped to totalCentralStock above, so
-        // remaining should reach 0. If it doesn't (e.g. a batch changed
-        // concurrently), only record what was actually transferred.
-        approvedQty -= remaining;
+        approvedQty = totalActuallyTransferred;
       }
 
-      // Mark items as approved in the requisition details (reflects what
-      // was actually transferred, not just the originally-approved intent)
+      // Record what was actually transferred (may be less than requested if
+      // the Stock Manager constrained it or stock ran out mid-allocation).
       await db.query("UPDATE requisition_items SET approved_quantity = $1 WHERE id = $2", [approvedQty, item.id]);
     }
 

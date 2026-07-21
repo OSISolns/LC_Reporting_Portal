@@ -444,7 +444,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       // look it up by name via LIKE '%General%'/'%Store%' and need a real id
       // to attach requisitions/department_stock rows to. Without it here, it
       // would get deleted by this same cleanup pass as a "non-target" dept.
-      const targetDepts = ['DENTAL', 'PHYSIO', 'NURSING', 'OPERATIONS', 'LABORATORY', 'IMAGING', 'GENERAL STORE', 'DENTAL LAB'];
+      const targetDepts = ['DENTAL', 'PHYSIO', 'NURSING', 'OPERATIONS', 'LABORATORY', 'IMAGING', 'GENERAL STORE', 'DENTAL LAB', 'DENTAL CLINIC'];
       
       // Get all current departments
       const { rows: depts } = await client.execute("SELECT id, name FROM departments");
@@ -2555,6 +2555,100 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     } catch (err) {
       console.error('❌ Failed to setup procurement-manager role/permissions:', err);
     }
+
+    // ─── Dental Cases Table Migration ─────────────────────────────────────────
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS dental_cases (
+          id                        INTEGER PRIMARY KEY AUTOINCREMENT,
+          case_ref                  TEXT NOT NULL UNIQUE,
+          received_date             TEXT NOT NULL,
+          required_date             TEXT NOT NULL,
+          work_command_origin       TEXT,
+          clinic_of_origin          TEXT,
+          clinician_name            TEXT,
+          patient_id                TEXT,
+          work_done                 TEXT NOT NULL CHECK (work_done IN ('Acrylic Work', 'Metal & Ceramic', 'CAD-CAM', 'Other')),
+          work_done_other           TEXT,
+          technologist              TEXT,
+          units_quantity            INTEGER NOT NULL DEFAULT 1,
+          cost_per_first_unit       REAL,
+          cost_per_additional_unit  REAL,
+          total_cost                REAL,
+          reported_by               TEXT,
+          reported_by_user_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          created_at                DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          updated_at                DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        )
+      `);
+      await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_cases_received_date ON dental_cases(received_date)');
+      await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_cases_work_done ON dental_cases(work_done)');
+      console.log('✅ SQLite Schema Migration: dental_cases table ensured.');
+    } catch (err) {
+      if (!err.message?.includes('already exists')) {
+        console.error('❌ dental_cases migration error:', err.message);
+      }
+    }
+
+    // ─── Dental Worklist Table ────────────────────────────────────────────────
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS dental_worklist (
+          id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+          patient_id            TEXT,
+          patient_name          TEXT NOT NULL,
+          appointment_type      TEXT NOT NULL,
+          provider              TEXT,
+          scheduled_time        TEXT,
+          appointment_date      TEXT NOT NULL,
+          status                TEXT NOT NULL DEFAULT 'Waiting'
+                                CHECK (status IN ('Waiting','In Chair','Post-op','Discharged','No Show','Cancelled')),
+          chief_complaint       TEXT,
+          notes                 TEXT,
+          checked_in_at         DATETIME,
+          treatment_started_at  DATETIME,
+          completed_at          DATETIME,
+          reported_by           TEXT,
+          reported_by_user_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          created_at            DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          updated_at            DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        )
+      `);
+      await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_worklist_date   ON dental_worklist(appointment_date)');
+      await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_worklist_status ON dental_worklist(status)');
+      console.log('✅ SQLite Schema Migration: dental_worklist table ensured.');
+    } catch (err) {
+      if (!err.message?.includes('already exists')) {
+        console.error('❌ dental_worklist migration error:', err.message);
+      }
+    }
+
+    // ─── Dental Charts Table ──────────────────────────────────────────────────
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS dental_charts (
+          id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+          patient_id          TEXT NOT NULL,
+          patient_name        TEXT,
+          chart_date          TEXT NOT NULL,
+          tooth_data          TEXT NOT NULL DEFAULT '{}',
+          general_notes       TEXT,
+          provider            TEXT,
+          created_by          TEXT,
+          created_by_user_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          created_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          updated_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          UNIQUE(patient_id, chart_date)
+        )
+      `);
+      await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_charts_patient ON dental_charts(patient_id)');
+      console.log('✅ SQLite Schema Migration: dental_charts table ensured.');
+    } catch (err) {
+      if (!err.message?.includes('already exists')) {
+        console.error('❌ dental_charts migration error:', err.message);
+      }
+    }
+
   })();
 }
 

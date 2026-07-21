@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ClipboardList, Package, Boxes, TrendingDown, RefreshCw, Loader2,
   Plus, Search, Calendar, Building, AlertCircle, CheckCircle2, FileSpreadsheet,
-  ArrowRight, X, Send, Clock, ChevronDown
+  ArrowRight, X, Send, Clock, ChevronDown, ChevronUp, Layers
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../api/axios';
@@ -27,6 +27,11 @@ export default function ConsumablesLog() {
   
   // Shared inventory (synced with Stock Manager portal)
   const [departments, setDepartments] = useState([]);
+  const [expandedItemIds, setExpandedItemIds] = useState({});
+
+  const toggleExpandItem = (itemId) => {
+    setExpandedItemIds(prev => ({ ...prev, [itemId]: !prev[itemId] }));
+  };
   
   const userDept = useMemo(() => {
     const r = String(user?.role || '').toLowerCase();
@@ -344,14 +349,35 @@ export default function ConsumablesLog() {
     let list = currentDeptStock;
     if (stockSearchTerm.trim()) {
       const q = stockSearchTerm.toLowerCase();
-      list = list.filter(row => 
-        (row.name && row.name.toLowerCase().includes(q)) || 
+      list = list.filter(row =>
+        (row.name && row.name.toLowerCase().includes(q)) ||
         (row.sku && row.sku.toLowerCase().includes(q)) ||
         (row.category && row.category.toLowerCase().includes(q))
       );
     }
+
+    // For the local (department) view, aggregate quantities by item so that
+    // multiple batches of the same item approved across requisitions appear as one,
+    // but keep all batch variants in a `batches` array for expandable inspection.
+    if (stockTab === 'local') {
+      const itemMap = new Map();
+      for (const row of list) {
+        const key = row.item_id;
+        if (!itemMap.has(key)) {
+          itemMap.set(key, { ...row, quantity: Number(row.quantity || 0), batches: [row] });
+        } else {
+          const item = itemMap.get(key);
+          item.quantity += Number(row.quantity || 0);
+          item.batches.push(row);
+        }
+      }
+      return Array.from(itemMap.values()).sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '')
+      );
+    }
+
     return list;
-  }, [currentDeptStock, stockSearchTerm]);
+  }, [currentDeptStock, stockSearchTerm, stockTab]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1196,42 +1222,149 @@ export default function ConsumablesLog() {
                       <tr>
                         <th className="text-left px-3 py-2.5">Items</th>
                         <th className="text-left px-3 py-2.5">Category</th>
-                        <th className="text-left px-3 py-2.5">Batch#</th>
-                        <th className="text-left px-3 py-2.5">Exp. Date</th>
-                        <th className="text-center px-3 py-2.5">Status</th>
+                        {stockTab === 'central' && <th className="text-left px-3 py-2.5">Batch#</th>}
+                        {stockTab === 'central' && <th className="text-left px-3 py-2.5">Exp. Date</th>}
+                        {stockTab === 'central' && <th className="text-center px-3 py-2.5">Status</th>}
+                        {stockTab === 'local' && <th className="text-center px-3 py-2.5">Batches / Details</th>}
                         <th className="text-center px-3 py-2.5">Stock In Hands</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredDeptStock.map((row) => {
                         const status = getItemStatus(row.expiry_date);
+                        const isExpanded = !!expandedItemIds[row.item_id];
+                        const batchCount = row.batches ? row.batches.length : 1;
+
                         return (
-                          <tr key={row.dept_stock_id} className="border-t border-slate-100 hover:bg-slate-50/60">
-                            <td className="px-3 py-2.5 text-slate-800">
-                              <div className="font-bold text-slate-900">{row.name}</div>
-                              {row.sku && <div className="text-[10px] text-slate-400 font-mono mt-0.5">{row.sku}</div>}
-                            </td>
-                            <td className="px-3 py-2.5 text-slate-650 text-xs font-semibold uppercase tracking-tight">
-                              {row.category?.replace(/_/g, ' ') || '—'}
-                            </td>
-                            <td className="px-3 py-2.5 font-mono text-[11px] text-slate-500">{row.batch_number || '—'}</td>
-                            <td className="px-3 py-2.5 text-slate-500 text-xs font-medium">
-                              {row.expiry_date ? row.expiry_date.split('T')[0] : '—'}
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border ${status.color}`}>
-                                {status.text}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5 text-center font-black text-slate-850 text-sm">
-                              {row.quantity} <span className="text-slate-450 font-bold text-xs">{row.unit_of_measure || ''}</span>
-                            </td>
-                          </tr>
+                          <React.Fragment key={`${row.item_id}-${row.dept_stock_id}`}>
+                            <tr
+                              className={`border-t border-slate-100 transition-colors ${
+                                stockTab === 'local' ? 'hover:bg-slate-50/80 cursor-pointer' : 'hover:bg-slate-50/60'
+                              }`}
+                              onClick={() => {
+                                if (stockTab === 'local') toggleExpandItem(row.item_id);
+                              }}
+                            >
+                              <td className="px-3 py-2.5 text-slate-800">
+                                <div className="flex items-center gap-2">
+                                  {stockTab === 'local' && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleExpandItem(row.item_id);
+                                      }}
+                                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-all cursor-pointer"
+                                    >
+                                      {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                    </button>
+                                  )}
+                                  <div>
+                                    <div className="font-bold text-slate-900">{row.name}</div>
+                                    {row.sku && <div className="text-[10px] text-slate-400 font-mono mt-0.5">{row.sku}</div>}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-650 text-xs font-semibold uppercase tracking-tight">
+                                {row.category?.replace(/_/g, ' ') || '—'}
+                              </td>
+                              {stockTab === 'central' && (
+                                <td className="px-3 py-2.5 font-mono text-[11px] text-slate-500">{row.batch_number || '—'}</td>
+                              )}
+                              {stockTab === 'central' && (
+                                <td className="px-3 py-2.5 text-slate-500 text-xs font-medium">
+                                  {row.expiry_date ? row.expiry_date.split('T')[0] : '—'}
+                                </td>
+                              )}
+                              {stockTab === 'central' && (
+                                <td className="px-3 py-2.5 text-center">
+                                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border ${status.color}`}>
+                                    {status.text}
+                                  </span>
+                                </td>
+                              )}
+                              {stockTab === 'local' && (
+                                <td className="px-3 py-2.5 text-center">
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                      batchCount > 1
+                                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                        : 'bg-slate-100 text-slate-600'
+                                    }`}
+                                  >
+                                    <Layers size={10} />
+                                    {batchCount} {batchCount === 1 ? 'batch' : 'batches'}
+                                  </span>
+                                </td>
+                              )}
+                              <td className="px-3 py-2.5 text-center font-black text-slate-850 text-sm">
+                                {row.quantity} <span className="text-slate-450 font-bold text-xs">{row.unit_of_measure || ''}</span>
+                              </td>
+                            </tr>
+
+                            {/* Expanded sub-row showing batch variables */}
+                            {stockTab === 'local' && isExpanded && row.batches && (
+                              <tr className="bg-slate-50/70 border-t border-slate-100">
+                                <td colSpan={4} className="p-3 pl-8">
+                                  <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2">
+                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
+                                      <Boxes size={12} className="text-indigo-600" />
+                                      Batch Breakdown & Variables for {row.name}
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-xs text-left">
+                                        <thead className="bg-slate-50 text-slate-500 text-[9px] uppercase font-bold">
+                                          <tr>
+                                            <th className="px-2.5 py-1.5">Batch / Lot Code</th>
+                                            <th className="px-2.5 py-1.5">Exp. Date</th>
+                                            <th className="px-2.5 py-1.5">Unit Price</th>
+                                            <th className="px-2.5 py-1.5">Vendor</th>
+                                            <th className="px-2.5 py-1.5 text-center">Status</th>
+                                            <th className="px-2.5 py-1.5 text-right">Quantity</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 font-medium">
+                                          {row.batches.map((b, bIdx) => {
+                                            const bStatus = getItemStatus(b.expiry_date);
+                                            return (
+                                              <tr key={b.dept_stock_id || bIdx} className="hover:bg-slate-50">
+                                                <td className="px-2.5 py-1.5 font-mono text-[11px] text-slate-700 font-bold">
+                                                  {b.batch_number || 'No batch #'}
+                                                  {b.lot_number && <span className="text-slate-400 font-normal ml-1">(Lot: {b.lot_number})</span>}
+                                                </td>
+                                                <td className="px-2.5 py-1.5 text-slate-600">
+                                                  {b.expiry_date ? b.expiry_date.split('T')[0] : 'N/A'}
+                                                </td>
+                                                <td className="px-2.5 py-1.5 text-slate-600 font-mono">
+                                                  {b.price ? `${Number(b.price).toLocaleString()} RWF` : '—'}
+                                                </td>
+                                                <td className="px-2.5 py-1.5 text-slate-600">
+                                                  {b.vendor || '—'}
+                                                </td>
+                                                <td className="px-2.5 py-1.5 text-center">
+                                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${bStatus.color}`}>
+                                                    {bStatus.text}
+                                                  </span>
+                                                </td>
+                                                <td className="px-2.5 py-1.5 text-right font-black text-slate-800">
+                                                  {b.quantity} {b.unit_of_measure || ''}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         );
                       })}
                       {filteredDeptStock.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="px-3 py-10 text-center text-slate-400 italic">
+                          <td colSpan={stockTab === 'central' ? 6 : 4} className="px-3 py-10 text-center text-slate-400 italic">
                             {!filterDept && !userDept ? 'Select a department to view available items.' : 'No available items found.'}
                           </td>
                         </tr>
