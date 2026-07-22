@@ -1,6 +1,7 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
-  Stethoscope, ClipboardList, Calendar, Heart,
+  Stethoscope, ClipboardList, Calendar, CalendarClock, Heart,
   BookOpen, FlaskConical, Building2, Loader2, Lock,
 } from 'lucide-react';
 import ConsumablesLog from '../ConsumablesLog';
@@ -8,8 +9,9 @@ import DentalCasesLog from './DentalCasesLog';
 import { useAuth } from '../../context/AuthContext';
 
 // Lazy-load the new clinic modules (code-split for performance)
-const DentalWorklist  = lazy(() => import('./DentalWorklist'));
-const DentalCharting  = lazy(() => import('./DentalCharting'));
+const DentalWorklist     = lazy(() => import('./DentalWorklist'));
+const DentalCharting     = lazy(() => import('./DentalCharting'));
+const DentalAppointments = lazy(() => import('./DentalAppointments'));
 
 // ─── Section definitions ──────────────────────────────────────────────────────
 const SECTIONS = [
@@ -21,6 +23,7 @@ const SECTIONS = [
     allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'],
     tabs: [
       { key: 'worklist',           icon: Calendar,      label: 'Patient Worklist'  },
+      { key: 'appointments',       icon: CalendarClock, label: 'Appointments'      },
       { key: 'charting',           icon: Stethoscope,   label: 'Dental Charting'   },
       { key: 'consumables_clinic', icon: ClipboardList, label: 'Consumables Log'   },
     ],
@@ -46,18 +49,45 @@ const TabLoader = () => (
 );
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+const DEFAULT_TABS = { clinic: 'worklist', lab: 'cases' };
+
 const DentalHub = () => {
   const { user } = useAuth();
   const isLabManager = user?.role === 'dental_lab_manager';
-  
-  const [section, setSection] = useState(() => isLabManager ? 'lab' : 'clinic');
-  const [activeTab, setActiveTab] = useState({ clinic: 'worklist', lab: 'cases' });
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Deep-link support: `/dental?section=clinic&tab=appointments` lands directly on a tab.
+  const urlSection = searchParams.get('section');
+  const urlTab = searchParams.get('tab');
+  const initialSection = (urlSection && SECTIONS.some(s => s.key === urlSection))
+    ? urlSection
+    : (isLabManager ? 'lab' : 'clinic');
+
+  const [section, setSection] = useState(initialSection);
+  const [activeTab, setActiveTab] = useState(() => {
+    const sectionDef = SECTIONS.find(s => s.key === initialSection);
+    if (urlTab && sectionDef?.tabs.some(t => t.key === urlTab)) {
+      return { ...DEFAULT_TABS, [initialSection]: urlTab };
+    }
+    return DEFAULT_TABS;
+  });
 
   // Filter sections visible to current user
   const visibleSections = SECTIONS.filter(s => !s.allowedRoles || s.allowedRoles.includes(user?.role));
 
   const currentSection = visibleSections.find((s) => s.key === section) || visibleSections[0] || SECTIONS[0];
   const currentTab     = activeTab[currentSection.key];
+
+  // Keep the URL in sync so it can always be shared/bookmarked/deep-linked back to.
+  useEffect(() => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('section', currentSection.key);
+      next.set('tab', currentTab);
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSection.key, currentTab]);
 
   return (
     <div className="p-6">
@@ -124,6 +154,7 @@ const DentalHub = () => {
       {/* ── Tab Content ──────────────────────────────────────────────────── */}
       <Suspense fallback={<TabLoader />}>
         {currentTab === 'worklist'           && <DentalWorklist />}
+        {currentTab === 'appointments'       && <DentalAppointments />}
         {currentTab === 'charting'           && <DentalCharting />}
         {currentTab === 'consumables_clinic' && <ConsumablesLog />}
         {currentTab === 'cases'              && <DentalCasesLog />}

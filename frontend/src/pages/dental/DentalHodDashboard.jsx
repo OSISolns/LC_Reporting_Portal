@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { listWorklist, getWorklistStats, getDentalStats, listDentalCases } from '../../api/dental';
+import { listWorklist, getWorklistStats, getDentalStats, listDentalCases, listAppointments } from '../../api/dental';
 import { getIncidents } from '../../api/incidents';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import {
   Heart, Calendar, Clock, DollarSign, Package, AlertTriangle,
   Stethoscope, Users, Building, FileText, ChevronRight,
   TrendingUp, Award, Activity, Sparkles, Filter, ChevronLeft,
-  Briefcase, CheckCircle, RefreshCw
+  Briefcase, CheckCircle, RefreshCw, ClipboardList, CalendarClock, CalendarPlus
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
@@ -20,6 +20,15 @@ const STATUS_CONFIG = {
   'Discharged': { color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200', dot: 'bg-green-500' },
   'No Show':    { color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200', dot: 'bg-slate-400' },
   'Cancelled':  { color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', dot: 'bg-red-500' }
+};
+
+const APPT_STATUS_CONFIG = {
+  'Scheduled':  { color: 'text-amber-700',  bg: 'bg-amber-50' },
+  'Confirmed':  { color: 'text-blue-700',   bg: 'bg-blue-50' },
+  'Checked-In': { color: 'text-indigo-700', bg: 'bg-indigo-50' },
+  'Completed':  { color: 'text-green-700',  bg: 'bg-green-50' },
+  'Cancelled':  { color: 'text-red-700',    bg: 'bg-red-50' },
+  'No-Show':    { color: 'text-slate-700',  bg: 'bg-slate-50' },
 };
 
 const MiniStat = ({ label, value, color, icon, sub }) => (
@@ -65,6 +74,7 @@ export default function DentalHodDashboard() {
   const [todayWorklist, setTodayWorklist] = useState([]);
   const [recentCases, setRecentCases] = useState([]);
   const [deptIncidents, setDeptIncidents] = useState([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
@@ -75,12 +85,14 @@ export default function DentalHodDashboard() {
     setLoading(true);
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     try {
-      const [wlStatsRes, labStatsRes, wlRes, casesRes, incRes] = await Promise.all([
+      const weekAheadStr = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+      const [wlStatsRes, labStatsRes, wlRes, casesRes, incRes, apptRes] = await Promise.all([
         getWorklistStats({ date: todayStr }).catch(() => null),
         getDentalStats('monthly').catch(() => null),
         listWorklist({ date: todayStr }).catch(() => null),
         listDentalCases({ period: 'monthly' }).catch(() => null),
-        getIncidents().catch(() => null)
+        getIncidents().catch(() => null),
+        listAppointments({ from: todayStr, to: weekAheadStr }).catch(() => null)
       ]);
 
       setWorklistStats(wlStatsRes?.data?.data ?? wlStatsRes ?? null);
@@ -91,6 +103,12 @@ export default function DentalHodDashboard() {
 
       const casesData = casesRes?.data?.data ?? casesRes?.data ?? casesRes ?? [];
       setRecentCases(Array.isArray(casesData) ? casesData.slice(0, 5) : []);
+
+      const apptData = apptRes?.data?.data ?? apptRes?.data ?? apptRes ?? [];
+      const upcoming = Array.isArray(apptData)
+        ? apptData.filter(a => ['Scheduled', 'Confirmed', 'Checked-In'].includes(a.status)).slice(0, 5)
+        : [];
+      setUpcomingAppointments(upcoming);
 
       // Filter incidents for dental department
       const allInc = incRes?.data?.data ?? incRes ?? [];
@@ -198,10 +216,11 @@ export default function DentalHodDashboard() {
         <h3 className="m-0 mb-5 text-base font-black text-slate-800 flex items-center gap-2">
           <Sparkles size={18} className="text-rose-500" /> Departmental Workflow Actions
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-4">
           <QuickAction label="Dental Hub" icon={<Heart size={22} />} color="#f43f5e" path="/dental" navigate={navigate} />
-          <QuickAction label="Patient Worklist" icon={<Calendar size={22} />} color="#3b82f6" path="/dental" navigate={navigate} />
-          <QuickAction label="Dental Charting" icon={<Stethoscope size={22} />} color="#06b6d4" path="/dental" navigate={navigate} />
+          <QuickAction label="Patient Worklist" icon={<Calendar size={22} />} color="#3b82f6" path="/dental?tab=worklist" navigate={navigate} />
+          <QuickAction label="Book Appointment" icon={<CalendarPlus size={22} />} color="#f59e0b" path="/dental?tab=appointments" navigate={navigate} />
+          <QuickAction label="Dental Charting" icon={<Stethoscope size={22} />} color="#06b6d4" path="/dental?tab=charting" navigate={navigate} />
           <QuickAction label="Consumables Log" icon={<ClipboardList size={22} />} color="#8b5cf6" path="/consumables-log" navigate={navigate} />
           <QuickAction label="Report Incident" icon={<AlertTriangle size={22} />} color="#e11d48" path="/incidents" navigate={navigate} />
           <QuickAction label="Clinical Sheets" icon={<FileText size={22} />} color="#10b981" path="/clinical-sheets" navigate={navigate} />
@@ -216,7 +235,7 @@ export default function DentalHodDashboard() {
             <h3 className="m-0 text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <Clock size={16} className="text-rose-500" /> Today's Patient Queue
             </h3>
-            <button onClick={() => navigate('/dental')} className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-0.5">
+            <button onClick={() => navigate('/dental?tab=worklist')} className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-0.5">
               Manage Queue <ChevronRight size={14} />
             </button>
           </div>
@@ -294,13 +313,60 @@ export default function DentalHodDashboard() {
         </div>
       </div>
 
+      {/* ── Upcoming Appointments ── */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+          <h3 className="m-0 text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <CalendarClock size={16} className="text-rose-500" /> Upcoming Appointments
+          </h3>
+          <button onClick={() => navigate('/dental?tab=appointments')} className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-0.5">
+            View All <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {upcomingAppointments.length === 0 ? (
+          <div className="py-14 text-center text-slate-400 flex flex-col items-center justify-center">
+            <CalendarClock size={36} className="text-slate-200 mb-2" />
+            <p className="text-sm font-semibold">No upcoming appointments in the next 7 days</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {upcomingAppointments.map(appt => {
+              const conf = APPT_STATUS_CONFIG[appt.status] || APPT_STATUS_CONFIG['Scheduled'];
+              return (
+                <div key={appt.id} className="p-4 flex items-center justify-between hover:bg-slate-50/40 transition-colors">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-slate-700">{appt.patient_name}</span>
+                      {appt.patient_id && (
+                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono font-semibold">{appt.patient_id}</span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                      <span className="font-medium text-rose-500">{appt.appointment_type}</span>
+                      <span>•</span>
+                      <span>{appt.appointment_date ? format(new Date(appt.appointment_date), 'dd MMM') : ''} at {appt.start_time ? appt.start_time.substring(0, 5) : '--:--'}</span>
+                      {appt.provider && <><span>•</span><span>Dr. {appt.provider}</span></>}
+                    </div>
+                  </div>
+
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${conf.bg} ${conf.color}`}>
+                    {appt.status}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* ── Recent Prosthetics Workorders ── */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
           <h3 className="m-0 text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
             <Package size={16} className="text-rose-500" /> Recent Laboratory Cases
           </h3>
-          <button onClick={() => navigate('/dental')} className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-0.5">
+          <button onClick={() => navigate('/dental?section=lab&tab=cases')} className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-0.5">
             Lab Cases Log <ChevronRight size={14} />
           </button>
         </div>
