@@ -8,6 +8,7 @@ import DoctorDashboard from './DoctorDashboard';
 import StockManagerDashboard from './StockManagerDashboard';
 import ProcurementDashboard from './ProcurementDashboard';
 import ImagingDashboard from './imaging/ImagingDashboard';
+import DentalHodDashboard from './dental/DentalHodDashboard';
 
 const MGMT_ROLES = ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier'];
 const STAFF_ROLES = ['cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'consultant', 'nurse', 'chef-nurse', 'pa'];
@@ -21,6 +22,7 @@ const Dashboard = () => {
   if (role === 'stock-manager' || role === 'stock_manager') return <StockManagerDashboard />;
   if (role === 'procurement-manager' || role === 'procurement_manager') return <ProcurementDashboard />;
   if (role === 'imaging_manager' || role === 'imaging_tech') return <div className="p-6"><ImagingDashboard /></div>;
+  if (role === 'dental_hod') return <DentalHodDashboard />;
   if (['doctor', 'consultant', 'medical_director'].includes(role)) return <DoctorDashboard />;
   if (MGMT_ROLES.includes(role)) return <ManagementDashboard />;
   if (STAFF_ROLES.includes(role)) return <StaffDashboard />;
