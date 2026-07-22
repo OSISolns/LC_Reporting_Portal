@@ -479,8 +479,8 @@ const DentalCasesLog = () => {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
 
-  // Check if user can write
-  const canEdit = ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'].includes(user?.role);
+  // Check if user can write (Only Dental Lab Manager, Admin, and Deputy COO)
+  const canEdit = ['admin', 'deputy_coo', 'dental_lab_manager'].includes(user?.role);
 
   // ─── Data fetching ──────────────────────────────────────────────────────────
   const fetchCases = useCallback(async () => {

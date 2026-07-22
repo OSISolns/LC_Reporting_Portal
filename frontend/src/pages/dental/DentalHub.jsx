@@ -1,10 +1,11 @@
 import React, { useState, Suspense, lazy } from 'react';
 import {
   Stethoscope, ClipboardList, Calendar, Heart,
-  BookOpen, FlaskConical, Building2, Loader2,
+  BookOpen, FlaskConical, Building2, Loader2, Lock,
 } from 'lucide-react';
 import ConsumablesLog from '../ConsumablesLog';
 import DentalCasesLog from './DentalCasesLog';
+import { useAuth } from '../../context/AuthContext';
 
 // Lazy-load the new clinic modules (code-split for performance)
 const DentalWorklist  = lazy(() => import('./DentalWorklist'));
@@ -17,6 +18,7 @@ const SECTIONS = [
     label: 'Dental Clinic',
     icon: Building2,
     description: 'Clinical workflow — patient queue, dental charting, and consumables.',
+    allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'],
     tabs: [
       { key: 'worklist',           icon: Calendar,      label: 'Patient Worklist'  },
       { key: 'charting',           icon: Stethoscope,   label: 'Dental Charting'   },
@@ -28,6 +30,7 @@ const SECTIONS = [
     label: 'Dental Lab',
     icon: FlaskConical,
     description: 'Laboratory workflow — prosthetics cases, work orders, and lab consumables.',
+    allowedRoles: ['admin', 'deputy_coo', 'dental_lab_manager'],
     tabs: [
       { key: 'cases',           icon: BookOpen,      label: 'Cases Log'       },
       { key: 'consumables_lab', icon: ClipboardList, label: 'Consumables Log' },
@@ -44,11 +47,17 @@ const TabLoader = () => (
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const DentalHub = () => {
-  const [section, setSection]   = useState('clinic');
+  const { user } = useAuth();
+  const isLabManager = user?.role === 'dental_lab_manager';
+  
+  const [section, setSection] = useState(() => isLabManager ? 'lab' : 'clinic');
   const [activeTab, setActiveTab] = useState({ clinic: 'worklist', lab: 'cases' });
 
-  const currentSection = SECTIONS.find((s) => s.key === section);
-  const currentTab     = activeTab[section];
+  // Filter sections visible to current user
+  const visibleSections = SECTIONS.filter(s => !s.allowedRoles || s.allowedRoles.includes(user?.role));
+
+  const currentSection = visibleSections.find((s) => s.key === section) || visibleSections[0] || SECTIONS[0];
+  const currentTab     = activeTab[currentSection.key];
 
   return (
     <div className="p-6">
@@ -65,7 +74,7 @@ const DentalHub = () => {
 
       {/* ── Section Switcher ─────────────────────────────────────────────── */}
       <div className="flex items-stretch gap-3 mb-6">
-        {SECTIONS.map(({ key, label, icon: Icon, description }) => (
+        {visibleSections.map(({ key, label, icon: Icon, description }) => (
           <button
             key={key}
             onClick={() => setSection(key)}
