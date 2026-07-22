@@ -21,3 +21,12 @@ export const listCharts               = (patient_id) => api.get('/dental/charts'
 export const getChart                 = (id)         => api.get(`/dental/charts/${id}`);
 export const saveChart                = (data)       => api.post('/dental/charts', data);
 export const deleteChart              = (id)         => api.delete(`/dental/charts/${id}`);
+
+// ─── Appointments (forward-looking scheduling) ───────────────────────────────
+export const listAppointments         = (params) => api.get('/dental/appointments', { params });
+export const getAppointmentStats      = (params) => api.get('/dental/appointments/stats', { params });
+export const addAppointment           = (data)   => api.post('/dental/appointments', data);
+export const updateAppointment        = (id, data) => api.put(`/dental/appointments/${id}`, data);
+export const updateAppointmentStatus  = (id, status) => api.patch(`/dental/appointments/${id}/status`, { status });
+export const checkInAppointment       = (id)     => api.post(`/dental/appointments/${id}/check-in`);
+export const deleteAppointment        = (id)     => api.delete(`/dental/appointments/${id}`);

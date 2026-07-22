@@ -29,4 +29,13 @@ router.post('/charts',         dentalController.saveChart);
 router.get('/charts/:id',      dentalController.getChart);
 router.delete('/charts/:id',   dentalController.deleteChart);
 
+// Appointments (forward-looking scheduling)
+router.get('/appointments',              dentalController.listAppointments);
+router.get('/appointments/stats',        dentalController.getAppointmentStats);
+router.post('/appointments',             dentalController.createAppointment);
+router.put('/appointments/:id',          dentalController.updateAppointment);
+router.patch('/appointments/:id/status', dentalController.updateAppointmentStatus);
+router.post('/appointments/:id/check-in', dentalController.checkInAppointment);
+router.delete('/appointments/:id',       dentalController.deleteAppointment);
+
 module.exports = router;
