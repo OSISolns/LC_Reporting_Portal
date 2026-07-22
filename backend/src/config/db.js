@@ -2667,6 +2667,39 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       }
     }
 
+    // ─── Dental Appointments Table ────────────────────────────────────────────
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS dental_appointments (
+          id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+          patient_id           TEXT,
+          patient_name         TEXT NOT NULL,
+          appointment_type     TEXT NOT NULL,
+          provider             TEXT,
+          appointment_date     TEXT NOT NULL,
+          start_time           TEXT NOT NULL,
+          end_time             TEXT,
+          status               TEXT NOT NULL DEFAULT 'Scheduled'
+                                CHECK (status IN ('Scheduled','Confirmed','Checked-In','Completed','Cancelled','No-Show')),
+          chief_complaint      TEXT,
+          notes                TEXT,
+          worklist_id          INTEGER REFERENCES dental_worklist(id) ON DELETE SET NULL,
+          created_by           TEXT,
+          created_by_user_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          created_at           DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          updated_at           DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        )
+      `);
+      await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_appt_date     ON dental_appointments(appointment_date)');
+      await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_appt_provider ON dental_appointments(provider, appointment_date)');
+      await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_appt_status   ON dental_appointments(status)');
+      console.log('✅ SQLite Schema Migration: dental_appointments table ensured.');
+    } catch (err) {
+      if (!err.message?.includes('already exists')) {
+        console.error('❌ dental_appointments migration error:', err.message);
+      }
+    }
+
   })();
 }
 

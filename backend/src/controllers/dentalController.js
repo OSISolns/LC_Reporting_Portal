@@ -369,6 +369,21 @@ exports.updateWorklistStatus = async (req, res, next) => {
       [status, id]
     );
 
+    // Bridge back: if this worklist entry originated from a booked appointment,
+    // reflect the real-world outcome on the appointment record too.
+    const apptStatus =
+      status === 'Discharged' ? 'Completed' :
+      status === 'No Show'    ? 'No-Show'   :
+      status === 'Cancelled'  ? 'Cancelled' : null;
+    if (apptStatus) {
+      try {
+        await db.query(
+          `UPDATE dental_appointments SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE worklist_id = ?`,
+          [apptStatus, id]
+        );
+      } catch (bridgeErr) { /* non-fatal — appointment linkage is best-effort */ }
+    }
+
     await logAction(req, 'DENTAL_WORKLIST_STATUS', 'dental_worklist', id, { status });
     res.json({ success: true, message: `Status set to "${status}".` });
   } catch (err) { next(err); }
@@ -469,6 +484,255 @@ exports.deleteChart = async (req, res, next) => {
     await db.query('DELETE FROM dental_charts WHERE id = ?', [id]);
     await logAction(req, 'DENTAL_CHART_DELETE', 'dental_charts', id, {});
     res.json({ success: true, message: 'Chart deleted.' });
+  } catch (err) { next(err); }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DENTAL APPOINTMENTS — Forward-looking scheduling
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Default a missing end_time to 30 minutes after start_time (both "HH:MM").
+const addMinutesToTime = (timeStr, minutes) => {
+  const [h, m] = timeStr.split(':').map(Number);
+  const total = h * 60 + m + minutes;
+  const wrapped = ((total % 1440) + 1440) % 1440;
+  const hh = String(Math.floor(wrapped / 60)).padStart(2, '0');
+  const mm = String(wrapped % 60).padStart(2, '0');
+  return `${hh}:${mm}`;
+};
+
+// ─── List appointments (date / range / provider / status filters) ────────────
+exports.listAppointments = async (req, res, next) => {
+  try {
+    const { date, from, to, provider, status } = req.query;
+    const clauses = [];
+    const params = [];
+
+    if (date) {
+      clauses.push('appointment_date = ?');
+      params.push(date);
+    } else if (from && to) {
+      clauses.push('appointment_date >= ? AND appointment_date <= ?');
+      params.push(from, to);
+    } else {
+      clauses.push("appointment_date >= date('now', 'weekday 0', '-7 days')");
+    }
+    if (provider) {
+      clauses.push('provider = ?');
+      params.push(provider);
+    }
+    if (status) {
+      clauses.push('status = ?');
+      params.push(status);
+    }
+
+    const { rows } = await db.query(
+      `SELECT * FROM dental_appointments
+       WHERE ${clauses.join(' AND ')}
+       ORDER BY appointment_date ASC, start_time ASC`,
+      params
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+// ─── Appointment stats (counts per status for a date/range) ──────────────────
+exports.getAppointmentStats = async (req, res, next) => {
+  try {
+    const { date, from, to } = req.query;
+    let dateFilter = "WHERE date(appointment_date) = date('now')";
+    const params = [];
+
+    if (date) {
+      dateFilter = 'WHERE appointment_date = ?';
+      params.push(date);
+    } else if (from && to) {
+      dateFilter = 'WHERE appointment_date >= ? AND appointment_date <= ?';
+      params.push(from, to);
+    }
+
+    const { rows } = await db.query(
+      `SELECT
+         appointment_date,
+         COUNT(*) AS total,
+         SUM(CASE WHEN status = 'Scheduled'  THEN 1 ELSE 0 END) AS scheduled,
+         SUM(CASE WHEN status = 'Confirmed'  THEN 1 ELSE 0 END) AS confirmed,
+         SUM(CASE WHEN status = 'Checked-In' THEN 1 ELSE 0 END) AS checked_in,
+         SUM(CASE WHEN status = 'Completed'  THEN 1 ELSE 0 END) AS completed,
+         SUM(CASE WHEN status = 'Cancelled'  THEN 1 ELSE 0 END) AS cancelled,
+         SUM(CASE WHEN status = 'No-Show'    THEN 1 ELSE 0 END) AS no_show
+       FROM dental_appointments
+       ${dateFilter}
+       GROUP BY appointment_date`,
+      params
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+// ─── Create appointment (with soft conflict check) ────────────────────────────
+exports.createAppointment = async (req, res, next) => {
+  try {
+    const {
+      patient_id, patient_name, appointment_type, provider,
+      appointment_date, start_time, end_time, chief_complaint, notes, force,
+    } = req.body;
+
+    if (!patient_name || !appointment_type || !appointment_date || !start_time) {
+      return res.status(400).json({
+        success: false,
+        message: 'patient_name, appointment_type, appointment_date, and start_time are required.',
+      });
+    }
+
+    const resolvedEnd = end_time || addMinutesToTime(start_time, 30);
+
+    if (provider && !force) {
+      const { rows: conflicts } = await db.query(
+        `SELECT * FROM dental_appointments
+         WHERE provider = ? AND appointment_date = ?
+           AND status NOT IN ('Cancelled', 'No-Show')
+           AND start_time < ? AND ? < end_time`,
+        [provider, appointment_date, resolvedEnd, start_time]
+      );
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: `${provider} already has an appointment overlapping this time.`,
+          data: { conflicts },
+        });
+      }
+    }
+
+    await db.query(
+      `INSERT INTO dental_appointments
+         (patient_id, patient_name, appointment_type, provider,
+          appointment_date, start_time, end_time, chief_complaint, notes,
+          created_by, created_by_user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        patient_id || null, patient_name, appointment_type, provider || null,
+        appointment_date, start_time, resolvedEnd, chief_complaint || null, notes || null,
+        req.user?.full_name || null, req.user?.id || null,
+      ]
+    );
+
+    const { rows } = await db.query('SELECT id FROM dental_appointments ORDER BY id DESC LIMIT 1');
+    const newId = rows[0]?.id;
+    await logAction(req, 'DENTAL_APPOINTMENT_CREATE', 'dental_appointments', newId, { patient_name, appointment_date, start_time });
+    res.status(201).json({ success: true, message: 'Appointment booked.', data: { id: newId } });
+  } catch (err) { next(err); }
+};
+
+// ─── Update appointment (full edit / reschedule) ──────────────────────────────
+exports.updateAppointment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      patient_id, patient_name, appointment_type, provider,
+      appointment_date, start_time, end_time, chief_complaint, notes, force,
+    } = req.body;
+
+    const resolvedEnd = end_time || addMinutesToTime(start_time, 30);
+
+    if (provider && !force) {
+      const { rows: conflicts } = await db.query(
+        `SELECT * FROM dental_appointments
+         WHERE provider = ? AND appointment_date = ? AND id != ?
+           AND status NOT IN ('Cancelled', 'No-Show')
+           AND start_time < ? AND ? < end_time`,
+        [provider, appointment_date, id, resolvedEnd, start_time]
+      );
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: `${provider} already has an appointment overlapping this time.`,
+          data: { conflicts },
+        });
+      }
+    }
+
+    await db.query(
+      `UPDATE dental_appointments SET
+         patient_id = ?, patient_name = ?, appointment_type = ?, provider = ?,
+         appointment_date = ?, start_time = ?, end_time = ?,
+         chief_complaint = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        patient_id || null, patient_name, appointment_type, provider || null,
+        appointment_date, start_time, resolvedEnd,
+        chief_complaint || null, notes || null, id,
+      ]
+    );
+
+    await logAction(req, 'DENTAL_APPOINTMENT_UPDATE', 'dental_appointments', id, {});
+    res.json({ success: true, message: 'Appointment updated.' });
+  } catch (err) { next(err); }
+};
+
+// ─── Update status only (fast action) ─────────────────────────────────────────
+exports.updateAppointmentStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const VALID = ['Scheduled', 'Confirmed', 'Checked-In', 'Completed', 'Cancelled', 'No-Show'];
+    if (!VALID.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status value.' });
+    }
+
+    await db.query(
+      `UPDATE dental_appointments SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [status, id]
+    );
+
+    await logAction(req, 'DENTAL_APPOINTMENT_STATUS', 'dental_appointments', id, { status });
+    res.json({ success: true, message: `Status set to "${status}".` });
+  } catch (err) { next(err); }
+};
+
+// ─── Check in: bridge an appointment into today's walk-in worklist ───────────
+exports.checkInAppointment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query('SELECT * FROM dental_appointments WHERE id = ?', [id]);
+    const appt = rows[0];
+    if (!appt) {
+      return res.status(404).json({ success: false, message: 'Appointment not found.' });
+    }
+
+    await db.query(
+      `INSERT INTO dental_worklist
+         (patient_id, patient_name, appointment_type, provider,
+          scheduled_time, appointment_date, chief_complaint, notes,
+          reported_by, reported_by_user_id)
+       VALUES (?, ?, ?, ?, ?, date('now'), ?, ?, ?, ?)`,
+      [
+        appt.patient_id, appt.patient_name, appt.appointment_type, appt.provider,
+        appt.start_time, appt.chief_complaint, appt.notes,
+        req.user?.full_name || null, req.user?.id || null,
+      ]
+    );
+    const { rows: wl } = await db.query('SELECT id FROM dental_worklist ORDER BY id DESC LIMIT 1');
+    const worklistId = wl[0]?.id;
+
+    await db.query(
+      `UPDATE dental_appointments SET status = 'Checked-In', worklist_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [worklistId, id]
+    );
+
+    await logAction(req, 'DENTAL_APPOINTMENT_CHECKIN', 'dental_appointments', id, { worklist_id: worklistId });
+    res.json({ success: true, message: 'Patient checked in to today\'s worklist.', data: { worklist_id: worklistId } });
+  } catch (err) { next(err); }
+};
+
+// ─── Delete appointment ────────────────────────────────────────────────────────
+exports.deleteAppointment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM dental_appointments WHERE id = ?', [id]);
+    await logAction(req, 'DENTAL_APPOINTMENT_DELETE', 'dental_appointments', id, {});
+    res.json({ success: true, message: 'Appointment removed.' });
   } catch (err) { next(err); }
 };
 
