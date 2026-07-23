@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { listCharts, getChart, saveChart, deleteChart, generateDentalAiNote } from '../../api/dental';
 import { getPatientByPid, searchPatients } from '../../api/patients';
 import { useAuth } from '../../context/AuthContext';
+import LuminaDentalAiPrescriber from '../../components/dental/LuminaDentalAiPrescriber';
 
 // ─── DENTAL CONDITIONS DICTIONARY ─────────────────────────────────────────────
 const CONDITIONS = {
@@ -351,6 +352,7 @@ export default function DentalCharting() {
 
   // History & Load States
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [showAiPrescriber, setShowAiPrescriber] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingPatient, setLoadingPatient] = useState(false);
@@ -895,6 +897,13 @@ export default function DentalCharting() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setShowAiPrescriber(true)}
+            className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl transition-all font-bold text-xs shadow-xs cursor-pointer"
+          >
+            <Sparkles size={15} />
+            <span>Lumina AI Prescriber</span>
+          </button>
           <button
             onClick={handlePrintChart}
             className="flex items-center gap-2 px-3.5 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-100 transition-all font-semibold bg-white text-xs shadow-xs"
@@ -1586,6 +1595,11 @@ export default function DentalCharting() {
         </AnimatePresence>
       </div>
 
+      <LuminaDentalAiPrescriber
+        isOpen={showAiPrescriber}
+        onClose={() => setShowAiPrescriber(false)}
+        patientName={patientName}
+      />
     </div>
   );
 }

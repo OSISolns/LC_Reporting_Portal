@@ -6,7 +6,7 @@ import {
   BarChart3, AlertCircle, CheckCircle2, Filter, Download,
   Loader2, RefreshCw, Stethoscope, ChevronLeft, ChevronRight,
   CalendarDays, Building2, Wrench, Coins, UserCheck, Truck,
-  CheckCircle, Layers, ArrowRight, FileText
+  CheckCircle, Layers, ArrowRight, FileText, Sparkles
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -17,6 +17,8 @@ import {
   updateDentalCase, deleteDentalCase,
 } from '../../api/dental';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
+import DentalLabOdontogram from '../../components/dental/DentalLabOdontogram';
+import LuminaDentalAiPrescriber from '../../components/dental/LuminaDentalAiPrescriber';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const WORK_TYPES = ['Acrylic Work', 'Metal & Ceramic', 'CAD-CAM', 'Other'];
@@ -109,9 +111,17 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [activeModalTab, setActiveModalTab] = useState('info'); // 'info' | 'odontogram'
+  const [odontogramMap, setOdontogramMap] = useState({});
 
   useEffect(() => {
     if (editCase) {
+      let parsedOdontogram = {};
+      try {
+        parsedOdontogram = typeof editCase.odontogram_data === 'string' ? JSON.parse(editCase.odontogram_data) : (editCase.odontogram_data || {});
+      } catch (e) {}
+
+      setOdontogramMap(parsedOdontogram);
       setForm({
         received_date: editCase.received_date?.slice(0, 10) || '',
         required_date: editCase.required_date?.slice(0, 10) || '',
@@ -130,12 +140,14 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         reported_by: editCase.reported_by || currentUser?.fullName || currentUser?.full_name || currentUser?.name || '',
       });
     } else {
+      setOdontogramMap({});
       setForm({
         ...EMPTY_FORM,
         received_date: format(new Date(), 'yyyy-MM-dd'),
         reported_by: currentUser?.fullName || currentUser?.full_name || currentUser?.name || '',
       });
     }
+    setActiveModalTab('info');
     setErrors({});
   }, [editCase, isOpen, currentUser]);
 
@@ -171,7 +183,11 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
     if (!validate()) return;
     setSaving(true);
     try {
-      await onSave(form);
+      const payload = {
+        ...form,
+        odontogram_data: odontogramMap
+      };
+      await onSave(payload);
     } finally {
       setSaving(false);
     }
@@ -211,29 +227,68 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.94, opacity: 0 }}
           transition={{ type: 'spring', damping: 22 }}
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+          className={`bg-white rounded-3xl shadow-2xl w-full transition-all duration-300 max-h-[90vh] flex flex-col ${
+            activeModalTab === 'odontogram' ? 'max-w-4xl' : 'max-w-2xl'
+          }`}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-slate-100 gap-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-rose-50 rounded-xl flex items-center justify-center">
                 <ClipboardList size={18} className="text-rose-500" />
               </div>
               <div>
-                <h2 className="text-base font-black text-slate-800">
+                <h2 className="text-base font-black text-slate-800 m-0">
                   {editCase ? 'Edit Prosthetics Case' : 'Log New Prosthetics Case'}
                 </h2>
-                <p className="text-[11px] text-slate-400">Dental Lab Work Order &amp; Fabrication Stage</p>
+                <p className="text-[11px] text-slate-400 m-0">Dental Lab Work Order &amp; Fabrication Stage</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition">
+
+            {/* Modal Tabs */}
+            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setActiveModalTab('info')}
+                className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                  activeModalTab === 'info' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Case Specifications
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModalTab('odontogram')}
+                className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeModalTab === 'odontogram' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Wrench size={13} />
+                <span>FDI Odontogram</span>
+                {Object.keys(odontogramMap).length > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center">
+                    {Object.keys(odontogramMap).length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400">
               <X size={18} />
             </button>
           </div>
 
           {/* Body */}
           <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-            {/* Section: Dates */}
+            {activeModalTab === 'odontogram' ? (
+              <DentalLabOdontogram
+                odontogramData={odontogramMap}
+                onChange={setOdontogramMap}
+                patientName={form.patient_id}
+              />
+            ) : (
+              <React.Fragment>
+                {/* Section: Dates */}
             <div>
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
                 <CalendarDays size={12} /> Dates &amp; Status Stage
@@ -430,6 +485,8 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                 />
               </Field>
             </div>
+              </React.Fragment>
+            )}
           </form>
 
           {/* Footer */}
@@ -618,6 +675,7 @@ const DentalCasesLog = () => {
   const [stageFilter, setStageFilter] = useState('');
   
   const [showForm, setShowForm] = useState(false);
+  const [showAiPrescriber, setShowAiPrescriber] = useState(false);
   const [editCase, setEditCase] = useState(null);
   const [deliveryTarget, setDeliveryTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -938,6 +996,13 @@ const DentalCasesLog = () => {
             title="Refresh"
           >
             <RefreshCw size={16} />
+          </button>
+
+          <button
+            onClick={() => setShowAiPrescriber(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-bold rounded-xl transition shadow-sm shadow-indigo-200 cursor-pointer"
+          >
+            <Sparkles size={16} /> Lumina AI Prescriber
           </button>
 
           <button
@@ -1288,6 +1353,11 @@ const DentalCasesLog = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         caseRef={deleteTarget?.case_ref}
+      />
+
+      <LuminaDentalAiPrescriber
+        isOpen={showAiPrescriber}
+        onClose={() => setShowAiPrescriber(false)}
       />
     </div>
   );

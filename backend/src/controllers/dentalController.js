@@ -87,6 +87,7 @@ exports.createCase = async (req, res, next) => {
       delivered_to,
       delivered_at,
       reported_by,
+      odontogram_data,
     } = req.body;
 
     // Basic validation
@@ -103,6 +104,7 @@ exports.createCase = async (req, res, next) => {
     const parsedFirst = parseNum(cost_per_first_unit);
     const parsedAdd = parseNum(cost_per_additional_unit);
     const parsedTotal = parseNum(total_cost);
+    const serializedOdontogram = odontogram_data ? (typeof odontogram_data === 'string' ? odontogram_data : JSON.stringify(odontogram_data)) : null;
 
     await db.query(
       `INSERT INTO dental_cases (
@@ -111,8 +113,8 @@ exports.createCase = async (req, res, next) => {
          work_done_other, technologist, units_quantity,
          cost_per_first_unit, cost_per_additional_unit, total_cost,
          status, delivery_notes, delivered_to, delivered_at,
-         reported_by, reported_by_user_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         reported_by, reported_by_user_id, odontogram_data
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         case_ref, received_date, required_date, work_command_origin || null,
         clinic_of_origin || null, clinician_name || null, patient_id || null,
@@ -122,7 +124,7 @@ exports.createCase = async (req, res, next) => {
         parsedAdd,
         parsedTotal,
         status || 'Received', delivery_notes || null, delivered_to || null, delivered_at || null,
-        reported_by || null, reported_by_user_id,
+        reported_by || null, reported_by_user_id, serializedOdontogram
       ]
     );
 
@@ -161,6 +163,7 @@ exports.updateCase = async (req, res, next) => {
       delivered_to,
       delivered_at,
       reported_by,
+      odontogram_data,
     } = req.body;
 
     // Fetch existing case to preserve unpassed fields
@@ -172,6 +175,9 @@ exports.updateCase = async (req, res, next) => {
 
     const updatedStatus = status !== undefined ? status : (current.status || 'Received');
     const updatedDeliveredAt = delivered_at !== undefined ? delivered_at : (updatedStatus === 'Delivered' ? (current.delivered_at || new Date().toISOString()) : current.delivered_at);
+    const serializedOdontogram = odontogram_data !== undefined 
+      ? (typeof odontogram_data === 'string' ? odontogram_data : JSON.stringify(odontogram_data))
+      : current.odontogram_data;
 
     await db.query(
       `UPDATE dental_cases SET
@@ -181,7 +187,7 @@ exports.updateCase = async (req, res, next) => {
          units_quantity = ?, cost_per_first_unit = ?,
          cost_per_additional_unit = ?, total_cost = ?,
          status = ?, delivery_notes = ?, delivered_to = ?, delivered_at = ?,
-         reported_by = ?, updated_at = CURRENT_TIMESTAMP
+         reported_by = ?, odontogram_data = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
         received_date !== undefined ? received_date : current.received_date,
@@ -202,6 +208,7 @@ exports.updateCase = async (req, res, next) => {
         delivered_to !== undefined ? delivered_to : current.delivered_to,
         updatedDeliveredAt,
         reported_by !== undefined ? reported_by : current.reported_by,
+        serializedOdontogram,
         id,
       ]
     );

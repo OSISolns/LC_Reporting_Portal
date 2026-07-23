@@ -1,6 +1,7 @@
 'use strict';
 const {
   suggestMedications,
+  suggestDentalMedications,
   generateAssessmentComments,
   generateProgressNote,
   generateSBAR,
@@ -21,6 +22,16 @@ exports.suggestMedications = (req, res, next) => {
       return res.status(400).json({ success: false, message: 'medications array is required' });
     }
     const data = suggestMedications(medications.filter(Boolean));
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
+};
+
+// POST /api/ai/clinical/dental-medications
+// Body: { condition, procedure, allergies, toothData, severity }
+exports.suggestDentalMedications = (req, res, next) => {
+  try {
+    const { condition, procedure, allergies, toothData, severity } = req.body;
+    const data = suggestDentalMedications({ condition, procedure, allergies, toothData, severity });
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };
