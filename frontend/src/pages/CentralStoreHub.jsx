@@ -419,7 +419,25 @@ export default function CentralStoreHub() {
       }
 
       const itemDept = item.department ? item.department.toUpperCase() : 'GENERAL STORE';
-      const matchDept = activeDept === 'All Departments' || itemDept === activeDept.toUpperCase();
+      const itemStorage = item.storage ? item.storage.toUpperCase() : '';
+      const itemNameUpper = item.name ? item.name.toUpperCase() : '';
+
+      let matchDept = false;
+      if (activeDept === 'All Departments') {
+        matchDept = true;
+      } else if (activeDept === 'DENTAL CLINIC') {
+        const isExplicitLab = itemStorage.includes('LAB') ||
+          ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET'].some(k => itemNameUpper.includes(k));
+        matchDept = (itemDept.includes('DENTAL') || itemDept.includes('CLINIC')) && !isExplicitLab;
+      } else if (activeDept === 'DENTAL LAB') {
+        const isLabItem = itemStorage.includes('LAB') ||
+          ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET', 'DENTURE', 'CROWN'].some(k => itemNameUpper.includes(k));
+        matchDept = itemDept.includes('DENTAL LAB') || (itemDept.includes('DENTAL') && isLabItem);
+      } else if (activeDept === 'DENTAL') {
+        matchDept = itemDept.includes('DENTAL');
+      } else {
+        matchDept = itemDept === activeDept.toUpperCase() || itemDept.includes(activeDept.toUpperCase());
+      }
 
       const matchSearch = !searchTerm ||
         item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
