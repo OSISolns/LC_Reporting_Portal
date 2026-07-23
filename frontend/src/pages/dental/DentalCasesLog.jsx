@@ -6,7 +6,7 @@ import {
   BarChart3, AlertCircle, CheckCircle2, Filter, Download,
   Loader2, RefreshCw, Stethoscope, ChevronLeft, ChevronRight,
   CalendarDays, Building2, Wrench, Coins, UserCheck, Truck,
-  CheckCircle, Layers, ArrowRight, FileText
+  CheckCircle, Layers, ArrowRight, FileText, Eye
 } from 'lucide-react';
 import { format, parseISO, subDays, startOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -17,6 +17,7 @@ import {
   updateDentalCase, deleteDentalCase,
 } from '../../api/dental';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
+import { getPatientByPid } from '../../api/patients';
 import DentalLabOdontogram from '../../components/dental/DentalLabOdontogram';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -70,6 +71,40 @@ const EMPTY_FORM = {
   total_cost: '', status: 'Received', reported_by: '',
 };
 
+const parseCaseOdontogram = (raw) => {
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw) || {}; } catch { return {}; }
+};
+
+// A case must have a fully-completed odontogram before it can be marked
+// Delivered — returns a human-readable blocking reason, or null if clear.
+const getOdontogramIncompleteReason = (caseItem) => {
+  const map = parseCaseOdontogram(caseItem?.odontogram_data);
+  const entries = Object.values(map);
+  if (entries.length === 0) {
+    return `Case ${caseItem?.case_ref || ''} has no prosthetic/replacement work logged in the FDI Odontogram yet — add it in the Prosthetics FDI Odontogram tab before marking delivered.`;
+  }
+  const pending = entries.filter(e => e.status !== 'Completed');
+  if (pending.length > 0) {
+    return `Case ${caseItem?.case_ref || ''} has ${pending.length} of ${entries.length} odontogram unit(s) still "${pending[0].status || 'Planning'}" — mark every unit Completed in the FDI Odontogram tab before delivering.`;
+  }
+  return null;
+};
+
+// Summarizes a case's odontogram for the table row badge — what's logged,
+// and whether every unit has reached "Completed".
+const getOdontogramSummary = (caseItem) => {
+  const map = parseCaseOdontogram(caseItem?.odontogram_data);
+  const entries = Object.values(map);
+  const completed = entries.filter(e => e.status === 'Completed').length;
+  return {
+    count: entries.length,
+    completed,
+    allComplete: entries.length > 0 && completed === entries.length,
+  };
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, sub, colorClass = 'text-rose-500', bgClass = 'bg-rose-50' }) => (
   <motion.div
@@ -107,6 +142,62 @@ const StageBadge = ({ status }) => {
     </span>
   );
 };
+
+// Surfaces what's logged in the case's FDI Odontogram right on the case row —
+// unit count plus a Complete/Partial/None state — and opens the full detail
+// view (graphical mouth drawing + unit table) on click.
+const OdontogramBadge = ({ caseItem, onClick }) => {
+  const { count, completed, allComplete } = getOdontogramSummary(caseItem);
+
+  if (count === 0) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+        title="No odontogram logged yet — click to view/open"
+      >
+        <Layers size={11} /> No odontogram
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+        allComplete
+          ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+          : 'text-amber-700 bg-amber-50 hover:bg-amber-100'
+      }`}
+      title="View odontogram details"
+    >
+      <Layers size={11} /> {completed}/{count} units {allComplete ? 'complete' : 'in progress'}
+    </button>
+  );
+};
+
+// A stable, module-level component — defining this inside CaseFormModal's
+// render body would give it a new identity on every keystroke, forcing React
+// to remount (and lose focus on) every field after each character typed.
+const Field = ({ label, type = 'text', required, children, hint, value, error, onChange }) => (
+  <div>
+    <label className="block text-xs font-semibold text-slate-600 mb-1">
+      {label} {required && <span className="text-rose-500">*</span>}
+    </label>
+    {children || (
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        className={`w-full px-3 py-2 text-sm rounded-xl border ${error ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-white'} focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
+      />
+    )}
+    {hint && <p className="text-[10px] text-slate-400 mt-0.5">{hint}</p>}
+    {error && <p className="text-[11px] text-rose-500 mt-0.5">{error}</p>}
+  </div>
+);
 
 // ─── Form Modal ───────────────────────────────────────────────────────────────
 const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
@@ -197,24 +288,6 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
 
   if (!isOpen) return null;
 
-  const Field = ({ label, name, type = 'text', required, children, hint }) => (
-    <div>
-      <label className="block text-xs font-semibold text-slate-600 mb-1">
-        {label} {required && <span className="text-rose-500">*</span>}
-      </label>
-      {children || (
-        <input
-          type={type}
-          value={form[name]}
-          onChange={set(name)}
-          className={`w-full px-3 py-2 text-sm rounded-xl border ${errors[name] ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-white'} focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
-        />
-      )}
-      {hint && <p className="text-[10px] text-slate-400 mt-0.5">{hint}</p>}
-      {errors[name] && <p className="text-[11px] text-rose-500 mt-0.5">{errors[name]}</p>}
-    </div>
-  );
-
   return (
     <AnimatePresence>
       <motion.div
@@ -258,8 +331,14 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                 <CalendarDays size={12} /> Dates &amp; Status Stage
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Field label="Received Date" name="received_date" type="date" required />
-                <Field label="Target Delivery Date" name="required_date" type="date" required />
+                <Field
+                  label="Received Date" type="date" required
+                  value={form.received_date} error={errors.received_date} onChange={set('received_date')}
+                />
+                <Field
+                  label="Target Delivery Date" type="date" required
+                  value={form.required_date} error={errors.required_date} onChange={set('required_date')}
+                />
                 <Field label="Manufacturing Stage" name="status">
                   <select
                     value={form.status}
@@ -342,7 +421,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
                 <Wrench size={12} /> Prosthetics Work Details
               </p>
-              <Field label="Work Done / Prosthesis Type" name="work_done" required>
+              <Field label="Work Done / Prosthesis Type" required error={errors.work_done}>
                 <div className="relative">
                   <select
                     value={form.work_done}
@@ -362,7 +441,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
 
               {form.work_done === 'Other' && (
                 <div className="mt-3">
-                  <Field label="Specify Work Done" name="work_done_other" required>
+                  <Field label="Specify Work Done" required error={errors.work_done_other}>
                     <input
                       type="text"
                       placeholder="Describe prosthesis specification…"
@@ -393,7 +472,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                 <Coins size={12} /> Units &amp; Costing
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Units Quantity" name="units_quantity" required>
+                <Field label="Units Quantity" required error={errors.units_quantity}>
                   <input
                     type="number"
                     min="1"
@@ -626,6 +705,78 @@ const DeleteConfirm = ({ isOpen, onClose, onConfirm, caseRef }) => {
   );
 };
 
+// ─── Odontogram Detail / Mouth Drawing View Modal ─────────────────────────────
+// Read-only view of a case's FDI Odontogram — reuses DentalLabOdontogram's own
+// graphical arch drawing (anatomical crown/root SVGs colored by status, "X"
+// graphic on missing/edentulous teeth), stats and logged-units table, so the
+// "realistic drawing of the prosthetics fixed into the mouth" stays a single
+// source of truth with the editable workspace instead of a second renderer.
+const OdontogramViewModal = ({ isOpen, onClose, caseItem }) => {
+  const [patient, setPatient] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen || !caseItem?.patient_id) {
+      setPatient(null);
+      return;
+    }
+    getPatientByPid(caseItem.patient_id)
+      .then(({ data }) => setPatient(data?.data || null))
+      .catch(() => setPatient(null));
+  }, [isOpen, caseItem?.patient_id]);
+
+  if (!isOpen || !caseItem) return null;
+  const odontogramMap = parseCaseOdontogram(caseItem.odontogram_data);
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2.5 sm:p-4"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
+        <motion.div
+          initial={{ scale: 0.94, y: 20, opacity: 0 }}
+          animate={{ scale: 1, y: 0, opacity: 1 }}
+          exit={{ scale: 0.94, opacity: 0 }}
+          transition={{ type: 'spring', damping: 22 }}
+          className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-3xl max-h-[95vh] sm:max-h-[90vh] flex flex-col"
+        >
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center shrink-0">
+                <Layers size={18} className="text-indigo-500" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-base font-black text-slate-800 m-0 truncate">
+                  Odontogram Details — {caseItem.case_ref}
+                </h2>
+                <p className="text-[11px] text-slate-400 m-0 truncate">
+                  {patient?.full_name || (caseItem.patient_id ? `PID: ${caseItem.patient_id}` : 'No PID linked')}
+                  {patient?.full_name && caseItem.patient_id ? ` (PID: ${caseItem.patient_id})` : ''}
+                  {' • '}{caseItem.clinician_name || 'Dr. Dental'}
+                  {caseItem.clinic_of_origin ? ` • ${caseItem.clinic_of_origin}` : ''}
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400 cursor-pointer shrink-0">
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="overflow-y-auto flex-1 p-4 sm:p-6">
+            <DentalLabOdontogram
+              odontogramData={odontogramMap}
+              readOnly
+              patientName={patient?.full_name || caseItem.clinician_name || ''}
+              caseRef={caseItem.case_ref}
+            />
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 const DentalCasesLog = () => {
   const { user } = useAuth();
@@ -643,6 +794,7 @@ const DentalCasesLog = () => {
   const [editCase, setEditCase] = useState(null);
   const [deliveryTarget, setDeliveryTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [viewOdontogramCase, setViewOdontogramCase] = useState(null);
   
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
@@ -701,7 +853,13 @@ const DentalCasesLog = () => {
   const handleUpdateStage = async (caseId, newStatus) => {
     if (newStatus === 'Delivered') {
       const target = cases.find(c => c.id === caseId);
-      if (target) setDeliveryTarget(target);
+      if (!target) return;
+      const blockedReason = getOdontogramIncompleteReason(target);
+      if (blockedReason) {
+        toast.error(blockedReason, { duration: 6000 });
+        return;
+      }
+      setDeliveryTarget(target);
       return;
     }
     try {
@@ -714,8 +872,22 @@ const DentalCasesLog = () => {
     }
   };
 
+  const handleRequestDelivery = (caseItem) => {
+    const blockedReason = getOdontogramIncompleteReason(caseItem);
+    if (blockedReason) {
+      toast.error(blockedReason, { duration: 6000 });
+      return;
+    }
+    setDeliveryTarget(caseItem);
+  };
+
   const handleConfirmDelivery = async (deliveryPayload) => {
     if (!deliveryTarget) return;
+    const blockedReason = getOdontogramIncompleteReason(deliveryTarget);
+    if (blockedReason) {
+      toast.error(blockedReason, { duration: 6000 });
+      throw new Error(blockedReason);
+    }
     await updateDentalCase(deliveryTarget.id, deliveryPayload);
     fetchCases();
     fetchStats();
@@ -1198,6 +1370,7 @@ const DentalCasesLog = () => {
                       <td className="px-4 py-3">
                         <WorkTypeBadge type={c.work_done} />
                         {c.technologist && <p className="m-0 text-[10px] text-slate-400 mt-1">Tech: {c.technologist}</p>}
+                        <OdontogramBadge caseItem={c} onClick={() => setViewOdontogramCase(c)} />
                       </td>
 
                       {/* Interactive Stage Pipeline */}
@@ -1244,7 +1417,7 @@ const DentalCasesLog = () => {
                           </div>
                         ) : (
                           <button
-                            onClick={() => setDeliveryTarget(c)}
+                            onClick={() => handleRequestDelivery(c)}
                             className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 rounded-lg text-[10px] font-bold transition flex items-center gap-1 border border-slate-200 cursor-pointer"
                           >
                             <Truck size={12} /> Mark Delivered
@@ -1338,6 +1511,12 @@ const DentalCasesLog = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         caseRef={deleteTarget?.case_ref}
+      />
+
+      <OdontogramViewModal
+        isOpen={!!viewOdontogramCase}
+        onClose={() => setViewOdontogramCase(null)}
+        caseItem={viewOdontogramCase}
       />
     </div>
   );
