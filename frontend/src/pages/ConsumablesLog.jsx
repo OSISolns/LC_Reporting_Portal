@@ -258,7 +258,12 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   }, [userDept, formDept, defaultDeptName, departments, distributedStock, masterItems, generalStoreDept]);
 
   const requisitionItems = useMemo(() => {
+    const activeD = userDept ? userDept.id : (filterDept || formDept);
+    const activeDeptObj = departments.find(d => String(d.id) === String(activeD));
+    const activeDeptName = (activeDeptObj?.name || defaultDeptName || '').toUpperCase();
     const gsId = generalStoreDept ? String(generalStoreDept.id) : '134';
+    const isGS = String(activeD) === gsId || activeDeptName === 'GENERAL STORE' || (!activeD && isAdmin);
+
     const gsStockMap = new Map();
     for (const row of distributedStock) {
       if (String(row.department_id) === gsId || row.department === 'GENERAL STORE') {
@@ -270,18 +275,42 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     const list = [];
     if (masterItems && masterItems.length > 0) {
       for (const item of masterItems) {
-        const gsQty = gsStockMap.get(item.id) || 0;
-        list.push({
-          item_id: item.id,
-          name: item.name,
-          unit: item.unit_of_measure,
-          category: item.category || 'medical_supplies',
-          available: gsQty,
-        });
+        const itemDeptName = (item.department || '').toUpperCase();
+        const itemStorage = (item.storage || '').toUpperCase();
+        const itemNameUpper = (item.name || '').toUpperCase();
+
+        let matchesDept = false;
+        if (isGS) {
+          matchesDept = true;
+        } else if (activeDeptName === 'DENTAL CLINIC') {
+          const isExplicitLab = itemStorage.includes('LAB') ||
+            ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET'].some(k => itemNameUpper.includes(k));
+          matchesDept = (itemDeptName.includes('DENTAL') || itemDeptName.includes('CLINIC')) && !isExplicitLab;
+        } else if (activeDeptName === 'DENTAL LAB') {
+          const isLabItem = itemStorage.includes('LAB') ||
+            ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET', 'DENTURE', 'CROWN'].some(k => itemNameUpper.includes(k));
+          matchesDept = itemDeptName.includes('DENTAL LAB') || (itemDeptName.includes('DENTAL') && isLabItem);
+        } else if (activeDeptName === 'DENTAL') {
+          matchesDept = itemDeptName.includes('DENTAL');
+        } else if (activeDeptName) {
+          matchesDept = itemDeptName.includes(activeDeptName) || activeDeptName.includes(itemDeptName);
+        }
+
+        if (matchesDept) {
+          const gsQty = Number(item.quantity || 0) || gsStockMap.get(item.id) || 0;
+          list.push({
+            item_id: item.id,
+            name: item.name,
+            unit: item.unit_of_measure || 'pcs',
+            category: item.category || 'medical_supplies',
+            available: gsQty,
+            department: item.department || activeDeptName
+          });
+        }
       }
     }
     return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [masterItems, distributedStock, generalStoreDept]);
+  }, [masterItems, distributedStock, userDept, filterDept, formDept, defaultDeptName, departments, generalStoreDept, isAdmin]);
 
   const selectedItem = deptStockItems.find(i => String(i.item_id) === String(formItemId));
 
