@@ -271,14 +271,13 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                   />
                 </Field>
                 <Field label="Clinic of Origin" name="clinic_of_origin">
-                  <select
+                  <input
+                    type="text"
+                    placeholder="e.g. Legacy Dental Clinic, Polyclinic, External Clinic…"
                     value={form.clinic_of_origin}
                     onChange={set('clinic_of_origin')}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
-                  >
-                    <option value="">— Select clinic —</option>
-                    {CLINICS.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
+                  />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
