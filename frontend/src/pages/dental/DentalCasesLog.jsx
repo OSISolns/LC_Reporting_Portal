@@ -6,9 +6,9 @@ import {
   BarChart3, AlertCircle, CheckCircle2, Filter, Download,
   Loader2, RefreshCw, Stethoscope, ChevronLeft, ChevronRight,
   CalendarDays, Building2, Wrench, Coins, UserCheck, Truck,
-  CheckCircle, Layers, ArrowRight, FileText, Sparkles
+  CheckCircle, Layers, ArrowRight, FileText
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, subDays, startOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
 import { useAuth } from '../../context/AuthContext';
@@ -18,15 +18,15 @@ import {
 } from '../../api/dental';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
 import DentalLabOdontogram from '../../components/dental/DentalLabOdontogram';
-import LuminaDentalAiPrescriber from '../../components/dental/LuminaDentalAiPrescriber';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const WORK_TYPES = ['Acrylic Work', 'Metal & Ceramic', 'CAD-CAM', 'Other'];
+const WORK_TYPES = ['Acrylic Work', 'Metal & Ceramic', 'CAD-CAM', 'Trays', 'Other'];
 
 const WORK_TYPE_COLORS = {
   'Acrylic Work':   { bg: 'bg-sky-50',    text: 'text-sky-700',    border: 'border-sky-200',    dot: 'bg-sky-500'    },
   'Metal & Ceramic':{ bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200',  dot: 'bg-amber-500'  },
   'CAD-CAM':        { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', dot: 'bg-violet-500' },
+  'Trays':          { bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200',   dot: 'bg-teal-500'   },
   'Other':          { bg: 'bg-slate-50',  text: 'text-slate-600',  border: 'border-slate-200',  dot: 'bg-slate-400'  },
 };
 
@@ -54,10 +54,12 @@ const CLINICS = [
   'External Referral', 'Other',
 ];
 
-const PERIODS = [
-  { key: 'daily',   label: 'Today' },
-  { key: 'weekly',  label: 'This Week' },
-  { key: 'monthly', label: 'This Month' },
+const todayStr = () => format(new Date(), 'yyyy-MM-dd');
+
+const DATE_PRESETS = [
+  { key: 'today',   label: 'Today',      from: () => todayStr(),                                to: () => todayStr() },
+  { key: 'week',    label: 'This Week',  from: () => format(subDays(new Date(), 6), 'yyyy-MM-dd'), to: () => todayStr() },
+  { key: 'month',   label: 'This Month', from: () => format(startOfMonth(new Date()), 'yyyy-MM-dd'), to: () => todayStr() },
 ];
 
 const EMPTY_FORM = {
@@ -219,7 +221,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2.5 sm:p-4"
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <motion.div
@@ -227,35 +229,35 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.94, opacity: 0 }}
           transition={{ type: 'spring', damping: 22 }}
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl transition-all duration-300 max-h-[90vh] flex flex-col"
+          className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl transition-all duration-300 max-h-[95vh] sm:max-h-[90vh] flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-rose-50 rounded-xl flex items-center justify-center">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 bg-rose-50 rounded-xl flex items-center justify-center shrink-0">
                 <ClipboardList size={18} className="text-rose-500" />
               </div>
-              <div>
-                <h2 className="text-base font-black text-slate-800 m-0">
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-base font-black text-slate-800 m-0 truncate">
                   {editCase ? 'Edit Prosthetics Case' : 'Log New Prosthetics Case'}
                 </h2>
-                <p className="text-[11px] text-slate-400 m-0">Dental Lab Work Order &amp; Fabrication Stage</p>
+                <p className="text-[11px] text-slate-400 m-0 truncate">Dental Lab Work Order &amp; Fabrication Stage</p>
               </div>
             </div>
 
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400 cursor-pointer">
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400 cursor-pointer shrink-0">
               <X size={18} />
             </button>
           </div>
 
           {/* Body */}
-          <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+          <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-5">
                 {/* Section: Dates */}
             <div>
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
                 <CalendarDays size={12} /> Dates &amp; Status Stage
               </p>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Field label="Received Date" name="received_date" type="date" required />
                 <Field label="Target Delivery Date" name="required_date" type="date" required />
                 <Field label="Manufacturing Stage" name="status">
@@ -277,15 +279,17 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
                 <Building2 size={12} /> Work Origin &amp; Patient
               </p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Work Command Origin" name="work_command_origin">
-                  <input
-                    type="text"
-                    placeholder="e.g. Internal, External, Dr Request…"
+                  <select
                     value={form.work_command_origin}
                     onChange={set('work_command_origin')}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
-                  />
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
+                  >
+                    <option value="">— Select origin —</option>
+                    <option value="Internal">Internal</option>
+                    <option value="External">External</option>
+                  </select>
                 </Field>
                 <Field label="Clinic of Origin" name="clinic_of_origin">
                   <input
@@ -297,7 +301,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                   />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <Field label="Clinician Name" name="clinician_name">
                   <input
                     type="text"
@@ -388,7 +392,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
                 <Coins size={12} /> Units &amp; Costing
               </p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Units Quantity" name="units_quantity" required>
                   <input
                     type="number"
@@ -409,7 +413,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                   />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <Field label="Cost per Add. Unit (RWF)" name="cost_per_additional_unit">
                   <input
                     type="number"
@@ -450,18 +454,18 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
           </form>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-60 shadow-sm shadow-rose-200 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-60 shadow-sm shadow-rose-200 cursor-pointer"
             >
               {saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
               {editCase ? 'Update Case' : 'Log Case'}
@@ -625,7 +629,8 @@ const DeleteConfirm = ({ isOpen, onClose, onConfirm, caseRef }) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 const DentalCasesLog = () => {
   const { user } = useAuth();
-  const [period, setPeriod] = useState('monthly');
+  const [dateFrom, setDateFrom] = useState(todayStr());
+  const [dateTo, setDateTo] = useState(todayStr());
   const [cases, setCases] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -635,7 +640,6 @@ const DentalCasesLog = () => {
   const [stageFilter, setStageFilter] = useState('');
   
   const [showForm, setShowForm] = useState(false);
-  const [showAiPrescriber, setShowAiPrescriber] = useState(false);
   const [editCase, setEditCase] = useState(null);
   const [deliveryTarget, setDeliveryTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -648,26 +652,26 @@ const DentalCasesLog = () => {
   const fetchCases = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await listDentalCases({ period });
+      const { data } = await listDentalCases({ from: dateFrom, to: dateTo });
       setCases(data.data || []);
     } catch {
       toast.error('Failed to load cases.');
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [dateFrom, dateTo]);
 
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const { data } = await getDentalStats(period);
+      const { data } = await getDentalStats({ from: dateFrom, to: dateTo });
       setStats(data.data);
     } catch {
       /* silently fail stats */
     } finally {
       setStatsLoading(false);
     }
-  }, [period]);
+  }, [dateFrom, dateTo]);
 
   useEffect(() => {
     fetchCases();
@@ -754,7 +758,9 @@ const DentalCasesLog = () => {
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const formatCurrency = (v) => v != null ? `RWF ${Number(v).toLocaleString()}` : '—';
-  const periodLabel = PERIODS.find(p => p.key === period)?.label || '';
+  const periodLabel = dateFrom === dateTo
+    ? (dateFrom === todayStr() ? 'Today' : format(parseISO(dateFrom), 'dd MMM yyyy'))
+    : `${format(parseISO(dateFrom), 'dd MMM yyyy')} – ${format(parseISO(dateTo), 'dd MMM yyyy')}`;
 
   const handleExportXlsx = async () => {
     if (filtered.length === 0) {
@@ -959,13 +965,6 @@ const DentalCasesLog = () => {
           </button>
 
           <button
-            onClick={() => setShowAiPrescriber(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-bold rounded-xl transition shadow-sm shadow-indigo-200 cursor-pointer"
-          >
-            <Sparkles size={16} /> Lumina AI Prescriber
-          </button>
-
-          <button
             onClick={handleExportXlsx}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition shadow-sm cursor-pointer"
           >
@@ -983,22 +982,48 @@ const DentalCasesLog = () => {
         </div>
       </div>
 
-      {/* Period & Pipeline Filters */}
+      {/* Date Range & Pipeline Filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl w-fit">
-          {PERIODS.map(p => (
-            <button
-              key={p.key}
-              onClick={() => setPeriod(p.key)}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
-                period === p.key
-                  ? 'bg-white text-rose-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* From → To Date Range */}
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5">
+            <Calendar size={13} className="text-slate-400 shrink-0" />
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              className="text-xs font-bold text-slate-700 outline-none bg-transparent cursor-pointer"
+            />
+            <span className="text-slate-300 text-xs">→</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+              className="text-xs font-bold text-slate-700 outline-none bg-transparent cursor-pointer"
+            />
+          </div>
+
+          {/* Quick Presets */}
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl w-fit">
+            {DATE_PRESETS.map(p => {
+              const isActive = dateFrom === p.from() && dateTo === p.to();
+              return (
+                <button
+                  key={p.key}
+                  onClick={() => { setDateFrom(p.from()); setDateTo(p.to()); setPage(1); }}
+                  className={`px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                    isActive
+                      ? 'bg-white text-rose-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Manufacturing Stage Quick Filters */}
@@ -1313,11 +1338,6 @@ const DentalCasesLog = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         caseRef={deleteTarget?.case_ref}
-      />
-
-      <LuminaDentalAiPrescriber
-        isOpen={showAiPrescriber}
-        onClose={() => setShowAiPrescriber(false)}
       />
     </div>
   );

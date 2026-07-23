@@ -231,10 +231,14 @@ exports.deleteCase = async (req, res, next) => {
 // ─── 6. Stats / summary ───────────────────────────────────────────────────────
 exports.getStats = async (req, res, next) => {
   try {
-    const { period = 'monthly' } = req.query;
+    const { period = 'monthly', from, to } = req.query;
     let dateFilter = '';
+    let params = [];
 
-    if (period === 'daily') {
+    if (from && to) {
+      dateFilter = `WHERE received_date >= ? AND received_date <= ?`;
+      params = [from, to];
+    } else if (period === 'daily') {
       dateFilter = `WHERE date(received_date) = date('now')`;
     } else if (period === 'weekly') {
       dateFilter = `WHERE received_date >= date('now', '-6 days')`;
@@ -248,7 +252,8 @@ exports.getStats = async (req, res, next) => {
          SUM(units_quantity) AS total_units,
          SUM(COALESCE(total_cost, 0)) AS total_revenue
        FROM dental_cases
-       ${dateFilter}`
+       ${dateFilter}`,
+      params
     );
 
     const { rows: byWorkType } = await db.query(
@@ -256,7 +261,8 @@ exports.getStats = async (req, res, next) => {
        FROM dental_cases
        ${dateFilter}
        GROUP BY work_done
-       ORDER BY count DESC`
+       ORDER BY count DESC`,
+      params
     );
 
     const { rows: byClinic } = await db.query(
@@ -265,7 +271,8 @@ exports.getStats = async (req, res, next) => {
        ${dateFilter}
        GROUP BY clinic_of_origin
        ORDER BY count DESC
-       LIMIT 10`
+       LIMIT 10`,
+      params
     );
 
     res.json({

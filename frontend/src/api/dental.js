@@ -2,7 +2,7 @@ import api from './axios';
 
 // ─── Prosthetics Cases (Dental Lab) ──────────────────────────────────────────
 export const listDentalCases          = (params) => api.get('/dental/cases', { params });
-export const getDentalStats           = (period) => api.get('/dental/cases/stats', { params: { period } });
+export const getDentalStats           = (params) => api.get('/dental/cases/stats', { params: typeof params === 'string' ? { period: params } : params });
 export const getDentalCase            = (id)     => api.get(`/dental/cases/${id}`);
 export const createDentalCase         = (data)   => api.post('/dental/cases', data);
 export const updateDentalCase         = (id, data) => api.put(`/dental/cases/${id}`, data);
