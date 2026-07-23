@@ -2272,6 +2272,8 @@ exports.getRequisitions = async (req, res) => {
   try {
     const { rows } = await db.query(`
       SELECT r.*, d.name as department_name, COUNT(ri.id) as items_count,
+        COALESCE(u.full_name, r.created_by_name, 'Unknown User') AS created_by_name,
+        u.username AS created_by_username,
         (SELECT json_group_array(json_object(
             'item_id', ri2.item_id,
             'item_name', mi.name,
@@ -2282,6 +2284,7 @@ exports.getRequisitions = async (req, res) => {
          WHERE ri2.requisition_id = r.id) AS items
       FROM requisitions r
       JOIN departments d ON r.department_id = d.id
+      LEFT JOIN users u ON r.created_by = u.id
       LEFT JOIN requisition_items ri ON r.id = ri.requisition_id
       GROUP BY r.id
       ORDER BY r.created_at DESC
@@ -2300,9 +2303,12 @@ exports.createRequisition = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Department and at least one item are required.' });
     }
 
+    const createdBy = req.user ? req.user.id : null;
+    const createdByName = req.user ? (req.user.full_name || req.user.username || 'Staff User') : 'Staff User';
+
     const { rows: newReq } = await db.query(
-      "INSERT INTO requisitions (department_id, urgency, status, notes) VALUES ($1, $2, 'Pending', $3) RETURNING id",
-      [department_id, urgency || 'Normal', notes || null]
+      "INSERT INTO requisitions (department_id, urgency, status, notes, created_by, created_by_name) VALUES ($1, $2, 'Pending', $3, $4, $5) RETURNING id",
+      [department_id, urgency || 'Normal', notes || null, createdBy, createdByName]
     );
     const reqId = newReq[0].id;
 

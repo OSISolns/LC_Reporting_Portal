@@ -1603,6 +1603,7 @@ export default function CentralStoreHub() {
                       <tr className="bg-slate-50 text-slate-500 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
                         <th className="py-3.5 px-6 rounded-l-xl">#</th>
                         <th className="py-3.5 px-4">Department</th>
+                        <th className="py-3.5 px-4">Requested By</th>
                         <th className="py-3.5 px-4">Date</th>
                         <th className="py-3.5 px-4">Urgency</th>
                         <th className="py-3.5 px-4 text-center">Items</th>
@@ -1613,7 +1614,7 @@ export default function CentralStoreHub() {
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700 bg-white">
                       {filteredReqs.length === 0 ? (
-                        <EmptyRow cols={8} message="No requisitions match your filters." />
+                        <EmptyRow cols={9} message="No requisitions match your filters." />
                       ) : (
                         filteredReqs.map((req, i) => (
                           <tr key={req.id} className={`hover:bg-slate-50/40 transition-colors relative ${
@@ -1633,6 +1634,9 @@ export default function CentralStoreHub() {
                               <span className={`px-2.5 py-1 text-[10px] font-black rounded-lg border uppercase tracking-wider ${getDeptColorBg(req.department_name)} ${getDeptColorText(req.department_name)}`}>
                                 {req.department_name || '—'}
                               </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-slate-800 text-xs font-bold">
+                              {req.created_by_name || 'Staff User'}
                             </td>
                             <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap font-normal">{fmt(req.created_at)}</td>
                             <td className="py-3.5 px-4">
@@ -1992,10 +1996,10 @@ export default function CentralStoreHub() {
               </div>
 
               {/* Department Meta */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 flex items-center gap-3">
-                  <div className={`p-3 rounded-xl ${getDeptColorBg(selectedReq?.department_name)} shadow-inner shrink-0`}>
-                    <Building size={20} className={getDeptColorText(selectedReq?.department_name)} />
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-3.5 flex items-center gap-2.5">
+                  <div className={`p-2.5 rounded-xl ${getDeptColorBg(selectedReq?.department_name)} shadow-inner shrink-0`}>
+                    <Building size={18} className={getDeptColorText(selectedReq?.department_name)} />
                   </div>
                   <div>
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Requesting Dept</span>
@@ -2004,13 +2008,25 @@ export default function CentralStoreHub() {
                     </span>
                   </div>
                 </div>
+
+                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-3.5 flex items-center gap-2.5">
+                  <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-700 shadow-inner shrink-0">
+                    <TrendingUp size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Initiated By</span>
+                    <span className="text-xs font-black text-slate-800 tracking-wide truncate block max-w-[110px]" title={selectedReq?.created_by_name || 'Staff User'}>
+                      {selectedReq?.created_by_name || 'Staff User'}
+                    </span>
+                  </div>
+                </div>
                 
-                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 flex items-center gap-3">
-                  <div className={`p-3 rounded-xl shadow-inner shrink-0 ${
+                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-3.5 flex items-center gap-2.5">
+                  <div className={`p-2.5 rounded-xl shadow-inner shrink-0 ${
                     selectedReq?.urgency === 'Critical' ? 'bg-red-50 text-red-655' :
                     selectedReq?.urgency === 'High' ? 'bg-orange-50 text-orange-600' : 'bg-slate-100 text-slate-500'
                   }`}>
-                    <AlertCircle size={20} />
+                    <AlertCircle size={18} />
                   </div>
                   <div>
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Urgency Level</span>

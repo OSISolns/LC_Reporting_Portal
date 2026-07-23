@@ -1694,6 +1694,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                           <tr>
                             <th className="text-left px-4 py-3">Date</th>
                             <th className="text-left px-4 py-3">Department</th>
+                            <th className="text-left px-4 py-3">Initiated By</th>
                             <th className="text-left px-4 py-3">Items</th>
                             <th className="text-center px-4 py-3">Urgency</th>
                             <th className="text-center px-4 py-3">Status</th>
@@ -1709,6 +1710,9 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                   {new Date(req.created_at).toLocaleString()}
                                 </td>
                                 <td className="px-4 py-3 font-bold text-slate-700">{req.department_name || '—'}</td>
+                                <td className="px-4 py-3 font-bold text-slate-800 text-xs">
+                                  {req.created_by_name || 'Staff User'}
+                                </td>
                                 <td className="px-4 py-3 text-xs text-slate-600">
                                   {items.length > 0 ? (
                                     <div className="space-y-1">
