@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, X, ChevronDown, Pencil, Trash2, Calendar,
@@ -6,7 +7,7 @@ import {
   BarChart3, AlertCircle, CheckCircle2, Filter, Download,
   Loader2, RefreshCw, Stethoscope, ChevronLeft, ChevronRight,
   CalendarDays, Building2, Wrench, Coins, UserCheck, Truck,
-  CheckCircle, Layers, ArrowRight, FileText, Eye
+  CheckCircle, Layers, ArrowRight, FileText
 } from 'lucide-react';
 import { format, parseISO, subDays, startOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -18,7 +19,6 @@ import {
 } from '../../api/dental';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
 import { getPatientByPid } from '../../api/patients';
-import DentalLabOdontogram from '../../components/dental/DentalLabOdontogram';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const WORK_TYPES = ['Acrylic Work', 'Metal & Ceramic', 'CAD-CAM', 'Trays', 'Other'];
@@ -758,81 +758,10 @@ const DeleteConfirm = ({ isOpen, onClose, onConfirm, caseRef }) => {
   );
 };
 
-// ─── Odontogram Detail / Mouth Drawing View Modal ─────────────────────────────
-// Read-only view of a case's FDI Odontogram — reuses DentalLabOdontogram's own
-// graphical arch drawing (anatomical crown/root SVGs colored by status, "X"
-// graphic on missing/edentulous teeth), stats and logged-units table, so the
-// "realistic drawing of the prosthetics fixed into the mouth" stays a single
-// source of truth with the editable workspace instead of a second renderer.
-const OdontogramViewModal = ({ isOpen, onClose, caseItem }) => {
-  const [patient, setPatient] = useState(null);
-
-  useEffect(() => {
-    if (!isOpen || !caseItem?.patient_id) {
-      setPatient(null);
-      return;
-    }
-    getPatientByPid(caseItem.patient_id)
-      .then(({ data }) => setPatient(data?.data || null))
-      .catch(() => setPatient(null));
-  }, [isOpen, caseItem?.patient_id]);
-
-  if (!isOpen || !caseItem) return null;
-  const odontogramMap = parseCaseOdontogram(caseItem.odontogram_data);
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2.5 sm:p-4"
-        onClick={(e) => e.target === e.currentTarget && onClose()}
-      >
-        <motion.div
-          initial={{ scale: 0.94, y: 20, opacity: 0 }}
-          animate={{ scale: 1, y: 0, opacity: 1 }}
-          exit={{ scale: 0.94, opacity: 0 }}
-          transition={{ type: 'spring', damping: 22 }}
-          className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-5xl max-h-[95vh] sm:max-h-[90vh] flex flex-col"
-        >
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center shrink-0">
-                <Layers size={18} className="text-indigo-500" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-sm sm:text-base font-black text-slate-800 m-0 truncate">
-                  Odontogram Details — {caseItem.case_ref}
-                </h2>
-                <p className="text-[11px] text-slate-400 m-0 truncate">
-                  {patient?.full_name || (caseItem.patient_id ? `PID: ${caseItem.patient_id}` : 'No PID linked')}
-                  {patient?.full_name && caseItem.patient_id ? ` (PID: ${caseItem.patient_id})` : ''}
-                  {' • '}{caseItem.clinician_name || 'Dr. Dental'}
-                  {caseItem.clinic_of_origin ? ` • ${caseItem.clinic_of_origin}` : ''}
-                </p>
-              </div>
-            </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400 cursor-pointer shrink-0">
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="overflow-y-auto flex-1 p-4 sm:p-6">
-            <DentalLabOdontogram
-              odontogramData={odontogramMap}
-              readOnly
-              patientName={patient?.full_name || caseItem.clinician_name || ''}
-              caseRef={caseItem.case_ref}
-            />
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
-};
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 const DentalCasesLog = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState(todayStr());
   const [dateTo, setDateTo] = useState(todayStr());
   const [cases, setCases] = useState([]);
@@ -847,8 +776,7 @@ const DentalCasesLog = () => {
   const [editCase, setEditCase] = useState(null);
   const [deliveryTarget, setDeliveryTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [viewOdontogramCase, setViewOdontogramCase] = useState(null);
-  
+
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
 
@@ -1450,7 +1378,7 @@ const DentalCasesLog = () => {
                       <td className="px-4 py-3">
                         <WorkTypeBadge type={c.work_done} />
                         {c.technologist && <p className="m-0 text-[10px] text-slate-400 mt-1">Tech: {c.technologist}</p>}
-                        <OdontogramBadge caseItem={c} onClick={() => setViewOdontogramCase(c)} />
+                        <OdontogramBadge caseItem={c} onClick={() => navigate(`/dental/cases/${c.id}/odontogram`)} />
                       </td>
 
                       {/* Interactive Stage Pipeline */}
@@ -1591,12 +1519,6 @@ const DentalCasesLog = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         caseRef={deleteTarget?.case_ref}
-      />
-
-      <OdontogramViewModal
-        isOpen={!!viewOdontogramCase}
-        onClose={() => setViewOdontogramCase(null)}
-        caseItem={viewOdontogramCase}
       />
     </div>
   );

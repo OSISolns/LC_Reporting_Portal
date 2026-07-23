@@ -52,6 +52,7 @@ import ConsumablesLog from './pages/ConsumablesLog';
 import ImagingHub from './pages/imaging/ImagingHub';
 import LabHub from './pages/lab/LabHub';
 import DentalHub from './pages/dental/DentalHub';
+import OdontogramDetailsPage from './pages/dental/OdontogramDetailsPage';
 import PhysioHub from './pages/physio/PhysioHub';
 import OperationsHub from './pages/operations/OperationsHub';
 
@@ -134,6 +135,14 @@ function App() {
                 'admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'
               ]}>
                 <DentalHub />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/dental/cases/:id/odontogram" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'coo', 'medical_director', 'dental_lab_manager', 'dental_tech', 'dental_lab', 'dental_hod'
+              ]}>
+                <OdontogramDetailsPage />
               </ProtectedRoute>
             } />
 

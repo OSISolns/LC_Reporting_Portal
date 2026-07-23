@@ -9,11 +9,11 @@ import toast from 'react-hot-toast';
 import { suggestProstheticReplacement } from '../../api/dental';
 
 // ─── FDI Notation Teeth Definition ─────────────────────────────────────────────
-const PERMANENT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-const PERMANENT_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+export const PERMANENT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
+export const PERMANENT_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 
-const DECIDUOUS_UPPER = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
-const DECIDUOUS_LOWER = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
+export const DECIDUOUS_UPPER = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
+export const DECIDUOUS_LOWER = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
 
 export const PROSTHETIC_WORK_TYPES = [
   { id: 'Crown (Zirconia)', label: 'Zirconia Crown', category: 'Fixed Prosthetics', color: '#6366f1' },
@@ -420,8 +420,11 @@ export default function DentalLabOdontogram({
               const strNum = num.toString();
               const isSelected = selectedTooth === strNum;
               const work = toothMap[strNum];
-              const isMissing = work?.is_missing || work?.work_type === 'Declared Missing (To Be Replaced)';
+              // Once the replacement reaches "Completed" the prosthesis is
+              // physically in place, so the chart should stop drawing it as
+              // an empty/missing gap and show it as a normal logged tooth.
               const isCompleted = work?.status === 'Completed';
+              const isMissing = (work?.is_missing || work?.work_type === 'Declared Missing (To Be Replaced)') && !isCompleted;
               const isInProgress = work?.status === 'In-progress';
 
               return (
@@ -523,8 +526,11 @@ export default function DentalLabOdontogram({
               const strNum = num.toString();
               const isSelected = selectedTooth === strNum;
               const work = toothMap[strNum];
-              const isMissing = work?.is_missing || work?.work_type === 'Declared Missing (To Be Replaced)';
+              // Once the replacement reaches "Completed" the prosthesis is
+              // physically in place, so the chart should stop drawing it as
+              // an empty/missing gap and show it as a normal logged tooth.
               const isCompleted = work?.status === 'Completed';
+              const isMissing = (work?.is_missing || work?.work_type === 'Declared Missing (To Be Replaced)') && !isCompleted;
               const isInProgress = work?.status === 'In-progress';
 
               return (
