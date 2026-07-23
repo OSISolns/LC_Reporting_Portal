@@ -14,7 +14,7 @@ import ExcelJS from 'exceljs/dist/exceljs.min.js';
 import { useAuth } from '../../context/AuthContext';
 import {
   listDentalCases, getDentalStats, createDentalCase,
-  updateDentalCase, deleteDentalCase,
+  updateDentalCase, deleteDentalCase, listCharts,
 } from '../../api/dental';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
 import { getPatientByPid } from '../../api/patients';
@@ -68,7 +68,7 @@ const EMPTY_FORM = {
   clinic_of_origin: '', clinician_name: '', patient_id: '',
   work_done: '', work_done_other: '', technologist: '',
   units_quantity: 1, cost_per_first_unit: '', cost_per_additional_unit: '',
-  total_cost: '', status: 'Received', reported_by: '',
+  total_cost: '', status: 'Received', reported_by: '', linked_chart_id: '',
 };
 
 const parseCaseOdontogram = (raw) => {
@@ -206,6 +206,8 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
   const [errors, setErrors] = useState({});
   const [activeModalTab, setActiveModalTab] = useState('info'); // 'info' | 'odontogram'
   const [odontogramMap, setOdontogramMap] = useState({});
+  const [patientCharts, setPatientCharts] = useState([]);
+  const [loadingCharts, setLoadingCharts] = useState(false);
 
   useEffect(() => {
     if (editCase) {
@@ -231,6 +233,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         total_cost: editCase.total_cost ?? '',
         status: editCase.status || 'Received',
         reported_by: editCase.reported_by || currentUser?.fullName || currentUser?.full_name || currentUser?.name || '',
+        linked_chart_id: editCase.linked_chart_id || '',
       });
     } else {
       setOdontogramMap({});
@@ -243,6 +246,25 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
     setActiveModalTab('info');
     setErrors({});
   }, [editCase, isOpen, currentUser]);
+
+  // Whenever a patient is linked to this case, offer their existing clinical
+  // Odontology records (Dental Charting) so the case can be adhered to one.
+  // Debounced since patient_id updates on every keystroke while typing.
+  useEffect(() => {
+    if (!isOpen || !form.patient_id?.trim()) {
+      setPatientCharts([]);
+      return;
+    }
+    const pid = form.patient_id.trim();
+    setLoadingCharts(true);
+    const t = setTimeout(() => {
+      listCharts(pid)
+        .then(({ data }) => setPatientCharts(data?.data || []))
+        .catch(() => setPatientCharts([]))
+        .finally(() => setLoadingCharts(false));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [isOpen, form.patient_id]);
 
   const set = (k) => (e) => {
     const v = e.target.value;
@@ -414,6 +436,37 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                   />
                 </Field>
               </div>
+
+              {form.patient_id?.trim() && (
+                <div className="mt-4">
+                  <Field
+                    label="Adhere Clinical Odontology Record (Dental Charting)"
+                    hint={
+                      loadingCharts
+                        ? 'Looking up clinical charting records for this patient…'
+                        : patientCharts.length === 0
+                        ? 'No clinical Odontology chart found for this patient yet — one can still be logged in Dental Charting.'
+                        : `${patientCharts.length} chart record(s) found for PID ${form.patient_id.trim()}.`
+                    }
+                  >
+                    <select
+                      value={form.linked_chart_id || ''}
+                      onChange={set('linked_chart_id')}
+                      disabled={loadingCharts || patientCharts.length === 0}
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 bg-white outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <option value="">— No clinical chart linked —</option>
+                      {patientCharts.map((chart) => (
+                        <option key={chart.id} value={chart.id}>
+                          {chart.chart_date ? format(parseISO(chart.chart_date), 'dd MMM yyyy') : chart.chart_date}
+                          {chart.provider ? ` — ${chart.provider}` : ''}
+                          {chart.general_notes ? ` (${chart.general_notes.slice(0, 40)}${chart.general_notes.length > 40 ? '…' : ''})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+              )}
             </div>
 
             {/* Section: Work Done */}
@@ -954,35 +1007,37 @@ const DentalCasesLog = () => {
       sheet.getColumn(5).width = 20;  // Work Command Origin
       sheet.getColumn(6).width = 24;  // Clinician Name
       sheet.getColumn(7).width = 16;  // Patient ID
-      sheet.getColumn(8).width = 20;  // Work Done
-      sheet.getColumn(9).width = 24;  // Specification
-      sheet.getColumn(10).width = 20; // Technologist
-      sheet.getColumn(11).width = 24; // Manufacturing Stage
-      sheet.getColumn(12).width = 12; // Units
-      sheet.getColumn(13).width = 18; // Cost 1st Unit
-      sheet.getColumn(14).width = 18; // Cost Add. Unit
-      sheet.getColumn(15).width = 20; // Total Cost
-      sheet.getColumn(16).width = 16; // Delivery Status
-      sheet.getColumn(17).width = 24; // Delivered To
-      sheet.getColumn(18).width = 22; // Delivered Date
-      sheet.getColumn(19).width = 35; // Delivery Notes
-      sheet.getColumn(20).width = 20; // Reported By
+      sheet.getColumn(8).width = 26;  // Linked Clinical Chart
+      sheet.getColumn(9).width = 20;  // Work Done
+      sheet.getColumn(10).width = 24; // Specification
+      sheet.getColumn(11).width = 20; // Technologist
+      sheet.getColumn(12).width = 24; // Manufacturing Stage
+      sheet.getColumn(13).width = 22; // Odontogram Status
+      sheet.getColumn(14).width = 12; // Units
+      sheet.getColumn(15).width = 18; // Cost 1st Unit
+      sheet.getColumn(16).width = 18; // Cost Add. Unit
+      sheet.getColumn(17).width = 20; // Total Cost
+      sheet.getColumn(18).width = 16; // Delivery Status
+      sheet.getColumn(19).width = 24; // Delivered To
+      sheet.getColumn(20).width = 22; // Delivered Date
+      sheet.getColumn(21).width = 35; // Delivery Notes
+      sheet.getColumn(22).width = 20; // Reported By
 
       // Title Banner Row 1
       const titleCell = sheet.getCell('A1');
       titleCell.value = 'LEGACY CLINICS & DIAGNOSTICS';
-      sheet.mergeCells('A1:T1');
+      sheet.mergeCells('A1:V1');
       titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
-      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '881337' } }; // Rose-900
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '312E81' } }; // Indigo-900
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet.getRow(1).height = 36;
 
       // Subtitle Banner Row 2
       const subCell = sheet.getCell('A2');
       subCell.value = 'PROSTHETICS CASES MANUFACTURING & DELIVERY REPORT';
-      sheet.mergeCells('A2:T2');
+      sheet.mergeCells('A2:V2');
       subCell.font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FFFFFF' } };
-      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'BE123C' } }; // Rose-700
+      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4338CA' } }; // Indigo-700
       subCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet.getRow(2).height = 26;
 
@@ -991,7 +1046,7 @@ const DentalCasesLog = () => {
       const totalUnitsSum = filtered.reduce((acc, c) => acc + (Number(c.units_quantity) || 0), 0);
       const totalRevenueSum = filtered.reduce((acc, c) => acc + (Number(c.total_cost) || 0), 0);
       metaCell.value = `Export Date: ${new Date().toLocaleString()} | Period: ${periodLabel} | Total Cases: ${filtered.length} | Total Units: ${totalUnitsSum} | Total Value: RWF ${totalRevenueSum.toLocaleString()}`;
-      sheet.mergeCells('A3:T3');
+      sheet.mergeCells('A3:V3');
       metaCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '475569' } };
       metaCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet.getRow(3).height = 20;
@@ -1001,24 +1056,25 @@ const DentalCasesLog = () => {
       // Table Header Row 5
       const headers = [
         'Case Ref #', 'Received Date', 'Target Delivery', 'Clinic of Origin', 'Work Origin',
-        'Clinician Name', 'Patient ID', 'Work Done', 'Specification', 'Technologist',
-        'Manufacturing Stage', 'Units Qty', '1st Unit Cost', 'Add. Unit Cost', 'Total Cost (RWF)',
+        'Clinician Name', 'Patient ID', 'Linked Clinical Chart', 'Work Done', 'Specification', 'Technologist',
+        'Manufacturing Stage', 'Odontogram Status', 'Units Qty', '1st Unit Cost', 'Add. Unit Cost', 'Total Cost (RWF)',
         'Delivery Status', 'Delivered To', 'Delivered Date & Time', 'Delivery Notes', 'Reported By'
       ];
+      const NUMERIC_COLS = [14, 15, 16, 17];
       const headerRow = sheet.getRow(5);
       headerRow.height = 28;
       headers.forEach((h, colIdx) => {
         const cell = headerRow.getCell(colIdx + 1);
         cell.value = h;
         cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '9F1239' } }; // Rose-800
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '3730A3' } }; // Indigo-800
         cell.alignment = {
-          horizontal: [12, 13, 14, 15].includes(colIdx + 1) ? 'right' : 'left',
+          horizontal: NUMERIC_COLS.includes(colIdx + 1) ? 'right' : 'left',
           vertical: 'middle'
         };
         cell.border = {
-          top: { style: 'thin', color: { argb: '9F1239' } },
-          bottom: { style: 'medium', color: { argb: '881337' } }
+          top: { style: 'thin', color: { argb: '3730A3' } },
+          bottom: { style: 'medium', color: { argb: '312E81' } }
         };
       });
 
@@ -1028,6 +1084,14 @@ const DentalCasesLog = () => {
         const r = sheet.getRow(currentRow);
         r.height = 22;
 
+        const odontogramSummary = getOdontogramSummary(c);
+        const odontogramLabel = odontogramSummary.count === 0
+          ? 'No odontogram'
+          : `${odontogramSummary.completed}/${odontogramSummary.count} ${odontogramSummary.allComplete ? 'Completed' : 'In Progress'}`;
+        const linkedChartLabel = c.linked_chart_date
+          ? `${format(parseISO(c.linked_chart_date), 'dd MMM yyyy')}${c.linked_chart_provider ? ` — ${c.linked_chart_provider}` : ''}`
+          : '—';
+
         r.getCell(1).value = c.case_ref || '—';
         r.getCell(2).value = c.received_date ? c.received_date.slice(0, 10) : '—';
         r.getCell(3).value = c.required_date ? c.required_date.slice(0, 10) : '—';
@@ -1035,35 +1099,37 @@ const DentalCasesLog = () => {
         r.getCell(5).value = c.work_command_origin || '—';
         r.getCell(6).value = c.clinician_name || '—';
         r.getCell(7).value = c.patient_id || '—';
-        r.getCell(8).value = c.work_done || '—';
-        r.getCell(9).value = c.work_done_other || '—';
-        r.getCell(10).value = c.technologist || '—';
-        r.getCell(11).value = c.status || 'Received';
-        r.getCell(12).value = Number(c.units_quantity || 1);
-        r.getCell(13).value = c.cost_per_first_unit != null ? Number(c.cost_per_first_unit) : 0;
-        r.getCell(14).value = c.cost_per_additional_unit != null ? Number(c.cost_per_additional_unit) : 0;
-        r.getCell(15).value = c.total_cost != null ? Number(c.total_cost) : 0;
-        r.getCell(16).value = c.status === 'Delivered' ? 'Delivered' : (c.status === 'Completed' ? 'Ready' : 'In Production');
-        r.getCell(17).value = c.delivered_to || '—';
-        r.getCell(18).value = c.delivered_at ? new Date(c.delivered_at).toLocaleString() : '—';
-        r.getCell(19).value = c.delivery_notes || '—';
-        r.getCell(20).value = c.reported_by || c.reported_by_name || '—';
+        r.getCell(8).value = linkedChartLabel;
+        r.getCell(9).value = c.work_done || '—';
+        r.getCell(10).value = c.work_done_other || '—';
+        r.getCell(11).value = c.technologist || '—';
+        r.getCell(12).value = c.status || 'Received';
+        r.getCell(13).value = odontogramLabel;
+        r.getCell(14).value = Number(c.units_quantity || 1);
+        r.getCell(15).value = c.cost_per_first_unit != null ? Number(c.cost_per_first_unit) : 0;
+        r.getCell(16).value = c.cost_per_additional_unit != null ? Number(c.cost_per_additional_unit) : 0;
+        r.getCell(17).value = c.total_cost != null ? Number(c.total_cost) : 0;
+        r.getCell(18).value = c.status === 'Delivered' ? 'Delivered' : (c.status === 'Completed' ? 'Ready' : 'In Production');
+        r.getCell(19).value = c.delivered_to || '—';
+        r.getCell(20).value = c.delivered_at ? new Date(c.delivered_at).toLocaleString() : '—';
+        r.getCell(21).value = c.delivery_notes || '—';
+        r.getCell(22).value = c.reported_by || c.reported_by_name || '—';
 
-        for (let col = 1; col <= 20; col++) {
+        for (let col = 1; col <= 22; col++) {
           const cell = r.getCell(col);
           cell.font = { name: 'Calibri', size: 10 };
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
 
-          if ([12, 13, 14, 15].includes(col)) {
+          if (NUMERIC_COLS.includes(col)) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
-            if (col >= 13) cell.numFmt = '#,##0';
-            if (col === 15) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '9F1239' } };
+            if (col >= 15) cell.numFmt = '#,##0';
+            if (col === 17) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '3730A3' } };
           } else {
             cell.alignment = { horizontal: 'left', vertical: 'middle' };
           }
         }
 
-        const stageCell = r.getCell(11);
+        const stageCell = r.getCell(12);
         if (c.status === 'Delivered') {
           stageCell.font = { color: { argb: '334155' }, bold: true };
         } else if (c.status === 'Completed') {
@@ -1074,6 +1140,12 @@ const DentalCasesLog = () => {
           stageCell.font = { color: { argb: '1D4ED8' }, bold: true };
         }
 
+        const odontogramCell = r.getCell(13);
+        odontogramCell.font = {
+          color: { argb: odontogramSummary.count === 0 ? '94A3B8' : (odontogramSummary.allComplete ? '047857' : 'B45309') },
+          bold: odontogramSummary.count > 0,
+        };
+
         currentRow++;
       });
 
@@ -1081,22 +1153,22 @@ const DentalCasesLog = () => {
       const totalRow = sheet.getRow(currentRow);
       totalRow.height = 26;
       totalRow.getCell(1).value = 'TOTAL SUMMARY';
-      sheet.mergeCells(`A${currentRow}:K${currentRow}`);
+      sheet.mergeCells(`A${currentRow}:M${currentRow}`);
 
-      totalRow.getCell(12).value = { formula: `=SUM(L6:L${currentRow - 1})` };
-      totalRow.getCell(15).value = { formula: `=SUM(O6:O${currentRow - 1})` };
+      totalRow.getCell(14).value = { formula: `=SUM(N6:N${currentRow - 1})` };
+      totalRow.getCell(17).value = { formula: `=SUM(Q6:Q${currentRow - 1})` };
 
-      for (let col = 1; col <= 20; col++) {
+      for (let col = 1; col <= 22; col++) {
         const cell = totalRow.getCell(col);
-        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '881337' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F2' } };
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '312E81' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EEF2FF' } }; // Indigo-50
         cell.border = {
-          top: { style: 'thin', color: { argb: 'BE123C' } },
-          bottom: { style: 'double', color: { argb: '881337' } }
+          top: { style: 'thin', color: { argb: '4338CA' } },
+          bottom: { style: 'double', color: { argb: '312E81' } }
         };
-        if ([12, 13, 14, 15].includes(col)) {
+        if (NUMERIC_COLS.includes(col)) {
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          if (col >= 13) cell.numFmt = '#,##0';
+          if (col >= 15) cell.numFmt = '#,##0';
         }
       }
 
@@ -1363,6 +1435,14 @@ const DentalCasesLog = () => {
                         {c.patient_id && (
                           <span className="inline-block mt-0.5 font-mono text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.2 rounded">
                             PID: {c.patient_id}
+                          </span>
+                        )}
+                        {c.linked_chart_date && (
+                          <span
+                            className="block mt-0.5 text-[10px] font-bold text-violet-600"
+                            title={`Adhered to Odontology chart dated ${c.linked_chart_date.slice(0, 10)}${c.linked_chart_provider ? ` by ${c.linked_chart_provider}` : ''}`}
+                          >
+                            📋 Chart: {format(parseISO(c.linked_chart_date), 'dd MMM yyyy')}
                           </span>
                         )}
                       </td>

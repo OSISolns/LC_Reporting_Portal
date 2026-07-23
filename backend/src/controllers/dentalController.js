@@ -32,9 +32,12 @@ exports.listCases = async (req, res, next) => {
 
     const { rows } = await db.query(
       `SELECT dc.*,
-              u.full_name AS reported_by_name
+              u.full_name AS reported_by_name,
+              ch.chart_date AS linked_chart_date,
+              ch.provider AS linked_chart_provider
        FROM   dental_cases dc
        LEFT JOIN users u ON u.id = dc.reported_by_user_id
+       LEFT JOIN dental_charts ch ON ch.id = dc.linked_chart_id
        ${dateFilter}
        ORDER  BY dc.created_at DESC`,
       params
@@ -49,9 +52,12 @@ exports.getCase = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { rows } = await db.query(
-      `SELECT dc.*, u.full_name AS reported_by_name
+      `SELECT dc.*, u.full_name AS reported_by_name,
+              ch.chart_date AS linked_chart_date,
+              ch.provider AS linked_chart_provider
        FROM   dental_cases dc
        LEFT JOIN users u ON u.id = dc.reported_by_user_id
+       LEFT JOIN dental_charts ch ON ch.id = dc.linked_chart_id
        WHERE  dc.id = ?`,
       [id]
     );
@@ -88,6 +94,7 @@ exports.createCase = async (req, res, next) => {
       delivered_at,
       reported_by,
       odontogram_data,
+      linked_chart_id,
     } = req.body;
 
     // Basic validation
@@ -113,8 +120,8 @@ exports.createCase = async (req, res, next) => {
          work_done_other, technologist, units_quantity,
          cost_per_first_unit, cost_per_additional_unit, total_cost,
          status, delivery_notes, delivered_to, delivered_at,
-         reported_by, reported_by_user_id, odontogram_data
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         reported_by, reported_by_user_id, odontogram_data, linked_chart_id
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         case_ref, received_date, required_date, work_command_origin || null,
         clinic_of_origin || null, clinician_name || null, patient_id || null,
@@ -124,7 +131,7 @@ exports.createCase = async (req, res, next) => {
         parsedAdd,
         parsedTotal,
         status || 'Received', delivery_notes || null, delivered_to || null, delivered_at || null,
-        reported_by || null, reported_by_user_id, serializedOdontogram
+        reported_by || null, reported_by_user_id, serializedOdontogram, parseNum(linked_chart_id)
       ]
     );
 
@@ -164,6 +171,7 @@ exports.updateCase = async (req, res, next) => {
       delivered_at,
       reported_by,
       odontogram_data,
+      linked_chart_id,
     } = req.body;
 
     // Fetch existing case to preserve unpassed fields
@@ -175,7 +183,7 @@ exports.updateCase = async (req, res, next) => {
 
     const updatedStatus = status !== undefined ? status : (current.status || 'Received');
     const updatedDeliveredAt = delivered_at !== undefined ? delivered_at : (updatedStatus === 'Delivered' ? (current.delivered_at || new Date().toISOString()) : current.delivered_at);
-    const serializedOdontogram = odontogram_data !== undefined 
+    const serializedOdontogram = odontogram_data !== undefined
       ? (typeof odontogram_data === 'string' ? odontogram_data : JSON.stringify(odontogram_data))
       : current.odontogram_data;
 
@@ -187,7 +195,7 @@ exports.updateCase = async (req, res, next) => {
          units_quantity = ?, cost_per_first_unit = ?,
          cost_per_additional_unit = ?, total_cost = ?,
          status = ?, delivery_notes = ?, delivered_to = ?, delivered_at = ?,
-         reported_by = ?, odontogram_data = ?, updated_at = CURRENT_TIMESTAMP
+         reported_by = ?, odontogram_data = ?, linked_chart_id = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
         received_date !== undefined ? received_date : current.received_date,
@@ -209,6 +217,7 @@ exports.updateCase = async (req, res, next) => {
         updatedDeliveredAt,
         reported_by !== undefined ? reported_by : current.reported_by,
         serializedOdontogram,
+        linked_chart_id !== undefined ? parseNum(linked_chart_id) : current.linked_chart_id,
         id,
       ]
     );
