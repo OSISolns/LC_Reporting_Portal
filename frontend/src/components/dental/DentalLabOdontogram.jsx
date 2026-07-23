@@ -139,7 +139,7 @@ export default function DentalLabOdontogram({
             </span>
             <div>
               <h3 className="text-base font-extrabold text-slate-800 tracking-tight m-0">
-                Dental Lab Prosthetics & Replacement Odontogram (FDI)
+                Dental Lab Prosthetics &amp; Replacement Odontogram (FDI)
               </h3>
               <p className="text-xs text-slate-500 m-0 font-medium">
                 {patientName ? `Prosthetic fabrication & edentulous replacement for ${patientName}` : 'Select a tooth on the FDI chart to plan crowns, bridges, dentures & declare missing teeth to replace.'}
@@ -176,7 +176,7 @@ export default function DentalLabOdontogram({
 
       {/* SUMMARY STATUS CHIPS */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex items-center justify-between">
           <div>
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Total Work Units</span>
             <span className="text-xl font-black text-slate-800">{totalUnits} units</span>
@@ -186,7 +186,7 @@ export default function DentalLabOdontogram({
           </span>
         </div>
 
-        <div className="bg-rose-50/60 border border-rose-200/80 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-rose-50/70 border border-rose-200/80 rounded-2xl p-3.5 flex items-center justify-between">
           <div>
             <span className="text-[10px] font-black uppercase tracking-wider text-rose-700 block">To Be Replaced</span>
             <span className="text-xl font-black text-rose-900">{missingReplacementUnits}</span>
@@ -196,7 +196,7 @@ export default function DentalLabOdontogram({
           </span>
         </div>
 
-        <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3.5 flex items-center justify-between">
           <div>
             <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 block">Planning</span>
             <span className="text-xl font-black text-amber-900">{planningUnits}</span>
@@ -206,7 +206,7 @@ export default function DentalLabOdontogram({
           </span>
         </div>
 
-        <div className="bg-indigo-50/60 border border-indigo-200/80 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-2xl p-3.5 flex items-center justify-between">
           <div>
             <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 block">In Production</span>
             <span className="text-xl font-black text-indigo-900">{inProgressUnits}</span>
@@ -216,7 +216,7 @@ export default function DentalLabOdontogram({
           </span>
         </div>
 
-        <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 flex items-center justify-between">
           <div>
             <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 block">Completed</span>
             <span className="text-xl font-black text-emerald-900">{completedUnits}</span>
@@ -227,15 +227,15 @@ export default function DentalLabOdontogram({
         </div>
       </div>
 
-      {/* GRAPHICAL FDI ODONTOGRAM CHART (SOLID PROSTHETIC ANATOMICAL UNITS) */}
-      <div className="bg-slate-900 rounded-3xl p-6 shadow-inner text-white space-y-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl" />
+      {/* GRAPHICAL FDI ODONTOGRAM CHART (LIGHT HIGH-CONTRAST COLORFUL THEME) */}
+      <div className="bg-gradient-to-b from-slate-50/90 via-indigo-50/30 to-purple-50/20 rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-6 relative overflow-hidden">
+        <div className="absolute -top-10 -right-10 w-72 h-72 bg-indigo-200/20 rounded-full blur-3xl" />
 
         {/* Quadrant Legend */}
-        <div className="flex items-center justify-between text-xs text-slate-400 font-mono pb-2 border-b border-slate-800">
-          <span>MAXILLARY (UPPER ARCH)</span>
-          <span className="text-[10px] text-indigo-300 font-extrabold uppercase tracking-widest bg-indigo-950/80 px-3 py-1 rounded-full border border-indigo-800">
-            Solid Tooth Units (No decay surfaces)
+        <div className="flex items-center justify-between text-xs font-bold text-slate-600 pb-3 border-b border-slate-200/80">
+          <span className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+            <span>MAXILLARY (UPPER ARCH)</span>
           </span>
         </div>
 
@@ -257,47 +257,51 @@ export default function DentalLabOdontogram({
                   onClick={() => setSelectedTooth(strNum)}
                   className={`relative group flex flex-col items-center p-2 rounded-2xl transition-all cursor-pointer border-2 ${
                     isSelected
-                      ? 'bg-indigo-600/30 border-indigo-400 ring-4 ring-indigo-500/30 scale-105 z-20'
+                      ? 'bg-indigo-50 border-indigo-600 ring-4 ring-indigo-500/20 scale-105 z-20 shadow-md'
                       : work
                       ? isMissing
-                        ? 'bg-rose-950/60 border-rose-500/80'
+                        ? 'bg-rose-50/90 border-rose-500 shadow-xs'
                         : isCompleted
-                        ? 'bg-emerald-950/60 border-emerald-500/80'
+                        ? 'bg-emerald-50/90 border-emerald-500 shadow-xs'
                         : isInProgress
-                        ? 'bg-indigo-950/60 border-indigo-500/80'
-                        : 'bg-amber-950/60 border-amber-500/80'
-                      : 'bg-slate-800/80 border-slate-700 hover:border-slate-500'
+                        ? 'bg-indigo-50/90 border-indigo-500 shadow-xs'
+                        : 'bg-amber-50/90 border-amber-500 shadow-xs'
+                      : 'bg-white border-slate-200/90 hover:border-slate-400 hover:shadow-xs'
                   }`}
-                  style={{ width: 54, height: 80 }}
+                  style={{ width: 54, height: 82 }}
                 >
-                  <span className="text-[11px] font-mono font-bold text-slate-300 mb-1">{num}</span>
+                  <span className={`text-[11px] font-mono font-black mb-1 ${
+                    isSelected ? 'text-indigo-700' : work ? 'text-slate-900' : 'text-slate-600'
+                  }`}>
+                    {num}
+                  </span>
 
                   {/* Solid Anatomical SVG Tooth Graphic */}
                   <div className="relative flex-1 flex items-center justify-center">
                     <svg width="34" height="42" viewBox="0 0 34 42" className="block">
                       {isMissing ? (
-                        /* EDENTULOUS REPLACEMENT GRAPHIC (Dashed pontic space) */
+                        /* EDENTULOUS REPLACEMENT GRAPHIC */
                         <g>
-                          <rect x="3" y="10" width="28" height="28" fill="none" stroke="#f43f5e" strokeWidth="2" strokeDasharray="3,3" rx="6" />
-                          <line x1="6" y1="13" x2="28" y2="35" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" />
-                          <line x1="28" y1="13" x2="6" y2="35" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" />
+                          <rect x="3" y="10" width="28" height="28" fill="#fff1f2" stroke="#f43f5e" strokeWidth="2" strokeDasharray="3,3" rx="6" />
+                          <line x1="7" y1="14" x2="27" y2="34" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" />
+                          <line x1="27" y1="14" x2="7" y2="34" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" />
                         </g>
                       ) : (
-                        /* SOLID PROSTHETIC TOOTH CROWN & ROOT (Whole Tooth Unit) */
+                        /* SOLID PROSTHETIC TOOTH CROWN & ROOT */
                         <g>
                           {/* Upper Root */}
                           <path
                             d="M 11 14 C 11 3, 17 1, 17 1 C 17 1, 23 3, 23 14 Z"
-                            fill={work ? (isCompleted ? '#10b981' : isInProgress ? '#6366f1' : '#f59e0b') : '#334155'}
-                            stroke={work ? '#ffffff' : '#64748b'}
-                            strokeWidth="1.2"
+                            fill={work ? (isCompleted ? '#34d399' : isInProgress ? '#818cf8' : '#fbbf24') : '#e2e8f0'}
+                            stroke={work ? (isCompleted ? '#059669' : isInProgress ? '#4338ca' : '#d97706') : '#94a3b8'}
+                            strokeWidth="1.3"
                           />
                           {/* Upper Solid Crown Unit */}
                           <rect
                             x="4" y="14" width="26" height="24" rx="5"
-                            fill={work ? (isCompleted ? '#059669' : isInProgress ? '#4f46e5' : '#d97706') : '#1e293b'}
-                            stroke={isSelected ? '#a5b4fc' : work ? '#ffffff' : '#475569'}
-                            strokeWidth="1.5"
+                            fill={work ? (isCompleted ? '#10b981' : isInProgress ? '#6366f1' : '#f59e0b') : '#ffffff'}
+                            stroke={isSelected ? '#4f46e5' : work ? (isCompleted ? '#047857' : isInProgress ? '#3730a3' : '#b45309') : '#64748b'}
+                            strokeWidth="1.8"
                           />
                         </g>
                       )}
@@ -305,8 +309,8 @@ export default function DentalLabOdontogram({
 
                     {/* Status Badge Tag */}
                     {work && (
-                      <span className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border border-white flex items-center justify-center text-[8px] font-black ${
-                        isMissing ? 'bg-rose-600 text-white' : isCompleted ? 'bg-emerald-500 text-white' : isInProgress ? 'bg-indigo-500 text-white animate-pulse' : 'bg-amber-500 text-slate-950'
+                      <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-black shadow-xs ${
+                        isMissing ? 'bg-rose-600 text-white' : isCompleted ? 'bg-emerald-600 text-white' : isInProgress ? 'bg-indigo-600 text-white animate-pulse' : 'bg-amber-500 text-white'
                       }`}>
                         {isMissing ? 'M' : isCompleted ? '✓' : isInProgress ? 'P' : '!'}
                       </span>
@@ -314,7 +318,9 @@ export default function DentalLabOdontogram({
                   </div>
 
                   {work && (
-                    <span className="text-[8px] font-black uppercase text-indigo-200 truncate w-full text-center mt-1">
+                    <span className={`text-[8px] font-black uppercase truncate w-full text-center mt-1 ${
+                      isMissing ? 'text-rose-700' : isCompleted ? 'text-emerald-800' : isInProgress ? 'text-indigo-800' : 'text-amber-800'
+                    }`}>
                       {isMissing ? 'REPLACE' : (work.shade || work.work_type?.split(' ')[0])}
                     </span>
                   )}
@@ -325,12 +331,12 @@ export default function DentalLabOdontogram({
         </div>
 
         {/* MID ARCH DIVIDER */}
-        <div className="flex items-center justify-center gap-4 text-[10px] font-mono text-slate-500 py-1 border-y border-slate-800">
-          <span>RIGHT QUADRANTS (Q1 & Q4)</span>
+        <div className="flex items-center justify-center gap-4 text-[11px] font-extrabold text-slate-500 py-1.5 border-y border-slate-200/80 bg-white/60 rounded-xl">
+          <span className="text-blue-700">RIGHT QUADRANTS (Q1 &amp; Q4)</span>
           <span className="w-2 h-2 rounded-full bg-indigo-500" />
-          <span>MIDLINE SEPARATION</span>
+          <span className="text-slate-700">MIDLINE SEPARATION</span>
           <span className="w-2 h-2 rounded-full bg-indigo-500" />
-          <span>LEFT QUADRANTS (Q2 & Q3)</span>
+          <span className="text-purple-700">LEFT QUADRANTS (Q2 &amp; Q3)</span>
         </div>
 
         {/* LOWER TEETH ROW */}
@@ -351,21 +357,23 @@ export default function DentalLabOdontogram({
                   onClick={() => setSelectedTooth(strNum)}
                   className={`relative group flex flex-col items-center p-2 rounded-2xl transition-all cursor-pointer border-2 ${
                     isSelected
-                      ? 'bg-indigo-600/30 border-indigo-400 ring-4 ring-indigo-500/30 scale-105 z-20'
+                      ? 'bg-indigo-50 border-indigo-600 ring-4 ring-indigo-500/20 scale-105 z-20 shadow-md'
                       : work
                       ? isMissing
-                        ? 'bg-rose-950/60 border-rose-500/80'
+                        ? 'bg-rose-50/90 border-rose-500 shadow-xs'
                         : isCompleted
-                        ? 'bg-emerald-950/60 border-emerald-500/80'
+                        ? 'bg-emerald-50/90 border-emerald-500 shadow-xs'
                         : isInProgress
-                        ? 'bg-indigo-950/60 border-indigo-500/80'
-                        : 'bg-amber-950/60 border-amber-500/80'
-                      : 'bg-slate-800/80 border-slate-700 hover:border-slate-500'
+                        ? 'bg-indigo-50/90 border-indigo-500 shadow-xs'
+                        : 'bg-amber-50/90 border-amber-500 shadow-xs'
+                      : 'bg-white border-slate-200/90 hover:border-slate-400 hover:shadow-xs'
                   }`}
-                  style={{ width: 54, height: 80 }}
+                  style={{ width: 54, height: 82 }}
                 >
                   {work && (
-                    <span className="text-[8px] font-black uppercase text-indigo-200 truncate w-full text-center mb-0.5">
+                    <span className={`text-[8px] font-black uppercase truncate w-full text-center mb-0.5 ${
+                      isMissing ? 'text-rose-700' : isCompleted ? 'text-emerald-800' : isInProgress ? 'text-indigo-800' : 'text-amber-800'
+                    }`}>
                       {isMissing ? 'REPLACE' : (work.shade || work.work_type?.split(' ')[0])}
                     </span>
                   )}
@@ -376,9 +384,9 @@ export default function DentalLabOdontogram({
                       {isMissing ? (
                         /* EDENTULOUS REPLACEMENT GRAPHIC */
                         <g>
-                          <rect x="3" y="4" width="28" height="28" fill="none" stroke="#f43f5e" strokeWidth="2" strokeDasharray="3,3" rx="6" />
-                          <line x1="6" y1="7" x2="28" y2="29" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" />
-                          <line x1="28" y1="7" x2="6" y2="29" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" />
+                          <rect x="3" y="4" width="28" height="28" fill="#fff1f2" stroke="#f43f5e" strokeWidth="2" strokeDasharray="3,3" rx="6" />
+                          <line x1="7" y1="8" x2="27" y2="28" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" />
+                          <line x1="27" y1="8" x2="7" y2="28" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" />
                         </g>
                       ) : (
                         /* SOLID PROSTHETIC TOOTH CROWN & ROOT */
@@ -386,16 +394,16 @@ export default function DentalLabOdontogram({
                           {/* Lower Crown */}
                           <rect
                             x="4" y="4" width="26" height="24" rx="5"
-                            fill={work ? (isCompleted ? '#059669' : isInProgress ? '#4f46e5' : '#d97706') : '#1e293b'}
-                            stroke={isSelected ? '#a5b4fc' : work ? '#ffffff' : '#475569'}
-                            strokeWidth="1.5"
+                            fill={work ? (isCompleted ? '#10b981' : isInProgress ? '#6366f1' : '#f59e0b') : '#ffffff'}
+                            stroke={isSelected ? '#4f46e5' : work ? (isCompleted ? '#047857' : isInProgress ? '#3730a3' : '#b45309') : '#64748b'}
+                            strokeWidth="1.8"
                           />
                           {/* Lower Root */}
                           <path
                             d="M 11 28 C 11 39, 17 41, 17 41 C 17 41, 23 39, 23 28 Z"
-                            fill={work ? (isCompleted ? '#10b981' : isInProgress ? '#6366f1' : '#f59e0b') : '#334155'}
-                            stroke={work ? '#ffffff' : '#64748b'}
-                            strokeWidth="1.2"
+                            fill={work ? (isCompleted ? '#34d399' : isInProgress ? '#818cf8' : '#fbbf24') : '#e2e8f0'}
+                            stroke={work ? (isCompleted ? '#059669' : isInProgress ? '#4338ca' : '#d97706') : '#94a3b8'}
+                            strokeWidth="1.3"
                           />
                         </g>
                       )}
@@ -403,23 +411,33 @@ export default function DentalLabOdontogram({
 
                     {/* Status Badge Tag */}
                     {work && (
-                      <span className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border border-white flex items-center justify-center text-[8px] font-black ${
-                        isMissing ? 'bg-rose-600 text-white' : isCompleted ? 'bg-emerald-500 text-white' : isInProgress ? 'bg-indigo-500 text-white animate-pulse' : 'bg-amber-500 text-slate-950'
+                      <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-black shadow-xs ${
+                        isMissing ? 'bg-rose-600 text-white' : isCompleted ? 'bg-emerald-600 text-white' : isInProgress ? 'bg-indigo-600 text-white animate-pulse' : 'bg-amber-500 text-white'
                       }`}>
                         {isMissing ? 'M' : isCompleted ? '✓' : isInProgress ? 'P' : '!'}
                       </span>
                     )}
                   </div>
 
-                  <span className="text-[11px] font-mono font-bold text-slate-300 mt-1">{num}</span>
+                  <span className={`text-[11px] font-mono font-black mt-1 ${
+                    isSelected ? 'text-indigo-700' : work ? 'text-slate-900' : 'text-slate-600'
+                  }`}>
+                    {num}
+                  </span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="text-right text-[10px] text-slate-400 font-mono pt-2 border-t border-slate-800">
-          MANDIBULAR (LOWER ARCH)
+        <div className="flex items-center justify-between text-xs font-bold text-slate-600 pt-2 border-t border-slate-200/80">
+          <span className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <span>MANDIBULAR (LOWER ARCH)</span>
+          </span>
+          <span className="text-[10px] text-slate-500 font-extrabold uppercase">
+            Click any tooth to edit work order
+          </span>
         </div>
       </div>
 

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import ConsumablesLog from '../ConsumablesLog';
 import DentalCasesLog from './DentalCasesLog';
-import DentalLabOdontogram from '../../components/dental/DentalLabOdontogram';
+import ProstheticsOdontogramWorkspace from './ProstheticsOdontogramWorkspace';
 import { useAuth } from '../../context/AuthContext';
 
 // Lazy-load the new clinic modules (code-split for performance)
@@ -164,7 +164,7 @@ const DentalHub = () => {
         {currentTab === 'charting'           && <DentalCharting />}
         {currentTab === 'consumables_clinic' && <ConsumablesLog defaultDeptName="DENTAL CLINIC" />}
         {currentTab === 'cases'              && <DentalCasesLog />}
-        {currentTab === 'odontogram_lab'     && <DentalLabOdontogram />}
+        {currentTab === 'odontogram_lab'     && <ProstheticsOdontogramWorkspace />}
         {currentTab === 'consumables_lab'    && <ConsumablesLog defaultDeptName="DENTAL LAB" />}
       </Suspense>
     </div>
