@@ -227,12 +227,10 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.94, opacity: 0 }}
           transition={{ type: 'spring', damping: 22 }}
-          className={`bg-white rounded-3xl shadow-2xl w-full transition-all duration-300 max-h-[90vh] flex flex-col ${
-            activeModalTab === 'odontogram' ? 'max-w-4xl' : 'max-w-2xl'
-          }`}
+          className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl transition-all duration-300 max-h-[90vh] flex flex-col"
         >
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-slate-100 gap-3">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-rose-50 rounded-xl flex items-center justify-center">
                 <ClipboardList size={18} className="text-rose-500" />
@@ -245,49 +243,13 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
               </div>
             </div>
 
-            {/* Modal Tabs */}
-            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl border border-slate-200">
-              <button
-                type="button"
-                onClick={() => setActiveModalTab('info')}
-                className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
-                  activeModalTab === 'info' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Case Specifications
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveModalTab('odontogram')}
-                className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeModalTab === 'odontogram' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Wrench size={13} />
-                <span>FDI Odontogram</span>
-                {Object.keys(odontogramMap).length > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center">
-                    {Object.keys(odontogramMap).length}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400">
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400 cursor-pointer">
               <X size={18} />
             </button>
           </div>
 
           {/* Body */}
           <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-            {activeModalTab === 'odontogram' ? (
-              <DentalLabOdontogram
-                odontogramData={odontogramMap}
-                onChange={setOdontogramMap}
-                patientName={form.patient_id}
-              />
-            ) : (
-              <React.Fragment>
                 {/* Section: Dates */}
             <div>
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
@@ -485,8 +447,6 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                 />
               </Field>
             </div>
-              </React.Fragment>
-            )}
           </form>
 
           {/* Footer */}

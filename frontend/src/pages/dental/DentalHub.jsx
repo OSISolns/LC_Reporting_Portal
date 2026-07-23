@@ -2,10 +2,11 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Stethoscope, ClipboardList, Calendar, CalendarClock, Heart,
-  BookOpen, FlaskConical, Building2, Loader2, Lock,
+  BookOpen, FlaskConical, Building2, Loader2, Lock, Wrench,
 } from 'lucide-react';
 import ConsumablesLog from '../ConsumablesLog';
 import DentalCasesLog from './DentalCasesLog';
+import DentalLabOdontogram from '../../components/dental/DentalLabOdontogram';
 import { useAuth } from '../../context/AuthContext';
 
 // Lazy-load the new clinic modules (code-split for performance)
@@ -36,6 +37,7 @@ const SECTIONS = [
     allowedRoles: ['admin', 'deputy_coo', 'coo', 'medical_director', 'dental_lab_manager', 'dental_tech', 'dental_lab', 'dental_hod'],
     tabs: [
       { key: 'cases',           icon: BookOpen,      label: 'Cases Log'       },
+      { key: 'odontogram_lab',  icon: Wrench,        label: 'Prosthetics FDI Odontogram' },
       { key: 'consumables_lab', icon: ClipboardList, label: 'Consumables Log' },
     ],
   },
@@ -162,6 +164,7 @@ const DentalHub = () => {
         {currentTab === 'charting'           && <DentalCharting />}
         {currentTab === 'consumables_clinic' && <ConsumablesLog defaultDeptName="DENTAL CLINIC" />}
         {currentTab === 'cases'              && <DentalCasesLog />}
+        {currentTab === 'odontogram_lab'     && <DentalLabOdontogram />}
         {currentTab === 'consumables_lab'    && <ConsumablesLog defaultDeptName="DENTAL LAB" />}
       </Suspense>
     </div>
