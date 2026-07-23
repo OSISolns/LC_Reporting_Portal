@@ -56,14 +56,11 @@ const ActionCard = ({ label, icon, color, path, navigate, desc }) => (
   </button>
 );
 
-import LuminaDentalAiPrescriber from '../../components/dental/LuminaDentalAiPrescriber';
-
 export default function DentalLabDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
-  const [showAiPrescriber, setShowAiPrescriber] = useState(false);
 
   const [labStats, setLabStats] = useState(null);
   const [recentCases, setRecentCases] = useState([]);
@@ -206,20 +203,7 @@ export default function DentalLabDashboard() {
             path="/dental?section=lab&tab=cases" 
             navigate={navigate} 
           />
-          <button
-            onClick={() => setShowAiPrescriber(true)}
-            className="p-5 rounded-2xl border border-slate-200 bg-gradient-to-br from-indigo-50/60 via-white to-purple-50/60 flex items-center gap-4 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-indigo-300 group text-left"
-          >
-            <div className="p-3 rounded-xl shadow-sm bg-indigo-500 text-white group-hover:scale-110 transition-transform duration-300 shrink-0">
-              <Sparkles size={20} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="font-bold text-xs text-slate-800 m-0 group-hover:text-indigo-600 transition-colors">Lumina AI Prescriber</h4>
-              <p className="text-[11px] text-slate-400 m-0 mt-0.5 truncate">AI Dental medication protocol</p>
-            </div>
-            <ArrowUpRight size={16} className="text-slate-300 group-hover:text-indigo-500 transition-colors shrink-0" />
-          </button>
-          <ActionCard 
+          <ActionCard
             label="Lab Consumables Log" 
             desc="Log materials & request stock" 
             icon={<ClipboardList size={20} />} 
@@ -373,11 +357,6 @@ export default function DentalLabDashboard() {
         </div>
 
       </div>
-
-      <LuminaDentalAiPrescriber
-        isOpen={showAiPrescriber}
-        onClose={() => setShowAiPrescriber(false)}
-      />
     </div>
   );
 }
