@@ -216,14 +216,13 @@ export default function DentalHodDashboard() {
         <h3 className="m-0 mb-5 text-base font-black text-slate-800 flex items-center gap-2">
           <Sparkles size={18} className="text-rose-500" /> Departmental Workflow Actions
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
           <QuickAction label="Dental Hub" icon={<Heart size={22} />} color="#f43f5e" path="/dental" navigate={navigate} />
           <QuickAction label="Patient Worklist" icon={<Calendar size={22} />} color="#3b82f6" path="/dental?tab=worklist" navigate={navigate} />
           <QuickAction label="Book Appointment" icon={<CalendarPlus size={22} />} color="#f59e0b" path="/dental?tab=appointments" navigate={navigate} />
           <QuickAction label="Dental Charting" icon={<Stethoscope size={22} />} color="#06b6d4" path="/dental?tab=charting" navigate={navigate} />
-          <QuickAction label="Consumables Log" icon={<ClipboardList size={22} />} color="#8b5cf6" path="/consumables-log" navigate={navigate} />
+          <QuickAction label="Consumables Log" icon={<ClipboardList size={22} />} color="#8b5cf6" path="/dental?section=clinic&tab=consumables_clinic" navigate={navigate} />
           <QuickAction label="Report Incident" icon={<AlertTriangle size={22} />} color="#e11d48" path="/incidents" navigate={navigate} />
-          <QuickAction label="Clinical Sheets" icon={<FileText size={22} />} color="#10b981" path="/clinical-sheets" navigate={navigate} />
         </div>
       </div>
 

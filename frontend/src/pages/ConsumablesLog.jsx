@@ -22,7 +22,7 @@ const getItemStatus = (expiryDate) => {
   return { text: 'Active', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
 };
 
-export default function ConsumablesLog() {
+export default function ConsumablesLog({ defaultDeptName = null }) {
   const { user } = useAuth();
   
   // Shared inventory (synced with Stock Manager portal)
@@ -34,21 +34,33 @@ export default function ConsumablesLog() {
   };
   
   const userDept = useMemo(() => {
+    if (defaultDeptName && departments.length > 0) {
+      let found = departments.find(d => d.name.toUpperCase() === defaultDeptName.toUpperCase());
+      if (!found && defaultDeptName.toUpperCase().includes('DENTAL')) {
+        found = departments.find(d => d.name.toUpperCase() === 'DENTAL' || d.name.toUpperCase().includes('DENTAL'));
+      }
+      if (found) return { id: String(found.id), name: found.name };
+    }
+
     const r = String(user?.role || '').toLowerCase();
-    if (r === 'admin') return null;
     let deptName = null;
     if (r.includes('nurse')) deptName = 'NURSING';
     else if (r.includes('lab') && !r.includes('dental')) deptName = 'LABORATORY';
-    else if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') deptName = 'GENERAL STORE';
+    else if (r.includes('stock') || r.includes('procurement')) deptName = 'GENERAL STORE';
     else if (r.includes('physio')) deptName = 'PHYSIO';
-    else if (r.includes('dental') || r.includes('dentist')) deptName = 'DENTAL';
-    else if (r.includes('operations') || r.includes('ops') || r === 'coo') deptName = 'OPERATIONS';
+    else if (r.includes('dental_lab') || r.includes('lab_manager') || r.includes('dental_tech')) deptName = 'DENTAL LAB';
+    else if (r.includes('dental') || r.includes('dentist')) deptName = 'DENTAL CLINIC';
+    else if (r.includes('operations') || r.includes('ops')) deptName = 'OPERATIONS';
     else if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) deptName = 'IMAGING';
+    else if (r === 'admin') return null;
 
     if (!deptName) return null;
-    const found = departments.find(d => d.name.toUpperCase() === deptName.toUpperCase());
+    let found = departments.find(d => d.name.toUpperCase() === deptName.toUpperCase());
+    if (!found && deptName.includes('DENTAL')) {
+      found = departments.find(d => d.name.toUpperCase() === 'DENTAL' || d.name.toUpperCase().includes('DENTAL'));
+    }
     return found ? { id: String(found.id), name: found.name } : null;
-  }, [user, departments]);
+  }, [user, departments, defaultDeptName]);
 
   const generalStoreDept = useMemo(() => {
     return departments.find(d => d.name.toUpperCase() === 'GENERAL STORE') || null;
@@ -108,11 +120,11 @@ export default function ConsumablesLog() {
 
   // Sync role-based department restrictions when user object is loaded
   useEffect(() => {
-    if (userDept) {
+    if (userDept && userDept.id) {
       setFormDept(userDept.id);
       setFilterDept(userDept.id);
     }
-  }, [userDept?.id]);
+  }, [userDept?.id, userDept?.name]);
 
   const loadData = async (silent = false) => {
     const isSilent = silent || initialLoaded;
@@ -151,65 +163,99 @@ export default function ConsumablesLog() {
     loadData();
   }, [filterDept, filterFrom, filterTo, userDept?.id]);
 
-  // Items available in the selected department (from shared department_stock + stock_batches),
-  // aggregated across batches so the picker shows total on-hand per item, cross-referenced with all masterItems.
+  // Items available in the selected department (cross-referenced from Stock Manager's Catalog + distributedStock),
+  // filtered by Department & Sub-department (Dental Clinic, Dental Lab, Nursing, Lab, Imaging, etc.).
   const deptStockItems = useMemo(() => {
     const activeD = userDept ? userDept.id : formDept;
     if (!activeD) return [];
 
-    const deptStockMap = new Map();
-    const centralStockMap = new Map();
-    const allowedItemIds = new Set();
+    const activeDeptObj = departments.find(d => String(d.id) === String(activeD));
+    const activeDeptName = (activeDeptObj?.name || defaultDeptName || '').toUpperCase();
     const gsId = generalStoreDept ? String(generalStoreDept.id) : '134';
+    const isGS = String(activeD) === gsId || activeDeptName === 'GENERAL STORE';
 
+    // Map distributed stock for local department
+    const localDeptStockMap = new Map();
     for (const row of distributedStock) {
-      const itemId = row.item_id;
-      const qty = Number(row.quantity || 0);
-
       if (String(row.department_id) === String(activeD)) {
-        deptStockMap.set(itemId, (deptStockMap.get(itemId) || 0) + qty);
-        allowedItemIds.add(itemId);
-      } else if (String(row.department_id) === gsId || row.department === 'GENERAL STORE') {
-        centralStockMap.set(itemId, (centralStockMap.get(itemId) || 0) + qty);
-        allowedItemIds.add(itemId);
+        const qty = Number(row.quantity || 0);
+        localDeptStockMap.set(row.item_id, (localDeptStockMap.get(row.item_id) || 0) + qty);
       }
     }
 
     const list = [];
+    const seenItemIds = new Set();
+
+    // 1. Process master items from Stock Manager's Catalog
     if (masterItems && masterItems.length > 0) {
       for (const item of masterItems) {
-        if (!allowedItemIds.has(item.id)) continue;
-        const available = deptStockMap.get(item.id) || 0;
-        const central = centralStockMap.get(item.id) || 0;
-        list.push({
-          item_id: item.id,
-          name: item.name,
-          unit: item.unit_of_measure,
-          category: item.category || 'medical_supplies',
-          available: available,
-          central: central,
-          isLocal: deptStockMap.has(item.id)
-        });
+        const itemDeptName = (item.department || '').toUpperCase();
+        const itemStorage = (item.storage || '').toUpperCase();
+        const itemNameUpper = (item.name || '').toUpperCase();
+
+        let matchesDept = false;
+        if (isGS) {
+          matchesDept = true;
+        } else if (activeDeptName === 'DENTAL CLINIC') {
+          // Matches DENTAL department items except those explicitly tagged for DENTAL LAB
+          const isExplicitLab = itemStorage.includes('LAB') ||
+            ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET'].some(k => itemNameUpper.includes(k));
+          matchesDept = (itemDeptName.includes('DENTAL') || itemDeptName.includes('CLINIC')) && !isExplicitLab;
+        } else if (activeDeptName === 'DENTAL LAB') {
+          // Matches DENTAL department items specifically for DENTAL LAB
+          const isLabItem = itemStorage.includes('LAB') ||
+            ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET', 'DENTURE', 'CROWN'].some(k => itemNameUpper.includes(k));
+          matchesDept = itemDeptName.includes('DENTAL LAB') || (itemDeptName.includes('DENTAL') && isLabItem);
+        } else if (activeDeptName === 'DENTAL') {
+          matchesDept = itemDeptName.includes('DENTAL');
+        } else if (activeDeptName) {
+          matchesDept = itemDeptName.includes(activeDeptName) || activeDeptName.includes(itemDeptName);
+        }
+
+        // Also check if item exists in local department_stock
+        const localQty = localDeptStockMap.get(item.id) || 0;
+        if (localQty > 0) matchesDept = true;
+
+        if (matchesDept) {
+          seenItemIds.add(item.id);
+          const centralQty = Number(item.quantity || 0);
+          const distQty = Number(item.distributed_quantity || 0);
+          const totalAvail = localQty > 0 ? localQty : (distQty > 0 ? distQty : centralQty);
+
+          list.push({
+            item_id: item.id,
+            name: item.name,
+            unit: item.unit_of_measure || 'pcs',
+            category: item.category || 'medical_supplies',
+            available: totalAvail,
+            central: centralQty,
+            isLocal: true,
+            department: item.department || activeDeptName
+          });
+        }
       }
-    } else {
-      for (const itemId of allowedItemIds) {
-        const matchingRow = distributedStock.find(r => r.item_id === itemId);
-        if (!matchingRow) continue;
-        const available = deptStockMap.get(itemId) || 0;
-        const central = centralStockMap.get(itemId) || 0;
+    }
+
+    // 2. Include any distributed stock rows that weren't in masterItems
+    for (const row of distributedStock) {
+      if (String(row.department_id) === String(activeD) && !seenItemIds.has(row.item_id)) {
+        seenItemIds.add(row.item_id);
+        const qty = Number(row.quantity || 0);
         list.push({
-          item_id: itemId,
-          name: matchingRow.name,
-          unit: matchingRow.unit_of_measure,
-          category: matchingRow.category || 'medical_supplies',
-          available: available,
-          central: central,
-          isLocal: deptStockMap.has(itemId)
+          item_id: row.item_id,
+          name: row.name,
+          unit: row.unit_of_measure || 'pcs',
+          category: row.category || 'medical_supplies',
+          available: qty,
+          central: 0,
+          isLocal: true,
+          department: activeDeptName
         });
       }
     }
+
     return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [userDept, formDept, distributedStock, masterItems, generalStoreDept]);
+  }, [userDept, formDept, defaultDeptName, departments, distributedStock, masterItems, generalStoreDept]);
 
   const requisitionItems = useMemo(() => {
     const gsId = generalStoreDept ? String(generalStoreDept.id) : '134';
@@ -336,14 +382,60 @@ export default function ConsumablesLog() {
   const pagedEntries = entries.slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE);
 
   const currentDeptStock = useMemo(() => {
+    const activeD = userDept ? userDept.id : (filterDept || formDept);
+    const activeDeptObj = departments.find(d => String(d.id) === String(activeD));
+    const activeDeptName = (activeDeptObj?.name || defaultDeptName || '').toUpperCase();
     const gsId = generalStoreDept ? String(generalStoreDept.id) : '134';
+    const isGS = String(activeD) === gsId || activeDeptName === 'GENERAL STORE' || (!activeD && isAdmin);
+
     if (stockTab === 'central') {
-      return distributedStock.filter(row => String(row.department_id) === gsId || row.department === 'GENERAL STORE');
+      let filteredCentral = masterItems;
+      if (!isGS && activeDeptName) {
+        filteredCentral = masterItems.filter(item => {
+          const itemDeptName = (item.department || '').toUpperCase();
+          const itemStorage = (item.storage || '').toUpperCase();
+          const itemNameUpper = (item.name || '').toUpperCase();
+
+          if (activeDeptName === 'DENTAL CLINIC') {
+            const isExplicitLab = itemStorage.includes('LAB') ||
+              ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET'].some(k => itemNameUpper.includes(k));
+            return (itemDeptName.includes('DENTAL') || itemDeptName.includes('CLINIC')) && !isExplicitLab;
+          } else if (activeDeptName === 'DENTAL LAB') {
+            const isLabItem = itemStorage.includes('LAB') ||
+              ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET', 'DENTURE', 'CROWN'].some(k => itemNameUpper.includes(k));
+            return itemDeptName.includes('DENTAL LAB') || (itemDeptName.includes('DENTAL') && isLabItem);
+          } else if (activeDeptName === 'DENTAL') {
+            return itemDeptName.includes('DENTAL');
+          }
+          return itemDeptName.includes(activeDeptName) || activeDeptName.includes(itemDeptName);
+        });
+      }
+
+      return filteredCentral.map(m => ({
+        dept_stock_id: m.id,
+        item_id: m.id,
+        name: m.name,
+        sku: m.sku,
+        category: m.category,
+        quantity: Number(m.quantity || 0),
+        expiry_date: m.expiry_date,
+        batch_number: m.batch_number,
+        department: m.department || 'GENERAL STORE'
+      }));
     }
-    const activeD = userDept ? userDept.id : filterDept;
-    if (!activeD) return [];
-    return distributedStock.filter(row => String(row.department_id) === String(activeD));
-  }, [userDept, filterDept, distributedStock, stockTab, generalStoreDept]);
+
+    return deptStockItems.map(item => ({
+      dept_stock_id: item.item_id,
+      item_id: item.item_id,
+      name: item.name,
+      sku: item.sku || '',
+      category: item.category,
+      quantity: item.available,
+      expiry_date: null,
+      batch_number: null,
+      department: item.department
+    }));
+  }, [stockTab, masterItems, deptStockItems, userDept, filterDept, formDept, defaultDeptName, departments, generalStoreDept, isAdmin]);
 
   const filteredDeptStock = useMemo(() => {
     let list = currentDeptStock;

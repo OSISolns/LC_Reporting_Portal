@@ -4,6 +4,7 @@ const {
   generateAssessmentComments,
   generateProgressNote,
   generateSBAR,
+  generateDentalNote,
   suggestICD10,
   generateInstructions,
   getAllCachedICD11,
@@ -110,5 +111,13 @@ exports.lookupICD11 = async (req, res, next) => {
       return res.status(404).json({ success: false, message: `No details found for ICD-11 code: ${code}` });
     }
     res.json({ success: true, data });
+  } catch (err) { next(err); }
+};// POST /api/ai/clinical/dental-note
+// Body: { toothData, treatmentPlan, patientName, patientId, dentitionType, existingNotes, provider }
+exports.generateDentalNote = (req, res, next) => {
+  try {
+    const { toothData, treatmentPlan, patientName, patientId, dentitionType, existingNotes, provider } = req.body;
+    const note = generateDentalNote({ toothData, treatmentPlan, patientName, patientId, dentitionType, existingNotes, provider });
+    res.json({ success: true, data: { note } });
   } catch (err) { next(err); }
 };

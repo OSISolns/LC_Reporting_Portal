@@ -464,7 +464,7 @@ const ROLE_DEFAULTS = {
     inventory:        { view:1, create:1, edit:1, delete:1 },
     daily_stock:      { view:1, edit:1 },
     it_support:       { view:1, create:1 },
-    patients:         { view:1, create:1 },
+    patients:         { view:1, create:0 },
     dental:           { view:1, create:1, edit:1, delete:1 },
   },
   dental_tech: {
@@ -475,7 +475,7 @@ const ROLE_DEFAULTS = {
     inventory:        { view:1, create:1, edit:0, delete:0 },
     daily_stock:      { view:1, edit:1 },
     it_support:       { view:1, create:1 },
-    patients:         { view:1, create:1 },
+    patients:         { view:1, create:0 },
     dental:           { view:1, create:1, edit:1, delete:0 },
   },
   dental_lab_manager: {
@@ -487,8 +487,20 @@ const ROLE_DEFAULTS = {
     daily_stock:      { view:1, edit:1 },
     procurement:      { view:1, create:1, edit:0 },
     it_support:       { view:1, create:1 },
-    patients:         { view:1, create:1 },
+    patients:         { view:1, create:0 },
     dental:           { view:1, create:1, edit:1, delete:1 },
+  },
+  dental: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
+    dental:           { view:1, create:1, edit:1, delete:0 },
+  },
+  dentist: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
+    dental:           { view:1, create:1, edit:1, delete:0 },
   },
 };
 

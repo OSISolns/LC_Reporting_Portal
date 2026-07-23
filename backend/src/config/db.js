@@ -2601,7 +2601,12 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       `);
       await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_cases_received_date ON dental_cases(received_date)');
       await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_cases_work_done ON dental_cases(work_done)');
-      console.log('✅ SQLite Schema Migration: dental_cases table ensured.');
+
+      for (const col of ['status TEXT DEFAULT \'Received\'', 'delivery_notes TEXT', 'delivered_to TEXT', 'delivered_at DATETIME']) {
+        try { await client.execute(`ALTER TABLE dental_cases ADD COLUMN ${col}`); } catch (e) { /* already exists */ }
+      }
+
+      console.log('✅ SQLite Schema Migration: dental_cases table ensured with manufacturing & delivery tracking columns.');
     } catch (err) {
       if (!err.message?.includes('already exists')) {
         console.error('❌ dental_cases migration error:', err.message);
