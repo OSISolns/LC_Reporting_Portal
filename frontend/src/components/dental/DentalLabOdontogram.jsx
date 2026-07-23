@@ -232,21 +232,6 @@ export default function DentalLabOdontogram({
     onChange(nextMap);
   };
 
-  const handleToggleMissing = (isMissing) => {
-    if (readOnly || !onChange) return;
-    if (isMissing) {
-      handleUpdateTooth({
-        is_missing: true,
-        work_type: 'Declared Missing (To Be Replaced)',
-        replacement_strategy: currentToothWork?.replacement_strategy || 'Bridge Pontic (Suspended Unit)'
-      });
-    } else {
-      handleUpdateTooth({
-        is_missing: false,
-        work_type: currentToothWork?.work_type === 'Declared Missing (To Be Replaced)' ? 'Crown (Zirconia)' : currentToothWork?.work_type
-      });
-    }
-  };
 
   const handleRemoveToothWork = (toothNum) => {
     if (readOnly || !onChange) return;
@@ -670,31 +655,6 @@ export default function DentalLabOdontogram({
 
         {!readOnly && (
           <div className="space-y-4">
-            
-            {/* MISSING TOOTH DECLARATION TOGGLE */}
-            <div className="bg-rose-50/70 border border-rose-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <AlertCircle size={18} className="text-rose-600 shrink-0" />
-                <div>
-                  <span className="text-xs font-extrabold text-rose-900 block">Declare Edentulous Tooth (Missing to be Replaced)</span>
-                  <span className="text-[11px] text-rose-700 font-medium block">
-                    Mark tooth #{selectedTooth} as missing and specify replacement pontic, implant, or denture tooth.
-                  </span>
-                </div>
-              </div>
-
-              <label className="flex items-center gap-2 cursor-pointer bg-white px-3.5 py-1.5 rounded-xl border border-rose-200 shadow-xs shrink-0">
-                <input
-                  type="checkbox"
-                  checked={!!currentToothWork?.is_missing}
-                  onChange={(e) => handleToggleMissing(e.target.checked)}
-                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
-                />
-                <span className="text-xs font-extrabold text-rose-800">
-                  {currentToothWork?.is_missing ? 'Declared Missing' : 'Declare Missing'}
-                </span>
-              </label>
-            </div>
 
             {/* LUMINA AI REPLACEMENT SUGGESTION (only once the tooth is declared missing) */}
             {currentToothWork?.is_missing && (
