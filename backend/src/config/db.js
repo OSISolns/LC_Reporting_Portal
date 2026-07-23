@@ -1815,6 +1815,14 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.log('✅ SQLite Schema Migration: added rejection_reason to requisitions');
       } catch (e) { /* already exists */ }
       try {
+        await client.execute("ALTER TABLE requisitions ADD COLUMN created_by INTEGER");
+        console.log('✅ SQLite Schema Migration: added created_by to requisitions');
+      } catch (e) { /* already exists */ }
+      try {
+        await client.execute("ALTER TABLE requisitions ADD COLUMN created_by_name TEXT");
+        console.log('✅ SQLite Schema Migration: added created_by_name to requisitions');
+      } catch (e) { /* already exists */ }
+      try {
         await client.execute("ALTER TABLE stock_batches ADD COLUMN lot_number TEXT");
         console.log('✅ SQLite Schema Migration: added lot_number column to stock_batches');
       } catch (e) { /* already exists */ }
