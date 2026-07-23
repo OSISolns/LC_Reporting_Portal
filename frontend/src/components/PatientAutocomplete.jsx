@@ -16,14 +16,20 @@ const PatientAutocomplete = ({
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const containerRef = useRef(null);
   const inputRef = useRef(null);
+  const abortRef = useRef(null);
 
   // Keep internal query input in sync with external value prop
   useEffect(() => {
     setQuery(value || '');
   }, [value]);
 
-  // Debounced search — fires after just 1 character
+  // Debounced search — fires after just 1 character. Each request cancels the
+  // previous one in flight so a slow earlier response can't land after (and
+  // clobber) the result of a more recent keystroke — the main source of the
+  // search feeling laggy while typing quickly.
   useEffect(() => {
+    if (abortRef.current) abortRef.current.abort();
+
     if (query.trim().length < 1) {
       setSuggestions([]);
       setLoading(false);
@@ -32,16 +38,20 @@ const PatientAutocomplete = ({
 
     setLoading(true);
     const delayDebounce = setTimeout(async () => {
+      const controller = new AbortController();
+      abortRef.current = controller;
       try {
-        const response = await searchPatients(query);
+        const response = await searchPatients(query, { signal: controller.signal });
         if (response.data?.success) {
           setSuggestions(response.data.data || []);
         }
       } catch (err) {
-        console.error('Failed to fetch patient suggestions:', err);
-        setSuggestions([]);
+        if (err.code !== 'ERR_CANCELED') {
+          console.error('Failed to fetch patient suggestions:', err);
+          setSuggestions([]);
+        }
       } finally {
-        setLoading(false);
+        if (abortRef.current === controller) setLoading(false);
       }
     }, 250);
 
