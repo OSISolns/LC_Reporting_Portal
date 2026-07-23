@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, CheckCircle2, Clock, AlertCircle, Wrench,
   ChevronDown, Layers, ShieldCheck, Check, Trash2, Eye,
-  PlusCircle, RefreshCw
+  PlusCircle, RefreshCw, Loader2
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { suggestProstheticReplacement } from '../../api/dental';
 
 // ─── FDI Notation Teeth Definition ─────────────────────────────────────────────
 const PERMANENT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -62,12 +64,130 @@ export const CONVENTIONAL_SHADES = [
   'Gingival Light Pink', 'Gingival Dark Pink', 'Translucent Clear', 'Opaque White'
 ];
 
+// Module-level (not defined inside DentalLabOdontogram) so its identity stays
+// stable across re-renders — otherwise React would remount it, and any input
+// inside it, on every keystroke elsewhere in the odontogram.
+const LuminaProstheticsSuggestion = ({
+  tooth, dentitionMode, caseContext, adjacentMissingCount,
+  onApplyStrategy, onApplyShade, onApplyMaterialNotes,
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [suggestion, setSuggestion] = useState(null);
+  const [error, setError] = useState(false);
+
+  // A stale suggestion for a different tooth must never be applicable once
+  // the user moves on to declare another tooth missing.
+  useEffect(() => {
+    setSuggestion(null);
+    setError(false);
+  }, [tooth]);
+
+  const handleAsk = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const { data } = await suggestProstheticReplacement({
+        tooth,
+        dentitionType: dentitionMode,
+        patientAge: caseContext?.patientAge,
+        patientGender: caseContext?.patientGender,
+        workDone: caseContext?.workDone,
+        clinicOfOrigin: caseContext?.clinicOfOrigin,
+        adjacentMissingCount,
+      });
+      if (data?.success) {
+        setSuggestion(data.data);
+      } else {
+        setError(true);
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-indigo-50 via-purple-50/60 to-white border border-indigo-200/80 rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
+            <Sparkles size={14} />
+          </span>
+          <span className="text-xs font-extrabold text-indigo-900">Lumina AI Replacement Suggestion</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleAsk}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition disabled:opacity-60 cursor-pointer"
+        >
+          {loading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+          {suggestion ? 'Re-ask Lumina AI' : `Ask Lumina AI for Tooth #${tooth}`}
+        </button>
+      </div>
+
+      {error && (
+        <p className="text-[11px] text-rose-600 font-semibold m-0">
+          Lumina AI couldn't generate a suggestion for this tooth — try again.
+        </p>
+      )}
+
+      {suggestion && (
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-500">Suggested strategy:</span>
+            <span className="text-xs font-black text-indigo-800 bg-white px-2.5 py-1 rounded-lg border border-indigo-200">
+              {suggestion.replacement_strategy}
+            </span>
+            <button
+              type="button"
+              onClick={() => onApplyStrategy(suggestion.replacement_strategy)}
+              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
+            >
+              Apply
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-500">Suggested shade:</span>
+            <span className="text-xs font-black text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+              Shade {suggestion.shade}
+            </span>
+            <button
+              type="button"
+              onClick={() => onApplyShade(suggestion.shade)}
+              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
+            >
+              Apply
+            </button>
+          </div>
+
+          <div className="bg-white/80 border border-indigo-100 rounded-xl p-3 space-y-1">
+            <p className="text-[11px] font-bold text-slate-600 m-0">Suggested Material / Lab Notes</p>
+            <p className="text-xs text-slate-700 font-semibold m-0">{suggestion.material}</p>
+            <p className="text-[11px] text-slate-500 italic m-0">{suggestion.notes}</p>
+            <button
+              type="button"
+              onClick={() => onApplyMaterialNotes(suggestion.material, suggestion.notes)}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-800 cursor-pointer mt-1"
+            >
+              <Check size={12} /> Use as Material / Lab Notes
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function DentalLabOdontogram({
   odontogramData = {},
   onChange,
   readOnly = false,
   patientName = '',
-  caseRef = ''
+  caseRef = '',
+  caseContext = null,
 }) {
   const [selectedTooth, setSelectedTooth] = useState('16');
   const [dentitionMode, setDentitionMode] = useState('adult'); // 'adult' | 'pediatric'
@@ -79,6 +199,21 @@ export default function DentalLabOdontogram({
 
   // Active Tooth Data
   const currentToothWork = toothMap[selectedTooth] || null;
+
+  // Counts how many immediate neighbours (same arch row) of a tooth are also
+  // declared missing — used to steer the Lumina AI suggestion towards a wider
+  // framework/denture instead of a single-unit bridge/implant.
+  const getAdjacentMissingCount = (toothNum) => {
+    const num = Number(toothNum);
+    const row = upperTeeth.includes(num) ? upperTeeth : lowerTeeth;
+    const idx = row.indexOf(num);
+    if (idx === -1) return 0;
+    return [row[idx - 1], row[idx + 1]].filter((neighbor) => {
+      if (neighbor === undefined) return false;
+      const work = toothMap[String(neighbor)];
+      return work?.is_missing || work?.work_type === 'Declared Missing (To Be Replaced)';
+    }).length;
+  };
 
   const handleUpdateTooth = (updates) => {
     if (readOnly || !onChange) return;
@@ -118,6 +253,60 @@ export default function DentalLabOdontogram({
     const nextMap = { ...toothMap };
     delete nextMap[toothNum];
     onChange(nextMap);
+  };
+
+  // Quick chart gestures, so declaring/undoing a missing tooth doesn't require
+  // clicking it then finding the checkbox below. Both work directly off
+  // toothNum rather than selectedTooth, since setSelectedTooth wouldn't be
+  // visible to this same synchronous call yet.
+  const DEFAULT_TOOTH_WORK = {
+    work_type: 'Crown (Zirconia)',
+    is_missing: false,
+    replacement_strategy: 'Bridge Pontic (Suspended Unit)',
+    status: 'Planning',
+    shade: 'A2',
+    notes: '',
+    material: 'Zirconia HT'
+  };
+
+  // Double-click declares a tooth missing (Edentulous, to be replaced).
+  const handleQuickDeclareMissing = (toothNum) => {
+    if (readOnly || !onChange) return;
+    const strNum = toothNum.toString();
+    setSelectedTooth(strNum);
+
+    const existing = toothMap[strNum] || { tooth: strNum, ...DEFAULT_TOOTH_WORK };
+    if (existing.is_missing || existing.work_type === 'Declared Missing (To Be Replaced)') {
+      toast(`Tooth #${strNum} is already declared missing.`);
+      return;
+    }
+
+    const updated = {
+      ...existing,
+      is_missing: true,
+      work_type: 'Declared Missing (To Be Replaced)',
+      replacement_strategy: existing.replacement_strategy || 'Bridge Pontic (Suspended Unit)',
+    };
+    onChange({ ...toothMap, [strNum]: { ...updated, tooth: strNum } });
+    toast.success(`Tooth #${strNum} declared missing — right-click to undo.`);
+  };
+
+  // Right-click undoes a missing declaration, restoring the tooth.
+  const handleQuickUndoMissing = (toothNum) => {
+    if (readOnly || !onChange) return;
+    const strNum = toothNum.toString();
+    const existing = toothMap[strNum];
+    const isMissing = existing?.is_missing || existing?.work_type === 'Declared Missing (To Be Replaced)';
+    if (!isMissing) return;
+
+    setSelectedTooth(strNum);
+    const updated = {
+      ...existing,
+      is_missing: false,
+      work_type: existing.work_type === 'Declared Missing (To Be Replaced)' ? 'Crown (Zirconia)' : existing.work_type,
+    };
+    onChange({ ...toothMap, [strNum]: { ...updated, tooth: strNum } });
+    toast.success(`Tooth #${strNum} restored (no longer missing).`);
   };
 
   // Stats calculation
@@ -255,6 +444,9 @@ export default function DentalLabOdontogram({
                   key={num}
                   type="button"
                   onClick={() => setSelectedTooth(strNum)}
+                  onDoubleClick={() => handleQuickDeclareMissing(strNum)}
+                  onContextMenu={(e) => { e.preventDefault(); handleQuickUndoMissing(strNum); }}
+                  title={readOnly ? undefined : 'Double-click to declare missing • Right-click to undo'}
                   className={`relative group flex flex-col items-center p-2 rounded-2xl transition-all cursor-pointer border-2 ${
                     isSelected
                       ? 'bg-indigo-50 border-indigo-600 ring-4 ring-indigo-500/20 scale-105 z-20 shadow-md'
@@ -355,6 +547,9 @@ export default function DentalLabOdontogram({
                   key={num}
                   type="button"
                   onClick={() => setSelectedTooth(strNum)}
+                  onDoubleClick={() => handleQuickDeclareMissing(strNum)}
+                  onContextMenu={(e) => { e.preventDefault(); handleQuickUndoMissing(strNum); }}
+                  title={readOnly ? undefined : 'Double-click to declare missing • Right-click to undo'}
                   className={`relative group flex flex-col items-center p-2 rounded-2xl transition-all cursor-pointer border-2 ${
                     isSelected
                       ? 'bg-indigo-50 border-indigo-600 ring-4 ring-indigo-500/20 scale-105 z-20 shadow-md'
@@ -436,7 +631,7 @@ export default function DentalLabOdontogram({
             <span>MANDIBULAR (LOWER ARCH)</span>
           </span>
           <span className="text-[10px] text-slate-500 font-extrabold uppercase">
-            Click any tooth to edit work order
+            {readOnly ? 'Click any tooth to view its work order' : 'Click to edit • Double-click to declare missing • Right-click to undo'}
           </span>
         </div>
       </div>
@@ -500,6 +695,19 @@ export default function DentalLabOdontogram({
                 </span>
               </label>
             </div>
+
+            {/* LUMINA AI REPLACEMENT SUGGESTION (only once the tooth is declared missing) */}
+            {currentToothWork?.is_missing && (
+              <LuminaProstheticsSuggestion
+                tooth={selectedTooth}
+                dentitionMode={dentitionMode}
+                caseContext={caseContext}
+                adjacentMissingCount={getAdjacentMissingCount(selectedTooth)}
+                onApplyStrategy={(strategy) => handleUpdateTooth({ replacement_strategy: strategy })}
+                onApplyShade={(shade) => handleUpdateTooth({ shade })}
+                onApplyMaterialNotes={(material, notes) => handleUpdateTooth({ notes: `${material} — ${notes}` })}
+              />
+            )}
 
             {/* FORM CONTROLS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

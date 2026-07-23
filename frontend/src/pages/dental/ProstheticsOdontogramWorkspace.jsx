@@ -313,6 +313,12 @@ const ProstheticsOdontogramWorkspace = () => {
           readOnly={!canEdit}
           patientName={patient?.full_name || selectedCase.clinician_name || ''}
           caseRef={selectedCase.case_ref}
+          caseContext={{
+            patientAge: patient?.age,
+            patientGender: patient?.gender,
+            workDone: selectedCase.work_done,
+            clinicOfOrigin: selectedCase.clinic_of_origin,
+          }}
         />
       ) : (
         <div className="bg-white rounded-3xl border border-dashed border-slate-300 p-12 flex flex-col items-center justify-center text-center gap-3">

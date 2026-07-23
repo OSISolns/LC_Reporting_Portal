@@ -22,6 +22,7 @@ export const getChart                 = (id)         => api.get(`/dental/charts/
 export const saveChart                = (data)       => api.post('/dental/charts', data);
 export const deleteChart              = (id)         => api.delete(`/dental/charts/${id}`);
 export const generateDentalAiNote     = (data)       => api.post('/ai/clinical/dental-note', data);
+export const suggestProstheticReplacement = (data)   => api.post('/ai/clinical/prosthetics-suggestion', data);
 
 // ─── Appointments (forward-looking scheduling) ───────────────────────────────
 export const listAppointments         = (params) => api.get('/dental/appointments', { params });

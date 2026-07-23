@@ -1150,10 +1150,82 @@ function suggestDentalMedications({ condition = '', procedure = '', allergies = 
   };
 }
 
-module.exports = { 
-  suggestMedications, 
+// ── Lumina AI Prosthetics Replacement Engine ───────────────────────────────────
+// Suggests an edentulous replacement strategy, material and shade for a tooth
+// declared missing on the Prosthetics FDI Odontogram, using the logged case's
+// context (work order, clinic, patient age) plus simple FDI-position heuristics.
+function suggestProstheticReplacement({
+  tooth,
+  dentitionType = 'adult',
+  patientAge,
+  patientGender,
+  workDone = '',
+  clinicOfOrigin = '',
+  adjacentMissingCount = 0,
+}) {
+  const toothNum = parseInt(tooth, 10) || 0;
+  const toothLabel = FDI_TOOTH_NAMES[String(tooth)] || `Tooth #${tooth}`;
+  const lastDigit = toothNum % 10;
+  const isPediatric = dentitionType === 'pediatric' || toothNum >= 51;
+  const isMolar = [6, 7, 8].includes(lastDigit);
+  const isPremolar = [4, 5].includes(lastDigit);
+  const age = Number(patientAge) || null;
+
+  let replacement_strategy;
+  let material;
+  let shade = 'A2';
+  const rationale = [];
+
+  if (isPediatric) {
+    replacement_strategy = 'Space Maintainer Unit';
+    material = 'Stainless Steel Band & Loop / Acrylic';
+    rationale.push(`${toothLabel} is a primary tooth — a space maintainer preserves arch length for the permanent successor rather than a permanent prosthesis.`);
+  } else if (adjacentMissingCount >= 2) {
+    replacement_strategy = 'Cast Metal Framework Tooth';
+    material = 'Co-Cr Cast Metal Framework with Acrylic Teeth';
+    rationale.push(`${adjacentMissingCount} adjacent teeth are also missing — a cast metal removable partial framework is more structurally sound than a fixed span this wide.`);
+  } else if (age && age >= 60) {
+    replacement_strategy = 'Acrylic Removable Denture Tooth';
+    material = 'Heat-Cure Acrylic Resin';
+    rationale.push(`Patient age ${age} — an acrylic removable denture is a lower-surgical-risk, cost-effective option to weigh against an implant.`);
+  } else if (isMolar) {
+    replacement_strategy = 'Implant Crown (Edentulous Replacement)';
+    material = 'Titanium Implant Fixture with Zirconia Crown';
+    shade = 'A3';
+    rationale.push(`${toothLabel} carries high occlusal load — an implant-supported crown avoids over-loading neighbouring abutment teeth the way a pontic bridge would.`);
+  } else if (isPremolar) {
+    replacement_strategy = 'Bridge Pontic (Suspended Unit)';
+    material = 'PFM or Zirconia Bridge Framework';
+    rationale.push(`${toothLabel} is a reasonable fixed-bridge site provided the adjacent abutment teeth are sound.`);
+  } else {
+    replacement_strategy = 'Flexible Valplast Denture Unit';
+    material = 'Flexible Thermoplastic Nylon (Valplast)';
+    shade = 'A1';
+    rationale.push(`${toothLabel} is in the anterior esthetic zone — a flexible unit or bridge pontic gives immediate esthetics; discuss an implant with the patient for a longer-term solution.`);
+  }
+
+  if (workDone) rationale.push(`Cross-referenced with the logged work order type: ${workDone}.`);
+  if (clinicOfOrigin) rationale.push(`Referring clinic: ${clinicOfOrigin}.`);
+  if (patientGender) rationale.push(`Patient gender on file: ${patientGender}.`);
+
+  const notes = rationale.join(' ');
+
+  return {
+    tooth: String(tooth),
+    tooth_label: toothLabel,
+    replacement_strategy,
+    material,
+    shade,
+    notes,
+    rationale,
+  };
+}
+
+module.exports = {
+  suggestMedications,
   suggestDentalMedications,
-  generateAssessmentComments, 
+  suggestProstheticReplacement,
+  generateAssessmentComments,
   generateProgressNote, 
   generateSBAR, 
   generateInstructions, 
