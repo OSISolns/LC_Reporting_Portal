@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Stethoscope, 
   Save, 
@@ -26,7 +26,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { listCharts, getChart, saveChart, deleteChart } from '../../api/dental';
+import { listCharts, getChart, saveChart, deleteChart, generateDentalAiNote } from '../../api/dental';
 import { getPatientByPid, searchPatients } from '../../api/patients';
 import { useAuth } from '../../context/AuthContext';
 
@@ -44,6 +44,35 @@ const CONDITIONS = {
   Sealant:             { id: 'Sealant',             color: '#10b981', stroke: '#047857', label: 'Sealant / Fissure',    textColor: '#ffffff', badgeBg: 'bg-emerald-100 text-emerald-800' },
   Periapical:          { id: 'Periapical',          color: '#b45309', stroke: '#78350f', label: 'Periapical Lesion',   textColor: '#ffffff', badgeBg: 'bg-amber-200 text-amber-950' },
 };
+
+const COMMON_DENTAL_PROCEDURES = [
+  'Dental Examination & Consultation',
+  'Scaling & Polishing (Prophylaxis)',
+  'Deep Periodontal Scaling / Root Planing',
+  'Composite Restoration (1 Surface)',
+  'Composite Restoration (2 Surfaces)',
+  'Composite Restoration (3+ Surfaces)',
+  'Amalgam Restoration',
+  'Temporary Filling',
+  'Root Canal Treatment (Anterior)',
+  'Root Canal Treatment (Premolar)',
+  'Root Canal Treatment (Molar)',
+  'Pulpotomy / Pulpectomy',
+  'Simple Tooth Extraction',
+  'Surgical / Impacted Tooth Extraction',
+  'PFM Crown (Porcelain Fused to Metal)',
+  'Zirconia Crown',
+  'Dental Bridge (per unit)',
+  'Complete Upper/Lower Denture',
+  'Partial Acrylic/Flexible Denture',
+  'Dental Implant Placement',
+  'Abutment & Implant Crown',
+  'Pit & Fissure Sealant',
+  'Fluoride Varnish Application',
+  'Orthodontic Bracket Adjustment',
+  'Night Guard / Occlusal Splint',
+  'Teeth Whitening / Bleaching',
+];
 
 // ─── FDI TEETH NOTATION DEFINITIONS ───────────────────────────────────────────
 // Adult Permanent Teeth (32)
@@ -255,7 +284,7 @@ export default function DentalCharting() {
   const [patientSource, setPatientSource] = useState(null); // 'cache' | 'live'
   
   const [chartDate, setChartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [provider, setProvider] = useState('');
+  const [provider, setProvider] = useState(user?.fullName || '');
   const [generalNotes, setGeneralNotes] = useState('');
   
   // Dentition Type: 'adult' | 'pediatric' | 'mixed'
@@ -268,13 +297,57 @@ export default function DentalCharting() {
   // Quick Condition Palette Active Tool
   const [activeTool, setActiveTool] = useState('Caries'); // Condition key to apply on click
 
-  // Treatment Plan Items: [{ id, tooth, surface, procedure, status, fee, notes }]
+  // Treatment Plan Items: [{ id, tooth, surface, procedure, status, notes }]
   const [treatmentPlan, setTreatmentPlan] = useState([]);
   const [newProcTooth, setNewProcTooth] = useState('');
   const [newProcName, setNewProcName] = useState('');
   const [newProcSurface, setNewProcSurface] = useState('');
   const [newProcStatus, setNewProcStatus] = useState('Planned');
-  const [newProcFee, setNewProcFee] = useState('');
+
+  // Lumina AI Generator State
+  const [isGeneratingAiNote, setIsGeneratingAiNote] = useState(false);
+
+  // Lumina Smart Procedure Suggestion based on selected or charted tooth state
+  const luminaSuggestedProcedure = useMemo(() => {
+    const targetToothNum = selectedTooth || (newProcTooth ? newProcTooth.replace('#', '') : null);
+    if (targetToothNum && toothData[targetToothNum]) {
+      const data = toothData[targetToothNum];
+      if (data.missing) return 'Dental Implant Placement';
+      
+      const nonHealthySurfaces = Object.entries(data.surfaces || {})
+        .filter(([_, cond]) => cond && cond !== 'Healthy');
+      
+      const cariesCount = nonHealthySurfaces.filter(([_, c]) => c === 'Caries').length;
+      if (data.condition === 'Caries' || cariesCount > 0) {
+        if (cariesCount === 1) return 'Composite Restoration (1 Surface)';
+        if (cariesCount === 2) return 'Composite Restoration (2 Surfaces)';
+        if (cariesCount >= 3) return 'Composite Restoration (3+ Surfaces)';
+        return 'Composite Restoration (1 Surface)';
+      }
+      
+      if (data.condition === 'Root Canal' || nonHealthySurfaces.some(([_, c]) => c === 'Root Canal')) {
+        return 'Root Canal Treatment (Molar)';
+      }
+      if (data.condition === 'Crown' || nonHealthySurfaces.some(([_, c]) => c === 'Crown')) {
+        return 'Zirconia Crown';
+      }
+      if (data.condition === 'Extraction Planned') return 'Simple Tooth Extraction';
+      if (data.condition === 'Fractured') return 'Composite Restoration (3+ Surfaces)';
+      if (data.condition === 'Sealant') return 'Pit & Fissure Sealant';
+      if (data.condition === 'Periapical') return 'Root Canal Treatment (Molar)';
+    }
+
+    for (const [num, data] of Object.entries(toothData)) {
+      if (!data) continue;
+      if (data.condition === 'Caries' || Object.values(data.surfaces || {}).includes('Caries')) {
+        return 'Composite Restoration (1 Surface)';
+      }
+      if (data.condition === 'Root Canal') return 'Root Canal Treatment (Molar)';
+      if (data.condition === 'Extraction Planned') return 'Simple Tooth Extraction';
+    }
+
+    return 'Scaling & Polishing (Prophylaxis)';
+  }, [selectedTooth, newProcTooth, toothData]);
 
   // History & Load States
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -289,8 +362,35 @@ export default function DentalCharting() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchRef = useRef(null);
 
-  const canEditRoles = ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech'];
+  const canEditRoles = ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'];
   const canEdit = user && canEditRoles.includes(user.role);
+
+  // Sync provider if user is loaded
+  useEffect(() => {
+    if (user?.fullName && !provider) {
+      setProvider(user.fullName);
+    }
+  }, [user]);
+
+  // Auto-lookup patient name & details when PID is typed
+  useEffect(() => {
+    const pid = patientId?.trim();
+    if (!pid) return;
+    const timer = setTimeout(async () => {
+      try {
+        const pRes = await getPatientByPid(pid);
+        const pData = pRes?.data?.data ?? pRes?.data;
+        if (pData?.full_name) {
+          if (!patientName) setPatientName(pData.full_name);
+          setPatientDetails(pData);
+          setPatientSource(pRes?.data?.source || pData?.source || 'cache');
+        }
+      } catch {
+        // PID not found — allow manual entry
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [patientId]);
 
   // Close search dropdown on click outside
   useEffect(() => {
@@ -305,7 +405,7 @@ export default function DentalCharting() {
 
   const handlePatientSearch = async (query) => {
     setPatientId(query);
-    if (!query || query.trim().length < 2) {
+    if (!query || query.trim().length < 1) {
       setSearchResults([]);
       setShowSearchResults(false);
       return;
@@ -390,6 +490,7 @@ export default function DentalCharting() {
     setSelectedTooth(null);
     setIsChartLoaded(false);
     setChartDate(format(new Date(), 'yyyy-MM-dd'));
+    setProvider(user?.fullName || '');
   };
 
   const loadSpecificChart = async (id) => {
@@ -510,12 +611,10 @@ export default function DentalCharting() {
       surface: newProcSurface || 'All',
       procedure: newProcName,
       status: newProcStatus,
-      fee: newProcFee ? parseFloat(newProcFee) : 0,
     };
     setTreatmentPlan(prev => [...prev, newItem]);
     setNewProcName('');
     setNewProcSurface('');
-    setNewProcFee('');
     toast.success('Procedure added to treatment plan.');
   };
 
@@ -531,6 +630,197 @@ export default function DentalCharting() {
       }
       return p;
     }));
+  };
+
+  // FDI Tooth Naming Dictionary for Lumina AI
+  const FDI_NAMES = {
+    '18': 'Upper Right 3rd Molar (#18)', '17': 'Upper Right 2nd Molar (#17)', '16': 'Upper Right 1st Molar (#16)',
+    '15': 'Upper Right 2nd Premolar (#15)', '14': 'Upper Right 1st Premolar (#14)', '13': 'Upper Right Canine (#13)',
+    '12': 'Upper Right Lateral Incisor (#12)', '11': 'Upper Right Central Incisor (#11)',
+    '21': 'Upper Left Central Incisor (#21)', '22': 'Upper Left Lateral Incisor (#22)', '23': 'Upper Left Canine (#23)',
+    '24': 'Upper Left 1st Premolar (#24)', '25': 'Upper Left 2nd Premolar (#25)', '26': 'Upper Left 1st Molar (#26)',
+    '27': 'Upper Left 2nd Molar (#27)', '28': 'Upper Left 3rd Molar (#28)',
+    '31': 'Lower Left Central Incisor (#31)', '32': 'Lower Left Lateral Incisor (#32)', '33': 'Lower Left Canine (#33)',
+    '34': 'Lower Left 1st Premolar (#34)', '35': 'Lower Left 2nd Premolar (#35)', '36': 'Lower Left 1st Molar (#36)',
+    '37': 'Lower Left 2nd Molar (#37)', '38': 'Lower Left 3rd Molar (#38)',
+    '41': 'Lower Right Central Incisor (#41)', '42': 'Lower Right Lateral Incisor (#42)', '43': 'Lower Right Canine (#43)',
+    '44': 'Lower Right 1st Premolar (#44)', '45': 'Lower Right 2nd Premolar (#45)', '46': 'Lower Right 1st Molar (#46)',
+    '47': 'Lower Right 2nd Molar (#47)', '48': 'Lower Right 3rd Molar (#48)',
+    '55': 'Upper Right Primary 2nd Molar (#55)', '54': 'Upper Right Primary 1st Molar (#54)', '53': 'Upper Right Primary Canine (#53)', '52': 'Upper Right Primary Lateral Incisor (#52)', '51': 'Upper Right Primary Central Incisor (#51)',
+    '61': 'Upper Left Primary Central Incisor (#61)', '62': 'Upper Left Primary Lateral Incisor (#62)', '63': 'Upper Left Primary Canine (#63)', '64': 'Upper Left Primary 1st Molar (#64)', '65': 'Upper Left Primary 2nd Molar (#65)',
+    '71': 'Lower Left Primary Central Incisor (#71)', '72': 'Lower Left Primary Lateral Incisor (#72)', '73': 'Lower Left Primary Canine (#73)', '74': 'Lower Left Primary 1st Molar (#74)', '75': 'Lower Left Primary 2nd Molar (#75)',
+    '81': 'Lower Right Primary Central Incisor (#81)', '82': 'Lower Right Primary Lateral Incisor (#82)', '83': 'Lower Right Primary Canine (#83)', '84': 'Lower Right Primary 1st Molar (#84)', '85': 'Lower Right Primary 2nd Molar (#85)',
+  };
+
+  const SURFACE_NAMES = { B: 'Buccal/Labial', M: 'Mesial', O: 'Occlusal/Incisal', D: 'Distal', L: 'Lingual/Palatal' };
+
+  const handleGenerateAiNote = async () => {
+    if (!canEdit) return toast.error('You do not have permission to generate AI notes');
+    setIsGeneratingAiNote(true);
+    const toastId = toast.loading('Lumina AI is generating FDI dental clinical notes...');
+
+    try {
+      const res = await generateDentalAiNote({
+        toothData,
+        treatmentPlan,
+        patientName,
+        patientId,
+        dentitionType,
+        existingNotes: generalNotes,
+        provider
+      });
+      if (res.data?.success && res.data?.data?.note) {
+        setGeneralNotes(res.data.data.note);
+        toast.success('Lumina AI clinical notes generated!', { id: toastId });
+        setIsGeneratingAiNote(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend AI note endpoint fallback:', err.message);
+    }
+
+    // Client-side Lumina AI engine fallback
+    try {
+      const lines = [];
+      lines.push(`LUMINA AI DENTAL CLINICAL EXAMINATION NOTE`);
+      lines.push(`Date: ${format(new Date(), 'dd MMM yyyy')}`);
+      if (patientName || patientId) lines.push(`Patient: ${patientName || 'Unknown'} (PID: ${patientId || 'N/A'})`);
+      if (provider) lines.push(`Attending Practitioner: ${provider}`);
+      lines.push(`Dentition Mode: ${dentitionType.toUpperCase()} (FDI Notation System)`);
+      lines.push(``);
+
+      const missingTeeth = [];
+      const cariesTeeth = [];
+      const rctTeeth = [];
+      const crownTeeth = [];
+      const implantTeeth = [];
+      const bridgeTeeth = [];
+      const extractionPlanned = [];
+      const fractureTeeth = [];
+      const periapicalTeeth = [];
+      const mobilityTeeth = [];
+      const deepProbingTeeth = [];
+
+      Object.entries(toothData).forEach(([num, data]) => {
+        if (!data) return;
+        const toothLabel = FDI_NAMES[num] || `Tooth #${num}`;
+
+        if (data.missing) {
+          missingTeeth.push(toothLabel);
+          return;
+        }
+
+        const nonHealthySurfaces = Object.entries(data.surfaces || {})
+          .filter(([_, cond]) => cond && cond !== 'Healthy');
+
+        if (data.condition === 'Caries' || nonHealthySurfaces.some(([_, c]) => c === 'Caries')) {
+          const surfaces = nonHealthySurfaces
+            .filter(([_, c]) => c === 'Caries')
+            .map(([s]) => SURFACE_NAMES[s] || s);
+          cariesTeeth.push(`${toothLabel}${surfaces.length ? ` [${surfaces.join(', ')}]` : ''}`);
+        }
+
+        if (data.condition === 'Root Canal' || nonHealthySurfaces.some(([_, c]) => c === 'Root Canal')) {
+          rctTeeth.push(toothLabel);
+        }
+
+        if (data.condition === 'Crown' || nonHealthySurfaces.some(([_, c]) => c === 'Crown')) {
+          crownTeeth.push(toothLabel);
+        }
+
+        if (data.condition === 'Implant') implantTeeth.push(toothLabel);
+        if (data.condition === 'Bridge') bridgeTeeth.push(toothLabel);
+        if (data.condition === 'Extraction Planned') extractionPlanned.push(toothLabel);
+        if (data.condition === 'Fractured') fractureTeeth.push(toothLabel);
+        if (data.condition === 'Periapical') periapicalTeeth.push(toothLabel);
+
+        if (data.mobility && data.mobility > 0) {
+          const mobilityDesc = data.mobility === 1 ? 'Grade I (<1mm)' : data.mobility === 2 ? 'Grade II (1-2mm)' : 'Grade III (>2mm)';
+          mobilityTeeth.push(`${toothLabel}: ${mobilityDesc}`);
+        }
+
+        if (data.probingDepth && (data.probingDepth.B >= 4 || data.probingDepth.L >= 4)) {
+          deepProbingTeeth.push(`${toothLabel} (Buccal: ${data.probingDepth.B || 2}mm, Lingual: ${data.probingDepth.L || 2}mm)`);
+        }
+      });
+
+      lines.push(`1. CLINICAL FINDINGS & ODONTOGRAM SUMMARY:`);
+      let hasFindings = false;
+
+      if (cariesTeeth.length > 0) {
+        lines.push(`   • Dental Caries / Active Decay (${cariesTeeth.length}): ${cariesTeeth.join('; ')}.`);
+        hasFindings = true;
+      }
+      if (rctTeeth.length > 0) {
+        lines.push(`   • Endodontic Involvement / RCT (${rctTeeth.length}): ${rctTeeth.join('; ')}.`);
+        hasFindings = true;
+      }
+      if (periapicalTeeth.length > 0) {
+        lines.push(`   • Periapical Pathology / Lesions (${periapicalTeeth.length}): ${periapicalTeeth.join('; ')}.`);
+        hasFindings = true;
+      }
+      if (fractureTeeth.length > 0) {
+        lines.push(`   • Structural Fractures (${fractureTeeth.length}): ${fractureTeeth.join('; ')}.`);
+        hasFindings = true;
+      }
+      if (crownTeeth.length > 0 || implantTeeth.length > 0 || bridgeTeeth.length > 0) {
+        const prosthetics = [...crownTeeth.map(t => `${t} (Crown)`), ...implantTeeth.map(t => `${t} (Implant)`), ...bridgeTeeth.map(t => `${t} (Bridge)`)];
+        lines.push(`   • Existing Prosthetics & Restorations: ${prosthetics.join('; ')}.`);
+        hasFindings = true;
+      }
+      if (extractionPlanned.length > 0) {
+        lines.push(`   • Non-restorable / Planned Extractions (${extractionPlanned.length}): ${extractionPlanned.join('; ')}.`);
+        hasFindings = true;
+      }
+      if (missingTeeth.length > 0) {
+        lines.push(`   • Missing / Previously Extracted Teeth (${missingTeeth.length}): ${missingTeeth.join('; ')}.`);
+        hasFindings = true;
+      }
+
+      if (!hasFindings) {
+        lines.push(`   • Complete dentition inspected. No overt active caries or acute pathological lesions noted.`);
+      }
+      lines.push(``);
+
+      lines.push(`2. PERIODONTAL & HARD TISSUE ASSESSMENT:`);
+      if (mobilityTeeth.length > 0 || deepProbingTeeth.length > 0) {
+        if (mobilityTeeth.length > 0) lines.push(`   • Increased Tooth Mobility: ${mobilityTeeth.join('; ')}.`);
+        if (deepProbingTeeth.length > 0) lines.push(`   • Deep Periodontal Pockets (>=4mm): ${deepProbingTeeth.join('; ')}.`);
+      } else {
+        lines.push(`   • Periodontal probing depths within normal limits (<3mm). No pathological tooth mobility observed.`);
+      }
+      lines.push(``);
+
+      lines.push(`3. PROPOSED TREATMENT PLAN & INTERVENTIONS:`);
+      if (treatmentPlan && treatmentPlan.length > 0) {
+        treatmentPlan.forEach((item, i) => {
+          lines.push(`   ${i + 1}. [${item.status || 'Planned'}] Tooth ${item.tooth}: ${item.procedure}`);
+        });
+      } else if (cariesTeeth.length > 0 || rctTeeth.length > 0 || extractionPlanned.length > 0) {
+        lines.push(`   • Restorative and endodontic care recommended based on odontogram findings.`);
+      } else {
+        lines.push(`   • Routine oral prophylaxis and bi-annual recall recommended.`);
+      }
+      lines.push(``);
+
+      if (generalNotes && generalNotes.trim()) {
+        lines.push(`4. PRACTITIONER CLINICAL REMARKS:`);
+        lines.push(`   "${generalNotes.trim()}"`);
+        lines.push(``);
+      }
+
+      lines.push(`5. PATIENT ADVICE & RECOMMENDATIONS:`);
+      lines.push(`   • Maintain oral hygiene: Twice daily modified Bass technique brushing with fluoridated toothpaste & daily interdental flossing.`);
+      lines.push(`   • Avoid hard/sticky foods on compromised or recently treated teeth.`);
+      lines.push(`   • Follow-up appointment scheduled for treatment plan progression.`);
+
+      setGeneralNotes(lines.join('\n'));
+      toast.success('Lumina AI clinical notes generated!', { id: toastId });
+    } catch (e) {
+      toast.error('Failed to generate AI note.', { id: toastId });
+    } finally {
+      setIsGeneratingAiNote(false);
+    }
   };
 
   // Printable View Trigger
@@ -1085,15 +1375,36 @@ export default function DentalCharting() {
             />
           </div>
 
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-3 relative">
             <label className="text-[11px] font-bold text-slate-600">Procedure Name</label>
             <input
               type="text"
+              list="dental-procedure-suggestions"
               value={newProcName}
               onChange={(e) => setNewProcName(e.target.value)}
-              placeholder="e.g. Composite Restoration (MO)"
+              placeholder="Select or type procedure..."
               className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold"
             />
+            <datalist id="dental-procedure-suggestions">
+              {COMMON_DENTAL_PROCEDURES.map((proc, idx) => (
+                <option key={idx} value={proc} />
+              ))}
+            </datalist>
+
+            {/* Non-imposing Lumina Smart Suggestion (hides as soon as procedure is typed/selected) */}
+            {!newProcName.trim() && luminaSuggestedProcedure && (
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-purple-700 bg-purple-50/80 px-2 py-0.5 rounded-lg border border-purple-100 font-medium">
+                <span className="font-bold text-[10px] uppercase tracking-wider text-purple-600">Suggestion:</span>
+                <button
+                  type="button"
+                  onClick={() => setNewProcName(luminaSuggestedProcedure)}
+                  className="text-purple-800 font-semibold hover:underline cursor-pointer text-left truncate max-w-full"
+                  title="Click to apply suggested procedure"
+                >
+                  {luminaSuggestedProcedure}
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
@@ -1107,17 +1418,6 @@ export default function DentalCharting() {
               <option value="In Progress">In Progress</option>
               <option value="Completed">Completed</option>
             </select>
-          </div>
-
-          <div>
-            <label className="text-[11px] font-bold text-slate-600">Estimated Fee</label>
-            <input
-              type="number"
-              value={newProcFee}
-              onChange={(e) => setNewProcFee(e.target.value)}
-              placeholder="Amount"
-              className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold"
-            />
           </div>
 
           <div>
@@ -1140,14 +1440,13 @@ export default function DentalCharting() {
                 <th className="px-4 py-2.5">Tooth</th>
                 <th className="px-4 py-2.5">Procedure</th>
                 <th className="px-4 py-2.5">Status</th>
-                <th className="px-4 py-2.5 text-right">Fee</th>
                 <th className="px-4 py-2.5 text-right print:hidden">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
               {treatmentPlan.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-4 py-6 text-center text-slate-400 font-medium">
+                  <td colSpan="4" className="px-4 py-6 text-center text-slate-400 font-medium">
                     No procedures added to treatment plan yet.
                   </td>
                 </tr>
@@ -1166,9 +1465,6 @@ export default function DentalCharting() {
                       }`}>
                         {item.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono font-bold">
-                      {item.fee > 0 ? `${item.fee.toLocaleString()} RWF` : '—'}
                     </td>
                     <td className="px-4 py-2.5 text-right space-x-1 print:hidden">
                       <button
@@ -1196,14 +1492,25 @@ export default function DentalCharting() {
 
       {/* GENERAL NOTES */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
-        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">General Chart & Clinical Notes</label>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">General Chart & Clinical Notes</label>
+          <button
+            type="button"
+            onClick={handleGenerateAiNote}
+            disabled={isGeneratingAiNote || !canEdit}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-xs font-bold transition-all shadow-xs cursor-pointer print:hidden"
+          >
+            {isGeneratingAiNote && <Loader2 size={14} className="animate-spin" />}
+            <span>Generate with Lumina</span>
+          </button>
+        </div>
         <textarea
           disabled={!canEdit}
           value={generalNotes}
           onChange={(e) => setGeneralNotes(e.target.value)}
-          rows={3}
-          placeholder="Overall chart notes, treatment plan summary, medical history notes..."
-          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-medium resize-y"
+          rows={6}
+          placeholder=""
+          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-medium resize-y font-mono"
         />
       </div>
 

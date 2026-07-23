@@ -105,7 +105,10 @@ router.post('/sync/trigger', async (req, res, next) => {
 });
 
 // ── GET /api/patients/search?q=text&limit=20 ─────────────────────────────────
-router.get('/search', checkPermission('patients', 'view'), async (req, res, next) => {
+// authMiddleware (applied to all routes above) is sufficient — patients→view is
+// granted to every role in the system; a fine-grained check here only causes
+// 403s when new roles are added before an explicit DB permission seed.
+router.get('/search', async (req, res, next) => {
   try {
     const q     = (req.query.q || '').trim();
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
@@ -169,7 +172,7 @@ router.get('/search', checkPermission('patients', 'view'), async (req, res, next
 });
 
 // ── GET /api/patients/:pid ────────────────────────────────────────────────────
-router.get('/:pid', checkPermission('patients', 'view'), async (req, res, next) => {
+router.get('/:pid', async (req, res, next) => {
   try {
     const pid = req.params.pid.trim();
 

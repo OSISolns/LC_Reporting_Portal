@@ -37,11 +37,11 @@ const STATUS_CONFIG = {
   'No-Show':    { color: 'text-slate-700',   bg: 'bg-slate-100',   dot: 'bg-slate-500' },
 };
 
-const emptyForm = (dateStr) => ({
+const emptyForm = (dateStr, provider = '') => ({
   patient_name: '',
   patient_id: '',
   appointment_type: 'Consultation',
-  provider: '',
+  provider,
   appointment_date: dateStr,
   start_time: '',
   end_time: '',
@@ -66,7 +66,7 @@ export default function DentalAppointments() {
   const [conflictInfo, setConflictInfo] = useState(null);
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-  const [formData, setFormData] = useState(emptyForm(selectedDateStr));
+  const [formData, setFormData] = useState(emptyForm(selectedDateStr, user?.fullName || ''));
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const rangeFrom = format(weekStart, 'yyyy-MM-dd');
@@ -97,6 +97,25 @@ export default function DentalAppointments() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Auto-populate patient name whenever a PID is typed in the PID field
+  useEffect(() => {
+    const pid = formData.patient_id?.trim();
+    if (!pid) return;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await getPatientByPid(pid);
+        const pData = res?.data?.data ?? res?.data;
+        if (pData?.full_name) {
+          setFormData(prev => ({ ...prev, patient_name: pData.full_name }));
+          toast.success(`Patient found: ${pData.full_name}`);
+        }
+      } catch {
+        // PID not found — let user fill name manually
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [formData.patient_id]);
+
   const handlePrevWeek = () => setWeekStart(prev => subWeeks(prev, 1));
   const handleNextWeek = () => setWeekStart(prev => addWeeks(prev, 1));
   const handleToday = () => {
@@ -113,7 +132,7 @@ export default function DentalAppointments() {
 
   const openAddModal = () => {
     setEditingAppt(null);
-    setFormData(emptyForm(selectedDateStr));
+    setFormData(emptyForm(selectedDateStr, user?.fullName || ''));
     setIsModalOpen(true);
   };
 
@@ -471,27 +490,12 @@ export default function DentalAppointments() {
                     />
                   </div>
                   <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Patient/Sukraa ID</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">PID</label>
                     <input
                       type="text"
-                      placeholder="e.g. SK-1004"
+                      placeholder=""
                       value={formData.patient_id}
-                      onChange={e => setFormData({ ...formData, patient_id: e.target.value })}
-                      onBlur={async (e) => {
-                        const pid = e.target.value.trim();
-                        if (pid && !formData.patient_name) {
-                          try {
-                            const res = await getPatientByPid(pid);
-                            const pData = res?.data?.data ?? res?.data;
-                            if (pData?.full_name) {
-                              setFormData(prev => ({ ...prev, patient_name: pData.full_name }));
-                              toast.success(`Found patient "${pData.full_name}"`);
-                            }
-                          } catch (err) {
-                            // patient not found, user can type manually
-                          }
-                        }
-                      }}
+                      onChange={e => setFormData(prev => ({ ...prev, patient_id: e.target.value }))}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none text-sm"
                     />
                   </div>
@@ -555,15 +559,6 @@ export default function DentalAppointments() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Chief Complaint</label>
-                  <textarea
-                    rows="2"
-                    value={formData.chief_complaint}
-                    onChange={e => setFormData({ ...formData, chief_complaint: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none text-sm resize-none"
-                  ></textarea>
-                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>

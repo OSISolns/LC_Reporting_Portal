@@ -62,6 +62,9 @@ exports.getCase = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ─── Helper for Safe Numeric Parsing ──────────────────────────────────────────
+const parseNum = (v) => (v !== undefined && v !== null && v !== '' && !isNaN(Number(v))) ? Number(v) : null;
+
 // ─── 3. Create case ───────────────────────────────────────────────────────────
 exports.createCase = async (req, res, next) => {
   try {
@@ -79,19 +82,27 @@ exports.createCase = async (req, res, next) => {
       cost_per_first_unit,
       cost_per_additional_unit,
       total_cost,
+      status,
+      delivery_notes,
+      delivered_to,
+      delivered_at,
       reported_by,
     } = req.body;
 
     // Basic validation
-    if (!received_date || !required_date || !work_done || !units_quantity) {
+    if (!received_date || !required_date || !work_done) {
       return res.status(400).json({
         success: false,
-        message: 'received_date, required_date, work_done, and units_quantity are required.',
+        message: 'received_date, required_date, and work_done are required.',
       });
     }
 
     const case_ref = generateCaseRef();
     const reported_by_user_id = req.user?.id || null;
+    const parsedQty = parseNum(units_quantity) || 1;
+    const parsedFirst = parseNum(cost_per_first_unit);
+    const parsedAdd = parseNum(cost_per_additional_unit);
+    const parsedTotal = parseNum(total_cost);
 
     await db.query(
       `INSERT INTO dental_cases (
@@ -99,16 +110,18 @@ exports.createCase = async (req, res, next) => {
          clinic_of_origin, clinician_name, patient_id, work_done,
          work_done_other, technologist, units_quantity,
          cost_per_first_unit, cost_per_additional_unit, total_cost,
+         status, delivery_notes, delivered_to, delivered_at,
          reported_by, reported_by_user_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         case_ref, received_date, required_date, work_command_origin || null,
         clinic_of_origin || null, clinician_name || null, patient_id || null,
         work_done, work_done_other || null, technologist || null,
-        Number(units_quantity),
-        cost_per_first_unit != null ? Number(cost_per_first_unit) : null,
-        cost_per_additional_unit != null ? Number(cost_per_additional_unit) : null,
-        total_cost != null ? Number(total_cost) : null,
+        parsedQty,
+        parsedFirst,
+        parsedAdd,
+        parsedTotal,
+        status || 'Received', delivery_notes || null, delivered_to || null, delivered_at || null,
         reported_by || null, reported_by_user_id,
       ]
     );
@@ -143,8 +156,22 @@ exports.updateCase = async (req, res, next) => {
       cost_per_first_unit,
       cost_per_additional_unit,
       total_cost,
+      status,
+      delivery_notes,
+      delivered_to,
+      delivered_at,
       reported_by,
     } = req.body;
+
+    // Fetch existing case to preserve unpassed fields
+    const { rows: existing } = await db.query('SELECT * FROM dental_cases WHERE id = ?', [id]);
+    if (!existing.length) {
+      return res.status(404).json({ success: false, message: 'Case not found.' });
+    }
+    const current = existing[0];
+
+    const updatedStatus = status !== undefined ? status : (current.status || 'Received');
+    const updatedDeliveredAt = delivered_at !== undefined ? delivered_at : (updatedStatus === 'Delivered' ? (current.delivered_at || new Date().toISOString()) : current.delivered_at);
 
     await db.query(
       `UPDATE dental_cases SET
@@ -153,22 +180,34 @@ exports.updateCase = async (req, res, next) => {
          work_done = ?, work_done_other = ?, technologist = ?,
          units_quantity = ?, cost_per_first_unit = ?,
          cost_per_additional_unit = ?, total_cost = ?,
+         status = ?, delivery_notes = ?, delivered_to = ?, delivered_at = ?,
          reported_by = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
-        received_date, required_date, work_command_origin || null,
-        clinic_of_origin || null, clinician_name || null, patient_id || null,
-        work_done, work_done_other || null, technologist || null,
-        Number(units_quantity),
-        cost_per_first_unit != null ? Number(cost_per_first_unit) : null,
-        cost_per_additional_unit != null ? Number(cost_per_additional_unit) : null,
-        total_cost != null ? Number(total_cost) : null,
-        reported_by || null, id,
+        received_date !== undefined ? received_date : current.received_date,
+        required_date !== undefined ? required_date : current.required_date,
+        work_command_origin !== undefined ? work_command_origin : current.work_command_origin,
+        clinic_of_origin !== undefined ? clinic_of_origin : current.clinic_of_origin,
+        clinician_name !== undefined ? clinician_name : current.clinician_name,
+        patient_id !== undefined ? patient_id : current.patient_id,
+        work_done !== undefined ? work_done : current.work_done,
+        work_done_other !== undefined ? work_done_other : current.work_done_other,
+        technologist !== undefined ? technologist : current.technologist,
+        units_quantity !== undefined ? (parseNum(units_quantity) || 1) : current.units_quantity,
+        cost_per_first_unit !== undefined ? parseNum(cost_per_first_unit) : current.cost_per_first_unit,
+        cost_per_additional_unit !== undefined ? parseNum(cost_per_additional_unit) : current.cost_per_additional_unit,
+        total_cost !== undefined ? parseNum(total_cost) : current.total_cost,
+        updatedStatus,
+        delivery_notes !== undefined ? delivery_notes : current.delivery_notes,
+        delivered_to !== undefined ? delivered_to : current.delivered_to,
+        updatedDeliveredAt,
+        reported_by !== undefined ? reported_by : current.reported_by,
+        id,
       ]
     );
 
-    await logAction(req, 'DENTAL_CASE_UPDATE', 'dental_cases', id, { work_done });
-    res.json({ success: true, message: 'Case updated.' });
+    await logAction(req, 'DENTAL_CASE_UPDATE', 'dental_cases', id, { status: updatedStatus, work_done });
+    res.json({ success: true, message: 'Case updated successfully.' });
   } catch (err) { next(err); }
 };
 

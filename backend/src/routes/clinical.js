@@ -16,7 +16,7 @@ router.use(authenticateToken);
 router.use(authorizeRoles([
   'nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_coo', 'stock-manager', 
   'pa', 'medical_director', 'procurement-manager', 'lab_team_lead', 'lab_tech', 'lab', 
-  'dental', 'dentist', 'dental_tech', 'physiotherapist', 'physio', 'operations_staff', 
+  'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'physiotherapist', 'physio', 'operations_staff', 
   'imaging_tech', 'imaging_manager', 'hsfp', 'coo'
 ]));
 
@@ -26,7 +26,7 @@ const checkInventoryOrClinicalRole = (action) => {
     if (req.user?.role === 'admin') return next();
     const CLINICAL_ROLES = [
       'nurse', 'chef-nurse', 'lab_team_lead', 'lab_tech', 'lab', 
-      'dental', 'dentist', 'dental_tech', 'imaging_tech', 'imaging_manager', 
+      'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'imaging_tech', 'imaging_manager', 
       'physiotherapist', 'physio', 'operations_staff', 'hsfp',
       'coo', 'deputy_coo', 'stock-manager', 'procurement-manager'
     ];
@@ -42,7 +42,7 @@ const checkDailyStockOrClinicalRole = (action) => {
     if (req.user?.role === 'admin') return next();
     const CLINICAL_ROLES = [
       'nurse', 'chef-nurse', 'lab_team_lead', 'lab_tech', 'lab', 
-      'dental', 'dentist', 'dental_tech', 'imaging_tech', 'imaging_manager', 
+      'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'imaging_tech', 'imaging_manager', 
       'physiotherapist', 'physio', 'operations_staff', 'hsfp',
       'coo', 'deputy_coo', 'stock-manager', 'procurement-manager'
     ];
@@ -121,7 +121,7 @@ router.post('/inventory/vendors', checkPermission('inventory', 'create'), clinic
 router.put('/inventory/vendors/:id', checkPermission('inventory', 'edit'), clinicalController.updateVendor);
 router.delete('/inventory/vendors/:id', checkPermission('inventory', 'delete'), clinicalController.deleteVendor);
 
-router.get('/inventory/departments', checkPermission('inventory', 'view'), clinicalController.getDepartments);
+router.get('/inventory/departments', checkInventoryOrClinicalRole('view'), clinicalController.getDepartments);
 router.post('/inventory/departments', checkPermission('inventory', 'create'), clinicalController.createDepartment);
 router.put('/inventory/departments/:id', checkPermission('inventory', 'edit'), clinicalController.updateDepartment);
 router.delete('/inventory/departments/:id', checkPermission('inventory', 'delete'), clinicalController.deleteDepartment);

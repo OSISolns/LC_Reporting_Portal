@@ -61,7 +61,7 @@ export default function DentalWorklist() {
     patient_name: '',
     patient_id: '',
     appointment_type: 'Consultation',
-    provider: '',
+    provider: user?.fullName || '',
     scheduled_time: '',
     appointment_date: format(new Date(), 'yyyy-MM-dd'),
     chief_complaint: '',
@@ -73,6 +73,25 @@ export default function DentalWorklist() {
   useEffect(() => {
     fetchData();
   }, [formattedDate]);
+
+  // Auto-populate patient name whenever a PID is typed
+  useEffect(() => {
+    const pid = formData.patient_id?.trim();
+    if (!pid) return;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await getPatientByPid(pid);
+        const pData = res?.data?.data ?? res?.data;
+        if (pData?.full_name) {
+          setFormData(prev => ({ ...prev, patient_name: pData.full_name }));
+          toast.success(`Patient found: ${pData.full_name}`);
+        }
+      } catch {
+        // PID not found — let user fill name manually
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [formData.patient_id]);
 
   const fetchData = async () => {
     try {
@@ -108,7 +127,7 @@ export default function DentalWorklist() {
       patient_name: '',
       patient_id: '',
       appointment_type: 'Consultation',
-      provider: '',
+      provider: user?.fullName || '',
       scheduled_time: '',
       appointment_date: formattedDate,
       chief_complaint: '',
@@ -507,27 +526,12 @@ export default function DentalWorklist() {
                     />
                   </div>
                   <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Patient/Sukraa ID</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">PID</label>
                     <input 
                       type="text" 
-                      placeholder="e.g. SK-1004"
+                      placeholder=""
                       value={formData.patient_id}
-                      onChange={e => setFormData({...formData, patient_id: e.target.value})}
-                      onBlur={async (e) => {
-                        const pid = e.target.value.trim();
-                        if (pid && !formData.patient_name) {
-                          try {
-                            const res = await getPatientByPid(pid);
-                            const pData = res?.data?.data ?? res?.data;
-                            if (pData?.full_name) {
-                              setFormData(prev => ({ ...prev, patient_name: pData.full_name }));
-                              toast.success(`Found patient "${pData.full_name}" from ${res?.data?.source === 'live' ? 'Sukraa' : 'DB cache'}`);
-                            }
-                          } catch (err) {
-                            // patient not found, user can type manually
-                          }
-                        }
-                      }}
+                      onChange={e => setFormData(prev => ({ ...prev, patient_id: e.target.value }))}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none text-sm"
                     />
                   </div>
@@ -580,15 +584,6 @@ export default function DentalWorklist() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Chief Complaint</label>
-                  <textarea 
-                    rows="2"
-                    value={formData.chief_complaint}
-                    onChange={e => setFormData({...formData, chief_complaint: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none text-sm resize-none"
-                  ></textarea>
-                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>

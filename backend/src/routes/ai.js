@@ -31,6 +31,7 @@ router.post('/clinical/instructions', authorizeRoles(CLINICAL_ROLES), clinicalAI
 router.post('/clinical/assessment',  authorizeRoles(CLINICAL_ROLES), clinicalAIController.generateAssessment);
 router.post('/clinical/note',        authorizeRoles(CLINICAL_ROLES), clinicalAIController.generateProgressNote);
 router.post('/clinical/sbar',        authorizeRoles(CLINICAL_ROLES), clinicalAIController.generateSBAR);
+router.post('/clinical/dental-note', authorizeRoles([...CLINICAL_ROLES, 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager']), clinicalAIController.generateDentalNote);
 router.get('/clinical/frequencies',  authorizeRoles(CLINICAL_ROLES), clinicalAIController.getFrequencies);
 router.get('/clinical/icd11/all',    authorizeRoles(CLINICAL_ROLES), clinicalAIController.getAllICD11);
 router.get('/clinical/icd11/lookup', authorizeRoles(CLINICAL_ROLES), clinicalAIController.lookupICD11);

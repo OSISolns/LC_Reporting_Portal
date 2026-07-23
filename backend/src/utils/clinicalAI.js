@@ -769,17 +769,192 @@ async function lookupICD11CodeDetails(code) {
   };
 }
 
+// ── Dental FDI Tooth Naming Knowledge ───────────────────────────────────────
+const FDI_TOOTH_NAMES = {
+  // Adult Upper Right (Q1)
+  '18': 'Upper Right 3rd Molar (#18)', '17': 'Upper Right 2nd Molar (#17)', '16': 'Upper Right 1st Molar (#16)',
+  '15': 'Upper Right 2nd Premolar (#15)', '14': 'Upper Right 1st Premolar (#14)', '13': 'Upper Right Canine (#13)',
+  '12': 'Upper Right Lateral Incisor (#12)', '11': 'Upper Right Central Incisor (#11)',
+  // Adult Upper Left (Q2)
+  '21': 'Upper Left Central Incisor (#21)', '22': 'Upper Left Lateral Incisor (#22)', '23': 'Upper Left Canine (#23)',
+  '24': 'Upper Left 1st Premolar (#24)', '25': 'Upper Left 2nd Premolar (#25)', '26': 'Upper Left 1st Molar (#26)',
+  '27': 'Upper Left 2nd Molar (#27)', '28': 'Upper Left 3rd Molar (#28)',
+  // Adult Lower Left (Q3)
+  '31': 'Lower Left Central Incisor (#31)', '32': 'Lower Left Lateral Incisor (#32)', '33': 'Lower Left Canine (#33)',
+  '34': 'Lower Left 1st Premolar (#34)', '35': 'Lower Left 2nd Premolar (#35)', '36': 'Lower Left 1st Molar (#36)',
+  '37': 'Lower Left 2nd Molar (#37)', '38': 'Lower Left 3rd Molar (#38)',
+  // Adult Lower Right (Q4)
+  '41': 'Lower Right Central Incisor (#41)', '42': 'Lower Right Lateral Incisor (#42)', '43': 'Lower Right Canine (#43)',
+  '44': 'Lower Right 1st Premolar (#44)', '45': 'Lower Right 2nd Premolar (#45)', '46': 'Lower Right 1st Molar (#46)',
+  '47': 'Lower Right 2nd Molar (#47)', '48': 'Lower Right 3rd Molar (#48)',
+  // Primary Teeth (Q5-Q8)
+  '55': 'Upper Right Primary 2nd Molar (#55)', '54': 'Upper Right Primary 1st Molar (#54)', '53': 'Upper Right Primary Canine (#53)', '52': 'Upper Right Primary Lateral Incisor (#52)', '51': 'Upper Right Primary Central Incisor (#51)',
+  '61': 'Upper Left Primary Central Incisor (#61)', '62': 'Upper Left Primary Lateral Incisor (#62)', '63': 'Upper Left Primary Canine (#63)', '64': 'Upper Left Primary 1st Molar (#64)', '65': 'Upper Left Primary 2nd Molar (#65)',
+  '71': 'Lower Left Primary Central Incisor (#71)', '72': 'Lower Left Primary Lateral Incisor (#72)', '73': 'Lower Left Primary Canine (#73)', '74': 'Lower Left Primary 1st Molar (#74)', '75': 'Lower Left Primary 2nd Molar (#75)',
+  '81': 'Lower Right Primary Central Incisor (#81)', '82': 'Lower Right Primary Lateral Incisor (#82)', '83': 'Lower Right Primary Canine (#83)', '84': 'Lower Right Primary 1st Molar (#84)', '85': 'Lower Right Primary 2nd Molar (#85)',
+};
+
+const SURFACE_FULL_NAMES = {
+  B: 'Buccal/Labial',
+  M: 'Mesial',
+  O: 'Occlusal/Incisal',
+  D: 'Distal',
+  L: 'Lingual/Palatal'
+};
+
+function generateDentalNote({ toothData = {}, treatmentPlan = [], patientName = '', patientId = '', dentitionType = 'adult', existingNotes = '', provider = '' }) {
+  const lines = [];
+
+  lines.push(`LUMINA AI DENTAL CLINICAL EXAMINATION NOTE`);
+  lines.push(`Date: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`);
+  if (patientName || patientId) lines.push(`Patient: ${patientName || 'Unknown'} (PID: ${patientId || 'N/A'})`);
+  if (provider) lines.push(`Attending Practitioner: ${provider}`);
+  lines.push(`Dentition Mode: ${dentitionType.toUpperCase()} (FDI Notation System)`);
+  lines.push(``);
+
+  const missingTeeth = [];
+  const cariesTeeth = [];
+  const rctTeeth = [];
+  const crownTeeth = [];
+  const implantTeeth = [];
+  const bridgeTeeth = [];
+  const extractionPlanned = [];
+  const fractureTeeth = [];
+  const periapicalTeeth = [];
+  const mobilityTeeth = [];
+  const deepProbingTeeth = [];
+
+  Object.entries(toothData).forEach(([num, data]) => {
+    if (!data) return;
+    const toothLabel = FDI_TOOTH_NAMES[num] || `Tooth #${num}`;
+
+    if (data.missing) {
+      missingTeeth.push(toothLabel);
+      return;
+    }
+
+    const nonHealthySurfaces = Object.entries(data.surfaces || {})
+      .filter(([_, cond]) => cond && cond !== 'Healthy');
+
+    if (data.condition === 'Caries' || nonHealthySurfaces.some(([_, c]) => c === 'Caries')) {
+      const surfaces = nonHealthySurfaces
+        .filter(([_, c]) => c === 'Caries')
+        .map(([s]) => SURFACE_FULL_NAMES[s] || s);
+      cariesTeeth.push(`${toothLabel}${surfaces.length ? ` [${surfaces.join(', ')}]` : ''}`);
+    }
+
+    if (data.condition === 'Root Canal' || nonHealthySurfaces.some(([_, c]) => c === 'Root Canal')) {
+      rctTeeth.push(toothLabel);
+    }
+
+    if (data.condition === 'Crown' || nonHealthySurfaces.some(([_, c]) => c === 'Crown')) {
+      crownTeeth.push(toothLabel);
+    }
+
+    if (data.condition === 'Implant') implantTeeth.push(toothLabel);
+    if (data.condition === 'Bridge') bridgeTeeth.push(toothLabel);
+    if (data.condition === 'Extraction Planned') extractionPlanned.push(toothLabel);
+    if (data.condition === 'Fractured') fractureTeeth.push(toothLabel);
+    if (data.condition === 'Periapical') periapicalTeeth.push(toothLabel);
+
+    if (data.mobility && data.mobility > 0) {
+      const mobilityDesc = data.mobility === 1 ? 'Grade I (<1mm)' : data.mobility === 2 ? 'Grade II (1-2mm)' : 'Grade III (>2mm)';
+      mobilityTeeth.push(`${toothLabel}: ${mobilityDesc}`);
+    }
+
+    if (data.probingDepth && (data.probingDepth.B >= 4 || data.probingDepth.L >= 4)) {
+      deepProbingTeeth.push(`${toothLabel} (Buccal: ${data.probingDepth.B || 2}mm, Lingual: ${data.probingDepth.L || 2}mm)`);
+    }
+  });
+
+  lines.push(`1. CLINICAL FINDINGS & ODONTOGRAM SUMMARY:`);
+  let hasFindings = false;
+
+  if (cariesTeeth.length > 0) {
+    lines.push(`   • Dental Caries / Active Decay (${cariesTeeth.length}): ${cariesTeeth.join('; ')}.`);
+    hasFindings = true;
+  }
+  if (rctTeeth.length > 0) {
+    lines.push(`   • Endodontic Involvement / RCT (${rctTeeth.length}): ${rctTeeth.join('; ')}.`);
+    hasFindings = true;
+  }
+  if (periapicalTeeth.length > 0) {
+    lines.push(`   • Periapical Pathology / Lesions (${periapicalTeeth.length}): ${periapicalTeeth.join('; ')}.`);
+    hasFindings = true;
+  }
+  if (fractureTeeth.length > 0) {
+    lines.push(`   • Structural Fractures (${fractureTeeth.length}): ${fractureTeeth.join('; ')}.`);
+    hasFindings = true;
+  }
+  if (crownTeeth.length > 0 || implantTeeth.length > 0 || bridgeTeeth.length > 0) {
+    const prosthetics = [...crownTeeth.map(t => `${t} (Crown)`), ...implantTeeth.map(t => `${t} (Implant)`), ...bridgeTeeth.map(t => `${t} (Bridge)`)];
+    lines.push(`   • Existing Prosthetics & Restorations: ${prosthetics.join('; ')}.`);
+    hasFindings = true;
+  }
+  if (extractionPlanned.length > 0) {
+    lines.push(`   • Non-restorable / Planned Extractions (${extractionPlanned.length}): ${extractionPlanned.join('; ')}.`);
+    hasFindings = true;
+  }
+  if (missingTeeth.length > 0) {
+    lines.push(`   • Missing / Previously Extracted Teeth (${missingTeeth.length}): ${missingTeeth.join('; ')}.`);
+    hasFindings = true;
+  }
+
+  if (!hasFindings) {
+    lines.push(`   • Complete dentition inspected. No overt active caries or acute pathological lesions noted.`);
+  }
+  lines.push(``);
+
+  lines.push(`2. PERIODONTAL & HARD TISSUE ASSESSMENT:`);
+  if (mobilityTeeth.length > 0 || deepProbingTeeth.length > 0) {
+    if (mobilityTeeth.length > 0) lines.push(`   • Increased Tooth Mobility: ${mobilityTeeth.join('; ')}.`);
+    if (deepProbingTeeth.length > 0) lines.push(`   • Deep Periodontal Pockets (>=4mm): ${deepProbingTeeth.join('; ')}.`);
+  } else {
+    lines.push(`   • Periodontal probing depths within normal limits (<3mm). No pathological tooth mobility observed.`);
+  }
+  lines.push(``);
+
+  lines.push(`3. PROPOSED TREATMENT PLAN & INTERVENTIONS:`);
+  if (treatmentPlan && treatmentPlan.length > 0) {
+    treatmentPlan.forEach((item, i) => {
+      lines.push(`   ${i + 1}. [${item.status || 'Planned'}] Tooth ${item.tooth}: ${item.procedure}`);
+    });
+  } else if (cariesTeeth.length > 0 || rctTeeth.length > 0 || extractionPlanned.length > 0) {
+    lines.push(`   • Restorative and endodontic care recommended based on odontogram findings.`);
+  } else {
+    lines.push(`   • Routine oral prophylaxis and bi-annual recall recommended.`);
+  }
+  lines.push(``);
+
+  if (existingNotes && existingNotes.trim()) {
+    lines.push(`4. PRACTITIONER CLINICAL REMARKS:`);
+    lines.push(`   "${existingNotes.trim()}"`);
+    lines.push(``);
+  }
+
+  lines.push(`5. PATIENT ADVICE & RECOMMENDATIONS:`);
+  lines.push(`   • Maintain oral hygiene: Twice daily modified Bass technique brushing with fluoridated toothpaste & daily interdental flossing.`);
+  lines.push(`   • Avoid hard/sticky foods on compromised or recently treated teeth.`);
+  lines.push(`   • Follow-up appointment scheduled for treatment plan progression.`);
+
+  return lines.join('\n');
+}
+
 module.exports = { 
   suggestMedications, 
   generateAssessmentComments, 
   generateProgressNote, 
   generateSBAR, 
   generateInstructions, 
+  generateDentalNote,
   suggestICD10, 
   suggestICD11, 
   getICD11Token, 
   getAllCachedICD11,
   lookupICD11CodeDetails,
   FREQUENCY_LEGEND, 
-  DRUG_DB 
+  DRUG_DB,
+  FDI_TOOTH_NAMES,
+  SURFACE_FULL_NAMES
 };
+

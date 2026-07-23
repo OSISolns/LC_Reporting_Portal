@@ -13,22 +13,25 @@ const PatientAutocomplete = ({
   const [suggestions, setSuggestions] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const containerRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Keep internal query input in sync with external value prop
   useEffect(() => {
     setQuery(value || '');
   }, [value]);
 
-  // Debounced search trigger
+  // Debounced search — fires after just 1 character
   useEffect(() => {
-    if (query.trim().length < 2) {
+    if (query.trim().length < 1) {
       setSuggestions([]);
+      setLoading(false);
       return;
     }
 
+    setLoading(true);
     const delayDebounce = setTimeout(async () => {
-      setLoading(true);
       try {
         const response = await searchPatients(query);
         if (response.data?.success) {
@@ -36,6 +39,7 @@ const PatientAutocomplete = ({
         }
       } catch (err) {
         console.error('Failed to fetch patient suggestions:', err);
+        setSuggestions([]);
       } finally {
         setLoading(false);
       }
@@ -44,7 +48,26 @@ const PatientAutocomplete = ({
     return () => clearTimeout(delayDebounce);
   }, [query]);
 
-  // Close list on outside clicks
+  // Recalculate dropdown position whenever it opens, or on scroll/resize
+  useEffect(() => {
+    const updatePosition = () => {
+      if (!inputRef.current) return;
+      // getBoundingClientRect is already viewport-relative — no scrollY offset needed
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    };
+
+    if (isOpen) updatePosition();
+
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [isOpen]);
+
+  // Close on outside click
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -58,20 +81,22 @@ const PatientAutocomplete = ({
   const handleInputChange = (e) => {
     const val = e.target.value;
     setQuery(val);
-    onChange(val); // bubble up to parent standard form handler
+    onChange(val);
     setIsOpen(true);
   };
 
   const handleSelect = (patient) => {
     setQuery(patient.full_name);
     setIsOpen(false);
-    onPatientSelect(patient); // bubble up structured patient details
+    setSuggestions([]);
+    onPatientSelect(patient);
   };
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
       <div style={{ position: 'relative' }}>
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={handleInputChange}
@@ -94,12 +119,11 @@ const PatientAutocomplete = ({
 
       {isOpen && (suggestions.length > 0 || loading) && (
         <div style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 0,
-          zIndex: 999,
-          marginTop: '6px',
+          position: 'fixed',
+          top: `${dropdownPos.top}px`,
+          left: `${dropdownPos.left}px`,
+          width: `${dropdownPos.width}px`,
+          zIndex: 9999,
           backgroundColor: '#ffffff',
           border: '1.5px solid var(--border-color)',
           borderRadius: '12px',
