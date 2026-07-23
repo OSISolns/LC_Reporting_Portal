@@ -798,3 +798,228 @@ exports.deleteAppointment = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// DENTAL CLINIC CASES — Clinical Diagnosis & Treatment Records
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const generateClinicCaseRef = () => {
+  const d = new Date();
+  const dateStr = d.toISOString().slice(0, 10).replace(/-/g, '').slice(2);
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `CC-${dateStr}-${rand}`;
+};
+
+exports.listClinicCases = async (req, res, next) => {
+  try {
+    const { from, to, patient_id } = req.query;
+    let queryFilter = '';
+    const params = [];
+    const clauses = [];
+
+    if (from && to) {
+      clauses.push('cc.case_date >= ? AND cc.case_date <= ?');
+      params.push(from, to);
+    }
+    if (patient_id) {
+      clauses.push('cc.patient_id = ?');
+      params.push(patient_id);
+    }
+
+    if (clauses.length > 0) {
+      queryFilter = `WHERE ${clauses.join(' AND ')}`;
+    }
+
+    const { rows } = await db.query(
+      `SELECT cc.*,
+              ch.chart_date AS linked_chart_date,
+              ch.provider AS linked_chart_provider
+       FROM   dental_clinic_cases cc
+       LEFT JOIN dental_charts ch ON ch.id = cc.linked_chart_id
+       ${queryFilter}
+       ORDER  BY cc.created_at DESC`,
+      params
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+exports.getClinicCase = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(
+      `SELECT cc.*,
+              ch.chart_date AS linked_chart_date,
+              ch.provider AS linked_chart_provider
+       FROM   dental_clinic_cases cc
+       LEFT JOIN dental_charts ch ON ch.id = cc.linked_chart_id
+       WHERE  cc.id = ?`,
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Clinic case not found.' });
+    }
+    res.json({ success: true, data: rows[0] });
+  } catch (err) { next(err); }
+};
+
+exports.createClinicCase = async (req, res, next) => {
+  try {
+    const {
+      patient_id,
+      patient_name,
+      dentist_name,
+      case_date,
+      linked_chart_id,
+      caries_count,
+      missing_count,
+      restored_count,
+      treatment_summary,
+      total_charges,
+      status,
+      clinical_notes,
+    } = req.body;
+
+    if (!patient_id || !patient_name || !dentist_name || !case_date) {
+      return res.status(400).json({
+        success: false,
+        message: 'patient_id, patient_name, dentist_name, and case_date are required.',
+      });
+    }
+
+    const case_ref = generateClinicCaseRef();
+
+    await db.query(
+      `INSERT INTO dental_clinic_cases (
+         case_ref, patient_id, patient_name, dentist_name, case_date,
+         linked_chart_id, caries_count, missing_count, restored_count,
+         treatment_summary, total_charges, status, clinical_notes
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        case_ref,
+        patient_id,
+        patient_name,
+        dentist_name,
+        case_date,
+        parseNum(linked_chart_id),
+        parseNum(caries_count) || 0,
+        parseNum(missing_count) || 0,
+        parseNum(restored_count) || 0,
+        treatment_summary || null,
+        parseNum(total_charges) || 0,
+        status || 'Diagnosed',
+        clinical_notes || null,
+      ]
+    );
+
+    const { rows: inserted } = await db.query(
+      'SELECT id FROM dental_clinic_cases WHERE case_ref = ?', [case_ref]
+    );
+    const newId = inserted[0]?.id;
+
+    await logAction(req, 'DENTAL_CLINIC_CASE_CREATE', 'dental_clinic_cases', newId, { case_ref, patient_id });
+    res.status(201).json({ success: true, message: 'Clinic case logged successfully.', data: { id: newId, case_ref } });
+  } catch (err) { next(err); }
+};
+
+exports.updateClinicCase = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      patient_id,
+      patient_name,
+      dentist_name,
+      case_date,
+      linked_chart_id,
+      caries_count,
+      missing_count,
+      restored_count,
+      treatment_summary,
+      total_charges,
+      status,
+      clinical_notes,
+    } = req.body;
+
+    const { rows: existing } = await db.query('SELECT * FROM dental_clinic_cases WHERE id = ?', [id]);
+    if (!existing.length) {
+      return res.status(404).json({ success: false, message: 'Clinic case not found.' });
+    }
+    const current = existing[0];
+
+    await db.query(
+      `UPDATE dental_clinic_cases SET
+         patient_id = ?, patient_name = ?, dentist_name = ?, case_date = ?,
+         linked_chart_id = ?, caries_count = ?, missing_count = ?, restored_count = ?,
+         treatment_summary = ?, total_charges = ?, status = ?, clinical_notes = ?,
+         updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+       WHERE id = ?`,
+      [
+        patient_id !== undefined ? patient_id : current.patient_id,
+        patient_name !== undefined ? patient_name : current.patient_name,
+        dentist_name !== undefined ? dentist_name : current.dentist_name,
+        case_date !== undefined ? case_date : current.case_date,
+        linked_chart_id !== undefined ? parseNum(linked_chart_id) : current.linked_chart_id,
+        caries_count !== undefined ? parseNum(caries_count) : current.caries_count,
+        missing_count !== undefined ? parseNum(missing_count) : current.missing_count,
+        restored_count !== undefined ? parseNum(restored_count) : current.restored_count,
+        treatment_summary !== undefined ? treatment_summary : current.treatment_summary,
+        total_charges !== undefined ? parseNum(total_charges) : current.total_charges,
+        status !== undefined ? status : current.status,
+        clinical_notes !== undefined ? clinical_notes : current.clinical_notes,
+        id,
+      ]
+    );
+
+    await logAction(req, 'DENTAL_CLINIC_CASE_UPDATE', 'dental_clinic_cases', id, { status });
+    res.json({ success: true, message: 'Clinic case updated successfully.' });
+  } catch (err) { next(err); }
+};
+
+exports.deleteClinicCase = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM dental_clinic_cases WHERE id = ?', [id]);
+    await logAction(req, 'DENTAL_CLINIC_CASE_DELETE', 'dental_clinic_cases', id, {});
+    res.json({ success: true, message: 'Clinic case deleted.' });
+  } catch (err) { next(err); }
+};
+
+exports.getClinicCasesStats = async (req, res, next) => {
+  try {
+    const { from, to } = req.query;
+    let dateFilter = '';
+    const params = [];
+
+    if (from && to) {
+      dateFilter = `WHERE case_date >= ? AND case_date <= ?`;
+      params.push(from, to);
+    }
+
+    const { rows: totals } = await db.query(
+      `SELECT
+         COUNT(*) AS total_cases,
+         SUM(COALESCE(caries_count, 0)) AS total_caries,
+         SUM(COALESCE(restored_count, 0)) AS total_restored,
+         SUM(COALESCE(total_charges, 0)) AS total_charges
+       FROM dental_clinic_cases
+       ${dateFilter}`,
+      params
+    );
+
+    const { rows: byStatus } = await db.query(
+      `SELECT status, COUNT(*) AS count
+       FROM dental_clinic_cases
+       ${dateFilter}
+       GROUP BY status`,
+      params
+    );
+
+    res.json({
+      success: true,
+      data: {
+        totals: totals[0] || { total_cases: 0, total_caries: 0, total_restored: 0, total_charges: 0 },
+        byStatus,
+      },
+    });
+  } catch (err) { next(err); }
+};
+

@@ -532,6 +532,33 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       }
       
       console.log('✅ Custom department cleanup migration complete.');
+
+      console.log('⚙️ Running dental_clinic_cases table migration...');
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS dental_clinic_cases (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          case_ref TEXT UNIQUE NOT NULL,
+          patient_id TEXT NOT NULL,
+          patient_name TEXT NOT NULL,
+          dentist_name TEXT NOT NULL,
+          case_date TEXT NOT NULL,
+          linked_chart_id INTEGER,
+          caries_count INTEGER DEFAULT 0,
+          missing_count INTEGER DEFAULT 0,
+          restored_count INTEGER DEFAULT 0,
+          treatment_summary TEXT,
+          total_charges REAL DEFAULT 0,
+          status TEXT CHECK(status IN ('Diagnosed', 'In Treatment', 'Completed', 'Follow-Up')) DEFAULT 'Diagnosed',
+          clinical_notes TEXT,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        )
+      `).then(() => {
+        console.log('  ✅ Table dental_clinic_cases created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create dental_clinic_cases:', err.message);
+      });
+
       const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
       console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));
       

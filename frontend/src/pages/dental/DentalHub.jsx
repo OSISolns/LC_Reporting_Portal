@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import ConsumablesLog from '../ConsumablesLog';
 import DentalCasesLog from './DentalCasesLog';
+import ClinicCasesLog from './ClinicCasesLog';
 import ProstheticsOdontogramWorkspace from './ProstheticsOdontogramWorkspace';
 import { useAuth } from '../../context/AuthContext';
 
@@ -26,6 +27,7 @@ const SECTIONS = [
       { key: 'worklist',           icon: Calendar,      label: 'Patient Worklist'  },
       { key: 'appointments',       icon: CalendarClock, label: 'Appointments'      },
       { key: 'charting',           icon: Stethoscope,   label: 'Dental Charting'   },
+      { key: 'clinic_cases',       icon: BookOpen,      label: 'Clinic Cases'      },
       { key: 'consumables_clinic', icon: ClipboardList, label: 'Consumables Log'   },
     ],
   },
@@ -162,6 +164,7 @@ const DentalHub = () => {
         {currentTab === 'worklist'           && <DentalWorklist />}
         {currentTab === 'appointments'       && <DentalAppointments />}
         {currentTab === 'charting'           && <DentalCharting />}
+        {currentTab === 'clinic_cases'       && <ClinicCasesLog />}
         {currentTab === 'consumables_clinic' && <ConsumablesLog defaultDeptName="DENTAL CLINIC" />}
         {currentTab === 'cases'              && <DentalCasesLog />}
         {currentTab === 'odontogram_lab'     && <ProstheticsOdontogramWorkspace />}

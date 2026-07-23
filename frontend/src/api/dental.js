@@ -32,3 +32,11 @@ export const updateAppointment        = (id, data) => api.put(`/dental/appointme
 export const updateAppointmentStatus  = (id, status) => api.patch(`/dental/appointments/${id}/status`, { status });
 export const checkInAppointment       = (id)     => api.post(`/dental/appointments/${id}/check-in`);
 export const deleteAppointment        = (id)     => api.delete(`/dental/appointments/${id}`);
+
+// ─── Dental Clinic Cases ─────────────────────────────────────────────────────
+export const listClinicCases          = (params) => api.get('/dental/clinic-cases', { params });
+export const getClinicCasesStats      = (params) => api.get('/dental/clinic-cases/stats', { params });
+export const getClinicCase            = (id)     => api.get(`/dental/clinic-cases/${id}`);
+export const createClinicCase         = (data)   => api.post('/dental/clinic-cases', data);
+export const updateClinicCase         = (id, data) => api.put(`/dental/clinic-cases/${id}`, data);
+export const deleteClinicCase         = (id)     => api.delete(`/dental/clinic-cases/${id}`);

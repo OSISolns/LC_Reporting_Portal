@@ -107,7 +107,7 @@ const generateDefaultToothData = () => {
 };
 
 // ─── ANATOMICAL POLYGON TOOTH SVG COMPONENT ─────────────────────────────────
-const AnatomicalToothSVG = ({ number, data, isSelected, onClick, onSurfaceClick, activeToolCondition, isUpper }) => {
+const AnatomicalToothSVG = ({ number, data, isSelected, onClick, onSurfaceClick, activeToolCondition, isUpper, onEnter, onLeave }) => {
   const toothData = data || DEFAULT_TOOTH_STRUCTURE;
   const isMissing = toothData.missing;
   const s = toothData.surfaces || DEFAULT_TOOTH_STRUCTURE.surfaces;
@@ -147,9 +147,12 @@ const AnatomicalToothSVG = ({ number, data, isSelected, onClick, onSurfaceClick,
       {/* Main Interactive Container */}
       <div 
         onClick={() => onClick(number.toString())}
+        onMouseEnter={(e) => onEnter && onEnter(number.toString(), e)}
+        onMouseMove={(e) => onEnter && onEnter(number.toString(), e)}
+        onMouseLeave={() => onLeave && onLeave()}
         className={`relative cursor-pointer transition-all rounded-lg p-1 bg-white border-2 ${
           isSelected 
-            ? 'border-rose-500 shadow-md ring-2 ring-rose-500/20 scale-105 z-20' 
+            ? 'border-rose-500 shadow-md ring-2 ring-rose-500/20 z-20' 
             : 'border-slate-200 hover:border-rose-300 hover:shadow-xs'
         }`}
         style={{ width: 52, height: 68 }}
@@ -294,6 +297,19 @@ export default function DentalCharting() {
   // Tooth Data Store
   const [toothData, setToothData] = useState(generateDefaultToothData());
   const [selectedTooth, setSelectedTooth] = useState(null);
+  const [hoveredTooth, setHoveredTooth] = useState(null);
+
+  const handleToothEnter = (number, e) => {
+    setHoveredTooth({
+      number,
+      clientX: e.clientX,
+      clientY: e.clientY
+    });
+  };
+
+  const handleToothLeave = () => {
+    setHoveredTooth(null);
+  };
 
   // Quick Condition Palette Active Tool
   const [activeTool, setActiveTool] = useState('Caries'); // Condition key to apply on click
@@ -860,6 +876,8 @@ export default function DentalCharting() {
               onSurfaceClick={handleDirectSurfaceClick}
               activeToolCondition={activeTool}
               isUpper={isUpper}
+              onEnter={handleToothEnter}
+              onLeave={handleToothLeave}
             />
           ))}
         </div>
@@ -875,6 +893,8 @@ export default function DentalCharting() {
               onSurfaceClick={handleDirectSurfaceClick}
               activeToolCondition={activeTool}
               isUpper={isUpper}
+              onEnter={handleToothEnter}
+              onLeave={handleToothLeave}
             />
           ))}
         </div>
@@ -1600,6 +1620,88 @@ export default function DentalCharting() {
         onClose={() => setShowAiPrescriber(false)}
         patientName={patientName}
       />
+
+      {/* Interactive Hover Tooltip */}
+      {hoveredTooth && (
+        <div
+          className="pointer-events-none fixed z-50 bg-white/95 text-slate-900 rounded-2xl shadow-xl p-4 text-xs space-y-2.5 w-64 border border-slate-200/90 backdrop-blur-md transition-all duration-75"
+          style={{
+            left: Math.min(hoveredTooth.clientX + 18, window.innerWidth - 275),
+            top: Math.min(hoveredTooth.clientY + 18, window.innerHeight - 260),
+          }}
+        >
+          {/* Header */}
+          <div className="border-b border-slate-100 pb-2">
+            <div className="flex items-center justify-between">
+              <span className="font-black text-sm text-rose-600">Tooth #{hoveredTooth.number}</span>
+              <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                FDI Notation
+              </span>
+            </div>
+            <div className="text-[11px] font-bold text-slate-800 mt-0.5">
+              {FDI_NAMES[hoveredTooth.number] || `Tooth #${hoveredTooth.number}`}
+            </div>
+            <div className="text-[9.5px] font-semibold text-slate-500 uppercase tracking-wider">
+              {getQuadrantName(hoveredTooth.number)}
+            </div>
+          </div>
+
+          {/* Status & Surfaces */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-extrabold uppercase text-slate-400">Clinical Status</span>
+              <span className={`text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                toothData[hoveredTooth.number]?.missing
+                  ? 'bg-red-100 text-red-800 border-red-300 font-bold'
+                  : CONDITIONS[toothData[hoveredTooth.number]?.condition || 'Healthy']?.badgeBg || 'bg-slate-100 text-slate-700 border-slate-200 font-bold'
+              }`}>
+                {toothData[hoveredTooth.number]?.missing ? 'Missing' : toothData[hoveredTooth.number]?.condition || 'Healthy'}
+              </span>
+            </div>
+
+            {!toothData[hoveredTooth.number]?.missing && (
+              <div className="space-y-1 bg-slate-50 p-2 rounded-xl border border-slate-100 text-[10.5px]">
+                <div className="font-bold text-slate-500 mb-1 text-[9px] uppercase tracking-wider">Surfaces Status</div>
+                {['B', 'M', 'O', 'D', 'L'].map(sKey => {
+                  const sLabel = { B: 'Buccal', M: 'Mesial', O: 'Occlusal', D: 'Distal', L: 'Lingual' }[sKey];
+                  const sCond = toothData[hoveredTooth.number]?.surfaces?.[sKey] || 'Healthy';
+                  return (
+                    <div key={sKey} className="flex items-center justify-between">
+                      <span className="text-slate-500 font-semibold">{sLabel} ({sKey}):</span>
+                      <span className={`font-bold ${sCond === 'Healthy' ? 'text-slate-400' : 'text-rose-600'}`}>{sCond}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Periodontal */}
+          {!toothData[hoveredTooth.number]?.missing && (
+            <div className="space-y-1 text-[10.5px] border-t border-slate-100 pt-2">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Mobility:</span>
+                <span className={`font-extrabold ${toothData[hoveredTooth.number]?.mobility > 0 ? 'text-amber-600' : 'text-slate-700'}`}>
+                  {toothData[hoveredTooth.number]?.mobility > 0 ? `Grade ${toothData[hoveredTooth.number].mobility}` : 'Normal (0)'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Probing Depth (Buccal):</span>
+                <span className="text-slate-700 font-extrabold">
+                  {toothData[hoveredTooth.number]?.probingDepth?.B ?? 2} mm
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Tooth Notes */}
+          {toothData[hoveredTooth.number]?.notes && (
+            <div className="text-slate-600 text-[10px] italic pt-2 border-t border-slate-100 mt-1 line-clamp-3">
+              "{toothData[hoveredTooth.number].notes}"
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

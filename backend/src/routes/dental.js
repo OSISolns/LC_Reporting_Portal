@@ -7,13 +7,21 @@ const { authMiddleware } = require('../middleware/auth');
 // Protect all routes with JWT Auth
 router.use(authMiddleware);
 
-// Cases CRUD
+// Cases CRUD (Dental Lab)
 router.get('/cases',          dentalController.listCases);
 router.get('/cases/stats',    dentalController.getStats);
 router.get('/cases/:id',      dentalController.getCase);
 router.post('/cases',         dentalController.createCase);
 router.put('/cases/:id',      dentalController.updateCase);
 router.delete('/cases/:id',   dentalController.deleteCase);
+
+// Clinic Cases CRUD (Dental Clinic)
+router.get('/clinic-cases',          dentalController.listClinicCases);
+router.get('/clinic-cases/stats',    dentalController.getClinicCasesStats);
+router.get('/clinic-cases/:id',      dentalController.getClinicCase);
+router.post('/clinic-cases',         dentalController.createClinicCase);
+router.put('/clinic-cases/:id',      dentalController.updateClinicCase);
+router.delete('/clinic-cases/:id',   dentalController.deleteClinicCase);
 
 // Worklist (Patient Queue)
 router.get('/worklist',              dentalController.listWorklist);
