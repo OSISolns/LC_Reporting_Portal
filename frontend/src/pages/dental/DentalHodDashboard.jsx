@@ -144,21 +144,21 @@ export default function DentalHodDashboard() {
   return (
     <div className="pb-10 w-full space-y-8">
       {/* ── Header / Hero Banner ── */}
-      <div className="bg-gradient-to-r from-rose-600 to-pink-500 rounded-3xl p-8 lg:p-10 text-white relative overflow-hidden shadow-lg shadow-rose-100">
+      <div className="bg-gradient-to-r from-blue-600 to-sky-500 rounded-3xl p-8 lg:p-10 text-white relative overflow-hidden shadow-lg shadow-blue-100">
         {/* Decorative background shapes */}
         <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-white/5 backdrop-blur-3xl" />
         <div className="absolute top-20 right-48 w-32 h-32 rounded-full bg-white/10 backdrop-blur-3xl" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-3">
-            <p className="m-0 text-sm text-rose-100 font-bold uppercase tracking-widest flex items-center gap-2">
-              <Activity size={16} className="text-rose-200" />
+            <p className="m-0 text-sm text-blue-100 font-bold uppercase tracking-widest flex items-center gap-2">
+              <Activity size={16} className="text-blue-200" />
               {now.toLocaleDateString('en-RW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
             <h1 className="m-0 text-3xl md:text-4xl font-black text-white drop-shadow-sm leading-tight">
               {greeting}, Dr. {firstName} 👋
             </h1>
-            <p className="m-0 text-rose-50 text-sm font-medium">
+            <p className="m-0 text-blue-50 text-sm font-medium">
               You are logged in as the Head of Dental Department. Overseeing clinical workflows & laboratory orders.
             </p>
           </div>
