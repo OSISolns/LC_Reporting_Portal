@@ -31,7 +31,8 @@ import {
   createClinicCase,
   updateClinicCase,
   deleteClinicCase,
-  listCharts
+  listCharts,
+  getChart
 } from '../../api/dental';
 import { searchPatients } from '../../api/patients';
 import { useAuth } from '../../context/AuthContext';
@@ -79,6 +80,15 @@ export default function ClinicCasesLog() {
   const [showForm, setShowForm] = useState(false);
   const [editCase, setEditCase] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [viewChartsPatient, setViewChartsPatient] = useState(null); // { patientId, patientName, selectedChartId }
+
+  const handleViewCharts = (patientId, patientName, linkedChartId) => {
+    setViewChartsPatient({
+      patientId,
+      patientName,
+      selectedChartId: linkedChartId || null
+    });
+  };
 
   // Permissions gate
   const allowedRoles = ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'];
@@ -432,7 +442,7 @@ export default function ClinicCasesLog() {
                   <th className="py-3 px-4">Treatment Summary</th>
                   <th className="py-3 px-4 text-right">Charges</th>
                   <th className="py-3 px-4 text-center">Status</th>
-                  {canEdit && <th className="py-3 px-4 text-center">Actions</th>}
+                  <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -483,24 +493,35 @@ export default function ClinicCasesLog() {
                         {c.status}
                       </span>
                     </td>
-                    {canEdit && (
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => { setEditCase(c); setShowForm(true); }}
-                            className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                          >
-                            <Edit2 size={13} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(c)}
-                            className="p-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    )}
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => handleViewCharts(c.patient_id, c.patient_name, c.linked_chart_id)}
+                          className="p-1.5 text-slate-500 hover:text-indigo-650 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
+                          title="View Dental Charts / Comparison"
+                        >
+                          <Stethoscope size={13} />
+                        </button>
+                        {canEdit && (
+                          <>
+                            <button
+                              onClick={() => { setEditCase(c); setShowForm(true); }}
+                              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              title="Edit Case"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget(c)}
+                              className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                              title="Delete Case"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -562,6 +583,16 @@ export default function ClinicCasesLog() {
           onClose={() => setDeleteTarget(null)}
           onConfirm={handleDelete}
           caseRef={deleteTarget?.case_ref}
+        />
+      )}
+
+      {viewChartsPatient && (
+        <PatientChartsViewerModal
+          isOpen={!!viewChartsPatient}
+          onClose={() => setViewChartsPatient(null)}
+          patientId={viewChartsPatient.patientId}
+          patientName={viewChartsPatient.patientName}
+          defaultChartId={viewChartsPatient.selectedChartId}
         />
       )}
     </div>
@@ -1118,4 +1149,396 @@ function parseNum(val) {
   if (val === undefined || val === null || val === '') return null;
   const num = Number(val);
   return isNaN(num) ? null : num;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PATIENT DENTAL CHARTS HISTORY & COMPARISON VIEW MODAL
+// ═══════════════════════════════════════════════════════════════════════════════
+function PatientChartsViewerModal({ isOpen, onClose, patientId, patientName, defaultChartId }) {
+  const [charts, setCharts] = useState([]);
+  const [loadingList, setLoadingList] = useState(true);
+  
+  // Selected charts for side-by-side comparison
+  const [chartAId, setChartAId] = useState(null);
+  const [chartBId, setChartBId] = useState(null);
+  
+  const [chartAData, setChartAData] = useState(null);
+  const [chartBData, setChartBData] = useState(null);
+  
+  const [loadingA, setLoadingA] = useState(false);
+  const [loadingB, setLoadingB] = useState(false);
+  
+  const [compareMode, setCompareMode] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !patientId) return;
+    
+    const fetchChartsList = async () => {
+      setLoadingList(true);
+      try {
+        const res = await listCharts(patientId);
+        const data = res.data?.data || [];
+        setCharts(data);
+        
+        // Auto-select Chart A
+        if (defaultChartId) {
+          setChartAId(defaultChartId);
+        } else if (data.length > 0) {
+          setChartAId(data[0].id);
+        }
+      } catch (err) {
+        toast.error('Failed to load patient charts list');
+      } finally {
+        setLoadingList(false);
+      }
+    };
+    
+    fetchChartsList();
+  }, [isOpen, patientId, defaultChartId]);
+
+  // Load Chart A details
+  useEffect(() => {
+    if (!chartAId) {
+      setChartAData(null);
+      return;
+    }
+    const loadA = async () => {
+      setLoadingA(true);
+      try {
+        const res = await getChart(chartAId);
+        setChartAData(res.data?.data || null);
+      } catch (err) {
+        toast.error('Failed to load chart details');
+      } finally {
+        setLoadingA(false);
+      }
+    };
+    loadA();
+  }, [chartAId]);
+
+  // Load Chart B details
+  useEffect(() => {
+    if (!chartBId) {
+      setChartBData(null);
+      return;
+    }
+    const loadB = async () => {
+      setLoadingB(true);
+      try {
+        const res = await getChart(chartBId);
+        setChartBData(res.data?.data || null);
+      } catch (err) {
+        toast.error('Failed to load comparison chart details');
+      } finally {
+        setLoadingB(false);
+      }
+    };
+    loadB();
+  }, [chartBId]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden">
+        {/* Modal Header */}
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="space-y-0.5">
+            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center gap-1.5">
+              <Stethoscope size={16} className="text-rose-500" />
+              Patient Dental Chart History
+            </h3>
+            <p className="text-[11px] text-slate-500 font-semibold">
+              Patient: <strong className="text-slate-800">{patientName}</strong> (PID: {patientId})
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setCompareMode(!compareMode);
+                if (!compareMode && charts.length > 1) {
+                  const secondChart = charts.find(c => c.id !== chartAId) || charts[1];
+                  if (secondChart) setChartBId(secondChart.id);
+                }
+              }}
+              disabled={charts.length < 2}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                compareMode 
+                  ? 'bg-rose-50 text-rose-600 border border-rose-200' 
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40'
+              }`}
+            >
+              {compareMode ? 'Exit Comparison' : 'Compare Two Charts'}
+            </button>
+            <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Modal Body */}
+        <div className="flex-1 flex min-h-0 overflow-hidden divide-x divide-slate-100">
+          {/* Left Sidebar: Saved Charts List */}
+          <div className="w-64 flex flex-col shrink-0 bg-slate-50/30">
+            <div className="p-3.5 border-b border-slate-100 bg-slate-50/50">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Saved Charts ({charts.length})</span>
+            </div>
+            
+            {loadingList ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-slate-400 gap-2">
+                <RefreshCw size={18} className="animate-spin text-rose-500" />
+                <span className="text-xs font-semibold">Loading history...</span>
+              </div>
+            ) : charts.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-slate-400 text-center">
+                <ClipboardList size={28} className="text-slate-200 mb-1" />
+                <p className="text-xs font-semibold">No charts recorded</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                {charts.map((c) => {
+                  const isA = chartAId === c.id;
+                  const isB = compareMode && chartBId === c.id;
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => {
+                        if (compareMode) {
+                          if (isA) return;
+                          setChartBId(c.id);
+                        } else {
+                          setChartAId(c.id);
+                        }
+                      }}
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                        isA
+                          ? 'border-rose-500 bg-rose-50/40 shadow-3xs'
+                          : isB
+                          ? 'border-blue-500 bg-blue-50/40 shadow-3xs'
+                          : 'border-slate-150/70 bg-white hover:border-slate-350'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800">{c.chart_date}</span>
+                        {isA && <span className="text-[9px] px-1.5 py-0.2 bg-rose-500 text-white rounded font-bold uppercase tracking-wider">Active</span>}
+                        {isB && <span className="text-[9px] px-1.5 py-0.2 bg-blue-500 text-white rounded font-bold uppercase tracking-wider">Comp</span>}
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1 font-medium truncate">By: Dr. {c.provider || 'Dentist'}</p>
+                      {c.general_notes && (
+                        <p className="text-[9.5px] text-slate-400 mt-1 line-clamp-1 italic">"{c.general_notes}"</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Main Visual Panels */}
+          <div className="flex-1 overflow-y-auto p-5 space-y-6">
+            {compareMode ? (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
+                {/* Column A */}
+                <div className="border border-rose-100 rounded-xl p-4 bg-rose-50/5 flex flex-col space-y-4">
+                  <div className="border-b border-rose-100 pb-2">
+                    <span className="text-[10px] font-black uppercase text-rose-500 tracking-wider">Base Chart (Active)</span>
+                    {chartAData ? (
+                      <div className="mt-1">
+                        <h4 className="text-xs font-bold text-slate-800">{chartAData.chart_date} • Dr. {chartAData.provider}</h4>
+                        {chartAData.general_notes && <p className="text-[11px] text-slate-500 italic mt-0.5">"{chartAData.general_notes}"</p>}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400">Loading details...</p>
+                    )}
+                  </div>
+                  {loadingA ? (
+                    <div className="flex-1 flex items-center justify-center"><RefreshCw className="animate-spin text-rose-500" /></div>
+                  ) : (
+                    chartAData && <OdontogramViewer data={chartAData} />
+                  )}
+                </div>
+
+                {/* Column B */}
+                <div className="border border-blue-100 rounded-xl p-4 bg-blue-50/5 flex flex-col space-y-4">
+                  <div className="border-b border-blue-100 pb-2">
+                    <span className="text-[10px] font-black uppercase text-blue-500 tracking-wider">Comparison Chart</span>
+                    {chartBData ? (
+                      <div className="mt-1">
+                        <h4 className="text-xs font-bold text-slate-800">{chartBData.chart_date} • Dr. {chartBData.provider}</h4>
+                        {chartBData.general_notes && <p className="text-[11px] text-slate-500 italic mt-0.5">"{chartBData.general_notes}"</p>}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400">Loading details...</p>
+                    )}
+                  </div>
+                  {loadingB ? (
+                    <div className="flex-1 flex items-center justify-center"><RefreshCw className="animate-spin text-blue-500" /></div>
+                  ) : (
+                    chartBData && <OdontogramViewer data={chartBData} />
+                  )}
+                </div>
+              </div>
+            ) : (
+              // Single Chart View Mode
+              <div className="h-full flex flex-col space-y-4">
+                {chartAData ? (
+                  <div className="border border-slate-200/80 rounded-xl p-5 bg-white space-y-4">
+                    <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">Chart Date: {chartAData.chart_date}</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">Treating Provider: <strong className="text-slate-700">Dr. {chartAData.provider}</strong></p>
+                      </div>
+                      {chartAData.general_notes && (
+                        <div className="max-w-md bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-xs italic text-slate-500">
+                          "{chartAData.general_notes}"
+                        </div>
+                      )}
+                    </div>
+                    {loadingA ? (
+                      <div className="py-24 flex justify-center"><RefreshCw className="animate-spin text-rose-500" /></div>
+                    ) : (
+                      <OdontogramViewer data={chartAData} />
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 py-24">
+                    <Stethoscope size={42} className="text-slate-200 mb-2" />
+                    <p className="text-xs font-semibold">Select a chart from the history list to inspect</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Compact Odontogram Viewer helper component ──────────────────────────────
+function OdontogramViewer({ data }) {
+  let toothMap = {};
+  let dentitionType = 'adult';
+  
+  if (data && data.tooth_data) {
+    const rawData = data.tooth_data;
+    if (rawData.teeth) {
+      toothMap = rawData.teeth;
+      dentitionType = rawData.dentition_type || 'adult';
+    } else {
+      toothMap = rawData;
+    }
+  }
+
+  const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
+  const ADULT_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+  
+  const PEDIATRIC_UPPER = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
+  const PEDIATRIC_LOWER = [85, 84, 83, 82, 81, 75, 74, 73, 72, 71];
+
+  const renderViewerRow = (teethArray) => (
+    <div className="flex flex-wrap gap-1.5 justify-center">
+      {teethArray.map(num => (
+        <MiniTooth key={num} number={num} data={toothMap[num.toString()]} />
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {(dentitionType === 'adult' || dentitionType === 'mixed') && (
+        <div className="space-y-4">
+          <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider text-center">Permanent Dentition (Adult)</div>
+          <div className="space-y-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100">
+            {renderViewerRow(ADULT_UPPER)}
+            <div className="border-t border-dashed border-slate-200 my-2" />
+            {renderViewerRow(ADULT_LOWER)}
+          </div>
+        </div>
+      )}
+
+      {(dentitionType === 'pediatric' || dentitionType === 'mixed') && (
+        <div className="space-y-4">
+          <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider text-center">Primary Dentition (Pediatric)</div>
+          <div className="space-y-3 bg-amber-50/20 p-3.5 rounded-xl border border-amber-100/60">
+            {renderViewerRow(PEDIATRIC_UPPER)}
+            <div className="border-t border-dashed border-amber-200/50 my-2" />
+            {renderViewerRow(PEDIATRIC_LOWER)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Mini Tooth Layout helper ────────────────────────────────────────────────
+function MiniTooth({ number, data }) {
+  const toothData = data || { condition: 'Healthy', surfaces: {} };
+  const missing = toothData.missing;
+  const condition = toothData.condition || 'Healthy';
+  const s = toothData.surfaces || {};
+
+  const getSurfaceColor = (surfVal) => {
+    if (!surfVal || surfVal === 'Healthy') return '#f8fafc';
+    if (surfVal === 'Caries') return '#ef4444'; 
+    if (surfVal === 'Filled' || surfVal === 'Restored') return '#f59e0b'; 
+    if (surfVal === 'Crown' || surfVal === 'Veneer') return '#3b82f6'; 
+    if (surfVal === 'Root Canal') return '#8b5cf6'; 
+    return '#ef4444';
+  };
+
+  const getConditionBadgeColor = (c) => {
+    if (c === 'Healthy') return 'text-slate-400';
+    if (c === 'Caries') return 'text-rose-600 font-extrabold';
+    if (c === 'Missing' || c === 'Extraction Planned') return 'text-slate-600 font-extrabold';
+    if (c === 'Restored' || c === 'Filled') return 'text-amber-600 font-extrabold';
+    return 'text-indigo-600 font-extrabold';
+  };
+
+  return (
+    <div className="flex flex-col items-center p-1 bg-white border border-slate-100 rounded-lg w-[42px] h-[60px] shadow-3xs shrink-0 select-none">
+      <span className="text-[9px] font-black text-slate-500 mb-0.5">{number}</span>
+      {missing ? (
+        <div className="flex-1 flex items-center justify-center w-7 h-7 rounded border border-dashed border-slate-200 bg-slate-50 text-[10px] text-slate-400 font-black">
+          X
+        </div>
+      ) : (
+        <svg width="24" height="24" viewBox="0 0 32 32" className="block mx-auto shrink-0">
+          <polygon
+            points="2,2 30,2 24,8 8,8"
+            fill={getSurfaceColor(s.B)}
+            stroke="#cbd5e1"
+            strokeWidth="0.75"
+          />
+          <polygon
+            points="2,2 8,8 8,24 2,30"
+            fill={getSurfaceColor(s.M)}
+            stroke="#cbd5e1"
+            strokeWidth="0.75"
+          />
+          <rect
+            x="8" y="8" width="16" height="16"
+            fill={getSurfaceColor(s.O)}
+            stroke="#cbd5e1"
+            strokeWidth="0.75"
+          />
+          <polygon
+            points="30,2 24,8 24,24 30,30"
+            fill={getSurfaceColor(s.D)}
+            stroke="#cbd5e1"
+            strokeWidth="0.75"
+          />
+          <polygon
+            points="8,24 24,24 30,30 2,30"
+            fill={getSurfaceColor(s.L)}
+            stroke="#cbd5e1"
+            strokeWidth="0.75"
+          />
+        </svg>
+      )}
+      <span className={`text-[7.5px] mt-0.5 truncate max-w-full text-center tracking-tighter leading-none ${getConditionBadgeColor(condition)}`}>
+        {condition === 'Healthy' ? '' : condition}
+      </span>
+    </div>
+  );
 }
