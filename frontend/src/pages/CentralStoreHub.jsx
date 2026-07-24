@@ -426,15 +426,23 @@ export default function CentralStoreHub() {
       if (activeDept === 'All Departments') {
         matchDept = true;
       } else if (activeDept === 'DENTAL CLINIC') {
-        const isExplicitLab = itemStorage.includes('LAB') ||
-          ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET'].some(k => itemNameUpper.includes(k));
-        matchDept = (itemDept.includes('DENTAL') || itemDept.includes('CLINIC')) && !isExplicitLab;
+        if (itemDept === 'DENTAL LAB') {
+          matchDept = false;
+        } else {
+          const isExplicitLab = itemStorage.includes('LAB') ||
+            ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET', 'DENTURE', 'CROWN'].some(k => itemNameUpper.includes(k));
+          matchDept = (itemDept === 'DENTAL CLINIC' || itemDept === 'DENTAL' || itemDept.includes('CLINIC')) && !isExplicitLab;
+        }
       } else if (activeDept === 'DENTAL LAB') {
-        const isLabItem = itemStorage.includes('LAB') ||
-          ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET', 'DENTURE', 'CROWN'].some(k => itemNameUpper.includes(k));
-        matchDept = itemDept.includes('DENTAL LAB') || (itemDept.includes('DENTAL') && isLabItem);
+        if (itemDept === 'DENTAL CLINIC') {
+          matchDept = false;
+        } else {
+          const isLabItem = itemStorage.includes('LAB') ||
+            ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET', 'DENTURE', 'CROWN'].some(k => itemNameUpper.includes(k));
+          matchDept = itemDept === 'DENTAL LAB' || (itemDept === 'DENTAL' && isLabItem);
+        }
       } else if (activeDept === 'DENTAL') {
-        matchDept = itemDept.includes('DENTAL');
+        matchDept = itemDept === 'DENTAL' || itemDept.includes('DENTAL');
       } else {
         matchDept = itemDept === activeDept.toUpperCase() || itemDept.includes(activeDept.toUpperCase());
       }
@@ -454,7 +462,16 @@ export default function CentralStoreHub() {
   // one row per department+item+batch, not per batch.
   const filteredDistributedStock = useMemo(() => {
     return distributedStock.filter(item => {
-      const matchDept = activeDept === 'All Departments' || item.department === activeDept;
+      let matchDept = false;
+      if (activeDept === 'All Departments') {
+        matchDept = true;
+      } else if (activeDept === 'DENTAL') {
+        matchDept = item.department === 'DENTAL CLINIC' || item.department === 'DENTAL' || item.department?.toUpperCase().includes('CLINIC');
+      } else if (activeDept === 'DENTAL LAB') {
+        matchDept = item.department === 'DENTAL LAB';
+      } else {
+        matchDept = item.department === activeDept;
+      }
       const matchCategory = stockCategoryFilter === 'All' || item.category === stockCategoryFilter;
 
       let matchStatus = true;
