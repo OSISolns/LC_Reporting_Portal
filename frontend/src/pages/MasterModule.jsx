@@ -311,7 +311,7 @@ export default function MasterModule() {
 
         // 3. Parse data rows starting from row 3
         const parsedRows = [];
-        const existingNames = new Set(items.map(i => i.name?.toLowerCase().trim()));
+        const existingNamesMap = new Map(items.map(i => [i.name?.toLowerCase().trim(), i]));
 
         sheet.eachRow((row, rowNumber) => {
           if (rowNumber <= 2) return; // skip banner and headers
@@ -337,7 +337,8 @@ export default function MasterModule() {
           if (!uom) rowErrors.push('Missing Unit of Measure');
 
           // Check duplicate
-          const isDuplicate = existingNames.has(name.toLowerCase());
+          const existingItem = existingNamesMap.get(name.toLowerCase());
+          const isDuplicate = !!existingItem;
 
           // Find department ID if department name is provided
           let departmentId = '';
@@ -351,21 +352,52 @@ export default function MasterModule() {
           }
 
           const expiryParsed = parseExcelDate(expiryVal);
+          const normalizedCat = normalizeCategory(category);
+          const normalizedStor = normalizeStorage(storageVal);
+
+          let hasChanges = false;
+          let changesSummary = [];
+
+          if (existingItem) {
+            if (existingItem.category !== normalizedCat) {
+              hasChanges = true;
+              changesSummary.push(`Category: ${formatCategoryName(existingItem.category)} ➜ ${formatCategoryName(normalizedCat)}`);
+            }
+            if (existingItem.unit_of_measure !== uom) {
+              hasChanges = true;
+              changesSummary.push(`UOM: ${existingItem.unit_of_measure} ➜ ${uom}`);
+            }
+            if (expiryParsed && existingItem.expiry_date?.split('T')[0] !== expiryParsed) {
+              hasChanges = true;
+              changesSummary.push(`Expiry: ${existingItem.expiry_date?.split('T')[0] || 'None'} ➜ ${expiryParsed}`);
+            }
+            if (batchNumberVal && existingItem.batch_number !== batchNumberVal) {
+              hasChanges = true;
+              changesSummary.push(`Batch: ${existingItem.batch_number || 'None'} ➜ ${batchNumberVal}`);
+            }
+            if (normalizedStor && existingItem.storage !== normalizedStor) {
+              hasChanges = true;
+              changesSummary.push(`Storage: ${existingItem.storage || 'None'} ➜ ${normalizedStor}`);
+            }
+          }
 
           parsedRows.push({
             rowNumber,
             name,
-            category: normalizeCategory(category),
+            category: normalizedCat,
             categoryLabel: category,
             unit_of_measure: uom,
             department: departmentVal || 'Global Store',
             department_id: departmentId,
-            storage: normalizeStorage(storageVal),
+            storage: normalizedStor,
             expiry_date: expiryParsed,
             batch_number: batchNumberVal,
             isDuplicate,
+            existingItem,
+            hasChanges,
+            changesSummary,
             errors: rowErrors,
-            isValid: rowErrors.length === 0 && !isDuplicate
+            isValid: rowErrors.length === 0
           });
         });
 
@@ -388,7 +420,7 @@ export default function MasterModule() {
   };
 
   const handleImportNow = async () => {
-    const validList = uploadPreview.filter(p => p.isValid).map(p => ({
+    const validNewList = uploadPreview.filter(p => p.isValid && !p.isDuplicate).map(p => ({
       name: p.name,
       category: p.category,
       unit_of_measure: p.unit_of_measure,
@@ -400,21 +432,45 @@ export default function MasterModule() {
       price: 0
     }));
 
-    if (validList.length === 0) {
-      toast.error('No valid new items to import.');
+    const validUpdateList = uploadPreview.filter(p => p.isValid && p.isDuplicate && p.hasChanges);
+
+    if (validNewList.length === 0 && validUpdateList.length === 0) {
+      toast.error('No valid updates or new items to import.');
       return;
     }
 
     setIsUploading(true);
     try {
-      await api.post('/clinical/inventory/master', { items: validList });
-      toast.success(`Successfully imported ${validList.length} new items to Master Reference Registry!`);
+      // 1. Post new items
+      if (validNewList.length > 0) {
+        await api.post('/clinical/inventory/master', { items: validNewList });
+      }
+
+      // 2. Put updates in parallel
+      if (validUpdateList.length > 0) {
+        await Promise.all(validUpdateList.map(async (p) => {
+          const payload = {
+            name: p.name,
+            category: p.category,
+            unit_of_measure: p.unit_of_measure,
+            ...(p.batch_number ? { batch_number: p.batch_number } : {}),
+            ...(p.expiry_date ? { expiry_date: p.expiry_date } : {}),
+            ...(p.department_id ? { department_id: p.department_id } : {}),
+            ...(p.storage ? { storage: p.storage } : {}),
+            batch_id: p.existingItem.batch_id,
+            lot_number: p.existingItem.lot_number
+          };
+          await api.put(`/clinical/inventory/master/${p.existingItem.id}`, payload);
+        }));
+      }
+
+      toast.success(`Import complete! Created ${validNewList.length} new items & updated ${validUpdateList.length} existing items.`);
       setIsImportModalOpen(false);
       setUploadPreview([]);
       loadMasterData();
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to complete master import');
+      toast.error(err.response?.data?.message || 'Failed to complete master import/updates');
     } finally {
       setIsUploading(false);
     }
@@ -2052,13 +2108,17 @@ export default function MasterModule() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Step 3: Preview Data rows</span>
-                <span className="text-[10px] font-black text-indigo-700 px-2 py-0.5 bg-indigo-50 rounded-lg border border-indigo-100">
-                  {uploadPreview.filter(p => p.isValid).length} Valid • {uploadPreview.filter(p => p.isDuplicate).length} Skipped
+                <span className="text-[10px] font-black text-indigo-700 px-2 py-0.5 bg-indigo-50 rounded-lg border border-indigo-100 flex gap-2">
+                  <span>{uploadPreview.filter(p => p.isValid && !p.isDuplicate).length} New</span>
+                  <span>•</span>
+                  <span>{uploadPreview.filter(p => p.isValid && p.isDuplicate && p.hasChanges).length} Updates</span>
+                  <span>•</span>
+                  <span>{uploadPreview.filter(p => p.isValid && p.isDuplicate && !p.hasChanges).length} Unchanged</span>
                 </span>
               </div>
 
               {/* Scrollable preview table */}
-              <div className="border border-slate-250 border-slate-200 rounded-2xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-slate-100 bg-white">
+              <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-slate-100 bg-white">
                 {uploadPreview.map((row, idx) => (
                   <div key={idx} className="p-3 flex items-center justify-between text-[11px] font-semibold hover:bg-slate-50/30">
                     <div className="space-y-1 max-w-[70%]">
@@ -2073,20 +2133,31 @@ export default function MasterModule() {
                         <span>•</span>
                         <span>Dept: {row.department}</span>
                       </div>
+                      {row.isDuplicate && row.hasChanges && (
+                        <div className="text-[9.5px] text-blue-600 font-bold mt-1">
+                          Changes: {row.changesSummary.join(', ')}
+                        </div>
+                      )}
                     </div>
 
                     <div>
-                      {row.isDuplicate ? (
-                        <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded bg-amber-50 text-amber-700 border border-amber-100/50">
-                          Exists (Skipped)
-                        </span>
-                      ) : row.errors.length > 0 ? (
+                      {row.errors.length > 0 ? (
                         <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded bg-red-50 text-red-700 border border-red-100/50" title={row.errors.join(', ')}>
                           Invalid
                         </span>
+                      ) : row.isDuplicate ? (
+                        row.hasChanges ? (
+                          <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded bg-blue-50 text-blue-700 border border-blue-100/50">
+                            Will Update
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded bg-slate-100 text-slate-500 border border-slate-200">
+                            No Change
+                          </span>
+                        )
                       ) : (
                         <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded bg-green-50 text-green-700 border border-green-100/50">
-                          Valid
+                          New Item
                         </span>
                       )}
                     </div>
@@ -2095,11 +2166,11 @@ export default function MasterModule() {
               </div>
 
               {/* Validation Warning Alert if there are errors or duplicates */}
-              {(uploadPreview.some(p => p.isDuplicate) || uploadPreview.some(p => p.errors.length > 0)) && (
+              {(uploadPreview.some(p => p.isDuplicate && p.hasChanges) || uploadPreview.some(p => p.errors.length > 0)) && (
                 <div className="bg-amber-50 border border-amber-200/60 p-3 rounded-2xl flex items-start gap-2.5 text-[10.5px] text-amber-800 leading-normal font-semibold">
                   <AlertCircle size={15} className="shrink-0 mt-0.5 text-amber-600" />
                   <div>
-                    Some rows are skipped because the item already exists in the catalog or lacks mandatory fields. Existing items will **not** be overwritten.
+                    Existing items with changes in the sheet will be updated in the Master registry. No duplicates will be created. Rows with validation errors will be skipped.
                   </div>
                 </div>
               )}
@@ -2110,7 +2181,7 @@ export default function MasterModule() {
           {uploadPreview.length > 0 && (
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
               <span className="text-[11px] text-slate-400 font-bold">
-                Ready to create <strong className="text-indigo-600 font-extrabold">{uploadPreview.filter(p => p.isValid).length}</strong> new item(s).
+                Ready to create <strong className="text-green-600 font-extrabold">{uploadPreview.filter(p => p.isValid && !p.isDuplicate).length}</strong> new & update <strong className="text-blue-600 font-extrabold">{uploadPreview.filter(p => p.isValid && p.isDuplicate && p.hasChanges).length}</strong> items.
               </span>
               <div className="flex gap-2.5">
                 <button
