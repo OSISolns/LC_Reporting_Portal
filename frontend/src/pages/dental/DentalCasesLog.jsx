@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, X, ChevronDown, Pencil, Trash2, Calendar,
@@ -8,23 +9,25 @@ import {
   CalendarDays, Building2, Wrench, Coins, UserCheck, Truck,
   CheckCircle, Layers, ArrowRight, FileText
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, subDays, startOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
 import { useAuth } from '../../context/AuthContext';
 import {
   listDentalCases, getDentalStats, createDentalCase,
-  updateDentalCase, deleteDentalCase,
+  updateDentalCase, deleteDentalCase, listCharts,
 } from '../../api/dental';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
+import { getPatientByPid } from '../../api/patients';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const WORK_TYPES = ['Acrylic Work', 'Metal & Ceramic', 'CAD-CAM', 'Other'];
+const WORK_TYPES = ['Acrylic Work', 'Metal & Ceramic', 'CAD-CAM', 'Trays', 'Other'];
 
 const WORK_TYPE_COLORS = {
   'Acrylic Work':   { bg: 'bg-sky-50',    text: 'text-sky-700',    border: 'border-sky-200',    dot: 'bg-sky-500'    },
   'Metal & Ceramic':{ bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200',  dot: 'bg-amber-500'  },
   'CAD-CAM':        { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', dot: 'bg-violet-500' },
+  'Trays':          { bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200',   dot: 'bg-teal-500'   },
   'Other':          { bg: 'bg-slate-50',  text: 'text-slate-600',  border: 'border-slate-200',  dot: 'bg-slate-400'  },
 };
 
@@ -52,10 +55,12 @@ const CLINICS = [
   'External Referral', 'Other',
 ];
 
-const PERIODS = [
-  { key: 'daily',   label: 'Today' },
-  { key: 'weekly',  label: 'This Week' },
-  { key: 'monthly', label: 'This Month' },
+const todayStr = () => format(new Date(), 'yyyy-MM-dd');
+
+const DATE_PRESETS = [
+  { key: 'today',   label: 'Today',      from: () => todayStr(),                                to: () => todayStr() },
+  { key: 'week',    label: 'This Week',  from: () => format(subDays(new Date(), 6), 'yyyy-MM-dd'), to: () => todayStr() },
+  { key: 'month',   label: 'This Month', from: () => format(startOfMonth(new Date()), 'yyyy-MM-dd'), to: () => todayStr() },
 ];
 
 const EMPTY_FORM = {
@@ -63,7 +68,41 @@ const EMPTY_FORM = {
   clinic_of_origin: '', clinician_name: '', patient_id: '',
   work_done: '', work_done_other: '', technologist: '',
   units_quantity: 1, cost_per_first_unit: '', cost_per_additional_unit: '',
-  total_cost: '', status: 'Received', reported_by: '',
+  total_cost: '', status: 'Received', reported_by: '', linked_chart_id: '',
+};
+
+const parseCaseOdontogram = (raw) => {
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw) || {}; } catch { return {}; }
+};
+
+// A case must have a fully-completed odontogram before it can be marked
+// Delivered — returns a human-readable blocking reason, or null if clear.
+const getOdontogramIncompleteReason = (caseItem) => {
+  const map = parseCaseOdontogram(caseItem?.odontogram_data);
+  const entries = Object.values(map);
+  if (entries.length === 0) {
+    return `Case ${caseItem?.case_ref || ''} has no prosthetic/replacement work logged in the FDI Odontogram yet — add it in the Prosthetics FDI Odontogram tab before marking delivered.`;
+  }
+  const pending = entries.filter(e => e.status !== 'Completed');
+  if (pending.length > 0) {
+    return `Case ${caseItem?.case_ref || ''} has ${pending.length} of ${entries.length} odontogram unit(s) still "${pending[0].status || 'Planning'}" — mark every unit Completed in the FDI Odontogram tab before delivering.`;
+  }
+  return null;
+};
+
+// Summarizes a case's odontogram for the table row badge — what's logged,
+// and whether every unit has reached "Completed".
+const getOdontogramSummary = (caseItem) => {
+  const map = parseCaseOdontogram(caseItem?.odontogram_data);
+  const entries = Object.values(map);
+  const completed = entries.filter(e => e.status === 'Completed').length;
+  return {
+    count: entries.length,
+    completed,
+    allComplete: entries.length > 0 && completed === entries.length,
+  };
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -104,14 +143,80 @@ const StageBadge = ({ status }) => {
   );
 };
 
+// Surfaces what's logged in the case's FDI Odontogram right on the case row —
+// unit count plus a Complete/Partial/None state — and opens the full detail
+// view (graphical mouth drawing + unit table) on click.
+const OdontogramBadge = ({ caseItem, onClick }) => {
+  const { count, completed, allComplete } = getOdontogramSummary(caseItem);
+
+  if (count === 0) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+        title="No odontogram logged yet — click to view/open"
+      >
+        <Layers size={11} /> No odontogram
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+        allComplete
+          ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+          : 'text-amber-700 bg-amber-50 hover:bg-amber-100'
+      }`}
+      title="View odontogram details"
+    >
+      <Layers size={11} /> {completed}/{count} units {allComplete ? 'complete' : 'in progress'}
+    </button>
+  );
+};
+
+// A stable, module-level component — defining this inside CaseFormModal's
+// render body would give it a new identity on every keystroke, forcing React
+// to remount (and lose focus on) every field after each character typed.
+const Field = ({ label, type = 'text', required, children, hint, value, error, onChange }) => (
+  <div>
+    <label className="block text-xs font-semibold text-slate-600 mb-1">
+      {label} {required && <span className="text-rose-500">*</span>}
+    </label>
+    {children || (
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        className={`w-full px-3 py-2 text-sm rounded-xl border ${error ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-white'} focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
+      />
+    )}
+    {hint && <p className="text-[10px] text-slate-400 mt-0.5">{hint}</p>}
+    {error && <p className="text-[11px] text-rose-500 mt-0.5">{error}</p>}
+  </div>
+);
+
 // ─── Form Modal ───────────────────────────────────────────────────────────────
 const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [activeModalTab, setActiveModalTab] = useState('info'); // 'info' | 'odontogram'
+  const [odontogramMap, setOdontogramMap] = useState({});
+  const [patientCharts, setPatientCharts] = useState([]);
+  const [loadingCharts, setLoadingCharts] = useState(false);
 
   useEffect(() => {
     if (editCase) {
+      let parsedOdontogram = {};
+      try {
+        parsedOdontogram = typeof editCase.odontogram_data === 'string' ? JSON.parse(editCase.odontogram_data) : (editCase.odontogram_data || {});
+      } catch (e) {}
+
+      setOdontogramMap(parsedOdontogram);
       setForm({
         received_date: editCase.received_date?.slice(0, 10) || '',
         required_date: editCase.required_date?.slice(0, 10) || '',
@@ -128,16 +233,38 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         total_cost: editCase.total_cost ?? '',
         status: editCase.status || 'Received',
         reported_by: editCase.reported_by || currentUser?.fullName || currentUser?.full_name || currentUser?.name || '',
+        linked_chart_id: editCase.linked_chart_id || '',
       });
     } else {
+      setOdontogramMap({});
       setForm({
         ...EMPTY_FORM,
         received_date: format(new Date(), 'yyyy-MM-dd'),
         reported_by: currentUser?.fullName || currentUser?.full_name || currentUser?.name || '',
       });
     }
+    setActiveModalTab('info');
     setErrors({});
   }, [editCase, isOpen, currentUser]);
+
+  // Whenever a patient is linked to this case, offer their existing clinical
+  // Odontology records (Dental Charting) so the case can be adhered to one.
+  // Debounced since patient_id updates on every keystroke while typing.
+  useEffect(() => {
+    if (!isOpen || !form.patient_id?.trim()) {
+      setPatientCharts([]);
+      return;
+    }
+    const pid = form.patient_id.trim();
+    setLoadingCharts(true);
+    const t = setTimeout(() => {
+      listCharts(pid)
+        .then(({ data }) => setPatientCharts(data?.data || []))
+        .catch(() => setPatientCharts([]))
+        .finally(() => setLoadingCharts(false));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [isOpen, form.patient_id]);
 
   const set = (k) => (e) => {
     const v = e.target.value;
@@ -171,7 +298,11 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
     if (!validate()) return;
     setSaving(true);
     try {
-      await onSave(form);
+      const payload = {
+        ...form,
+        odontogram_data: odontogramMap
+      };
+      await onSave(payload);
     } finally {
       setSaving(false);
     }
@@ -179,31 +310,13 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
 
   if (!isOpen) return null;
 
-  const Field = ({ label, name, type = 'text', required, children, hint }) => (
-    <div>
-      <label className="block text-xs font-semibold text-slate-600 mb-1">
-        {label} {required && <span className="text-rose-500">*</span>}
-      </label>
-      {children || (
-        <input
-          type={type}
-          value={form[name]}
-          onChange={set(name)}
-          className={`w-full px-3 py-2 text-sm rounded-xl border ${errors[name] ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-white'} focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
-        />
-      )}
-      {hint && <p className="text-[10px] text-slate-400 mt-0.5">{hint}</p>}
-      {errors[name] && <p className="text-[11px] text-rose-500 mt-0.5">{errors[name]}</p>}
-    </div>
-  );
-
   return (
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2.5 sm:p-4"
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <motion.div
@@ -211,36 +324,43 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.94, opacity: 0 }}
           transition={{ type: 'spring', damping: 22 }}
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+          className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl transition-all duration-300 max-h-[95vh] sm:max-h-[90vh] flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-rose-50 rounded-xl flex items-center justify-center">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 bg-rose-50 rounded-xl flex items-center justify-center shrink-0">
                 <ClipboardList size={18} className="text-rose-500" />
               </div>
-              <div>
-                <h2 className="text-base font-black text-slate-800">
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-base font-black text-slate-800 m-0 truncate">
                   {editCase ? 'Edit Prosthetics Case' : 'Log New Prosthetics Case'}
                 </h2>
-                <p className="text-[11px] text-slate-400">Dental Lab Work Order &amp; Fabrication Stage</p>
+                <p className="text-[11px] text-slate-400 m-0 truncate">Dental Lab Work Order &amp; Fabrication Stage</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition">
+
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400 cursor-pointer shrink-0">
               <X size={18} />
             </button>
           </div>
 
           {/* Body */}
-          <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-            {/* Section: Dates */}
+          <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-5">
+                {/* Section: Dates */}
             <div>
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
                 <CalendarDays size={12} /> Dates &amp; Status Stage
               </p>
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Received Date" name="received_date" type="date" required />
-                <Field label="Target Delivery Date" name="required_date" type="date" required />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Field
+                  label="Received Date" type="date" required
+                  value={form.received_date} error={errors.received_date} onChange={set('received_date')}
+                />
+                <Field
+                  label="Target Delivery Date" type="date" required
+                  value={form.required_date} error={errors.required_date} onChange={set('required_date')}
+                />
                 <Field label="Manufacturing Stage" name="status">
                   <select
                     value={form.status}
@@ -260,15 +380,17 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
                 <Building2 size={12} /> Work Origin &amp; Patient
               </p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Work Command Origin" name="work_command_origin">
-                  <input
-                    type="text"
-                    placeholder="e.g. Internal, External, Dr Request…"
+                  <select
                     value={form.work_command_origin}
                     onChange={set('work_command_origin')}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
-                  />
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
+                  >
+                    <option value="">— Select origin —</option>
+                    <option value="Internal">Internal</option>
+                    <option value="External">External</option>
+                  </select>
                 </Field>
                 <Field label="Clinic of Origin" name="clinic_of_origin">
                   <input
@@ -280,7 +402,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                   />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <Field label="Clinician Name" name="clinician_name">
                   <input
                     type="text"
@@ -314,6 +436,37 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                   />
                 </Field>
               </div>
+
+              {form.patient_id?.trim() && (
+                <div className="mt-4">
+                  <Field
+                    label="Adhere Clinical Odontology Record (Dental Charting)"
+                    hint={
+                      loadingCharts
+                        ? 'Looking up clinical charting records for this patient…'
+                        : patientCharts.length === 0
+                        ? 'No clinical Odontology chart found for this patient yet — one can still be logged in Dental Charting.'
+                        : `${patientCharts.length} chart record(s) found for PID ${form.patient_id.trim()}.`
+                    }
+                  >
+                    <select
+                      value={form.linked_chart_id || ''}
+                      onChange={set('linked_chart_id')}
+                      disabled={loadingCharts || patientCharts.length === 0}
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 bg-white outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <option value="">— No clinical chart linked —</option>
+                      {patientCharts.map((chart) => (
+                        <option key={chart.id} value={chart.id}>
+                          {chart.chart_date ? format(parseISO(chart.chart_date), 'dd MMM yyyy') : chart.chart_date}
+                          {chart.provider ? ` — ${chart.provider}` : ''}
+                          {chart.general_notes ? ` (${chart.general_notes.slice(0, 40)}${chart.general_notes.length > 40 ? '…' : ''})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+              )}
             </div>
 
             {/* Section: Work Done */}
@@ -321,7 +474,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
                 <Wrench size={12} /> Prosthetics Work Details
               </p>
-              <Field label="Work Done / Prosthesis Type" name="work_done" required>
+              <Field label="Work Done / Prosthesis Type" required error={errors.work_done}>
                 <div className="relative">
                   <select
                     value={form.work_done}
@@ -341,7 +494,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
 
               {form.work_done === 'Other' && (
                 <div className="mt-3">
-                  <Field label="Specify Work Done" name="work_done_other" required>
+                  <Field label="Specify Work Done" required error={errors.work_done_other}>
                     <input
                       type="text"
                       placeholder="Describe prosthesis specification…"
@@ -371,8 +524,8 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
                 <Coins size={12} /> Units &amp; Costing
               </p>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Units Quantity" name="units_quantity" required>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Units Quantity" required error={errors.units_quantity}>
                   <input
                     type="number"
                     min="1"
@@ -392,7 +545,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                   />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <Field label="Cost per Add. Unit (RWF)" name="cost_per_additional_unit">
                   <input
                     type="number"
@@ -433,18 +586,18 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
           </form>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-60 shadow-sm shadow-rose-200 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-60 shadow-sm shadow-rose-200 cursor-pointer"
             >
               {saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
               {editCase ? 'Update Case' : 'Log Case'}
@@ -608,7 +761,9 @@ const DeleteConfirm = ({ isOpen, onClose, onConfirm, caseRef }) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 const DentalCasesLog = () => {
   const { user } = useAuth();
-  const [period, setPeriod] = useState('monthly');
+  const navigate = useNavigate();
+  const [dateFrom, setDateFrom] = useState(todayStr());
+  const [dateTo, setDateTo] = useState(todayStr());
   const [cases, setCases] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -621,7 +776,7 @@ const DentalCasesLog = () => {
   const [editCase, setEditCase] = useState(null);
   const [deliveryTarget, setDeliveryTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  
+
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
 
@@ -630,26 +785,26 @@ const DentalCasesLog = () => {
   const fetchCases = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await listDentalCases({ period });
+      const { data } = await listDentalCases({ from: dateFrom, to: dateTo });
       setCases(data.data || []);
     } catch {
       toast.error('Failed to load cases.');
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [dateFrom, dateTo]);
 
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const { data } = await getDentalStats(period);
+      const { data } = await getDentalStats({ from: dateFrom, to: dateTo });
       setStats(data.data);
     } catch {
       /* silently fail stats */
     } finally {
       setStatsLoading(false);
     }
-  }, [period]);
+  }, [dateFrom, dateTo]);
 
   useEffect(() => {
     fetchCases();
@@ -679,7 +834,13 @@ const DentalCasesLog = () => {
   const handleUpdateStage = async (caseId, newStatus) => {
     if (newStatus === 'Delivered') {
       const target = cases.find(c => c.id === caseId);
-      if (target) setDeliveryTarget(target);
+      if (!target) return;
+      const blockedReason = getOdontogramIncompleteReason(target);
+      if (blockedReason) {
+        toast.error(blockedReason, { duration: 6000 });
+        return;
+      }
+      setDeliveryTarget(target);
       return;
     }
     try {
@@ -692,8 +853,22 @@ const DentalCasesLog = () => {
     }
   };
 
+  const handleRequestDelivery = (caseItem) => {
+    const blockedReason = getOdontogramIncompleteReason(caseItem);
+    if (blockedReason) {
+      toast.error(blockedReason, { duration: 6000 });
+      return;
+    }
+    setDeliveryTarget(caseItem);
+  };
+
   const handleConfirmDelivery = async (deliveryPayload) => {
     if (!deliveryTarget) return;
+    const blockedReason = getOdontogramIncompleteReason(deliveryTarget);
+    if (blockedReason) {
+      toast.error(blockedReason, { duration: 6000 });
+      throw new Error(blockedReason);
+    }
     await updateDentalCase(deliveryTarget.id, deliveryPayload);
     fetchCases();
     fetchStats();
@@ -736,7 +911,9 @@ const DentalCasesLog = () => {
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const formatCurrency = (v) => v != null ? `RWF ${Number(v).toLocaleString()}` : '—';
-  const periodLabel = PERIODS.find(p => p.key === period)?.label || '';
+  const periodLabel = dateFrom === dateTo
+    ? (dateFrom === todayStr() ? 'Today' : format(parseISO(dateFrom), 'dd MMM yyyy'))
+    : `${format(parseISO(dateFrom), 'dd MMM yyyy')} – ${format(parseISO(dateTo), 'dd MMM yyyy')}`;
 
   const handleExportXlsx = async () => {
     if (filtered.length === 0) {
@@ -758,35 +935,37 @@ const DentalCasesLog = () => {
       sheet.getColumn(5).width = 20;  // Work Command Origin
       sheet.getColumn(6).width = 24;  // Clinician Name
       sheet.getColumn(7).width = 16;  // Patient ID
-      sheet.getColumn(8).width = 20;  // Work Done
-      sheet.getColumn(9).width = 24;  // Specification
-      sheet.getColumn(10).width = 20; // Technologist
-      sheet.getColumn(11).width = 24; // Manufacturing Stage
-      sheet.getColumn(12).width = 12; // Units
-      sheet.getColumn(13).width = 18; // Cost 1st Unit
-      sheet.getColumn(14).width = 18; // Cost Add. Unit
-      sheet.getColumn(15).width = 20; // Total Cost
-      sheet.getColumn(16).width = 16; // Delivery Status
-      sheet.getColumn(17).width = 24; // Delivered To
-      sheet.getColumn(18).width = 22; // Delivered Date
-      sheet.getColumn(19).width = 35; // Delivery Notes
-      sheet.getColumn(20).width = 20; // Reported By
+      sheet.getColumn(8).width = 26;  // Linked Clinical Chart
+      sheet.getColumn(9).width = 20;  // Work Done
+      sheet.getColumn(10).width = 24; // Specification
+      sheet.getColumn(11).width = 20; // Technologist
+      sheet.getColumn(12).width = 24; // Manufacturing Stage
+      sheet.getColumn(13).width = 22; // Odontogram Status
+      sheet.getColumn(14).width = 12; // Units
+      sheet.getColumn(15).width = 18; // Cost 1st Unit
+      sheet.getColumn(16).width = 18; // Cost Add. Unit
+      sheet.getColumn(17).width = 20; // Total Cost
+      sheet.getColumn(18).width = 16; // Delivery Status
+      sheet.getColumn(19).width = 24; // Delivered To
+      sheet.getColumn(20).width = 22; // Delivered Date
+      sheet.getColumn(21).width = 35; // Delivery Notes
+      sheet.getColumn(22).width = 20; // Reported By
 
       // Title Banner Row 1
       const titleCell = sheet.getCell('A1');
       titleCell.value = 'LEGACY CLINICS & DIAGNOSTICS';
-      sheet.mergeCells('A1:T1');
+      sheet.mergeCells('A1:V1');
       titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
-      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '881337' } }; // Rose-900
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '312E81' } }; // Indigo-900
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet.getRow(1).height = 36;
 
       // Subtitle Banner Row 2
       const subCell = sheet.getCell('A2');
       subCell.value = 'PROSTHETICS CASES MANUFACTURING & DELIVERY REPORT';
-      sheet.mergeCells('A2:T2');
+      sheet.mergeCells('A2:V2');
       subCell.font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FFFFFF' } };
-      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'BE123C' } }; // Rose-700
+      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4338CA' } }; // Indigo-700
       subCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet.getRow(2).height = 26;
 
@@ -795,7 +974,7 @@ const DentalCasesLog = () => {
       const totalUnitsSum = filtered.reduce((acc, c) => acc + (Number(c.units_quantity) || 0), 0);
       const totalRevenueSum = filtered.reduce((acc, c) => acc + (Number(c.total_cost) || 0), 0);
       metaCell.value = `Export Date: ${new Date().toLocaleString()} | Period: ${periodLabel} | Total Cases: ${filtered.length} | Total Units: ${totalUnitsSum} | Total Value: RWF ${totalRevenueSum.toLocaleString()}`;
-      sheet.mergeCells('A3:T3');
+      sheet.mergeCells('A3:V3');
       metaCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '475569' } };
       metaCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet.getRow(3).height = 20;
@@ -805,24 +984,25 @@ const DentalCasesLog = () => {
       // Table Header Row 5
       const headers = [
         'Case Ref #', 'Received Date', 'Target Delivery', 'Clinic of Origin', 'Work Origin',
-        'Clinician Name', 'Patient ID', 'Work Done', 'Specification', 'Technologist',
-        'Manufacturing Stage', 'Units Qty', '1st Unit Cost', 'Add. Unit Cost', 'Total Cost (RWF)',
+        'Clinician Name', 'Patient ID', 'Linked Clinical Chart', 'Work Done', 'Specification', 'Technologist',
+        'Manufacturing Stage', 'Odontogram Status', 'Units Qty', '1st Unit Cost', 'Add. Unit Cost', 'Total Cost (RWF)',
         'Delivery Status', 'Delivered To', 'Delivered Date & Time', 'Delivery Notes', 'Reported By'
       ];
+      const NUMERIC_COLS = [14, 15, 16, 17];
       const headerRow = sheet.getRow(5);
       headerRow.height = 28;
       headers.forEach((h, colIdx) => {
         const cell = headerRow.getCell(colIdx + 1);
         cell.value = h;
         cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '9F1239' } }; // Rose-800
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '3730A3' } }; // Indigo-800
         cell.alignment = {
-          horizontal: [12, 13, 14, 15].includes(colIdx + 1) ? 'right' : 'left',
+          horizontal: NUMERIC_COLS.includes(colIdx + 1) ? 'right' : 'left',
           vertical: 'middle'
         };
         cell.border = {
-          top: { style: 'thin', color: { argb: '9F1239' } },
-          bottom: { style: 'medium', color: { argb: '881337' } }
+          top: { style: 'thin', color: { argb: '3730A3' } },
+          bottom: { style: 'medium', color: { argb: '312E81' } }
         };
       });
 
@@ -832,6 +1012,14 @@ const DentalCasesLog = () => {
         const r = sheet.getRow(currentRow);
         r.height = 22;
 
+        const odontogramSummary = getOdontogramSummary(c);
+        const odontogramLabel = odontogramSummary.count === 0
+          ? 'No odontogram'
+          : `${odontogramSummary.completed}/${odontogramSummary.count} ${odontogramSummary.allComplete ? 'Completed' : 'In Progress'}`;
+        const linkedChartLabel = c.linked_chart_date
+          ? `${format(parseISO(c.linked_chart_date), 'dd MMM yyyy')}${c.linked_chart_provider ? ` — ${c.linked_chart_provider}` : ''}`
+          : '—';
+
         r.getCell(1).value = c.case_ref || '—';
         r.getCell(2).value = c.received_date ? c.received_date.slice(0, 10) : '—';
         r.getCell(3).value = c.required_date ? c.required_date.slice(0, 10) : '—';
@@ -839,35 +1027,37 @@ const DentalCasesLog = () => {
         r.getCell(5).value = c.work_command_origin || '—';
         r.getCell(6).value = c.clinician_name || '—';
         r.getCell(7).value = c.patient_id || '—';
-        r.getCell(8).value = c.work_done || '—';
-        r.getCell(9).value = c.work_done_other || '—';
-        r.getCell(10).value = c.technologist || '—';
-        r.getCell(11).value = c.status || 'Received';
-        r.getCell(12).value = Number(c.units_quantity || 1);
-        r.getCell(13).value = c.cost_per_first_unit != null ? Number(c.cost_per_first_unit) : 0;
-        r.getCell(14).value = c.cost_per_additional_unit != null ? Number(c.cost_per_additional_unit) : 0;
-        r.getCell(15).value = c.total_cost != null ? Number(c.total_cost) : 0;
-        r.getCell(16).value = c.status === 'Delivered' ? 'Delivered' : (c.status === 'Completed' ? 'Ready' : 'In Production');
-        r.getCell(17).value = c.delivered_to || '—';
-        r.getCell(18).value = c.delivered_at ? new Date(c.delivered_at).toLocaleString() : '—';
-        r.getCell(19).value = c.delivery_notes || '—';
-        r.getCell(20).value = c.reported_by || c.reported_by_name || '—';
+        r.getCell(8).value = linkedChartLabel;
+        r.getCell(9).value = c.work_done || '—';
+        r.getCell(10).value = c.work_done_other || '—';
+        r.getCell(11).value = c.technologist || '—';
+        r.getCell(12).value = c.status || 'Received';
+        r.getCell(13).value = odontogramLabel;
+        r.getCell(14).value = Number(c.units_quantity || 1);
+        r.getCell(15).value = c.cost_per_first_unit != null ? Number(c.cost_per_first_unit) : 0;
+        r.getCell(16).value = c.cost_per_additional_unit != null ? Number(c.cost_per_additional_unit) : 0;
+        r.getCell(17).value = c.total_cost != null ? Number(c.total_cost) : 0;
+        r.getCell(18).value = c.status === 'Delivered' ? 'Delivered' : (c.status === 'Completed' ? 'Ready' : 'In Production');
+        r.getCell(19).value = c.delivered_to || '—';
+        r.getCell(20).value = c.delivered_at ? new Date(c.delivered_at).toLocaleString() : '—';
+        r.getCell(21).value = c.delivery_notes || '—';
+        r.getCell(22).value = c.reported_by || c.reported_by_name || '—';
 
-        for (let col = 1; col <= 20; col++) {
+        for (let col = 1; col <= 22; col++) {
           const cell = r.getCell(col);
           cell.font = { name: 'Calibri', size: 10 };
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
 
-          if ([12, 13, 14, 15].includes(col)) {
+          if (NUMERIC_COLS.includes(col)) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
-            if (col >= 13) cell.numFmt = '#,##0';
-            if (col === 15) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '9F1239' } };
+            if (col >= 15) cell.numFmt = '#,##0';
+            if (col === 17) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '3730A3' } };
           } else {
             cell.alignment = { horizontal: 'left', vertical: 'middle' };
           }
         }
 
-        const stageCell = r.getCell(11);
+        const stageCell = r.getCell(12);
         if (c.status === 'Delivered') {
           stageCell.font = { color: { argb: '334155' }, bold: true };
         } else if (c.status === 'Completed') {
@@ -878,6 +1068,12 @@ const DentalCasesLog = () => {
           stageCell.font = { color: { argb: '1D4ED8' }, bold: true };
         }
 
+        const odontogramCell = r.getCell(13);
+        odontogramCell.font = {
+          color: { argb: odontogramSummary.count === 0 ? '94A3B8' : (odontogramSummary.allComplete ? '047857' : 'B45309') },
+          bold: odontogramSummary.count > 0,
+        };
+
         currentRow++;
       });
 
@@ -885,22 +1081,22 @@ const DentalCasesLog = () => {
       const totalRow = sheet.getRow(currentRow);
       totalRow.height = 26;
       totalRow.getCell(1).value = 'TOTAL SUMMARY';
-      sheet.mergeCells(`A${currentRow}:K${currentRow}`);
+      sheet.mergeCells(`A${currentRow}:M${currentRow}`);
 
-      totalRow.getCell(12).value = { formula: `=SUM(L6:L${currentRow - 1})` };
-      totalRow.getCell(15).value = { formula: `=SUM(O6:O${currentRow - 1})` };
+      totalRow.getCell(14).value = { formula: `=SUM(N6:N${currentRow - 1})` };
+      totalRow.getCell(17).value = { formula: `=SUM(Q6:Q${currentRow - 1})` };
 
-      for (let col = 1; col <= 20; col++) {
+      for (let col = 1; col <= 22; col++) {
         const cell = totalRow.getCell(col);
-        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '881337' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F2' } };
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '312E81' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EEF2FF' } }; // Indigo-50
         cell.border = {
-          top: { style: 'thin', color: { argb: 'BE123C' } },
-          bottom: { style: 'double', color: { argb: '881337' } }
+          top: { style: 'thin', color: { argb: '4338CA' } },
+          bottom: { style: 'double', color: { argb: '312E81' } }
         };
-        if ([12, 13, 14, 15].includes(col)) {
+        if (NUMERIC_COLS.includes(col)) {
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          if (col >= 13) cell.numFmt = '#,##0';
+          if (col >= 15) cell.numFmt = '#,##0';
         }
       }
 
@@ -958,22 +1154,48 @@ const DentalCasesLog = () => {
         </div>
       </div>
 
-      {/* Period & Pipeline Filters */}
+      {/* Date Range & Pipeline Filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl w-fit">
-          {PERIODS.map(p => (
-            <button
-              key={p.key}
-              onClick={() => setPeriod(p.key)}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
-                period === p.key
-                  ? 'bg-white text-rose-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* From → To Date Range */}
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5">
+            <Calendar size={13} className="text-slate-400 shrink-0" />
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              className="text-xs font-bold text-slate-700 outline-none bg-transparent cursor-pointer"
+            />
+            <span className="text-slate-300 text-xs">→</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+              className="text-xs font-bold text-slate-700 outline-none bg-transparent cursor-pointer"
+            />
+          </div>
+
+          {/* Quick Presets */}
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl w-fit">
+            {DATE_PRESETS.map(p => {
+              const isActive = dateFrom === p.from() && dateTo === p.to();
+              return (
+                <button
+                  key={p.key}
+                  onClick={() => { setDateFrom(p.from()); setDateTo(p.to()); setPage(1); }}
+                  className={`px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                    isActive
+                      ? 'bg-white text-rose-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Manufacturing Stage Quick Filters */}
@@ -1143,11 +1365,20 @@ const DentalCasesLog = () => {
                             PID: {c.patient_id}
                           </span>
                         )}
+                        {c.linked_chart_date && (
+                          <span
+                            className="block mt-0.5 text-[10px] font-bold text-violet-600"
+                            title={`Adhered to Odontology chart dated ${c.linked_chart_date.slice(0, 10)}${c.linked_chart_provider ? ` by ${c.linked_chart_provider}` : ''}`}
+                          >
+                            📋 Chart: {format(parseISO(c.linked_chart_date), 'dd MMM yyyy')}
+                          </span>
+                        )}
                       </td>
 
                       <td className="px-4 py-3">
                         <WorkTypeBadge type={c.work_done} />
                         {c.technologist && <p className="m-0 text-[10px] text-slate-400 mt-1">Tech: {c.technologist}</p>}
+                        <OdontogramBadge caseItem={c} onClick={() => navigate(`/dental/cases/${c.id}/odontogram`)} />
                       </td>
 
                       {/* Interactive Stage Pipeline */}
@@ -1194,7 +1425,7 @@ const DentalCasesLog = () => {
                           </div>
                         ) : (
                           <button
-                            onClick={() => setDeliveryTarget(c)}
+                            onClick={() => handleRequestDelivery(c)}
                             className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 rounded-lg text-[10px] font-bold transition flex items-center gap-1 border border-slate-200 cursor-pointer"
                           >
                             <Truck size={12} /> Mark Delivered

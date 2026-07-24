@@ -23,6 +23,7 @@ const ALL_ROLES = [
   'chef-nurse', 'stock-manager', 'doctor', 'medical_director',
   'procurement-manager', 'imaging_tech', 'imaging_manager',
   'physiotherapist', 'physio', 'dental_hod', 'dental_tech', 'dental_lab_manager',
+  'dentist', 'dental'
 ];
 
 const Sidebar = ({ onClose }) => {

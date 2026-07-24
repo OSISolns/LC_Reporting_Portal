@@ -52,6 +52,7 @@ import ConsumablesLog from './pages/ConsumablesLog';
 import ImagingHub from './pages/imaging/ImagingHub';
 import LabHub from './pages/lab/LabHub';
 import DentalHub from './pages/dental/DentalHub';
+import OdontogramDetailsPage from './pages/dental/OdontogramDetailsPage';
 import PhysioHub from './pages/physio/PhysioHub';
 import OperationsHub from './pages/operations/OperationsHub';
 
@@ -90,7 +91,7 @@ function App() {
             
             <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><RefundList /></ProtectedRoute>} />
             
-            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo', 'medical_director', 'procurement-manager']}><IncidentList /></ProtectedRoute>} />
+            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo', 'medical_director', 'procurement-manager', 'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental_lab', 'dentist', 'dental']}><IncidentList /></ProtectedRoute>} />
 
             
             <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><ResultTransferList /></ProtectedRoute>} />
@@ -134,6 +135,14 @@ function App() {
                 'admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'
               ]}>
                 <DentalHub />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/dental/cases/:id/odontogram" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'coo', 'medical_director', 'dental_lab_manager', 'dental_tech', 'dental_lab', 'dental_hod'
+              ]}>
+                <OdontogramDetailsPage />
               </ProtectedRoute>
             } />
 

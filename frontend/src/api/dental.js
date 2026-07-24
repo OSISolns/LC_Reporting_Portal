@@ -2,7 +2,7 @@ import api from './axios';
 
 // ─── Prosthetics Cases (Dental Lab) ──────────────────────────────────────────
 export const listDentalCases          = (params) => api.get('/dental/cases', { params });
-export const getDentalStats           = (period) => api.get('/dental/cases/stats', { params: { period } });
+export const getDentalStats           = (params) => api.get('/dental/cases/stats', { params: typeof params === 'string' ? { period: params } : params });
 export const getDentalCase            = (id)     => api.get(`/dental/cases/${id}`);
 export const createDentalCase         = (data)   => api.post('/dental/cases', data);
 export const updateDentalCase         = (id, data) => api.put(`/dental/cases/${id}`, data);
@@ -22,6 +22,7 @@ export const getChart                 = (id)         => api.get(`/dental/charts/
 export const saveChart                = (data)       => api.post('/dental/charts', data);
 export const deleteChart              = (id)         => api.delete(`/dental/charts/${id}`);
 export const generateDentalAiNote     = (data)       => api.post('/ai/clinical/dental-note', data);
+export const suggestProstheticReplacement = (data)   => api.post('/ai/clinical/prosthetics-suggestion', data);
 
 // ─── Appointments (forward-looking scheduling) ───────────────────────────────
 export const listAppointments         = (params) => api.get('/dental/appointments', { params });
@@ -31,3 +32,11 @@ export const updateAppointment        = (id, data) => api.put(`/dental/appointme
 export const updateAppointmentStatus  = (id, status) => api.patch(`/dental/appointments/${id}/status`, { status });
 export const checkInAppointment       = (id)     => api.post(`/dental/appointments/${id}/check-in`);
 export const deleteAppointment        = (id)     => api.delete(`/dental/appointments/${id}`);
+
+// ─── Dental Clinic Cases ─────────────────────────────────────────────────────
+export const listClinicCases          = (params) => api.get('/dental/clinic-cases', { params });
+export const getClinicCasesStats      = (params) => api.get('/dental/clinic-cases/stats', { params });
+export const getClinicCase            = (id)     => api.get(`/dental/clinic-cases/${id}`);
+export const createClinicCase         = (data)   => api.post('/dental/clinic-cases', data);
+export const updateClinicCase         = (id, data) => api.put(`/dental/clinic-cases/${id}`, data);
+export const deleteClinicCase         = (id)     => api.delete(`/dental/clinic-cases/${id}`);

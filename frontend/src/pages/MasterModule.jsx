@@ -25,10 +25,15 @@ import {
   ClipboardList,
   Sparkles,
   Brain,
-  Check
+  Check,
+  FileSpreadsheet,
+  Download,
+  Upload,
+  AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
+import ExcelJS from 'exceljs/dist/exceljs.min.js';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -91,6 +96,9 @@ export default function MasterModule() {
   const [isVendorModalOpen, setVendorModalOpen] = useState(false);
   const [isUomModalOpen, setUomModalOpen] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [uploadPreview, setUploadPreview] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [editingRecord, setEditingRecord] = useState(null);
   const [recordToDelete, setRecordToDelete] = useState(null);
@@ -132,9 +140,343 @@ export default function MasterModule() {
     { id: 'cafetariat', label: 'Cafetariat' }
   ];
 
+  const normalizeCategory = (catStr) => {
+    const clean = String(catStr || '').trim().toLowerCase().replace(/\s+/g, '_');
+    if (clean.includes('medication')) return 'medications';
+    if (clean.includes('supply') || clean.includes('supplies')) return 'medical_supplies';
+    if (clean.includes('anesthetic')) return 'anesthetics';
+    if (clean.includes('antiseptic')) return 'antiseptics';
+    if (clean.includes('suture')) return 'sutures';
+    if (clean.includes('antidote')) return 'antidotes';
+    if (clean.includes('stationery')) return 'stationery';
+    if (clean.includes('consumable')) return 'consumables';
+    if (clean.includes('suppository')) return 'suppository';
+    if (clean.includes('housekeeping')) return 'housekeeping';
+    if (clean.includes('cafetariat') || clean.includes('cafeteria')) return 'cafetariat';
+    return 'medical_supplies'; // fallback default
+  };
+
+  const normalizeStorage = (storStr) => {
+    const clean = String(storStr || '').trim().toLowerCase();
+    if (clean.includes('med')) return 'Medical';
+    if (clean.includes('gen')) return 'General';
+    return 'General';
+  };
+
+  const parseExcelDate = (val) => {
+    if (!val) return '';
+    if (val instanceof Date) {
+      return val.toISOString().split('T')[0];
+    }
+    const str = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      return str;
+    }
+    const parsed = Date.parse(str);
+    if (!isNaN(parsed)) {
+      return new Date(parsed).toISOString().split('T')[0];
+    }
+    return '';
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Registry_Import_Template');
+      sheet.views = [{ showGridLines: true }];
+
+      // Row 1: Banner / Signature Hash (verification key)
+      sheet.mergeCells('A1:G1');
+      const bannerCell = sheet.getCell('A1');
+      bannerCell.value = 'Legacy Clinics Master Registry Bulk Import Template. Fill in rows below. Do not rename or delete headers.';
+      bannerCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
+      bannerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+      bannerCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+
+      // Put verification hash key in H1
+      sheet.getCell('H1').value = 'Verification Hash: LC-MST-2026-v1';
+      sheet.getCell('H1').font = { name: 'Calibri', size: 8, color: { argb: 'FFFFFFFF' } }; // hidden text in white
+
+      // Row 2: Headers
+      const headers = [
+        'Item Name*',
+        'Category*',
+        'Unit of Measure*',
+        'Department',
+        'Storage Type',
+        'Expiry Date (YYYY-MM-DD)',
+        'Batch Number'
+      ];
+      sheet.getRow(2).values = headers;
+      sheet.getRow(2).height = 24;
+
+      // Style headers row
+      for (let i = 1; i <= 7; i++) {
+        const cell = sheet.getCell(2, i);
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }; // Indigo-600
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF312E81' } },
+          bottom: { style: 'medium', color: { argb: 'FF312E81' } },
+          left: { style: 'thin', color: { argb: 'FF312E81' } },
+          right: { style: 'thin', color: { argb: 'FF312E81' } }
+        };
+      }
+
+      // Add template examples in Rows 3 & 4
+      const examples = [
+        ['Amoxicillin 500mg Capsule', 'Medications', 'box', 'General Store', 'Medical', '2027-12-31', 'AMX104'],
+        ['Surgical Gloves Size 7.5', 'Medical Supplies', 'pair', 'Nursing', 'General', '', '']
+      ];
+      examples.forEach((rowVal, idx) => {
+        const rowNum = 3 + idx;
+        sheet.getRow(rowNum).values = rowVal;
+        sheet.getRow(rowNum).height = 18;
+        for (let i = 1; i <= 7; i++) {
+          const cell = sheet.getCell(rowNum, i);
+          cell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF64748B' } };
+          cell.alignment = { vertical: 'middle', horizontal: 'left' };
+        }
+      });
+
+      // Set column widths
+      sheet.columns = [
+        { key: 'name', width: 32 },
+        { key: 'category', width: 22 },
+        { key: 'uom', width: 16 },
+        { key: 'department', width: 20 },
+        { key: 'storage', width: 16 },
+        { key: 'expiry', width: 24 },
+        { key: 'batch', width: 18 }
+      ];
+
+      // Export workbook
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'Master_Registry_Import_Template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Template downloaded successfully!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to download template');
+    }
+  };
+
+  const handleUploadFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const targetEl = e.target;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const buffer = evt.target.result;
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer);
+        const sheet = workbook.worksheets[0];
+
+        // 1. Check if signature exists and is valid
+        const sigCell = sheet.getCell('H1').value;
+        const sigVal = typeof sigCell === 'object' && sigCell !== null ? sigCell.text : String(sigCell || '');
+        if (!sigVal.includes('LC-MST-2026-v1')) {
+          toast.error('Template verification failed! The upload file has been tampered with or is invalid.', { duration: 6000 });
+          targetEl.value = '';
+          return;
+        }
+
+        // 2. Validate Row 2 Headers
+        const expectedHeaders = [
+          'Item Name*',
+          'Category*',
+          'Unit of Measure*',
+          'Department',
+          'Storage Type',
+          'Expiry Date (YYYY-MM-DD)',
+          'Batch Number'
+        ];
+        for (let i = 1; i <= 7; i++) {
+          const cellVal = String(sheet.getCell(2, i).value || '').trim();
+          if (cellVal !== expectedHeaders[i - 1]) {
+            toast.error(`Header in column ${i} has been modified (Expected: "${expectedHeaders[i - 1]}", Found: "${cellVal}").`, { duration: 6000 });
+            targetEl.value = '';
+            return;
+          }
+        }
+
+        // 3. Parse data rows starting from row 3
+        const parsedRows = [];
+        const existingNamesMap = new Map(items.map(i => [i.name?.toLowerCase().trim(), i]));
+
+        sheet.eachRow((row, rowNumber) => {
+          if (rowNumber <= 2) return; // skip banner and headers
+
+          const name = String(row.getCell(1).value || '').trim();
+          const category = String(row.getCell(2).value || '').trim();
+          const uom = String(row.getCell(3).value || '').trim();
+          const departmentVal = String(row.getCell(4).value || '').trim();
+          const storageVal = String(row.getCell(5).value || '').trim();
+          const expiryVal = row.getCell(6).value;
+          const batchNumberVal = String(row.getCell(7).value || '').trim();
+
+          // Skip completely empty rows
+          if (!name && !category && !uom) return;
+
+          // Skip examples (rows 3 and 4) if they match our exact example values
+          if (rowNumber === 3 && name === 'Amoxicillin 500mg Capsule') return;
+          if (rowNumber === 4 && name === 'Surgical Gloves Size 7.5') return;
+
+          const rowErrors = [];
+          if (!name) rowErrors.push('Missing Item Name');
+          if (!category) rowErrors.push('Missing Category');
+          if (!uom) rowErrors.push('Missing Unit of Measure');
+
+          // Check duplicate
+          const existingItem = existingNamesMap.get(name.toLowerCase());
+          const isDuplicate = !!existingItem;
+
+          // Find department ID if department name is provided
+          let departmentId = '';
+          if (departmentVal) {
+            const matchDept = departments.find(d => d.name?.toLowerCase().trim() === departmentVal.toLowerCase().trim());
+            if (matchDept) {
+              departmentId = matchDept.id;
+            } else {
+              rowErrors.push(`Unknown Department: "${departmentVal}"`);
+            }
+          }
+
+          const expiryParsed = parseExcelDate(expiryVal);
+          const normalizedCat = normalizeCategory(category);
+          const normalizedStor = normalizeStorage(storageVal);
+
+          let hasChanges = false;
+          let changesSummary = [];
+
+          if (existingItem) {
+            if (existingItem.category !== normalizedCat) {
+              hasChanges = true;
+              changesSummary.push(`Category: ${formatCategoryName(existingItem.category)} ➜ ${formatCategoryName(normalizedCat)}`);
+            }
+            if (existingItem.unit_of_measure !== uom) {
+              hasChanges = true;
+              changesSummary.push(`UOM: ${existingItem.unit_of_measure} ➜ ${uom}`);
+            }
+            if (expiryParsed && existingItem.expiry_date?.split('T')[0] !== expiryParsed) {
+              hasChanges = true;
+              changesSummary.push(`Expiry: ${existingItem.expiry_date?.split('T')[0] || 'None'} ➜ ${expiryParsed}`);
+            }
+            if (batchNumberVal && existingItem.batch_number !== batchNumberVal) {
+              hasChanges = true;
+              changesSummary.push(`Batch: ${existingItem.batch_number || 'None'} ➜ ${batchNumberVal}`);
+            }
+            if (normalizedStor && existingItem.storage !== normalizedStor) {
+              hasChanges = true;
+              changesSummary.push(`Storage: ${existingItem.storage || 'None'} ➜ ${normalizedStor}`);
+            }
+          }
+
+          parsedRows.push({
+            rowNumber,
+            name,
+            category: normalizedCat,
+            categoryLabel: category,
+            unit_of_measure: uom,
+            department: departmentVal || 'Global Store',
+            department_id: departmentId,
+            storage: normalizedStor,
+            expiry_date: expiryParsed,
+            batch_number: batchNumberVal,
+            isDuplicate,
+            existingItem,
+            hasChanges,
+            changesSummary,
+            errors: rowErrors,
+            isValid: rowErrors.length === 0
+          });
+        });
+
+        if (parsedRows.length === 0) {
+          toast.error('The uploaded file contains no data rows to import.');
+          targetEl.value = '';
+          return;
+        }
+
+        setUploadPreview(parsedRows);
+        setIsImportModalOpen(true);
+        targetEl.value = '';
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to parse Excel file. Make sure it is a valid spreadsheet.');
+        targetEl.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleImportNow = async () => {
+    const validNewList = uploadPreview.filter(p => p.isValid && !p.isDuplicate).map(p => ({
+      name: p.name,
+      category: p.category,
+      unit_of_measure: p.unit_of_measure,
+      expiry_date: p.expiry_date || undefined,
+      batch_number: p.batch_number || undefined,
+      department_id: p.department_id || undefined,
+      storage: p.storage,
+      quantity: 0,
+      price: 0
+    }));
+
+    const validUpdateList = uploadPreview.filter(p => p.isValid && p.isDuplicate && p.hasChanges);
+
+    if (validNewList.length === 0 && validUpdateList.length === 0) {
+      toast.error('No valid updates or new items to import.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // 1. Post new items
+      if (validNewList.length > 0) {
+        await api.post('/clinical/inventory/master', { items: validNewList });
+      }
+
+      // 2. Put updates in parallel
+      if (validUpdateList.length > 0) {
+        await Promise.all(validUpdateList.map(async (p) => {
+          const payload = {
+            name: p.name,
+            category: p.category,
+            unit_of_measure: p.unit_of_measure,
+            ...(p.batch_number ? { batch_number: p.batch_number } : {}),
+            ...(p.expiry_date ? { expiry_date: p.expiry_date } : {}),
+            ...(p.department_id ? { department_id: p.department_id } : {}),
+            ...(p.storage ? { storage: p.storage } : {}),
+            batch_id: p.existingItem.batch_id,
+            lot_number: p.existingItem.lot_number
+          };
+          await api.put(`/clinical/inventory/master/${p.existingItem.id}`, payload);
+        }));
+      }
+
+      toast.success(`Import complete! Created ${validNewList.length} new items & updated ${validUpdateList.length} existing items.`);
+      setIsImportModalOpen(false);
+      setUploadPreview([]);
+      loadMasterData();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to complete master import/updates');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Mirrors the backend SKU algorithm for live preview.
-  // Format: first 3 chars of word 1 + "-" + first 3 chars of word 2 (if exists).
-  // Single word: up to first 6 chars.  Examples: "Ceftriaxone 1g" → CEF-1G | "Paracetamol" → PARACE
   const previewSku = (name) => {
     const clean = (name || '').toUpperCase().trim().replace(/[^A-Z0-9\s]/g, '');
     const words = clean.split(/\s+/).filter(Boolean);
@@ -865,12 +1207,21 @@ export default function MasterModule() {
               )}
 
               {activeTab === 'items' && (
-                <button
-                  onClick={handleOpenAIClassifier}
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border border-emerald-200 flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
-                >
-                  <Sparkles size={15} className="stroke-[2.5] text-emerald-600 animate-pulse" /> AI Auto-Classify
-                </button>
+                <>
+                  <button
+                    onClick={() => { setUploadPreview([]); setIsImportModalOpen(true); }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                  >
+                    <FileSpreadsheet size={15} className="stroke-[2.5]" /> Import Excel
+                  </button>
+
+                  <button
+                    onClick={handleOpenAIClassifier}
+                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border border-emerald-200 flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                  >
+                    <Sparkles size={15} className="stroke-[2.5] text-emerald-600 animate-pulse" /> AI Auto-Classify
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -1709,6 +2060,150 @@ export default function MasterModule() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Import Excel Modal */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={() => { setIsImportModalOpen(false); setUploadPreview([]); }}
+        title="Import Master Items from Excel"
+      >
+        <div className="space-y-6">
+          {/* Download Template Step */}
+          <div className="bg-slate-50 border border-slate-200/60 p-4.5 rounded-2xl flex items-center justify-between shadow-3xs">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Step 1: Download Standard Template</span>
+              <p className="text-[11px] text-slate-500 font-semibold leading-normal">
+                Use our secured structure to add new master items without affecting existing catalog.
+              </p>
+            </div>
+            <button
+              onClick={handleDownloadTemplate}
+              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-3xs border-0 bg-transparent"
+            >
+              <Download size={14} className="stroke-[2.5]" /> Template
+            </button>
+          </div>
+
+          {/* File Upload Target */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Step 2: Upload Filled Spreadsheet</span>
+            <label className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-6 bg-white hover:bg-indigo-50/5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-300 relative group">
+              <input
+                type="file"
+                accept=".xlsx"
+                onChange={handleUploadFile}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+              <div className="p-3 bg-slate-50 group-hover:bg-indigo-50 text-slate-400 group-hover:text-indigo-600 rounded-2xl transition-colors">
+                <Upload size={20} className="stroke-[2.5]" />
+              </div>
+              <span className="text-xs font-black text-slate-700 leading-none">Choose File or Drop Here</span>
+              <span className="text-[10px] text-slate-400 font-semibold leading-none">Supports only filled .xlsx template</span>
+            </label>
+          </div>
+
+          {/* Parse Preview Results */}
+          {uploadPreview.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Step 3: Preview Data rows</span>
+                <span className="text-[10px] font-black text-indigo-700 px-2 py-0.5 bg-indigo-50 rounded-lg border border-indigo-100 flex gap-2">
+                  <span>{uploadPreview.filter(p => p.isValid && !p.isDuplicate).length} New</span>
+                  <span>•</span>
+                  <span>{uploadPreview.filter(p => p.isValid && p.isDuplicate && p.hasChanges).length} Updates</span>
+                  <span>•</span>
+                  <span>{uploadPreview.filter(p => p.isValid && p.isDuplicate && !p.hasChanges).length} Unchanged</span>
+                </span>
+              </div>
+
+              {/* Scrollable preview table */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-slate-100 bg-white">
+                {uploadPreview.map((row, idx) => (
+                  <div key={idx} className="p-3 flex items-center justify-between text-[11px] font-semibold hover:bg-slate-50/30">
+                    <div className="space-y-1 max-w-[70%]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] text-slate-400 font-mono">Row {row.rowNumber}:</span>
+                        <strong className="text-slate-800 font-black truncate max-w-full block">{row.name}</strong>
+                      </div>
+                      <div className="text-[9.5px] text-slate-450 flex items-center gap-1 font-medium">
+                        <span>Cat: {row.categoryLabel}</span>
+                        <span>•</span>
+                        <span>UOM: {row.unit_of_measure}</span>
+                        <span>•</span>
+                        <span>Dept: {row.department}</span>
+                      </div>
+                      {row.isDuplicate && row.hasChanges && (
+                        <div className="text-[9.5px] text-blue-600 font-bold mt-1">
+                          Changes: {row.changesSummary.join(', ')}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      {row.errors.length > 0 ? (
+                        <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded bg-red-50 text-red-700 border border-red-100/50" title={row.errors.join(', ')}>
+                          Invalid
+                        </span>
+                      ) : row.isDuplicate ? (
+                        row.hasChanges ? (
+                          <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded bg-blue-50 text-blue-700 border border-blue-100/50">
+                            Will Update
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded bg-slate-100 text-slate-500 border border-slate-200">
+                            No Change
+                          </span>
+                        )
+                      ) : (
+                        <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded bg-green-50 text-green-700 border border-green-100/50">
+                          New Item
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Validation Warning Alert if there are errors or duplicates */}
+              {(uploadPreview.some(p => p.isDuplicate && p.hasChanges) || uploadPreview.some(p => p.errors.length > 0)) && (
+                <div className="bg-amber-50 border border-amber-200/60 p-3 rounded-2xl flex items-start gap-2.5 text-[10.5px] text-amber-800 leading-normal font-semibold">
+                  <AlertCircle size={15} className="shrink-0 mt-0.5 text-amber-600" />
+                  <div>
+                    Existing items with changes in the sheet will be updated in the Master registry. No duplicates will be created. Rows with validation errors will be skipped.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Import Action bar */}
+          {uploadPreview.length > 0 && (
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <span className="text-[11px] text-slate-400 font-bold">
+                Ready to create <strong className="text-green-600 font-extrabold">{uploadPreview.filter(p => p.isValid && !p.isDuplicate).length}</strong> new & update <strong className="text-blue-600 font-extrabold">{uploadPreview.filter(p => p.isValid && p.isDuplicate && p.hasChanges).length}</strong> items.
+              </span>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => { setIsImportModalOpen(false); setUploadPreview([]); }}
+                  className="px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer border-0 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImportNow}
+                  disabled={isUploading || uploadPreview.filter(p => p.isValid).length === 0}
+                  className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-150 border-0 transition animate-fade-in"
+                >
+                  {isUploading && <Loader2 size={13} className="animate-spin" />}
+                  Import Now
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </Modal>
 
       <style jsx>{`

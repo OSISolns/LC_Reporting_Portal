@@ -203,7 +203,7 @@ export default function DentalLabDashboard() {
             path="/dental?section=lab&tab=cases" 
             navigate={navigate} 
           />
-          <ActionCard 
+          <ActionCard
             label="Lab Consumables Log" 
             desc="Log materials & request stock" 
             icon={<ClipboardList size={20} />} 
@@ -357,7 +357,6 @@ export default function DentalLabDashboard() {
         </div>
 
       </div>
-
     </div>
   );
 }

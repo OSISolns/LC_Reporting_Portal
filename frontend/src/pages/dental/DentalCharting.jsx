@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { listCharts, getChart, saveChart, deleteChart, generateDentalAiNote } from '../../api/dental';
 import { getPatientByPid, searchPatients } from '../../api/patients';
 import { useAuth } from '../../context/AuthContext';
+import LuminaDentalAiPrescriber from '../../components/dental/LuminaDentalAiPrescriber';
 
 // ─── DENTAL CONDITIONS DICTIONARY ─────────────────────────────────────────────
 const CONDITIONS = {
@@ -106,7 +107,7 @@ const generateDefaultToothData = () => {
 };
 
 // ─── ANATOMICAL POLYGON TOOTH SVG COMPONENT ─────────────────────────────────
-const AnatomicalToothSVG = ({ number, data, isSelected, onClick, onSurfaceClick, activeToolCondition, isUpper }) => {
+const AnatomicalToothSVG = ({ number, data, isSelected, onClick, onSurfaceClick, activeToolCondition, isUpper, onEnter, onLeave }) => {
   const toothData = data || DEFAULT_TOOTH_STRUCTURE;
   const isMissing = toothData.missing;
   const s = toothData.surfaces || DEFAULT_TOOTH_STRUCTURE.surfaces;
@@ -146,9 +147,12 @@ const AnatomicalToothSVG = ({ number, data, isSelected, onClick, onSurfaceClick,
       {/* Main Interactive Container */}
       <div 
         onClick={() => onClick(number.toString())}
+        onMouseEnter={(e) => onEnter && onEnter(number.toString(), e)}
+        onMouseMove={(e) => onEnter && onEnter(number.toString(), e)}
+        onMouseLeave={() => onLeave && onLeave()}
         className={`relative cursor-pointer transition-all rounded-lg p-1 bg-white border-2 ${
           isSelected 
-            ? 'border-rose-500 shadow-md ring-2 ring-rose-500/20 scale-105 z-20' 
+            ? 'border-rose-500 shadow-md ring-2 ring-rose-500/20 z-20' 
             : 'border-slate-200 hover:border-rose-300 hover:shadow-xs'
         }`}
         style={{ width: 52, height: 68 }}
@@ -293,6 +297,19 @@ export default function DentalCharting() {
   // Tooth Data Store
   const [toothData, setToothData] = useState(generateDefaultToothData());
   const [selectedTooth, setSelectedTooth] = useState(null);
+  const [hoveredTooth, setHoveredTooth] = useState(null);
+
+  const handleToothEnter = (number, e) => {
+    setHoveredTooth({
+      number,
+      clientX: e.clientX,
+      clientY: e.clientY
+    });
+  };
+
+  const handleToothLeave = () => {
+    setHoveredTooth(null);
+  };
 
   // Quick Condition Palette Active Tool
   const [activeTool, setActiveTool] = useState('Caries'); // Condition key to apply on click
@@ -351,6 +368,7 @@ export default function DentalCharting() {
 
   // History & Load States
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [showAiPrescriber, setShowAiPrescriber] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingPatient, setLoadingPatient] = useState(false);
@@ -858,6 +876,8 @@ export default function DentalCharting() {
               onSurfaceClick={handleDirectSurfaceClick}
               activeToolCondition={activeTool}
               isUpper={isUpper}
+              onEnter={handleToothEnter}
+              onLeave={handleToothLeave}
             />
           ))}
         </div>
@@ -873,6 +893,8 @@ export default function DentalCharting() {
               onSurfaceClick={handleDirectSurfaceClick}
               activeToolCondition={activeTool}
               isUpper={isUpper}
+              onEnter={handleToothEnter}
+              onLeave={handleToothLeave}
             />
           ))}
         </div>
@@ -881,53 +903,60 @@ export default function DentalCharting() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20 font-sans print:p-0 print:max-w-none">
+    <div className="max-w-7xl mx-auto space-y-5 pb-20 font-sans print:p-0 print:max-w-none">
       
       {/* HEADER BAR */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-gradient-to-br from-rose-500 to-rose-600 text-white rounded-2xl shadow-md">
-            <Stethoscope size={26} />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 print:hidden">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-rose-50 text-rose-500 rounded-xl">
+            <Stethoscope size={18} />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Dental Charting & Odontogram</h1>
-            <p className="text-xs text-slate-500 font-medium">Interactive FDI multi-dentition anatomical charting & treatment planning.</p>
+            <h1 className="text-base font-bold text-slate-800 tracking-tight">Dental Charting & Odontogram</h1>
+            <p className="text-[11px] text-slate-400 font-semibold">Interactive FDI multi-dentition anatomical charting & treatment planning.</p>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => setShowAiPrescriber(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 rounded-lg transition-all font-bold text-[11px] cursor-pointer"
+          >
+            <Sparkles size={13} />
+            <span>Lumina AI Prescriber</span>
+          </button>
           <button
             onClick={handlePrintChart}
-            className="flex items-center gap-2 px-3.5 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-100 transition-all font-semibold bg-white text-xs shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-all font-semibold bg-white text-[11px] shadow-2xs cursor-pointer"
           >
-            <Printer size={15} />
+            <Printer size={13} />
             <span>Print Chart</span>
           </button>
           <button
             onClick={handleNewChart}
-            className="flex items-center gap-2 px-3.5 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-100 transition-all font-semibold bg-white text-xs shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-all font-semibold bg-white text-[11px] shadow-2xs cursor-pointer"
           >
-            <FilePlus size={15} />
+            <FilePlus size={13} />
             <span>New Chart</span>
           </button>
           <button
             onClick={handleSaveChart}
             disabled={!patientId || !canEdit}
-            className="flex items-center gap-2 px-5 py-2 bg-rose-600 text-white rounded-xl hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm font-bold text-xs"
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-2xs font-bold text-[11px] cursor-pointer"
           >
-            <Save size={15} />
+            <Save size={13} />
             <span>Save Chart</span>
           </button>
         </div>
       </div>
 
       {/* PATIENT BAR */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+      <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5 items-end">
           {/* Patient ID Autocomplete Search */}
-          <div className="space-y-1.5 relative" ref={searchRef}>
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center justify-between">
+          <div className="space-y-1 relative" ref={searchRef}>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
               <span>Patient ID / Search</span>
-              {isSearching && <Loader2 size={13} className="animate-spin text-rose-500" />}
+              {isSearching && <Loader2 size={11} className="animate-spin text-rose-500" />}
             </label>
             <div className="relative">
               <input
@@ -936,9 +965,9 @@ export default function DentalCharting() {
                 onChange={(e) => handlePatientSearch(e.target.value)}
                 onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
                 placeholder="Sukraa ID or Patient Name..."
-                className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-semibold"
+                className="w-full pl-3 pr-8 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-semibold"
               />
-              <Search size={15} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Search size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
 
             {/* Dropdown */}
@@ -955,11 +984,11 @@ export default function DentalCharting() {
                       key={p.pid || p.id}
                       type="button"
                       onClick={() => selectPatient(p)}
-                      className="w-full text-left p-2.5 hover:bg-rose-50/50 transition-colors flex items-center justify-between"
+                      className="w-full text-left p-2 hover:bg-rose-50/50 transition-colors flex items-center justify-between"
                     >
                       <div>
                         <p className="text-xs font-bold text-slate-800">{p.full_name || p.patient_name}</p>
-                        <p className="text-[11px] text-slate-400">PID: {p.pid} {p.gender ? `• ${p.gender}` : ''}</p>
+                        <p className="text-[10px] text-slate-400">PID: {p.pid} {p.gender ? `• ${p.gender}` : ''}</p>
                       </div>
                       <span className="text-[9px] px-1.5 py-0.5 rounded font-mono uppercase bg-slate-100 text-slate-500 font-bold">
                         {p.source || 'db'}
@@ -971,35 +1000,35 @@ export default function DentalCharting() {
             </AnimatePresence>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Patient Name</label>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Patient Name</label>
             <input
               type="text"
               value={patientName}
               onChange={(e) => setPatientName(e.target.value)}
               placeholder="Patient full name"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-semibold"
+              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-semibold"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Chart Date</label>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Chart Date</label>
             <input
               type="date"
               value={chartDate}
               onChange={(e) => setChartDate(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-semibold"
+              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-semibold"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Treating Provider</label>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Treating Provider</label>
             <input
               type="text"
               value={provider}
               onChange={(e) => setProvider(e.target.value)}
               placeholder="Dr. Dentist Name"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-semibold"
+              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-semibold"
             />
           </div>
 
@@ -1007,9 +1036,9 @@ export default function DentalCharting() {
             <button
               onClick={() => fetchPatientAndCharts(patientId)}
               disabled={loadingHistory || loadingPatient || !patientId}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-all font-bold text-xs shadow-xs"
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 disabled:opacity-50 transition-all font-bold text-xs shadow-2xs cursor-pointer"
             >
-              {loadingPatient || loadingHistory ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+              {loadingPatient || loadingHistory ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}
               <span>Fetch Charts</span>
             </button>
           </div>
@@ -1050,15 +1079,15 @@ export default function DentalCharting() {
       </div>
 
       {/* QUICK CONDITION TOOLBAR / PALETTE */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-2 print:hidden">
+      <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs space-y-1.5 print:hidden">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-            <Sparkles size={14} className="text-rose-500" />
-            Quick Surface Charting Palette (Click condition, then click tooth surface on Odontogram)
+          <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
+            <Sparkles size={13} className="text-rose-500" />
+            Quick Charting Palette
           </span>
-          <span className="text-[11px] text-slate-400 font-medium">Active Tool: <strong className="text-rose-600">{activeTool}</strong></span>
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Active: <strong className="text-rose-600 font-black">{activeTool}</strong></span>
         </div>
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
           {Object.entries(CONDITIONS).map(([key, val]) => {
             const isActive = activeTool === key;
             return (
@@ -1066,14 +1095,14 @@ export default function DentalCharting() {
                 key={key}
                 type="button"
                 onClick={() => setActiveTool(key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all cursor-pointer ${
                   isActive 
-                    ? 'ring-2 ring-rose-500 border-rose-500 shadow-sm scale-105' 
-                    : 'border-slate-200 hover:border-slate-300 bg-slate-50'
+                    ? 'border-rose-500 bg-rose-50/70 text-rose-700 shadow-2xs font-extrabold scale-102' 
+                    : 'border-slate-200/60 bg-white hover:border-slate-300 text-slate-600 font-medium'
                 }`}
               >
-                <span className="w-3 h-3 rounded-full border border-slate-300 shadow-2xs" style={{ backgroundColor: val.color }} />
-                <span className="text-slate-800">{val.label}</span>
+                <span className="w-2.5 h-2.5 rounded-full border border-slate-300 shadow-3xs shrink-0" style={{ backgroundColor: val.color }} />
+                <span>{val.label}</span>
               </button>
             );
           })}
@@ -1081,37 +1110,37 @@ export default function DentalCharting() {
       </div>
 
       {/* ODONTOGRAM ARCHES & DETAIL PANEL */}
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-5">
         
         {/* ODONTOGRAM CANVAS */}
-        <div className="flex-grow lg:w-[68%] bg-white rounded-2xl border border-slate-200 p-6 shadow-xs overflow-x-auto">
+        <div className="flex-grow lg:w-[68%] bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs overflow-x-auto">
           {/* Dentition View Toggle */}
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <Layers size={18} className="text-slate-500" />
-              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-700">Dentition Mode</span>
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-1.5">
+              <Layers size={15} className="text-slate-400" />
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">Dentition Mode</span>
             </div>
-            <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+            <div className="flex bg-slate-100 p-0.5 rounded-lg gap-0.5">
               <button
                 onClick={() => setDentitionType('adult')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  dentitionType === 'adult' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-2.5 py-0.5 rounded-md text-[10.5px] font-bold transition-all cursor-pointer ${
+                  dentitionType === 'adult' ? 'bg-white text-rose-600 shadow-3xs' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
                 Adult (Permanent 32)
               </button>
               <button
                 onClick={() => setDentitionType('pediatric')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  dentitionType === 'pediatric' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-2.5 py-0.5 rounded-md text-[10.5px] font-bold transition-all cursor-pointer ${
+                  dentitionType === 'pediatric' ? 'bg-white text-rose-600 shadow-3xs' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
                 Pediatric (Primary 20)
               </button>
               <button
                 onClick={() => setDentitionType('mixed')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  dentitionType === 'mixed' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-2.5 py-0.5 rounded-md text-[10.5px] font-bold transition-all cursor-pointer ${
+                  dentitionType === 'mixed' ? 'bg-white text-rose-600 shadow-3xs' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
                 Mixed Dentition
@@ -1198,23 +1227,23 @@ export default function DentalCharting() {
         </div>
 
         {/* TOOTH DETAIL & PERIODONTAL PANEL */}
-        <div className="lg:w-[32%] bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col overflow-hidden print:hidden">
-          <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-            <h2 className="font-extrabold text-slate-800 text-sm">Tooth Inspection & Periodontal</h2>
+        <div className="lg:w-[32%] bg-white rounded-xl border border-slate-200/80 shadow-2xs flex flex-col overflow-hidden print:hidden">
+          <div className="p-3.5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
+            <h2 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Tooth Inspection</h2>
             {selectedTooth && (
-              <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+              <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-100">
                 Tooth #{selectedTooth}
               </span>
             )}
           </div>
           
-          <div className="p-5 flex-grow overflow-y-auto max-h-[650px] space-y-5">
+          <div className="p-4 flex-grow overflow-y-auto max-h-[650px] space-y-4">
             {!selectedTooth ? (
-              <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center text-slate-400 gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center shadow-2xs">
-                  <Stethoscope size={28} />
+              <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center text-slate-400 gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shadow-3xs">
+                  <Stethoscope size={20} />
                 </div>
-                <p className="text-xs font-semibold text-slate-500">Click any tooth on the Odontogram<br/>to edit individual surfaces & notes.</p>
+                <p className="text-[11px] font-semibold text-slate-400">Click any tooth on the Odontogram<br/>to edit individual surfaces & notes.</p>
               </div>
             ) : (
               <div className="space-y-5">
@@ -1586,6 +1615,93 @@ export default function DentalCharting() {
         </AnimatePresence>
       </div>
 
+      <LuminaDentalAiPrescriber
+        isOpen={showAiPrescriber}
+        onClose={() => setShowAiPrescriber(false)}
+        patientName={patientName}
+      />
+
+      {/* Interactive Hover Tooltip */}
+      {hoveredTooth && (
+        <div
+          className="pointer-events-none fixed z-50 bg-white/95 text-slate-900 rounded-2xl shadow-xl p-4 text-xs space-y-2.5 w-64 border border-slate-200/90 backdrop-blur-md transition-all duration-75"
+          style={{
+            left: Math.min(hoveredTooth.clientX + 18, window.innerWidth - 275),
+            top: Math.min(hoveredTooth.clientY + 18, window.innerHeight - 260),
+          }}
+        >
+          {/* Header */}
+          <div className="border-b border-slate-100 pb-2">
+            <div className="flex items-center justify-between">
+              <span className="font-black text-sm text-rose-600">Tooth #{hoveredTooth.number}</span>
+              <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                FDI Notation
+              </span>
+            </div>
+            <div className="text-[11px] font-bold text-slate-800 mt-0.5">
+              {FDI_NAMES[hoveredTooth.number] || `Tooth #${hoveredTooth.number}`}
+            </div>
+            <div className="text-[9.5px] font-semibold text-slate-500 uppercase tracking-wider">
+              {getQuadrantName(hoveredTooth.number)}
+            </div>
+          </div>
+
+          {/* Status & Surfaces */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-extrabold uppercase text-slate-400">Clinical Status</span>
+              <span className={`text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                toothData[hoveredTooth.number]?.missing
+                  ? 'bg-red-100 text-red-800 border-red-300 font-bold'
+                  : CONDITIONS[toothData[hoveredTooth.number]?.condition || 'Healthy']?.badgeBg || 'bg-slate-100 text-slate-700 border-slate-200 font-bold'
+              }`}>
+                {toothData[hoveredTooth.number]?.missing ? 'Missing' : toothData[hoveredTooth.number]?.condition || 'Healthy'}
+              </span>
+            </div>
+
+            {!toothData[hoveredTooth.number]?.missing && (
+              <div className="space-y-1 bg-slate-50 p-2 rounded-xl border border-slate-100 text-[10.5px]">
+                <div className="font-bold text-slate-500 mb-1 text-[9px] uppercase tracking-wider">Surfaces Status</div>
+                {['B', 'M', 'O', 'D', 'L'].map(sKey => {
+                  const sLabel = { B: 'Buccal', M: 'Mesial', O: 'Occlusal', D: 'Distal', L: 'Lingual' }[sKey];
+                  const sCond = toothData[hoveredTooth.number]?.surfaces?.[sKey] || 'Healthy';
+                  return (
+                    <div key={sKey} className="flex items-center justify-between">
+                      <span className="text-slate-500 font-semibold">{sLabel} ({sKey}):</span>
+                      <span className={`font-bold ${sCond === 'Healthy' ? 'text-slate-400' : 'text-rose-600'}`}>{sCond}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Periodontal */}
+          {!toothData[hoveredTooth.number]?.missing && (
+            <div className="space-y-1 text-[10.5px] border-t border-slate-100 pt-2">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Mobility:</span>
+                <span className={`font-extrabold ${toothData[hoveredTooth.number]?.mobility > 0 ? 'text-amber-600' : 'text-slate-700'}`}>
+                  {toothData[hoveredTooth.number]?.mobility > 0 ? `Grade ${toothData[hoveredTooth.number].mobility}` : 'Normal (0)'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Probing Depth (Buccal):</span>
+                <span className="text-slate-700 font-extrabold">
+                  {toothData[hoveredTooth.number]?.probingDepth?.B ?? 2} mm
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Tooth Notes */}
+          {toothData[hoveredTooth.number]?.notes && (
+            <div className="text-slate-600 text-[10px] italic pt-2 border-t border-slate-100 mt-1 line-clamp-3">
+              "{toothData[hoveredTooth.number].notes}"
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

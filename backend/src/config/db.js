@@ -532,6 +532,33 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       }
       
       console.log('✅ Custom department cleanup migration complete.');
+
+      console.log('⚙️ Running dental_clinic_cases table migration...');
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS dental_clinic_cases (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          case_ref TEXT UNIQUE NOT NULL,
+          patient_id TEXT NOT NULL,
+          patient_name TEXT NOT NULL,
+          dentist_name TEXT NOT NULL,
+          case_date TEXT NOT NULL,
+          linked_chart_id INTEGER,
+          caries_count INTEGER DEFAULT 0,
+          missing_count INTEGER DEFAULT 0,
+          restored_count INTEGER DEFAULT 0,
+          treatment_summary TEXT,
+          total_charges REAL DEFAULT 0,
+          status TEXT CHECK(status IN ('Diagnosed', 'In Treatment', 'Completed', 'Follow-Up')) DEFAULT 'Diagnosed',
+          clinical_notes TEXT,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        )
+      `).then(() => {
+        console.log('  ✅ Table dental_clinic_cases created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create dental_clinic_cases:', err.message);
+      });
+
       const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
       console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));
       
@@ -2610,7 +2637,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_cases_received_date ON dental_cases(received_date)');
       await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_cases_work_done ON dental_cases(work_done)');
 
-      for (const col of ['status TEXT DEFAULT \'Received\'', 'delivery_notes TEXT', 'delivered_to TEXT', 'delivered_at DATETIME']) {
+      for (const col of ['status TEXT DEFAULT \'Received\'', 'delivery_notes TEXT', 'delivered_to TEXT', 'delivered_at DATETIME', 'odontogram_data TEXT', 'linked_chart_id INTEGER REFERENCES dental_charts(id) ON DELETE SET NULL']) {
         try { await client.execute(`ALTER TABLE dental_cases ADD COLUMN ${col}`); } catch (e) { /* already exists */ }
       }
 
@@ -2619,6 +2646,61 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       if (!err.message?.includes('already exists')) {
         console.error('❌ dental_cases migration error:', err.message);
       }
+    }
+
+    // ─── Dental Cases work_done CHECK Constraint Upgrade (add 'Trays') ───────────
+    try {
+      const { rows } = await client.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='dental_cases'");
+      if (rows.length > 0 && !rows[0].sql.includes('Trays')) {
+        console.log('⚙️ Migrating dental_cases.work_done CHECK constraint to add "Trays"...');
+
+        await client.execute('ALTER TABLE dental_cases RENAME TO dental_cases_old');
+
+        await client.execute(`
+          CREATE TABLE dental_cases (
+            id                        INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_ref                  TEXT NOT NULL UNIQUE,
+            received_date             TEXT NOT NULL,
+            required_date             TEXT NOT NULL,
+            work_command_origin       TEXT,
+            clinic_of_origin          TEXT,
+            clinician_name            TEXT,
+            patient_id                TEXT,
+            work_done                 TEXT NOT NULL CHECK (work_done IN ('Acrylic Work', 'Metal & Ceramic', 'CAD-CAM', 'Trays', 'Other')),
+            work_done_other           TEXT,
+            technologist              TEXT,
+            units_quantity            INTEGER NOT NULL DEFAULT 1,
+            cost_per_first_unit       REAL,
+            cost_per_additional_unit  REAL,
+            total_cost                REAL,
+            reported_by               TEXT,
+            reported_by_user_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at                DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            updated_at                DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            status                    TEXT DEFAULT 'Received',
+            delivery_notes            TEXT,
+            delivered_to              TEXT,
+            delivered_at              DATETIME,
+            odontogram_data           TEXT,
+            linked_chart_id           INTEGER REFERENCES dental_charts(id) ON DELETE SET NULL
+          )
+        `);
+
+        const { rows: colRows } = await client.execute("PRAGMA table_info(dental_cases_old)");
+        const cols = colRows.map(r => r.name);
+        const commonCols = cols.filter(c => c !== 'id');
+        const colsListStr = ['id', ...commonCols].join(', ');
+
+        await client.execute(`INSERT INTO dental_cases (${colsListStr}) SELECT ${colsListStr} FROM dental_cases_old`);
+        await client.execute('DROP TABLE dental_cases_old');
+
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_cases_received_date ON dental_cases(received_date)');
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_dental_cases_work_done ON dental_cases(work_done)');
+
+        console.log('✅ dental_cases.work_done CHECK constraint upgraded to include "Trays".');
+      }
+    } catch (err) {
+      console.error('❌ dental_cases work_done CHECK migration error:', err.message);
     }
 
     // ─── Dental Worklist Table ────────────────────────────────────────────────

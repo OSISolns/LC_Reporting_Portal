@@ -9,7 +9,7 @@ import {
 import { 
   Calendar, ChevronLeft, ChevronRight, Plus, ClipboardList, 
   Clock, Activity, CheckCircle, AlertCircle, Edit, Trash2, 
-  UserCheck, XCircle, Users
+  UserCheck, XCircle, Users, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -24,6 +24,7 @@ import {
 import { getPatientByPid } from '../../api/patients';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
 import { useAuth } from '../../context/AuthContext';
+import LuminaDentalAiPrescriber from '../../components/dental/LuminaDentalAiPrescriber';
 
 const APPOINTMENT_TYPES = [
   'Consultation', 'Routine Checkup', 'Scaling & Cleaning', 'Filling / Restoration',
@@ -52,6 +53,7 @@ export default function DentalWorklist() {
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showAiPrescriber, setShowAiPrescriber] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState(null);
@@ -250,6 +252,14 @@ export default function DentalWorklist() {
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
+
+          <button 
+            onClick={() => setShowAiPrescriber(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4" />
+            Lumina AI Prescriber
+          </button>
 
           {canEdit && (
             <button 
@@ -660,6 +670,11 @@ export default function DentalWorklist() {
           </div>
         )}
       </AnimatePresence>
+
+      <LuminaDentalAiPrescriber
+        isOpen={showAiPrescriber}
+        onClose={() => setShowAiPrescriber(false)}
+      />
     </div>
   );
 }

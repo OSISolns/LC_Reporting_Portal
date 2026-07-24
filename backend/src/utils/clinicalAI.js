@@ -940,9 +940,292 @@ function generateDentalNote({ toothData = {}, treatmentPlan = [], patientName = 
   return lines.join('\n');
 }
 
-module.exports = { 
-  suggestMedications, 
-  generateAssessmentComments, 
+// ── Lumina AI Dental Prescriber Engine ─────────────────────────────────────────
+function suggestDentalMedications({ condition = '', procedure = '', allergies = [], toothData = {}, severity = 'Moderate' }) {
+  const condLower = (condition + ' ' + procedure).toLowerCase();
+  const allergyList = (Array.isArray(allergies) ? allergies : [allergies]).map(a => String(a).toLowerCase());
+  
+  const hasPenicillinAllergy = allergyList.some(a => a.includes('penicillin') || a.includes('amoxicillin') || a.includes('ampicillin'));
+  const hasNsaidAllergy = allergyList.some(a => a.includes('nsaid') || a.includes('aspirin') || a.includes('ibuprofen') || a.includes('ulcer'));
+
+  const recommendations = [];
+  const warnings = [];
+
+  // Protocol 1: Acute Dental Pain / Inflammatory Pulpitis
+  if (condLower.includes('pulpitis') || condLower.includes('pain') || condLower.includes('decay') || condLower.includes('caries') || condLower.includes('restoration')) {
+    if (!hasNsaidAllergy) {
+      recommendations.push({
+        drug: 'Ibuprofen',
+        dose: '400mg',
+        route: 'PO',
+        frequency: 'TDS (Every 8 hours)',
+        duration: '3 - 5 days',
+        category: 'NSAID / Anti-inflammatory',
+        notes: 'Take after food. Primary first-line analgesic for dental pulpitis and inflammatory bone pain.'
+      });
+    } else {
+      warnings.push('NSAID Allergy / GI Sensitivity flagged: Substituted Ibuprofen with Paracetamol & Opioid combination.');
+    }
+
+    recommendations.push({
+      drug: 'Paracetamol (Panadol)',
+      dose: '1g (1000mg)',
+      route: 'PO',
+      frequency: 'QDS / QID (Every 6 hours PRN)',
+      duration: '3 - 5 days',
+      category: 'Analgesic / Antipyretic',
+      notes: 'Can be taken concurrently with Ibuprofen for synergistic pain relief. Do not exceed 4g/day.'
+    });
+
+    if (severity === 'Severe' || condLower.includes('severe')) {
+      recommendations.push({
+        drug: 'Tramadol HCl',
+        dose: '50mg',
+        route: 'PO',
+        frequency: 'TDS PRN (Every 8 hours)',
+        duration: '3 days',
+        category: 'Opioid Analgesic',
+        notes: 'For severe breakthrough dental pain. Take with food. Caution: Causes mild sedation.'
+      });
+    }
+  }
+
+  // Protocol 2: Odontogenic Infection / Periapical Abscess / Cellulitis
+  if (condLower.includes('abscess') || condLower.includes('infection') || condLower.includes('swelling') || condLower.includes('periodontitis') || condLower.includes('pus') || condLower.includes('cellulitis')) {
+    if (!hasPenicillinAllergy) {
+      recommendations.push({
+        drug: 'Amoxicillin + Clavulanate (Augmentin)',
+        dose: '625mg',
+        route: 'PO',
+        frequency: 'TDS (Every 8 hours)',
+        duration: '7 days',
+        category: 'Broad-Spectrum Antibiotic',
+        notes: 'First-line antibiotic for acute odontogenic abscess and spreading soft tissue infection.'
+      });
+    } else {
+      warnings.push('PENICILLIN ALLERGY FLAGGED: Amoxicillin/Augmentin contraindicated. Prescribing Clindamycin 300mg as 1st-line alternative.');
+      recommendations.push({
+        drug: 'Clindamycin',
+        dose: '300mg',
+        route: 'PO',
+        frequency: 'QDS (Every 6 hours)',
+        duration: '7 days',
+        category: 'Lincosamide Antibiotic (Penicillin Alternative)',
+        notes: 'High bone and soft tissue penetration. Excellent for anaerobic odontogenic infections in penicillin-allergic patients.'
+      });
+    }
+
+    recommendations.push({
+      drug: 'Metronidazole (Flagyl)',
+      dose: '400mg',
+      route: 'PO',
+      frequency: 'TDS (Every 8 hours)',
+      duration: '5 - 7 days',
+      category: 'Anaerobic Antibiotic',
+      notes: 'Essential coverage against obligate anaerobes in periodontal and deep fascial space abscesses. STRICTLY avoid alcohol.'
+    });
+
+    recommendations.push({
+      drug: 'Chlorhexidine Gluconate Mouthwash 0.12%',
+      dose: '15ml rinse',
+      route: 'Oral Rinse',
+      frequency: 'BD (Twice daily)',
+      duration: '7 - 10 days',
+      category: 'Antiseptic Oral Rinse',
+      notes: 'Rinse and spit out after 1 minute. Do not swallow or rinse with water immediately after.'
+    });
+  }
+
+  // Protocol 3: Surgical Extractions / Implant Placement / Bone Grafting / Prosthetic Prep
+  if (condLower.includes('extraction') || condLower.includes('surgical') || condLower.includes('implant') || condLower.includes('graft') || condLower.includes('prosthetic') || condLower.includes('crown') || condLower.includes('bridge')) {
+    if (!hasPenicillinAllergy) {
+      recommendations.push({
+        drug: 'Amoxicillin',
+        dose: '500mg',
+        route: 'PO',
+        frequency: 'TDS (Every 8 hours)',
+        duration: '5 days',
+        category: 'Prophylactic Antibiotic',
+        notes: 'Post-surgical infection prophylaxis for tooth extractions, implant placement, and extensive crown preparation.'
+      });
+    } else {
+      recommendations.push({
+        drug: 'Azithromycin',
+        dose: '500mg',
+        route: 'PO',
+        frequency: 'OD (Once daily)',
+        duration: '3 days',
+        category: 'Macrolide Antibiotic (Penicillin-Allergic Alternative)',
+        notes: 'Convenient single daily dose for post-op surgical prophylaxis.'
+      });
+    }
+
+    if (!hasNsaidAllergy) {
+      recommendations.push({
+        drug: 'Diclofenac Potassium (Cataflam)',
+        dose: '50mg',
+        route: 'PO',
+        frequency: 'BD (Every 12 hours)',
+        duration: '3 - 5 days',
+        category: 'Potent Post-Surgical NSAID',
+        notes: 'Rapid-acting analgesic for post-extraction and post-surgical edema management. Take PC (after meals).'
+      });
+    }
+  }
+
+  // Protocol 4: Pericoronitis / Acute Necrotizing Ulcerative Gingivitis (NUG)
+  if (condLower.includes('pericoronitis') || condLower.includes('wisdom') || condLower.includes('gingivitis') || condLower.includes('ulcerative')) {
+    recommendations.push({
+      drug: 'Metronidazole',
+      dose: '400mg',
+      route: 'PO',
+      frequency: 'TDS (Every 8 hours)',
+      duration: '5 days',
+      category: 'Targeted Anaerobic Antibiotic',
+      notes: 'Specific for Spirochetes and Fusobacteria involved in pericoronitis and ANUG.'
+    });
+    recommendations.push({
+      drug: 'Warm Saline Rinses / Chlorhexidine 0.12%',
+      dose: '15ml',
+      route: 'Oral Rinse',
+      frequency: 'TDS (After meals)',
+      duration: '7 days',
+      category: 'Local Debridement & Irrigation',
+      notes: 'Gently irrigate pericoronal flap around erupting 3rd molars.'
+    });
+  }
+
+  // Protocol 5: Denture Stomatitis / Oral Candidiasis (Under Prosthetics)
+  if (condLower.includes('stomatitis') || condLower.includes('candidiasis') || condLower.includes('thrush') || condLower.includes('denture') || condLower.includes('acrylic')) {
+    recommendations.push({
+      drug: 'Nystatin Oral Suspension',
+      dose: '100,000 Units (1ml)',
+      route: 'PO Swish & Swallow',
+      frequency: 'QDS / QID (4 times daily)',
+      duration: '7 - 14 days',
+      category: 'Topical Antifungal',
+      notes: 'Hold in mouth for 2-3 minutes before swallowing. Also soak acrylic dentures in Nystatin or Chlorhexidine solution overnight.'
+    });
+    recommendations.push({
+      drug: 'Miconazole Oral Gel 2%',
+      dose: '2.5ml',
+      route: 'Oral Topical Gel',
+      frequency: 'QDS (After meals)',
+      duration: '7 days',
+      category: 'Antifungal Gel',
+      notes: 'Apply directly to affected oral mucosa and tissue surface of removable dentures.'
+    });
+  }
+
+  // Default fallback protocol if generic examination / routine care
+  if (recommendations.length === 0) {
+    recommendations.push({
+      drug: 'Paracetamol (Panadol)',
+      dose: '500mg - 1g',
+      route: 'PO',
+      frequency: 'TDS PRN',
+      duration: '3 days',
+      category: 'Mild Analgesic',
+      notes: 'For mild post-procedure discomfort.'
+    });
+    recommendations.push({
+      drug: 'Chlorhexidine 0.12% Oral Rinse',
+      dose: '15ml',
+      route: 'Oral Rinse',
+      frequency: 'BD',
+      duration: '5 days',
+      category: 'Oral Hygiene Adjunct',
+      notes: 'Maintains low bacterial load post oral prophylaxis or minor restoration.'
+    });
+  }
+
+  return {
+    condition: condition || 'Dental Consultation / Procedure',
+    procedure: procedure || 'Dental Treatment',
+    severity,
+    allergies: allergyList,
+    recommendations,
+    warnings,
+    summary: `Lumina AI recommended ${recommendations.length} medication protocol(s) tailored for ${condition || 'dental care'}.`
+  };
+}
+
+// ── Lumina AI Prosthetics Replacement Engine ───────────────────────────────────
+// Suggests an edentulous replacement strategy, material and shade for a tooth
+// declared missing on the Prosthetics FDI Odontogram, using the logged case's
+// context (work order, clinic, patient age) plus simple FDI-position heuristics.
+function suggestProstheticReplacement({
+  tooth,
+  dentitionType = 'adult',
+  patientAge,
+  patientGender,
+  workDone = '',
+  clinicOfOrigin = '',
+  adjacentMissingCount = 0,
+}) {
+  const toothNum = parseInt(tooth, 10) || 0;
+  const toothLabel = FDI_TOOTH_NAMES[String(tooth)] || `Tooth #${tooth}`;
+  const lastDigit = toothNum % 10;
+  const isPediatric = dentitionType === 'pediatric' || toothNum >= 51;
+  const isMolar = [6, 7, 8].includes(lastDigit);
+  const isPremolar = [4, 5].includes(lastDigit);
+  const age = Number(patientAge) || null;
+
+  let replacement_strategy;
+  let material;
+  let shade = 'A2';
+  const rationale = [];
+
+  if (isPediatric) {
+    replacement_strategy = 'Space Maintainer Unit';
+    material = 'Stainless Steel Band & Loop / Acrylic';
+    rationale.push(`${toothLabel} is a primary tooth — a space maintainer preserves arch length for the permanent successor rather than a permanent prosthesis.`);
+  } else if (adjacentMissingCount >= 2) {
+    replacement_strategy = 'Cast Metal Framework Tooth';
+    material = 'Co-Cr Cast Metal Framework with Acrylic Teeth';
+    rationale.push(`${adjacentMissingCount} adjacent teeth are also missing — a cast metal removable partial framework is more structurally sound than a fixed span this wide.`);
+  } else if (age && age >= 60) {
+    replacement_strategy = 'Acrylic Removable Denture Tooth';
+    material = 'Heat-Cure Acrylic Resin';
+    rationale.push(`Patient age ${age} — an acrylic removable denture is a lower-surgical-risk, cost-effective option to weigh against an implant.`);
+  } else if (isMolar) {
+    replacement_strategy = 'Implant Crown (Edentulous Replacement)';
+    material = 'Titanium Implant Fixture with Zirconia Crown';
+    shade = 'A3';
+    rationale.push(`${toothLabel} carries high occlusal load — an implant-supported crown avoids over-loading neighbouring abutment teeth the way a pontic bridge would.`);
+  } else if (isPremolar) {
+    replacement_strategy = 'Bridge Pontic (Suspended Unit)';
+    material = 'PFM or Zirconia Bridge Framework';
+    rationale.push(`${toothLabel} is a reasonable fixed-bridge site provided the adjacent abutment teeth are sound.`);
+  } else {
+    replacement_strategy = 'Flexible Valplast Denture Unit';
+    material = 'Flexible Thermoplastic Nylon (Valplast)';
+    shade = 'A1';
+    rationale.push(`${toothLabel} is in the anterior esthetic zone — a flexible unit or bridge pontic gives immediate esthetics; discuss an implant with the patient for a longer-term solution.`);
+  }
+
+  if (workDone) rationale.push(`Cross-referenced with the logged work order type: ${workDone}.`);
+  if (clinicOfOrigin) rationale.push(`Referring clinic: ${clinicOfOrigin}.`);
+  if (patientGender) rationale.push(`Patient gender on file: ${patientGender}.`);
+
+  const notes = rationale.join(' ');
+
+  return {
+    tooth: String(tooth),
+    tooth_label: toothLabel,
+    replacement_strategy,
+    material,
+    shade,
+    notes,
+    rationale,
+  };
+}
+
+module.exports = {
+  suggestMedications,
+  suggestDentalMedications,
+  suggestProstheticReplacement,
+  generateAssessmentComments,
   generateProgressNote, 
   generateSBAR, 
   generateInstructions, 
@@ -957,4 +1240,5 @@ module.exports = {
   FDI_TOOTH_NAMES,
   SURFACE_FULL_NAMES
 };
+
 

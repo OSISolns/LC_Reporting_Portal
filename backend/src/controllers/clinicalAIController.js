@@ -1,6 +1,8 @@
 'use strict';
 const {
   suggestMedications,
+  suggestDentalMedications,
+  suggestProstheticReplacement,
   generateAssessmentComments,
   generateProgressNote,
   generateSBAR,
@@ -24,6 +26,31 @@ exports.suggestMedications = (req, res, next) => {
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };
+
+// POST /api/ai/clinical/dental-medications
+// Body: { condition, procedure, allergies, toothData, severity }
+exports.suggestDentalMedications = (req, res, next) => {
+  try {
+    const { condition, procedure, allergies, toothData, severity } = req.body;
+    const data = suggestDentalMedications({ condition, procedure, allergies, toothData, severity });
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
+};
+// POST /api/ai/clinical/prosthetics-suggestion
+// Body: { tooth, dentitionType, patientAge, patientGender, workDone, clinicOfOrigin, adjacentMissingCount }
+exports.suggestProstheticReplacement = (req, res, next) => {
+  try {
+    const { tooth, dentitionType, patientAge, patientGender, workDone, clinicOfOrigin, adjacentMissingCount } = req.body;
+    if (!tooth) {
+      return res.status(400).json({ success: false, message: 'tooth is required' });
+    }
+    const data = suggestProstheticReplacement({
+      tooth, dentitionType, patientAge, patientGender, workDone, clinicOfOrigin, adjacentMissingCount,
+    });
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
+};
+
 // POST /api/ai/clinical/instructions
 // Body: { medications: [{ name, route, frequency, duration }, ...] }
 exports.generateInstructions = (req, res, next) => {
