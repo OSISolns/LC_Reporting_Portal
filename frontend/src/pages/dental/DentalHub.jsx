@@ -110,29 +110,29 @@ const DentalHub = () => {
 
       {/* ── Section Switcher (Only shown if user has access to multiple sections) ── */}
       {visibleSections.length > 1 && (
-        <div className="flex items-stretch gap-3 mb-6">
+        <div className="flex gap-2.5 mb-5">
           {visibleSections.map(({ key, label, icon: Icon, description }) => (
             <button
               key={key}
               onClick={() => setSection(key)}
-              className={`flex-1 flex items-center gap-3 px-5 py-4 rounded-2xl border-2 text-left transition-all ${
+              className={`flex-1 max-w-xs flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-left transition-all ${
                 section === key
-                  ? 'border-rose-500 bg-rose-50 shadow-sm'
-                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                  ? 'border-rose-500 bg-rose-50/50 shadow-2xs'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
               }`}
             >
               <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
                   section === key ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-400'
                 }`}
               >
-                <Icon size={20} />
+                <Icon size={14} />
               </div>
               <div className="min-w-0">
-                <p className={`text-sm font-black leading-tight ${section === key ? 'text-rose-700' : 'text-slate-700'}`}>
+                <p className={`text-xs font-black leading-none ${section === key ? 'text-rose-700' : 'text-slate-700'}`}>
                   {label}
                 </p>
-                <p className="text-[11px] text-slate-400 mt-0.5 leading-snug line-clamp-1">
+                <p className="text-[10px] text-slate-400 mt-0.5 leading-none truncate">
                   {description}
                 </p>
               </div>
@@ -142,18 +142,18 @@ const DentalHub = () => {
       )}
 
       {/* ── Sub-Tabs ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 border-b border-slate-200 mb-6 overflow-x-auto">
+      <div className="flex items-center gap-1 border-b border-slate-200 mb-5 overflow-x-auto">
         {currentSection.tabs.map(({ key, icon: Icon, label }) => (
           <button
             key={key}
             onClick={() => setActiveTab((prev) => ({ ...prev, [section]: key }))}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap ${
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 -mb-px transition-colors whitespace-nowrap ${
               currentTab === key
                 ? 'border-rose-500 text-rose-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
           >
-            <Icon size={15} />
+            <Icon size={14} />
             {label}
           </button>
         ))}
