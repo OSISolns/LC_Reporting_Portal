@@ -104,6 +104,7 @@ router.get('/inventory/master/ai-classify', checkPermission('inventory', 'edit')
 router.post('/inventory/master/ai-apply', checkPermission('inventory', 'edit'), clinicalController.aiApplyMasterItemsClassifications);
 router.put('/inventory/master/:id', checkPermission('inventory', 'edit'), clinicalController.updatemasterInventory);
 router.delete('/inventory/master/:id', checkPermission('inventory', 'delete'), clinicalController.deletemasterInventory);
+router.delete('/inventory/batches/:id', checkPermission('inventory', 'delete'), clinicalController.deleteBatch);
 router.post('/inventory/master/bulk-delete', checkPermission('inventory', 'delete'), clinicalController.bulkDeleteMasterInventory);
 
 router.get('/inventory/batches', checkPermission('inventory', 'view'), clinicalController.getBatches);

@@ -279,7 +279,22 @@ export default function CentralStoreHub() {
     }
   };
 
+  const handleDeleteBatch = async (item) => {
+    if (!window.confirm(`Are you sure you want to delete batch "${item.batch_number || 'N/A'}" for item "${item.name}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await api.delete(`/clinical/inventory/batches/${item.batch_id}`);
+      toast.success('Batch deleted successfully');
+      loadData(true);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to delete batch');
+    }
+  };
+
   const canRectify = hasPermission('inventory', 'edit');
+  const canDeleteBatch = hasPermission('inventory', 'delete');
 
   // ── derived lists ─────────────────────────────────────────────────────────
   const expiringItems = useMemo(() => {
@@ -1210,6 +1225,15 @@ export default function CentralStoreHub() {
                                       >
                                         <CornerUpLeft size={13} className="stroke-[2.5]" />
                                       </button>
+                                      {canDeleteBatch && item.batch_id && (
+                                        <button 
+                                          onClick={() => handleDeleteBatch(item)}
+                                          className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-lg transition-colors cursor-pointer shadow-xs"
+                                          title="Delete duplicate/erroneous batch"
+                                        >
+                                          <Trash2 size={13} className="stroke-[2.5]" />
+                                        </button>
+                                      )}
                                     </div>
                                   </td>
                                 )}

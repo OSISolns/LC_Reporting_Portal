@@ -2260,6 +2260,17 @@ exports.deletemasterInventory = async (req, res) => {
   }
 };
 
+exports.deleteBatch = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query("DELETE FROM stock_batches WHERE id = $1", [id]);
+    res.json({ success: true, message: 'Batch deleted successfully' });
+  } catch (error) {
+    console.error('Error in deleteBatch:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 exports.bulkDeleteMasterInventory = async (req, res) => {
   try {
     const { ids } = req.body;
