@@ -48,6 +48,8 @@ export default function StockManagerDashboard() {
   const [selectedRequisition, setSelectedRequisition] = useState(null);
   const [requisitionItems, setRequisitionItems] = useState([]);
   const [loadingReqItems, setLoadingReqItems] = useState(false);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [requisitionToReject, setRequisitionToReject] = useState(null);
 
   // Search & Filter States
   // 1. Stock Lookup filters
@@ -332,7 +334,6 @@ export default function StockManagerDashboard() {
   };
 
   const handleRejectRequisition = async (reqId) => {
-    if (!window.confirm('Are you sure you want to reject this requisition?')) return;
     setProcessingAction(true);
     try {
       const res = await api.post(`/clinical/inventory/requisitions/${reqId}/reject`);
@@ -2164,7 +2165,10 @@ export default function StockManagerDashboard() {
                 {selectedRequisition.status === 'Pending' && (
                   <div className="flex gap-3">
                     <button
-                      onClick={() => handleRejectRequisition(selectedRequisition.id)}
+                      onClick={() => {
+                        setRequisitionToReject(selectedRequisition.id);
+                        setShowRejectConfirm(true);
+                      }}
                       disabled={processingAction}
                       className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-sm py-3 rounded-xl border border-rose-200 transition-all cursor-pointer text-center flex items-center justify-center gap-2 disabled:opacity-50"
                     >
@@ -2203,6 +2207,63 @@ export default function StockManagerDashboard() {
                 </div>
               </div>
 
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Reject Requisition Confirmation Modal */}
+      <AnimatePresence>
+        {showRejectConfirm && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowRejectConfirm(false);
+                setRequisitionToReject(null);
+              }}
+              className="fixed inset-0 bg-slate-900/60 z-40 backdrop-blur-xs animate-none"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-x-4 top-1/3 max-w-md mx-auto bg-white border border-slate-200 rounded-3xl z-50 shadow-2xl p-6 flex flex-col text-slate-800 animate-none"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <span className="p-2 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl">
+                  <AlertTriangle size={20} />
+                </span>
+                <h3 className="text-lg font-black text-slate-900">Reject Requisition?</h3>
+              </div>
+              <p className="text-xs text-slate-500 font-semibold mb-6 leading-relaxed">
+                Are you sure you want to reject this requisition? This action cannot be undone and will notify the requesting department.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRejectConfirm(false);
+                    setRequisitionToReject(null);
+                  }}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRejectConfirm(false);
+                    handleRejectRequisition(requisitionToReject);
+                    setRequisitionToReject(null);
+                  }}
+                  className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-3 rounded-xl transition-all cursor-pointer shadow"
+                >
+                  Confirm Reject
+                </button>
+              </div>
             </motion.div>
           </>
         )}

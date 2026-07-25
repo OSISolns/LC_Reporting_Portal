@@ -136,10 +136,10 @@ const StaffDashboard = () => {
     setLoading(true);
     try {
       const [cRes, rRes, iRes, tRes, sRes, clRes] = await Promise.all([
-        (!isOps && !['nurse', 'chef-nurse'].includes(user?.role)) ? getCancellations().catch(() => null) : Promise.resolve(null),
-        (!isOps && !['nurse', 'chef-nurse'].includes(user?.role)) ? getRefunds().catch(() => null) : Promise.resolve(null),
-        getIncidents().catch(() => null),
-        getResultTransfers().catch(() => null),
+        hasPermission('cancellations', 'view') ? getCancellations().catch(() => null) : Promise.resolve(null),
+        hasPermission('refunds', 'view') ? getRefunds().catch(() => null) : Promise.resolve(null),
+        hasPermission('incident_reports', 'view') ? getIncidents().catch(() => null) : Promise.resolve(null),
+        hasPermission('results_transfer', 'view') ? getResultTransfers().catch(() => null) : Promise.resolve(null),
         getMyActiveShift().catch(() => null),
         ['nurse', 'chef-nurse'].includes(user?.role) ? api.get('/clinical/observations/recent').catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: [] } })
       ]);
@@ -152,7 +152,7 @@ const StaffDashboard = () => {
       });
       setActiveShift(sRes?.data?.data || null);
     } finally { setLoading(false); }
-  }, [isOps, user?.role]);
+  }, [isOps, user?.role, hasPermission]);
 
   useEffect(() => { load(); }, [load]);
 

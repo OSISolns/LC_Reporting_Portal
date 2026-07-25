@@ -2161,9 +2161,48 @@ exports.updatemasterInventory = async (req, res) => {
       formattedPurchaseTime = `${formattedPurchaseTime}T00:00:00.000Z`;
     }
 
-    if (batch_id) {
+    // Resolve target batch to update or create
+    let cleanBatchId = batch_id;
+    if (cleanBatchId === 'null' || cleanBatchId === 'undefined' || cleanBatchId === '') {
+      cleanBatchId = null;
+    }
+
+    // 1. If batch_id was not provided but batch_number was, try to find an existing batch with the same number for this item
+    if (!cleanBatchId && batch_number) {
+      const { rows: matchedBatches } = await db.query(
+        "SELECT id FROM stock_batches WHERE item_id = $1 AND batch_number = $2 LIMIT 1",
+        [id, batch_number]
+      );
+      if (matchedBatches.length > 0) {
+        cleanBatchId = matchedBatches[0].id;
+      }
+    }
+
+    // 2. If still not resolved, and no batch_number was provided, and the item has exactly one batch in the database, default to updating that batch
+    if (!cleanBatchId && !batch_number) {
+      const { rows: itemBatches } = await db.query(
+        "SELECT id FROM stock_batches WHERE item_id = $1 ORDER BY id DESC",
+        [id]
+      );
+      if (itemBatches.length === 1) {
+        cleanBatchId = itemBatches[0].id;
+      }
+    }
+
+    const hasBatchFields = (
+      quantity !== undefined || 
+      price !== undefined || 
+      expiry_date || 
+      purchase_time || 
+      batch_number || 
+      department_id || 
+      storage || 
+      vendor_id
+    );
+
+    if (cleanBatchId) {
       // --- Existing batch: preserve existing fields if unpassed ---
-      const { rows: existingBatches } = await db.query("SELECT * FROM stock_batches WHERE id = $1", [batch_id]);
+      const { rows: existingBatches } = await db.query("SELECT * FROM stock_batches WHERE id = $1", [cleanBatchId]);
       if (existingBatches.length > 0) {
         const b = existingBatches[0];
         const finalVendorId = vendor_id !== undefined ? (vendor_id || null) : b.vendor_id;
@@ -2178,10 +2217,10 @@ exports.updatemasterInventory = async (req, res) => {
 
         await db.query(
           "UPDATE stock_batches SET vendor_id = $1, batch_number = $2, lot_number = $3, expiry_date = $4, purchase_price = $5, quantity = $6, department_id = $7, storage = $8, created_at = $9 WHERE id = $10",
-          [finalVendorId, finalBatchNum, finalLotNum, finalExpiry, finalPrice, finalQty, finalDeptId, finalStorage, finalPurchaseTime, batch_id]
+          [finalVendorId, finalBatchNum, finalLotNum, finalExpiry, finalPrice, finalQty, finalDeptId, finalStorage, finalPurchaseTime, cleanBatchId]
         );
       }
-    } else if (expiry_date || purchase_time || batch_number || department_id) {
+    } else if (hasBatchFields) {
       // --- Create a new batch if batch fields are explicitly provided ---
       const { rows: batchCount } = await db.query(
         "SELECT COUNT(*) as cnt FROM stock_batches WHERE item_id = $1",
