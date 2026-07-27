@@ -67,6 +67,21 @@ const ACRYLIC_WORK_SUBTYPES = [
   'Other',
 ];
 
+const METAL_CERAMIC_SUBTYPES = [
+  'Porcelain Fused to Metal Crown / Bridge',
+  'Implant',
+  'Porcelain Facing Metal',
+  'Porcelain Jacket Crown',
+  'Post and Core',
+  'Rest Support Crown - Metal Ceramic',
+  'Other',
+];
+
+const PROSTHETICS_SUBTYPES = {
+  'Acrylic Work': ACRYLIC_WORK_SUBTYPES,
+  'Metal & Ceramic': METAL_CERAMIC_SUBTYPES,
+};
+
 const STAGE_CONFIG = {
   'Received':             { label: 'Received',             color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', step: 1 },
   'Wax-Up / Framework':   { label: 'Wax-Up / Framework',   color: 'text-blue-700',  bg: 'bg-blue-50',  border: 'border-blue-200',  step: 2 },
@@ -467,6 +482,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
     if (form.prosthetics_enabled) {
       if (!form.work_done) e.work_done = 'Required when Prosthetics is selected';
       if (form.work_done === 'Acrylic Work' && !form.work_done_other) e.work_done_other = 'Select or specify Acrylic Work detail';
+      if (form.work_done === 'Metal & Ceramic' && !form.work_done_other) e.work_done_other = 'Select or specify Metal & Ceramic detail';
       if (form.work_done === 'Other' && !form.work_done_other) e.work_done_other = 'Please specify';
       if (!form.units_quantity || Number(form.units_quantity) < 1) e.units_quantity = 'Min 1';
     }
@@ -785,12 +801,12 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                   </div>
                 </Field>
 
-                {form.work_done === 'Acrylic Work' && (
+                {PROSTHETICS_SUBTYPES[form.work_done] && (
                   <div className="space-y-3">
-                    <Field label="Acrylic Work Specification / Item" required error={errors.work_done_other}>
+                    <Field label={`${form.work_done} Specification / Item`} required error={errors.work_done_other}>
                       <div className="relative">
                         <select
-                          value={ACRYLIC_WORK_SUBTYPES.includes(form.work_done_other) ? form.work_done_other : (form.work_done_other ? 'Other' : '')}
+                          value={PROSTHETICS_SUBTYPES[form.work_done].includes(form.work_done_other) ? form.work_done_other : (form.work_done_other ? 'Other' : '')}
                           onChange={(e) => {
                             const val = e.target.value;
                             setForm(f => {
@@ -803,8 +819,8 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                             errors.work_done_other ? 'border-rose-400 bg-rose-50' : 'border-slate-200'
                           } focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
                         >
-                          <option value="">— Select Acrylic Work Item —</option>
-                          {ACRYLIC_WORK_SUBTYPES.map(st => (
+                          <option value="">— Select {form.work_done} Item —</option>
+                          {PROSTHETICS_SUBTYPES[form.work_done].map(st => (
                             <option key={st} value={st}>{st}</option>
                           ))}
                         </select>
@@ -812,12 +828,12 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                       </div>
                     </Field>
 
-                    {(!ACRYLIC_WORK_SUBTYPES.includes(form.work_done_other) || form.work_done_other === 'Other') && (
-                      <Field label="Specify Custom Acrylic Work" required error={errors.work_done_other}>
+                    {(!PROSTHETICS_SUBTYPES[form.work_done].includes(form.work_done_other) || form.work_done_other === 'Other') && (
+                      <Field label={`Specify Custom ${form.work_done}`} required error={errors.work_done_other}>
                         <input
                           type="text"
-                          placeholder="Describe custom acrylic specification…"
-                          value={ACRYLIC_WORK_SUBTYPES.includes(form.work_done_other) && form.work_done_other !== 'Other' ? '' : form.work_done_other}
+                          placeholder={`Describe custom ${form.work_done.toLowerCase()} specification…`}
+                          value={PROSTHETICS_SUBTYPES[form.work_done].includes(form.work_done_other) && form.work_done_other !== 'Other' ? '' : form.work_done_other}
                           onChange={set('work_done_other')}
                           className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
                         />
