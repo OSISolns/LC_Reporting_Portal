@@ -129,6 +129,11 @@ exports.createCase = async (req, res, next) => {
     const parsedTotal = parseNum(total_cost);
     const serializedOdontogram = odontogram_data ? (typeof odontogram_data === 'string' ? odontogram_data : JSON.stringify(odontogram_data)) : null;
 
+    const effectiveWorkDone = work_done || 'Other';
+    const effectiveWorkDoneOther = work_done
+      ? (work_done_other || null)
+      : (ortho_appliance_type === 'Other' ? (ortho_appliance_other || 'Orthodontic Appliance') : (ortho_appliance_type || 'Orthodontic Appliance'));
+
     await db.query(
       `INSERT INTO dental_cases (
          case_ref, received_date, required_date, work_command_origin,
@@ -144,7 +149,7 @@ exports.createCase = async (req, res, next) => {
         case_ref, received_date, required_date, work_command_origin || null,
         clinic_of_origin || null, clinician_name || null, patient_id || null, patient_name || null,
         prosthetics_enabled ? 1 : 0,
-        work_done || null, work_done_other || null, technologist || null,
+        effectiveWorkDone, effectiveWorkDoneOther, technologist || null,
         parsedQty, parsedFirst, parsedAdd, parsedProstCost,
         ortho_enabled ? 1 : 0,
         ortho_appliance_type || null, ortho_appliance_other || null,
@@ -213,8 +218,8 @@ exports.updateCase = async (req, res, next) => {
         patient_id ?? current.patient_id,
         patient_name ?? current.patient_name,
         prosthetics_enabled !== undefined ? (prosthetics_enabled ? 1 : 0) : current.prosthetics_enabled,
-        work_done ?? current.work_done,
-        work_done_other ?? current.work_done_other,
+        work_done ? work_done : (current.work_done || 'Other'),
+        work_done_other !== undefined ? work_done_other : current.work_done_other,
         technologist ?? current.technologist,
         units_quantity !== undefined ? (parseNum(units_quantity) || 1) : current.units_quantity,
         cost_per_first_unit !== undefined ? parseNum(cost_per_first_unit) : current.cost_per_first_unit,
