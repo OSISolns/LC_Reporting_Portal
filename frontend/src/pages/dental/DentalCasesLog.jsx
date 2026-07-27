@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -7,7 +7,7 @@ import {
   BarChart3, AlertCircle, CheckCircle2, Filter, Download,
   Loader2, RefreshCw, Stethoscope, ChevronLeft, ChevronRight,
   CalendarDays, Building2, Wrench, Coins, UserCheck, Truck,
-  CheckCircle, Layers, ArrowRight, FileText
+  CheckCircle, Layers, ArrowRight, FileText, Save
 } from 'lucide-react';
 import { format, parseISO, subDays, startOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -40,6 +40,17 @@ const MANUFACTURING_STAGES = [
   'Delivered',
 ];
 
+const ORTHO_APPLIANCE_TYPES = [
+  'Casting / Study Models',
+  'Night Guard',
+  'Bleaching Trays',
+  'Vacuum Formed Retainer',
+  'Maxillofacial Surgical Splints',
+  'Mouth / Sports Guards',
+  'Occlusal Splints for TMJ Disorders',
+  'Other',
+];
+
 const STAGE_CONFIG = {
   'Received':             { label: 'Received',             color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', step: 1 },
   'Wax-Up / Framework':   { label: 'Wax-Up / Framework',   color: 'text-blue-700',  bg: 'bg-blue-50',  border: 'border-blue-200',  step: 2 },
@@ -66,9 +77,20 @@ const DATE_PRESETS = [
 const EMPTY_FORM = {
   received_date: '', required_date: '', work_command_origin: '',
   clinic_of_origin: '', clinician_name: '', patient_id: '',
+  patient_name: '', patient_display: '',
+  // Work type toggles
+  prosthetics_enabled: true,
+  ortho_enabled: false,
+  // Prosthetics
   work_done: '', work_done_other: '', technologist: '',
   units_quantity: 1, cost_per_first_unit: '', cost_per_additional_unit: '',
-  total_cost: '', status: 'Received', reported_by: '', linked_chart_id: '',
+  prosthetics_cost: '',
+  // Orthodontics
+  ortho_appliance_type: '', ortho_appliance_other: '',
+  ortho_technologist: '', ortho_cost: '', ortho_notes: '',
+  // Combined
+  total_cost: '',
+  status: 'Received', reported_by: '', linked_chart_id: '',
 };
 
 const parseCaseOdontogram = (raw) => {
@@ -199,6 +221,10 @@ const Field = ({ label, type = 'text', required, children, hint, value, error, o
   </div>
 );
 
+// ─── Autosave draft key (user-scoped) ──────────────────────────────────────────────
+// Each draft is keyed by user ID so no two users share the same draft.
+const getDraftKey = (userId) => `dental_prosthetics_case_draft_uid_${userId || 'anon'}`;
+
 // ─── Form Modal ───────────────────────────────────────────────────────────────
 const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
   const [form, setForm] = useState(EMPTY_FORM);
@@ -208,9 +234,18 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
   const [odontogramMap, setOdontogramMap] = useState({});
   const [patientCharts, setPatientCharts] = useState([]);
   const [loadingCharts, setLoadingCharts] = useState(false);
+  const [draftStatus, setDraftStatus] = useState(null); // null | 'saving' | 'saved'
+  const [draftAvailable, setDraftAvailable] = useState(null); // null | { savedAt, preview }
+  const autosaveTimer = useRef(null);
+  const isFirstMount = useRef(true);
+
+  // Compute user-specific draft key
+  const draftKey = getDraftKey(currentUser?.id);
 
   useEffect(() => {
+    isFirstMount.current = true;
     if (editCase) {
+      // Editing an existing case — load from record, no draft involved
       let parsedOdontogram = {};
       try {
         parsedOdontogram = typeof editCase.odontogram_data === 'string' ? JSON.parse(editCase.odontogram_data) : (editCase.odontogram_data || {});
@@ -224,6 +259,10 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         clinic_of_origin: editCase.clinic_of_origin || '',
         clinician_name: editCase.clinician_name || '',
         patient_id: editCase.patient_id || '',
+        patient_name: editCase.patient_name || editCase.patient_id || '',
+        patient_display: editCase.patient_name
+          ? `${editCase.patient_name} (PID: ${editCase.patient_id})`
+          : (editCase.patient_id || ''),
         work_done: editCase.work_done || '',
         work_done_other: editCase.work_done_other || '',
         technologist: editCase.technologist || '',
@@ -234,18 +273,53 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         status: editCase.status || 'Received',
         reported_by: editCase.reported_by || currentUser?.fullName || currentUser?.full_name || currentUser?.name || '',
         linked_chart_id: editCase.linked_chart_id || '',
+        // Orthodontic fields
+        prosthetics_enabled: editCase.prosthetics_enabled !== false,
+        ortho_enabled: !!editCase.ortho_enabled,
+        ortho_appliance_type: editCase.ortho_appliance_type || '',
+        ortho_appliance_other: editCase.ortho_appliance_other || '',
+        ortho_technologist: editCase.ortho_technologist || '',
+        ortho_cost: editCase.ortho_cost ?? '',
+        ortho_notes: editCase.ortho_notes || '',
+        prosthetics_cost: editCase.prosthetics_cost ?? editCase.total_cost ?? '',
       });
+      setDraftStatus(null);
+      setDraftAvailable(null);
     } else {
+      // New case — start blank and check if THIS user has a saved draft
       setOdontogramMap({});
       setForm({
         ...EMPTY_FORM,
         received_date: format(new Date(), 'yyyy-MM-dd'),
         reported_by: currentUser?.fullName || currentUser?.full_name || currentUser?.name || '',
       });
+      setDraftStatus(null);
+      // Check for a user-scoped draft
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          // Verify the stored draft belongs to the current user (belt & suspenders)
+          if (!draft.userId || draft.userId === currentUser?.id) {
+            setDraftAvailable({
+              savedAt: draft.savedAt,
+              preview: draft.form?.patient_name || draft.form?.work_done || draft.form?.clinic_of_origin || 'Unsaved case',
+            });
+          } else {
+            // Foreign draft — purge it
+            localStorage.removeItem(draftKey);
+            setDraftAvailable(null);
+          }
+        } else {
+          setDraftAvailable(null);
+        }
+      } catch {
+        setDraftAvailable(null);
+      }
     }
     setActiveModalTab('info');
     setErrors({});
-  }, [editCase, isOpen, currentUser]);
+  }, [editCase, isOpen, currentUser, draftKey]);
 
   // Whenever a patient is linked to this case, offer their existing clinical
   // Odontology records (Dental Charting) so the case can be adhered to one.
@@ -266,29 +340,123 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
     return () => clearTimeout(t);
   }, [isOpen, form.patient_id]);
 
+  // ── Autosave to localStorage (user-scoped) ────────────────────────────────
+  const scheduleDraftSave = useCallback((nextForm, nextOdontogram) => {
+    if (editCase) return; // Don't autosave when editing existing records
+    clearTimeout(autosaveTimer.current);
+    setDraftStatus('saving');
+    autosaveTimer.current = setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({
+          userId: currentUser?.id,          // owner stamp
+          form: nextForm,
+          odontogramMap: nextOdontogram,
+          savedAt: new Date().toISOString(),
+        }));
+        setDraftStatus('saved');
+        // Update the available-draft preview in case the banner is still shown
+        setDraftAvailable(prev => prev ? {
+          ...prev,
+          savedAt: new Date().toISOString(),
+          preview: nextForm.work_done || nextForm.clinic_of_origin || 'Unsaved case',
+        } : null);
+      } catch {
+        // Storage may be full — silently ignore
+        setDraftStatus(null);
+      }
+    }, 800);
+  }, [editCase, draftKey, currentUser?.id]);
+
+  const clearDraft = useCallback(() => {
+    clearTimeout(autosaveTimer.current);
+    try { localStorage.removeItem(draftKey); } catch {}
+    setDraftStatus(null);
+    setDraftAvailable(null);
+  }, [draftKey]);
+
+  // Load draft into form (explicit user action)
+  const loadDraft = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      // Security: only load if userId matches
+      if (draft.userId && draft.userId !== currentUser?.id) {
+        toast.error('This draft does not belong to you.');
+        return;
+      }
+      const baseForm = {
+        ...EMPTY_FORM,
+        received_date: format(new Date(), 'yyyy-MM-dd'),
+        reported_by: currentUser?.fullName || currentUser?.full_name || currentUser?.name || '',
+      };
+      setForm({ ...baseForm, ...draft.form });
+      setOdontogramMap(draft.odontogramMap || {});
+      setDraftStatus('saved');
+      setDraftAvailable(null); // dismiss the banner
+      toast.success('Draft loaded — continue where you left off.');
+    } catch {
+      toast.error('Failed to load draft.');
+    }
+  }, [draftKey, currentUser]);
+
+  // Cleanup timer on unmount
+  useEffect(() => () => clearTimeout(autosaveTimer.current), []);
+
+  const recalcTotal = (f) => {
+    const pCost = f.prosthetics_enabled ? (Number(f.prosthetics_cost) || 0) : 0;
+    const oCost = f.ortho_enabled ? (Number(f.ortho_cost) || 0) : 0;
+    const total = pCost + oCost;
+    f.total_cost = total > 0 ? total.toFixed(2) : '';
+    return f;
+  };
+
   const set = (k) => (e) => {
     const v = e.target.value;
-    setForm(f => ({ ...f, [k]: v }));
+    setForm(f => {
+      let next = { ...f, [k]: v };
+      // Auto-calculate prosthetics_cost from unit pricing
+      if (['units_quantity', 'cost_per_first_unit', 'cost_per_additional_unit'].includes(k)) {
+        const qty = Number(next.units_quantity) || 0;
+        const first = Number(next.cost_per_first_unit) || 0;
+        const additional = Number(next.cost_per_additional_unit) || 0;
+        const pTotal = qty <= 1 ? first : first + (additional * (qty - 1));
+        next.prosthetics_cost = pTotal > 0 ? pTotal.toFixed(2) : '';
+      }
+      // Also recalculate when either cost field changes directly
+      if (['prosthetics_cost', 'ortho_cost'].includes(k)) {
+        next = recalcTotal(next);
+      } else {
+        next = recalcTotal(next);
+      }
+      scheduleDraftSave(next, odontogramMap);
+      return next;
+    });
+  };
 
-    if (['units_quantity', 'cost_per_first_unit', 'cost_per_additional_unit'].includes(k)) {
-      setForm(f => {
-        const updated = { ...f, [k]: v };
-        const qty = Number(updated.units_quantity) || 0;
-        const first = Number(updated.cost_per_first_unit) || 0;
-        const additional = Number(updated.cost_per_additional_unit) || 0;
-        const total = qty <= 1 ? first : first + (additional * (qty - 1));
-        return { ...updated, total_cost: total > 0 ? total.toFixed(2) : '' };
-      });
-    }
+  const toggleWorkType = (type) => {
+    setForm(f => {
+      const next = { ...f, [type]: !f[type] };
+      return recalcTotal(next);
+    });
   };
 
   const validate = () => {
     const e = {};
     if (!form.received_date) e.received_date = 'Required';
     if (!form.required_date) e.required_date = 'Required';
-    if (!form.work_done)     e.work_done = 'Required';
-    if (form.work_done === 'Other' && !form.work_done_other) e.work_done_other = 'Please specify';
-    if (!form.units_quantity || Number(form.units_quantity) < 1) e.units_quantity = 'Min 1';
+    if (!form.prosthetics_enabled && !form.ortho_enabled) {
+      e.work_type = 'Select at least one work type (Prosthetics or Orthodontic Appliance)';
+    }
+    if (form.prosthetics_enabled) {
+      if (!form.work_done) e.work_done = 'Required when Prosthetics is selected';
+      if (form.work_done === 'Other' && !form.work_done_other) e.work_done_other = 'Please specify';
+      if (!form.units_quantity || Number(form.units_quantity) < 1) e.units_quantity = 'Min 1';
+    }
+    if (form.ortho_enabled) {
+      if (!form.ortho_appliance_type) e.ortho_appliance_type = 'Select appliance type';
+      if (form.ortho_appliance_type === 'Other' && !form.ortho_appliance_other) e.ortho_appliance_other = 'Please specify';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -303,9 +471,16 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         odontogram_data: odontogramMap
       };
       await onSave(payload);
+      clearDraft(); // Clear draft on successful save
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleClose = () => {
+    // Only clear draft if user explicitly cancels a new form
+    // (keep it so they can come back to it)
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -317,7 +492,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2.5 sm:p-4"
-        onClick={(e) => e.target === e.currentTarget && onClose()}
+        onClick={(e) => e.target === e.currentTarget && handleClose()}
       >
         <motion.div
           initial={{ scale: 0.94, y: 20, opacity: 0 }}
@@ -340,13 +515,49 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
               </div>
             </div>
 
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400 cursor-pointer shrink-0">
+            <button onClick={handleClose} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400 cursor-pointer shrink-0">
               <X size={18} />
             </button>
           </div>
 
           {/* Body */}
           <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-5">
+
+            {/* ── Draft Available Banner ── */}
+            {!editCase && draftAvailable && (
+              <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <Save size={15} className="text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-amber-800">You have an unsaved draft</p>
+                  <p className="text-[11px] text-amber-600 mt-0.5 truncate">
+                    {draftAvailable.preview}
+                    {draftAvailable.savedAt && (
+                      <> &mdash; saved {format(new Date(draftAvailable.savedAt), 'dd MMM yyyy, HH:mm')}</>
+                    )}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={loadDraft}
+                    className="px-3 py-1.5 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition cursor-pointer"
+                  >
+                    Load Draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { clearDraft(); }}
+                    className="px-3 py-1.5 text-[11px] font-bold text-amber-700 hover:bg-amber-100 rounded-lg transition cursor-pointer"
+                    title="Discard this draft permanently"
+                  >
+                    Discard
+                  </button>
+                </div>
+              </div>
+            )}
+
                 {/* Section: Dates */}
             <div>
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
@@ -414,13 +625,22 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                 </Field>
                 <Field label="Patient ID / Search (Sukraa)" name="patient_id">
                   <PatientAutocomplete
-                    value={form.patient_id}
-                    onChange={(val) => setForm(prev => ({ ...prev, patient_id: val }))}
+                    value={form.patient_display || form.patient_id}
+                    onChange={(val) => {
+                      const next = { ...form, patient_id: val, patient_display: val, patient_name: '' };
+                      setForm(next);
+                      scheduleDraftSave(next, odontogramMap);
+                    }}
                     onPatientSelect={(patient) => {
-                      setForm(prev => ({
-                        ...prev,
-                        patient_id: patient.pid || prev.patient_id,
-                      }));
+                      const display = `${patient.full_name} (PID: ${patient.pid})`;
+                      const next = {
+                        ...form,
+                        patient_id: patient.pid || form.patient_id,
+                        patient_name: patient.full_name || '',
+                        patient_display: display,
+                      };
+                      setForm(next);
+                      scheduleDraftSave(next, odontogramMap);
                       toast.success(`Selected Patient: ${patient.full_name} (PID: ${patient.pid})`);
                     }}
                     placeholder="Search patient name, PID or phone..."
@@ -469,31 +689,79 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
               )}
             </div>
 
-            {/* Section: Work Done */}
+            {/* Section: Work Type Selection */}
             <div>
               <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
-                <Wrench size={12} /> Prosthetics Work Details
+                <Wrench size={12} /> Work Type(s)
               </p>
-              <Field label="Work Done / Prosthesis Type" required error={errors.work_done}>
-                <div className="relative">
-                  <select
-                    value={form.work_done}
-                    onChange={set('work_done')}
-                    className={`w-full px-3 py-2 text-sm rounded-xl border appearance-none bg-white pr-9 ${
-                      errors.work_done ? 'border-rose-400 bg-rose-50' : 'border-slate-200'
-                    } focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
-                  >
-                    <option value="">— Select work type —</option>
-                    {WORK_TYPES.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-              </Field>
+              <div className="flex flex-wrap gap-3">
+                {/* Prosthetics toggle */}
+                <button
+                  type="button"
+                  onClick={() => toggleWorkType('prosthetics_enabled')}
+                  className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition cursor-pointer ${
+                    form.prosthetics_enabled
+                      ? 'border-rose-500 bg-rose-50 text-rose-700'
+                      : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300'
+                  }`}
+                >
+                  <span className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                    form.prosthetics_enabled ? 'border-rose-500 bg-rose-500' : 'border-slate-300'
+                  }`}>
+                    {form.prosthetics_enabled && <CheckCircle size={10} className="text-white" />}
+                  </span>
+                  <Wrench size={14} /> Prosthetics Work
+                </button>
 
-              {form.work_done === 'Other' && (
-                <div className="mt-3">
+                {/* Orthodontic Appliance toggle */}
+                <button
+                  type="button"
+                  onClick={() => toggleWorkType('ortho_enabled')}
+                  className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition cursor-pointer ${
+                    form.ortho_enabled
+                      ? 'border-violet-500 bg-violet-50 text-violet-700'
+                      : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300'
+                  }`}
+                >
+                  <span className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                    form.ortho_enabled ? 'border-violet-500 bg-violet-500' : 'border-slate-300'
+                  }`}>
+                    {form.ortho_enabled && <CheckCircle size={10} className="text-white" />}
+                  </span>
+                  <Stethoscope size={14} /> Orthodontic Appliance
+                </button>
+              </div>
+              {errors.work_type && (
+                <p className="text-[11px] text-rose-500 mt-2">{errors.work_type}</p>
+              )}
+            </div>
+
+            {/* ── Prosthetics Work Details ── */}
+            {form.prosthetics_enabled && (
+              <div className="rounded-2xl border-2 border-rose-100 bg-rose-50/40 p-4 space-y-4">
+                <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-500 uppercase tracking-widest">
+                  <Wrench size={12} /> Prosthetics Work Details
+                </p>
+
+                <Field label="Work Done / Prosthesis Type" required error={errors.work_done}>
+                  <div className="relative">
+                    <select
+                      value={form.work_done}
+                      onChange={set('work_done')}
+                      className={`w-full px-3 py-2 text-sm rounded-xl border appearance-none bg-white pr-9 ${
+                        errors.work_done ? 'border-rose-400 bg-rose-50' : 'border-slate-200'
+                      } focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
+                    >
+                      <option value="">— Select work type —</option>
+                      {WORK_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </Field>
+
+                {form.work_done === 'Other' && (
                   <Field label="Specify Work Done" required error={errors.work_done_other}>
                     <input
                       type="text"
@@ -503,10 +771,8 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                       className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
                     />
                   </Field>
-                </div>
-              )}
+                )}
 
-              <div className="mt-4">
                 <Field label="Technologist / Operator" name="technologist">
                   <input
                     type="text"
@@ -516,58 +782,139 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                     className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
                   />
                 </Field>
-              </div>
-            </div>
 
-            {/* Section: Costing */}
-            <div>
-              <p className="flex items-center gap-1.5 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">
-                <Coins size={12} /> Units &amp; Costing
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Units Quantity" required error={errors.units_quantity}>
-                  <input
-                    type="number"
-                    min="1"
-                    value={form.units_quantity}
-                    onChange={set('units_quantity')}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
-                  />
+                {/* Prosthetics Costing */}
+                <div className="pt-1 border-t border-rose-100">
+                  <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-3">Units &amp; Pricing</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Field label="Units Qty" required error={errors.units_quantity}>
+                      <input
+                        type="number" min="1"
+                        value={form.units_quantity}
+                        onChange={set('units_quantity')}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
+                      />
+                    </Field>
+                    <Field label="Cost / 1st Unit (RWF)">
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={form.cost_per_first_unit}
+                        onChange={set('cost_per_first_unit')}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
+                      />
+                    </Field>
+                    <Field label="Cost / Add. Unit (RWF)">
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={form.cost_per_additional_unit}
+                        onChange={set('cost_per_additional_unit')}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
+                      />
+                    </Field>
+                  </div>
+                  <div className="mt-3">
+                    <Field label="Prosthetics Subtotal (RWF)">
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={form.prosthetics_cost}
+                        onChange={set('prosthetics_cost')}
+                        className="w-full px-3 py-2 text-sm font-bold rounded-xl border border-rose-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
+                        placeholder="Auto-calculated or enter manually"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Orthodontic Appliance Details ── */}
+            {form.ortho_enabled && (
+              <div className="rounded-2xl border-2 border-violet-100 bg-violet-50/40 p-4 space-y-4">
+                <p className="flex items-center gap-1.5 text-[10px] font-black text-violet-600 uppercase tracking-widest">
+                  <Stethoscope size={12} /> Orthodontic Appliance Details
+                </p>
+
+                <Field label="Appliance Type" required error={errors.ortho_appliance_type}>
+                  <div className="relative">
+                    <select
+                      value={form.ortho_appliance_type}
+                      onChange={set('ortho_appliance_type')}
+                      className={`w-full px-3 py-2 text-sm rounded-xl border appearance-none bg-white pr-9 ${
+                        errors.ortho_appliance_type ? 'border-rose-400 bg-rose-50' : 'border-slate-200'
+                      } focus:outline-none focus:ring-2 focus:ring-violet-300 transition`}
+                    >
+                      <option value="">— Select appliance —</option>
+                      {ORTHO_APPLIANCE_TYPES.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
                 </Field>
-                <Field label="Cost per 1st Unit (RWF)" name="cost_per_first_unit">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.cost_per_first_unit}
-                    onChange={set('cost_per_first_unit')}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
+
+                {form.ortho_appliance_type === 'Other' && (
+                  <Field label="Specify Appliance" required error={errors.ortho_appliance_other}>
+                    <input
+                      type="text"
+                      placeholder="Describe the orthodontic appliance…"
+                      value={form.ortho_appliance_other}
+                      onChange={set('ortho_appliance_other')}
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-300 transition"
+                    />
+                  </Field>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="Technologist / Operator">
+                    <input
+                      type="text"
+                      placeholder="Technologist name…"
+                      value={form.ortho_technologist}
+                      onChange={set('ortho_technologist')}
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-300 transition"
+                    />
+                  </Field>
+                  <Field label="Appliance Cost (RWF)">
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={form.ortho_cost}
+                      onChange={set('ortho_cost')}
+                      className="w-full px-3 py-2 text-sm font-bold rounded-xl border border-violet-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 transition"
+                      placeholder="0.00"
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Orthodontic Notes">
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Upper removable appliance for expansion, patient instructions, activation schedule…"
+                    value={form.ortho_notes}
+                    onChange={set('ortho_notes')}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-300 transition resize-none"
                   />
                 </Field>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                <Field label="Cost per Add. Unit (RWF)" name="cost_per_additional_unit">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.cost_per_additional_unit}
-                    onChange={set('cost_per_additional_unit')}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
-                  />
-                </Field>
-                <Field label="Total Cost (RWF)" name="total_cost">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.total_cost}
-                    onChange={set('total_cost')}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-rose-200 bg-rose-50 font-semibold focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
-                  />
-                </Field>
+            )}
+
+            {/* ── Combined Total Cost ── */}
+            {(form.prosthetics_enabled || form.ortho_enabled) && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Combined Total Cost</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {[form.prosthetics_enabled && `Prosthetics: RWF ${Number(form.prosthetics_cost || 0).toLocaleString()}`,
+                      form.ortho_enabled && `Ortho: RWF ${Number(form.ortho_cost || 0).toLocaleString()}`
+                    ].filter(Boolean).join(' + ')}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xl font-black text-slate-800">
+                    RWF {Number(form.total_cost || 0).toLocaleString()}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Section: Reporter */}
             <div>
@@ -586,22 +933,49 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
           </form>
 
           {/* Footer */}
-          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={saving}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-60 shadow-sm shadow-rose-200 cursor-pointer"
-            >
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-              {editCase ? 'Update Case' : 'Log Case'}
-            </button>
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-center justify-between gap-2.5 sm:gap-3 shrink-0">
+            {/* Draft status indicator */}
+            <div className="flex items-center gap-1.5 text-[11px] font-medium order-first sm:order-none">
+              {!editCase && draftStatus === 'saving' && (
+                <span className="flex items-center gap-1 text-slate-400 animate-pulse">
+                  <Loader2 size={11} className="animate-spin" /> Saving draft…
+                </span>
+              )}
+              {!editCase && draftStatus === 'saved' && (
+                <span className="flex items-center gap-1 text-emerald-600">
+                  <Save size={11} /> Draft saved
+                </span>
+              )}
+              {editCase && (
+                <span className="text-slate-400 text-[10px]">Editing existing record</span>
+              )}
+            </div>
+            <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              >
+                {!editCase ? 'Close & Keep Draft' : 'Cancel'}
+              </button>
+              {!editCase && draftStatus === 'saved' && (
+                <button
+                  type="button"
+                  onClick={() => { clearDraft(); onClose(); }}
+                  className="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600 rounded-xl border border-slate-200 transition cursor-pointer"
+                >
+                  Discard Draft
+                </button>
+              )}
+              <button
+                onClick={handleSubmit}
+                disabled={saving}
+                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-60 shadow-sm shadow-rose-200 cursor-pointer"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                {editCase ? 'Update Case' : 'Log Case'}
+              </button>
+            </div>
           </div>
         </motion.div>
       </motion.div>
@@ -984,11 +1358,13 @@ const DentalCasesLog = () => {
       // Table Header Row 5
       const headers = [
         'Case Ref #', 'Received Date', 'Target Delivery', 'Clinic of Origin', 'Work Origin',
-        'Clinician Name', 'Patient ID', 'Linked Clinical Chart', 'Work Done', 'Specification', 'Technologist',
-        'Manufacturing Stage', 'Odontogram Status', 'Units Qty', '1st Unit Cost', 'Add. Unit Cost', 'Total Cost (RWF)',
+        'Clinician Name', 'Patient ID', 'Patient Name', 'Linked Clinical Chart',
+        'Prosthetics Work', 'Prosthetics Spec', 'Prosthetics Tech', 'Prosthetics Cost (RWF)',
+        'Ortho Appliance', 'Ortho Spec', 'Ortho Tech', 'Ortho Cost (RWF)',
+        'Manufacturing Stage', 'Odontogram Status', 'Units Qty', 'Combined Total Cost (RWF)',
         'Delivery Status', 'Delivered To', 'Delivered Date & Time', 'Delivery Notes', 'Reported By'
       ];
-      const NUMERIC_COLS = [14, 15, 16, 17];
+      const NUMERIC_COLS = [13, 17, 20, 21];
       const headerRow = sheet.getRow(5);
       headerRow.height = 28;
       headers.forEach((h, colIdx) => {
@@ -1027,31 +1403,35 @@ const DentalCasesLog = () => {
         r.getCell(5).value = c.work_command_origin || '—';
         r.getCell(6).value = c.clinician_name || '—';
         r.getCell(7).value = c.patient_id || '—';
-        r.getCell(8).value = linkedChartLabel;
-        r.getCell(9).value = c.work_done || '—';
-        r.getCell(10).value = c.work_done_other || '—';
-        r.getCell(11).value = c.technologist || '—';
-        r.getCell(12).value = c.status || 'Received';
-        r.getCell(13).value = odontogramLabel;
-        r.getCell(14).value = Number(c.units_quantity || 1);
-        r.getCell(15).value = c.cost_per_first_unit != null ? Number(c.cost_per_first_unit) : 0;
-        r.getCell(16).value = c.cost_per_additional_unit != null ? Number(c.cost_per_additional_unit) : 0;
-        r.getCell(17).value = c.total_cost != null ? Number(c.total_cost) : 0;
-        r.getCell(18).value = c.status === 'Delivered' ? 'Delivered' : (c.status === 'Completed' ? 'Ready' : 'In Production');
-        r.getCell(19).value = c.delivered_to || '—';
-        r.getCell(20).value = c.delivered_at ? new Date(c.delivered_at).toLocaleString() : '—';
-        r.getCell(21).value = c.delivery_notes || '—';
-        r.getCell(22).value = c.reported_by || c.reported_by_name || '—';
+        r.getCell(8).value = c.patient_name || '—';
+        r.getCell(9).value = linkedChartLabel;
+        r.getCell(10).value = c.work_done || '—';
+        r.getCell(11).value = c.work_done_other || '—';
+        r.getCell(12).value = c.technologist || '—';
+        r.getCell(13).value = c.prosthetics_cost != null ? Number(c.prosthetics_cost) : 0;
+        r.getCell(14).value = c.ortho_appliance_type || '—';
+        r.getCell(15).value = c.ortho_appliance_other || '—';
+        r.getCell(16).value = c.ortho_technologist || '—';
+        r.getCell(17).value = c.ortho_cost != null ? Number(c.ortho_cost) : 0;
+        r.getCell(18).value = c.status || 'Received';
+        r.getCell(19).value = odontogramLabel;
+        r.getCell(20).value = Number(c.units_quantity || 1);
+        r.getCell(21).value = c.total_cost != null ? Number(c.total_cost) : 0;
+        r.getCell(22).value = c.status === 'Delivered' ? 'Delivered' : (c.status === 'Completed' ? 'Ready' : 'In Production');
+        r.getCell(23).value = c.delivered_to || '—';
+        r.getCell(24).value = c.delivered_at ? new Date(c.delivered_at).toLocaleString() : '—';
+        r.getCell(25).value = c.delivery_notes || '—';
+        r.getCell(26).value = c.reported_by || c.reported_by_name || '—';
 
-        for (let col = 1; col <= 22; col++) {
+        for (let col = 1; col <= 26; col++) {
           const cell = r.getCell(col);
           cell.font = { name: 'Calibri', size: 10 };
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
 
           if (NUMERIC_COLS.includes(col)) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
-            if (col >= 15) cell.numFmt = '#,##0';
-            if (col === 17) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '3730A3' } };
+            cell.numFmt = '#,##0';
+            if (col === 21) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '3730A3' } };
           } else {
             cell.alignment = { horizontal: 'left', vertical: 'middle' };
           }
@@ -1360,6 +1740,11 @@ const DentalCasesLog = () => {
 
                       <td className="px-4 py-3">
                         <p className="m-0 text-slate-900 font-bold">{c.clinician_name || 'Dr. Dental'}</p>
+                        {c.patient_name && (
+                          <p className="m-0 text-xs font-semibold text-slate-600 truncate max-w-[180px]">
+                            {c.patient_name}
+                          </p>
+                        )}
                         {c.patient_id && (
                           <span className="inline-block mt-0.5 font-mono text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.2 rounded">
                             PID: {c.patient_id}
@@ -1376,9 +1761,29 @@ const DentalCasesLog = () => {
                       </td>
 
                       <td className="px-4 py-3">
-                        <WorkTypeBadge type={c.work_done} />
-                        {c.technologist && <p className="m-0 text-[10px] text-slate-400 mt-1">Tech: {c.technologist}</p>}
-                        <OdontogramBadge caseItem={c} onClick={() => navigate(`/dental/cases/${c.id}/odontogram`)} />
+                        <div className="space-y-1">
+                          {c.work_done && (
+                            <div>
+                              <WorkTypeBadge type={c.work_done === 'Other' ? (c.work_done_other || 'Other Prosthetics') : c.work_done} />
+                            </div>
+                          )}
+                          {(c.ortho_enabled || c.ortho_appliance_type) && (
+                            <div>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-violet-50 text-violet-700 border-violet-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                                Ortho: {c.ortho_appliance_type === 'Other' ? (c.ortho_appliance_other || 'Other Appliance') : c.ortho_appliance_type}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {(c.technologist || c.ortho_technologist) && (
+                          <p className="m-0 text-[10px] text-slate-400 mt-1">
+                            Tech: {[c.technologist, c.ortho_technologist].filter(Boolean).join(' / ')}
+                          </p>
+                        )}
+                        {c.prosthetics_enabled !== false && (
+                          <OdontogramBadge caseItem={c} onClick={() => navigate(`/dental/cases/${c.id}/odontogram`)} />
+                        )}
                       </td>
 
                       {/* Interactive Stage Pipeline */}

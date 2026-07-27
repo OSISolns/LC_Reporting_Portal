@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Stethoscope,
   ClipboardList,
@@ -19,7 +19,9 @@ import {
   Activity,
   FileSpreadsheet,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Save,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -602,6 +604,10 @@ export default function ClinicCasesLog() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // CASE FORM MODAL (WITH CHART SYNC AUTO-ANALYSIS ENGINE)
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// Each draft is keyed by user ID so no two users share the same draft.
+const getClinicDraftKey = (userId) => `dental_clinic_case_draft_uid_${userId || 'anon'}`;
+
 function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
   const [form, setForm] = useState({
     patient_id: '',
@@ -629,7 +635,15 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
   const [loadingCharts, setLoadingCharts] = useState(false);
   const [analysisReport, setAnalysisReport] = useState(null);
 
+  // Autosave
+  const [draftStatus, setDraftStatus] = useState(null); // null | 'saving' | 'saved'
+  const [draftAvailable, setDraftAvailable] = useState(null); // null | { savedAt, preview }
+  const autosaveTimer = useRef(null);
+
   const autocompleteRef = useRef(null);
+
+  // Compute user-specific draft key
+  const draftKey = getClinicDraftKey(currentUser?.id);
 
   useEffect(() => {
     if (editCase) {
@@ -649,8 +663,10 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
       });
       setPatSearch(`${editCase.patient_name} (PID: ${editCase.patient_id})`);
       fetchPatientCharts(editCase.patient_id);
+      setDraftStatus(null);
+      setDraftAvailable(null);
     } else {
-      setForm({
+      const baseForm = {
         patient_id: '',
         patient_name: '',
         dentist_name: currentUser?.fullName || currentUser?.full_name || '',
@@ -663,12 +679,36 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
         total_charges: 0,
         status: 'Diagnosed',
         clinical_notes: ''
-      });
+      };
+      setForm(baseForm);
       setPatSearch('');
+      setDraftStatus(null);
       setPatientCharts([]);
       setAnalysisReport(null);
+      // Check for a user-scoped draft (don't auto-load, just notify)
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          // Belt & suspenders: verify ownership
+          if (!draft.userId || draft.userId === currentUser?.id) {
+            setDraftAvailable({
+              savedAt: draft.savedAt,
+              preview: draft.form?.patient_name || draft.form?.dentist_name || 'Unsaved case',
+            });
+          } else {
+            // Foreign draft — purge silently
+            localStorage.removeItem(draftKey);
+            setDraftAvailable(null);
+          }
+        } else {
+          setDraftAvailable(null);
+        }
+      } catch {
+        setDraftAvailable(null);
+      }
     }
-  }, [editCase, isOpen]);
+  }, [editCase, isOpen, draftKey, currentUser]);
 
   // Click outside close
   useEffect(() => {
@@ -681,8 +721,74 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
     return () => document.removeEventListener('mousedown', clickOut);
   }, []);
 
+  // Autosave helpers
+  const scheduleDraftSave = useCallback((nextForm, nextPatSearch) => {
+    if (editCase) return;
+    clearTimeout(autosaveTimer.current);
+    setDraftStatus('saving');
+    autosaveTimer.current = setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({
+          userId: currentUser?.id,          // owner stamp
+          form: nextForm,
+          patSearch: nextPatSearch,
+          savedAt: new Date().toISOString(),
+        }));
+        setDraftStatus('saved');
+      } catch {
+        setDraftStatus(null);
+      }
+    }, 800);
+  }, [editCase, draftKey, currentUser?.id]);
+
+  const clearDraft = useCallback(() => {
+    clearTimeout(autosaveTimer.current);
+    try { localStorage.removeItem(draftKey); } catch {}
+    setDraftStatus(null);
+    setDraftAvailable(null);
+  }, [draftKey]);
+
+  // Load draft into form (explicit user action, ownership-verified)
+  const loadDraft = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      // Security: only load if userId matches current user
+      if (draft.userId && draft.userId !== currentUser?.id) {
+        toast.error('This draft does not belong to you.');
+        return;
+      }
+      const baseForm = {
+        patient_id: '',
+        patient_name: '',
+        dentist_name: currentUser?.fullName || currentUser?.full_name || '',
+        case_date: format(new Date(), 'yyyy-MM-dd'),
+        linked_chart_id: '',
+        caries_count: 0,
+        missing_count: 0,
+        restored_count: 0,
+        treatment_summary: '',
+        total_charges: 0,
+        status: 'Diagnosed',
+        clinical_notes: ''
+      };
+      setForm({ ...baseForm, ...draft.form });
+      if (draft.patSearch) setPatSearch(draft.patSearch);
+      setDraftStatus('saved');
+      setDraftAvailable(null); // dismiss banner
+      toast.success('Draft loaded — continue where you left off.');
+    } catch {
+      toast.error('Failed to load draft.');
+    }
+  }, [draftKey, currentUser]);
+
+  // Cleanup timer on unmount
+  useEffect(() => () => clearTimeout(autosaveTimer.current), []);
+
   const handlePatientQuery = async (q) => {
     setPatSearch(q);
+    scheduleDraftSave(form, q);
     if (!q.trim()) {
       setPatResults([]);
       setShowResults(false);
@@ -703,13 +809,12 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
   const selectPatient = (p) => {
     const pid = p.pid || p.patient_id;
     const name = p.full_name || p.patient_name;
-    setForm(prev => ({
-      ...prev,
-      patient_id: pid,
-      patient_name: name
-    }));
-    setPatSearch(`${name} (PID: ${pid})`);
+    const newForm = { ...form, patient_id: pid, patient_name: name };
+    const newPatSearch = `${name} (PID: ${pid})`;
+    setForm(newForm);
+    setPatSearch(newPatSearch);
     setShowResults(false);
+    scheduleDraftSave(newForm, newPatSearch);
     fetchPatientCharts(pid);
   };
 
@@ -827,7 +932,13 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
     e.preventDefault();
     if (!form.patient_id) return toast.error('Please select a valid patient.');
     if (!form.dentist_name.trim()) return toast.error('Attending dentist name is required.');
+    clearDraft();
     onSave(form);
+  };
+
+  const handleClose = () => {
+    // Keep draft when closing without saving (user can restore)
+    onClose();
   };
 
   return (
@@ -846,13 +957,49 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
               <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-0.5">Clinical consultation & charting record</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition">
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition">
             <X size={18} />
           </button>
         </div>
 
         {/* Form Body */}
         <form onSubmit={handleSaveSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+
+          {/* ── Draft Available Banner ── */}
+          {!editCase && draftAvailable && (
+            <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                <Save size={15} className="text-amber-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-amber-800">You have an unsaved draft</p>
+                <p className="text-[11px] text-amber-600 mt-0.5 truncate">
+                  {draftAvailable.preview}
+                  {draftAvailable.savedAt && (
+                    <> &mdash; saved {format(new Date(draftAvailable.savedAt), 'dd MMM yyyy, HH:mm')}</>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={loadDraft}
+                  className="px-3 py-1.5 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition cursor-pointer"
+                >
+                  Load Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={() => clearDraft()}
+                  className="px-3 py-1.5 text-[11px] font-bold text-amber-700 hover:bg-amber-100 rounded-lg transition cursor-pointer"
+                  title="Discard this draft permanently"
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Patient Autocomplete */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="relative" ref={autocompleteRef}>
@@ -861,7 +1008,7 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-2.5 text-slate-400" size={15} />
-                <input
+          <input
                   type="text"
                   placeholder="Type patient name or ID..."
                   value={patSearch}
@@ -900,7 +1047,11 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
                 type="text"
                 required
                 value={form.dentist_name}
-                onChange={(e) => setForm(prev => ({ ...prev, dentist_name: e.target.value }))}
+                onChange={(e) => {
+                  const nextForm = { ...form, dentist_name: e.target.value };
+                  setForm(nextForm);
+                  scheduleDraftSave(nextForm, patSearch);
+                }}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
                 placeholder="Dr. Dentist Name"
               />
@@ -917,7 +1068,11 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
                 type="date"
                 required
                 value={form.case_date}
-                onChange={(e) => setForm(prev => ({ ...prev, case_date: e.target.value }))}
+                onChange={(e) => {
+                  const nextForm = { ...form, case_date: e.target.value };
+                  setForm(nextForm);
+                  scheduleDraftSave(nextForm, patSearch);
+                }}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
               />
             </div>
@@ -995,7 +1150,11 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
                   type="number"
                   min="0"
                   value={form.caries_count}
-                  onChange={(e) => setForm(prev => ({ ...prev, caries_count: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) => {
+                    const nextForm = { ...form, caries_count: parseInt(e.target.value) || 0 };
+                    setForm(nextForm);
+                    scheduleDraftSave(nextForm, patSearch);
+                  }}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
                 />
               </div>
@@ -1007,7 +1166,11 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
                   type="number"
                   min="0"
                   value={form.missing_count}
-                  onChange={(e) => setForm(prev => ({ ...prev, missing_count: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) => {
+                    const nextForm = { ...form, missing_count: parseInt(e.target.value) || 0 };
+                    setForm(nextForm);
+                    scheduleDraftSave(nextForm, patSearch);
+                  }}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
                 />
               </div>
@@ -1019,7 +1182,11 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
                   type="number"
                   min="0"
                   value={form.restored_count}
-                  onChange={(e) => setForm(prev => ({ ...prev, restored_count: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) => {
+                    const nextForm = { ...form, restored_count: parseInt(e.target.value) || 0 };
+                    setForm(nextForm);
+                    scheduleDraftSave(nextForm, patSearch);
+                  }}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
                 />
               </div>
@@ -1032,10 +1199,14 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                 Treatment summary
               </label>
-              <input
+            <input
                 type="text"
                 value={form.treatment_summary}
-                onChange={(e) => setForm(prev => ({ ...prev, treatment_summary: e.target.value }))}
+                onChange={(e) => {
+                  const nextForm = { ...form, treatment_summary: e.target.value };
+                  setForm(nextForm);
+                  scheduleDraftSave(nextForm, patSearch);
+                }}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
                 placeholder="e.g. Scaling and Root Canal on #36, Composite restore on #12"
               />
@@ -1048,7 +1219,11 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
                 type="number"
                 min="0"
                 value={form.total_charges}
-                onChange={(e) => setForm(prev => ({ ...prev, total_charges: parseFloat(e.target.value) || 0 }))}
+                onChange={(e) => {
+                  const nextForm = { ...form, total_charges: parseFloat(e.target.value) || 0 };
+                  setForm(nextForm);
+                  scheduleDraftSave(nextForm, patSearch);
+                }}
                 className="w-full px-3 py-2 text-xs font-bold text-slate-800 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
               />
             </div>
@@ -1062,7 +1237,11 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
               </label>
               <select
                 value={form.status}
-                onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))}
+                onChange={(e) => {
+                  const nextForm = { ...form, status: e.target.value };
+                  setForm(nextForm);
+                  scheduleDraftSave(nextForm, patSearch);
+                }}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-300"
               >
                 <option value="Diagnosed">Diagnosed (Active)</option>
@@ -1079,7 +1258,11 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
               </label>
               <textarea
                 value={form.clinical_notes}
-                onChange={(e) => setForm(prev => ({ ...prev, clinical_notes: e.target.value }))}
+                onChange={(e) => {
+                  const nextForm = { ...form, clinical_notes: e.target.value };
+                  setForm(nextForm);
+                  scheduleDraftSave(nextForm, patSearch);
+                }}
                 rows={2}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
                 placeholder="Additional notes about patient presentation, findings, or anesthesia..."
@@ -1087,21 +1270,48 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
             </div>
           </div>
 
-          {/* Action Row */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-500 text-xs font-bold hover:bg-slate-50 transition cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs hover:shadow-md cursor-pointer"
-            >
-              {editCase ? 'Save Changes' : 'Log Case'}
-            </button>
+            {/* Action Row */}
+          <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100">
+            {/* Draft status */}
+            <div className="flex items-center gap-1.5 text-[11px] font-medium">
+              {!editCase && draftStatus === 'saving' && (
+                <span className="flex items-center gap-1 text-slate-400 animate-pulse">
+                  <Loader2 size={11} className="animate-spin" /> Saving draft…
+                </span>
+              )}
+              {!editCase && draftStatus === 'saved' && (
+                <span className="flex items-center gap-1 text-emerald-600">
+                  <Save size={11} /> Draft saved
+                </span>
+              )}
+              {editCase && (
+                <span className="text-slate-400 text-[10px]">Editing existing record</span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-500 text-xs font-bold hover:bg-slate-50 transition cursor-pointer"
+              >
+                {!editCase ? 'Close & Keep Draft' : 'Cancel'}
+              </button>
+              {!editCase && draftStatus === 'saved' && (
+                <button
+                  type="button"
+                  onClick={() => { clearDraft(); onClose(); }}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-500 text-xs font-bold hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
+                >
+                  Discard Draft
+                </button>
+              )}
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs hover:shadow-md cursor-pointer"
+              >
+                {editCase ? 'Save Changes' : 'Log Case'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

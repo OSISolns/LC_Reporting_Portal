@@ -81,12 +81,24 @@ exports.createCase = async (req, res, next) => {
       clinic_of_origin,
       clinician_name,
       patient_id,
+      patient_name,
+      // Prosthetics
+      prosthetics_enabled,
       work_done,
       work_done_other,
       technologist,
       units_quantity,
       cost_per_first_unit,
       cost_per_additional_unit,
+      prosthetics_cost,
+      // Orthodontics
+      ortho_enabled,
+      ortho_appliance_type,
+      ortho_appliance_other,
+      ortho_technologist,
+      ortho_cost,
+      ortho_notes,
+      // Combined
       total_cost,
       status,
       delivery_notes,
@@ -97,11 +109,13 @@ exports.createCase = async (req, res, next) => {
       linked_chart_id,
     } = req.body;
 
-    // Basic validation
-    if (!received_date || !required_date || !work_done) {
+    // At least one work type must be present
+    const hasProsthetics = prosthetics_enabled && work_done;
+    const hasOrtho = ortho_enabled && ortho_appliance_type;
+    if (!received_date || !required_date || (!hasProsthetics && !hasOrtho)) {
       return res.status(400).json({
         success: false,
-        message: 'received_date, required_date, and work_done are required.',
+        message: 'received_date, required_date, and at least one work type (prosthetics work_done or ortho_appliance_type) are required.',
       });
     }
 
@@ -110,38 +124,43 @@ exports.createCase = async (req, res, next) => {
     const parsedQty = parseNum(units_quantity) || 1;
     const parsedFirst = parseNum(cost_per_first_unit);
     const parsedAdd = parseNum(cost_per_additional_unit);
+    const parsedProstCost = parseNum(prosthetics_cost);
+    const parsedOrthoCost = parseNum(ortho_cost);
     const parsedTotal = parseNum(total_cost);
     const serializedOdontogram = odontogram_data ? (typeof odontogram_data === 'string' ? odontogram_data : JSON.stringify(odontogram_data)) : null;
 
     await db.query(
       `INSERT INTO dental_cases (
          case_ref, received_date, required_date, work_command_origin,
-         clinic_of_origin, clinician_name, patient_id, work_done,
-         work_done_other, technologist, units_quantity,
-         cost_per_first_unit, cost_per_additional_unit, total_cost,
-         status, delivery_notes, delivered_to, delivered_at,
+         clinic_of_origin, clinician_name, patient_id, patient_name,
+         prosthetics_enabled, work_done, work_done_other, technologist,
+         units_quantity, cost_per_first_unit, cost_per_additional_unit, prosthetics_cost,
+         ortho_enabled, ortho_appliance_type, ortho_appliance_other,
+         ortho_technologist, ortho_cost, ortho_notes,
+         total_cost, status, delivery_notes, delivered_to, delivered_at,
          reported_by, reported_by_user_id, odontogram_data, linked_chart_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         case_ref, received_date, required_date, work_command_origin || null,
-        clinic_of_origin || null, clinician_name || null, patient_id || null,
-        work_done, work_done_other || null, technologist || null,
-        parsedQty,
-        parsedFirst,
-        parsedAdd,
+        clinic_of_origin || null, clinician_name || null, patient_id || null, patient_name || null,
+        prosthetics_enabled ? 1 : 0,
+        work_done || null, work_done_other || null, technologist || null,
+        parsedQty, parsedFirst, parsedAdd, parsedProstCost,
+        ortho_enabled ? 1 : 0,
+        ortho_appliance_type || null, ortho_appliance_other || null,
+        ortho_technologist || null, parsedOrthoCost, ortho_notes || null,
         parsedTotal,
         status || 'Received', delivery_notes || null, delivered_to || null, delivered_at || null,
         reported_by || null, reported_by_user_id, serializedOdontogram, parseNum(linked_chart_id)
       ]
     );
 
-    // Retrieve inserted ID
     const { rows: inserted } = await db.query(
       'SELECT id FROM dental_cases WHERE case_ref = ?', [case_ref]
     );
     const newId = inserted[0]?.id;
 
-    await logAction(req, 'DENTAL_CASE_CREATE', 'dental_cases', newId, { case_ref, patient_id, work_done });
+    await logAction(req, 'DENTAL_CASE_CREATE', 'dental_cases', newId, { case_ref, patient_id, work_done, ortho_appliance_type });
 
     res.status(201).json({ success: true, message: 'Case logged successfully.', data: { id: newId, case_ref } });
   } catch (err) { next(err); }
@@ -152,29 +171,16 @@ exports.updateCase = async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
-      received_date,
-      required_date,
-      work_command_origin,
-      clinic_of_origin,
-      clinician_name,
-      patient_id,
-      work_done,
-      work_done_other,
-      technologist,
-      units_quantity,
-      cost_per_first_unit,
-      cost_per_additional_unit,
-      total_cost,
-      status,
-      delivery_notes,
-      delivered_to,
-      delivered_at,
-      reported_by,
-      odontogram_data,
-      linked_chart_id,
+      received_date, required_date, work_command_origin,
+      clinic_of_origin, clinician_name, patient_id, patient_name,
+      prosthetics_enabled, work_done, work_done_other, technologist,
+      units_quantity, cost_per_first_unit, cost_per_additional_unit, prosthetics_cost,
+      ortho_enabled, ortho_appliance_type, ortho_appliance_other,
+      ortho_technologist, ortho_cost, ortho_notes,
+      total_cost, status, delivery_notes, delivered_to, delivered_at,
+      reported_by, odontogram_data, linked_chart_id,
     } = req.body;
 
-    // Fetch existing case to preserve unpassed fields
     const { rows: existing } = await db.query('SELECT * FROM dental_cases WHERE id = ?', [id]);
     if (!existing.length) {
       return res.status(404).json({ success: false, message: 'Case not found.' });
@@ -190,39 +196,49 @@ exports.updateCase = async (req, res, next) => {
     await db.query(
       `UPDATE dental_cases SET
          received_date = ?, required_date = ?, work_command_origin = ?,
-         clinic_of_origin = ?, clinician_name = ?, patient_id = ?,
-         work_done = ?, work_done_other = ?, technologist = ?,
-         units_quantity = ?, cost_per_first_unit = ?,
-         cost_per_additional_unit = ?, total_cost = ?,
-         status = ?, delivery_notes = ?, delivered_to = ?, delivered_at = ?,
+         clinic_of_origin = ?, clinician_name = ?, patient_id = ?, patient_name = ?,
+         prosthetics_enabled = ?, work_done = ?, work_done_other = ?, technologist = ?,
+         units_quantity = ?, cost_per_first_unit = ?, cost_per_additional_unit = ?, prosthetics_cost = ?,
+         ortho_enabled = ?, ortho_appliance_type = ?, ortho_appliance_other = ?,
+         ortho_technologist = ?, ortho_cost = ?, ortho_notes = ?,
+         total_cost = ?, status = ?, delivery_notes = ?, delivered_to = ?, delivered_at = ?,
          reported_by = ?, odontogram_data = ?, linked_chart_id = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
-        received_date !== undefined ? received_date : current.received_date,
-        required_date !== undefined ? required_date : current.required_date,
-        work_command_origin !== undefined ? work_command_origin : current.work_command_origin,
-        clinic_of_origin !== undefined ? clinic_of_origin : current.clinic_of_origin,
-        clinician_name !== undefined ? clinician_name : current.clinician_name,
-        patient_id !== undefined ? patient_id : current.patient_id,
-        work_done !== undefined ? work_done : current.work_done,
-        work_done_other !== undefined ? work_done_other : current.work_done_other,
-        technologist !== undefined ? technologist : current.technologist,
+        received_date ?? current.received_date,
+        required_date ?? current.required_date,
+        work_command_origin ?? current.work_command_origin,
+        clinic_of_origin ?? current.clinic_of_origin,
+        clinician_name ?? current.clinician_name,
+        patient_id ?? current.patient_id,
+        patient_name ?? current.patient_name,
+        prosthetics_enabled !== undefined ? (prosthetics_enabled ? 1 : 0) : current.prosthetics_enabled,
+        work_done ?? current.work_done,
+        work_done_other ?? current.work_done_other,
+        technologist ?? current.technologist,
         units_quantity !== undefined ? (parseNum(units_quantity) || 1) : current.units_quantity,
         cost_per_first_unit !== undefined ? parseNum(cost_per_first_unit) : current.cost_per_first_unit,
         cost_per_additional_unit !== undefined ? parseNum(cost_per_additional_unit) : current.cost_per_additional_unit,
+        prosthetics_cost !== undefined ? parseNum(prosthetics_cost) : current.prosthetics_cost,
+        ortho_enabled !== undefined ? (ortho_enabled ? 1 : 0) : current.ortho_enabled,
+        ortho_appliance_type ?? current.ortho_appliance_type,
+        ortho_appliance_other ?? current.ortho_appliance_other,
+        ortho_technologist ?? current.ortho_technologist,
+        ortho_cost !== undefined ? parseNum(ortho_cost) : current.ortho_cost,
+        ortho_notes ?? current.ortho_notes,
         total_cost !== undefined ? parseNum(total_cost) : current.total_cost,
         updatedStatus,
-        delivery_notes !== undefined ? delivery_notes : current.delivery_notes,
-        delivered_to !== undefined ? delivered_to : current.delivered_to,
+        delivery_notes ?? current.delivery_notes,
+        delivered_to ?? current.delivered_to,
         updatedDeliveredAt,
-        reported_by !== undefined ? reported_by : current.reported_by,
+        reported_by ?? current.reported_by,
         serializedOdontogram,
         linked_chart_id !== undefined ? parseNum(linked_chart_id) : current.linked_chart_id,
         id,
       ]
     );
 
-    await logAction(req, 'DENTAL_CASE_UPDATE', 'dental_cases', id, { status: updatedStatus, work_done });
+    await logAction(req, 'DENTAL_CASE_UPDATE', 'dental_cases', id, { status: updatedStatus, work_done, ortho_appliance_type });
     res.json({ success: true, message: 'Case updated successfully.' });
   } catch (err) { next(err); }
 };
