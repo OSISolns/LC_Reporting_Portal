@@ -51,6 +51,22 @@ const ORTHO_APPLIANCE_TYPES = [
   'Other',
 ];
 
+const ACRYLIC_WORK_SUBTYPES = [
+  'Removable Partial Denture Per Unit',
+  'Acrylic Partial Denture Repair (All Steps - Trays, Rims, Try-In, Final)',
+  'Complete Denture Repair',
+  'Flexible Partial Denture Per Unit (Trays, Rims, Try-In, Final)',
+  'Temporary Crown - Acrylic',
+  'Habit Breaking Appliance',
+  'Removable Orthodontic Appliance',
+  'Removable Orthodontic Functional',
+  'Hawley Appliance with Appliance',
+  'Hawley Retainers',
+  'Any Other Functional Appliance',
+  'Any Wire Auxiliary',
+  'Other',
+];
+
 const STAGE_CONFIG = {
   'Received':             { label: 'Received',             color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', step: 1 },
   'Wax-Up / Framework':   { label: 'Wax-Up / Framework',   color: 'text-blue-700',  bg: 'bg-blue-50',  border: 'border-blue-200',  step: 2 },
@@ -450,6 +466,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
     }
     if (form.prosthetics_enabled) {
       if (!form.work_done) e.work_done = 'Required when Prosthetics is selected';
+      if (form.work_done === 'Acrylic Work' && !form.work_done_other) e.work_done_other = 'Select or specify Acrylic Work detail';
       if (form.work_done === 'Other' && !form.work_done_other) e.work_done_other = 'Please specify';
       if (!form.units_quantity || Number(form.units_quantity) < 1) e.units_quantity = 'Min 1';
     }
@@ -747,7 +764,14 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                   <div className="relative">
                     <select
                       value={form.work_done}
-                      onChange={set('work_done')}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm(f => {
+                          const next = { ...f, work_done: val, work_done_other: '' };
+                          scheduleDraftSave(next, odontogramMap);
+                          return next;
+                        });
+                      }}
                       className={`w-full px-3 py-2 text-sm rounded-xl border appearance-none bg-white pr-9 ${
                         errors.work_done ? 'border-rose-400 bg-rose-50' : 'border-slate-200'
                       } focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
@@ -760,6 +784,47 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
                 </Field>
+
+                {form.work_done === 'Acrylic Work' && (
+                  <div className="space-y-3">
+                    <Field label="Acrylic Work Specification / Item" required error={errors.work_done_other}>
+                      <div className="relative">
+                        <select
+                          value={ACRYLIC_WORK_SUBTYPES.includes(form.work_done_other) ? form.work_done_other : (form.work_done_other ? 'Other' : '')}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setForm(f => {
+                              const next = { ...f, work_done_other: val === 'Other' ? '' : val };
+                              scheduleDraftSave(next, odontogramMap);
+                              return next;
+                            });
+                          }}
+                          className={`w-full px-3 py-2 text-sm rounded-xl border appearance-none bg-white pr-9 ${
+                            errors.work_done_other ? 'border-rose-400 bg-rose-50' : 'border-slate-200'
+                          } focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
+                        >
+                          <option value="">— Select Acrylic Work Item —</option>
+                          {ACRYLIC_WORK_SUBTYPES.map(st => (
+                            <option key={st} value={st}>{st}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </Field>
+
+                    {(!ACRYLIC_WORK_SUBTYPES.includes(form.work_done_other) || form.work_done_other === 'Other') && (
+                      <Field label="Specify Custom Acrylic Work" required error={errors.work_done_other}>
+                        <input
+                          type="text"
+                          placeholder="Describe custom acrylic specification…"
+                          value={ACRYLIC_WORK_SUBTYPES.includes(form.work_done_other) && form.work_done_other !== 'Other' ? '' : form.work_done_other}
+                          onChange={set('work_done_other')}
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
+                        />
+                      </Field>
+                    )}
+                  </div>
+                )}
 
                 {form.work_done === 'Other' && (
                   <Field label="Specify Work Done" required error={errors.work_done_other}>
