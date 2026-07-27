@@ -2609,6 +2609,45 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to setup procurement-manager role/permissions:', err);
     }
 
+    // --- Lab Roles Setup & Permissions Sync ---
+    try {
+      const labRoles = [
+        { name: 'lab_tech', display_name: 'Laboratory Tech' },
+        { name: 'lab', display_name: 'Laboratory Staff' }
+      ];
+
+      for (const r of labRoles) {
+        await client.execute({
+          sql: "INSERT OR IGNORE INTO roles (name, display_name) VALUES (?, ?)",
+          args: [r.name, r.display_name]
+        });
+      }
+      console.log('✅ SQLite Schema Migration: registered lab roles');
+
+      const { ROLE_DEFAULTS } = require('./permissions');
+      for (const r of labRoles) {
+        const rolePerms = ROLE_DEFAULTS[r.name];
+        if (rolePerms) {
+          for (const [moduleName, actions] of Object.entries(rolePerms)) {
+            for (const [action, granted] of Object.entries(actions)) {
+              await client.execute({
+                sql: `
+                  INSERT INTO role_permissions (role_name, module, action, granted, updated_by)
+                  VALUES (?, ?, ?, ?, 1)
+                  ON CONFLICT(role_name, module, action) DO UPDATE 
+                  SET granted = EXCLUDED.granted
+                `,
+                args: [r.name, moduleName, action, granted ? 1 : 0]
+              }).catch(() => {});
+            }
+          }
+        }
+      }
+      console.log('✅ SQLite Schema Migration: synced lab roles permissions');
+    } catch (err) {
+      console.error('❌ Failed to setup lab roles/permissions:', err);
+    }
+
     // ─── Dental Cases Table Migration ─────────────────────────────────────────
     try {
       await client.execute(`

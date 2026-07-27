@@ -19,6 +19,7 @@ const getSidebarConfig = () => {
 const ALL_ROLES = [
   'admin', 'it_officer', 'coo', 'deputy_coo', 'chairman', 'sales_manager',
   'cashier', 'principal_cashier', 'customer_care', 'lab_team_lead',
+  'lab_tech', 'lab',
   'consultant', 'operations_staff', 'pa', 'staff', 'hsfp', 'nurse',
   'chef-nurse', 'stock-manager', 'doctor', 'medical_director',
   'procurement-manager', 'imaging_tech', 'imaging_manager',

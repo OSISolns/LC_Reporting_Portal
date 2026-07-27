@@ -502,6 +502,24 @@ const ROLE_DEFAULTS = {
     patients:         { view:1, create:0 },
     dental:           { view:1, create:1, edit:1, delete:0 },
   },
+  lab_tech: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
+    lab:              { view:1, create:1, edit:1, verify:1, delete:1 },
+    shifts:           { view:1, create:1, edit:1, review:0, delete:0 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+  },
+  lab: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
+    lab:              { view:1, create:1, edit:1, verify:1, delete:1 },
+    shifts:           { view:1, create:1, edit:1, review:0, delete:0 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+  },
 };
 
 module.exports = {
