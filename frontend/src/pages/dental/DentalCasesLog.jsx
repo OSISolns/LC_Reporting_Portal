@@ -118,7 +118,7 @@ const EMPTY_FORM = {
   prosthetics_cost: '',
   // Orthodontics
   ortho_appliance_type: '', ortho_appliance_other: '',
-  ortho_technologist: '', ortho_cost: '', ortho_notes: '',
+  ortho_technologist: '', ortho_units: 1, ortho_unit_cost: '', ortho_cost: '', ortho_notes: '',
   // Combined
   total_cost: '',
   status: 'Received', reported_by: '', linked_chart_id: '',
@@ -310,6 +310,8 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         ortho_appliance_type: editCase.ortho_appliance_type || '',
         ortho_appliance_other: editCase.ortho_appliance_other || '',
         ortho_technologist: editCase.ortho_technologist || '',
+        ortho_units: editCase.ortho_units ?? 1,
+        ortho_unit_cost: editCase.ortho_unit_cost ?? '',
         ortho_cost: editCase.ortho_cost ?? '',
         ortho_notes: editCase.ortho_notes || '',
         prosthetics_cost: editCase.prosthetics_cost ?? editCase.total_cost ?? '',
@@ -453,6 +455,13 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         const additional = Number(next.cost_per_additional_unit) || 0;
         const pTotal = qty <= 1 ? first : first + (additional * (qty - 1));
         next.prosthetics_cost = pTotal > 0 ? pTotal.toFixed(2) : '';
+      }
+      // Auto-calculate ortho_cost from ortho_units × ortho_unit_cost
+      if (['ortho_units', 'ortho_unit_cost'].includes(k)) {
+        const oQty = Number(next.ortho_units) || 1;
+        const oUnit = Number(next.ortho_unit_cost) || 0;
+        const oTotal = oQty * oUnit;
+        next.ortho_cost = oTotal > 0 ? oTotal.toFixed(2) : '';
       }
       // Also recalculate when either cost field changes directly
       if (['prosthetics_cost', 'ortho_cost'].includes(k)) {
@@ -955,12 +964,41 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                       className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-300 transition"
                     />
                   </Field>
-                  <Field label="Appliance Cost (RWF)">
+                </div>
+
+                {/* ── separator ── */}
+                <hr className="border-violet-200" />
+
+                {/* ── Units & Pricing ── */}
+                <p className="flex items-center gap-1.5 text-[10px] font-black text-violet-500 uppercase tracking-widest">
+                  Units &amp; Pricing
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                  <Field label="Number of Units">
                     <input
+                      type="number" min="1" step="1"
+                      value={form.ortho_units}
+                      onChange={set('ortho_units')}
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-300 transition"
+                      placeholder="1"
+                    />
+                  </Field>
+                  <Field label="Cost per Unit (RWF)">
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={form.ortho_unit_cost}
+                      onChange={set('ortho_unit_cost')}
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-300 transition"
+                      placeholder="0.00"
+                    />
+                  </Field>
+                  <Field label="Appliance Total (RWF)">
+                    <input
+                      readOnly
                       type="number" min="0" step="0.01"
                       value={form.ortho_cost}
                       onChange={set('ortho_cost')}
-                      className="w-full px-3 py-2 text-sm font-bold rounded-xl border border-violet-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 transition"
+                      className="w-full px-3 py-2 text-sm font-bold rounded-xl border border-violet-200 bg-violet-50 focus:outline-none focus:ring-2 focus:ring-violet-300 transition cursor-default"
                       placeholder="0.00"
                     />
                   </Field>

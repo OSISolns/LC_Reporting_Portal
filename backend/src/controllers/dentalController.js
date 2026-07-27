@@ -96,6 +96,8 @@ exports.createCase = async (req, res, next) => {
       ortho_appliance_type,
       ortho_appliance_other,
       ortho_technologist,
+      ortho_units,
+      ortho_unit_cost,
       ortho_cost,
       ortho_notes,
       // Combined
@@ -125,6 +127,8 @@ exports.createCase = async (req, res, next) => {
     const parsedFirst = parseNum(cost_per_first_unit);
     const parsedAdd = parseNum(cost_per_additional_unit);
     const parsedProstCost = parseNum(prosthetics_cost);
+    const parsedOrthoUnits = parseNum(ortho_units) || 1;
+    const parsedOrthoUnitCost = parseNum(ortho_unit_cost);
     const parsedOrthoCost = parseNum(ortho_cost);
     const parsedTotal = parseNum(total_cost);
     const serializedOdontogram = odontogram_data ? (typeof odontogram_data === 'string' ? odontogram_data : JSON.stringify(odontogram_data)) : null;
@@ -141,10 +145,10 @@ exports.createCase = async (req, res, next) => {
          prosthetics_enabled, work_done, work_done_other, technologist,
          units_quantity, cost_per_first_unit, cost_per_additional_unit, prosthetics_cost,
          ortho_enabled, ortho_appliance_type, ortho_appliance_other,
-         ortho_technologist, ortho_cost, ortho_notes,
+         ortho_technologist, ortho_units, ortho_unit_cost, ortho_cost, ortho_notes,
          total_cost, status, delivery_notes, delivered_to, delivered_at,
          reported_by, reported_by_user_id, odontogram_data, linked_chart_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         case_ref, received_date, required_date, work_command_origin || null,
         clinic_of_origin || null, clinician_name || null, patient_id || null, patient_name || null,
@@ -153,7 +157,7 @@ exports.createCase = async (req, res, next) => {
         parsedQty, parsedFirst, parsedAdd, parsedProstCost,
         ortho_enabled ? 1 : 0,
         ortho_appliance_type || null, ortho_appliance_other || null,
-        ortho_technologist || null, parsedOrthoCost, ortho_notes || null,
+        ortho_technologist || null, parsedOrthoUnits, parsedOrthoUnitCost, parsedOrthoCost, ortho_notes || null,
         parsedTotal,
         status || 'Received', delivery_notes || null, delivered_to || null, delivered_at || null,
         reported_by || null, reported_by_user_id, serializedOdontogram, parseNum(linked_chart_id)
@@ -181,7 +185,7 @@ exports.updateCase = async (req, res, next) => {
       prosthetics_enabled, work_done, work_done_other, technologist,
       units_quantity, cost_per_first_unit, cost_per_additional_unit, prosthetics_cost,
       ortho_enabled, ortho_appliance_type, ortho_appliance_other,
-      ortho_technologist, ortho_cost, ortho_notes,
+      ortho_technologist, ortho_units, ortho_unit_cost, ortho_cost, ortho_notes,
       total_cost, status, delivery_notes, delivered_to, delivered_at,
       reported_by, odontogram_data, linked_chart_id,
     } = req.body;
@@ -205,7 +209,7 @@ exports.updateCase = async (req, res, next) => {
          prosthetics_enabled = ?, work_done = ?, work_done_other = ?, technologist = ?,
          units_quantity = ?, cost_per_first_unit = ?, cost_per_additional_unit = ?, prosthetics_cost = ?,
          ortho_enabled = ?, ortho_appliance_type = ?, ortho_appliance_other = ?,
-         ortho_technologist = ?, ortho_cost = ?, ortho_notes = ?,
+         ortho_technologist = ?, ortho_units = ?, ortho_unit_cost = ?, ortho_cost = ?, ortho_notes = ?,
          total_cost = ?, status = ?, delivery_notes = ?, delivered_to = ?, delivered_at = ?,
          reported_by = ?, odontogram_data = ?, linked_chart_id = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
@@ -229,6 +233,8 @@ exports.updateCase = async (req, res, next) => {
         ortho_appliance_type ?? current.ortho_appliance_type,
         ortho_appliance_other ?? current.ortho_appliance_other,
         ortho_technologist ?? current.ortho_technologist,
+        ortho_units !== undefined ? (parseNum(ortho_units) || 1) : current.ortho_units,
+        ortho_unit_cost !== undefined ? parseNum(ortho_unit_cost) : current.ortho_unit_cost,
         ortho_cost !== undefined ? parseNum(ortho_cost) : current.ortho_cost,
         ortho_notes ?? current.ortho_notes,
         total_cost !== undefined ? parseNum(total_cost) : current.total_cost,

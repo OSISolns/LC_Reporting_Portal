@@ -1,0 +1,4 @@
+--- TURSO CLOUD DATABASE STATUS ---
+daily_report_metrics count: 3206
+daily_procedure_logs count: 1423
+providers count: 63
