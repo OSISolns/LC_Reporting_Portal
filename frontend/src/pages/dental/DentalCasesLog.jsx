@@ -448,11 +448,16 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
     const v = e.target.value;
     setForm(f => {
       let next = { ...f, [k]: v };
-      // Auto-calculate prosthetics_cost from unit pricing
+      // Auto-calculate prosthetics_cost from unit pricing.
+      // If "Cost / Add. Unit" is left blank, additional units are charged at the
+      // 1st-unit rate so that qty × unit-cost multiplies as expected. An explicit
+      // value (including 0) is always honoured for tiered pricing.
       if (['units_quantity', 'cost_per_first_unit', 'cost_per_additional_unit'].includes(k)) {
         const qty = Number(next.units_quantity) || 0;
         const first = Number(next.cost_per_first_unit) || 0;
-        const additional = Number(next.cost_per_additional_unit) || 0;
+        const addRaw = next.cost_per_additional_unit;
+        const hasAdditional = addRaw !== '' && addRaw !== null && addRaw !== undefined && !Number.isNaN(Number(addRaw));
+        const additional = hasAdditional ? Number(addRaw) : first;
         const pTotal = qty <= 1 ? first : first + (additional * (qty - 1));
         next.prosthetics_cost = pTotal > 0 ? pTotal.toFixed(2) : '';
       }
@@ -898,6 +903,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                         type="number" min="0" step="0.01"
                         value={form.cost_per_additional_unit}
                         onChange={set('cost_per_additional_unit')}
+                        placeholder="Same as 1st unit"
                         className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
                       />
                     </Field>
