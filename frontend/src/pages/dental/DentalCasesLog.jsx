@@ -1420,34 +1420,38 @@ const DentalCasesLog = () => {
       const sheet = workbook.addWorksheet('Prosthetics Cases Log');
       sheet.views = [{ showGridLines: true }];
 
-      // Column widths
-      sheet.getColumn(1).width = 18;  // Ref #
+      // Column widths (26 columns — must match the header row below)
+      sheet.getColumn(1).width = 18;  // Case Ref #
       sheet.getColumn(2).width = 16;  // Received Date
-      sheet.getColumn(3).width = 18;  // Target Delivery Date
+      sheet.getColumn(3).width = 18;  // Target Delivery
       sheet.getColumn(4).width = 24;  // Clinic of Origin
-      sheet.getColumn(5).width = 20;  // Work Command Origin
+      sheet.getColumn(5).width = 20;  // Work Origin
       sheet.getColumn(6).width = 24;  // Clinician Name
       sheet.getColumn(7).width = 16;  // Patient ID
-      sheet.getColumn(8).width = 26;  // Linked Clinical Chart
-      sheet.getColumn(9).width = 20;  // Work Done
-      sheet.getColumn(10).width = 24; // Specification
-      sheet.getColumn(11).width = 20; // Technologist
-      sheet.getColumn(12).width = 24; // Manufacturing Stage
-      sheet.getColumn(13).width = 22; // Odontogram Status
-      sheet.getColumn(14).width = 12; // Units
-      sheet.getColumn(15).width = 18; // Cost 1st Unit
-      sheet.getColumn(16).width = 18; // Cost Add. Unit
-      sheet.getColumn(17).width = 20; // Total Cost
-      sheet.getColumn(18).width = 16; // Delivery Status
-      sheet.getColumn(19).width = 24; // Delivered To
-      sheet.getColumn(20).width = 22; // Delivered Date
-      sheet.getColumn(21).width = 35; // Delivery Notes
-      sheet.getColumn(22).width = 20; // Reported By
+      sheet.getColumn(8).width = 22;  // Patient Name
+      sheet.getColumn(9).width = 26;  // Linked Clinical Chart
+      sheet.getColumn(10).width = 20; // Prosthetics Work
+      sheet.getColumn(11).width = 24; // Prosthetics Spec
+      sheet.getColumn(12).width = 20; // Prosthetics Tech
+      sheet.getColumn(13).width = 20; // Prosthetics Cost
+      sheet.getColumn(14).width = 22; // Ortho Appliance
+      sheet.getColumn(15).width = 24; // Ortho Spec
+      sheet.getColumn(16).width = 20; // Ortho Tech
+      sheet.getColumn(17).width = 20; // Ortho Cost
+      sheet.getColumn(18).width = 20; // Manufacturing Stage
+      sheet.getColumn(19).width = 22; // Odontogram Status
+      sheet.getColumn(20).width = 12; // Units Qty
+      sheet.getColumn(21).width = 22; // Combined Total Cost
+      sheet.getColumn(22).width = 16; // Delivery Status
+      sheet.getColumn(23).width = 24; // Delivered To
+      sheet.getColumn(24).width = 22; // Delivered Date & Time
+      sheet.getColumn(25).width = 35; // Delivery Notes
+      sheet.getColumn(26).width = 20; // Reported By
 
       // Title Banner Row 1
       const titleCell = sheet.getCell('A1');
       titleCell.value = 'LEGACY CLINICS & DIAGNOSTICS';
-      sheet.mergeCells('A1:V1');
+      sheet.mergeCells('A1:Z1');
       titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '312E81' } }; // Indigo-900
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1456,7 +1460,7 @@ const DentalCasesLog = () => {
       // Subtitle Banner Row 2
       const subCell = sheet.getCell('A2');
       subCell.value = 'PROSTHETICS CASES MANUFACTURING & DELIVERY REPORT';
-      sheet.mergeCells('A2:V2');
+      sheet.mergeCells('A2:Z2');
       subCell.font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FFFFFF' } };
       subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4338CA' } }; // Indigo-700
       subCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1467,7 +1471,7 @@ const DentalCasesLog = () => {
       const totalUnitsSum = filtered.reduce((acc, c) => acc + (Number(c.units_quantity) || 0), 0);
       const totalRevenueSum = filtered.reduce((acc, c) => acc + (Number(c.total_cost) || 0), 0);
       metaCell.value = `Export Date: ${new Date().toLocaleString()} | Period: ${periodLabel} | Total Cases: ${filtered.length} | Total Units: ${totalUnitsSum} | Total Value: RWF ${totalRevenueSum.toLocaleString()}`;
-      sheet.mergeCells('A3:V3');
+      sheet.mergeCells('A3:Z3');
       metaCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '475569' } };
       metaCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet.getRow(3).height = 20;
@@ -1556,7 +1560,7 @@ const DentalCasesLog = () => {
           }
         }
 
-        const stageCell = r.getCell(12);
+        const stageCell = r.getCell(18);
         if (c.status === 'Delivered') {
           stageCell.font = { color: { argb: '334155' }, bold: true };
         } else if (c.status === 'Completed') {
@@ -1567,7 +1571,7 @@ const DentalCasesLog = () => {
           stageCell.font = { color: { argb: '1D4ED8' }, bold: true };
         }
 
-        const odontogramCell = r.getCell(13);
+        const odontogramCell = r.getCell(19);
         odontogramCell.font = {
           color: { argb: odontogramSummary.count === 0 ? '94A3B8' : (odontogramSummary.allComplete ? '047857' : 'B45309') },
           bold: odontogramSummary.count > 0,
@@ -1580,12 +1584,15 @@ const DentalCasesLog = () => {
       const totalRow = sheet.getRow(currentRow);
       totalRow.height = 26;
       totalRow.getCell(1).value = 'TOTAL SUMMARY';
-      sheet.mergeCells(`A${currentRow}:M${currentRow}`);
+      sheet.mergeCells(`A${currentRow}:L${currentRow}`); // label spans up to Prosthetics Tech
 
-      totalRow.getCell(14).value = { formula: `=SUM(N6:N${currentRow - 1})` };
-      totalRow.getCell(17).value = { formula: `=SUM(Q6:Q${currentRow - 1})` };
+      const lastDataRow = currentRow - 1;
+      totalRow.getCell(13).value = { formula: `=SUM(M6:M${lastDataRow})` }; // Prosthetics Cost
+      totalRow.getCell(17).value = { formula: `=SUM(Q6:Q${lastDataRow})` }; // Ortho Cost
+      totalRow.getCell(20).value = { formula: `=SUM(T6:T${lastDataRow})` }; // Units Qty
+      totalRow.getCell(21).value = { formula: `=SUM(U6:U${lastDataRow})` }; // Combined Total Cost
 
-      for (let col = 1; col <= 22; col++) {
+      for (let col = 1; col <= 26; col++) {
         const cell = totalRow.getCell(col);
         cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '312E81' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EEF2FF' } }; // Indigo-50
@@ -1595,7 +1602,7 @@ const DentalCasesLog = () => {
         };
         if (NUMERIC_COLS.includes(col)) {
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          if (col >= 15) cell.numFmt = '#,##0';
+          if (col !== 20) cell.numFmt = '#,##0'; // Units is a plain count
         }
       }
 
