@@ -905,11 +905,11 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                   <div className="mt-3">
                     <Field label="Prosthetics Subtotal (RWF)">
                       <input
+                        readOnly
                         type="number" min="0" step="0.01"
                         value={form.prosthetics_cost}
-                        onChange={set('prosthetics_cost')}
-                        className="w-full px-3 py-2 text-sm font-bold rounded-xl border border-rose-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-300 transition"
-                        placeholder="Auto-calculated or enter manually"
+                        className="w-full px-3 py-2 text-sm font-bold rounded-xl border border-rose-200 bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 transition cursor-default"
+                        placeholder="0.00"
                       />
                     </Field>
                   </div>
