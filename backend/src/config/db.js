@@ -2742,6 +2742,33 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ dental_cases work_done CHECK migration error:', err.message);
     }
 
+    // ─── Dental Cases — New Column Migrations ────────────────────────────────
+    // Safely adds all columns introduced after the initial table creation.
+    // Each ALTER TABLE is silently ignored if the column already exists.
+    try {
+      const dentalNewCols = [
+        'patient_name TEXT',
+        'prosthetics_enabled INTEGER DEFAULT 1',
+        'prosthetics_cost REAL',
+        'ortho_enabled INTEGER DEFAULT 0',
+        'ortho_appliance_type TEXT',
+        'ortho_appliance_other TEXT',
+        'ortho_technologist TEXT',
+        'ortho_cost REAL',
+        'ortho_notes TEXT',
+        'ortho_units INTEGER DEFAULT 1',
+        'ortho_unit_cost REAL',
+      ];
+      for (const col of dentalNewCols) {
+        try {
+          await client.execute(`ALTER TABLE dental_cases ADD COLUMN ${col}`);
+        } catch (e) { /* column already exists — safe to ignore */ }
+      }
+      console.log('✅ dental_cases: ensured all prosthetics & orthodontic columns.');
+    } catch (err) {
+      console.error('❌ dental_cases new-column migration error:', err.message);
+    }
+
     // ─── Dental Worklist Table ────────────────────────────────────────────────
     try {
       await client.execute(`
