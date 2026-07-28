@@ -327,7 +327,9 @@ export default function CentralStoreHub() {
 
   const isDeptActive = (dept) => {
     if (dept === 'DENTAL') {
-      return activeDept === 'DENTAL' || activeDept === 'DENTAL LAB';
+      // The DENTAL pill stays lit for the umbrella view and both of its
+      // sub-scopes (Dental Clinic / Dental Lab).
+      return activeDept === 'DENTAL' || activeDept === 'DENTAL CLINIC' || activeDept === 'DENTAL LAB';
     }
     return activeDept === dept;
   };
@@ -477,15 +479,19 @@ export default function CentralStoreHub() {
   // one row per department+item+batch, not per batch.
   const filteredDistributedStock = useMemo(() => {
     return distributedStock.filter(item => {
+      const distDept = item.department ? item.department.toUpperCase() : '';
       let matchDept = false;
       if (activeDept === 'All Departments') {
         matchDept = true;
       } else if (activeDept === 'DENTAL') {
-        matchDept = item.department === 'DENTAL CLINIC' || item.department === 'DENTAL' || item.department?.toUpperCase().includes('CLINIC');
+        // Umbrella dental scope: clinic + lab together.
+        matchDept = distDept.includes('DENTAL') || distDept.includes('CLINIC');
+      } else if (activeDept === 'DENTAL CLINIC') {
+        matchDept = distDept === 'DENTAL CLINIC' || distDept === 'DENTAL' || (distDept.includes('CLINIC') && distDept !== 'DENTAL LAB');
       } else if (activeDept === 'DENTAL LAB') {
-        matchDept = item.department === 'DENTAL LAB';
+        matchDept = distDept === 'DENTAL LAB';
       } else {
-        matchDept = item.department === activeDept;
+        matchDept = distDept === activeDept.toUpperCase();
       }
       const matchCategory = stockCategoryFilter === 'All' || item.category === stockCategoryFilter;
 
@@ -1111,16 +1117,16 @@ export default function CentralStoreHub() {
                           </button>
                         ))}
                       </div>
-                      {(activeDept === 'DENTAL' || activeDept === 'DENTAL LAB') && (
+                      {(activeDept === 'DENTAL' || activeDept === 'DENTAL CLINIC' || activeDept === 'DENTAL LAB') && (
                         <div className="flex gap-1 bg-slate-100 border border-slate-200/50 p-1 rounded-lg animate-fadeIn text-[9px]">
                           <button
                             onClick={() => {
                               React.startTransition(() => {
-                                setActiveDept('DENTAL');
+                                setActiveDept('DENTAL CLINIC');
                               });
                             }}
                             className={`px-2.5 py-1 font-extrabold uppercase rounded-md transition-all cursor-pointer ${
-                              activeDept === 'DENTAL'
+                              activeDept === 'DENTAL CLINIC'
                                 ? 'bg-white text-sky-700 shadow-2xs border border-sky-100'
                                 : 'text-slate-400 hover:text-slate-600'
                             }`}
@@ -1317,16 +1323,16 @@ export default function CentralStoreHub() {
                           </button>
                         ))}
                       </div>
-                      {(activeDept === 'DENTAL' || activeDept === 'DENTAL LAB') && (
+                      {(activeDept === 'DENTAL' || activeDept === 'DENTAL CLINIC' || activeDept === 'DENTAL LAB') && (
                         <div className="flex gap-1 bg-slate-100 border border-slate-200/50 p-1 rounded-lg animate-fadeIn text-[9px]">
                           <button
                             onClick={() => {
                               React.startTransition(() => {
-                                setActiveDept('DENTAL');
+                                setActiveDept('DENTAL CLINIC');
                               });
                             }}
                             className={`px-2.5 py-1 font-extrabold uppercase rounded-md transition-all cursor-pointer ${
-                              activeDept === 'DENTAL'
+                              activeDept === 'DENTAL CLINIC'
                                 ? 'bg-white text-sky-700 shadow-2xs border border-sky-100'
                                 : 'text-slate-400 hover:text-slate-600'
                             }`}
