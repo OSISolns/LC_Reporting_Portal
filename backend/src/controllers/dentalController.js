@@ -100,6 +100,7 @@ exports.createCase = async (req, res, next) => {
       ortho_unit_cost,
       ortho_cost,
       ortho_notes,
+      ortho_arch,
       // Combined
       total_cost,
       status,
@@ -145,10 +146,10 @@ exports.createCase = async (req, res, next) => {
          prosthetics_enabled, work_done, work_done_other, technologist,
          units_quantity, cost_per_first_unit, cost_per_additional_unit, prosthetics_cost,
          ortho_enabled, ortho_appliance_type, ortho_appliance_other,
-         ortho_technologist, ortho_units, ortho_unit_cost, ortho_cost, ortho_notes,
+         ortho_technologist, ortho_units, ortho_unit_cost, ortho_cost, ortho_notes, ortho_arch,
          total_cost, status, delivery_notes, delivered_to, delivered_at,
          reported_by, reported_by_user_id, odontogram_data, linked_chart_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         case_ref, received_date, required_date, work_command_origin || null,
         clinic_of_origin || null, clinician_name || null, patient_id || null, patient_name || null,
@@ -157,7 +158,7 @@ exports.createCase = async (req, res, next) => {
         parsedQty, parsedFirst, parsedAdd, parsedProstCost,
         ortho_enabled ? 1 : 0,
         ortho_appliance_type || null, ortho_appliance_other || null,
-        ortho_technologist || null, parsedOrthoUnits, parsedOrthoUnitCost, parsedOrthoCost, ortho_notes || null,
+        ortho_technologist || null, parsedOrthoUnits, parsedOrthoUnitCost, parsedOrthoCost, ortho_notes || null, ortho_arch || null,
         parsedTotal,
         status || 'Received', delivery_notes || null, delivered_to || null, delivered_at || null,
         reported_by || null, reported_by_user_id, serializedOdontogram, parseNum(linked_chart_id)
@@ -185,7 +186,7 @@ exports.updateCase = async (req, res, next) => {
       prosthetics_enabled, work_done, work_done_other, technologist,
       units_quantity, cost_per_first_unit, cost_per_additional_unit, prosthetics_cost,
       ortho_enabled, ortho_appliance_type, ortho_appliance_other,
-      ortho_technologist, ortho_units, ortho_unit_cost, ortho_cost, ortho_notes,
+      ortho_technologist, ortho_units, ortho_unit_cost, ortho_cost, ortho_notes, ortho_arch,
       total_cost, status, delivery_notes, delivered_to, delivered_at,
       reported_by, odontogram_data, linked_chart_id,
     } = req.body;
@@ -209,7 +210,7 @@ exports.updateCase = async (req, res, next) => {
          prosthetics_enabled = ?, work_done = ?, work_done_other = ?, technologist = ?,
          units_quantity = ?, cost_per_first_unit = ?, cost_per_additional_unit = ?, prosthetics_cost = ?,
          ortho_enabled = ?, ortho_appliance_type = ?, ortho_appliance_other = ?,
-         ortho_technologist = ?, ortho_units = ?, ortho_unit_cost = ?, ortho_cost = ?, ortho_notes = ?,
+         ortho_technologist = ?, ortho_units = ?, ortho_unit_cost = ?, ortho_cost = ?, ortho_notes = ?, ortho_arch = ?,
          total_cost = ?, status = ?, delivery_notes = ?, delivered_to = ?, delivered_at = ?,
          reported_by = ?, odontogram_data = ?, linked_chart_id = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
@@ -237,6 +238,7 @@ exports.updateCase = async (req, res, next) => {
         ortho_unit_cost !== undefined ? parseNum(ortho_unit_cost) : current.ortho_unit_cost,
         ortho_cost !== undefined ? parseNum(ortho_cost) : current.ortho_cost,
         ortho_notes ?? current.ortho_notes,
+        ortho_arch !== undefined ? (ortho_arch || null) : current.ortho_arch,
         total_cost !== undefined ? parseNum(total_cost) : current.total_cost,
         updatedStatus,
         delivery_notes ?? current.delivery_notes,

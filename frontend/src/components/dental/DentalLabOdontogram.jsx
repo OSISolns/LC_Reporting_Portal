@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, CheckCircle2, Clock, AlertCircle, Wrench,
-  ChevronDown, Layers, ShieldCheck, Check, Trash2, Eye,
-  PlusCircle, RefreshCw, Loader2
+  ChevronDown, ChevronUp, Layers, ShieldCheck, Check, Trash2, Eye,
+  PlusCircle, RefreshCw, Loader2, Smile
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { suggestProstheticReplacement } from '../../api/dental';
@@ -63,6 +63,126 @@ export const CONVENTIONAL_SHADES = [
   // Gingival & Special Characterization
   'Gingival Light Pink', 'Gingival Dark Pink', 'Translucent Clear', 'Opaque White'
 ];
+
+// Orthodontic appliances are fabricated for a whole arch rather than a single
+// FDI tooth — so ortho cases pick a treatment arch instead of (or alongside)
+// charting individual units.
+export const ORTHO_ARCH_OPTIONS = [
+  {
+    id: 'upper',
+    label: 'Upper Arch',
+    sub: 'Maxillary',
+    icon: ChevronUp,
+    accent: 'blue',
+    ring: 'ring-blue-500/25 border-blue-500',
+    activeText: 'text-blue-700',
+    grad: 'from-blue-500 to-sky-500',
+    chip: 'bg-blue-50 text-blue-700 border-blue-200',
+  },
+  {
+    id: 'lower',
+    label: 'Lower Arch',
+    sub: 'Mandibular',
+    icon: ChevronDown,
+    accent: 'emerald',
+    ring: 'ring-emerald-500/25 border-emerald-500',
+    activeText: 'text-emerald-700',
+    grad: 'from-emerald-500 to-teal-500',
+    chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  },
+  {
+    id: 'both',
+    label: 'Both Arches',
+    sub: 'Full Mouth',
+    icon: Smile,
+    accent: 'indigo',
+    ring: 'ring-indigo-500/25 border-indigo-500',
+    activeText: 'text-indigo-700',
+    grad: 'from-indigo-500 via-violet-500 to-purple-500',
+    chip: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  },
+];
+
+// Stylish segmented selector for the appliance's treatment arch. Rendered only
+// for cases flagged as Orthodontic Appliance. Module-level so its identity is
+// stable across re-renders.
+const OrthoArchSelector = ({ value, onChange, readOnly }) => {
+  const active = ORTHO_ARCH_OPTIONS.find(o => o.id === value) || null;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-violet-200/80 bg-gradient-to-br from-violet-50 via-fuchsia-50/50 to-white p-5 shadow-xs">
+      <div className="absolute -top-8 -right-8 w-40 h-40 bg-violet-300/20 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2.5">
+          <span className="p-2 rounded-xl bg-violet-100 text-violet-600">
+            <Smile size={18} />
+          </span>
+          <div>
+            <h4 className="text-sm font-extrabold text-slate-800 m-0 flex items-center gap-2">
+              Orthodontic Appliance — Treatment Arch
+            </h4>
+            <p className="text-[11px] text-slate-500 m-0 font-medium">
+              {active
+                ? <>Appliance targets the <span className={`font-black ${active.activeText}`}>{active.label}</span> ({active.sub}).</>
+                : 'Select which arch this removable / functional appliance is fabricated for.'}
+            </p>
+          </div>
+        </div>
+
+        {active && (
+          <span className={`inline-flex items-center gap-1.5 self-start px-3 py-1.5 rounded-xl text-[11px] font-black border ${active.chip}`}>
+            <CheckCircle2 size={13} /> {active.label}
+          </span>
+        )}
+      </div>
+
+      <div className={`relative grid grid-cols-3 gap-2.5 ${readOnly ? 'opacity-90' : ''}`}>
+        {ORTHO_ARCH_OPTIONS.map((opt) => {
+          const Icon = opt.icon;
+          const isActive = value === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              disabled={readOnly}
+              onClick={() => !readOnly && onChange?.(isActive ? '' : opt.id)}
+              className={`relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 px-3 py-4 transition-all ${
+                readOnly ? 'cursor-default' : 'cursor-pointer'
+              } ${
+                isActive
+                  ? `bg-white ${opt.ring} ring-4 shadow-md scale-[1.02]`
+                  : 'bg-white/70 border-slate-200 hover:border-slate-300 hover:bg-white'
+              }`}
+            >
+              {isActive && (
+                <motion.span
+                  layoutId="ortho-arch-active"
+                  className={`absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider text-white bg-gradient-to-r ${opt.grad} shadow-sm`}
+                >
+                  Selected
+                </motion.span>
+              )}
+              <span
+                className={`w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br ${opt.grad} text-white shadow-sm ${
+                  isActive ? '' : 'opacity-70'
+                }`}
+              >
+                <Icon size={18} strokeWidth={2.6} />
+              </span>
+              <span className={`text-xs font-black ${isActive ? opt.activeText : 'text-slate-700'}`}>
+                {opt.label}
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                {opt.sub}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 // Module-level (not defined inside DentalLabOdontogram) so its identity stays
 // stable across re-renders — otherwise React would remount it, and any input
@@ -188,11 +308,19 @@ export default function DentalLabOdontogram({
   patientName = '',
   caseRef = '',
   caseContext = null,
+  orthoEnabled = false,
+  orthoArch = '',
+  onOrthoArchChange,
 }) {
   const [selectedTooth, setSelectedTooth] = useState('16');
   const [dentitionMode, setDentitionMode] = useState('adult'); // 'adult' | 'pediatric'
 
   const toothMap = odontogramData || {};
+
+  // When this case carries an orthodontic appliance, the chosen treatment arch
+  // lights up the corresponding row(s) so the chart reads as arch-scoped work.
+  const upperArchActive = orthoEnabled && (orthoArch === 'upper' || orthoArch === 'both');
+  const lowerArchActive = orthoEnabled && (orthoArch === 'lower' || orthoArch === 'both');
 
   const upperTeeth = dentitionMode === 'adult' ? PERMANENT_UPPER : DECIDUOUS_UPPER;
   const lowerTeeth = dentitionMode === 'adult' ? PERMANENT_LOWER : DECIDUOUS_LOWER;
@@ -401,6 +529,15 @@ export default function DentalLabOdontogram({
         </div>
       </div>
 
+      {/* ORTHODONTIC APPLIANCE — TREATMENT ARCH SELECTOR (ortho cases only) */}
+      {orthoEnabled && (
+        <OrthoArchSelector
+          value={orthoArch}
+          onChange={onOrthoArchChange}
+          readOnly={readOnly || !onOrthoArchChange}
+        />
+      )}
+
       {/* GRAPHICAL FDI ODONTOGRAM CHART (LIGHT HIGH-CONTRAST COLORFUL THEME) */}
       <div className="bg-gradient-to-b from-slate-50/90 via-indigo-50/30 to-purple-50/20 rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-6 relative overflow-hidden">
         <div className="absolute -top-10 -right-10 w-72 h-72 bg-indigo-200/20 rounded-full blur-3xl" />
@@ -411,10 +548,17 @@ export default function DentalLabOdontogram({
             <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
             <span>MAXILLARY (UPPER ARCH)</span>
           </span>
+          {upperArchActive && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r from-blue-500 to-sky-500 shadow-sm">
+              <Smile size={12} /> Appliance Arch
+            </span>
+          )}
         </div>
 
         {/* UPPER TEETH ROW */}
-        <div className="overflow-x-auto pb-2 scrollbar-thin">
+        <div className={`overflow-x-auto pb-2 scrollbar-thin rounded-2xl transition-all ${
+          upperArchActive ? 'ring-2 ring-blue-400/60 bg-blue-50/40 py-2' : ''
+        }`}>
           <div className="flex items-center justify-center gap-1.5 min-w-[650px] mx-auto">
             {upperTeeth.map((num) => {
               const strNum = num.toString();
@@ -520,7 +664,9 @@ export default function DentalLabOdontogram({
         </div>
 
         {/* LOWER TEETH ROW */}
-        <div className="overflow-x-auto pt-1 scrollbar-thin">
+        <div className={`overflow-x-auto pt-1 scrollbar-thin rounded-2xl transition-all ${
+          lowerArchActive ? 'ring-2 ring-emerald-400/60 bg-emerald-50/40 py-2' : ''
+        }`}>
           <div className="flex items-center justify-center gap-1.5 min-w-[650px] mx-auto">
             {lowerTeeth.map((num) => {
               const strNum = num.toString();
@@ -620,6 +766,11 @@ export default function DentalLabOdontogram({
           <span className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <span>MANDIBULAR (LOWER ARCH)</span>
+            {lowerArchActive && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-sm">
+                <Smile size={12} /> Appliance Arch
+              </span>
+            )}
           </span>
           <span className="text-[10px] text-slate-500 font-extrabold uppercase">
             {readOnly ? 'Click any tooth to view its work order' : 'Click to edit • Double-click to declare missing • Right-click to undo'}

@@ -2758,6 +2758,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         'ortho_notes TEXT',
         'ortho_units INTEGER DEFAULT 1',
         'ortho_unit_cost REAL',
+        'ortho_arch TEXT',
       ];
       for (const col of dentalNewCols) {
         try {

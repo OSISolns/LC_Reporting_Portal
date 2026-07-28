@@ -124,6 +124,24 @@ const ProstheticsOdontogramWorkspace = () => {
     }, 700);
   };
 
+  // Persist the orthodontic appliance's treatment arch (upper / lower / both).
+  // Saved immediately since it's a single discrete choice, not per-keystroke.
+  const handleOrthoArchChange = async (nextArch) => {
+    if (!selectedCase) return;
+    const prevArch = selectedCase.ortho_arch || '';
+    // Optimistic update so the selector reflects the click instantly.
+    setCases(prev => prev.map(c => c.id === selectedCase.id ? { ...c, ortho_arch: nextArch } : c));
+    setSaveStatus('saving');
+    try {
+      await updateDentalCase(selectedCase.id, { ortho_arch: nextArch });
+      setSaveStatus('saved');
+    } catch {
+      setSaveStatus('error');
+      setCases(prev => prev.map(c => c.id === selectedCase.id ? { ...c, ortho_arch: prevArch } : c));
+      toast.error('Failed to save the appliance treatment arch.');
+    }
+  };
+
   useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
 
   const SaveIndicator = () => {
@@ -313,6 +331,9 @@ const ProstheticsOdontogramWorkspace = () => {
           readOnly={!canEdit}
           patientName={patient?.full_name || selectedCase.clinician_name || ''}
           caseRef={selectedCase.case_ref}
+          orthoEnabled={!!selectedCase.ortho_enabled}
+          orthoArch={selectedCase.ortho_arch || ''}
+          onOrthoArchChange={canEdit ? handleOrthoArchChange : undefined}
           caseContext={{
             patientAge: patient?.age,
             patientGender: patient?.gender,

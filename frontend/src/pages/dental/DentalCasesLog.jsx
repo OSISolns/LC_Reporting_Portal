@@ -19,6 +19,7 @@ import {
 } from '../../api/dental';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
 import { getPatientByPid } from '../../api/patients';
+import { ORTHO_ARCH_OPTIONS } from '../../components/dental/DentalLabOdontogram';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const WORK_TYPES = ['Acrylic Work', 'Metal & Ceramic', 'CAD-CAM', 'Trays', 'Other'];
@@ -119,6 +120,7 @@ const EMPTY_FORM = {
   // Orthodontics
   ortho_appliance_type: '', ortho_appliance_other: '',
   ortho_technologist: '', ortho_units: 1, ortho_unit_cost: '', ortho_cost: '', ortho_notes: '',
+  ortho_arch: '',
   // Combined
   total_cost: '',
   status: 'Received', reported_by: '', linked_chart_id: '',
@@ -314,6 +316,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         ortho_unit_cost: editCase.ortho_unit_cost ?? '',
         ortho_cost: editCase.ortho_cost ?? '',
         ortho_notes: editCase.ortho_notes || '',
+        ortho_arch: editCase.ortho_arch || '',
         prosthetics_cost: editCase.prosthetics_cost ?? editCase.total_cost ?? '',
       });
       setDraftStatus(null);
@@ -959,6 +962,42 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                     />
                   </Field>
                 )}
+
+                {/* ── Treatment Arch (Odontogram) ── */}
+                <Field label="Treatment Arch (Odontogram)">
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {ORTHO_ARCH_OPTIONS.map((opt) => {
+                      const Icon = opt.icon;
+                      const isActive = form.ortho_arch === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setForm(f => {
+                            const next = { ...f, ortho_arch: f.ortho_arch === opt.id ? '' : opt.id };
+                            scheduleDraftSave(next, odontogramMap);
+                            return next;
+                          })}
+                          className={`relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 px-2 py-3 transition-all cursor-pointer ${
+                            isActive
+                              ? `bg-white ${opt.ring} ring-4 shadow-md scale-[1.02]`
+                              : 'bg-white/70 border-slate-200 hover:border-slate-300 hover:bg-white'
+                          }`}
+                        >
+                          <span className={`w-8 h-8 rounded-xl flex items-center justify-center bg-gradient-to-br ${opt.grad} text-white shadow-sm ${isActive ? '' : 'opacity-70'}`}>
+                            <Icon size={16} strokeWidth={2.6} />
+                          </span>
+                          <span className={`text-[11px] font-black ${isActive ? opt.activeText : 'text-slate-700'}`}>
+                            {opt.label}
+                          </span>
+                          <span className="text-[8px] font-bold uppercase tracking-wider text-slate-400">
+                            {opt.sub}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Technologist / Operator">
