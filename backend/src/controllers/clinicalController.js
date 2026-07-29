@@ -2353,6 +2353,28 @@ exports.createRequisition = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Department and at least one item are required.' });
     }
 
+    // ── Lumina AI: block requisition if any item is still "In Use" (qty=0, no finished_at) ──
+    // Dental/Physio/Lab cannot request more stock for an item that is still open/in-use.
+    const requestedItemIds = items.map(i => parseInt(i.item_id, 10)).filter(Boolean);
+    if (requestedItemIds.length > 0) {
+      const placeholders = requestedItemIds.map((_, i) => `$${i + 2}`).join(', ');
+      const { rows: inUseRows } = await db.query(
+        `SELECT DISTINCT item_id, item_name FROM consumables_log
+          WHERE department_id = $1
+            AND quantity = 0
+            AND finished_at IS NULL
+            AND item_id IN (${placeholders})`,
+        [department_id, ...requestedItemIds]
+      );
+      if (inUseRows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          blocked: inUseRows.map(r => r.item_name),
+          message: 'Cannot requisition — these items are still marked In Use. Mark them as Finished before requesting more stock.',
+        });
+      }
+    }
+
     const createdBy = req.user ? req.user.id : null;
     const createdByName = req.user ? (req.user.full_name || req.user.username || 'Staff User') : 'Staff User';
 
@@ -2742,10 +2764,12 @@ const NURSING_WARDS = {
 
 exports.logConsumable = async (req, res) => {
   try {
-    const { department_id, item_id, quantity, notes, ward, session } = req.body;
+    const { department_id, item_id, quantity, notes, ward, session, case_id, case_ref, case_type } = req.body;
     const qty = parseInt(quantity, 10);
-    if (!department_id || !item_id || !qty || qty <= 0) {
-      return res.status(400).json({ success: false, message: 'Department, item and a positive quantity are required.' });
+    // qty=0 is permitted for Dental/Physio/Lab departments as an "In Use" usage marker
+    // (no stock deduction). Full qty > 0 check is enforced after we know the department.
+    if (!department_id || !item_id || isNaN(qty) || qty < 0) {
+      return res.status(400).json({ success: false, message: 'Department, item and a valid quantity are required.' });
     }
 
     // Role-based department restriction check for non-admins
@@ -2763,6 +2787,13 @@ exports.logConsumable = async (req, res) => {
 
     const isCentralStore = Number(department_id) === 130 || (deptRows[0] && (deptRows[0].name.toUpperCase().includes('CENTRAL STORE') || deptRows[0].name.toUpperCase().includes('GENERAL STORE')));
     const isNursing = Number(department_id) === 121 || (deptRows[0] && deptRows[0].name.toUpperCase() === 'NURSING');
+    // Dental (Clinic & Lab), Physio, and Lab may log qty=0 as an "In Use" status marker.
+    const isSpecialDept = ['DENTAL', 'PHYSIO', 'LAB', 'LABORATORY'].some(k =>
+      (deptRows[0]?.name || '').toUpperCase().includes(k)
+    );
+    if (qty === 0 && !isSpecialDept) {
+      return res.status(400).json({ success: false, message: 'Quantity must be greater than 0.' });
+    }
 
     // Nursing consumption must be attributed to a ward (Station 1 / Minor Surgery).
     const wardKey = ward ? String(ward).toUpperCase().trim() : null;
@@ -2773,72 +2804,128 @@ exports.logConsumable = async (req, res) => {
     const logSession = session || sessionFromServerTime();
 
     let stockRows = [];
-    if (isCentralStore) {
-      // FIFO: pull from stock_batches directly for central store: earliest expiry date first; if none, sort by lot number
-      const { rows } = await db.query(`
-        SELECT sb.id AS dept_stock_id, sb.id AS batch_id, sb.quantity, sb.batch_number, sb.lot_number, sb.expiry_date
-          FROM stock_batches sb
-         WHERE sb.item_id = $1 AND sb.quantity > 0
-         ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, sb.lot_number ASC, sb.id ASC
-      `, [item_id]);
-      stockRows = rows;
-    } else {
-      // FIFO: pull this department's stock rows for the item: earliest expiry date first; if none, sort by lot number
-      const { rows } = await db.query(`
-        SELECT ds.id AS dept_stock_id, ds.batch_id, ds.quantity, sb.batch_number, sb.lot_number, sb.expiry_date
-          FROM department_stock ds
-          LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
-         WHERE ds.department_id = $1 AND ds.item_id = $2 AND ds.quantity > 0
-         ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, sb.lot_number ASC, ds.id ASC
-      `, [department_id, item_id]);
-      stockRows = rows;
-    }
-
-    const available = stockRows.reduce((s, r) => s + Number(r.quantity || 0), 0);
-    if (available < qty) {
-      return res.status(400).json({
-        success: false,
-        message: `Insufficient stock for ${itemRows[0].name} in ${deptRows[0].name}. Available: ${available}, requested: ${qty}.`,
-      });
-    }
-
-    // Deduct across batches (FEFO)
-    let remaining = qty;
+    let available = 0;
     let primaryBatchId = null;
     let primaryBatchNumber = null;
-    for (const row of stockRows) {
-      if (remaining <= 0) break;
-      const take = Math.min(remaining, Number(row.quantity));
+
+    if (qty > 0) {
+      // Only run stock check and FEFO deduction for non-zero quantities
       if (isCentralStore) {
-        await db.query('UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2', [take, row.dept_stock_id]);
+        // FIFO: pull from stock_batches directly for central store: earliest expiry date first; if none, sort by lot number
+        const { rows } = await db.query(`
+          SELECT sb.id AS dept_stock_id, sb.id AS batch_id, sb.quantity, sb.batch_number, sb.lot_number, sb.expiry_date
+            FROM stock_batches sb
+           WHERE sb.item_id = $1 AND sb.quantity > 0
+           ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, sb.lot_number ASC, sb.id ASC
+        `, [item_id]);
+        stockRows = rows;
       } else {
-        await db.query('UPDATE department_stock SET quantity = quantity - $1 WHERE id = $2', [take, row.dept_stock_id]);
+        // FIFO: pull this department's stock rows for the item: earliest expiry date first; if none, sort by lot number
+        const { rows } = await db.query(`
+          SELECT ds.id AS dept_stock_id, ds.batch_id, ds.quantity, sb.batch_number, sb.lot_number, sb.expiry_date
+            FROM department_stock ds
+            LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
+           WHERE ds.department_id = $1 AND ds.item_id = $2 AND ds.quantity > 0
+           ORDER BY (sb.expiry_date IS NULL) ASC, sb.expiry_date ASC, sb.lot_number ASC, ds.id ASC
+        `, [department_id, item_id]);
+        stockRows = rows;
       }
-      if (primaryBatchId === null) { primaryBatchId = row.batch_id; primaryBatchNumber = row.batch_number; }
-      remaining -= take;
+
+      available = stockRows.reduce((s, r) => s + Number(r.quantity || 0), 0);
+      if (available < qty) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient stock for ${itemRows[0].name} in ${deptRows[0].name}. Available: ${available}, requested: ${qty}.`,
+        });
+      }
+
+      // Deduct across batches (FEFO)
+      let remaining = qty;
+      for (const row of stockRows) {
+        if (remaining <= 0) break;
+        const take = Math.min(remaining, Number(row.quantity));
+        if (isCentralStore) {
+          await db.query('UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2', [take, row.dept_stock_id]);
+        } else {
+          await db.query('UPDATE department_stock SET quantity = quantity - $1 WHERE id = $2', [take, row.dept_stock_id]);
+        }
+        if (primaryBatchId === null) { primaryBatchId = row.batch_id; primaryBatchNumber = row.batch_number; }
+        remaining -= take;
+      }
     }
 
     // Record the consumption log entry
     const loggerName = req.user?.full_name || req.user?.username || null;
+    const resolvedNotes = notes || (qty === 0 ? 'In Use' : null);
     const { rows: logRows } = await db.query(`
       INSERT INTO consumables_log
         (department_id, department_name, item_id, item_name, batch_id, batch_number,
-         quantity, unit, notes, logged_by, logged_by_name, ward, session)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         quantity, unit, notes, logged_by, logged_by_name, ward, session,
+         case_id, case_ref, case_type)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING id, consumed_at
     `, [
       department_id, deptRows[0].name, item_id, itemRows[0].name,
       primaryBatchId, primaryBatchNumber, qty, itemRows[0].unit_of_measure || null,
-      notes || null, req.user?.id || null, loggerName,
+      resolvedNotes, req.user?.id || null, loggerName,
       isNursing ? (wardKey === 'STN1' ? 'Station 1' : wardKey === 'MINOR' ? 'Minor Surgery' : ward) : null,
       isNursing ? logSession : null,
+      case_id ? parseInt(case_id, 10) : null,
+      case_ref || null,
+      case_type || null,
     ]);
 
+    // ── Lumina AI: when notes='Finished', stamp finished_at on the open "In Use" row ──
+    // This allows Lumina to compute avg_duration_hrs between In Use → Finished.
+    if (isSpecialDept && resolvedNotes === 'Finished' && qty > 0) {
+      try {
+        await db.query(
+          `UPDATE consumables_log
+           SET    finished_at = CURRENT_TIMESTAMP
+           WHERE  item_id = $1
+             AND  department_id = $2
+             AND  quantity = 0
+             AND  finished_at IS NULL
+             AND  id = (
+               SELECT id FROM consumables_log
+               WHERE item_id = $1 AND department_id = $2 AND quantity = 0 AND finished_at IS NULL
+               ORDER BY consumed_at DESC LIMIT 1
+             )`,
+          [item_id, department_id]
+        );
+      } catch (e) { console.warn('⚠️ Lumina: could not stamp finished_at:', e.message); }
+    }
+
+    // ── Lumina AI: upsert aggregated pattern row ──────────────────────────────
+    if (isSpecialDept) {
+      try {
+        const effectiveCaseType = case_type || resolvedNotes || 'General';
+        // Compute avg duration from existing closed In Use rows for this item+dept
+        const { rows: durRows } = await db.query(
+          `SELECT AVG((julianday(finished_at) - julianday(consumed_at)) * 24) AS avg_hrs
+           FROM consumables_log
+           WHERE item_id = $1 AND department_id = $2 AND quantity = 0 AND finished_at IS NOT NULL`,
+          [item_id, department_id]
+        );
+        const avgHrs = durRows[0]?.avg_hrs != null ? Number(durRows[0].avg_hrs) : null;
+
+        await db.query(
+          `INSERT INTO lumina_usage_patterns
+             (department_id, department_name, case_type, item_id, item_name, total_uses, total_qty, avg_qty_per_use, avg_duration_hrs, last_updated)
+           VALUES ($1, $2, $3, $4, $5, 1, $6, $6, $7, CURRENT_TIMESTAMP)
+           ON CONFLICT (department_id, case_type, item_id) DO UPDATE SET
+             total_uses       = lumina_usage_patterns.total_uses + 1,
+             total_qty        = lumina_usage_patterns.total_qty + $6,
+             avg_qty_per_use  = (lumina_usage_patterns.total_qty + $6) / (lumina_usage_patterns.total_uses + 1),
+             avg_duration_hrs = COALESCE($7, lumina_usage_patterns.avg_duration_hrs),
+             last_updated     = CURRENT_TIMESTAMP`,
+          [department_id, deptRows[0].name, effectiveCaseType, item_id, itemRows[0].name, qty, avgHrs]
+        );
+      } catch (e) { console.warn('⚠️ Lumina pattern upsert failed:', e.message); }
+    }
+
     // ─── Two-way link: reflect Nursing consumption into Daily Stock Checkup ──────
-    // Adds qty to the ward's consumed column (consumed_obs1=Station 1 /
-    // consumed_minor=Minor Surgery) for today's month/day/session, recomputing
-    // consumed + balance. Keeps nursing_monthly_stock in sync with department_stock.
-    if (isNursing && wardMap) {
+    if (isNursing && wardMap && qty > 0) {
       try {
         const now = new Date();
         const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -2910,7 +2997,9 @@ exports.logConsumable = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Logged consumption of ${qty} ${itemRows[0].unit_of_measure || 'unit(s)'} of ${itemRows[0].name}.`,
+      message: qty === 0
+        ? `${itemRows[0].name} marked as In Use.`
+        : `Logged consumption of ${qty} ${itemRows[0].unit_of_measure || 'unit(s)'} of ${itemRows[0].name}.`,
       data: { id: logRows[0].id, remaining_stock: available - qty },
     });
   } catch (error) {

@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   ClipboardList, Package, Boxes, TrendingDown, RefreshCw, Loader2,
   Plus, Search, Calendar, Building, AlertCircle, CheckCircle2, FileSpreadsheet,
-  ArrowRight, X, Send, Clock, ChevronDown, ChevronUp, Layers
+  ArrowRight, X, Send, Clock, ChevronDown, ChevronUp, Layers, Activity, Hash,
+  Sparkles, Link2, AlertTriangle, BarChart3
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
@@ -62,6 +63,13 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     return found ? { id: String(found.id), name: found.name } : null;
   }, [user, departments, defaultDeptName]);
 
+  // True for Dental (Clinic & Lab), Physio, and Lab — enables the 3-mode
+  // logging selector (Log Units / Mark In Use / Mark Finished).
+  const useDentalMode = useMemo(() => {
+    const deptName = (userDept?.name || defaultDeptName || '').toUpperCase();
+    return ['DENTAL', 'PHYSIO', 'LABORATORY', 'LAB'].some(k => deptName.includes(k));
+  }, [userDept, defaultDeptName]);
+
   const generalStoreDept = useMemo(() => {
     return departments.find(d => d.name.toUpperCase() === 'GENERAL STORE') || null;
   }, [departments]);
@@ -87,6 +95,31 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const currentSession = () => (new Date().getHours() < 15 ? 'AM' : 'PM');
   const [formWard, setFormWard] = useState('');
   const [formSession, setFormSession] = useState(currentSession());
+  // Dental/Physio/Lab: 'units' = normal qty entry, 'in_use' = mark open (no deduction), 'finished' = deduct all remaining
+  const [logMode, setLogMode] = useState('units');
+
+  // ── Lumina AI: Case / Work Order linking (Dental/Physio/Lab only) ──────────────
+  const [openCases, setOpenCases] = useState([]);          // dental lab + clinic open cases
+  const [caseSearch, setCaseSearch] = useState('');         // search filter on the picker
+  const [caseDropOpen, setCaseDropOpen] = useState(false);  // dropdown visibility
+  const [selectedCase, setSelectedCase] = useState(null);   // { id, case_ref, label, case_type }
+  const [loadingCases, setLoadingCases] = useState(false);
+
+  // ── Requisition "In Use" block state ───────────────────────────────────────
+  const [reqBlockedItems, setReqBlockedItems] = useState([]);
+
+  // ── Lumina AI Report panel ────────────────────────────────────────────
+  const [luminaOpen, setLuminaOpen] = useState(false);
+  const [luminaFrom, setLuminaFrom] = useState(() => new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0,10));
+  const [luminaTo,   setLuminaTo]   = useState(() => new Date().toISOString().slice(0,10));
+  const [luminaReport, setLuminaReport] = useState(null);
+  const [luminaLoading, setLuminaLoading] = useState(false);
+
+  const isHodOrStock = useMemo(() => {
+    const r = String(user?.role || '').toLowerCase();
+    return ['admin','dental_hod','dental_lab_manager','stock_manager','procurement','deputy_coo','coo'].some(k => r.includes(k));
+  }, [user]);
+
 
   // Filters
   const [filterDept, setFilterDept] = useState(userDept ? userDept.id : '');
@@ -125,6 +158,58 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       setFilterDept(userDept.id);
     }
   }, [userDept?.id, userDept?.name]);
+
+  // Fetch open dental cases whenever the dental mode is active
+  useEffect(() => {
+    if (!useDentalMode) return;
+    const deptName = (userDept?.name || defaultDeptName || '').toUpperCase();
+    const isLabUser = deptName.includes('DENTAL LAB');
+    setLoadingCases(true);
+    const requests = [
+      isLabUser
+        ? api.get('/dental/cases', { params: { limit: 100 } }).catch(() => null)
+        : null,
+      api.get('/dental/clinic-cases', { params: { limit: 100 } }).catch(() => null),
+    ];
+    Promise.all(requests).then(([labRes, clinicRes]) => {
+      const labCases = (labRes?.data?.data || []).map(c => ({
+        id: c.id,
+        case_ref: c.case_ref,
+        label: `${c.case_ref} — ${c.work_done || 'Lab'}${c.patient_name ? ' • ' + c.patient_name : ''}`,
+        case_type: c.work_done || 'Lab',
+        status: c.status,
+      })).filter(c => c.status !== 'Delivered');
+      const clinicCases = (clinicRes?.data?.data || []).map(c => ({
+        id: c.id,
+        case_ref: c.id ? `CLINIC-${c.id}` : '',
+        label: `CLINIC-${c.id} — ${c.treatment_summary || 'Clinic'}${c.patient_name ? ' • ' + c.patient_name : ''}`,
+        case_type: 'Clinic',
+        status: c.status,
+      })).filter(c => c.status !== 'Completed');
+      setOpenCases([...labCases, ...clinicCases]);
+    }).finally(() => setLoadingCases(false));
+  }, [useDentalMode, userDept?.name, defaultDeptName]);
+
+  const filteredCases = useMemo(() => {
+    if (!caseSearch.trim()) return openCases;
+    const q = caseSearch.toLowerCase();
+    return openCases.filter(c => c.label.toLowerCase().includes(q));
+  }, [openCases, caseSearch]);
+
+  const generateLuminaReport = async () => {
+    setLuminaLoading(true);
+    try {
+      const deptId = userDept?.id || null;
+      const res = await api.post('/ai/dental/consumables-report', {
+        department_id: deptId ? parseInt(deptId, 10) : undefined,
+        from_date: luminaFrom,
+        to_date:   luminaTo,
+      });
+      if (res.data?.success) setLuminaReport(res.data.data);
+    } catch (err) {
+      toast.error('Lumina AI report generation failed.');
+    } finally { setLuminaLoading(false); }
+  };
 
   const loadData = async (silent = false) => {
     const isSilent = silent || initialLoaded;
@@ -186,26 +271,43 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     const list = [];
     const seenItemIds = new Set();
 
+    // Helper to determine if an item is strictly a Dental Lab material
+    const checkIsExplicitLab = (item) => {
+      const dept = (item.department || '').toUpperCase();
+      const storage = (item.storage || '').toUpperCase();
+      const cat = (item.category || '').toUpperCase();
+      const name = (item.name || '').toUpperCase();
+
+      if (dept.includes('LAB') || storage.includes('LAB') || cat.includes('LAB')) {
+        return true;
+      }
+
+      const labKeywords = [
+        'ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'CAD/CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY',
+        'PROSTHET', 'PROSTHETIC', 'DENTURE', 'ZIRCONIA', 'CERAMIC', 'INVESTMENT', 'MONOMER', 'POLYMER',
+        'FLASK', 'DIE STONE', 'DENTAL STONE', 'CASTING', 'SOLDER', 'SOLDERING', 'DUPLICATING', 'ARTICULATOR',
+        'MODELLING', 'ACRYLIC TEETH', 'TEETH SET', 'BLANK', 'BLOCK', 'LAB BUR', 'LABORATORY', 'PONTIC',
+        'FURNACE', 'SEPARATING', 'SEPARATOR', 'SPLINT RESIN', 'EXPANSION SCREW'
+      ];
+
+      return labKeywords.some(k => name.includes(k));
+    };
+
     // 1. Process master items from Stock Manager's Catalog
     if (masterItems && masterItems.length > 0) {
       for (const item of masterItems) {
         const itemDeptName = (item.department || '').toUpperCase();
-        const itemStorage = (item.storage || '').toUpperCase();
-        const itemNameUpper = (item.name || '').toUpperCase();
+        const isLabItem = checkIsExplicitLab(item);
 
         let matchesDept = false;
         if (isGS) {
           matchesDept = true;
         } else if (activeDeptName === 'DENTAL CLINIC') {
-          // Matches DENTAL department items except those explicitly tagged for DENTAL LAB
-          const isExplicitLab = itemStorage.includes('LAB') ||
-            ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET'].some(k => itemNameUpper.includes(k));
-          matchesDept = (itemDeptName.includes('DENTAL') || itemDeptName.includes('CLINIC')) && !isExplicitLab;
+          // Strictly exclude Dental Lab items from Dental Clinic
+          matchesDept = (itemDeptName.includes('DENTAL') || itemDeptName.includes('CLINIC')) && !isLabItem;
         } else if (activeDeptName === 'DENTAL LAB') {
           // Matches DENTAL department items specifically for DENTAL LAB
-          const isLabItem = itemStorage.includes('LAB') ||
-            ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET', 'DENTURE', 'CROWN'].some(k => itemNameUpper.includes(k));
-          matchesDept = itemDeptName.includes('DENTAL LAB') || (itemDeptName.includes('DENTAL') && isLabItem);
+          matchesDept = itemDeptName.includes('DENTAL LAB') || isLabItem;
         } else if (activeDeptName === 'DENTAL') {
           matchesDept = itemDeptName.includes('DENTAL');
         } else if (activeDeptName) {
@@ -214,7 +316,13 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
         // Also check if item exists in local department_stock
         const localQty = localDeptStockMap.get(item.id) || 0;
-        if (localQty > 0) matchesDept = true;
+        if (localQty > 0) {
+          if (activeDeptName === 'DENTAL CLINIC' && isLabItem) {
+            matchesDept = false; // Never show Lab items in Dental Clinic!
+          } else {
+            matchesDept = true;
+          }
+        }
 
         if (matchesDept) {
           seenItemIds.add(item.id);
@@ -239,6 +347,11 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     // 2. Include any distributed stock rows that weren't in masterItems
     for (const row of distributedStock) {
       if (String(row.department_id) === String(activeD) && !seenItemIds.has(row.item_id)) {
+        const isLabRow = checkIsExplicitLab(row);
+        if (activeDeptName === 'DENTAL CLINIC' && isLabRow) {
+          continue; // Filter out Lab rows from Dental Clinic
+        }
+
         seenItemIds.add(row.item_id);
         const qty = Number(row.quantity || 0);
         list.push({
@@ -425,14 +538,14 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
           const itemStorage = (item.storage || '').toUpperCase();
           const itemNameUpper = (item.name || '').toUpperCase();
 
+          const isLabItem = itemStorage.includes('LAB') ||
+            itemDeptName.includes('LAB') ||
+            ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'CAD/CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET', 'PROSTHETIC', 'DENTURE', 'ZIRCONIA', 'CERAMIC', 'INVESTMENT', 'MONOMER', 'POLYMER', 'FLASK', 'DIE STONE', 'DENTAL STONE', 'CASTING', 'SOLDER', 'SOLDERING', 'DUPLICATING', 'ARTICULATOR', 'MODELLING', 'ACRYLIC TEETH', 'TEETH SET', 'BLANK', 'BLOCK', 'LAB BUR', 'LABORATORY', 'PONTIC', 'FURNACE', 'SEPARATING', 'SEPARATOR'].some(k => itemNameUpper.includes(k));
+
           if (activeDeptName === 'DENTAL CLINIC') {
-            const isExplicitLab = itemStorage.includes('LAB') ||
-              ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET'].some(k => itemNameUpper.includes(k));
-            return (itemDeptName.includes('DENTAL') || itemDeptName.includes('CLINIC')) && !isExplicitLab;
+            return (itemDeptName.includes('DENTAL') || itemDeptName.includes('CLINIC')) && !isLabItem;
           } else if (activeDeptName === 'DENTAL LAB') {
-            const isLabItem = itemStorage.includes('LAB') ||
-              ['ACRYLIC', 'PORCELAIN', 'CAD-CAM', 'WAX', 'PLASTER', 'GYPSUM', 'MILLING', 'ALLOY', 'PROSTHET', 'DENTURE', 'CROWN'].some(k => itemNameUpper.includes(k));
-            return itemDeptName.includes('DENTAL LAB') || (itemDeptName.includes('DENTAL') && isLabItem);
+            return itemDeptName.includes('DENTAL LAB') || isLabItem;
           } else if (activeDeptName === 'DENTAL') {
             return itemDeptName.includes('DENTAL');
           }
@@ -468,13 +581,30 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
   const filteredDeptStock = useMemo(() => {
     let list = currentDeptStock;
+
     if (stockSearchTerm.trim()) {
-      const q = stockSearchTerm.toLowerCase();
-      list = list.filter(row =>
-        (row.name && row.name.toLowerCase().includes(q)) ||
-        (row.sku && row.sku.toLowerCase().includes(q)) ||
-        (row.category && row.category.toLowerCase().includes(q))
-      );
+      // Tokenize search query by whitespace and punctuation for flexible multi-word matching
+      const tokens = stockSearchTerm.toLowerCase().trim().split(/[\s/\-_,()]+/).filter(Boolean);
+
+      list = list.filter(row => {
+        // Build a comprehensive searchable text string containing all item metadata
+        const batchString = Array.isArray(row.batches)
+          ? row.batches.map(b => `${b.batch_number || ''} ${b.lot_number || ''} ${b.supplier || ''}`).join(' ')
+          : `${row.batch_number || ''} ${row.lot_number || ''}`;
+
+        const itemSearchableText = [
+          row.name,
+          row.sku,
+          row.category,
+          row.department,
+          row.unit,
+          row.storage,
+          batchString
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        // Match if ALL search tokens exist within the item metadata text
+        return tokens.every(token => itemSearchableText.includes(token));
+      });
     }
 
     // For the local (department) view, aggregate quantities by item so that
@@ -517,11 +647,28 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     const activeD = userDept ? userDept.id : formDept;
     if (!activeD) return toast.error('Select a department.');
     if (!formItemId) return toast.error('Select an item to log.');
-    const qty = parseInt(formQty, 10);
-    if (!qty || qty <= 0) return toast.error('Enter a quantity greater than 0.');
-    if (selectedItem && qty > selectedItem.available) {
-      return toast.error(`Only ${selectedItem.available} ${selectedItem.unit || 'unit(s)'} available.`);
+
+    let qty;
+    let autoNote = null;
+
+    if (useDentalMode && logMode === 'in_use') {
+      // Usage marker only — no stock deduction, records item as open/being used
+      qty = 0;
+      autoNote = 'In Use';
+    } else if (useDentalMode && logMode === 'finished') {
+      // Mark fully consumed — deduct all remaining stock in one action
+      qty = selectedItem?.available || 0;
+      if (qty <= 0) return toast.error('No remaining stock to mark as finished.');
+      autoNote = 'Finished';
+    } else {
+      // Standard units mode (all departments)
+      qty = parseInt(formQty, 10);
+      if (!qty || qty <= 0) return toast.error('Enter a quantity greater than 0.');
+      if (selectedItem && qty > selectedItem.available) {
+        return toast.error(`Only ${selectedItem.available} ${selectedItem.unit || 'unit(s)'} available.`);
+      }
     }
+
     if (isNursingActive && !formWard) {
       return toast.error('Select a ward (Station 1 or Minor Surgery).');
     }
@@ -532,9 +679,13 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         department_id: parseInt(activeD, 10),
         item_id: parseInt(formItemId, 10),
         quantity: qty,
-        notes: formNotes || undefined,
+        notes: formNotes || autoNote || undefined,
         ward: isNursingActive ? formWard : undefined,
         session: isNursingActive ? formSession : undefined,
+        // ── Lumina AI case-linking ──────────────────────────────
+        case_id:   selectedCase?.id       || undefined,
+        case_ref:  selectedCase?.case_ref  || undefined,
+        case_type: selectedCase?.case_type || undefined,
       });
       if (res.data.success) {
         toast.success(res.data.message || 'Consumption logged.');
@@ -544,6 +695,9 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         setFormNotes('');
         setFormWard('');
         setFormSession(currentSession());
+        setLogMode('units');
+        setSelectedCase(null);
+        setCaseSearch('');
         await loadData(true);
       }
     } catch (err) {
@@ -581,6 +735,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     const deptId = userDept ? userDept.id : formDept;
     if (!deptId) return toast.error('Select a department.');
     if (reqCart.length === 0) return toast.error('Add at least one item to the requisition.');
+    setReqBlockedItems([]);
     setSubmittingReq(true);
     try {
       const res = await api.post('/clinical/inventory/requisitions', {
@@ -598,7 +753,14 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to submit requisition.');
+      // ── Lumina AI "In Use" block: show which items are blocked ──────────────
+      const blocked = err.response?.data?.blocked;
+      if (blocked?.length) {
+        setReqBlockedItems(blocked);
+        toast.error('Requisition blocked — items still In Use.');
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to submit requisition.');
+      }
     } finally {
       setSubmittingReq(false);
     }
@@ -898,10 +1060,22 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
               </p>
             </div>
           </div>
-          <button onClick={() => loadData(true)}
-            className="p-2.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-slate-600 transition-all shadow-xs cursor-pointer">
-            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Lumina AI Report button — visible to HoD / Stock Manager */}
+            {(useDentalMode || isHodOrStock) && (
+              <button
+                onClick={() => setLuminaOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-extrabold rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                <Sparkles size={14} />
+                <span className="hidden sm:inline">Lumina AI Report</span>
+              </button>
+            )}
+            <button onClick={() => loadData(true)}
+              className="p-2.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-slate-600 transition-all shadow-xs cursor-pointer">
+              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </motion.div>
 
         {/* KPIs */}
@@ -943,6 +1117,40 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
               <Plus size={18} className="text-teal-600" /> Log Consumption
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
+
+              {/* ── Dental / Physio / Lab: 3-mode logging selector ──────────────── */}
+              {useDentalMode && (
+                <div>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1.5 block">
+                    How are you logging this item?
+                  </label>
+                  <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl">
+                    {[
+                      { id: 'units',    Icon: Hash,         label: 'Log Units',     sub: 'Enter a quantity',            act: 'text-teal-700 border-teal-200 bg-white' },
+                      { id: 'in_use',   Icon: Activity,     label: 'Mark In Use',   sub: 'No stock deducted',           act: 'text-amber-700 border-amber-200 bg-white' },
+                      { id: 'finished', Icon: CheckCircle2, label: 'Mark Finished', sub: 'Deducts all remaining stock',  act: 'text-emerald-700 border-emerald-200 bg-white' },
+                    ].map(({ id, Icon, label, sub, act }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => { setLogMode(id); setFormQty(''); setFormNotes(''); }}
+                        className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          logMode === id
+                            ? `shadow-sm ${act}`
+                            : 'text-slate-500 border-transparent hover:bg-white/60 hover:text-slate-700'
+                        }`}
+                      >
+                        <Icon size={14} />
+                        <span>{label}</span>
+                        <span className={`text-[9px] font-semibold leading-tight text-center transition-opacity ${
+                          logMode === id ? 'opacity-60' : 'opacity-0 h-0'
+                        }`}>{sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
                 <div>
                   <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Department</label>
@@ -971,14 +1179,18 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                       No distributed stock found for this department.
                     </p>
                   ) : (
-                    <div className="relative">
+                    <div className={`relative ${dropdownOpen ? 'z-50' : 'z-10'}`}>
                       {dropdownOpen && (
                         <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
                       )}
                       <button
                         type="button"
-                        onClick={() => setDropdownOpen(!dropdownOpen)}
-                        className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-left flex justify-between items-center outline-none focus:border-teal-400 z-10 relative"
+                        onClick={() => {
+                          const nextState = !dropdownOpen;
+                          setDropdownOpen(nextState);
+                          if (nextState) setCaseDropOpen(false);
+                        }}
+                        className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-left flex justify-between items-center outline-none focus:border-teal-400 z-10 relative cursor-pointer"
                       >
                         {selectedItem ? (
                           <span className="font-bold text-slate-800">
@@ -999,7 +1211,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                       </button>
 
                       {dropdownOpen && (
-                        <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-slate-200 shadow-xl rounded-2xl p-3 space-y-3 animate-fadeIn max-h-[380px] flex flex-col">
+                        <div className="absolute z-50 left-0 mt-1.5 bg-white border border-slate-200 shadow-2xl rounded-2xl p-3 space-y-3 animate-fadeIn max-h-[380px] flex flex-col w-full min-w-[300px] sm:min-w-[420px]">
                           {/* Search Input */}
                           <div className="relative">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1008,7 +1220,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                               placeholder="Type to search registry..."
                               value={formItemSearch}
                               onChange={(e) => setFormItemSearch(e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl pl-9 pr-3 py-2 text-xs font-semibold outline-none focus:border-teal-400 focus:bg-white"
+                              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-semibold outline-none focus:border-teal-400"
                               autoFocus
                             />
                           </div>
@@ -1112,22 +1324,49 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                   </div>
                 )}
 
-                <div>
-                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Quantity Consumed</label>
-                  <input type="number" min="1" max={selectedItem?.available || undefined} value={formQty}
-                    disabled={!selectedItem || selectedItem.available <= 0}
-                    onChange={(e) => setFormQty(e.target.value)} placeholder={!selectedItem ? "0" : selectedItem.available <= 0 ? "Unavailable" : "0"}
-                    className={`w-full mt-1 bg-slate-50 border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:bg-white disabled:opacity-55 disabled:cursor-not-allowed ${
-                      selectedItem && parseInt(formQty, 10) > selectedItem.available
-                        ? 'border-rose-300 text-rose-600 focus:border-rose-400 focus:ring-1 focus:ring-rose-400'
-                        : 'border-slate-200 focus:border-teal-400'
-                    }`} />
-                  {selectedItem && parseInt(formQty, 10) > selectedItem.available && (
-                    <p className="text-[10px] text-rose-600 font-extrabold mt-1">
-                      Cannot exceed available stock ({selectedItem.available} {selectedItem.unit || 'unit(s)'}).
-                    </p>
-                  )}
-                </div>
+                {/* Quantity field — hidden for in_use / finished modes */}
+                {(!useDentalMode || logMode === 'units') ? (
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Quantity Consumed</label>
+                    <input type="number" min="1" max={selectedItem?.available || undefined} value={formQty}
+                      disabled={!selectedItem || selectedItem.available <= 0}
+                      onChange={(e) => setFormQty(e.target.value)} placeholder={!selectedItem ? "0" : selectedItem.available <= 0 ? "Unavailable" : "0"}
+                      className={`w-full mt-1 bg-slate-50 border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:bg-white disabled:opacity-55 disabled:cursor-not-allowed ${
+                        selectedItem && parseInt(formQty, 10) > selectedItem.available
+                          ? 'border-rose-300 text-rose-600 focus:border-rose-400 focus:ring-1 focus:ring-rose-400'
+                          : 'border-slate-200 focus:border-teal-400'
+                      }`} />
+                    {selectedItem && parseInt(formQty, 10) > selectedItem.available && (
+                      <p className="text-[10px] text-rose-600 font-extrabold mt-1">
+                        Cannot exceed available stock ({selectedItem.available} {selectedItem.unit || 'unit(s)'}).
+                      </p>
+                    )}
+                  </div>
+                ) : logMode === 'in_use' ? (
+                  <div className="flex flex-col justify-end">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Quantity</label>
+                    <div className="mt-1 flex items-center gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                      <Activity size={14} className="text-amber-600 shrink-0" />
+                      <div>
+                        <p className="text-xs font-black text-amber-800">No Deduction</p>
+                        <p className="text-[10px] text-amber-600 font-semibold leading-tight">Item marked as in use only</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col justify-end">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Quantity</label>
+                    <div className="mt-1 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                      <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                      <div>
+                        <p className="text-xs font-black text-emerald-800">Full Deduction</p>
+                        <p className="text-[10px] text-emerald-600 font-semibold leading-tight">
+                          Consumes all {selectedItem?.available ?? 0} {selectedItem?.unit || 'unit(s)'} remaining
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Notes (optional)</label>
@@ -1137,9 +1376,107 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 </div>
               </div>
 
+              {/* ── Lumina AI: Case / Work Order Picker (Dental/Physio/Lab only) ── */}
+              {useDentalMode && (
+                <div className={`relative ${caseDropOpen ? 'z-40' : 'z-0'}`}>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
+                    <Link2 size={11} className="text-indigo-500" />
+                    Link to Case / Work Order
+                    <span className="text-[9px] font-semibold text-slate-300 ml-1">(optional)</span>
+                  </label>
+
+                  {selectedCase ? (
+                    /* Selected state — pill showing the chosen case with a clear button */
+                    <div className="flex items-center gap-2 mt-1 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2.5">
+                      <span className="text-[10px] font-black text-indigo-500 bg-indigo-100 px-1.5 py-0.5 rounded-md shrink-0">
+                        {selectedCase.case_type}
+                      </span>
+                      <span className="text-sm font-bold text-indigo-900 truncate flex-1">{selectedCase.label}</span>
+                      <button type="button" onClick={() => { setSelectedCase(null); setCaseSearch(''); setCaseDropOpen(false); }}
+                        className="ml-auto shrink-0 text-indigo-400 hover:text-indigo-700 transition-colors cursor-pointer">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    /* Unselected state — search input + dropdown */
+                    <div className="relative mt-1">
+                      {caseDropOpen && (
+                        <div className="fixed inset-0 z-30" onClick={() => setCaseDropOpen(false)} />
+                      )}
+                      <div className="relative z-40">
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 focus-within:border-indigo-400 transition-colors shadow-2xs">
+                          <Search size={13} className="text-slate-400 shrink-0" />
+                          <input
+                            type="text"
+                            value={caseSearch}
+                            onFocus={() => {
+                              setCaseDropOpen(true);
+                              setDropdownOpen(false);
+                            }}
+                            onChange={(e) => {
+                              setCaseSearch(e.target.value);
+                              setCaseDropOpen(true);
+                              setDropdownOpen(false);
+                            }}
+                            placeholder={loadingCases ? 'Loading open cases…' : openCases.length === 0 ? 'No open cases found' : `Search ${openCases.length} open case${openCases.length !== 1 ? 's' : ''}…`}
+                            className="flex-1 py-2.5 text-sm font-semibold outline-none bg-white text-slate-800 placeholder:text-slate-400"
+                          />
+                          {loadingCases && <Loader2 size={13} className="animate-spin text-slate-300 shrink-0" />}
+                        </div>
+
+                        {/* Dropdown list */}
+                        <AnimatePresence>
+                          {caseDropOpen && filteredCases.length > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                              transition={{ duration: 0.12 }}
+                              className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden"
+                            >
+                              <div className="max-h-56 overflow-y-auto py-1">
+                                {filteredCases.map(c => (
+                                  <button
+                                    key={`${c.case_type}-${c.id}`}
+                                    type="button"
+                                    onClick={() => { setSelectedCase(c); setCaseSearch(''); setCaseDropOpen(false); }}
+                                    className="w-full text-left px-3 py-2.5 hover:bg-indigo-50 transition-colors flex items-start gap-2.5 group cursor-pointer"
+                                  >
+                                    <span className="shrink-0 mt-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-600 group-hover:bg-indigo-200 uppercase">
+                                      {c.case_type}
+                                    </span>
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-black text-slate-800 truncate">{c.case_ref}</p>
+                                      <p className="text-[10px] text-slate-500 font-medium truncate">
+                                        {c.label.split('—').slice(1).join('—').trim()}
+                                      </p>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="px-3 py-1.5 border-t border-slate-100 bg-slate-50">
+                                <p className="text-[9px] font-semibold text-slate-400">
+                                  {filteredCases.length} open case{filteredCases.length !== 1 ? 's' : ''} — only non-delivered/completed shown
+                                </p>
+                              </div>
+                            </motion.div>
+                          )}
+                          {caseDropOpen && filteredCases.length === 0 && caseSearch.trim() && (
+                            <motion.div
+                              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                              className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-md z-50 px-4 py-4 text-center"
+                            >
+                              <p className="text-[11px] text-slate-400 font-semibold">No matching cases found.</p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Availability + submit */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-slate-100">
-                {selectedItem && selectedItem.available <= 0 ? (
+                {selectedItem && selectedItem.available <= 0 && !(useDentalMode && logMode === 'in_use') ? (
                   <div className="flex items-center gap-2 text-xs bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 text-rose-700 font-extrabold">
                     <AlertCircle size={14} /> Out of stock in this department. Please request a transfer first.
                   </div>
@@ -1148,9 +1485,34 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     <Boxes size={14} /> {selectedItem.available} {selectedItem.unit || 'unit(s)'} available
                   </div>
                 ) : null}
-                <button type="submit" disabled={submitting || !formItemId || !selectedItem || selectedItem.available <= 0 || parseInt(formQty, 10) > selectedItem.available}
-                  className="sm:ml-auto py-3 px-10 bg-teal-700 hover:bg-teal-600 disabled:bg-slate-350 text-white font-bold text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed disabled:opacity-55">
-                  {submitting ? <Loader2 size={15} className="animate-spin" /> : <TrendingDown size={15} />} Record Consumption
+                <button
+                  type="submit"
+                  disabled={
+                    submitting || !formItemId || !selectedItem ||
+                    (
+                      useDentalMode && logMode === 'in_use'
+                        ? false                                                    // always enabled once item is selected
+                        : useDentalMode && logMode === 'finished'
+                          ? selectedItem?.available <= 0                           // disabled only if nothing left
+                          : selectedItem?.available <= 0 || !formQty || parseInt(formQty, 10) <= 0 || parseInt(formQty, 10) > (selectedItem?.available || 0)
+                    )
+                  }
+                  className="sm:ml-auto py-3 px-10 bg-teal-700 hover:bg-teal-600 disabled:bg-slate-350 text-white font-bold text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {submitting ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : useDentalMode && logMode === 'in_use' ? (
+                    <Activity size={15} />
+                  ) : useDentalMode && logMode === 'finished' ? (
+                    <CheckCircle2 size={15} />
+                  ) : (
+                    <TrendingDown size={15} />
+                  )}
+                  {useDentalMode && logMode === 'in_use'
+                    ? 'Mark In Use'
+                    : useDentalMode && logMode === 'finished'
+                      ? 'Mark Finished'
+                      : 'Record Consumption'}
                 </button>
               </div>
             </form>
@@ -1264,8 +1626,18 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                             {e.notes && <span className="block text-[11px] text-slate-400 font-normal">{e.notes}</span>}
                           </td>
                           <td className="px-3 py-2.5 text-center font-black text-rose-600">
-                            {e.source === 'audit' ? <span className="text-slate-400 font-bold">—</span> : `−${e.quantity}`}
-                            {e.source !== 'audit' && <span className="ml-1 text-slate-400 font-semibold text-xs">{e.unit || ''}</span>}
+                            {e.source === 'audit' ? (
+                              <span className="text-slate-400 font-bold">—</span>
+                            ) : Number(e.quantity) === 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-700 border border-amber-200">
+                                <Activity size={10} /> In Use
+                              </span>
+                            ) : (
+                              <>
+                                {`−${e.quantity}`}
+                                <span className="ml-1 text-slate-400 font-semibold text-xs">{e.unit || ''}</span>
+                              </>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 text-[11px]">
                             {e.ward ? <span className="font-bold text-slate-700">{e.ward}</span> : <span className="text-slate-300">—</span>}
@@ -1341,11 +1713,20 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Search available items..."
+                      placeholder="Search available items by name, SKU, category, or batch #..."
                       value={stockSearchTerm}
                       onChange={(e) => setStockSearchTerm(e.target.value)}
-                      className="w-full pl-9 pr-4 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-400 focus:bg-white"
+                      className="w-full pl-9 pr-8 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-400 focus:bg-white"
                     />
+                    {stockSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setStockSearchTerm('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1489,8 +1870,23 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                       })}
                       {filteredDeptStock.length === 0 && (
                         <tr>
-                          <td colSpan={stockTab === 'central' ? 6 : 4} className="px-3 py-10 text-center text-slate-400 italic">
-                            {!filterDept && !userDept ? 'Select a department to view available items.' : 'No available items found.'}
+                          <td colSpan={stockTab === 'central' ? 6 : 4} className="px-3 py-10 text-center text-slate-400">
+                            {stockSearchTerm.trim() ? (
+                              <div className="space-y-1.5">
+                                <p className="font-semibold text-xs text-slate-500">No available items match "{stockSearchTerm}"</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setStockSearchTerm('')}
+                                  className="text-xs font-bold text-teal-600 hover:underline cursor-pointer"
+                                >
+                                  Clear search filter
+                                </button>
+                              </div>
+                            ) : !filterDept && !userDept ? (
+                              <p className="italic text-xs">Select a department to view available items.</p>
+                            ) : (
+                              <p className="italic text-xs">No available items found.</p>
+                            )}
                           </td>
                         </tr>
                       )}
@@ -1641,6 +2037,27 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                         </div>
                       </div>
 
+                      {/* ── Lumina AI: Requisition "In Use" Block Warning ── */}
+                      {reqBlockedItems.length > 0 && (
+                        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 space-y-2">
+                          <div className="flex items-center gap-2 text-rose-700 font-extrabold text-xs">
+                            <AlertTriangle size={16} className="shrink-0" />
+                            <span>Requisition Blocked by Lumina AI</span>
+                          </div>
+                          <p className="text-[11px] text-rose-600 font-medium leading-relaxed">
+                            You cannot request more stock because the following item(s) are currently marked <strong className="font-extrabold">In Use</strong> without being marked Finished:
+                          </p>
+                          <ul className="list-disc list-inside text-xs font-bold text-rose-800 space-y-0.5">
+                            {reqBlockedItems.map((item, idx) => (
+                              <li key={idx}>{item}</li>
+                            ))}
+                          </ul>
+                          <p className="text-[10px] text-rose-500 font-semibold italic pt-1">
+                            Go to Log Consumption, select each item, and choose "Mark Finished" to unblock requisitions.
+                          </p>
+                        </div>
+                      )}
+
                       {reqCart.length > 0 && (
                         <div className="bg-teal-50 border border-teal-100 rounded-xl p-3">
                           <h5 className="text-[10px] font-black uppercase text-teal-800 mb-2">Cart ({reqCart.length} items)</h5>
@@ -1757,6 +2174,193 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
           </div>
         </div>
       </div>
+
+      {/* ── Lumina AI Consumables Intelligence Report Modal ───────────────────────── */}
+      <AnimatePresence>
+        {luminaOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-slate-200 rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="p-6 bg-gradient-to-r from-indigo-900 via-slate-900 to-purple-900 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-indigo-500/20 border border-indigo-400/30 rounded-2xl">
+                    <Sparkles size={24} className="text-indigo-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black tracking-tight">Lumina AI — Consumables Intelligence</h3>
+                    <p className="text-xs text-indigo-200/80 font-semibold">
+                      Material usage analysis & projections for Stock Manager & HoD
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setLuminaOpen(false)}
+                  className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Controls bar */}
+              <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">Range:</span>
+                  <input
+                    type="date"
+                    value={luminaFrom}
+                    onChange={(e) => setLuminaFrom(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none"
+                  />
+                  <span className="text-xs font-bold text-slate-400">to</span>
+                  <input
+                    type="date"
+                    value={luminaTo}
+                    onChange={(e) => setLuminaTo(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none"
+                  />
+                </div>
+
+                <button
+                  onClick={generateLuminaReport}
+                  disabled={luminaLoading}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                >
+                  {luminaLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  <span>{luminaReport ? 'Regenerate Analysis' : 'Generate Analysis'}</span>
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                {!luminaReport && !luminaLoading && (
+                  <div className="text-center py-16 space-y-3">
+                    <div className="w-16 h-16 bg-indigo-50 border border-indigo-100 rounded-3xl flex items-center justify-center mx-auto text-indigo-600">
+                      <BarChart3 size={32} />
+                    </div>
+                    <h4 className="text-base font-bold text-slate-800">Generate Consumables Intelligence</h4>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto">
+                      Click the button above to run Lumina AI analytics on department logged materials, case patterns, and open items.
+                    </p>
+                  </div>
+                )}
+
+                {luminaLoading && (
+                  <div className="text-center py-20 space-y-3">
+                    <Loader2 size={36} className="animate-spin text-indigo-600 mx-auto" />
+                    <p className="text-sm font-bold text-slate-700">Lumina AI is analyzing material logs and learning usage patterns…</p>
+                  </div>
+                )}
+
+                {luminaReport && !luminaLoading && (
+                  <div className="space-y-6">
+                    {/* Executive Narrative */}
+                    <div className="bg-indigo-50/60 border border-indigo-150 rounded-2xl p-5 space-y-2">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-indigo-900 flex items-center gap-2">
+                        <Sparkles size={14} className="text-indigo-600" /> Executive Narrative
+                      </h4>
+                      <p className="text-sm font-medium text-slate-800 leading-relaxed">
+                        {luminaReport.narrative}
+                      </p>
+                    </div>
+
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
+                        <p className="text-[10px] font-black uppercase text-slate-400">Total Log Entries</p>
+                        <p className="text-2xl font-black text-slate-900 mt-0.5">{luminaReport.summary?.total_logs ?? 0}</p>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
+                        <p className="text-[10px] font-black uppercase text-slate-400">Total Quantity</p>
+                        <p className="text-2xl font-black text-teal-700 mt-0.5">{luminaReport.summary?.total_qty ?? 0}</p>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
+                        <p className="text-[10px] font-black uppercase text-slate-400">Unique Items</p>
+                        <p className="text-2xl font-black text-indigo-700 mt-0.5">{luminaReport.summary?.unique_items ?? 0}</p>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
+                        <p className="text-[10px] font-black uppercase text-slate-400">Work Categories</p>
+                        <p className="text-2xl font-black text-purple-700 mt-0.5">{luminaReport.summary?.case_types ?? 0}</p>
+                      </div>
+                    </div>
+
+                    {/* Stale Items Warning */}
+                    {luminaReport.stale_items?.length > 0 && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+                        <h4 className="text-xs font-extrabold text-amber-900 flex items-center gap-2">
+                          <AlertTriangle size={15} className="text-amber-600" />
+                          Items Open In-Use &gt; 72 Hours ({luminaReport.stale_items.length})
+                        </h4>
+                        <div className="divide-y divide-amber-200/60 max-h-40 overflow-y-auto">
+                          {luminaReport.stale_items.map((stale, i) => (
+                            <div key={i} className="py-1.5 flex items-center justify-between text-xs">
+                              <span className="font-bold text-slate-800">{stale.item}</span>
+                              <span className="text-[11px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
+                                Open for {stale.hrs_open} hrs
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Usage Breakdown By Case/Work Type */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">
+                        Consumables & Materials Breakdown by Work / Case Type
+                      </h4>
+                      {Object.keys(luminaReport.by_case_type || {}).length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">No usage recorded for this period.</p>
+                      ) : (
+                        Object.entries(luminaReport.by_case_type).map(([caseType, items]) => (
+                          <div key={caseType} className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                            <div className="bg-slate-100/70 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
+                              <span className="text-xs font-black uppercase tracking-wider text-slate-700">
+                                {caseType}
+                              </span>
+                              <span className="text-[10px] font-extrabold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                                {items.length} item{items.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            <table className="w-full text-xs">
+                              <thead className="bg-slate-50 text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                                <tr>
+                                  <th className="text-left px-4 py-2">Item Name</th>
+                                  <th className="text-center px-3 py-2">Log Count</th>
+                                  <th className="text-center px-3 py-2">Total Units</th>
+                                  <th className="text-center px-3 py-2">Avg / Use</th>
+                                  <th className="text-center px-3 py-2">Avg Open Duration</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {items.map((row, idx) => (
+                                  <tr key={idx} className="hover:bg-slate-50/60">
+                                    <td className="px-4 py-2 font-bold text-slate-800">{row.item}</td>
+                                    <td className="px-3 py-2 text-center text-slate-600 font-semibold">{row.use_count}</td>
+                                    <td className="px-3 py-2 text-center text-teal-700 font-bold">{row.total_qty}</td>
+                                    <td className="px-3 py-2 text-center text-slate-600">{row.avg_qty}</td>
+                                    <td className="px-3 py-2 text-center text-indigo-600 font-semibold">
+                                      {row.avg_hrs !== '—' ? `${row.avg_hrs} hrs` : '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

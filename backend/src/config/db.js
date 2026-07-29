@@ -2047,11 +2047,52 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       for (const col of ['ward TEXT', 'session TEXT']) {
         try { await client.execute(`ALTER TABLE consumables_log ADD COLUMN ${col}`); } catch (e) { /* already exists */ }
       }
+      // ── Lumina AI case-linking columns (Dental/Physio/Lab traceability) ──────
+      // case_id / case_ref / case_type link each log entry to a dental or clinic case.
+      // finished_at is stamped when a previously "In Use" (qty=0) entry is closed out.
+      for (const col of [
+        'case_id   INTEGER REFERENCES dental_cases(id) ON DELETE SET NULL',
+        'case_ref  TEXT',
+        'case_type TEXT',
+        'finished_at DATETIME',
+      ]) {
+        try { await client.execute(`ALTER TABLE consumables_log ADD COLUMN ${col}`); } catch (e) { /* already exists */ }
+      }
       await client.execute('CREATE INDEX IF NOT EXISTS idx_consumables_log_dept ON consumables_log(department_id)');
       await client.execute('CREATE INDEX IF NOT EXISTS idx_consumables_log_consumed ON consumables_log(consumed_at)');
+      await client.execute('CREATE INDEX IF NOT EXISTS idx_consumables_log_case ON consumables_log(case_id)');
       console.log('✅ SQLite Schema Migration: created/verified consumables_log table');
     } catch (err) {
       console.error('❌ Failed to initialize consumables_log table:', err);
+    }
+
+    // ── Lumina AI Usage Patterns (aggregated learning store) ─────────────────
+    // Each row is a department × case_type × item summary updated after every log.
+    // The AI report endpoint reads from this table to generate insights without
+    // re-scanning the full consumables_log on every request.
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lumina_usage_patterns (
+          id               INTEGER PRIMARY KEY AUTOINCREMENT,
+          department_id    INTEGER,
+          department_name  TEXT,
+          case_type        TEXT,
+          item_id          INTEGER,
+          item_name        TEXT,
+          total_uses       INTEGER DEFAULT 0,
+          total_qty        REAL    DEFAULT 0,
+          avg_qty_per_use  REAL    DEFAULT 0,
+          avg_duration_hrs REAL,
+          last_updated     DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE (department_id, case_type, item_id)
+        )
+      `);
+      await client.execute('CREATE INDEX IF NOT EXISTS idx_lumina_dept_case ON lumina_usage_patterns(department_id, case_type)');
+      console.log('✅ SQLite Schema Migration: lumina_usage_patterns table ensured.');
+    } catch (err) {
+      if (!err.message?.includes('already exists')) {
+        console.error('❌ Failed to initialize lumina_usage_patterns table:', err);
+      }
     }
 
     // ── Clinical Observations (Clinical Sheets) ──────────────────────────────────
@@ -2721,7 +2762,19 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
             delivered_to              TEXT,
             delivered_at              DATETIME,
             odontogram_data           TEXT,
-            linked_chart_id           INTEGER REFERENCES dental_charts(id) ON DELETE SET NULL
+            linked_chart_id           INTEGER REFERENCES dental_charts(id) ON DELETE SET NULL,
+            patient_name              TEXT,
+            prosthetics_enabled       INTEGER DEFAULT 1,
+            prosthetics_cost          REAL,
+            ortho_enabled             INTEGER DEFAULT 0,
+            ortho_appliance_type      TEXT,
+            ortho_appliance_other     TEXT,
+            ortho_technologist        TEXT,
+            ortho_cost                REAL,
+            ortho_notes               TEXT,
+            ortho_units               INTEGER DEFAULT 1,
+            ortho_unit_cost           REAL,
+            ortho_arch                TEXT
           )
         `);
 

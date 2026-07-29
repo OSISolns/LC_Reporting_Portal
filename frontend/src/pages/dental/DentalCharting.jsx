@@ -20,7 +20,14 @@ import {
   Activity,
   Sparkles,
   XCircle,
-  HelpCircle
+  HelpCircle,
+  Eye,
+  FileText,
+  X,
+  Calendar,
+  ShieldAlert,
+  CheckCircle,
+  History
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -374,6 +381,12 @@ export default function DentalCharting() {
   const [loadingPatient, setLoadingPatient] = useState(false);
   const [isChartLoaded, setIsChartLoaded] = useState(false);
 
+  // Historical Chart Detail Modal State
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [loadingHistoryDetail, setLoadingHistoryDetail] = useState(false);
+  const [selectedHistoryChart, setSelectedHistoryChart] = useState(null);
+  const [activeModalTab, setActiveModalTab] = useState('teeth'); // 'teeth' | 'treatment' | 'notes'
+
   // Search Autocomplete
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -540,6 +553,80 @@ export default function DentalCharting() {
     }
   };
 
+  const openHistoryDetail = async (id) => {
+    setShowHistoryModal(true);
+    setLoadingHistoryDetail(true);
+    setActiveModalTab('teeth');
+    try {
+      const res = await getChart(id);
+      const chart = res?.data?.data ?? res?.data ?? res;
+      if (chart) {
+        let rawData = typeof chart.tooth_data === 'string' ? JSON.parse(chart.tooth_data || '{}') : (chart.tooth_data || {});
+        let teethObj = rawData.teeth || rawData || {};
+        let dentitionMode = rawData.dentition_type || 'adult';
+        let planList = rawData.treatment_plan || [];
+
+        // Calculate summary metrics & affected teeth breakdown
+        const affectedTeeth = [];
+        let missingCount = 0;
+        let pathologyCount = 0;
+        let perioAlertCount = 0;
+
+        Object.entries(teethObj).forEach(([num, data]) => {
+          if (!data) return;
+          const isMissing = !!data.missing;
+          const cond = data.condition || 'Healthy';
+          const surfaces = data.surfaces || {};
+          const nonHealthySurfaces = Object.entries(surfaces).filter(([k, v]) => v && v !== 'Healthy');
+          const hasPathology = !isMissing && (cond !== 'Healthy' || nonHealthySurfaces.length > 0);
+          const hasPerio = !isMissing && (Number(data.mobility) > 0 || Number(data.probingDepth?.B) >= 4 || Number(data.probingDepth?.L) >= 4);
+
+          if (isMissing) missingCount++;
+          if (hasPathology) pathologyCount++;
+          if (hasPerio) perioAlertCount++;
+
+          if (isMissing || hasPathology || hasPerio || data.notes) {
+            affectedTeeth.push({
+              number: num,
+              quadrant: getQuadrantName(num),
+              missing: isMissing,
+              condition: cond,
+              surfaces: nonHealthySurfaces,
+              allSurfaces: surfaces,
+              mobility: data.mobility || 0,
+              probingDepth: data.probingDepth || { B: 2, L: 2 },
+              notes: data.notes || '',
+            });
+          }
+        });
+
+        affectedTeeth.sort((a, b) => parseInt(a.number, 10) - parseInt(b.number, 10));
+
+        setSelectedHistoryChart({
+          ...chart,
+          dentition_type: dentitionMode,
+          treatment_plan: planList,
+          teeth_data: teethObj,
+          affectedTeeth,
+          stats: {
+            totalTeeth: Object.keys(teethObj).length || 32,
+            pathologyCount,
+            missingCount,
+            perioAlertCount,
+            planCount: planList.length,
+            completedPlanCount: planList.filter(p => p.status === 'Completed').length,
+            plannedPlanCount: planList.filter(p => p.status === 'Planned' || p.status === 'In Progress').length,
+          }
+        });
+      }
+    } catch (err) {
+      toast.error('Failed to load full historical chart details');
+      console.error(err);
+    } finally {
+      setLoadingHistoryDetail(false);
+    }
+  };
+
   const handleSaveChart = async () => {
     if (!patientId.trim()) {
       toast.error('Patient ID is required to save');
@@ -619,7 +706,110 @@ export default function DentalCharting() {
     toast.success(`Applied "${activeTool}" to all surfaces of Tooth #${selectedTooth}`);
   };
 
-  // Treatment Plan Builder Handlers
+  // ─── PROCEDURE COMPLETION & AUTOMATIC ODONTOGRAM UPDATER ──────────────────
+  const extractToothNumber = (toothStr) => {
+    if (!toothStr) return null;
+    const match = toothStr.match(/\b(1[1-8]|2[1-8]|3[1-8]|4[1-8]|5[1-5]|6[1-5]|7[1-5]|8[1-5])\b/);
+    return match ? match[1] : null;
+  };
+
+  const mapProcedureToResultingCondition = (procName) => {
+    if (!procName) return null;
+    const name = procName.toLowerCase();
+    if (name.includes('extraction')) return { missing: true, condition: 'Healthy' };
+    if (name.includes('implant')) return { condition: 'Implant', missing: false };
+    if (name.includes('crown') || name.includes('veneer')) return { condition: 'Crown', missing: false };
+    if (name.includes('root canal') || name.includes('rct') || name.includes('pulpotomy') || name.includes('pulpectomy')) return { condition: 'Root Canal', missing: false };
+    if (name.includes('bridge') || name.includes('pontic') || name.includes('denture')) return { condition: 'Bridge', missing: false };
+    if (name.includes('sealant')) return { condition: 'Sealant', missing: false };
+    if (name.includes('restoration') || name.includes('filling') || name.includes('composite') || name.includes('amalgam')) return { condition: 'Filled', missing: false };
+    if (name.includes('scaling') || name.includes('prophylaxis') || name.includes('planing')) return { condition: 'Healthy', missing: false };
+    return null;
+  };
+
+  const applyCompletedProcedureToTooth = (toothNum, procName) => {
+    setToothData(prev => {
+      const current = prev[toothNum] || { ...DEFAULT_TOOTH_STRUCTURE };
+      const resulting = mapProcedureToResultingCondition(procName);
+      if (!resulting) return prev;
+
+      // 1. Snapshot pre-procedure baseline to preserve historical record
+      const preHistoryEntry = {
+        date: format(new Date(), 'yyyy-MM-dd HH:mm'),
+        procedure: procName,
+        priorCondition: current.condition || 'Healthy',
+        priorSurfaces: { ...(current.surfaces || {}) },
+        priorMissing: !!current.missing,
+        priorNotes: current.notes || '',
+      };
+
+      const updatedHistory = [...(current.pre_procedure_history || []), preHistoryEntry];
+
+      // 2. Derive updated Odontogram tooth state
+      let newCondition = current.condition;
+      let newMissing = current.missing;
+      let newSurfaces = { ...(current.surfaces || {}) };
+
+      if (resulting.missing) {
+        newMissing = true;
+      } else {
+        newMissing = false;
+        if (resulting.condition) {
+          newCondition = resulting.condition;
+        }
+        // If restoration, convert any decayed surfaces to Filled
+        if (resulting.condition === 'Filled') {
+          Object.keys(newSurfaces).forEach(s => {
+            if (newSurfaces[s] === 'Caries') {
+              newSurfaces[s] = 'Filled';
+            }
+          });
+        }
+      }
+
+      // Build structured pre-procedure record entry in notes for historical documentation
+      const histNote = `[Pre-Procedure Record]: Tooth #${toothNum} was ${preHistoryEntry.priorMissing ? 'Missing' : preHistoryEntry.priorCondition} prior to ${procName} (Completed ${format(new Date(), 'dd/MM/yyyy')}).`;
+      const newNotes = current.notes ? (current.notes.includes(histNote) ? current.notes : `${current.notes}\n${histNote}`) : histNote;
+
+      toast.success(`Odontogram updated: Tooth #${toothNum} set to ${newMissing ? 'Missing' : newCondition} (${procName}). Pre-procedure history archived.`);
+
+      return {
+        ...prev,
+        [toothNum]: {
+          ...current,
+          condition: newCondition,
+          missing: newMissing,
+          surfaces: newSurfaces,
+          notes: newNotes,
+          pre_procedure_history: updatedHistory,
+        }
+      };
+    });
+  };
+
+  const revertCompletedProcedureOnTooth = (toothNum, procName) => {
+    setToothData(prev => {
+      const current = prev[toothNum];
+      if (!current || !current.pre_procedure_history?.length) return prev;
+
+      const history = [...current.pre_procedure_history];
+      const lastEntry = history.pop();
+
+      toast.success(`Odontogram reverted: Tooth #${toothNum} restored to pre-procedure baseline (${lastEntry.priorCondition}).`);
+
+      return {
+        ...prev,
+        [toothNum]: {
+          ...current,
+          condition: lastEntry.priorCondition,
+          missing: lastEntry.priorMissing,
+          surfaces: lastEntry.priorSurfaces,
+          pre_procedure_history: history,
+        }
+      };
+    });
+  };
+
   const handleAddProcedure = (e) => {
     e.preventDefault();
     if (!newProcName.trim()) return toast.error('Enter a procedure description.');
@@ -630,7 +820,16 @@ export default function DentalCharting() {
       procedure: newProcName,
       status: newProcStatus,
     };
+
     setTreatmentPlan(prev => [...prev, newItem]);
+
+    if (newItem.status === 'Completed') {
+      const toothNum = extractToothNumber(newItem.tooth);
+      if (toothNum) {
+        applyCompletedProcedureToTooth(toothNum, newItem.procedure);
+      }
+    }
+
     setNewProcName('');
     setNewProcSurface('');
     toast.success('Procedure added to treatment plan.');
@@ -644,7 +843,30 @@ export default function DentalCharting() {
     setTreatmentPlan(prev => prev.map(p => {
       if (p.id === procId) {
         const nextStatus = p.status === 'Planned' ? 'In Progress' : p.status === 'In Progress' ? 'Completed' : 'Planned';
+        
+        const toothNum = extractToothNumber(p.tooth);
+        if (nextStatus === 'Completed' && toothNum) {
+          applyCompletedProcedureToTooth(toothNum, p.procedure);
+        } else if (p.status === 'Completed' && nextStatus !== 'Completed' && toothNum) {
+          revertCompletedProcedureOnTooth(toothNum, p.procedure);
+        }
+
         return { ...p, status: nextStatus };
+      }
+      return p;
+    }));
+  };
+
+  const handleUpdateProcStatus = (procId, newStatus) => {
+    setTreatmentPlan(prev => prev.map(p => {
+      if (p.id === procId) {
+        const toothNum = extractToothNumber(p.tooth);
+        if (newStatus === 'Completed' && p.status !== 'Completed' && toothNum) {
+          applyCompletedProcedureToTooth(toothNum, p.procedure);
+        } else if (p.status === 'Completed' && newStatus !== 'Completed' && toothNum) {
+          revertCompletedProcedureOnTooth(toothNum, p.procedure);
+        }
+        return { ...p, status: newStatus };
       }
       return p;
     }));
@@ -1359,6 +1581,24 @@ export default function DentalCharting() {
                       </div>
                     </div>
 
+                    {/* Pre-Procedure Baseline Record Pill in Tooth Inspection Panel */}
+                    {toothData[selectedTooth]?.pre_procedure_history?.length > 0 && (
+                      <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-purple-900 flex items-center gap-1.5">
+                          <History size={13} className="text-purple-600" />
+                          Pre-Procedure Baseline Records ({toothData[selectedTooth].pre_procedure_history.length})
+                        </label>
+                        <div className="space-y-1 text-[11px] text-purple-800">
+                          {toothData[selectedTooth].pre_procedure_history.map((hist, idx) => (
+                            <div key={idx} className="bg-white/80 p-2 rounded-lg border border-purple-100 font-medium">
+                              <p className="font-bold text-purple-950">Prior Condition: {hist.priorMissing ? 'Missing' : hist.priorCondition}</p>
+                              <p className="text-[10px] text-purple-700">Resolved via: {hist.procedure} on {hist.date}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Notes */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-700">Specific Tooth Notes</label>
@@ -1485,21 +1725,28 @@ export default function DentalCharting() {
                     <td className="px-4 py-2.5 font-bold text-rose-600">{item.tooth}</td>
                     <td className="px-4 py-2.5">{item.procedure}</td>
                     <td className="px-4 py-2.5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
-                        item.status === 'Completed' 
-                          ? 'bg-emerald-100 text-emerald-800' 
-                          : item.status === 'In Progress' 
-                          ? 'bg-amber-100 text-amber-900' 
-                          : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {item.status}
-                      </span>
+                      <select
+                        value={item.status}
+                        onChange={(e) => handleUpdateProcStatus(item.id, e.target.value)}
+                        className={`px-2 py-1 rounded-md text-[10px] font-extrabold cursor-pointer border outline-none ${
+                          item.status === 'Completed' 
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
+                            : item.status === 'In Progress' 
+                            ? 'bg-amber-100 text-amber-900 border-amber-200' 
+                            : 'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        <option value="Planned">Planned</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                      </select>
                     </td>
                     <td className="px-4 py-2.5 text-right space-x-1 print:hidden">
                       <button
                         type="button"
                         onClick={() => handleToggleProcStatus(item.id)}
-                        className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold"
+                        className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold cursor-pointer"
+                        title="Cycle Status (Planned → In Progress → Completed)"
                       >
                         Toggle Status
                       </button>
@@ -1573,7 +1820,7 @@ export default function DentalCharting() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-200 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                        <tr className="border-b border-slate-200 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 bg-slate-50">
                           <th className="px-4 py-2.5">Date</th>
                           <th className="px-4 py-2.5">Provider</th>
                           <th className="px-4 py-2.5">Notes Preview</th>
@@ -1582,25 +1829,40 @@ export default function DentalCharting() {
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-xs font-semibold">
                         {history.map((chart) => (
-                          <tr key={chart.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-4 py-2.5 text-slate-900 font-bold">{chart.chart_date}</td>
-                            <td className="px-4 py-2.5 text-slate-600">{chart.provider || '—'}</td>
-                            <td className="px-4 py-2.5 text-slate-500 truncate max-w-[300px]">{chart.general_notes || '—'}</td>
-                            <td className="px-4 py-2.5 text-right space-x-2">
+                          <tr key={chart.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="px-4 py-2.5 text-slate-900 font-bold flex items-center gap-2">
+                              <Calendar size={13} className="text-rose-500 shrink-0" />
+                              <span>{chart.chart_date}</span>
+                            </td>
+                            <td className="px-4 py-2.5 text-slate-600">{chart.provider || 'Unassigned'}</td>
+                            <td className="px-4 py-2.5 text-slate-500 truncate max-w-[280px]">{chart.general_notes || 'No general notes'}</td>
+                            <td className="px-4 py-2.5 text-right space-x-1.5 whitespace-nowrap">
                               <button
-                                onClick={() => loadSpecificChart(chart.id)}
-                                className="inline-flex items-center justify-center p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                title="Load Chart"
+                                type="button"
+                                onClick={() => openHistoryDetail(chart.id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[11px] font-bold transition-all cursor-pointer border border-rose-200 shadow-3xs"
+                                title="Open Full Chart Details"
                               >
-                                <Download size={15} />
+                                <Eye size={13} />
+                                <span>View Details</span>
                               </button>
                               <button
+                                type="button"
+                                onClick={() => loadSpecificChart(chart.id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition-all cursor-pointer border border-slate-200 shadow-3xs"
+                                title="Load into Active Odontogram Editor"
+                              >
+                                <Download size={13} />
+                                <span>Load</span>
+                              </button>
+                              <button
+                                type="button"
                                 disabled={!canEdit}
                                 onClick={() => handleDeleteChart(chart.id)}
-                                className="inline-flex items-center justify-center p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-30"
+                                className="inline-flex items-center justify-center p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
                                 title="Delete Chart"
                               >
-                                <Trash2 size={15} />
+                                <Trash2 size={14} />
                               </button>
                             </td>
                           </tr>
@@ -1620,6 +1882,328 @@ export default function DentalCharting() {
         onClose={() => setShowAiPrescriber(false)}
         patientName={patientName}
       />
+
+      {/* ── ELEGANT HISTORICAL CHART RECORD DETAIL MODAL ───────────────────────── */}
+      <AnimatePresence>
+        {showHistoryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-slate-200 rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden font-sans"
+            >
+              {/* Modal Top Banner */}
+              <div className="p-6 bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 text-white flex items-center justify-between border-b border-rose-900/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-rose-500/20 border border-rose-400/30 rounded-2xl">
+                    <FileText size={24} className="text-rose-300" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-black tracking-tight text-white">
+                        Historical Dental Chart — {selectedHistoryChart?.chart_date || 'Details'}
+                      </h3>
+                      {selectedHistoryChart?.id && (
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-rose-500/30 text-rose-200 border border-rose-400/20">
+                          ID #{selectedHistoryChart.id}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-300 font-medium mt-0.5">
+                      Patient: <strong className="text-white">{selectedHistoryChart?.patient_name || patientName}</strong> ({selectedHistoryChart?.patient_id || patientId}) • Provider: <strong className="text-rose-200">{selectedHistoryChart?.provider || 'Unassigned'}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryModal(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
+                {loadingHistoryDetail ? (
+                  <div className="text-center py-20 space-y-3">
+                    <Loader2 size={36} className="animate-spin text-rose-600 mx-auto" />
+                    <p className="text-xs font-bold text-slate-600">Retrieving complete historical odontogram & treatment plan...</p>
+                  </div>
+                ) : selectedHistoryChart ? (
+                  <div className="space-y-6">
+                    {/* Summary KPI Bar */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-white border border-rose-100 rounded-2xl p-3.5 shadow-3xs">
+                        <p className="text-[10px] font-black uppercase text-rose-500">Pathologies Found</p>
+                        <p className="text-2xl font-black text-rose-700 mt-0.5">{selectedHistoryChart.stats?.pathologyCount ?? 0}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">teeth with decay/treatment</p>
+                      </div>
+
+                      <div className="bg-white border border-red-100 rounded-2xl p-3.5 shadow-3xs">
+                        <p className="text-[10px] font-black uppercase text-red-500">Missing Teeth</p>
+                        <p className="text-2xl font-black text-red-700 mt-0.5">{selectedHistoryChart.stats?.missingCount ?? 0}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">extracted / un-erupted</p>
+                      </div>
+
+                      <div className="bg-white border border-amber-100 rounded-2xl p-3.5 shadow-3xs">
+                        <p className="text-[10px] font-black uppercase text-amber-600">Periodontal Alerts</p>
+                        <p className="text-2xl font-black text-amber-700 mt-0.5">{selectedHistoryChart.stats?.perioAlertCount ?? 0}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">mobility &gt; 0 or probing &ge; 4mm</p>
+                      </div>
+
+                      <div className="bg-white border border-indigo-100 rounded-2xl p-3.5 shadow-3xs">
+                        <p className="text-[10px] font-black uppercase text-indigo-500">Treatment Plan</p>
+                        <p className="text-2xl font-black text-indigo-900 mt-0.5">
+                          {selectedHistoryChart.stats?.completedPlanCount ?? 0} <span className="text-sm font-extrabold text-slate-400">/ {selectedHistoryChart.stats?.planCount ?? 0}</span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-medium">completed items</p>
+                      </div>
+                    </div>
+
+                    {/* Sub Tab Buttons */}
+                    <div className="flex border-b border-slate-200 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveModalTab('teeth')}
+                        className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                          activeModalTab === 'teeth'
+                            ? 'border-rose-600 text-rose-700'
+                            : 'border-transparent text-slate-400 hover:text-slate-700'
+                        }`}
+                      >
+                        <Stethoscope size={14} />
+                        <span>Affected Teeth &amp; Pathologies ({selectedHistoryChart.affectedTeeth?.length ?? 0})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveModalTab('treatment')}
+                        className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                          activeModalTab === 'treatment'
+                            ? 'border-rose-600 text-rose-700'
+                            : 'border-transparent text-slate-400 hover:text-slate-700'
+                        }`}
+                      >
+                        <Activity size={14} />
+                        <span>Treatment Plan ({selectedHistoryChart.stats?.planCount ?? 0})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveModalTab('notes')}
+                        className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                          activeModalTab === 'notes'
+                            ? 'border-rose-600 text-rose-700'
+                            : 'border-transparent text-slate-400 hover:text-slate-700'
+                        }`}
+                      >
+                        <FileText size={14} />
+                        <span>Clinical Notes</span>
+                      </button>
+                    </div>
+
+                    {/* TAB 1: Affected Teeth & Odontogram Summary */}
+                    {activeModalTab === 'teeth' && (
+                      <div className="space-y-4">
+                        {selectedHistoryChart.affectedTeeth?.length === 0 ? (
+                          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center space-y-2">
+                            <CheckCircle2 size={32} className="text-emerald-500 mx-auto" />
+                            <h4 className="text-sm font-bold text-emerald-900">Sound &amp; Healthy Dentition</h4>
+                            <p className="text-xs text-emerald-700 font-medium max-w-md mx-auto">
+                              All teeth recorded on {selectedHistoryChart.chart_date} were sound and healthy with no pathologies or missing units.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {selectedHistoryChart.affectedTeeth.map((tooth) => {
+                              const condObj = CONDITIONS[tooth.condition] || CONDITIONS.Healthy;
+                              return (
+                                <div key={tooth.number} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-3xs space-y-2.5">
+                                  {/* Tooth Header */}
+                                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-7 h-7 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-black text-xs flex items-center justify-center">
+                                        #{tooth.number}
+                                      </span>
+                                      <div>
+                                        <h5 className="text-xs font-bold text-slate-800">Tooth #{tooth.number}</h5>
+                                        <p className="text-[10px] text-slate-400 font-semibold">{tooth.quadrant}</p>
+                                      </div>
+                                    </div>
+                                    <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                                      tooth.missing
+                                        ? 'bg-red-100 text-red-900 border-red-300'
+                                        : condObj.badgeBg || 'bg-slate-100 text-slate-700 border-slate-200'
+                                    }`}>
+                                      {tooth.missing ? 'Missing / Extracted' : tooth.condition}
+                                    </span>
+                                  </div>
+
+                                  {!tooth.missing && (
+                                    <div className="space-y-2">
+                                      {/* Non-healthy surfaces */}
+                                      {tooth.surfaces?.length > 0 && (
+                                        <div>
+                                          <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Affected Surfaces</p>
+                                          <div className="flex flex-wrap gap-1">
+                                            {tooth.surfaces.map(([surfKey, surfCond]) => (
+                                              <span key={surfKey} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                                                {surfKey}: <strong className="text-rose-600">{surfCond}</strong>
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Pre-Procedure Baseline Record Banner */}
+                                      {tooth.pre_procedure_history?.length > 0 && (
+                                        <div className="bg-purple-50/80 border border-purple-200/80 rounded-xl p-2.5 text-[10.5px] space-y-1">
+                                          <p className="font-extrabold text-purple-900 flex items-center gap-1 text-[10px]">
+                                            <History size={12} className="text-purple-600" /> Pre-Procedure Baseline Record
+                                          </p>
+                                          {tooth.pre_procedure_history.map((hist, hIdx) => (
+                                            <p key={hIdx} className="text-purple-800 font-semibold leading-tight">
+                                              Prior Condition: <strong className="text-purple-950">{hist.priorMissing ? 'Missing' : hist.priorCondition}</strong> → Resolved via {hist.procedure} ({hist.date})
+                                            </p>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Periodontal */}
+                                      {(tooth.mobility > 0 || tooth.probingDepth?.B >= 4 || tooth.probingDepth?.L >= 4) && (
+                                        <div className="bg-amber-50/70 border border-amber-200/70 rounded-xl p-2 text-[10.5px] space-y-0.5">
+                                          <p className="font-extrabold text-amber-900 flex items-center gap-1 text-[10px]">
+                                            <Activity size={11} className="text-amber-600" /> Periodontal Findings
+                                          </p>
+                                          {tooth.mobility > 0 && (
+                                            <p className="text-amber-800 font-semibold">Mobility: Grade {tooth.mobility}</p>
+                                          )}
+                                          {(tooth.probingDepth?.B >= 4 || tooth.probingDepth?.L >= 4) && (
+                                            <p className="text-amber-800 font-semibold">
+                                              Probing Depth: Buccal {tooth.probingDepth.B}mm · Lingual {tooth.probingDepth.L}mm
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Tooth Notes */}
+                                  {tooth.notes && (
+                                    <div className="text-[10.5px] text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100 italic">
+                                      "{tooth.notes}"
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* TAB 2: Treatment Plan & Procedures */}
+                    {activeModalTab === 'treatment' && (
+                      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                            <tr>
+                              <th className="px-4 py-2.5">Tooth</th>
+                              <th className="px-4 py-2.5">Procedure Name</th>
+                              <th className="px-4 py-2.5 text-center">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-semibold">
+                            {selectedHistoryChart.treatment_plan?.length === 0 ? (
+                              <tr>
+                                <td colSpan={3} className="px-4 py-8 text-center text-slate-400 italic">
+                                  No treatment plan items recorded on this chart date.
+                                </td>
+                              </tr>
+                            ) : (
+                              selectedHistoryChart.treatment_plan.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/60">
+                                  <td className="px-4 py-2.5 font-black text-rose-600">{item.tooth || '—'}</td>
+                                  <td className="px-4 py-2.5 text-slate-800">{item.procedure}</td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                      item.status === 'Completed'
+                                        ? 'bg-emerald-100 text-emerald-800'
+                                        : item.status === 'In Progress'
+                                        ? 'bg-amber-100 text-amber-900'
+                                        : 'bg-slate-100 text-slate-700'
+                                    }`}>
+                                      {item.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* TAB 3: Clinical Notes */}
+                    {activeModalTab === 'notes' && (
+                      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2 shadow-3xs">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                          <FileText size={14} className="text-rose-500" /> Chart Notes &amp; Clinical Findings
+                        </h4>
+                        {selectedHistoryChart.general_notes ? (
+                          <div className="text-xs font-medium text-slate-800 leading-relaxed font-mono whitespace-pre-wrap bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            {selectedHistoryChart.general_notes}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic">No general notes documented for this chart.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Modal Footer Bar */}
+              <div className="p-4 bg-slate-100 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedHistoryChart?.id) {
+                        loadSpecificChart(selectedHistoryChart.id);
+                        setShowHistoryModal(false);
+                      }
+                    }}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    <Download size={14} />
+                    <span>Load into Active Editor</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handlePrintChart}
+                    className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl shadow-3xs transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Printer size={14} />
+                    <span>Print Record</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryModal(false)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Interactive Hover Tooltip */}
       {hoveredTooth && (
