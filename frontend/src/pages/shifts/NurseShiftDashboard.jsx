@@ -163,23 +163,57 @@ export default function NurseShiftDashboard() {
 
   // Search Sukraa patients for individual logging modal
   useEffect(() => {
-    if (!patientSearchQuery.trim() || patientSearchQuery.length < 2) {
-      setSukraaSearchResults([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
+    if (!isLogModalOpen) return;
+
+    let isMounted = true;
+    const loadPatients = async () => {
       setSearchingSukraa(true);
       try {
-        const res = await api.get('/patients', { params: { query: patientSearchQuery } });
-        setSukraaSearchResults(res.data?.data || res.data || []);
+        const q = patientSearchQuery.trim();
+        let list = [];
+        if (q.length > 0) {
+          const res = await api.get('/patients/search', { params: { q, limit: 30 } });
+          list = res.data?.data || (Array.isArray(res.data) ? res.data : []);
+          if (!list.length) {
+            const fallbackRes = await api.get('/patients', { params: { q, limit: 30 } });
+            list = fallbackRes.data?.data || (Array.isArray(fallbackRes.data) ? fallbackRes.data : []);
+          }
+        } else {
+          const res = await api.get('/patients', { params: { limit: 30 } });
+          list = res.data?.data || (Array.isArray(res.data) ? res.data : []);
+          if (!list.length && recentObservations.length > 0) {
+            list = recentObservations.map(o => ({
+              pid: o.sukraa_pid || o.patient_id,
+              full_name: o.patient_name,
+              gender: o.gender,
+              age: o.age,
+              insurance: o.insurance
+            }));
+          }
+        }
+        if (isMounted) setSukraaSearchResults(list);
       } catch (err) {
-        console.error('Sukraa search error', err);
+        console.error('Sukraa patient load error', err);
+        if (isMounted && recentObservations.length > 0) {
+          setSukraaSearchResults(recentObservations.map(o => ({
+            pid: o.sukraa_pid || o.patient_id,
+            full_name: o.patient_name,
+            gender: o.gender,
+            age: o.age,
+            insurance: o.insurance
+          })));
+        }
       } finally {
-        setSearchingSukraa(false);
+        if (isMounted) setSearchingSukraa(false);
       }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [patientSearchQuery]);
+    };
+
+    const timer = setTimeout(loadPatients, 200);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [patientSearchQuery, isLogModalOpen, recentObservations]);
 
   const handleSelectSukraaPatient = (pat) => {
     setActivityForm(prev => ({
@@ -670,21 +704,43 @@ export default function NurseShiftDashboard() {
             </div>
 
             {/* Sukraa Autocomplete Dropdown */}
-            {sukraaSearchResults.length > 0 && !activityForm.patient_id && (
-              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
-                {sukraaSearchResults.map((pat) => (
-                  <div
-                    key={pat.pid || pat.id}
-                    onClick={() => handleSelectSukraaPatient(pat)}
-                    className="p-3 hover:bg-sky-50 cursor-pointer flex items-center justify-between transition-colors"
-                  >
-                    <div>
-                      <p className="font-extrabold text-slate-900 text-xs">{pat.full_name || pat.patient_name}</p>
-                      <p className="text-[10px] text-slate-500 font-bold">PID: #{pat.pid || pat.patient_id} • {pat.gender || 'N/A'}</p>
-                    </div>
-                    <span className="px-2 py-0.5 text-[9px] font-black bg-sky-100 text-sky-800 rounded-md">Select</span>
+            {!activityForm.patient_id && (
+              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
+                {searchingSukraa && (
+                  <div className="p-3 text-xs text-slate-400 font-bold flex items-center gap-2">
+                    <Clock size={12} className="animate-spin text-sky-600" /> Searching Sukraa HIMS patients...
                   </div>
-                ))}
+                )}
+                {sukraaSearchResults.length > 0 ? (
+                  sukraaSearchResults.map((pat, idx) => (
+                    <div
+                      key={pat.pid || pat.id || idx}
+                      onClick={() => handleSelectSukraaPatient(pat)}
+                      className="p-3 hover:bg-sky-50 cursor-pointer flex items-center justify-between transition-colors"
+                    >
+                      <div>
+                        <p className="font-extrabold text-slate-900 text-xs">{pat.full_name || pat.patient_name}</p>
+                        <p className="text-[10px] text-slate-500 font-bold">PID: #{pat.pid || pat.patient_id || 'N/A'} • {pat.gender || 'N/A'}{pat.insurance ? ` • ${pat.insurance}` : ''}</p>
+                      </div>
+                      <span className="px-2 py-0.5 text-[9px] font-black bg-sky-100 text-sky-800 rounded-md">Select Patient</span>
+                    </div>
+                  ))
+                ) : !searchingSukraa && patientSearchQuery.trim().length > 0 ? (
+                  <div
+                    onClick={() => {
+                      setActivityForm(prev => ({
+                        ...prev,
+                        patient_id: patientSearchQuery.trim(),
+                        patient_name: patientSearchQuery.trim()
+                      }));
+                      setPatientSearchQuery('');
+                    }}
+                    className="p-3 bg-amber-50 hover:bg-amber-100 cursor-pointer flex items-center justify-between text-xs font-bold text-amber-900"
+                  >
+                    <span>Use custom ID/Name: "{patientSearchQuery.trim()}"</span>
+                    <span className="px-2 py-0.5 text-[9px] font-black bg-amber-200 text-amber-900 rounded-md">Use Manual</span>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
