@@ -4,7 +4,7 @@ import {
   ClipboardList, Package, Boxes, TrendingDown, RefreshCw, Loader2,
   Plus, Search, Calendar, Building, AlertCircle, CheckCircle2, FileSpreadsheet,
   ArrowRight, X, Send, Clock, ChevronDown, ChevronUp, Layers, Activity, Hash,
-  Sparkles, Link2, AlertTriangle, BarChart3
+  Sparkles, Link2, AlertTriangle, BarChart3, Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
@@ -426,6 +426,24 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   }, [masterItems, distributedStock, userDept, filterDept, formDept, defaultDeptName, departments, generalStoreDept, isAdmin]);
 
   const selectedItem = deptStockItems.find(i => String(i.item_id) === String(formItemId));
+
+  // Compute items currently declared "In Use" (qty=0, finished_at is null) for active department
+  const openInUseItemIds = useMemo(() => {
+    const set = new Set();
+    if (Array.isArray(entries)) {
+      for (const entry of entries) {
+        if (Number(entry.quantity) === 0 && !entry.finished_at) {
+          set.add(Number(entry.item_id));
+        }
+      }
+    }
+    return set;
+  }, [entries]);
+
+  const isSelectedItemInUse = useMemo(() => {
+    if (!selectedItem) return false;
+    return openInUseItemIds.has(Number(selectedItem.item_id));
+  }, [selectedItem, openInUseItemIds]);
 
   // Is the active department Nursing? (drives the Ward/Session inputs)
   const activeDeptId = userDept ? userDept.id : formDept;
@@ -1474,7 +1492,29 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 </div>
               )}
 
-              {/* Availability + submit */}
+              {/* Availability + in-use warnings + submit */}
+              {isSelectedItemInUse && useDentalMode && (
+                <div className="mt-3">
+                  {logMode === 'units' ? (
+                    <div className="flex items-center gap-2.5 text-xs bg-amber-50 border border-amber-300 rounded-xl px-3.5 py-2.5 text-amber-800 font-extrabold">
+                      <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+                      <div>
+                        <p className="font-black text-amber-900">"{selectedItem?.name}" is currently declared "In Use"</p>
+                        <p className="text-[10px] text-amber-700 font-medium">It cannot be logged in units. Switch to <strong>Mark Finished</strong> to close out this item once work is complete.</p>
+                      </div>
+                    </div>
+                  ) : logMode === 'in_use' ? (
+                    <div className="flex items-center gap-2.5 text-xs bg-indigo-50 border border-indigo-200 rounded-xl px-3.5 py-2.5 text-indigo-800 font-extrabold">
+                      <Info size={16} className="text-indigo-600 shrink-0" />
+                      <div>
+                        <p className="font-black text-indigo-900">"{selectedItem?.name}" is already open in "In Use" mode</p>
+                        <p className="text-[10px] text-indigo-700 font-medium">Select <strong>Mark Finished</strong> to close it out.</p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-slate-100">
                 {selectedItem && selectedItem.available <= 0 && !(useDentalMode && logMode === 'in_use') ? (
                   <div className="flex items-center gap-2 text-xs bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 text-rose-700 font-extrabold">
@@ -1489,11 +1529,12 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                   type="submit"
                   disabled={
                     submitting || !formItemId || !selectedItem ||
+                    (isSelectedItemInUse && (logMode === 'units' || logMode === 'in_use')) ||
                     (
                       useDentalMode && logMode === 'in_use'
-                        ? false                                                    // always enabled once item is selected
+                        ? false
                         : useDentalMode && logMode === 'finished'
-                          ? selectedItem?.available <= 0                           // disabled only if nothing left
+                          ? false
                           : selectedItem?.available <= 0 || !formQty || parseInt(formQty, 10) <= 0 || parseInt(formQty, 10) > (selectedItem?.available || 0)
                     )
                   }
@@ -1508,11 +1549,15 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                   ) : (
                     <TrendingDown size={15} />
                   )}
-                  {useDentalMode && logMode === 'in_use'
-                    ? 'Mark In Use'
-                    : useDentalMode && logMode === 'finished'
-                      ? 'Mark Finished'
-                      : 'Record Consumption'}
+                  {isSelectedItemInUse && logMode === 'units'
+                    ? 'Item Currently In Use'
+                    : isSelectedItemInUse && logMode === 'in_use'
+                      ? 'Item Already In Use'
+                      : useDentalMode && logMode === 'in_use'
+                        ? 'Mark In Use'
+                        : useDentalMode && logMode === 'finished'
+                          ? 'Mark Finished'
+                          : 'Record Consumption'}
                 </button>
               </div>
             </form>

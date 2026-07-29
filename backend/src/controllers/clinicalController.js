@@ -2852,6 +2852,35 @@ exports.logConsumable = async (req, res) => {
     }
     const logSession = session || sessionFromServerTime();
 
+    // ── Lumina AI: Check if item is currently declared "In Use" (qty=0, finished_at IS NULL) ──
+    const resolvedNotes = notes || (qty === 0 ? 'In Use' : null);
+    if (isSpecialDept) {
+      const { rows: openInUseRows } = await db.query(
+        `SELECT id, consumed_at FROM consumables_log
+          WHERE department_id = $1 AND item_id = $2 AND quantity = 0 AND finished_at IS NULL
+          ORDER BY consumed_at DESC LIMIT 1`,
+        [department_id, item_id]
+      );
+
+      const isOpenInUse = openInUseRows.length > 0;
+
+      // 1) Cannot declare "In Use" if item is ALREADY open in "In Use" mode
+      if (qty === 0 && resolvedNotes !== 'Finished' && isOpenInUse) {
+        return res.status(400).json({
+          success: false,
+          message: `"${itemRows[0].name}" is already open in "In Use" mode. Mark it as "Finished" before declaring it in use again.`
+        });
+      }
+
+      // 2) Cannot log in units (qty > 0) if item is currently declared "In Use" (must mark Finished instead)
+      if (qty > 0 && resolvedNotes !== 'Finished' && isOpenInUse) {
+        return res.status(400).json({
+          success: false,
+          message: `"${itemRows[0].name}" is currently declared "In Use". It cannot be logged in units until it is marked as "Finished".`
+        });
+      }
+    }
+
     let stockRows = [];
     let available = 0;
     let primaryBatchId = null;
