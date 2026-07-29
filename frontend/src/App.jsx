@@ -58,7 +58,7 @@ import OperationsHub from './pages/operations/OperationsHub';
 
 const ShiftDashboardRedirect = () => {
   const { user } = useAuth();
-  if (user?.role === 'nurse') return <NurseShiftDashboard />;
+  if (user?.role === 'nurse' || user?.role === 'chef-nurse') return <NurseShiftDashboard />;
   if (['cashier', 'customer_care'].includes(user?.role)) return <StaffShiftDashboard />;
   return <ShiftDashboard />;
 };

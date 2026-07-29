@@ -58,7 +58,6 @@ const Sidebar = ({ onClose }) => {
     { configKey: 'dental_hub',    name: 'Dental Hub',       icon: <Heart size={20} />,           path: '/dental',       requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'] },
     { configKey: 'physio_hub',     name: 'Physio Hub',       icon: <Dumbbell size={20} />,        path: '/physio',       requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physiotherapist', 'physio'] },
     { configKey: 'operations_hub',  name: 'Operations Hub',   icon: <Settings size={20} />,        path: '/operations',   requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'operations_staff', 'coo'] },
-    { configKey: 'daily_stock',   name: 'Daily Stock Checkup', icon: <Database size={20} />,     path: '/nursing-hub/inventory', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'admin'] },
     { configKey: 'central_store', name: 'General Store Hub', icon: <Database size={20} />,       path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'stock-manager'] },
     { configKey: 'consumables',   name: 'Consumables Log',  icon: <ClipboardList size={20} />,   path: '/consumables-log', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'chef-nurse', 'nurse', 'lab_team_lead', 'lab_tech', 'lab', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'imaging_tech', 'imaging_manager', 'operations_staff', 'coo', 'hsfp'] },
     { configKey: 'master',        name: 'master',            icon: <Database size={20} />,       path: '/master',       requiredPerm: null, allowedRoles: ['admin', 'stock-manager'] },
@@ -75,8 +74,7 @@ const Sidebar = ({ onClose }) => {
     { configKey: 'permissions',   name: 'Permissions',       icon: <Shield size={20} />,         path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
     { configKey: 'audit_logs',    name: 'Audit Logs',        icon: <History size={20} />,        path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin'] },
     // Shift Module
-    { configKey: 'shifts',        name: 'Shift Management',  icon: <Clock size={20} />,          path: '/shifts',       requiredPerm: { mod: 'shifts', act: 'create' }, allowedRoles: ['cashier', 'customer_care', 'nurse'] },
-    { configKey: 'shifts',        name: 'Shift Log',         icon: <Clock size={20} />,          path: '/shifts',       requiredPerm: { mod: 'shifts', act: 'view' }, allowedRoles: ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse', 'pa'] },
+    { configKey: 'shifts',        name: 'Shift Management',  icon: <Clock size={20} />,          path: '/shifts',       requiredPerm: null, allowedRoles: ['nurse', 'chef-nurse', 'cashier', 'customer_care', 'principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'pa'] },
     { configKey: 'feedbacks',     name: 'Internal Feedback', icon: <MessageSquare size={20} />,  path: '/feedbacks',    requiredPerm: { mod: 'feedbacks', act: 'view' }, allowedRoles: ['coo', 'deputy_coo', 'chef-nurse', 'medical_director'] },
   ];
 

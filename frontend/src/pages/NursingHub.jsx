@@ -75,8 +75,8 @@ export default function NursingHub() {
   };
 
   const handleQuickAction = (submodule) => {
-    if (submodule === 'Daily Stock Checkup') {
-      navigate('/nursing-hub/inventory');
+    if (submodule === 'Shift Management' || submodule === 'Daily Stock Checkup') {
+      navigate('/shifts');
       return;
     }
 
@@ -401,12 +401,12 @@ export default function NursingHub() {
                   specialised: true
                 },
                 { 
-                  title: 'Daily Stock Checkup', 
-                  desc: 'Track and reconcile daily session checkups of medicines and consumables against stock.',
-                  icon: <Activity size={22} />, 
-                  color: '#ec4899', 
-                  bg: '#fce7f3',
-                  cta: 'Open Inventory'
+                  title: 'Shift Management', 
+                  desc: 'Open, log, and close nursing duty shifts, clinical handovers, and session rosters.',
+                  icon: <Clock size={22} />, 
+                  color: '#0284c7', 
+                  bg: '#e0f2fe',
+                  cta: 'Open Shifts'
                 },
                 { 
                   title: 'Daily Report', 
