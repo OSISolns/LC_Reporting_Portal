@@ -17,7 +17,12 @@ import {
   Search,
   Database,
   UserCheck,
-  FileText
+  Plus,
+  Pill,
+  Activity,
+  FileText,
+  User,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getMyActiveShift, getLatestHandover, getMyHistory } from '../../api/shifts';
@@ -68,17 +73,62 @@ function getTimeAgo(ts) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+const CATEGORY_STYLES = {
+  'Medication Administered': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', tag: 'Medication' },
+  'Vitals Check': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', tag: 'Vitals' },
+  'Procedure / Dressing': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', tag: 'Procedure' },
+  'Doctor Round / Consult': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', tag: 'Doctor Round' },
+  'Nursing Care / Hygiene': { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', tag: 'Nursing Care' },
+  'Patient Transfer': { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', tag: 'Transfer' },
+  'General Note': { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', tag: 'Clinical Note' },
+};
+
 export default function NurseShiftDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeShift, setActiveShift] = useState(null);
   const [loading, setLoading] = useState(true);
   const [recentObservations, setRecentObservations] = useState([]);
+  const [shiftActivities, setShiftActivities] = useState([]);
   const [latestHandover, setLatestHandover] = useState(null);
   const [myHistory, setMyHistory] = useState([]);
+  
+  // Filtering & View toggles
+  const [viewMode, setViewMode] = useState('INDIVIDUAL_LOGS'); // 'INDIVIDUAL_LOGS' | 'CLINICAL_SHEETS'
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  
+  // Modals
   const [activeClinicalPatient, setActiveClinicalPatient] = useState(null);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  
+  // New Individual Activity Form state
+  const [activityForm, setActivityForm] = useState({
+    patient_id: '',
+    patient_name: '',
+    ward: 'General Ward',
+    activity_category: 'Medication Administered',
+    activity_summary: '',
+    vitals_bp: '',
+    vitals_pulse: '',
+    vitals_temp: '',
+    vitals_spo2: '',
+  });
+  const [submittingActivity, setSubmittingActivity] = useState(false);
+  const [patientSearchQuery, setPatientSearchQuery] = useState('');
+  const [sukraaSearchResults, setSukraaSearchResults] = useState([]);
+  const [searchingSukraa, setSearchingSukraa] = useState(false);
+
+  const fetchShiftActivities = async (shiftId) => {
+    try {
+      const res = await api.get('/clinical/shift-activities', { params: { shift_id: shiftId || '', limit: 100 } });
+      if (res.data?.success) {
+        setShiftActivities(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch shift activities', err);
+    }
+  };
 
   useEffect(() => {
     async function init() {
@@ -95,10 +145,13 @@ export default function NurseShiftDashboard() {
             return { data: { data: [] } };
           })
         ]);
-        setActiveShift(shiftRes.data?.data || null);
+        const shiftData = shiftRes.data?.data || null;
+        setActiveShift(shiftData);
         setRecentObservations(obsRes.data?.data || []);
         setLatestHandover(handoverRes.data?.data || null);
         setMyHistory(histRes.data?.data || []);
+
+        await fetchShiftActivities(shiftData?.id);
       } catch (err) {
         console.error(err);
       } finally {
@@ -108,14 +161,105 @@ export default function NurseShiftDashboard() {
     init();
   }, []);
 
-  const filteredObservations = useMemo(() => {
-    let list = recentObservations;
-    if (filterStatus === 'FINAL') {
-      list = list.filter(o => o.status === 'Final' || o.status === 'Verified');
-    } else if (filterStatus === 'DRAFT') {
-      list = list.filter(o => o.status === 'Draft');
+  // Search Sukraa patients for individual logging modal
+  useEffect(() => {
+    if (!patientSearchQuery.trim() || patientSearchQuery.length < 2) {
+      setSukraaSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearchingSukraa(true);
+      try {
+        const res = await api.get('/patients', { params: { query: patientSearchQuery } });
+        setSukraaSearchResults(res.data?.data || res.data || []);
+      } catch (err) {
+        console.error('Sukraa search error', err);
+      } finally {
+        setSearchingSukraa(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [patientSearchQuery]);
+
+  const handleSelectSukraaPatient = (pat) => {
+    setActivityForm(prev => ({
+      ...prev,
+      patient_id: pat.pid || pat.patient_id,
+      patient_name: pat.full_name || pat.patient_name,
+      ward: pat.ward || prev.ward || 'General Ward'
+    }));
+    setPatientSearchQuery('');
+    setSukraaSearchResults([]);
+  };
+
+  const handleLogActivitySubmit = async (e) => {
+    e.preventDefault();
+    if (!activityForm.patient_id || !activityForm.activity_summary.trim()) {
+      toast.error('Please enter a valid patient ID and activity summary');
+      return;
     }
 
+    setSubmittingActivity(true);
+    try {
+      const payload = {
+        shift_id: activeShift?.id || null,
+        patient_id: activityForm.patient_id,
+        patient_name: activityForm.patient_name,
+        ward: activityForm.ward,
+        activity_category: activityForm.activity_category,
+        activity_summary: activityForm.activity_summary,
+        vitals_bp: activityForm.vitals_bp || null,
+        vitals_pulse: activityForm.vitals_pulse || null,
+        vitals_temp: activityForm.vitals_temp || null,
+        vitals_spo2: activityForm.vitals_spo2 || null,
+        custom_timestamp: new Date().toISOString()
+      };
+
+      const res = await api.post('/clinical/shift-activities', payload);
+      if (res.data?.success) {
+        toast.success('Individual activity logged for patient!');
+        setIsLogModalOpen(false);
+        setActivityForm({
+          patient_id: '',
+          patient_name: '',
+          ward: 'General Ward',
+          activity_category: 'Medication Administered',
+          activity_summary: '',
+          vitals_bp: '',
+          vitals_pulse: '',
+          vitals_temp: '',
+          vitals_spo2: '',
+        });
+        fetchShiftActivities(activeShift?.id);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to log individual activity');
+    } finally {
+      setSubmittingActivity(false);
+    }
+  };
+
+  const filteredShiftActivities = useMemo(() => {
+    let list = shiftActivities;
+    if (categoryFilter !== 'ALL') {
+      list = list.filter(a => a.activity_category === categoryFilter);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(a =>
+        (a.patient_name && a.patient_name.toLowerCase().includes(q)) ||
+        (a.patient_id && String(a.patient_id).toLowerCase().includes(q)) ||
+        (a.sukraa_pid && String(a.sukraa_pid).toLowerCase().includes(q)) ||
+        (a.activity_summary && a.activity_summary.toLowerCase().includes(q)) ||
+        (a.nurse_name && a.nurse_name.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [shiftActivities, categoryFilter, searchQuery]);
+
+  const filteredObservations = useMemo(() => {
+    let list = recentObservations;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(o =>
@@ -127,7 +271,7 @@ export default function NurseShiftDashboard() {
       );
     }
     return list;
-  }, [recentObservations, filterStatus, searchQuery]);
+  }, [recentObservations, searchQuery]);
 
   if (loading) return <div className="p-20 text-center font-black text-slate-300 uppercase tracking-widest">Initialising Clinical Protocol...</div>;
 
@@ -147,21 +291,30 @@ export default function NurseShiftDashboard() {
           </div>
         </div>
 
-        {!activeShift ? (
-          <Button 
-            onClick={() => navigate('/shifts/open')}
-            className="h-14 px-8 rounded-2xl bg-[#1b669d] hover:bg-[#124d77] text-white font-black uppercase tracking-widest shadow-lg shadow-[#1b669d]/20"
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => setIsLogModalOpen(true)}
+            className="h-14 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-wider shadow-lg shadow-emerald-600/20 flex items-center gap-2"
           >
-            Start New Shift <ArrowRight size={18} className="ml-2" />
+            <Plus size={18} /> Log Individual Activity
           </Button>
-        ) : (
-          <Button 
-            onClick={() => navigate(`/shifts/close/${activeShift.id}`)}
-            className="h-14 px-8 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-widest shadow-lg shadow-rose-600/20"
-          >
-            End Shift & Handover <ArrowRight size={18} className="ml-2" />
-          </Button>
-        )}
+
+          {!activeShift ? (
+            <Button 
+              onClick={() => navigate('/shifts/open')}
+              className="h-14 px-8 rounded-2xl bg-[#1b669d] hover:bg-[#124d77] text-white font-black uppercase tracking-widest shadow-lg shadow-[#1b669d]/20"
+            >
+              Start New Shift <ArrowRight size={18} className="ml-2" />
+            </Button>
+          ) : (
+            <Button 
+              onClick={() => navigate(`/shifts/close/${activeShift.id}`)}
+              className="h-14 px-8 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-widest shadow-lg shadow-rose-600/20"
+            >
+              End Shift & Handover <ArrowRight size={18} className="ml-2" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -211,7 +364,7 @@ export default function NurseShiftDashboard() {
           )}
         </Card>
 
-        {/* Clinical Activity Summary (Sukraa HIMS Patient Integration) */}
+        {/* Clinical Activity Summary Card */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="p-8 space-y-6 border border-slate-200 shadow-xl rounded-[28px] bg-white">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
@@ -220,50 +373,61 @@ export default function NurseShiftDashboard() {
                   <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-sky-100 text-sky-800 rounded-md flex items-center gap-1">
                     <Database size={10} /> Sukraa HIMS Sync
                   </span>
-                  <span className="text-xs text-slate-400 font-semibold">• Live Encounters</span>
+                  <span className="text-xs text-slate-400 font-semibold">• Individual Shift Logs</span>
                 </div>
                 <h3 className="text-xl font-black text-slate-900 flex items-center gap-2.5">
                   <ClipboardList size={22} className="text-[#1b669d]" /> Clinical Activity Summary
                 </h3>
                 <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                  Exact patient encounters & clinical observations pulled directly from Sukraa HIMS
+                  Individual patient activities, nursing interventions, and observations recorded during shift
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={() => setIsLogModalOpen(true)}
+                  size="sm" 
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                >
+                  <Plus size={14} className="mr-1" /> Log Activity
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => navigate('/nursing-hub')} className="text-[#1b669d] font-bold text-xs">
                   Nursing Hub <ExternalLink size={14} className="ml-1" />
                 </Button>
               </div>
             </div>
 
-            {/* Sub-header Filter & Search bar */}
+            {/* View Mode Toggle: Individual Activity Logs vs Clinical Sheets */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-full sm:w-auto">
-                {[
-                  { id: 'ALL', label: `All (${recentObservations.length})` },
-                  { id: 'FINAL', label: `Finalised (${recentObservations.filter(o => o.status === 'Final' || o.status === 'Verified').length})` },
-                  { id: 'DRAFT', label: `Drafts (${recentObservations.filter(o => o.status === 'Draft').length})` },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setFilterStatus(tab.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      filterStatus === tab.id
-                        ? 'bg-white text-sky-900 shadow-2xs font-extrabold'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl w-full sm:w-auto">
+                <button
+                  onClick={() => setViewMode('INDIVIDUAL_LOGS')}
+                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                    viewMode === 'INDIVIDUAL_LOGS'
+                      ? 'bg-white text-sky-900 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Activity size={14} /> Individual Activity Logs ({shiftActivities.length})
+                </button>
+                <button
+                  onClick={() => setViewMode('CLINICAL_SHEETS')}
+                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                    viewMode === 'CLINICAL_SHEETS'
+                      ? 'bg-white text-sky-900 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <FileText size={14} /> Clinical Sheets ({recentObservations.length})
+                </button>
               </div>
 
+              {/* Search bar */}
               <div className="relative w-full sm:w-64">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search PID, name, ward..."
+                  placeholder="Search PID, patient, notes..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-sky-500 focus:bg-white"
@@ -271,94 +435,188 @@ export default function NurseShiftDashboard() {
               </div>
             </div>
 
-            {/* Patients Activity List */}
-            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 scrollbar-thin">
-              {filteredObservations.length > 0 ? (
-                filteredObservations.map((obs) => {
-                  const pid = obs.sukraa_pid || obs.patient_id || 'N/A';
-                  const rawTs = obs.timestamp || obs.updated_at || obs.created_at;
-                  const exactTime = formatExactTime(rawTs);
-                  const exactDate = formatExactDate(rawTs);
-                  const ago = getTimeAgo(rawTs);
-                  const vitals = obs.vitals_snapshot || {};
+            {/* Category Filter Pills for Individual Activity Logs */}
+            {viewMode === 'INDIVIDUAL_LOGS' && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {['ALL', 'Medication Administered', 'Vitals Check', 'Procedure / Dressing', 'Doctor Round / Consult', 'Nursing Care / Hygiene'].map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat)}
+                    className={`px-3 py-1 rounded-full text-[10px] font-extrabold whitespace-nowrap transition-all cursor-pointer border ${
+                      categoryFilter === cat
+                        ? 'bg-sky-900 text-white border-sky-900 shadow-2xs'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {cat === 'ALL' ? 'All Categories' : cat}
+                  </button>
+                ))}
+              </div>
+            )}
 
-                  return (
-                    <div
-                      key={obs.id || `${obs.patient_id}-${obs.queue_id}`}
-                      onClick={() => setActiveClinicalPatient(obs)}
-                      className="p-4 border border-slate-200/80 rounded-2xl bg-white hover:border-sky-400 hover:shadow-md transition-all cursor-pointer space-y-3 group"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        {/* Sukraa Patient Header */}
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-800 flex items-center justify-center font-black text-sm shrink-0 border border-sky-100 group-hover:bg-sky-600 group-hover:text-white transition-colors">
-                            {obs.patient_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'P'}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-sky-700 transition-colors">
-                                {obs.patient_name}
-                              </h4>
-                              <span className="px-2 py-0.5 text-[9px] font-black bg-sky-100 text-sky-800 rounded-md font-mono border border-sky-200">
-                                SUKRAA PID: #{pid}
-                              </span>
+            {/* Content List 1: Individual Shift Activity Logs */}
+            {viewMode === 'INDIVIDUAL_LOGS' && (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 scrollbar-thin">
+                {filteredShiftActivities.length > 0 ? (
+                  filteredShiftActivities.map((act) => {
+                    const style = CATEGORY_STYLES[act.activity_category] || CATEGORY_STYLES['General Note'];
+                    const pid = act.sukraa_pid || act.patient_id || 'N/A';
+                    const rawTs = act.timestamp || act.created_at;
+                    const exactTime = formatExactTime(rawTs);
+                    const exactDate = formatExactDate(rawTs);
+                    const ago = getTimeAgo(rawTs);
+                    const vitals = act.vitals_snapshot || {};
+
+                    return (
+                      <div
+                        key={act.id}
+                        className="p-4 border border-slate-200/80 rounded-2xl bg-white space-y-3 hover:border-sky-300 hover:shadow-xs transition-all"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-start gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border ${style.bg} ${style.text} ${style.border}`}>
+                              {act.patient_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'P'}
                             </div>
-                            <p className="text-[11px] text-slate-500 font-semibold mt-0.5 flex items-center gap-2">
-                              <span>{obs.gender || 'N/A'}{obs.age ? `, ${obs.age} yrs` : ''}</span>
-                              <span className="text-slate-300">•</span>
-                              <span className="text-sky-700 font-bold">{obs.insurance || 'Private'}</span>
-                              <span className="text-slate-300">•</span>
-                              <span className="text-slate-600 font-bold">{obs.ward || 'General Ward'}</span>
-                            </p>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-extrabold text-slate-900 text-sm">
+                                  {act.patient_name}
+                                </h4>
+                                <span className="px-2 py-0.5 text-[9px] font-black bg-sky-100 text-sky-800 rounded-md font-mono border border-sky-200">
+                                  SUKRAA PID: #{pid}
+                                </span>
+                                <span className={`px-2.5 py-0.5 text-[10px] font-black rounded-full border ${style.bg} ${style.text} ${style.border}`}>
+                                  {style.tag}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-semibold mt-0.5 flex items-center gap-2">
+                                <span>{act.gender || 'N/A'}{act.age ? `, ${act.age} yrs` : ''}</span>
+                                <span className="text-slate-300">•</span>
+                                <span className="text-sky-700 font-bold">{act.insurance || 'Private'}</span>
+                                <span className="text-slate-300">•</span>
+                                <span className="text-slate-600 font-bold">{act.ward || 'General Ward'}</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Timestamp & Nurse */}
+                          <div className="flex sm:flex-col items-end justify-between sm:justify-start gap-1 shrink-0">
+                            <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/70">
+                              <Clock size={11} className="text-sky-600 shrink-0" />
+                              <span>{exactDate} {exactTime}</span>
+                              {ago && <span className="text-sky-700 font-black">({ago})</span>}
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400">
+                              Logged by {act.nurse_name || 'Nurse'}
+                            </span>
                           </div>
                         </div>
 
-                        {/* Status + Exact Time Stamp */}
-                        <div className="flex sm:flex-col items-end justify-between sm:justify-start gap-1 shrink-0">
-                          <div className="flex items-center gap-2">
+                        {/* Individual Activity Notes */}
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs font-semibold text-slate-800 leading-relaxed">
+                          {act.activity_summary}
+                        </div>
+
+                        {/* Vitals Snapshot (if recorded for this activity) */}
+                        {(vitals.bp || vitals.pulse || vitals.temp || vitals.spo2) && (
+                          <div className="flex items-center gap-2 pt-1 text-[10px] font-extrabold flex-wrap">
+                            <span className="text-slate-400 font-black uppercase tracking-wider text-[9px]">Vitals Checked:</span>
+                            {vitals.bp && <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-md">BP: {vitals.bp}</span>}
+                            {vitals.pulse && <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md">HR: {vitals.pulse}</span>}
+                            {vitals.temp && <span className="px-2 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-md">Temp: {vitals.temp}</span>}
+                            {vitals.spo2 && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md">SpO2: {vitals.spo2}</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-12 text-center text-slate-400 space-y-3">
+                    <Activity size={32} className="mx-auto text-slate-300" />
+                    <p className="font-bold text-xs">No individual shift activities logged yet.</p>
+                    <Button
+                      onClick={() => setIsLogModalOpen(true)}
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                    >
+                      <Plus size={14} className="mr-1" /> Log First Activity
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Content List 2: Full Clinical Sheets */}
+            {viewMode === 'CLINICAL_SHEETS' && (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 scrollbar-thin">
+                {filteredObservations.length > 0 ? (
+                  filteredObservations.map((obs) => {
+                    const pid = obs.sukraa_pid || obs.patient_id || 'N/A';
+                    const rawTs = obs.timestamp || obs.updated_at || obs.created_at;
+                    const exactTime = formatExactTime(rawTs);
+                    const exactDate = formatExactDate(rawTs);
+                    const ago = getTimeAgo(rawTs);
+
+                    return (
+                      <div
+                        key={obs.id || `${obs.patient_id}-${obs.queue_id}`}
+                        onClick={() => setActiveClinicalPatient(obs)}
+                        className="p-4 border border-slate-200/80 rounded-2xl bg-white hover:border-sky-400 hover:shadow-md transition-all cursor-pointer space-y-3 group"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-800 flex items-center justify-center font-black text-sm shrink-0 border border-sky-100 group-hover:bg-sky-600 group-hover:text-white transition-colors">
+                              {obs.patient_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'P'}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-sky-700 transition-colors">
+                                  {obs.patient_name}
+                                </h4>
+                                <span className="px-2 py-0.5 text-[9px] font-black bg-sky-100 text-sky-800 rounded-md font-mono border border-sky-200">
+                                  SUKRAA PID: #{pid}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-semibold mt-0.5 flex items-center gap-2">
+                                <span>{obs.gender || 'N/A'}{obs.age ? `, ${obs.age} yrs` : ''}</span>
+                                <span className="text-slate-300">•</span>
+                                <span className="text-sky-700 font-bold">{obs.insurance || 'Private'}</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex sm:flex-col items-end justify-between sm:justify-start gap-1 shrink-0">
                             <Badge variant={obs.status === 'Draft' ? 'warning' : 'success'}>
                               {obs.status || 'Draft'}
                             </Badge>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/70">
-                            <Clock size={11} className="text-sky-600 shrink-0" />
-                            <span>{exactDate} {exactTime}</span>
-                            {ago && <span className="text-sky-700 font-black">({ago})</span>}
+                            <div className="flex items-center gap-1 text-[10px] font-extrabold text-slate-500">
+                              <Clock size={11} className="text-sky-600 shrink-0" />
+                              <span>{exactDate} {exactTime}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
-
-                      {/* Vitals Snapshot Bar (if available) */}
-                      {(vitals.bp || vitals.pulse || vitals.temp || vitals.spo2) && (
-                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-[10px] font-extrabold flex-wrap">
-                          <span className="text-slate-400 font-black uppercase tracking-wider text-[9px]">Triage Vitals:</span>
-                          {vitals.bp && <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-md">BP: {vitals.bp}</span>}
-                          {vitals.pulse && <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md">HR: {vitals.pulse}</span>}
-                          {vitals.temp && <span className="px-2 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-md">Temp: {vitals.temp}</span>}
-                          {vitals.spo2 && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md">SpO2: {vitals.spo2}</span>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="py-12 text-center text-slate-400 space-y-2">
-                  <UserCheck size={32} className="mx-auto text-slate-300" />
-                  <p className="font-bold text-xs">No Sukraa clinical activity found matching your filter.</p>
-                </div>
-              )}
-            </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-12 text-center text-slate-400 space-y-2">
+                    <UserCheck size={32} className="mx-auto text-slate-300" />
+                    <p className="font-bold text-xs">No clinical sheets found matching search.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
 
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div className="bg-white p-6 rounded-[28px] border border-slate-200 shadow-sm flex items-center gap-5">
-                <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                  <Heart size={24} />
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <Activity size={24} />
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-slate-900 leading-none">0</p>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Critical Alerts</p>
+                  <p className="text-2xl font-black text-slate-900 leading-none">{shiftActivities.length}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Individual Shift Activities</p>
                 </div>
              </div>
              <div className="bg-white p-6 rounded-[28px] border border-slate-200 shadow-sm flex items-center gap-5">
@@ -367,12 +625,182 @@ export default function NurseShiftDashboard() {
                 </div>
                 <div>
                   <p className="text-2xl font-black text-slate-900 leading-none">{recentObservations.length}</p>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Today's Sukraa Assessments</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Sukraa Clinical Sheets</p>
                 </div>
              </div>
           </div>
         </div>
       </div>
+
+      {/* ── Modal: Log New Individual Nursing Shift Activity ── */}
+      <Modal
+        isOpen={isLogModalOpen}
+        onClose={() => setIsLogModalOpen(false)}
+        title="Log Individual Clinical Activity (Sukraa Patient)"
+        maxWidth="650px"
+      >
+        <form onSubmit={handleLogActivitySubmit} className="space-y-5">
+          {/* Patient Selector */}
+          <div className="space-y-2 relative">
+            <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
+              Sukraa Patient PID / Name <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search Sukraa Patient by PID or Name (e.g. 23022172 or Mugisha)..."
+                value={activityForm.patient_id ? `${activityForm.patient_name} (PID #${activityForm.patient_id})` : patientSearchQuery}
+                onChange={e => {
+                  setPatientSearchQuery(e.target.value);
+                  if (activityForm.patient_id) {
+                    setActivityForm(prev => ({ ...prev, patient_id: '', patient_name: '' }));
+                  }
+                }}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-sky-500 focus:bg-white"
+              />
+              {activityForm.patient_id && (
+                <button
+                  type="button"
+                  onClick={() => setActivityForm(prev => ({ ...prev, patient_id: '', patient_name: '' }))}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-rose-500 font-extrabold hover:underline"
+                >
+                  Change
+                </button>
+              )}
+            </div>
+
+            {/* Sukraa Autocomplete Dropdown */}
+            {sukraaSearchResults.length > 0 && !activityForm.patient_id && (
+              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
+                {sukraaSearchResults.map((pat) => (
+                  <div
+                    key={pat.pid || pat.id}
+                    onClick={() => handleSelectSukraaPatient(pat)}
+                    className="p-3 hover:bg-sky-50 cursor-pointer flex items-center justify-between transition-colors"
+                  >
+                    <div>
+                      <p className="font-extrabold text-slate-900 text-xs">{pat.full_name || pat.patient_name}</p>
+                      <p className="text-[10px] text-slate-500 font-bold">PID: #{pat.pid || pat.patient_id} • {pat.gender || 'N/A'}</p>
+                    </div>
+                    <span className="px-2 py-0.5 text-[9px] font-black bg-sky-100 text-sky-800 rounded-md">Select</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Category & Ward */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1.5">
+                Activity Category <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={activityForm.activity_category}
+                onChange={e => setActivityForm(prev => ({ ...prev, activity_category: e.target.value }))}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+              >
+                <option value="Medication Administered">💊 Medication Administered</option>
+                <option value="Vitals Check">🩺 Vitals Check</option>
+                <option value="Procedure / Dressing">🩹 Procedure / Dressing</option>
+                <option value="Doctor Round / Consult">👨‍⚕️ Doctor Round / Consult</option>
+                <option value="Nursing Care / Hygiene">📋 Nursing Care / Hygiene</option>
+                <option value="Patient Transfer">🔄 Patient Transfer / Handover</option>
+                <option value="General Note">📝 General Clinical Note</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1.5">
+                Ward / Location
+              </label>
+              <input
+                type="text"
+                value={activityForm.ward}
+                onChange={e => setActivityForm(prev => ({ ...prev, ward: e.target.value }))}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+              />
+            </div>
+          </div>
+
+          {/* Activity Notes / Summary */}
+          <div>
+            <label className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1.5">
+              Activity Summary Notes <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Enter exact nursing activity, medication dose, procedure performed, or observation note..."
+              value={activityForm.activity_summary}
+              onChange={e => setActivityForm(prev => ({ ...prev, activity_summary: e.target.value }))}
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-sky-500"
+              required
+            />
+          </div>
+
+          {/* Optional Vitals */}
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+            <p className="text-xs font-black text-slate-700 uppercase tracking-wider">
+              Optional Vital Signs Snapshot
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Blood Pressure</label>
+                <input
+                  type="text"
+                  placeholder="120/80"
+                  value={activityForm.vitals_bp}
+                  onChange={e => setActivityForm(prev => ({ ...prev, vitals_bp: e.target.value }))}
+                  className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Pulse (bpm)</label>
+                <input
+                  type="text"
+                  placeholder="75"
+                  value={activityForm.vitals_pulse}
+                  onChange={e => setActivityForm(prev => ({ ...prev, vitals_pulse: e.target.value }))}
+                  className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Temp (°C)</label>
+                <input
+                  type="text"
+                  placeholder="36.6"
+                  value={activityForm.vitals_temp}
+                  onChange={e => setActivityForm(prev => ({ ...prev, vitals_temp: e.target.value }))}
+                  className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">SpO2 (%)</label>
+                <input
+                  type="text"
+                  placeholder="98"
+                  value={activityForm.vitals_spo2}
+                  onChange={e => setActivityForm(prev => ({ ...prev, vitals_spo2: e.target.value }))}
+                  className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+            <Button type="button" variant="ghost" onClick={() => setIsLogModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submittingActivity}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-wider"
+            >
+              {submittingActivity ? 'Logging Activity...' : 'Save Activity Entry'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Active Patient Clinical Workspace Modal ── */}
       <Modal

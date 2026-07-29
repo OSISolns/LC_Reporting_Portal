@@ -520,6 +520,124 @@ exports.getRecentObservations = async (req, res) => {
   }
 };
 
+// ─── Individual Nursing Shift Clinical Activities ───────────────────────────
+exports.getShiftActivities = async (req, res) => {
+  try {
+    const { shift_id, limit = 50 } = req.query;
+    let sql = `
+      SELECT nca.*,
+             COALESCE(sp.full_name, nca.patient_name) AS patient_name,
+             sp.pid AS sukraa_pid,
+             sp.gender AS sukraa_gender,
+             sp.age AS sukraa_age,
+             sp.dob AS sukraa_dob,
+             sp.insurance AS sukraa_insurance,
+             sp.ref_type AS sukraa_ref_type,
+             sp.referrer_name AS sukraa_referrer_name,
+             sp.phone AS sukraa_phone
+        FROM nursing_clinical_activities nca
+        LEFT JOIN sukraa_patients sp ON (sp.pid = nca.patient_id OR sp.pid = CAST(nca.patient_id AS TEXT))
+    `;
+    const params = [];
+    if (shift_id) {
+      sql += ` WHERE nca.shift_id = $1`;
+      params.push(shift_id);
+    }
+    sql += ` ORDER BY nca.timestamp DESC LIMIT $${params.length + 1}`;
+    params.push(limit);
+
+    const { rows } = await db.query(sql, params);
+
+    const result = rows.map(r => ({
+      ...r,
+      patient_name: r.sukraa_full_name || r.patient_name || 'Unknown Patient',
+      patient_id: r.sukraa_pid || r.patient_id,
+      sukraa_pid: r.sukraa_pid || r.patient_id,
+      dob: r.sukraa_dob || '',
+      gender: r.sukraa_gender || '',
+      age: r.sukraa_age || '',
+      insurance: r.sukraa_referrer_name
+        ? `${r.sukraa_referrer_name}${r.sukraa_ref_type ? ` (${r.sukraa_ref_type})` : ''}`
+        : (r.sukraa_insurance || 'Private'),
+      vitals_snapshot: {
+        bp: r.vitals_bp || null,
+        pulse: r.vitals_pulse ? `${r.vitals_pulse} bpm` : null,
+        temp: r.vitals_temp ? `${r.vitals_temp} °C` : null,
+        spo2: r.vitals_spo2 ? `${r.vitals_spo2}%` : null,
+      },
+      formatted_timestamp: r.timestamp ? new Date(r.timestamp).toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+      }) : ''
+    }));
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error fetching nursing shift activities:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.logShiftActivity = async (req, res) => {
+  try {
+    const {
+      shift_id,
+      patient_id,
+      patient_name,
+      ward,
+      activity_category,
+      activity_summary,
+      vitals_bp,
+      vitals_pulse,
+      vitals_temp,
+      vitals_spo2,
+      custom_timestamp
+    } = req.body;
+
+    if (!patient_id || !activity_summary || !activity_category) {
+      return res.status(400).json({ success: false, message: 'Patient, category, and summary notes are required' });
+    }
+
+    let resolvedName = patient_name;
+    if (!resolvedName) {
+      const pRes = await db.query(`SELECT full_name FROM sukraa_patients WHERE pid = $1 OR pid = CAST($1 AS TEXT)`, [patient_id]);
+      if (pRes.rows[0]) resolvedName = pRes.rows[0].full_name;
+    }
+
+    const ts = custom_timestamp || new Date().toISOString();
+    const nurseName = req.user?.name || req.user?.username || 'Nurse';
+    const userId = req.user?.id || null;
+
+    const { rows } = await db.query(`
+      INSERT INTO nursing_clinical_activities (
+        shift_id, patient_id, patient_name, ward, activity_category,
+        activity_summary, vitals_bp, vitals_pulse, vitals_temp, vitals_spo2,
+        logged_by, nurse_name, timestamp
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING *
+    `, [
+      shift_id || null,
+      patient_id,
+      resolvedName || 'Unknown Patient',
+      ward || 'General Ward',
+      activity_category,
+      activity_summary,
+      vitals_bp || null,
+      vitals_pulse || null,
+      vitals_temp || null,
+      vitals_spo2 || null,
+      userId,
+      nurseName,
+      ts
+    ]);
+
+    res.json({ success: true, data: rows[0], message: 'Individual clinical activity logged successfully' });
+  } catch (error) {
+    console.error('Error logging nursing shift activity:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 // ─── Clinical Observation: Get all for a patient ──────────────────────────────
 exports.getAllObservations = async (req, res) => {
   try {

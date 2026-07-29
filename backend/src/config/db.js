@@ -2142,8 +2142,33 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     `);
       await client.execute(`CREATE INDEX IF NOT EXISTS idx_vitals_patient_id ON patient_vitals(patient_id)`);
       console.log('✅ SQLite Schema Migration: created/verified patient_vitals table');
+    // ── Nursing Clinical Activities (Individual Shift Log) ────────────────────
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS nursing_clinical_activities (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          shift_id INTEGER,
+          patient_id TEXT NOT NULL,
+          patient_name TEXT,
+          ward TEXT,
+          activity_category TEXT NOT NULL,
+          activity_summary TEXT NOT NULL,
+          vitals_bp TEXT,
+          vitals_pulse TEXT,
+          vitals_temp TEXT,
+          vitals_spo2 TEXT,
+          logged_by INTEGER,
+          nurse_name TEXT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_nca_patient_id ON nursing_clinical_activities(patient_id)`);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_nca_shift_id ON nursing_clinical_activities(shift_id)`);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_nca_timestamp ON nursing_clinical_activities(timestamp DESC)`);
+      console.log('✅ SQLite Schema Migration: created/verified nursing_clinical_activities table');
     } catch (err) {
-      console.error('❌ Failed to initialize patient_vitals table:', err);
+      console.error('❌ Failed to initialize nursing_clinical_activities table:', err);
     }
 
     // --- IT Support Hub Tables ---

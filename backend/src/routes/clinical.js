@@ -148,6 +148,10 @@ router.get('/observations/:patientId/verify',   checkPermission('clinical_observ
 router.get('/observations/:patientId/pdf',      checkPermission('clinical_observation', 'view'), clinicalController.getPDF);
 router.get('/observations/:patientId',          checkPermission('clinical_observation', 'view'), clinicalController.getObservation);
 
+// --- Individual Nursing Shift Clinical Activities ---
+router.get('/shift-activities', clinicalController.getShiftActivities);
+router.post('/shift-activities', clinicalController.logShiftActivity);
+
 // --- Nursing Daily Stock Checkup (module: daily_stock) ---
 router.get('/inventory', checkPermission('daily_stock', 'view'), clinicalController.getInventory);
 router.get('/inventory/export', checkPermission('daily_stock', 'view'), clinicalController.exportInventoryExcel);
