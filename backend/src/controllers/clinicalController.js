@@ -2934,7 +2934,6 @@ exports.logConsumable = async (req, res) => {
 
     // Record the consumption log entry
     const loggerName = req.user?.full_name || req.user?.username || null;
-    const resolvedNotes = notes || (qty === 0 ? 'In Use' : null);
     const { rows: logRows } = await db.query(`
       INSERT INTO consumables_log
         (department_id, department_name, item_id, item_name, batch_id, batch_number,
