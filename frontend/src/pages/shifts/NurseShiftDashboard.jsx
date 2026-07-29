@@ -383,9 +383,15 @@ export default function NurseShiftDashboard() {
                   </p>
                 </div>
               )}
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Assignment</p>
-                <p className="font-black text-slate-800 text-lg">General Ward</p>
+              <div className="p-4 bg-sky-50 rounded-2xl border border-sky-100">
+                <p className="text-[10px] font-black text-sky-600 uppercase tracking-widest mb-1">Assigned Nursing Station</p>
+                <p className="font-black text-slate-900 text-lg">{activeShift.nursing_ward || 'STATION 1'}</p>
+                <p className="text-xs text-sky-800 font-bold mt-1">
+                  {activeShift.nursing_ward === 'STATION 2' ? 'Cardiology Clinic (Vitals, ECG, TMT)' :
+                   activeShift.nursing_ward === 'MINOR SURGERY' ? 'Minor Surgical Procedures & Care' :
+                   activeShift.nursing_ward === 'PAEDIATRICS' ? 'Paediatric Vitals & Vaccinations (Minors & Adults)' :
+                   'Vital Signs Check & Patient Orientation'}
+                </p>
               </div>
             </div>
           ) : (
@@ -756,26 +762,31 @@ export default function NurseShiftDashboard() {
                 onChange={e => setActivityForm(prev => ({ ...prev, activity_category: e.target.value }))}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
               >
+                <option value="Vital Signs Check">🩺 Vital Signs Check & Orientation</option>
+                <option value="Cardiology / ECG / TMT">❤️ Cardiology / ECG / TMT</option>
+                <option value="Minor Surgery Procedure">🔪 Minor Surgery Procedure</option>
+                <option value="Paediatric / Adult Vaccination">💉 Paediatric / Adult Vaccination</option>
                 <option value="Medication Administered">💊 Medication Administered</option>
-                <option value="Vitals Check">🩺 Vitals Check</option>
                 <option value="Procedure / Dressing">🩹 Procedure / Dressing</option>
                 <option value="Doctor Round / Consult">👨‍⚕️ Doctor Round / Consult</option>
-                <option value="Nursing Care / Hygiene">📋 Nursing Care / Hygiene</option>
-                <option value="Patient Transfer">🔄 Patient Transfer / Handover</option>
                 <option value="General Note">📝 General Clinical Note</option>
               </select>
             </div>
 
             <div>
               <label className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1.5">
-                Ward / Location
+                Nursing Station / Ward <span className="text-rose-500">*</span>
               </label>
-              <input
-                type="text"
-                value={activityForm.ward}
+              <select
+                value={activityForm.ward || activeShift?.nursing_ward || 'STATION 1'}
                 onChange={e => setActivityForm(prev => ({ ...prev, ward: e.target.value }))}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
-              />
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-sky-500 font-extrabold text-slate-800"
+              >
+                <option value="STATION 1">STATION 1 (Vital Signs & Orientation)</option>
+                <option value="STATION 2">STATION 2 (Cardiology - ECG, TMT)</option>
+                <option value="MINOR SURGERY">MINOR SURGERY (Procedures & Suturing)</option>
+                <option value="PAEDIATRICS">PAEDIATRICS (Vitals & Vaccinations)</option>
+              </select>
             </div>
           </div>
 

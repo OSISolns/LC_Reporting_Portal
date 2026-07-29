@@ -7,6 +7,41 @@ export const SHIFT_ROLES = [
   { value: 'vip_lounge', label: 'VIP Lounge', icon: 'Crown' },
 ];
 
+export const NURSING_WARDS = [
+  {
+    id: 'STATION_1',
+    name: 'STATION 1',
+    label: 'STATION 1 (Vital Signs & Orientation)',
+    description: 'General vital signs check, triage & patient orientation',
+    services: 'Vital Signs Check & Orientation',
+    equipment: ['PC', 'BP Machine', 'Pulse Oximeter', 'Digital Thermometer', 'Stethoscope', 'Weight & Height Scale', 'Orientation Folder']
+  },
+  {
+    id: 'STATION_2',
+    name: 'STATION 2',
+    label: 'STATION 2 (Cardiology)',
+    description: 'Cardiology clinic — Vital signs, 12-Lead ECG, Treadmill Stress Test (TMT)',
+    services: 'Cardiology Vitals, ECG, TMT',
+    equipment: ['PC', '12-Lead ECG Machine', 'TMT Stress Test System', 'Cardiac Monitor', 'BP Machine', 'Pulse Oximeter', 'Stethoscope', 'Emergency Tray']
+  },
+  {
+    id: 'MINOR_SURGERY',
+    name: 'MINOR SURGERY',
+    label: 'MINOR SURGERY',
+    description: 'Minor surgical procedures, suturing & wound care',
+    services: 'Minor Surgeries & Wound Dressing',
+    equipment: ['PC', 'Minor Surgery Instrument Tray', 'Surgical Light', 'Autoclave Sterilizer', 'Electrocautery Unit', 'Antiseptic & Dressing Kit']
+  },
+  {
+    id: 'PAEDIATRICS',
+    name: 'PAEDIATRICS',
+    label: 'PAEDIATRICS (Vitals & Vaccinations)',
+    description: 'Paediatric vital signs, growth tracking, paediatric & adult vaccinations',
+    services: 'Paediatric Vitals & Vaccinations (Minors & Adults)',
+    equipment: ['PC', 'Paediatric Infrared Thermometer', 'Paediatric Pulse Oximeter', 'Paediatric BP Cuffs', 'Infant Length & Weight Scale', 'Vaccine Cold Storage / Refrigerator', 'Safety Needle Box']
+  }
+];
+
 // ─── Equipment per role ──────────────────────────────────────────────────────
 export const EQUIPMENT_BY_ROLE = {
   cashier: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],

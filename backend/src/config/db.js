@@ -911,6 +911,15 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     }
 
     try {
+      await client.execute("ALTER TABLE shift_sessions ADD COLUMN nursing_ward TEXT");
+      console.log('✅ SQLite Schema Migration: added nursing_ward to shift_sessions');
+    } catch (err) {
+      if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+        console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+      }
+    }
+
+    try {
       await client.execute("ALTER TABLE cancellation_requests ADD COLUMN original_receipt_amount REAL");
       console.log('✅ SQLite Schema Migration: added original_receipt_amount to cancellation_requests');
     } catch (err) {
@@ -2142,6 +2151,10 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     `);
       await client.execute(`CREATE INDEX IF NOT EXISTS idx_vitals_patient_id ON patient_vitals(patient_id)`);
       console.log('✅ SQLite Schema Migration: created/verified patient_vitals table');
+    } catch (err) {
+      console.error('❌ Failed to initialize patient_vitals table:', err);
+    }
+
     // ── Nursing Clinical Activities (Individual Shift Log) ────────────────────
     try {
       await client.execute(`

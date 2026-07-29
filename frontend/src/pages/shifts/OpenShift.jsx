@@ -28,9 +28,7 @@ import toast from 'react-hot-toast';
 import { openShift, getMyActiveShift } from '../../api/shifts';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
-import {
-  SHIFT_ROLES, EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS,
-} from './shiftConfig';
+import { SHIFT_ROLES, EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS, NURSING_WARDS } from './shiftConfig';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const ROLE_ICONS = {
@@ -52,6 +50,13 @@ const ICON_MAP = {
   'Stethoscope': <Stethoscope size={18} />,
   'BP Machine': <Activity size={18} />,
   'Pulse Oximeter': <Pill size={18} />,
+  '12-Lead ECG Machine': <Activity size={18} />,
+  'TMT Stress Test System': <Activity size={18} />,
+  'Cardiac Monitor': <Monitor size={18} />,
+  'Minor Surgery Instrument Tray': <Briefcase size={18} />,
+  'Surgical Light': <Monitor size={18} />,
+  'Autoclave Sterilizer': <Briefcase size={18} />,
+  'Vaccine Cold Storage / Refrigerator': <Thermometer size={18} />,
 }
 
 const WAVE_OPTIONS = [
@@ -137,6 +142,7 @@ export default function OpenShift() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState('');
+  const [selectedWard, setSelectedWard] = useState('STATION 1');
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
   const [startHour, setStartHour] = useState('');
@@ -144,22 +150,11 @@ export default function OpenShift() {
   const isCustomerCare = ['helpdesk', 'call_center'].includes(selectedRole);
 
   const visibleRoles = SHIFT_ROLES.filter(role => {
-    // Admins and IT Officers see all roles
     if (['admin', 'it_officer'].includes(user?.role)) return true;
-    
-    // Nurses only see Nurse
     if (user?.role === 'nurse' || user?.role === 'chef-nurse') return role.value === 'nurse';
-    
-    // VIP Lounge Agents only see VIP Lounge
     if (user?.role === 'vip_lounge') return role.value === 'vip_lounge';
-    
-    // Customer Care sees VIP Lounge, Helpdesk, Call Center, and Cashier
     if (user?.role === 'customer_care') return ['vip_lounge', 'helpdesk', 'call_center', 'cashier'].includes(role.value);
-    
-    // Cashiers only see Cashier
     if (user?.role === 'cashier') return role.value === 'cashier';
-    
-    // Everyone else sees everything EXCEPT Nurse and VIP Lounge
     return role.value !== 'nurse' && role.value !== 'vip_lounge';
   });
   const [password, setPassword] = useState('');
@@ -185,8 +180,19 @@ export default function OpenShift() {
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
-    setEquipment(EQUIPMENT_BY_ROLE[role].map(name => ({ name, status: 'Working', remarks: '' })));
+    if (role === 'nurse') {
+      const wardObj = NURSING_WARDS.find(w => w.name === selectedWard) || NURSING_WARDS[0];
+      setEquipment(wardObj.equipment.map(name => ({ name, status: 'Working', remarks: '' })));
+    } else {
+      setEquipment(EQUIPMENT_BY_ROLE[role].map(name => ({ name, status: 'Working', remarks: '' })));
+    }
     setStep(2);
+  };
+
+  const handleWardSelect = (wardName) => {
+    setSelectedWard(wardName);
+    const wardObj = NURSING_WARDS.find(w => w.name === wardName) || NURSING_WARDS[0];
+    setEquipment(wardObj.equipment.map(name => ({ name, status: 'Working', remarks: '' })));
   };
 
   const handleEquipmentChange = (i, field, val) => {
@@ -197,7 +203,11 @@ export default function OpenShift() {
     e.preventDefault();
     if (loading) return;
 
-    // Validation
+    if (selectedRole === 'nurse' && !selectedWard) {
+      toast.error('Please select your assigned Nursing Ward (STATION 1, STATION 2, MINOR SURGERY, or PAEDIATRICS).');
+      return;
+    }
+
     if (!startHour) {
       toast.error('Please specify your starting hour for wave allocation.');
       return;
@@ -226,10 +236,10 @@ export default function OpenShift() {
     try {
       const payload = {
         shift_role: selectedRole,
+        nursing_ward: selectedRole === 'nurse' ? selectedWard : null,
         equipment: equipment.map(e => ({ name: e.name, status: e.status, remarks: e.remarks || null })),
         password,
         start_hour: startHour,
-        // Legacy Clinics doesn't allow cashiers to accept cash, so float is always 0
         ...(selectedRole === 'cashier' && { opening_float: 0 })
       };
 
@@ -351,7 +361,62 @@ export default function OpenShift() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-10">
-              {/* Role-Specific Fields (No Cash Reconciliation per policy) */}
+              {/* Nursing Ward / Station Selector (Mandatory for Nurse role) */}
+              {selectedRole === 'nurse' && (
+                <div className="shift-card bg-gradient-to-br from-sky-50/50 to-white border-2 border-sky-100 shadow-sm rounded-3xl p-8 animate-fadeIn">
+                  <div className="flex items-center gap-5 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center text-sky-600 shadow-inner">
+                      <Stethoscope size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">Select Nursing Station / Ward <span className="text-rose-500">*</span></h3>
+                      <p className="text-slate-500 text-xs font-black uppercase tracking-widest">
+                        Mandatory: Choose your station before activating shift to load station equipment
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {NURSING_WARDS.map((w) => {
+                      const isSelected = selectedWard === w.name;
+                      return (
+                        <button
+                          key={w.id}
+                          type="button"
+                          onClick={() => handleWardSelect(w.name)}
+                          className={`relative flex flex-col items-start p-6 rounded-2xl border-2 transition-all duration-300 text-left ${
+                            isSelected
+                              ? 'bg-sky-50 border-sky-500 shadow-lg shadow-sky-500/10 scale-[1.01]'
+                              : 'bg-white border-slate-100 hover:border-slate-200'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center w-full mb-3">
+                            <span className={`text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full ${
+                              isSelected ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {w.name}
+                            </span>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                              isSelected ? 'bg-sky-600 border-sky-600' : 'bg-white border-slate-200'
+                            }`}>
+                              {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                            </div>
+                          </div>
+                          <span className="text-base font-extrabold text-slate-900 leading-snug">
+                            {w.description}
+                          </span>
+                          <span className="text-[11px] font-bold text-sky-700 mt-2 bg-sky-100/60 px-2.5 py-1 rounded-lg">
+                            {w.services}
+                          </span>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-3">
+                            Equipment: {w.equipment.slice(1, 4).join(', ')}... ({w.equipment.length} items)
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Starting Hour & Wave Selector */}
               {selectedRole && (

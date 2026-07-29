@@ -183,7 +183,7 @@ exports.openShift = async (req, res, next) => {
   try {
     const userId       = req.user.id;
     const isSupervisor = SUPERVISOR_ROLES.includes(req.user.role);
-    const { shift_role, equipment, opening_float, override, password, start_hour } = req.body;
+    const { shift_role, equipment, opening_float, override, password, start_hour, nursing_ward } = req.body;
     const isOverride   = isSupervisor && override === true;
 
     // Verify Password
@@ -237,6 +237,11 @@ exports.openShift = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid shift role.' });
     }
 
+    // Nursing Ward Validation for Nurse role
+    if (shift_role === 'nurse' && !nursing_ward) {
+      return res.status(400).json({ success: false, message: 'Please select a Nursing Ward (STATION 1, STATION 2, MINOR SURGERY, or PAEDIATRICS) before opening shift.' });
+    }
+
     // Wave Allocation Validation for all roles
     if (!start_hour) {
       return res.status(400).json({ success: false, message: 'Starting hour is required for wave allocation.' });
@@ -244,10 +249,6 @@ exports.openShift = async (req, res, next) => {
 
     let wave = null;
     if (shift_role === 'imaging') {
-      // Imaging runs its own 6-wave scheme (per the department task sheet). Some
-      // waves share a start hour but differ by end hour (e.g. 07:00–15:00 is
-      // Wave 1 while 07:00–21:00 is Wave 4), so the end hour is required to
-      // disambiguate.
       const { end_hour } = req.body;
       wave = resolveImagingWave(start_hour, end_hour);
       if (!wave) {
@@ -268,8 +269,8 @@ exports.openShift = async (req, res, next) => {
 
     // Insert shift session
     const shiftResult = await db.query(
-      `INSERT INTO shift_sessions (user_id, shift_role, status, start_hour, wave) VALUES (?, ?, 'open', ?, ?)`,
-      [userId, shift_role, start_hour || null, wave]
+      `INSERT INTO shift_sessions (user_id, shift_role, status, start_hour, wave, nursing_ward) VALUES (?, ?, 'open', ?, ?, ?)`,
+      [userId, shift_role, start_hour || null, wave, nursing_ward || null]
     );
 
     // Resolve inserted ID reliably — prefer the row returned by the driver,
