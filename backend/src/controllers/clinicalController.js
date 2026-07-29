@@ -480,21 +480,37 @@ exports.getObservation = async (req, res) => {
 exports.getRecentObservations = async (req, res) => {
   try {
     const rows = await ClinicalObservation.getRecent(req.user.id);
-    // identification_json/triage_json are stored as raw JSON strings -- flatten
-    // the fields callers actually need (dob, gender, insurance, allergies) so
-    // consumers don't have to know the storage shape or guess at key names.
     const result = rows.map(row => {
       let identification = {};
       let triage = {};
       try { identification = typeof row.identification_json === 'string' ? JSON.parse(row.identification_json) : (row.identification_json || {}); } catch (_) { }
       try { triage = typeof row.triage_json === 'string' ? JSON.parse(row.triage_json) : (row.triage_json || {}); } catch (_) { }
       const allergies = [triage.allergy_1, triage.allergy_2].filter(a => a && a.trim()).join(', ');
+      const rawTimestamp = row.updated_at || row.created_at;
+
       return {
         ...row,
-        dob: identification.dob || '',
-        gender: identification.gender || '',
-        insurance: identification.insurance || '',
-        allergies
+        patient_name: row.sukraa_full_name || row.patient_name || identification.full_name || 'Unknown Patient',
+        patient_id: row.sukraa_pid || row.patient_id,
+        sukraa_pid: row.sukraa_pid || row.patient_id,
+        dob: row.sukraa_dob || identification.dob || '',
+        gender: row.sukraa_gender || identification.gender || '',
+        age: row.sukraa_age || identification.age || '',
+        insurance: row.sukraa_referrer_name
+          ? `${row.sukraa_referrer_name}${row.sukraa_ref_type ? ` (${row.sukraa_ref_type})` : ''}`
+          : (row.sukraa_insurance || identification.insurance || 'Private'),
+        allergies,
+        vitals_snapshot: {
+          bp: triage.bp_systolic && triage.bp_diastolic ? `${triage.bp_systolic}/${triage.bp_diastolic} mmHg` : null,
+          pulse: triage.pulse ? `${triage.pulse} bpm` : null,
+          temp: triage.temperature ? `${triage.temperature} °C` : null,
+          spo2: triage.spo2 ? `${triage.spo2}%` : null,
+        },
+        timestamp: rawTimestamp,
+        formatted_timestamp: rawTimestamp ? new Date(rawTimestamp).toLocaleString('en-GB', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+        }) : ''
       };
     });
     res.json({ success: true, data: result });

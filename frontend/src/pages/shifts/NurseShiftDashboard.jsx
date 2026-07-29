@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -13,11 +13,17 @@ import {
   Thermometer,
   ShieldCheck,
   ExternalLink,
-  StickyNote
+  StickyNote,
+  Search,
+  Database,
+  UserCheck,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getMyActiveShift, getLatestHandover, getMyHistory } from '../../api/shifts';
 import { Button, Card, Badge } from '../../components/ui/index.jsx';
+import Modal from '../../components/Modal';
+import ClinicalSheet from '../ClinicalSheet';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 
@@ -39,6 +45,29 @@ function getWaveStartTime(shift) {
   return startTime;
 }
 
+function formatExactTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+}
+
+function formatExactDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function getTimeAgo(ts) {
+  if (!ts) return '';
+  const diffMs = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 export default function NurseShiftDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -47,6 +76,9 @@ export default function NurseShiftDashboard() {
   const [recentObservations, setRecentObservations] = useState([]);
   const [latestHandover, setLatestHandover] = useState(null);
   const [myHistory, setMyHistory] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [activeClinicalPatient, setActiveClinicalPatient] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -75,6 +107,27 @@ export default function NurseShiftDashboard() {
     }
     init();
   }, []);
+
+  const filteredObservations = useMemo(() => {
+    let list = recentObservations;
+    if (filterStatus === 'FINAL') {
+      list = list.filter(o => o.status === 'Final' || o.status === 'Verified');
+    } else if (filterStatus === 'DRAFT') {
+      list = list.filter(o => o.status === 'Draft');
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(o =>
+        (o.patient_name && o.patient_name.toLowerCase().includes(q)) ||
+        (o.patient_id && String(o.patient_id).toLowerCase().includes(q)) ||
+        (o.sukraa_pid && String(o.sukraa_pid).toLowerCase().includes(q)) ||
+        (o.ward && o.ward.toLowerCase().includes(q)) ||
+        (o.insurance && o.insurance.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [recentObservations, filterStatus, searchQuery]);
 
   if (loading) return <div className="p-20 text-center font-black text-slate-300 uppercase tracking-widest">Initialising Clinical Protocol...</div>;
 
@@ -158,39 +211,140 @@ export default function NurseShiftDashboard() {
           )}
         </Card>
 
-        {/* Clinical Activity */}
+        {/* Clinical Activity Summary (Sukraa HIMS Patient Integration) */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                <ClipboardList size={20} className="text-[#1b669d]" /> Recent Observations
-              </h3>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/nursing-hub')} className="text-[#1b669d] font-bold">
-                View All <ExternalLink size={14} className="ml-1" />
-              </Button>
+          <Card className="p-8 space-y-6 border border-slate-200 shadow-xl rounded-[28px] bg-white">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-sky-100 text-sky-800 rounded-md flex items-center gap-1">
+                    <Database size={10} /> Sukraa HIMS Sync
+                  </span>
+                  <span className="text-xs text-slate-400 font-semibold">• Live Encounters</span>
+                </div>
+                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2.5">
+                  <ClipboardList size={22} className="text-[#1b669d]" /> Clinical Activity Summary
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Exact patient encounters & clinical observations pulled directly from Sukraa HIMS
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="ghost" size="sm" onClick={() => navigate('/nursing-hub')} className="text-[#1b669d] font-bold text-xs">
+                  Nursing Hub <ExternalLink size={14} className="ml-1" />
+                </Button>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {recentObservations.length > 0 ? recentObservations.map((obs, i) => (
-                <div key={i} className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 transition-colors group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-[#1b669d]/10 group-hover:text-[#1b669d] transition-colors">
-                      <Users size={18} />
+            {/* Sub-header Filter & Search bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-full sm:w-auto">
+                {[
+                  { id: 'ALL', label: `All (${recentObservations.length})` },
+                  { id: 'FINAL', label: `Finalised (${recentObservations.filter(o => o.status === 'Final' || o.status === 'Verified').length})` },
+                  { id: 'DRAFT', label: `Drafts (${recentObservations.filter(o => o.status === 'Draft').length})` },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setFilterStatus(tab.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      filterStatus === tab.id
+                        ? 'bg-white text-sky-900 shadow-2xs font-extrabold'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-full sm:w-64">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search PID, name, ward..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-sky-500 focus:bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Patients Activity List */}
+            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 scrollbar-thin">
+              {filteredObservations.length > 0 ? (
+                filteredObservations.map((obs) => {
+                  const pid = obs.sukraa_pid || obs.patient_id || 'N/A';
+                  const rawTs = obs.timestamp || obs.updated_at || obs.created_at;
+                  const exactTime = formatExactTime(rawTs);
+                  const exactDate = formatExactDate(rawTs);
+                  const ago = getTimeAgo(rawTs);
+                  const vitals = obs.vitals_snapshot || {};
+
+                  return (
+                    <div
+                      key={obs.id || `${obs.patient_id}-${obs.queue_id}`}
+                      onClick={() => setActiveClinicalPatient(obs)}
+                      className="p-4 border border-slate-200/80 rounded-2xl bg-white hover:border-sky-400 hover:shadow-md transition-all cursor-pointer space-y-3 group"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        {/* Sukraa Patient Header */}
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-800 flex items-center justify-center font-black text-sm shrink-0 border border-sky-100 group-hover:bg-sky-600 group-hover:text-white transition-colors">
+                            {obs.patient_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'P'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-sky-700 transition-colors">
+                                {obs.patient_name}
+                              </h4>
+                              <span className="px-2 py-0.5 text-[9px] font-black bg-sky-100 text-sky-800 rounded-md font-mono border border-sky-200">
+                                SUKRAA PID: #{pid}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-semibold mt-0.5 flex items-center gap-2">
+                              <span>{obs.gender || 'N/A'}{obs.age ? `, ${obs.age} yrs` : ''}</span>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-sky-700 font-bold">{obs.insurance || 'Private'}</span>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-slate-600 font-bold">{obs.ward || 'General Ward'}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status + Exact Time Stamp */}
+                        <div className="flex sm:flex-col items-end justify-between sm:justify-start gap-1 shrink-0">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={obs.status === 'Draft' ? 'warning' : 'success'}>
+                              {obs.status || 'Draft'}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/70">
+                            <Clock size={11} className="text-sky-600 shrink-0" />
+                            <span>{exactDate} {exactTime}</span>
+                            {ago && <span className="text-sky-700 font-black">({ago})</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Vitals Snapshot Bar (if available) */}
+                      {(vitals.bp || vitals.pulse || vitals.temp || vitals.spo2) && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-[10px] font-extrabold flex-wrap">
+                          <span className="text-slate-400 font-black uppercase tracking-wider text-[9px]">Triage Vitals:</span>
+                          {vitals.bp && <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-md">BP: {vitals.bp}</span>}
+                          {vitals.pulse && <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md">HR: {vitals.pulse}</span>}
+                          {vitals.temp && <span className="px-2 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-md">Temp: {vitals.temp}</span>}
+                          {vitals.spo2 && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md">SpO2: {vitals.spo2}</span>}
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <p className="font-black text-slate-800">{obs.patient_name}</p>
-                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                        {obs.ward || 'General'} • {new Date(obs.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant={obs.status === 'Draft' ? 'warning' : 'success'}>
-                    {obs.status}
-                  </Badge>
-                </div>
-              )) : (
-                <div className="py-10 text-center text-slate-400 font-bold">
-                  No recent clinical observations recorded today.
+                  );
+                })
+              ) : (
+                <div className="py-12 text-center text-slate-400 space-y-2">
+                  <UserCheck size={32} className="mx-auto text-slate-300" />
+                  <p className="font-bold text-xs">No Sukraa clinical activity found matching your filter.</p>
                 </div>
               )}
             </div>
@@ -213,12 +367,36 @@ export default function NurseShiftDashboard() {
                 </div>
                 <div>
                   <p className="text-2xl font-black text-slate-900 leading-none">{recentObservations.length}</p>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Today's Assessments</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Today's Sukraa Assessments</p>
                 </div>
              </div>
           </div>
         </div>
       </div>
+
+      {/* ── Active Patient Clinical Workspace Modal ── */}
+      <Modal
+        isOpen={activeClinicalPatient !== null}
+        onClose={() => setActiveClinicalPatient(null)}
+        title={`${activeClinicalPatient?.patient_name || 'Sukraa Patient'} (PID #${activeClinicalPatient?.sukraa_pid || activeClinicalPatient?.patient_id}) — Clinical Observation Sheet`}
+        maxWidth="950px"
+      >
+        {activeClinicalPatient !== null && (
+          <ClinicalSheet
+            embeddedPatientId={activeClinicalPatient.sukraa_pid || activeClinicalPatient.patient_id}
+            embeddedQueueId={activeClinicalPatient.queue_id || `Q-${Date.now()}`}
+            isEmbedded={true}
+            embeddedTab="all"
+            onSaveSuccess={() => {
+              api.get('/clinical/observations/recent').then(res => {
+                if (res.data?.success && res.data?.data) {
+                  setRecentObservations(res.data.data);
+                }
+              }).catch(() => {});
+            }}
+          />
+        )}
+      </Modal>
 
       {/* ── Previous Handover Notes ── */}
       {latestHandover && (

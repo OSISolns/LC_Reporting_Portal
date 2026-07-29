@@ -81,9 +81,23 @@ class ClinicalObservation {
     };
   }
 
-  static async getRecent(userId, limit = 10) {
-    let query = `SELECT * FROM clinical_observations WHERE created_by = $1 ORDER BY updated_at DESC LIMIT $2`;
-    const params = [userId, limit];
+  static async getRecent(userId, limit = 50) {
+    let query = `
+      SELECT co.*,
+             sp.full_name as sukraa_full_name,
+             sp.pid as sukraa_pid,
+             sp.gender as sukraa_gender,
+             sp.age as sukraa_age,
+             sp.dob as sukraa_dob,
+             sp.insurance as sukraa_insurance,
+             sp.ref_type as sukraa_ref_type,
+             sp.referrer_name as sukraa_referrer_name,
+             sp.phone as sukraa_phone
+        FROM clinical_observations co
+        LEFT JOIN sukraa_patients sp ON (sp.pid = co.patient_id OR sp.pid = CAST(co.patient_id AS TEXT))
+       ORDER BY co.updated_at DESC
+       LIMIT $1`;
+    const params = [limit];
 
     const { rows } = await db.query(query, params);
     return rows;
