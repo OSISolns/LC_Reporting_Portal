@@ -2478,23 +2478,72 @@ exports.getCentralBatchesForItem = async (req, res) => {
 // one-row-per-batch shape, which can't show that). Excludes the internal
 // "Central Store" pseudo-department used by supplier-receiving/GRN to track
 // stock that hasn't actually been distributed anywhere.
+// Helper to check if a user role has access to log/view consumables for a given department
+const checkDepartmentAccess = async (userRole, departmentId) => {
+  if (!departmentId) return true;
+  const r = String(userRole || '').toLowerCase();
+
+  // Admins, Directors, COOs, Stock Managers, HODs, Officers, Leads can access all departments
+  if (
+    r === 'admin' || r === 'superadmin' ||
+    r.includes('director') || r.includes('coo') || r.includes('stock') ||
+    r.includes('procurement') || r.includes('manager') || r.includes('officer') ||
+    r.includes('lead') || r.includes('head')
+  ) {
+    return true;
+  }
+
+  try {
+    const { rows } = await db.query('SELECT id, name FROM departments WHERE id = $1', [departmentId]);
+    if (rows.length === 0) return true;
+    const targetDeptName = (rows[0].name || '').toUpperCase();
+
+    if (r.includes('dental') || r.includes('dentist') || r.includes('ortho') || r.includes('prostho')) {
+      return targetDeptName.includes('DENTAL') || targetDeptName.includes('CLINIC') || targetDeptName.includes('LAB');
+    }
+    if (r.includes('nurse') || r.includes('ward')) {
+      return targetDeptName.includes('NURSING') || targetDeptName.includes('STATION') || targetDeptName.includes('SURGERY') || targetDeptName.includes('WARD') || targetDeptName.includes('OBS');
+    }
+    if (r.includes('lab') && !r.includes('dental')) {
+      return targetDeptName.includes('LAB') || targetDeptName.includes('LABORATORY') || targetDeptName.includes('PATHOLOGY');
+    }
+    if (r.includes('physio')) {
+      return targetDeptName.includes('PHYSIO');
+    }
+    if (r.includes('imaging') || r.includes('radio') || r.includes('sono') || r.includes('xray')) {
+      return targetDeptName.includes('IMAGING') || targetDeptName.includes('RADIOLOGY');
+    }
+  } catch (err) {
+    console.error('Error checking department access:', err);
+  }
+
+  return true;
+};
+
 // Helper to map role to department dynamically
 const getDepartmentForRole = async (role) => {
   const r = String(role || '').toLowerCase();
-  if (r === 'admin') return null;
+  if (
+    r === 'admin' || r === 'superadmin' ||
+    r.includes('director') || r.includes('coo') || r.includes('stock') ||
+    r.includes('procurement') || r.includes('manager') || r.includes('officer') ||
+    r.includes('lead') || r.includes('head') ||
+    r.includes('dental') || r.includes('dentist') || r.includes('ortho') || r.includes('prostho')
+  ) {
+    return null;
+  }
+
   let name = null;
   if (r.includes('nurse')) name = 'NURSING';
   else if (r.includes('lab') && !r.includes('dental')) name = 'LABORATORY';
-  else if (r.includes('stock') || r.includes('procurement') || r === 'deputy_coo') name = 'GENERAL STORE';
   else if (r.includes('physio')) name = 'PHYSIO';
-  else if (r.includes('dental') || r.includes('dentist')) name = 'DENTAL';
-  else if (r.includes('operations') || r.includes('ops') || r === 'coo') name = 'OPERATIONS';
+  else if (r.includes('operations') || r.includes('ops')) name = 'OPERATIONS';
   else if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) name = 'IMAGING';
 
   if (!name) return null;
 
   try {
-    const { rows } = await db.query("SELECT id, name FROM departments WHERE UPPER(name) = $1 LIMIT 1", [name]);
+    const { rows } = await db.query("SELECT id, name FROM departments WHERE UPPER(name) LIKE $1 LIMIT 1", [`%${name}%`]);
     return rows[0] || null;
   } catch (err) {
     console.error('Error resolving department for role:', err);
@@ -2772,9 +2821,9 @@ exports.logConsumable = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Department, item and a valid quantity are required.' });
     }
 
-    // Role-based department restriction check for non-admins
-    const deptLimit = await getDepartmentForRole(req.user.role);
-    if (deptLimit && Number(deptLimit.id) !== Number(department_id)) {
+    // Role-based department restriction check
+    const isAuthorized = await checkDepartmentAccess(req.user.role, department_id);
+    if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'You are not authorized to log consumables for this department.' });
     }
 
