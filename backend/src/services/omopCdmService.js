@@ -116,7 +116,7 @@ class OmopCdmService {
       SELECT s.*, 
              u.full_name AS technician_name
         FROM imaging_studies s
-        LEFT JOIN users u ON s.assigned_tech_id = u.id
+        LEFT JOIN users u ON s.performed_by = u.id
        ORDER BY s.id ASC
     `);
 
@@ -125,12 +125,18 @@ class OmopCdmService {
       SELECT r.*,
              u.full_name AS radiologist_name
         FROM imaging_reports r
-        LEFT JOIN users u ON r.created_by_user_id = u.id
+        LEFT JOIN users u ON r.radiologist_id = u.id
     `);
     const reportMap = Object.fromEntries(reports.map(r => [r.study_id, r]));
 
     // 3. Fetch DICOM records
-    const { rows: dicoms } = await db.query(`SELECT * FROM imaging_dicoms`);
+    let dicoms = [];
+    try {
+      const { rows } = await db.query(`SELECT * FROM imaging_series`);
+      dicoms = rows || [];
+    } catch {
+      dicoms = [];
+    }
 
     // 4. Transform to OMOP CDM Model Entities
     const persons = [];
@@ -173,9 +179,11 @@ class OmopCdmService {
         device_concept_id: 4132049
       };
 
-      const dateStr = study.acquired_at || study.scheduled_at || study.created_at || new Date().toISOString();
-      const studyDate = dateStr.slice(0, 10);
-      const studyDatetime = dateStr.replace('T', ' ').slice(0, 19);
+      const rawDate = study.acquired_at || study.scheduled_at || study.created_at || new Date();
+      const d = rawDate instanceof Date ? rawDate : new Date(rawDate);
+      const isoStr = !isNaN(d.getTime()) ? d.toISOString() : new Date().toISOString();
+      const studyDate = isoStr.slice(0, 10);
+      const studyDatetime = isoStr.replace('T', ' ').slice(0, 19);
 
       // OMOP procedure_occurrence
       const procedureId = study.id;
