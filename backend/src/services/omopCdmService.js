@@ -430,6 +430,190 @@ class OmopCdmService {
   }
 
   /**
+   * Initialize OMOP CDM tables directly inside local SQLite database (Cached Mode)
+   */
+  static async initializeLocalSchema() {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS omop_person (
+        person_id INTEGER PRIMARY KEY,
+        gender_concept_id INTEGER,
+        year_of_birth INTEGER,
+        month_of_birth INTEGER,
+        day_of_birth INTEGER,
+        birth_datetime TEXT,
+        race_concept_id INTEGER,
+        ethnicity_concept_id INTEGER,
+        person_source_value TEXT,
+        gender_source_value TEXT,
+        race_source_value TEXT,
+        ethnicity_source_value TEXT,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS omop_procedure_occurrence (
+        procedure_occurrence_id INTEGER PRIMARY KEY,
+        person_id INTEGER,
+        procedure_concept_id INTEGER,
+        procedure_date TEXT,
+        procedure_datetime TEXT,
+        procedure_end_date TEXT,
+        procedure_end_datetime TEXT,
+        procedure_type_concept_id INTEGER,
+        modifier_concept_id INTEGER,
+        quantity INTEGER DEFAULT 1,
+        procedure_source_value TEXT,
+        procedure_source_concept_id INTEGER,
+        modifier_source_value TEXT,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS omop_device_exposure (
+        device_exposure_id INTEGER PRIMARY KEY,
+        person_id INTEGER,
+        device_concept_id INTEGER,
+        device_exposure_start_date TEXT,
+        device_exposure_start_datetime TEXT,
+        device_exposure_end_date TEXT,
+        device_exposure_end_datetime TEXT,
+        device_type_concept_id INTEGER,
+        unique_device_id TEXT,
+        quantity INTEGER DEFAULT 1,
+        device_source_value TEXT,
+        device_source_concept_id INTEGER,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS omop_note (
+        note_id INTEGER PRIMARY KEY,
+        person_id INTEGER,
+        note_date TEXT,
+        note_datetime TEXT,
+        note_type_concept_id INTEGER,
+        note_class_concept_id INTEGER,
+        note_title TEXT,
+        note_text TEXT,
+        note_source_value TEXT,
+        note_event_id INTEGER,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS omop_measurement (
+        measurement_id INTEGER PRIMARY KEY,
+        person_id INTEGER,
+        measurement_concept_id INTEGER,
+        measurement_date TEXT,
+        measurement_datetime TEXT,
+        value_as_number REAL,
+        measurement_source_value TEXT,
+        unit_source_value TEXT,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+
+    return {
+      success: true,
+      message: 'OMOP CDM local database tables initialized successfully in local DB cache.',
+    };
+  }
+
+  /**
+   * Sync local Imaging Portal records into local SQLite OMOP CDM tables
+   */
+  static async syncToLocalDb() {
+    await this.initializeLocalSchema();
+    const { summary, data } = await this.extractImagingDataForOmop();
+
+    // 1. omop_person
+    for (const p of data.persons) {
+      await db.query(`
+        INSERT INTO omop_person (person_id, gender_concept_id, year_of_birth, month_of_birth, day_of_birth, birth_datetime, race_concept_id, ethnicity_concept_id, person_source_value, gender_source_value, race_source_value, ethnicity_source_value)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(person_id) DO UPDATE SET
+          gender_concept_id = excluded.gender_concept_id,
+          person_source_value = excluded.person_source_value
+      `, [p.person_id, p.gender_concept_id, p.year_of_birth, p.month_of_birth, p.day_of_birth, p.birth_datetime, p.race_concept_id, p.ethnicity_concept_id, p.person_source_value, p.gender_source_value, p.race_source_value, p.ethnicity_source_value]);
+    }
+
+    // 2. omop_procedure_occurrence
+    for (const proc of data.procedureOccurrences) {
+      await db.query(`
+        INSERT INTO omop_procedure_occurrence (procedure_occurrence_id, person_id, procedure_concept_id, procedure_date, procedure_datetime, procedure_end_date, procedure_end_datetime, procedure_type_concept_id, modifier_concept_id, quantity, procedure_source_value, procedure_source_concept_id, modifier_source_value)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(procedure_occurrence_id) DO UPDATE SET
+          procedure_concept_id = excluded.procedure_concept_id,
+          procedure_source_value = excluded.procedure_source_value
+      `, [proc.procedure_occurrence_id, proc.person_id, proc.procedure_concept_id, proc.procedure_date, proc.procedure_datetime, proc.procedure_end_date, proc.procedure_end_datetime, proc.procedure_type_concept_id, proc.modifier_concept_id, proc.quantity, proc.procedure_source_value, proc.procedure_source_concept_id, proc.modifier_source_value]);
+    }
+
+    // 3. omop_device_exposure
+    for (const dev of data.deviceExposures) {
+      await db.query(`
+        INSERT INTO omop_device_exposure (device_exposure_id, person_id, device_concept_id, device_exposure_start_date, device_exposure_start_datetime, device_exposure_end_date, device_exposure_end_datetime, device_type_concept_id, unique_device_id, quantity, device_source_value, device_source_concept_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(device_exposure_id) DO UPDATE SET
+          device_concept_id = excluded.device_concept_id,
+          device_source_value = excluded.device_source_value
+      `, [dev.device_exposure_id, dev.person_id, dev.device_concept_id, dev.device_exposure_start_date, dev.device_exposure_start_datetime, dev.device_exposure_end_date, dev.device_exposure_end_datetime, dev.device_type_concept_id, dev.unique_device_id, dev.quantity, dev.device_source_value, dev.device_source_concept_id]);
+    }
+
+    // 4. omop_note
+    for (const n of data.notes) {
+      await db.query(`
+        INSERT INTO omop_note (note_id, person_id, note_date, note_datetime, note_type_concept_id, note_class_concept_id, note_title, note_text, note_source_value, note_event_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(note_id) DO UPDATE SET
+          note_text = excluded.note_text,
+          note_title = excluded.note_title
+      `, [n.note_id, n.person_id, n.note_date, n.note_datetime, n.note_type_concept_id, n.note_class_concept_id, n.note_title, n.note_text, n.note_source_value, n.note_event_id]);
+    }
+
+    // 5. omop_measurement
+    for (const m of data.measurements) {
+      await db.query(`
+        INSERT INTO omop_measurement (measurement_id, person_id, measurement_concept_id, measurement_date, measurement_datetime, value_as_number, measurement_source_value, unit_source_value)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(measurement_id) DO UPDATE SET
+          value_as_number = excluded.value_as_number,
+          measurement_source_value = excluded.measurement_source_value
+      `, [m.measurement_id, m.person_id, m.measurement_concept_id, m.measurement_date, m.measurement_datetime, m.value_as_number, m.measurement_source_value, m.unit_source_value]);
+    }
+
+    return {
+      success: true,
+      message: `Synchronized ${summary.total_procedures} Imaging Studies & ${summary.total_notes} Radiology Reports into local DB cache.`,
+      summary,
+    };
+  }
+
+  /**
+   * Get counts of cached OMOP CDM entities in local SQLite database
+   */
+  static async getLocalSummary() {
+    await this.initializeLocalSchema();
+    try {
+      const { rows: p } = await db.query('SELECT COUNT(*) AS count FROM omop_person');
+      const { rows: proc } = await db.query('SELECT COUNT(*) AS count FROM omop_procedure_occurrence');
+      const { rows: dev } = await db.query('SELECT COUNT(*) AS count FROM omop_device_exposure');
+      const { rows: n } = await db.query('SELECT COUNT(*) AS count FROM omop_note');
+      const { rows: m } = await db.query('SELECT COUNT(*) AS count FROM omop_measurement');
+
+      return {
+        total_patients: p[0]?.count || 0,
+        total_procedures: proc[0]?.count || 0,
+        total_devices: dev[0]?.count || 0,
+        total_notes: n[0]?.count || 0,
+        total_measurements: m[0]?.count || 0,
+      };
+    } catch {
+      return { total_patients: 0, total_procedures: 0, total_devices: 0, total_notes: 0, total_measurements: 0 };
+    }
+  }
+
+  /**
    * Sync local Imaging Portal records directly into a target PostgreSQL OMOP CDM schema
    */
   static async syncImagingToPostgres(connectionInput, schemaName = 'cdm') {

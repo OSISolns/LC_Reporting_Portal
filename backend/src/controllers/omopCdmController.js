@@ -6,21 +6,16 @@ const { logAction } = require('../middleware/audit');
 // ── GET /api/imaging/omop/status ──────────────────────────────────────────────
 exports.getStatus = async (req, res, next) => {
   try {
-    const scripts = OmopCdmService.getScriptPaths();
     const etlResult = await OmopCdmService.extractImagingDataForOmop();
+    const cachedSummary = await OmopCdmService.getLocalSummary();
 
     res.json({
       success: true,
       data: {
         omop_version: 'v5.4',
-        target_dialect: 'PostgreSQL',
-        scripts_available: true,
-        postgres_env: {
-          configured: !!(process.env.PGHOST || process.env.PG_URI || process.env.DATABASE_URL),
-          host: process.env.PGHOST || 'localhost',
-          database: process.env.PGDATABASE || 'omop_cdm',
-        },
+        mode: 'local_db_cache',
         etl_summary: etlResult.summary,
+        cached_summary: cachedSummary,
       },
     });
   } catch (err) { next(err); }
@@ -29,15 +24,13 @@ exports.getStatus = async (req, res, next) => {
 // ── POST /api/imaging/omop/init-schema ─────────────────────────────────────────
 exports.initSchema = async (req, res, next) => {
   try {
-    const { connectionString, host, port, user, password, database, schema = 'cdm' } = req.body || {};
-    const connectionInput = connectionString || (host ? { host, port, user, password, database } : null);
-    const result = await OmopCdmService.initializeSchemaOnPostgres(connectionInput, schema);
-    await logAction(req, 'OMOP_INIT_SCHEMA', 'omop_cdm', 0, { schema });
+    const result = await OmopCdmService.initializeLocalSchema();
+    await logAction(req, 'OMOP_INIT_SCHEMA', 'omop_cdm', 0, {});
     res.json(result);
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: `Failed to initialize PostgreSQL OMOP CDM schema: ${err.message}`,
+      message: `Failed to initialize local OMOP CDM cache schema: ${err.message}`,
     });
   }
 };
@@ -45,15 +38,13 @@ exports.initSchema = async (req, res, next) => {
 // ── POST /api/imaging/omop/sync ────────────────────────────────────────────────
 exports.syncData = async (req, res, next) => {
   try {
-    const { connectionString, host, port, user, password, database, schema = 'cdm' } = req.body || {};
-    const connectionInput = connectionString || (host ? { host, port, user, password, database } : null);
-    const result = await OmopCdmService.syncImagingToPostgres(connectionInput, schema);
-    await logAction(req, 'OMOP_SYNC_DATA', 'omop_cdm', 0, { schema, count: result.summary?.total_procedures });
+    const result = await OmopCdmService.syncToLocalDb();
+    await logAction(req, 'OMOP_SYNC_DATA', 'omop_cdm', 0, { count: result.summary?.total_procedures });
     res.json(result);
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: `Failed to sync Imaging data to PostgreSQL OMOP CDM: ${err.message}`,
+      message: `Failed to sync Imaging data to local OMOP CDM cache: ${err.message}`,
     });
   }
 };
