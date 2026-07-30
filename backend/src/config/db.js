@@ -2155,6 +2155,29 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to initialize patient_vitals table:', err);
     }
 
+    // ── LOINC & SNOMED Terminology Cache Tables ───────────────────────────────
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS loinc_cache (
+          keyword TEXT PRIMARY KEY,
+          results TEXT NOT NULL,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        )
+      `);
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS snomed_cache (
+          keyword TEXT PRIMARY KEY,
+          results TEXT NOT NULL,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        )
+      `);
+      console.log('✅ SQLite Schema Migration: loinc_cache and snomed_cache tables ensured.');
+    } catch (err) {
+      if (!err.message?.includes('already exists')) {
+        console.error('❌ Terminology cache migration error:', err.message);
+      }
+    }
+
     // ── Nursing Clinical Activities (Individual Shift Log) ────────────────────
     try {
       await client.execute(`
