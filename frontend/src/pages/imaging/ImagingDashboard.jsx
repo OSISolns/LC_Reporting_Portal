@@ -76,32 +76,37 @@ const ImagingDashboard = () => {
     fetchOmop();
   }, [load, fetchOmop]);
 
-  const handleInitOmopSchema = async () => {
+  const [pgModalMode, setPgModalMode] = useState(null); // 'init' | 'sync' | null
+  const [pgCreds, setPgCreds] = useState({
+    host: 'localhost',
+    port: '5432',
+    user: 'postgres',
+    password: '',
+    database: 'omop_cdm',
+    schema: 'cdm',
+  });
+
+  const executePgAction = async (e) => {
+    if (e) e.preventDefault();
     setOmopLoading(true);
-    const tid = toast.loading('Initializing OHDSI OMOP CDM v5.4 PostgreSQL Schema...');
+    const isInit = pgModalMode === 'init';
+    const actionLabel = isInit ? 'Initializing OHDSI OMOP CDM v5.4 PostgreSQL Schema...' : 'ETL Syncing Imaging & Radiology records to OMOP CDM PostgreSQL...';
+    const tid = toast.loading(actionLabel);
+    
     try {
-      const res = await initOmopSchema({ schema: 'cdm' });
-      toast.success(res.data.message || 'PostgreSQL OMOP CDM schema created!', { id: tid });
+      const res = isInit ? await initOmopSchema(pgCreds) : await syncOmopData(pgCreds);
+      toast.success(res.data.message || (isInit ? 'PostgreSQL OMOP CDM schema created!' : 'Imaging data synced to OMOP CDM PostgreSQL!'), { id: tid });
+      setPgModalMode(null);
       fetchOmop();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to initialize OMOP CDM schema.', { id: tid });
+      toast.error(err.response?.data?.message || 'PostgreSQL connection/action failed.', { id: tid });
     } finally {
       setOmopLoading(false);
     }
   };
 
-  const handleSyncOmop = async () => {
-    setOmopLoading(true);
-    const tid = toast.loading('ETL Syncing Imaging & Radiology records to OMOP CDM PostgreSQL...');
-    try {
-      const res = await syncOmopData({ schema: 'cdm' });
-      toast.success(res.data.message || 'Imaging data synced to OMOP CDM PostgreSQL!', { id: tid });
-      fetchOmop();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to sync imaging data to OMOP CDM.', { id: tid });
-    } finally {
-      setOmopLoading(false);
-    }
+  const openPgModal = (mode) => {
+    setPgModalMode(mode);
   };
 
   if (loading) {
@@ -282,17 +287,17 @@ const ImagingDashboard = () => {
 
           <div className="flex items-center gap-2.5 flex-wrap">
             <button
-              onClick={handleInitOmopSchema}
+              onClick={() => openPgModal('init')}
               disabled={omopLoading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md disabled:opacity-50 cursor-pointer"
             >
               <Server size={14} /> Init PostgreSQL Schema
             </button>
 
             <button
-              onClick={handleSyncOmop}
+              onClick={() => openPgModal('sync')}
               disabled={omopLoading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md disabled:opacity-50 cursor-pointer"
             >
               <Play size={14} /> ETL Sync to PostgreSQL
             </button>
@@ -334,6 +339,128 @@ const ImagingDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* PostgreSQL Connection & Credentials Modal */}
+      {pgModalMode && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <Database size={20} className="text-indigo-400" />
+                <h3 className="text-base font-bold text-white">
+                  {pgModalMode === 'init' ? 'Init PostgreSQL OMOP Schema' : 'ETL Sync to PostgreSQL'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setPgModalMode(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={executePgAction} className="p-6 space-y-4">
+              <p className="text-xs text-slate-500">
+                Confirm your target PostgreSQL database credentials below to execute the OHDSI OMOP CDM script.
+              </p>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Host</label>
+                  <input
+                    type="text"
+                    value={pgCreds.host}
+                    onChange={(e) => setPgCreds((c) => ({ ...c, host: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                    placeholder="localhost"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Port</label>
+                  <input
+                    type="text"
+                    value={pgCreds.port}
+                    onChange={(e) => setPgCreds((c) => ({ ...c, port: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                    placeholder="5432"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">User</label>
+                  <input
+                    type="text"
+                    value={pgCreds.user}
+                    onChange={(e) => setPgCreds((c) => ({ ...c, user: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                    placeholder="postgres"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+                  <input
+                    type="password"
+                    value={pgCreds.password}
+                    onChange={(e) => setPgCreds((c) => ({ ...c, password: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Database</label>
+                  <input
+                    type="text"
+                    value={pgCreds.database}
+                    onChange={(e) => setPgCreds((c) => ({ ...c, database: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                    placeholder="omop_cdm"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Target Schema</label>
+                  <input
+                    type="text"
+                    value={pgCreds.schema}
+                    onChange={(e) => setPgCreds((c) => ({ ...c, schema: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                    placeholder="cdm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPgModalMode(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={omopLoading}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition-all disabled:opacity-50"
+                >
+                  {omopLoading ? 'Connecting...' : pgModalMode === 'init' ? 'Init Schema' : 'Sync Data'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

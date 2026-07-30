@@ -26,19 +26,28 @@ const EHR_ORDER_CONCEPT_ID = 38000275;      // OMOP Concept: EHR order
 
 class OmopCdmService {
   /**
-   * Get a PostgreSQL pool instance based on env vars or supplied connection string
+   * Get a PostgreSQL pool instance based on env vars, connection object, or connection string
    */
-  static getPgPool(connectionString) {
-    const config = connectionString
-      ? { connectionString }
-      : {
-          host: process.env.PGHOST || 'localhost',
-          port: parseInt(process.env.PGPORT || '5432', 10),
-          user: process.env.PGUSER || 'postgres',
-          password: process.env.PGPASSWORD || 'postgres',
-          database: process.env.PGDATABASE || 'omop_cdm',
-        };
-    return new Pool(config);
+  static getPgPool(connectionInput) {
+    if (typeof connectionInput === 'string' && connectionInput.trim()) {
+      return new Pool({ connectionString: connectionInput });
+    }
+    if (typeof connectionInput === 'object' && connectionInput) {
+      return new Pool({
+        host: connectionInput.host || process.env.PGHOST || process.env.DB_HOST || 'localhost',
+        port: parseInt(connectionInput.port || process.env.PGPORT || process.env.DB_PORT || '5432', 10),
+        user: connectionInput.user || process.env.PGUSER || process.env.DB_USER || 'postgres',
+        password: connectionInput.password !== undefined ? connectionInput.password : (process.env.PGPASSWORD || process.env.DB_PASSWORD || 'postgres'),
+        database: connectionInput.database || process.env.PGDATABASE || process.env.DB_NAME || 'omop_cdm',
+      });
+    }
+    return new Pool({
+      host: process.env.PGHOST || process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.PGPORT || process.env.DB_PORT || '5432', 10),
+      user: process.env.PGUSER || process.env.DB_USER || 'postgres',
+      password: process.env.PGPASSWORD || process.env.DB_PASSWORD || 'postgres',
+      database: process.env.PGDATABASE || process.env.DB_NAME || 'omop_cdm',
+    });
   }
 
   /**
@@ -56,8 +65,8 @@ class OmopCdmService {
   /**
    * Initialize OMOP CDM PostgreSQL schema (Tables, Primary Keys, Indexes, Constraints)
    */
-  static async initializeSchemaOnPostgres(connectionString, schemaName = 'cdm') {
-    const pool = this.getPgPool(connectionString);
+  static async initializeSchemaOnPostgres(connectionInput, schemaName = 'cdm') {
+    const pool = this.getPgPool(connectionInput);
     const client = await pool.connect();
     const scripts = this.getScriptPaths();
 
@@ -415,9 +424,9 @@ class OmopCdmService {
   /**
    * Sync local Imaging Portal records directly into a target PostgreSQL OMOP CDM schema
    */
-  static async syncImagingToPostgres(connectionString, schemaName = 'cdm') {
+  static async syncImagingToPostgres(connectionInput, schemaName = 'cdm') {
     const { summary, sql } = await this.generateOmopInsertSql(schemaName);
-    const pool = this.getPgPool(connectionString);
+    const pool = this.getPgPool(connectionInput);
     const client = await pool.connect();
 
     try {

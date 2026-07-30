@@ -29,8 +29,9 @@ exports.getStatus = async (req, res, next) => {
 // ── POST /api/imaging/omop/init-schema ─────────────────────────────────────────
 exports.initSchema = async (req, res, next) => {
   try {
-    const { connectionString, schema = 'cdm' } = req.body || {};
-    const result = await OmopCdmService.initializeSchemaOnPostgres(connectionString, schema);
+    const { connectionString, host, port, user, password, database, schema = 'cdm' } = req.body || {};
+    const connectionInput = connectionString || (host ? { host, port, user, password, database } : null);
+    const result = await OmopCdmService.initializeSchemaOnPostgres(connectionInput, schema);
     await logAction(req, 'OMOP_INIT_SCHEMA', 'omop_cdm', 0, { schema });
     res.json(result);
   } catch (err) {
@@ -44,8 +45,9 @@ exports.initSchema = async (req, res, next) => {
 // ── POST /api/imaging/omop/sync ────────────────────────────────────────────────
 exports.syncData = async (req, res, next) => {
   try {
-    const { connectionString, schema = 'cdm' } = req.body || {};
-    const result = await OmopCdmService.syncImagingToPostgres(connectionString, schema);
+    const { connectionString, host, port, user, password, database, schema = 'cdm' } = req.body || {};
+    const connectionInput = connectionString || (host ? { host, port, user, password, database } : null);
+    const result = await OmopCdmService.syncImagingToPostgres(connectionInput, schema);
     await logAction(req, 'OMOP_SYNC_DATA', 'omop_cdm', 0, { schema, count: result.summary?.total_procedures });
     res.json(result);
   } catch (err) {

@@ -223,6 +223,13 @@ const sanitizeParam = (p) => {
   if (p !== null && typeof p === 'object' && !(p instanceof Date) && !Buffer.isBuffer(p)) {
     try { return JSON.stringify(p); } catch { return String(p); }
   }
+  // Auto-format truncated datetime strings (e.g. HTML5 datetime-local "2026-07-31T11:30") to ISO 8601 UTC
+  if (typeof p === 'string' && /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}$/.test(p.trim())) {
+    try {
+      const d = new Date(p.trim());
+      if (!isNaN(d.getTime())) return d.toISOString();
+    } catch { /* fallback */ }
+  }
   return p;
 };
 
