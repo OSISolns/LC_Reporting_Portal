@@ -156,6 +156,7 @@ router.post('/shift-activities', clinicalController.logShiftActivity);
 router.get('/inventory', checkPermission('daily_stock', 'view'), clinicalController.getInventory);
 router.get('/inventory/export', checkPermission('daily_stock', 'view'), clinicalController.exportInventoryExcel);
 router.post('/inventory/sync-central-stock', checkPermission('daily_stock', 'edit'), clinicalController.syncCentralStockToNursing);
+router.get('/inventory/nursing-store-stock', checkPermission('daily_stock', 'view'), clinicalController.getNursingStoreStock);
 // /inventory/items is a shared reference lookup used broadly (nursing MAR,
 // e-prescriptions autocomplete) -- left on its existing role list rather
 // than folded into daily_stock, so prescribing roles keep access.

@@ -783,7 +783,11 @@ export default function DailyInventoryCheckup() {
       );
       // Fetch the persisted deleted items list for the target month
       const deletedPromise = api.get(`/clinical/inventory/deleted-items?month_year=${targetMonth}`).catch(() => ({ data: { success: false, data: [] } }));
-      const [responses, deletedRes] = await Promise.all([Promise.all(promises), deletedPromise]);
+      // Fetch the live NURSING department_stock totals per item — the exact same
+      // numbers shown as "available local" (Consumables Log) and "distributed"
+      // (Central Store). These are auto-pulled onto today's cell below.
+      const storePromise = api.get('/clinical/inventory/nursing-store-stock').catch(() => ({ data: { success: false, data: [] } }));
+      const [responses, deletedRes, storeRes] = await Promise.all([Promise.all(promises), deletedPromise, storePromise]);
 
       const allMap = {};
       DYNAMIC_MONTHS.forEach(m => allMap[m] = {});
@@ -834,6 +838,55 @@ export default function DailyInventoryCheckup() {
               responsible_name: ''
             };
           }
+        });
+      }
+
+      // ─── Auto-pull live store stock onto today's cell ──────────────────────
+      // Make the Daily Stock Checkup's stock-in-hand match what Nursing sees as
+      // "available local" (Consumables Log) and "distributed" (Central Store) —
+      // both of which read department_stock for NURSING. We overlay the store
+      // quantity onto the CURRENT real day/session of the current month only,
+      // and NEVER touch a cell a nurse manually recorded (manually_edited).
+      if (storeRes.data?.success && Array.isArray(storeRes.data.data)) {
+        const cm = CURRENT_MONTH_STR;
+        const now = new Date();
+        const realDay = now.getDate();
+        const realSession = now.getHours() < 15 ? 'AM' : 'PM';
+
+        // Normalized lookup of every known checkup item name so we map the
+        // store's master_inventory names to the exact key used in allMap.
+        const norm = (s) => String(s || '').toUpperCase().trim();
+        const knownNames = new Map();
+        ALL_ITEMS.forEach(n => knownNames.set(norm(n), n));
+        Object.keys(allMap[cm] || {}).forEach(n => knownNames.set(norm(n), n));
+
+        if (!allMap[cm]) allMap[cm] = {};
+
+        storeRes.data.data.forEach(({ item_name, quantity }) => {
+          // Only sync items the checkup already tracks — don't inject arbitrary
+          // store items into the Nursing roster.
+          const key = knownNames.get(norm(item_name));
+          if (!key) return;
+          const qty = parseInt(quantity, 10) || 0;
+
+          if (!allMap[cm][key]) allMap[cm][key] = {};
+          if (!allMap[cm][key][realDay]) allMap[cm][key][realDay] = {};
+
+          const existing = allMap[cm][key][realDay][realSession];
+          // Preserve any manually-recorded cell exactly as-is.
+          if (existing && existing.manually_edited) return;
+
+          const consumed_obs1 = parseInt(existing?.consumed_obs1, 10) || 0;
+          const consumed_minor = parseInt(existing?.consumed_minor, 10) || 0;
+          const consumed = consumed_obs1 + consumed_minor;
+          allMap[cm][key][realDay][realSession] = {
+            ...(existing || {}),
+            stock_in_hands: qty,
+            consumed_obs1,
+            consumed_minor,
+            consumed,
+            balance: qty - consumed,
+          };
         });
       }
 

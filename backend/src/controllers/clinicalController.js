@@ -3709,6 +3709,36 @@ exports.reconcileInventory = async (req, res) => {
   }
 };
 
+// ─── Nursing store stock: read-only per-item totals ──────────────────────────
+// Returns the exact same numbers surfaced as "available local" in the
+// Consumables Log and as "distributed" in the Central Store — i.e.
+// SUM(department_stock.quantity) for the NURSING department, keyed by item
+// name. The Daily Stock Checkup auto-pulls this on open so its stock-in-hand
+// always matches those two views. Read-only: no writes, no change logs.
+exports.getNursingStoreStock = async (req, res) => {
+  try {
+    const { rows: deptRows } = await db.query("SELECT id FROM departments WHERE UPPER(name) = 'NURSING' LIMIT 1");
+    const deptId = deptRows[0]?.id || 121;
+
+    const { rows } = await db.query(`
+      SELECT mi.name AS item_name, COALESCE(SUM(ds.quantity), 0) AS quantity
+      FROM department_stock ds
+      JOIN master_inventory mi ON ds.item_id = mi.id
+      WHERE ds.department_id = $1
+      GROUP BY mi.id, mi.name
+    `, [deptId]);
+
+    const data = rows.map(r => ({
+      item_name: r.item_name,
+      quantity: Math.max(0, parseInt(r.quantity, 10) || 0),
+    }));
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error in getNursingStoreStock:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 exports.syncCentralStockToNursing = async (req, res) => {
   try {
     const { month_year, day, session } = req.body;
