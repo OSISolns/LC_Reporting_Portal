@@ -2,6 +2,8 @@ import api from './axios';
 
 // Reference data
 export const getModalities = () => api.get('/imaging/modalities');
+export const getProviders = () => api.get('/imaging/providers');
+export const generateClinicalIndication = (data) => api.post('/imaging/ai/generate-indication', data);
 
 // Manager analytics dashboard
 export const getImagingDashboard = (months = 12) => api.get('/imaging/dashboard', { params: { months } });

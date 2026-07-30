@@ -9,6 +9,8 @@ router.use(authMiddleware);
 
 // ── Reference data ─────────────────────────────────────────────────────────────
 router.get('/modalities', checkPermission('imaging', 'view'), imagingController.getModalities);
+router.get('/providers', checkPermission('imaging', 'view'), imagingController.getProviders);
+router.post('/ai/generate-indication', checkPermission('imaging', 'view'), imagingController.generateClinicalIndication);
 
 // ── Manager analytics dashboard ────────────────────────────────────────────────
 router.get('/dashboard', checkPermission('imaging', 'view'), imagingController.dashboard);

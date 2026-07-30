@@ -25,7 +25,7 @@ async function notifyRadiologists(title, message, link) {
   } catch (e) { /* notification failure must not break the workflow */ }
 }
 
-// ── Reference data (units/modalities for the UI) ───────────────────────────────
+// ── Reference data (units/modalities & referring providers for the UI) ─────────
 exports.getModalities = async (_req, res) => {
   res.json({
     success: true,
@@ -34,6 +34,63 @@ exports.getModalities = async (_req, res) => {
       label: ImagingStudy.MODALITY_LABELS[code] || code,
     })),
   });
+};
+
+exports.getProviders = async (_req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT id, name, title, specialization FROM providers ORDER BY name ASC`
+    );
+    res.json({ success: true, data: rows || [] });
+  } catch (err) { next(err); }
+};
+
+// ── Lumina AI Clinical Indication Generator ────────────────────────────────────
+exports.generateClinicalIndication = async (req, res, next) => {
+  try {
+    const { modality, exam_region, exam_type, patient_age, patient_sex, clinical_indication } = req.body || {};
+    
+    const ageStr = patient_age ? `${patient_age}Y` : '';
+    const sexStr = patient_sex === 'M' ? 'Male' : patient_sex === 'F' ? 'Female' : (patient_sex || '');
+    const modStr = modality || 'Imaging Study';
+    const regionStr = exam_region || 'targeted region';
+    const loincStr = typeof exam_type === 'object' ? (exam_type?.display || '') : (exam_type || '');
+
+    let indication = '';
+    if (clinical_indication && clinical_indication.trim().length > 3) {
+      indication = `${clinical_indication.trim()} — Evaluate structural and pathological changes on ${modStr} (${regionStr}).`;
+    } else {
+      const presets = {
+        'Abdomen': 'Acute abdominal pain and distension; rule out visceral pathology, bowel obstruction, organomegaly or inflammatory processes.',
+        'Chest': 'Persistent cough, dyspnea and thoracic discomfort; evaluate for parenchymal opacities, pleural effusion or cardiopulmonary disease.',
+        'Brain': 'Severe persistent headache and dizziness; evaluate for intracranial space-occupying lesion, acute stroke or structural pathology.',
+        'Head': 'Cephalea and neurological symptoms; rule out structural intracranial lesion or traumatic injury.',
+        'Knee': 'Joint pain, swelling and limited range of motion following strain; rule out ligamentous tear or osteoarthritic changes.',
+        'Spine': 'Back pain radiating to extremities; evaluate for disc herniation, spinal stenosis or degenerative changes.',
+        'C-S': 'Cervical radiculopathy and neck stiffness; rule out cervical disc prolapse or degenerative spondylosis.',
+        'L-S': 'Lower back pain with sciatica; rule out lumbar intervertebral disc herniation or nerve root compression.',
+        'Pelvis': 'Pelvic pain and discomfort; evaluate for pelvic organ pathology or soft tissue abnormality.',
+        'Neck': 'Cervical swelling and local tenderness; rule out lymphadenopathy or soft tissue lesion.',
+        'Shoulder': 'Shoulder joint pain and restricted abduction; rule out rotator cuff tear or impingement syndrome.'
+      };
+
+      const matchedPreset = Object.entries(presets).find(([key]) => 
+        regionStr.toLowerCase().includes(key.toLowerCase()) || (loincStr && loincStr.toLowerCase().includes(key.toLowerCase()))
+      );
+
+      const details = matchedPreset 
+        ? matchedPreset[1] 
+        : `Clinical indication for ${modStr} of ${regionStr}${loincStr ? ` (${loincStr})` : ''}: Evaluate for pathological, inflammatory or structural abnormalities.`;
+
+      const patientPrefix = [ageStr, sexStr].filter(Boolean).join(' ');
+      indication = patientPrefix ? `${patientPrefix} patient presenting for ${modStr} (${regionStr}): ${details}` : details;
+    }
+
+    res.json({
+      success: true,
+      data: { indication }
+    });
+  } catch (err) { next(err); }
 };
 
 // ── Reception: schedule a study ────────────────────────────────────────────────
