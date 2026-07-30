@@ -40,3 +40,9 @@ export const getDicomImages = (id) => api.get(`/imaging/studies/${id}/dicom`);
 export const linkDicom = (id, study_instance_uid) => api.post(`/imaging/studies/${id}/dicom/link`, { study_instance_uid });
 export const getRenderedFrame = (id, params) => api.get(`/imaging/studies/${id}/dicom/rendered`, { params, responseType: 'blob' });
 export const stowUpload = (id, files, study_instance_uid) => api.post(`/imaging/studies/${id}/dicom/stow`, { files, study_instance_uid });
+
+// OHDSI OMOP CDM PostgreSQL
+export const getOmopStatus = () => api.get('/imaging/omop/status');
+export const initOmopSchema = (data) => api.post('/imaging/omop/init-schema', data);
+export const syncOmopData = (data) => api.post('/imaging/omop/sync', data);
+export const downloadOmopSqlUrl = (schema = 'cdm') => `/api/imaging/omop/export-sql?schema=${schema}`;

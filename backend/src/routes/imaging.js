@@ -44,7 +44,11 @@ router.get('/studies/:id/report/pdf', checkPermission('imaging', 'view'), imagin
 router.get('/dicom/status', checkPermission('imaging', 'view'), imagingController.dicomStatus);
 router.post('/studies/:id/dicom/link', checkPermission('imaging', 'acquire'), imagingController.linkDicom);
 router.get('/studies/:id/dicom', checkPermission('imaging', 'view'), imagingController.getDicomImages);
-router.get('/studies/:id/dicom/rendered', checkPermission('imaging', 'view'), imagingController.renderedFrame);
-router.post('/studies/:id/dicom/stow', checkPermission('imaging', 'acquire'), imagingController.stowUpload);
+// ── OHDSI OMOP CDM PostgreSQL Integration & Research Export ─────────────────────
+const omopCdmController = require('../controllers/omopCdmController');
+router.get('/omop/status', checkPermission('imaging', 'view'), omopCdmController.getStatus);
+router.post('/omop/init-schema', checkPermission('imaging', 'view'), omopCdmController.initSchema);
+router.post('/omop/sync', checkPermission('imaging', 'view'), omopCdmController.syncData);
+router.get('/omop/export-sql', checkPermission('imaging', 'view'), omopCdmController.exportSql);
 
 module.exports = router;

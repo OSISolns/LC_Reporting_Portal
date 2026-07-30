@@ -2,9 +2,16 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   RefreshCw, Activity, ScanLine, Radiation, Waves, Brain, FileText,
   Clock, TrendingUp, AlertTriangle, CheckCircle2, Layers, Stethoscope,
+  Database, Download, Play, ShieldCheck, Server
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { getImagingDashboard } from '../../api/imaging';
+import {
+  getImagingDashboard,
+  getOmopStatus,
+  initOmopSchema,
+  syncOmopData,
+  downloadOmopSqlUrl
+} from '../../api/imaging';
 
 const UNIT_ICON = {
   'X-Ray': <Radiation size={18} />,
@@ -40,6 +47,17 @@ const KpiTile = ({ icon, label, value, sub, accent = 'text-slate-800', ring = 'b
 const ImagingDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [omopData, setOmopData] = useState(null);
+  const [omopLoading, setOmopLoading] = useState(false);
+
+  const fetchOmop = useCallback(async () => {
+    try {
+      const res = await getOmopStatus();
+      setOmopData(res.data.data);
+    } catch (err) {
+      console.warn('OMOP CDM status fetch error', err);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,7 +71,38 @@ const ImagingDashboard = () => {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    fetchOmop();
+  }, [load, fetchOmop]);
+
+  const handleInitOmopSchema = async () => {
+    setOmopLoading(true);
+    const tid = toast.loading('Initializing OHDSI OMOP CDM v5.4 PostgreSQL Schema...');
+    try {
+      const res = await initOmopSchema({ schema: 'cdm' });
+      toast.success(res.data.message || 'PostgreSQL OMOP CDM schema created!', { id: tid });
+      fetchOmop();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to initialize OMOP CDM schema.', { id: tid });
+    } finally {
+      setOmopLoading(false);
+    }
+  };
+
+  const handleSyncOmop = async () => {
+    setOmopLoading(true);
+    const tid = toast.loading('ETL Syncing Imaging & Radiology records to OMOP CDM PostgreSQL...');
+    try {
+      const res = await syncOmopData({ schema: 'cdm' });
+      toast.success(res.data.message || 'Imaging data synced to OMOP CDM PostgreSQL!', { id: tid });
+      fetchOmop();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to sync imaging data to OMOP CDM.', { id: tid });
+    } finally {
+      setOmopLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -208,6 +257,81 @@ const ImagingDashboard = () => {
               ))}
             </ol>
           )}
+        </div>
+      </div>
+
+      {/* OHDSI OMOP Common Data Model (CDM v5.4) PostgreSQL Panel */}
+      <div className="mt-6 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-2xl p-6 text-white shadow-xl border border-indigo-900/40">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700/60 pb-5 mb-5">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-indigo-600/30 rounded-xl border border-indigo-500/30 text-indigo-400">
+              <Database size={24} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-extrabold text-white">OHDSI OMOP Common Data Model (PostgreSQL)</h3>
+                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 rounded border border-indigo-400/30">
+                  v5.4 / DICOM Radiomics
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Standardized clinical research data layer — maps imaging procedures, radiology report narratives, and DICOM metadata.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={handleInitOmopSchema}
+              disabled={omopLoading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md disabled:opacity-50"
+            >
+              <Server size={14} /> Init PostgreSQL Schema
+            </button>
+
+            <button
+              onClick={handleSyncOmop}
+              disabled={omopLoading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md disabled:opacity-50"
+            >
+              <Play size={14} /> ETL Sync to PostgreSQL
+            </button>
+
+            <a
+              href={downloadOmopSqlUrl('cdm')}
+              download="OMOP_CDM_v5.4_Imaging_Export.sql"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all shadow-md"
+            >
+              <Download size={14} /> Download OMOP SQL
+            </a>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-slate-800/60 rounded-xl p-3.5 border border-slate-700/50">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Mapped Persons</p>
+            <p className="text-xl font-black text-emerald-400 mt-1">{omopData?.etl_summary?.total_patients || 0}</p>
+            <p className="text-[10px] text-slate-400">OMOP `person` table</p>
+          </div>
+
+          <div className="bg-slate-800/60 rounded-xl p-3.5 border border-slate-700/50">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Imaging Procedures</p>
+            <p className="text-xl font-black text-indigo-400 mt-1">{omopData?.etl_summary?.total_procedures || 0}</p>
+            <p className="text-[10px] text-slate-400">OMOP `procedure_occurrence`</p>
+          </div>
+
+          <div className="bg-slate-800/60 rounded-xl p-3.5 border border-slate-700/50">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Radiology Notes</p>
+            <p className="text-xl font-black text-sky-400 mt-1">{omopData?.etl_summary?.total_notes || 0}</p>
+            <p className="text-[10px] text-slate-400">OMOP `note` (LOINC/SNOMED)</p>
+          </div>
+
+          <div className="bg-slate-800/60 rounded-xl p-3.5 border border-slate-700/50">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Modality Exposures</p>
+            <p className="text-xl font-black text-amber-400 mt-1">{omopData?.etl_summary?.total_devices || 0}</p>
+            <p className="text-[10px] text-slate-400">OMOP `device_exposure`</p>
+          </div>
         </div>
       </div>
     </div>
