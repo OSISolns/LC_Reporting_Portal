@@ -218,6 +218,14 @@ if (tursoUrl && tursoToken) {
   console.log('🔌 DATABASE: Connected to local SQLite database (via Prisma).');
 }
 
+const sanitizeParam = (p) => {
+  if (p === undefined) return null;
+  if (p !== null && typeof p === 'object' && !(p instanceof Date) && !Buffer.isBuffer(p)) {
+    try { return JSON.stringify(p); } catch { return String(p); }
+  }
+  return p;
+};
+
 const transformQuery = (sql, params) => {
   let transformedSql = sql;
   const matches = sql.match(/\$\d+/g);
@@ -225,11 +233,10 @@ const transformQuery = (sql, params) => {
   if (matches && params && params.length > 0) {
     args = matches.map(m => {
       const index = parseInt(m.substring(1), 10) - 1;
-      const val = params[index];
-      return val === undefined ? null : val;
+      return sanitizeParam(params[index]);
     });
   } else {
-    args = (params || []).map(p => p === undefined ? null : p);
+    args = (params || []).map(p => sanitizeParam(p));
   }
   transformedSql = transformedSql.replace(/\$\d+/g, '?');
   transformedSql = transformedSql
