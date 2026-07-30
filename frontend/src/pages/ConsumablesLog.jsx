@@ -327,8 +327,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         if (matchesDept) {
           seenItemIds.add(item.id);
           const centralQty = Number(item.quantity || 0);
-          const distQty = Number(item.distributed_quantity || 0);
-          const totalAvail = localQty > 0 ? localQty : (distQty > 0 ? distQty : centralQty);
+          const totalAvail = isGS ? centralQty : localQty;
 
           list.push({
             item_id: item.id,
