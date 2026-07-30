@@ -120,6 +120,14 @@ app.use('/api/dental', dentalRoutes);
 
 
 
+// ── Static Assets (Clean 404 for missing CSS/JS assets instead of HTML fallback) ──
+const path = require('path');
+const distAssetsDir = path.join(__dirname, '../frontend/dist/assets');
+app.use('/assets', express.static(distAssetsDir, {
+  fallthrough: false,
+  maxAge: '1d',
+}));
+
 // ── Root ──────────────────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {
   res.json({

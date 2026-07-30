@@ -3088,7 +3088,7 @@ exports.logConsumable = async (req, res) => {
 
     // ── Lumina AI: when notes='Finished', stamp finished_at on the open "In Use" row ──
     // This allows Lumina to compute avg_duration_hrs between In Use → Finished.
-    if (isSpecialDept && resolvedNotes === 'Finished' && qty > 0) {
+    if (isSpecialDept && resolvedNotes === 'Finished') {
       try {
         await db.query(
           `UPDATE consumables_log
