@@ -264,7 +264,6 @@ const ImagingDashboard = () => {
       <div className="mt-6 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-2xl p-6 text-white shadow-xl border border-indigo-900/40">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700/60 pb-5 mb-5">
           <div className="flex items-center gap-3.5">
-            <div className="flex items-center gap-3">
             <div className="p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-400">
               <Database size={24} />
             </div>
