@@ -39,9 +39,24 @@ exports.getModalities = async (_req, res) => {
 exports.getProviders = async (_req, res, next) => {
   try {
     const { rows } = await db.query(
-      `SELECT id, name, title, specialization FROM providers ORDER BY name ASC`
+      `SELECT id, name, title, specialization FROM providers 
+       WHERE title NOT IN ('Lab', 'Imaging') 
+         AND specialization NOT IN ('IMAGING', 'LABORATORY')
+         AND name NOT IN ('CT-Scan', 'Radiography (X-Ray)', 'MRI', 'Ultrasound', 'Biochemistry Analyzer', 'Hematology Analyzer', 'Immunology Analyzer', 'Coagulation Analyzer', 'Urinalysis Analyzer', 'Microbiology Logbook')
+       ORDER BY name ASC`
     );
-    res.json({ success: true, data: rows || [] });
+
+    // Deduplicate providers by normalized name
+    const seen = new Set();
+    const cleanRows = [];
+    for (const r of (rows || [])) {
+      const key = String(r.name || '').trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      cleanRows.push(r);
+    }
+
+    res.json({ success: true, data: cleanRows });
   } catch (err) { next(err); }
 };
 
