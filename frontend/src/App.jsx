@@ -54,6 +54,7 @@ import LabHub from './pages/lab/LabHub';
 import DentalHub from './pages/dental/DentalHub';
 import OdontogramDetailsPage from './pages/dental/OdontogramDetailsPage';
 import PhysioHub from './pages/physio/PhysioHub';
+import PhysiotherapistDashboard from './pages/physio/PhysiotherapistDashboard';
 import OperationsHub from './pages/operations/OperationsHub';
 
 const ShiftDashboardRedirect = () => {
@@ -116,7 +117,7 @@ function App() {
                 'lab_team_lead', 'lab_tech', 'lab',
                 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager',
                 'imaging_tech', 'imaging_manager', 'sono', 'radiologist',
-                'physiotherapist', 'physio', 'operations_staff', 'coo'
+                'physiotherapist', 'physio', 'physio_manager', 'operations_staff', 'coo'
               ]}>
                 <ConsumablesLog />
               </ProtectedRoute>
@@ -148,9 +149,17 @@ function App() {
 
             <Route path="/physio" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'physiotherapist', 'physio'
+                'admin', 'deputy_coo', 'physiotherapist', 'physio', 'physio_manager'
               ]}>
                 <PhysioHub />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/physio/dashboard" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'physiotherapist', 'physio', 'physio_manager'
+              ]}>
+                <PhysiotherapistDashboard />
               </ProtectedRoute>
             } />
 

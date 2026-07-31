@@ -23,7 +23,7 @@ const ALL_ROLES = [
   'consultant', 'operations_staff', 'pa', 'staff', 'hsfp', 'nurse',
   'chef-nurse', 'stock-manager', 'doctor', 'medical_director',
   'procurement-manager', 'imaging_tech', 'imaging_manager',
-  'physiotherapist', 'physio', 'dental_hod', 'dental_tech', 'dental_lab_manager',
+  'physiotherapist', 'physio', 'physio_manager', 'dental_hod', 'dental_tech', 'dental_lab_manager',
   'dentist', 'dental'
 ];
 
@@ -57,7 +57,7 @@ const Sidebar = ({ onClose }) => {
     { configKey: 'imaging',       name: 'Imaging Hub',      icon: <ScanLine size={20} />,        path: '/imaging',      requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director'] },
     { configKey: 'lab_hub',       name: 'Laboratory Hub',   icon: <FlaskConical size={20} />,    path: '/lab',          requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_tech', 'lab'] },
     { configKey: 'dental_hub',    name: 'Dental Hub',       icon: <Heart size={20} />,           path: '/dental',       requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'] },
-    { configKey: 'physio_hub',     name: 'Physio Hub',       icon: <Dumbbell size={20} />,        path: '/physio',       requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physiotherapist', 'physio'] },
+    { configKey: 'physio_hub',     name: 'Physio Hub',       icon: <Dumbbell size={20} />,        path: '/physio',       requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physiotherapist', 'physio', 'physio_manager'] },
     { configKey: 'operations_hub',  name: 'Operations Hub',   icon: <Settings size={20} />,        path: '/operations',   requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'operations_staff', 'coo'] },
     { configKey: 'central_store', name: 'General Store Hub', icon: <Database size={20} />,       path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'stock-manager'] },
     { configKey: 'consumables',   name: 'Consumables Log',  icon: <ClipboardList size={20} />,   path: '/consumables-log', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'chef-nurse', 'nurse', 'lab_team_lead', 'lab_tech', 'lab', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'imaging_tech', 'imaging_manager', 'operations_staff', 'coo', 'hsfp'] },
