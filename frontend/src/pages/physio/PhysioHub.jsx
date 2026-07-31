@@ -51,11 +51,13 @@ const PRESET_EXERCISES = [
 const PhysioHub = () => {
   const [activeTab, setActiveTab] = useState('rehab');
   const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState('therapist'); // 'therapist' | 'manager'
 
   // Sessions state
   const [sessions, setSessions] = useState([]);
   const [sessionSearch, setSessionSearch] = useState('');
   const [sessionStatusFilter, setSessionStatusFilter] = useState('All');
+  const [selectedTherapistFilter, setSelectedTherapistFilter] = useState('All');
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
 
   // New Session Form State
@@ -122,10 +124,11 @@ const PhysioHub = () => {
         s.treatment_area?.toLowerCase().includes(sessionSearch.toLowerCase());
 
       const matchesStatus = sessionStatusFilter === 'All' || s.status === sessionStatusFilter;
+      const matchesTherapist = selectedTherapistFilter === 'All' || s.therapist_name === selectedTherapistFilter;
 
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesStatus && matchesTherapist;
     });
-  }, [sessions, sessionSearch, sessionStatusFilter]);
+  }, [sessions, sessionSearch, sessionStatusFilter, selectedTherapistFilter]);
 
   // Session Statistics
   const stats = useMemo(() => {
@@ -236,9 +239,18 @@ const PhysioHub = () => {
               <Dumbbell size={28} />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-                <span className="text-emerald-400">KINETIC</span> Physiotherapy Portal
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
+                  <span className="text-emerald-400">KINETIC</span> Physiotherapy Portal
+                </h1>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                  userRole === 'manager'
+                    ? 'bg-amber-400/20 text-amber-300 border-amber-400/40'
+                    : 'bg-emerald-400/20 text-emerald-300 border-emerald-400/40'
+                }`}>
+                  {userRole === 'manager' ? 'Manager Mode' : 'Therapist Mode'}
+                </span>
+              </div>
               <p className="text-xs text-emerald-100/80 mt-0.5 font-medium">
                 Physical rehabilitation, joint range-of-motion assessments, exercise programs & supply logs.
               </p>
@@ -246,7 +258,31 @@ const PhysioHub = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Active Role Selector Switcher */}
+          <div className="bg-slate-900/80 border border-emerald-400/30 p-1 rounded-2xl flex items-center gap-1 shadow-inner">
+            <button
+              onClick={() => setUserRole('therapist')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                userRole === 'therapist'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md'
+                  : 'text-emerald-200/80 hover:text-white'
+              }`}
+            >
+              Therapist
+            </button>
+            <button
+              onClick={() => setUserRole('manager')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                userRole === 'manager'
+                  ? 'bg-amber-400 text-slate-950 shadow-md'
+                  : 'text-emerald-200/80 hover:text-white'
+              }`}
+            >
+              Manager
+            </button>
+          </div>
+
           <button
             onClick={() => setShowNewAssessmentModal(true)}
             className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
@@ -305,6 +341,45 @@ const PhysioHub = () => {
           </div>
         </div>
       </div>
+
+      {/* Manager Oversight Panel (Visible when Manager mode is active) */}
+      {userRole === 'manager' && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-500/20 text-amber-700 rounded-xl font-black">
+              <ShieldAlert size={22} />
+            </div>
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">Physiotherapy Manager Control Panel</h4>
+              <p className="text-xs text-amber-800 font-medium">Department oversight, staff workload allocation & inventory requisitions.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-amber-200 shadow-2xs">
+              <User size={14} className="text-amber-600" />
+              <span className="text-[10px] font-black uppercase text-slate-400">Therapist:</span>
+              <select
+                value={selectedTherapistFilter}
+                onChange={e => setSelectedTherapistFilter(e.target.value)}
+                className="text-xs font-bold text-slate-800 outline-none bg-transparent"
+              >
+                <option value="All">All Staff Therapists ({PHYSIO_THERAPISTS.length})</option>
+                {PHYSIO_THERAPISTS.map(th => (
+                  <option key={th} value={th}>{th}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={() => setActiveTab('consumables')}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <ClipboardList size={14} /> Review Stock Requisitions
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs Navigation */}
       <div className="flex items-center gap-2 border-b border-slate-200">

@@ -520,6 +520,42 @@ const ROLE_DEFAULTS = {
     inventory:        { view:1, create:1, edit:1, delete:1 },
     daily_stock:      { view:1, edit:1 },
   },
+
+  // ── Physiotherapy Department Roles (Manager & Therapist) ───────────────────
+  physio_manager: {
+    incident_reports: { view:1, create:1, edit:1, approve:1 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:1 },
+    shifts:           { view:1, create:1, edit:1, review:1, delete:0 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+    procurement:      { view:1, create:1, edit:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
+    physio:           { view:1, create:1, edit:1, delete:1 },
+  },
+  physio: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    inventory:        { view:1, create:1, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
+    physio:           { view:1, create:1, edit:1, delete:0 },
+  },
+  physiotherapist: {
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    inventory:        { view:1, create:1, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
+    physio:           { view:1, create:1, edit:1, delete:0 },
+  },
 };
 
 module.exports = {
