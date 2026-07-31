@@ -55,6 +55,7 @@ import DentalHub from './pages/dental/DentalHub';
 import OdontogramDetailsPage from './pages/dental/OdontogramDetailsPage';
 import PhysioHub from './pages/physio/PhysioHub';
 import PhysiotherapistDashboard from './pages/physio/PhysiotherapistDashboard';
+import PhysioManagerDashboard from './pages/physio/PhysioManagerDashboard';
 import OperationsHub from './pages/operations/OperationsHub';
 
 const ShiftDashboardRedirect = () => {
@@ -160,6 +161,14 @@ function App() {
                 'admin', 'deputy_coo', 'physiotherapist', 'physio', 'physio_manager'
               ]}>
                 <PhysiotherapistDashboard />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/physio/manager-dashboard" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'physio_manager'
+              ]}>
+                <PhysioManagerDashboard />
               </ProtectedRoute>
             } />
 
