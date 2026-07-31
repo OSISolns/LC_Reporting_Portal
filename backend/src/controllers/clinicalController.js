@@ -6111,3 +6111,180 @@ exports.aiApplyMasterItemsClassifications = async (req, res) => {
   }
 };
 
+// ── PHYSIOTHERAPY CONTROLLERS ──────────────────────────────────────────────────
+
+exports.getPhysioSessions = async (req, res) => {
+  try {
+    const { patient_id, date, status } = req.query;
+    let queryStr = `SELECT * FROM physio_rehab_sessions WHERE 1=1`;
+    const params = [];
+
+    if (patient_id) {
+      params.push(patient_id);
+      queryStr += ` AND patient_id = $${params.length}`;
+    }
+    if (date) {
+      params.push(date);
+      queryStr += ` AND session_date = $${params.length}`;
+    }
+    if (status) {
+      params.push(status);
+      queryStr += ` AND status = $${params.length}`;
+    }
+
+    queryStr += ` ORDER BY session_date DESC, id DESC LIMIT 100`;
+
+    const { rows } = await db.query(queryStr, params);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getPhysioSessions:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch physio rehab sessions.' });
+  }
+};
+
+exports.createPhysioSession = async (req, res) => {
+  try {
+    const {
+      patient_id,
+      patient_name,
+      therapist_name,
+      session_date,
+      status,
+      treatment_area,
+      exercises_prescribed,
+      progress_notes
+    } = req.body;
+
+    if (!patient_id || !session_date) {
+      return res.status(400).json({ success: false, message: 'Patient ID and session date are required.' });
+    }
+
+    const exPrescribedJson = typeof exercises_prescribed === 'object'
+      ? JSON.stringify(exercises_prescribed)
+      : (exercises_prescribed || '[]');
+
+    const { rows } = await db.query(
+      `INSERT INTO physio_rehab_sessions
+        (patient_id, patient_name, therapist_name, session_date, status, treatment_area, exercises_prescribed, progress_notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [
+        patient_id,
+        patient_name || 'Patient #' + patient_id,
+        therapist_name || 'Physiotherapist',
+        session_date,
+        status || 'Scheduled',
+        treatment_area || 'General',
+        exPrescribedJson,
+        progress_notes || ''
+      ]
+    );
+
+    res.json({ success: true, message: 'Rehab session created successfully.', data: rows[0] });
+  } catch (error) {
+    console.error('Error in createPhysioSession:', error);
+    res.status(500).json({ success: false, message: 'Failed to create physio rehab session.' });
+  }
+};
+
+exports.updatePhysioSessionStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, progress_notes } = req.body;
+
+    if (!id || !status) {
+      return res.status(400).json({ success: false, message: 'Session ID and status are required.' });
+    }
+
+    let queryStr = `UPDATE physio_rehab_sessions SET status = $1`;
+    const params = [status];
+
+    if (progress_notes !== undefined) {
+      params.push(progress_notes);
+      queryStr += `, progress_notes = $${params.length}`;
+    }
+
+    params.push(id);
+    queryStr += ` WHERE id = $${params.length} RETURNING *`;
+
+    const { rows } = await db.query(queryStr, params);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Rehab session not found.' });
+    }
+
+    res.json({ success: true, message: `Session status updated to ${status}.`, data: rows[0] });
+  } catch (error) {
+    console.error('Error in updatePhysioSessionStatus:', error);
+    res.status(500).json({ success: false, message: 'Failed to update physio rehab session.' });
+  }
+};
+
+exports.getPhysioAssessments = async (req, res) => {
+  try {
+    const { patient_id } = req.query;
+    let queryStr = `SELECT * FROM physio_assessments WHERE 1=1`;
+    const params = [];
+
+    if (patient_id) {
+      params.push(patient_id);
+      queryStr += ` AND patient_id = $${params.length}`;
+    }
+
+    queryStr += ` ORDER BY created_at DESC LIMIT 100`;
+
+    const { rows } = await db.query(queryStr, params);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getPhysioAssessments:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch physio assessments.' });
+  }
+};
+
+exports.createPhysioAssessment = async (req, res) => {
+  try {
+    const {
+      patient_id,
+      patient_name,
+      therapist_name,
+      body_part,
+      chief_complaint,
+      rom_data,
+      pain_score,
+      muscle_grade,
+      functional_goals,
+      treatment_plan
+    } = req.body;
+
+    if (!patient_id || !body_part) {
+      return res.status(400).json({ success: false, message: 'Patient ID and anatomical body part are required.' });
+    }
+
+    const romDataJson = typeof rom_data === 'object' ? JSON.stringify(rom_data) : (rom_data || '{}');
+
+    const { rows } = await db.query(
+      `INSERT INTO physio_assessments
+        (patient_id, patient_name, therapist_name, body_part, chief_complaint, rom_data, pain_score, muscle_grade, functional_goals, treatment_plan)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING *`,
+      [
+        patient_id,
+        patient_name || 'Patient #' + patient_id,
+        therapist_name || 'Physiotherapist',
+        body_part,
+        chief_complaint || '',
+        romDataJson,
+        parseInt(pain_score || 0, 10),
+        muscle_grade || 'Grade 5 (Normal)',
+        functional_goals || '',
+        treatment_plan || ''
+      ]
+    );
+
+    res.json({ success: true, message: 'Physio assessment saved successfully.', data: rows[0] });
+  } catch (error) {
+    console.error('Error in createPhysioAssessment:', error);
+    res.status(500).json({ success: false, message: 'Failed to create physio assessment.' });
+  }
+};
+
+

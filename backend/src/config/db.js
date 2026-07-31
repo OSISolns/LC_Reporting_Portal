@@ -2221,6 +2221,48 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to initialize nursing_clinical_activities table:', err);
     }
 
+    // ── Physiotherapy Hub Tables ────────────────────────────────────────────────
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS physio_assessments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          patient_id TEXT NOT NULL,
+          patient_name TEXT,
+          therapist_name TEXT,
+          body_part TEXT NOT NULL,
+          chief_complaint TEXT,
+          rom_data TEXT,
+          pain_score INTEGER DEFAULT 0,
+          muscle_grade TEXT,
+          functional_goals TEXT,
+          treatment_plan TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_pa_patient_id ON physio_assessments(patient_id)`);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_pa_created_at ON physio_assessments(created_at DESC)`);
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS physio_rehab_sessions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          patient_id TEXT NOT NULL,
+          patient_name TEXT,
+          therapist_name TEXT,
+          session_date DATE NOT NULL,
+          status TEXT DEFAULT 'Scheduled',
+          treatment_area TEXT,
+          exercises_prescribed TEXT,
+          progress_notes TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_prs_patient_id ON physio_rehab_sessions(patient_id)`);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_prs_session_date ON physio_rehab_sessions(session_date DESC)`);
+      console.log('✅ SQLite Schema Migration: created/verified physio_assessments and physio_rehab_sessions tables');
+    } catch (err) {
+      console.error('❌ Failed to initialize physio tables:', err);
+    }
+
     // --- IT Support Hub Tables ---
     try {
       await client.execute(`

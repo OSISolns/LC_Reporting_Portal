@@ -221,3 +221,11 @@ router.get('/inventory/analytics/spend-by-department', checkPermission('procurem
 router.get('/inventory/analytics/department-usage', checkPermission('procurement', 'view'), clinicalController.getDepartmentUsageAnalytics);
 router.get('/inventory/analytics/supplier-leaderboard', checkPermission('procurement', 'view'), clinicalController.getSupplierLeaderboard);
 router.get('/inventory/analytics/expiring-contracts', checkPermission('procurement', 'view'), clinicalController.getExpiringContracts);
+
+// --- Physiotherapy Portal Routes ---
+router.get('/physio/sessions', clinicalController.getPhysioSessions);
+router.post('/physio/sessions', clinicalController.createPhysioSession);
+router.put('/physio/sessions/:id/status', clinicalController.updatePhysioSessionStatus);
+router.get('/physio/assessments', clinicalController.getPhysioAssessments);
+router.post('/physio/assessments', clinicalController.createPhysioAssessment);
+
