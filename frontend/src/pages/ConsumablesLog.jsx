@@ -17,9 +17,9 @@ const getItemStatus = (expiryDate) => {
   if (!expiryDate) return { text: 'Active', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
   const exp = new Date(expiryDate);
   const today = new Date();
-  if (exp < today) return { text: 'Expired', color: 'bg-rose-50 text-rose-700 border-rose-250' };
+  if (exp < today) return { text: 'Expired', color: 'bg-rose-50 text-rose-700 border-rose-200' };
   const diff = (exp - today) / (1000 * 60 * 60 * 24);
-  if (diff <= 90) return { text: 'Near Expiry', color: 'bg-amber-50 text-amber-700 border-amber-250' };
+  if (diff <= 90) return { text: 'Near Expiry', color: 'bg-amber-50 text-amber-700 border-amber-200' };
   return { text: 'Active', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
 };
 
@@ -747,6 +747,107 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
   const handleRemoveReqItem = (itemId) => setReqCart(prev => prev.filter(c => String(c.item_id) !== String(itemId)));
 
+  const handleQuickReorderItem = (item) => {
+    if (!item) return;
+    setActiveSubTab('requisitions');
+    if (!reqCart.some(c => String(c.item_id) === String(item.item_id))) {
+      setReqCart(prev => [...prev, { item_id: item.item_id, name: item.name, quantity: 10, unit: item.unit || 'pcs' }]);
+      toast.success(`Added ${item.name} (10 ${item.unit || 'pcs'}) to requisition cart.`);
+    } else {
+      toast.error('Item is already in requisition cart.');
+    }
+  };
+
+  const handleLuminaSmartReorder = () => {
+    // Build a map of Central Store availability from requisitionItems
+    const centralStockMap = new Map();
+    for (const rItem of requisitionItems) {
+      centralStockMap.set(String(rItem.item_id), Number(rItem.available || 0));
+    }
+
+    // Identify department items that are low in local stock (<= 5)
+    const lowStockItems = deptStockItems.filter(i => Number(i.available || 0) <= 5);
+
+    if (lowStockItems.length === 0) {
+      toast.success('All local items in your department have healthy stock levels!');
+      return;
+    }
+
+    // Filter to ONLY items that are currently AVAILABLE in Central Store (central stock > 0)
+    const availableInCentral = lowStockItems.filter(i => {
+      const centralAvail = i.central !== undefined && i.central > 0
+        ? Number(i.central)
+        : (centralStockMap.get(String(i.item_id)) || 0);
+      return centralAvail > 0;
+    });
+
+    const skippedOutOfStockCount = lowStockItems.length - availableInCentral.length;
+
+    if (availableInCentral.length === 0) {
+      toast.error('Low stock items found, but NONE are currently available in Central Store.');
+      return;
+    }
+
+    let addedCount = 0;
+    setReqCart(prev => {
+      const existingMap = new Set(prev.map(p => String(p.item_id)));
+      const newItems = [];
+      for (const item of availableInCentral) {
+        if (!existingMap.has(String(item.item_id))) {
+          const maxCentral = item.central !== undefined && item.central > 0
+            ? Number(item.central)
+            : (centralStockMap.get(String(item.item_id)) || 20);
+          const suggestedQty = Math.min(20, maxCentral);
+          newItems.push({
+            item_id: item.item_id,
+            name: item.name,
+            quantity: suggestedQty,
+            unit: item.unit || 'pcs'
+          });
+          addedCount++;
+        }
+      }
+      return [...prev, ...newItems];
+    });
+
+    if (addedCount > 0) {
+      if (skippedOutOfStockCount > 0) {
+        toast.success(`Lumina AI auto-filled ${addedCount} item(s) available in Central Store (${skippedOutOfStockCount} skipped due to Central Store 0 stock).`);
+      } else {
+        toast.success(`Lumina AI auto-filled ${addedCount} low-stock item(s) available in Central Store!`);
+      }
+    } else {
+      toast.error('All available low-stock items are already in your requisition cart.');
+    }
+  };
+
+  const handleReorderPastRequisition = (req) => {
+    let items = [];
+    try { items = typeof req.items === 'string' ? JSON.parse(req.items) : (req.items || []); } catch(e){}
+    if (!items || items.length === 0) return toast.error('No items found in this requisition.');
+
+    let addedCount = 0;
+    setReqCart(prev => {
+      const existingMap = new Set(prev.map(p => String(p.item_id)));
+      const newLines = [];
+      for (const item of items) {
+        if (!existingMap.has(String(item.item_id))) {
+          const matchedItem = masterItems.find(m => String(m.id) === String(item.item_id));
+          newLines.push({
+            item_id: item.item_id,
+            name: item.item_name || item.name || matchedItem?.name || `Item #${item.item_id}`,
+            quantity: Number(item.quantity || 1),
+            unit: item.unit_of_measure || matchedItem?.unit_of_measure || 'pcs'
+          });
+          addedCount++;
+        }
+      }
+      return [...prev, ...newLines];
+    });
+    setActiveSubTab('requisitions');
+    toast.success(`Loaded ${addedCount} item(s) from Requisition #${req.id} into cart!`);
+  };
+
   const handleSubmitRequisition = async (e) => {
     e.preventDefault();
     const deptId = userDept ? userDept.id : formDept;
@@ -987,7 +1088,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       entries.forEach(e => {
         const r = sheet.getRow(currentRow);
         r.height = 20;
-        r.getCell(1).value = new Date(e.consumed_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        r.getCell(1).value = new Date(e.logged_at || e.consumed_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         r.getCell(2).value = e.department_name || '—';
         r.getCell(3).value = e.item_name;
         r.getCell(4).value = Number(e.quantity);
@@ -1065,7 +1166,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
           className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-200 pb-6">
           <div className="flex items-center gap-3">
-            <span className="p-2.5 bg-teal-50 text-teal-700 border border-teal-150 rounded-2xl shadow-sm">
+            <span className="p-2.5 bg-teal-50 text-teal-700 border border-teal-200 rounded-2xl shadow-sm">
               <ClipboardList size={26} />
             </span>
             <div>
@@ -1535,7 +1636,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                           : selectedItem?.available <= 0 || !formQty || parseInt(formQty, 10) <= 0 || parseInt(formQty, 10) > (selectedItem?.available || 0)
                     )
                   }
-                  className="sm:ml-auto py-3 px-10 bg-teal-700 hover:bg-teal-600 disabled:bg-slate-350 text-white font-bold text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed disabled:opacity-55"
+                  className="sm:ml-auto py-3 px-10 bg-teal-700 hover:bg-teal-600 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {submitting ? (
                     <Loader2 size={15} className="animate-spin" />
@@ -1655,7 +1756,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                       {pagedEntries.map((e) => (
                         <tr key={e.id} className="border-t border-slate-100 hover:bg-slate-50/60">
                            <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
-                             {new Date(e.consumed_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                             {new Date(e.logged_at || e.consumed_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                            </td>
                           <td className="px-3 py-2.5 font-semibold text-slate-700">{e.department_name || '—'}</td>
                           <td className="px-3 py-2.5 text-slate-800">
@@ -1781,6 +1882,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                         {stockTab === 'central' && <th className="text-center px-3 py-2.5">Status</th>}
                         {stockTab === 'local' && <th className="text-center px-3 py-2.5">Batches / Details</th>}
                         <th className="text-center px-3 py-2.5">Stock In Hands</th>
+                        {stockTab === 'local' && <th className="text-right px-3 py-2.5">Action</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -1854,6 +1956,24 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                               <td className="px-3 py-2.5 text-center font-black text-slate-850 text-sm">
                                 {row.quantity} <span className="text-slate-450 font-bold text-xs">{row.unit_of_measure || ''}</span>
                               </td>
+                              {stockTab === 'local' && (
+                                <td className="px-3 py-2.5 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleQuickReorderItem(row);
+                                    }}
+                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs ${
+                                      row.quantity <= 5
+                                        ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200 animate-pulse'
+                                        : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200'
+                                    }`}
+                                  >
+                                    + Reorder
+                                  </button>
+                                </td>
+                              )}
                             </tr>
 
                             {/* Expanded sub-row showing batch variables */}
@@ -1962,6 +2082,14 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                         )}
                       </div>
 
+                      <button
+                        type="button"
+                        onClick={handleLuminaSmartReorder}
+                        className="w-full py-2.5 px-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-black flex items-center justify-center shadow-sm transition-all cursor-pointer border border-teal-800 active:scale-[0.99]"
+                      >
+                        Auto-Fill low stock
+                      </button>
+
                       <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-3">
                         <div className="relative">
                           {reqDropdownOpen && (
@@ -1973,9 +2101,16 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                             className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-left flex justify-between items-center outline-none focus:border-teal-400 z-10 relative"
                           >
                             {reqItemId ? (
-                              <span className="font-bold text-slate-800 truncate pr-2">
-                                {requisitionItems.find(i => String(i.item_id) === String(reqItemId))?.name || 'Selected Item'}
-                              </span>
+                              <div className="flex items-center gap-2 truncate pr-2">
+                                <span className="font-bold text-slate-800 truncate">
+                                  {requisitionItems.find(i => String(i.item_id) === String(reqItemId))?.name || 'Selected Item'}
+                                </span>
+                                {requisitionItems.find(i => String(i.item_id) === String(reqItemId))?.unit && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-teal-100 text-teal-800 shrink-0">
+                                    {requisitionItems.find(i => String(i.item_id) === String(reqItemId))?.unit}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-slate-400">Select item…</span>
                             )}
@@ -2040,7 +2175,12 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                                 : 'text-slate-700 hover:bg-slate-50'
                                             }`}
                                           >
-                                            <span className="truncate pr-3">{item.name}</span>
+                                            <div className="flex items-center gap-1.5 truncate pr-2">
+                                              <span className="truncate">{item.name}</span>
+                                              <span className="text-[9px] font-black uppercase tracking-wider px-1 py-0.2 rounded bg-slate-100 text-slate-500 border border-slate-200 shrink-0">
+                                                {item.unit || 'pcs'}
+                                              </span>
+                                            </div>
                                             <div className="flex items-center gap-1 shrink-0 text-[9px]">
                                               {item.available > 0 ? (
                                                 <span className="px-1 rounded bg-teal-50 text-teal-700 font-extrabold">
@@ -2064,7 +2204,17 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                         </div>
                         <div className="flex gap-2">
                           <div className="flex-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Quantity</label>
+                            <div className="flex items-center justify-between">
+                              <label className="text-[10px] font-bold text-slate-500 uppercase">Quantity</label>
+                              {(() => {
+                                const selectedReqItem = requisitionItems.find(i => String(i.item_id) === String(reqItemId));
+                                return selectedReqItem ? (
+                                  <span className="text-[9px] font-black uppercase text-teal-700 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded">
+                                    in {selectedReqItem.unit || 'pcs'}
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
                             <input type="number" min="1" value={reqQty} onChange={(e) => setReqQty(e.target.value)} placeholder="0"
                               className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-teal-400" />
                           </div>
@@ -2152,9 +2302,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                             <th className="text-left px-4 py-3">Date</th>
                             <th className="text-left px-4 py-3">Department</th>
                             <th className="text-left px-4 py-3">Initiated By</th>
-                            <th className="text-left px-4 py-3">Items</th>
+                            <th className="text-left px-4 py-3">Items Requested</th>
                             <th className="text-center px-4 py-3">Urgency</th>
                             <th className="text-center px-4 py-3">Status</th>
+                            <th className="text-right px-4 py-3">Action</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2174,9 +2325,12 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                   {items.length > 0 ? (
                                     <div className="space-y-1">
                                       {items.map((i, idx) => (
-                                        <div key={idx} className="flex gap-2">
-                                          <span className="font-semibold text-slate-800">{i.quantity}x</span>
-                                          <span className="truncate max-w-[150px]" title={i.item_name || i.name}>{i.item_name || i.name || `Item #${i.item_id}`}</span>
+                                        <div key={idx} className="flex gap-1.5 items-center">
+                                          <span className="font-bold text-slate-900">{i.quantity}x</span>
+                                          <span className="text-[9px] font-black uppercase text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded">
+                                            {i.unit_of_measure || 'pcs'}
+                                          </span>
+                                          <span className="truncate max-w-[150px] font-semibold text-slate-700" title={i.item_name || i.name}>{i.item_name || i.name || `Item #${i.item_id}`}</span>
                                         </div>
                                       ))}
                                     </div>
@@ -2195,6 +2349,16 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                       req.status === 'Rejected' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
                                     {req.status || 'Pending'}
                                   </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReorderPastRequisition(req)}
+                                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                                    title="Clone items from this requisition into cart"
+                                  >
+                                    <RefreshCw size={10} /> Repeat
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -2299,7 +2463,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 {luminaReport && !luminaLoading && (
                   <div className="space-y-6">
                     {/* Executive Narrative */}
-                    <div className="bg-indigo-50/60 border border-indigo-150 rounded-2xl p-5 space-y-2">
+                    <div className="bg-indigo-50/60 border border-indigo-200 rounded-2xl p-5 space-y-2">
                       <h4 className="text-xs font-black uppercase tracking-wider text-indigo-900 flex items-center gap-2">
                         <Sparkles size={14} className="text-indigo-600" /> Executive Narrative
                       </h4>

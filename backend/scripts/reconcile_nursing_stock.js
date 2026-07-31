@@ -93,6 +93,36 @@ async function run() {
 
   console.log(`✅ master_inventory: ${created} new items registered.`);
   console.log(`✅ department_stock NURSING: ${deptCreated} created, ${deptUpdated} updated.`);
+
+  // 3. Synchronize department_stock quantities INTO nursing_monthly_stock for the current month
+  const { rows: latestMonthRows } = await db.query('SELECT MAX(month_year) as max_month FROM nursing_monthly_stock');
+  const targetMonth = latestMonthRows[0]?.max_month || new Date().toISOString().slice(0,7);
+
+  const { rows: deptStocks } = await db.query(`
+    SELECT mi.name AS item_name, COALESCE(SUM(ds.quantity), 0) AS total_qty
+    FROM department_stock ds
+    JOIN master_inventory mi ON ds.item_id = mi.id
+    WHERE ds.department_id = $1
+    GROUP BY mi.id, mi.name
+  `, [deptId]);
+
+  let checkupUpdated = 0;
+  for (const ds of deptStocks) {
+    const qty = Math.max(0, parseInt(ds.total_qty, 10) || 0);
+
+    // Update nursing_monthly_stock rows for targetMonth
+    const { rowsAffected } = await db.query(`
+      UPDATE nursing_monthly_stock
+      SET stock_in_hands = $1,
+          balance = $1 - (COALESCE(consumed_obs1, 0) + COALESCE(consumed_minor, 0)),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE month_year = $2 AND UPPER(TRIM(item_name)) = UPPER(TRIM($3))
+    `, [qty, targetMonth, ds.item_name]);
+
+    checkupUpdated += (rowsAffected || 0);
+  }
+
+  console.log(`✅ nursing_monthly_stock: ${checkupUpdated} checkup records updated for ${targetMonth} from department_stock.`);
   console.log('🎉 Nursing stock reconciliation complete.');
   process.exit(0);
 }

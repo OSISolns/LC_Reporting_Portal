@@ -36,6 +36,11 @@ export default function SupplierPortalManager() {
   const [vendorSearch, setVendorSearch] = useState('');
   const [openedPortalSession, setOpenedPortalSession] = useState(null);
   const [showOpenedToken, setShowOpenedToken] = useState(false);
+  const [showSessionTokens, setShowSessionTokens] = useState({});
+
+  const toggleSessionToken = (id) => {
+    setShowSessionTokens(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const handleCloseOpenedPortalModal = () => {
     setOpenedPortalSession(null);
@@ -63,11 +68,11 @@ export default function SupplierPortalManager() {
       if (venRes.status === 'fulfilled' && venRes.value?.data?.success) setVendors(venRes.value.data.data || []);
       if (mastRes.status === 'fulfilled' && mastRes.value?.data?.success) setMasterInventory(mastRes.value.data.data || []);
       if (portRes.status === 'fulfilled' && portRes.value?.data?.success) {
-        const sessions = portRes.value.data.data || [];
+        const sessions = portRes.value.data.sessions || portRes.value.data.data || [];
         setPortalSessions(sessions.map(s => {
-          let requestedItems = s.items;
-          if (typeof s.items === 'string') {
-            try { requestedItems = JSON.parse(s.items); }
+          let requestedItems = s.requestedItems || s.items;
+          if (typeof requestedItems === 'string') {
+            try { requestedItems = JSON.parse(requestedItems); }
             catch { requestedItems = []; }
           }
           return { ...s, requestedItems: requestedItems || [] };
@@ -264,7 +269,7 @@ export default function SupplierPortalManager() {
           <div className="flex items-center gap-3">
             <button 
               onClick={() => loadData(true)} 
-              className="p-2.5 bg-white border border-slate-200 hover:bg-slate-150 rounded-xl text-slate-655 font-bold transition-all shadow-xs cursor-pointer"
+              className="p-2.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-slate-700 font-bold transition-all shadow-xs cursor-pointer"
               title="Refresh Data"
             >
               <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
@@ -274,7 +279,7 @@ export default function SupplierPortalManager() {
 
         {loading ? (
           <div className="flex h-96 flex-col items-center justify-center gap-4">
-            <Loader2 className="h-12 w-12 animate-spin text-indigo-650" />
+            <Loader2 className="h-12 w-12 animate-spin text-indigo-600" />
             <p className="text-slate-500 font-semibold animate-pulse">Loading Supplier Portals workspace...</p>
           </div>
         ) : (
@@ -331,7 +336,17 @@ export default function SupplierPortalManager() {
                       </div>
 
                       <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 flex items-center gap-2">
-                        <code className="text-xs font-black text-indigo-700 tracking-widest font-mono flex-1 select-all">{session.token}</code>
+                        <code className="text-xs font-black text-indigo-700 tracking-widest font-mono flex-1 select-all">
+                          {showSessionTokens[session.id] ? session.token : '••••••••••••'}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => toggleSessionToken(session.id)}
+                          className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer transition-colors"
+                          title={showSessionTokens[session.id] ? "Hide token" : "Show token"}
+                        >
+                          {showSessionTokens[session.id] ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
                         <button
                           onClick={() => { navigator.clipboard.writeText(session.token); toast.success('Token copied!'); }}
                           className="text-slate-400 hover:text-slate-700 text-[10px] font-bold px-2 py-1 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer"
@@ -478,7 +493,7 @@ export default function SupplierPortalManager() {
                           {setupRequestedItems.map((item, idx) => (
                             <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/20 text-slate-700">
                               <td className="p-2.5 font-semibold">{item.name}</td>
-                              <td className="p-2.5 font-bold text-indigo-650">{item.quantity}</td>
+                              <td className="p-2.5 font-bold text-indigo-600">{item.quantity}</td>
                               <td className="p-2.5 text-right">
                                 <button
                                   type="button"

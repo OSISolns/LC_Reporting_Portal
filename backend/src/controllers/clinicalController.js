@@ -901,6 +901,34 @@ exports.getInventory = async (req, res) => {
       currentPassword = pwdRows[0].password;
     }
 
+    // ─── Auto-sync live Nursing department_stock into nursing_monthly_stock ───
+    try {
+      const { rows: deptRows } = await db.query("SELECT id FROM departments WHERE UPPER(name) = 'NURSING' LIMIT 1");
+      const deptId = deptRows[0]?.id || 121;
+
+      const { rows: deptStocks } = await db.query(`
+        SELECT mi.name AS item_name, COALESCE(SUM(ds.quantity), 0) AS total_qty
+        FROM department_stock ds
+        JOIN master_inventory mi ON ds.item_id = mi.id
+        WHERE ds.department_id = $1
+        GROUP BY mi.id, mi.name
+      `, [deptId]);
+
+      if (deptStocks.length > 0) {
+        const statements = deptStocks.map(ds => ({
+          sql: `UPDATE nursing_monthly_stock
+                SET stock_in_hands = $1,
+                    balance = $1 - (COALESCE(consumed_obs1, 0) + COALESCE(consumed_minor, 0)),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE month_year = $2 AND UPPER(TRIM(item_name)) = UPPER(TRIM($3))`,
+          args: [Math.max(0, parseInt(ds.total_qty, 10) || 0), month_year, ds.item_name]
+        }));
+        await db.batch(statements);
+      }
+    } catch (syncErr) {
+      console.error('Best-effort getInventory stock sync error:', syncErr);
+    }
+
     const { rows } = await db.query(
       `SELECT * FROM nursing_monthly_stock WHERE month_year = $1`,
       [month_year]
@@ -1386,8 +1414,41 @@ exports.getInventoryItems = async (req, res) => {
 
 // ─── Inventory: Manual sync trigger endpoint ──────────────────────────────────
 exports.triggerInventorySync = async (req, res) => {
-  await syncClinicalUsagesToInventory();
-  res.json({ success: true, message: 'Inventory synchronized from clinical sheets.' });
+  try {
+    // 1. Sync clinical sheet usages to daily stock
+    await syncClinicalUsagesToInventory();
+
+    // 2. Auto-sync live Nursing department_stock into nursing_monthly_stock
+    const { rows: deptRows } = await db.query("SELECT id FROM departments WHERE UPPER(name) = 'NURSING' LIMIT 1");
+    const deptId = deptRows[0]?.id || 121;
+
+    const { rows: deptStocks } = await db.query(`
+      SELECT mi.name AS item_name, COALESCE(SUM(ds.quantity), 0) AS total_qty
+      FROM department_stock ds
+      JOIN master_inventory mi ON ds.item_id = mi.id
+      WHERE ds.department_id = $1
+      GROUP BY mi.id, mi.name
+    `, [deptId]);
+
+    if (deptStocks.length > 0) {
+      const now = new Date();
+      const currentMonthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const statements = deptStocks.map(ds => ({
+        sql: `UPDATE nursing_monthly_stock
+              SET stock_in_hands = $1,
+                  balance = $1 - (COALESCE(consumed_obs1, 0) + COALESCE(consumed_minor, 0)),
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE month_year = $2 AND UPPER(TRIM(item_name)) = UPPER(TRIM($3))`,
+        args: [Math.max(0, parseInt(ds.total_qty, 10) || 0), currentMonthYear, ds.item_name]
+      }));
+      await db.batch(statements);
+    }
+
+    res.json({ success: true, message: 'Inventory synchronized successfully.' });
+  } catch (error) {
+    console.error('Error in triggerInventorySync:', error);
+    res.status(500).json({ success: false, message: error.message || 'Inventory sync failed.' });
+  }
 };
 
 exports.syncClinicalUsagesToInventory = syncClinicalUsagesToInventory;
@@ -2461,6 +2522,7 @@ exports.getRequisitions = async (req, res) => {
         (SELECT json_group_array(json_object(
             'item_id', ri2.item_id,
             'item_name', mi.name,
+            'unit_of_measure', COALESCE(mi.unit_of_measure, 'pcs'),
             'quantity', ri2.requested_quantity,
             'approved_quantity', ri2.approved_quantity))
          FROM requisition_items ri2
@@ -2661,8 +2723,7 @@ const getDepartmentForRole = async (role) => {
     r === 'admin' || r === 'superadmin' ||
     r.includes('director') || r.includes('coo') || r.includes('stock') ||
     r.includes('procurement') || r.includes('manager') || r.includes('officer') ||
-    r.includes('lead') || r.includes('head') ||
-    r.includes('dental') || r.includes('dentist') || r.includes('ortho') || r.includes('prostho')
+    r.includes('lead') || r.includes('head')
   ) {
     return null;
   }
@@ -2673,6 +2734,8 @@ const getDepartmentForRole = async (role) => {
   else if (r.includes('physio')) name = 'PHYSIO';
   else if (r.includes('operations') || r.includes('ops')) name = 'OPERATIONS';
   else if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) name = 'IMAGING';
+  else if (r.includes('dental_lab') || r.includes('dental_tech')) name = 'DENTAL LAB';
+  else if (r.includes('dental') || r.includes('dentist') || r.includes('ortho') || r.includes('prostho')) name = 'DENTAL CLINIC';
 
   if (!name) return null;
 
@@ -2803,19 +2866,28 @@ exports.getConsumablesLog = async (req, res) => {
       // The responsible-nurse field was usually left blank on daily entries, so
       // fall back to WHO RECORDED the consumption — the change-log updated_by on
       // the edit that increased consumption for that item/day/session/ward.
-      const recS1 = {}, recMin = {};
+      // Also capture WHEN each ward's consumption was actually recorded
+      // (change-log updated_at) so the history shows the real logging time
+      // rather than the synthetic session slot (08:00 / 15:00). Ordered
+      // updated_at DESC, so the first hit per cell is the most recent edit.
+      const recS1 = {}, recMin = {}, recTimeS1 = {}, recTimeMin = {};
       try {
         const { rows: cl } = await db.query(`
-          SELECT item_name, month_year, day, session, updated_by,
+          SELECT item_name, month_year, day, session, updated_by, updated_at,
                  old_consumed_obs1, new_consumed_obs1, old_consumed_minor, new_consumed_minor
             FROM nursing_stock_change_logs
            WHERE (new_consumed_obs1 > old_consumed_obs1 OR new_consumed_minor > old_consumed_minor)
            ORDER BY updated_at DESC LIMIT 8000`); // updated_by is decrypted by db.query
         for (const c of cl) {
-          if (!c.updated_by) continue;
           const k = `${c.item_name}|${c.month_year}|${c.day}|${c.session}`;
-          if (Number(c.new_consumed_obs1) > Number(c.old_consumed_obs1) && !recS1[k]) recS1[k] = c.updated_by;
-          if (Number(c.new_consumed_minor) > Number(c.old_consumed_minor) && !recMin[k]) recMin[k] = c.updated_by;
+          if (Number(c.new_consumed_obs1) > Number(c.old_consumed_obs1)) {
+            if (c.updated_by && !recS1[k]) recS1[k] = c.updated_by;
+            if (c.updated_at && !recTimeS1[k]) recTimeS1[k] = c.updated_at;
+          }
+          if (Number(c.new_consumed_minor) > Number(c.old_consumed_minor)) {
+            if (c.updated_by && !recMin[k]) recMin[k] = c.updated_by;
+            if (c.updated_at && !recTimeMin[k]) recTimeMin[k] = c.updated_at;
+          }
         }
       } catch (e) { /* non-fatal — recorder attribution is best-effort */ }
 
@@ -2827,8 +2899,8 @@ exports.getConsumablesLog = async (req, res) => {
         const key = `${r.item_name}|${r.month_year}|${r.day}|${r.session}`;
         const nameStn1 = (r.user_stn1 || '').trim() || (r.responsible_name || '').trim() || recS1[key] || null;
         const nameMinor = (r.user_minor || '').trim() || (r.responsible_name || '').trim() || recMin[key] || null;
-        if (obs1 > 0) dailyEntries.push({ id: `d-${r.id}-s1`, department_id: 121, department_name: 'NURSING', item_id: null, item_name: r.item_name, batch_number: null, quantity: obs1, unit: null, notes: null, logged_by_name: nameStn1, ward: 'Station 1', session: r.session, consumed_at: at, source: 'daily' });
-        if (minor > 0) dailyEntries.push({ id: `d-${r.id}-ms`, department_id: 121, department_name: 'NURSING', item_id: null, item_name: r.item_name, batch_number: null, quantity: minor, unit: null, notes: null, logged_by_name: nameMinor, ward: 'Minor Surgery', session: r.session, consumed_at: at, source: 'daily' });
+        if (obs1 > 0) dailyEntries.push({ id: `d-${r.id}-s1`, department_id: 121, department_name: 'NURSING', item_id: null, item_name: r.item_name, batch_number: null, quantity: obs1, unit: null, notes: null, logged_by_name: nameStn1, ward: 'Station 1', session: r.session, consumed_at: at, logged_at: recTimeS1[key] || null, source: 'daily' });
+        if (minor > 0) dailyEntries.push({ id: `d-${r.id}-ms`, department_id: 121, department_name: 'NURSING', item_id: null, item_name: r.item_name, batch_number: null, quantity: minor, unit: null, notes: null, logged_by_name: nameMinor, ward: 'Minor Surgery', session: r.session, consumed_at: at, logged_at: recTimeMin[key] || null, source: 'daily' });
       }
 
       // NOTE: nursing_stock_change_logs (stock-edit audit trail) is intentionally
@@ -2862,7 +2934,14 @@ exports.getConsumablesLog = async (req, res) => {
       const adjustedDailyEntries = [];
       dailyEntries.forEach(entry => {
         const wardStr = entry.ward;
-        const key = `${entry.item_name}|${entry.consumed_at.substring(0, 7)}|${Number(entry.consumed_at.substring(8, 10))}|${String(entry.session).toUpperCase()}|${wardStr}`;
+        const dtMatch = String(entry.consumed_at || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!dtMatch) {
+          adjustedDailyEntries.push(entry);
+          return;
+        }
+        const monthYear = `${dtMatch[1]}-${dtMatch[2]}`;
+        const dayNum = parseInt(dtMatch[3], 10);
+        const key = `${entry.item_name}|${monthYear}|${dayNum}|${String(entry.session).toUpperCase()}|${wardStr}`;
         const loggedQty = logGroupMap.get(key) || 0;
         const remaining = Number(entry.quantity) - loggedQty;
         if (remaining > 0) {
@@ -3005,14 +3084,6 @@ exports.logConsumable = async (req, res) => {
           message: `"${itemRows[0].name}" is already open in "In Use" mode. Mark it as "Finished" before declaring it in use again.`
         });
       }
-
-      // 2) Cannot log in units (qty > 0) if item is currently declared "In Use" (must mark Finished instead)
-      if (qty > 0 && resolvedNotes !== 'Finished' && isOpenInUse) {
-        return res.status(400).json({
-          success: false,
-          message: `"${itemRows[0].name}" is currently declared "In Use". It cannot be logged in units until it is marked as "Finished".`
-        });
-      }
     }
 
     let stockRows = [];
@@ -3057,9 +3128,9 @@ exports.logConsumable = async (req, res) => {
         if (remaining <= 0) break;
         const take = Math.min(remaining, Number(row.quantity));
         if (isCentralStore) {
-          await db.query('UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2', [take, row.dept_stock_id]);
+          await db.query('UPDATE stock_batches SET quantity = quantity - $1 WHERE id = $2 AND quantity >= $1', [take, row.dept_stock_id]);
         } else {
-          await db.query('UPDATE department_stock SET quantity = quantity - $1 WHERE id = $2', [take, row.dept_stock_id]);
+          await db.query('UPDATE department_stock SET quantity = quantity - $1 WHERE id = $2 AND quantity >= $1', [take, row.dept_stock_id]);
         }
         if (primaryBatchId === null) { primaryBatchId = row.batch_id; primaryBatchNumber = row.batch_number; }
         remaining -= take;
@@ -3086,9 +3157,9 @@ exports.logConsumable = async (req, res) => {
       case_type || null,
     ]);
 
-    // ── Lumina AI: when notes='Finished', stamp finished_at on the open "In Use" row ──
-    // This allows Lumina to compute avg_duration_hrs between In Use → Finished.
-    if (isSpecialDept && resolvedNotes === 'Finished') {
+    // ── Lumina AI: when notes='Finished' OR when logging units (qty > 0), stamp finished_at on open "In Use" row ──
+    // This allows Lumina to compute avg_duration_hrs between In Use → Finished and auto-close open usage markers.
+    if (isSpecialDept && (resolvedNotes === 'Finished' || qty > 0)) {
       try {
         await db.query(
           `UPDATE consumables_log
@@ -3096,12 +3167,7 @@ exports.logConsumable = async (req, res) => {
            WHERE  item_id = $1
              AND  department_id = $2
              AND  quantity = 0
-             AND  finished_at IS NULL
-             AND  id = (
-               SELECT id FROM consumables_log
-               WHERE item_id = $1 AND department_id = $2 AND quantity = 0 AND finished_at IS NULL
-               ORDER BY consumed_at DESC LIMIT 1
-             )`,
+             AND  finished_at IS NULL`,
           [item_id, department_id]
         );
       } catch (e) { console.warn('⚠️ Lumina: could not stamp finished_at:', e.message); }
@@ -3161,13 +3227,24 @@ exports.logConsumable = async (req, res) => {
         const newConsumed = newObs1 + newMinor;
         const newBalance = prevStock - newConsumed;
 
+        // Combine nurse names without overwriting prior logger names
+        const prevNurseStr = (prev[userCol] || '').trim();
+        let combinedNurseStr = loggerName || '';
+        if (prevNurseStr) {
+          if (loggerName && !prevNurseStr.includes(loggerName)) {
+            combinedNurseStr = `${prevNurseStr}, ${loggerName}`;
+          } else {
+            combinedNurseStr = prevNurseStr;
+          }
+        }
+
         if (prev.id) {
           await db.query(
             `UPDATE nursing_monthly_stock
                 SET consumed_obs1 = $1, consumed_minor = $2, consumed = $3, balance = $4,
                     ${userCol} = $5, manually_edited = 1, updated_at = CURRENT_TIMESTAMP
               WHERE id = $6`,
-            [newObs1, newMinor, newConsumed, newBalance, loggerName, prev.id]
+            [newObs1, newMinor, newConsumed, newBalance, combinedNurseStr, prev.id]
           );
         } else {
           await db.query(
@@ -3175,7 +3252,7 @@ exports.logConsumable = async (req, res) => {
                (month_year, item_name, day, session, stock_in_hands, consumed_obs1, consumed_minor,
                 consumed, balance, ${userCol}, responsible_name, status, manually_edited)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, 'Available', 1)`,
-            [monthYear, itemRows[0].name, day, logSession, prevStock, newObs1, newMinor, newConsumed, newBalance, loggerName]
+            [monthYear, itemRows[0].name, day, logSession, prevStock, newObs1, newMinor, newConsumed, newBalance, combinedNurseStr]
           );
         }
 
@@ -4062,37 +4139,86 @@ exports.supplierPortalUpload = async (req, res) => {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+    // Auto-detect header row index within the first 15 rows
+    let headerRowIndex = 0;
+    const sheetRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    for (let R = sheetRange.s.r; R <= Math.min(sheetRange.e.r, 15); ++R) {
+      let hasHeaderKey = false;
+      for (let C = sheetRange.s.c; C <= sheetRange.e.c; ++C) {
+        const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
+        if (cell && cell.v) {
+          const txt = String(cell.v).toLowerCase();
+          if (['product', 'item', 'batch', 'quantity', 'qty', 'price', 'expiry', 'uom', 'category'].some(k => txt.includes(k))) {
+            hasHeaderKey = true;
+            break;
+          }
+        }
+      }
+      if (hasHeaderKey) {
+        headerRowIndex = R;
+        break;
+      }
+    }
+
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIndex });
 
     if (jsonData.length === 0) {
       return res.status(400).json({ success: false, message: 'The uploaded Excel sheet contains no data.' });
     }
 
-    const items = [];
-    for (const row of jsonData) {
-      const productName = row['Product Name'] || row['product_name'] || row['Product'] || row['Name'];
-      const sku = row['SKU'] || row['sku'];
-      const category = row['Category'] || row['category'];
-      const unitOfMeasure = row['Unit of Measure'] || row['unit_of_measure'] || row['UOM'] || row['uom'];
-      const batchNumber = row['Batch Number'] || row['batch_number'] || row['Batch'] || row['batch'];
-      const expiryDate = row['Expiry Date'] || row['expiry_date'] || row['Expiry'] || row['expiry'];
-      const purchasePrice = parseFloat(row['Purchase Price'] || row['purchase_price'] || row['Price'] || row['price'] || 0);
-      const quantity = parseInt(row['Quantity'] || row['quantity'] || row['Qty'] || row['qty'] || 0, 10);
+    // Flexible key finder helper
+    const findFlexValue = (row, candidateKeys) => {
+      if (!row || typeof row !== 'object') return undefined;
+      for (const k of candidateKeys) {
+        if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') return row[k];
+      }
+      const normCandidates = candidateKeys.map(k => k.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      for (const rowKey of Object.keys(row)) {
+        const normRowKey = rowKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (normCandidates.includes(normRowKey)) {
+          const val = row[rowKey];
+          if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+        }
+      }
+      return undefined;
+    };
 
-      if (!productName || !category || !unitOfMeasure || !batchNumber || !expiryDate || isNaN(purchasePrice) || isNaN(quantity)) {
+    const items = [];
+    for (let idx = 0; idx < jsonData.length; idx++) {
+      const row = jsonData[idx];
+
+      const rawName = findFlexValue(row, ['Product Name', 'Product Name *', 'product_name', 'Product', 'Name', 'Item Name', 'Item']);
+      const rawSku = findFlexValue(row, ['SKU', 'sku', 'Code', 'item_sku']) || null;
+      const rawCat = findFlexValue(row, ['Category', 'category', 'Cat', 'Type']) || 'medical_supplies';
+      const rawUom = findFlexValue(row, ['Unit of Measure', 'Unit of Measure *', 'unit_of_measure', 'UOM', 'uom', 'Unit', 'unit']) || 'Unit';
+      const rawBatch = findFlexValue(row, ['Batch Number', 'Batch Number *', 'batch_number', 'Batch', 'batch', 'Lot', 'Lot Number', 'lot_number']);
+      const rawExpiry = findFlexValue(row, ['Expiry Date', 'Expiry Date (YYYY-MM-DD) *', 'expiry_date', 'Expiry', 'expiry', 'Exp Date', 'Expiration Date']);
+      const rawPriceVal = findFlexValue(row, ['Purchase Price', 'Purchase Price (RWF) *', 'purchase_price', 'Price', 'price', 'Unit Price', 'Cost']);
+      const rawQtyVal = findFlexValue(row, ['Quantity Delivered', 'Quantity', 'quantity', 'Qty', 'qty', 'Quantity Required']);
+
+      const productName = rawName ? String(rawName).trim() : '';
+      const category = rawCat ? String(rawCat).trim() : 'medical_supplies';
+      const unitOfMeasure = rawUom ? String(rawUom).trim() : 'Unit';
+      const batchNumber = rawBatch ? String(rawBatch).trim() : 'N/A';
+      const expiryDate = (rawExpiry && String(rawExpiry).trim().toUpperCase() !== 'YYYY-MM-DD') ? String(rawExpiry).trim() : 'N/A';
+      const purchasePrice = (rawPriceVal !== undefined && rawPriceVal !== null && rawPriceVal !== '') ? parseFloat(rawPriceVal) : 0;
+      const quantity = (rawQtyVal !== undefined && rawQtyVal !== null && rawQtyVal !== '') ? parseInt(rawQtyVal, 10) : NaN;
+
+      if (!productName || isNaN(purchasePrice) || purchasePrice < 0 || isNaN(quantity) || quantity <= 0) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid Excel structure. Please ensure Product Name, Category, Unit of Measure, Batch Number, Expiry Date, Purchase Price, and Quantity are present and filled in all rows.'
+          message: `Invalid row structure at line ${idx + 1} ("${productName || 'Unnamed'}"). Please ensure Product Name, Price (>= 0), and Quantity (> 0) are filled.`
         });
       }
 
       items.push({
-        name: productName.toString().trim(),
-        sku: sku ? sku.toString().trim() : null,
-        category: category.toString().trim(),
-        unit_of_measure: unitOfMeasure.toString().trim(),
-        batch_number: batchNumber.toString().trim(),
-        expiry_date: expiryDate.toString().trim(),
+        name: productName,
+        sku: rawSku ? String(rawSku).trim() : null,
+        category: category,
+        unit_of_measure: unitOfMeasure,
+        batch_number: batchNumber,
+        expiry_date: expiryDate,
         purchase_price: purchasePrice,
         quantity: quantity,
         vendor_name: supplierName

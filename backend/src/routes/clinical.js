@@ -169,7 +169,7 @@ router.post('/inventory/unlock', checkPermission('daily_stock', 'edit'), clinica
 // -- too sensitive to expose as a general toggle.
 router.get('/inventory/stock-password', authorizeRoles(['admin']), clinicalController.getStockPassword);
 router.post('/inventory/regenerate-stock-password', authorizeRoles(['admin']), clinicalController.regenerateStockPassword);
-router.post('/inventory/sync', checkPermission('daily_stock', 'edit'), clinicalController.triggerInventorySync);
+router.post('/inventory/sync', checkDailyStockOrClinicalRole('edit'), clinicalController.triggerInventorySync);
 router.get('/inventory/change-logs', checkPermission('daily_stock', 'view'), clinicalController.getInventoryChangeLogs);
 
 // Shared medication-name reference lookup (FDA cache) -- same reasoning as

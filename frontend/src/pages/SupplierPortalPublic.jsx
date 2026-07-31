@@ -272,44 +272,108 @@ const SupplierPortalPublic = () => {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
 
-        // Detect if the sheet starts with our branded title block (header on row 5, index 4)
-        const isBranded = worksheet['A1'] && String(worksheet['A1'].v || '').includes('LEGACY CLINICS');
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, isBranded ? { range: 4 } : {});
+        // Auto-detect header row index within the first 15 rows
+        let headerRowIndex = 0;
+        const sheetRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+        for (let R = sheetRange.s.r; R <= Math.min(sheetRange.e.r, 15); ++R) {
+          let hasHeaderKey = false;
+          for (let C = sheetRange.s.c; C <= sheetRange.e.c; ++C) {
+            const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
+            if (cell && cell.v) {
+              const txt = String(cell.v).toLowerCase();
+              if (['product', 'item', 'batch', 'quantity', 'qty', 'price', 'expiry', 'uom', 'category'].some(k => txt.includes(k))) {
+                hasHeaderKey = true;
+                break;
+              }
+            }
+          }
+          if (hasHeaderKey) {
+            headerRowIndex = R;
+            break;
+          }
+        }
+
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIndex });
 
         if (jsonData.length === 0) {
-          toast.error('The selected Excel file appears to be empty.');
+          toast.error('The selected Excel file contains no data rows.');
           setParsedData([]);
           return;
         }
 
-        const rawPrice = (row) => {
-          const v = row['Purchase Price'] ?? row['Purchase Price (RWF) *'] ?? row['purchase_price'] ?? row['Price'] ?? row['price'];
-          return (v === undefined || v === null || v === '') ? NaN : parseFloat(v);
-        };
-        const rawQty = (row) => {
-          const v = row['Quantity'] ?? row['Quantity Delivered'] ?? row['quantity'] ?? row['Qty'] ?? row['qty'];
-          return (v === undefined || v === null || v === '') ? NaN : parseInt(v, 10);
+        // Flexible key finder helper
+        const findFlexValue = (row, candidateKeys) => {
+          if (!row || typeof row !== 'object') return undefined;
+          for (const k of candidateKeys) {
+            if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') return row[k];
+          }
+          const normCandidates = candidateKeys.map(k => k.toLowerCase().replace(/[^a-z0-9]/g, ''));
+          for (const rowKey of Object.keys(row)) {
+            const normRowKey = rowKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (normCandidates.includes(normRowKey)) {
+              const val = row[rowKey];
+              if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+            }
+          }
+          return undefined;
         };
 
-        const mapped = jsonData.map((row) => ({
-          name: row['Product Name'] || row['product_name'] || row['Product'] || row['Name'] || '',
-          sku: row['SKU'] || row['sku'] || '',
-          category: row['Category'] || row['category'] || '',
-          uom: row['Unit of Measure'] || row['unit_of_measure'] || row['UOM'] || row['uom'] || '',
-          batch: row['Batch Number'] || row['Batch Number *'] || row['batch_number'] || row['Batch'] || row['batch'] || '',
-          expiry: row['Expiry Date'] || row['Expiry Date (YYYY-MM-DD) *'] || row['expiry_date'] || row['Expiry'] || row['expiry'] || '',
-          price: rawPrice(row),
-          qty: rawQty(row),
-        }));
+        const mapped = [];
+        let validationError = null;
 
-        const invalidRow = mapped.find(r => !r.name || !r.category || !r.uom || !r.batch || !r.expiry || isNaN(r.price) || isNaN(r.qty) || r.price < 0 || r.qty <= 0);
-        if (invalidRow) {
-          toast.error('Invalid template structure. Please ensure every row has Product Name, Category, UOM, Batch Number, Expiry Date, a valid Price, and a Quantity greater than 0.');
+        for (let idx = 0; idx < jsonData.length; idx++) {
+          const row = jsonData[idx];
+
+          const rawName = findFlexValue(row, ['Product Name', 'Product Name *', 'product_name', 'Product', 'Name', 'Item Name', 'Item']);
+          const rawSku = findFlexValue(row, ['SKU', 'sku', 'Code', 'item_sku']) || '';
+          const rawCat = findFlexValue(row, ['Category', 'category', 'Cat', 'Type']) || 'medical_supplies';
+          const rawUom = findFlexValue(row, ['Unit of Measure', 'Unit of Measure *', 'unit_of_measure', 'UOM', 'uom', 'Unit', 'unit']) || 'Unit';
+          const rawBatch = findFlexValue(row, ['Batch Number', 'Batch Number *', 'batch_number', 'Batch', 'batch', 'Lot', 'Lot Number', 'lot_number']);
+          const rawExpiry = findFlexValue(row, ['Expiry Date', 'Expiry Date (YYYY-MM-DD) *', 'expiry_date', 'Expiry', 'expiry', 'Exp Date', 'Expiration Date']);
+          const rawPriceVal = findFlexValue(row, ['Purchase Price', 'Purchase Price (RWF) *', 'purchase_price', 'Price', 'price', 'Unit Price', 'Cost']);
+          const rawQtyVal = findFlexValue(row, ['Quantity Delivered', 'Quantity', 'quantity', 'Qty', 'qty', 'Quantity Required']);
+
+          const name = rawName ? String(rawName).trim() : '';
+          const category = rawCat ? String(rawCat).trim() : 'medical_supplies';
+          const uom = rawUom ? String(rawUom).trim() : 'Unit';
+          const batch = rawBatch ? String(rawBatch).trim() : 'N/A';
+          const expiry = (rawExpiry && String(rawExpiry).trim().toUpperCase() !== 'YYYY-MM-DD') ? String(rawExpiry).trim() : 'N/A';
+
+          const price = (rawPriceVal !== undefined && rawPriceVal !== null && rawPriceVal !== '') ? parseFloat(rawPriceVal) : 0;
+          const qty = (rawQtyVal !== undefined && rawQtyVal !== null && rawQtyVal !== '') ? parseInt(rawQtyVal, 10) : NaN;
+
+          if (!name) {
+            validationError = `Row ${idx + 1}: Missing Product Name.`;
+            break;
+          }
+          if (isNaN(price) || price < 0) {
+            validationError = `Row ${idx + 1} ("${name}"): Invalid Purchase Price. Price must be 0 or greater.`;
+            break;
+          }
+          if (isNaN(qty) || qty <= 0) {
+            validationError = `Row ${idx + 1} ("${name}"): Invalid Quantity (${rawQtyVal !== undefined ? rawQtyVal : 'empty'}). Quantity delivered must be greater than 0.`;
+            break;
+          }
+
+          mapped.push({
+            name,
+            sku: String(rawSku).trim(),
+            category,
+            uom,
+            batch,
+            expiry,
+            price,
+            qty
+          });
+        }
+
+        if (validationError) {
+          toast.error(validationError, { duration: 7000 });
           setParsedData([]);
           return;
         }
 
-        toast.success(`${mapped.length} items parsed successfully!`);
+        toast.success(`${mapped.length} item(s) parsed and validated successfully!`);
         setParsedData(mapped);
       } catch (err) {
         console.error('Error parsing excel:', err);
@@ -467,7 +531,7 @@ const SupplierPortalPublic = () => {
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-md"
                 >
                   {loading ? (
                     <>
@@ -608,7 +672,7 @@ const SupplierPortalPublic = () => {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => setBidModalRFQ(rfq)}
-                            className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
+                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
                           >
                             <Gavel size={14} /> Submit Proposal / Quotation
                           </motion.button>
@@ -662,7 +726,7 @@ const SupplierPortalPublic = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleDownloadTemplate}
-                        className="px-5 py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-sm"
+                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
                       >
                         <Download size={14} /> Download Template
                       </motion.button>
@@ -679,7 +743,7 @@ const SupplierPortalPublic = () => {
                           {requestedItems.map((item, idx) => (
                             <span
                               key={idx}
-                              className="text-xs font-semibold bg-emerald-50 text-emerald-750 px-3 py-1.5 rounded-lg border border-emerald-200"
+                              className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200"
                             >
                               {item.name || item.item_name} <span className="font-black text-emerald-600">×{item.quantity}</span>
                             </span>
@@ -706,7 +770,7 @@ const SupplierPortalPublic = () => {
                               type="text"
                               value={supplierName}
                               readOnly
-                              className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-semibold text-slate-655 cursor-not-allowed"
+                              className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 cursor-not-allowed"
                             />
                           </div>
 
@@ -801,7 +865,7 @@ const SupplierPortalPublic = () => {
                                     <td className="p-3 text-slate-600">{item.uom}</td>
                                     <td className="p-3 font-mono text-slate-600">{item.batch}</td>
                                     <td className="p-3 font-mono text-slate-600">{item.expiry}</td>
-                                    <td className="p-3 text-right text-slate-750 font-semibold">{item.price.toLocaleString()} RWF</td>
+                                    <td className="p-3 text-right text-slate-700 font-semibold">{item.price.toLocaleString()} RWF</td>
                                     <td className="p-3 text-right font-bold text-indigo-700">{item.qty}</td>
                                   </tr>
                                 ))}
@@ -840,7 +904,7 @@ const SupplierPortalPublic = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900">RFQ Bid Proposal</h3>
-                  <p className="text-xs text-indigo-650 font-semibold tracking-wider uppercase mt-0.5">{bidModalRFQ.reference_no}</p>
+                  <p className="text-xs text-indigo-600 font-semibold tracking-wider uppercase mt-0.5">{bidModalRFQ.reference_no}</p>
                 </div>
               </div>
 

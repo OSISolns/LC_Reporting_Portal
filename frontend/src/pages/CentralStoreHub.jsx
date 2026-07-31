@@ -2173,7 +2173,12 @@ export default function CentralStoreHub() {
                           <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-bold text-slate-600">
                             <div>
                               <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Qty Requested</span>
-                              <span className="text-sm font-black text-slate-800 mt-0.5 block">{ri.requested_quantity}</span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-sm font-black text-slate-800">{ri.requested_quantity}</span>
+                                <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded uppercase">
+                                  {ri.unit_of_measure || 'pcs'}
+                                </span>
+                              </div>
                             </div>
 
                             <div className="flex flex-col items-end">
@@ -2349,11 +2354,13 @@ export default function CentralStoreHub() {
                     >
                       <option value="">Select Item…</option>
                       {masterItems.map(i => (
-                        <option key={i.id} value={i.id}>{i.name} ({i.sku || 'no SKU'})</option>
+                        <option key={i.id} value={i.id}>
+                          {i.name} {i.sku ? `(${i.sku})` : ''} — UoM: {i.unit_of_measure || 'pcs'}
+                        </option>
                       ))}
                     </select>
                   </div>
-                  <div className="w-24">
+                  <div className="w-32 flex items-center gap-1.5">
                     <input
                       required
                       type="number"
@@ -2367,6 +2374,14 @@ export default function CentralStoreHub() {
                       }}
                       className={inputCls}
                     />
+                    {(() => {
+                      const selectedItem = masterItems.find(m => String(m.id) === String(line.item_id));
+                      return selectedItem ? (
+                        <span className="text-[9px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-1 rounded-md shrink-0">
+                          {selectedItem.unit_of_measure || 'pcs'}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                   {newReqLines.length > 1 && (
                     <button
