@@ -638,6 +638,23 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.warn('⚠️ Dental roles sync warning:', err.message);
     }
 
+    // ─── Physiotherapy Roles Sync: ensure Physiotherapy Manager & Physiotherapist roles exist ───
+    try {
+      const physioRoles = [
+        { name: 'physio_manager', display_name: 'Physiotherapy Manager' },
+        { name: 'physio',         display_name: 'Physiotherapist' },
+      ];
+      for (const r of physioRoles) {
+        await client.execute({
+          sql: `INSERT INTO roles (name, display_name) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET display_name = EXCLUDED.display_name`,
+          args: [r.name, r.display_name],
+        });
+      }
+      console.log('✅ Physiotherapy roles sync complete.');
+    } catch (err) {
+      console.warn('⚠️ Physiotherapy roles sync warning:', err.message);
+    }
+
     // ─── Provider Specialization Migration ───────────────────────────────────────────────
     try {
       // Step 1: Add specialization column (safe - catches error if already exists)
