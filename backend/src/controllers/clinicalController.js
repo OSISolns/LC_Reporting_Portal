@@ -539,37 +539,56 @@ exports.getShiftActivities = async (req, res) => {
         LEFT JOIN sukraa_patients sp ON (sp.pid = nca.patient_id OR sp.pid = CAST(nca.patient_id AS TEXT))
     `;
     const params = [];
-    if (shift_id) {
+    const sanitizedShiftId = shift_id && String(shift_id).trim() !== '' && shift_id !== 'null' && shift_id !== 'undefined'
+      ? String(shift_id).trim()
+      : null;
+
+    if (sanitizedShiftId) {
       sql += ` WHERE nca.shift_id = $1`;
-      params.push(shift_id);
+      params.push(sanitizedShiftId);
     }
     sql += ` ORDER BY nca.timestamp DESC LIMIT $${params.length + 1}`;
-    params.push(limit);
+    params.push(parseInt(limit, 10) || 50);
 
     const { rows } = await db.query(sql, params);
 
-    const result = rows.map(r => ({
-      ...r,
-      patient_name: r.sukraa_full_name || r.patient_name || 'Unknown Patient',
-      patient_id: r.sukraa_pid || r.patient_id,
-      sukraa_pid: r.sukraa_pid || r.patient_id,
-      dob: r.sukraa_dob || '',
-      gender: r.sukraa_gender || '',
-      age: r.sukraa_age || '',
-      insurance: r.sukraa_referrer_name
-        ? `${r.sukraa_referrer_name}${r.sukraa_ref_type ? ` (${r.sukraa_ref_type})` : ''}`
-        : (r.sukraa_insurance || 'Private'),
-      vitals_snapshot: {
-        bp: r.vitals_bp || null,
-        pulse: r.vitals_pulse ? `${r.vitals_pulse} bpm` : null,
-        temp: r.vitals_temp ? `${r.vitals_temp} °C` : null,
-        spo2: r.vitals_spo2 ? `${r.vitals_spo2}%` : null,
-      },
-      formatted_timestamp: r.timestamp ? new Date(r.timestamp).toLocaleString('en-GB', {
-        day: '2-digit', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-      }) : ''
-    }));
+    const result = (rows || []).map(r => {
+      let formattedTs = '';
+      if (r.timestamp) {
+        try {
+          const d = new Date(r.timestamp);
+          if (!isNaN(d.getTime())) {
+            formattedTs = d.toLocaleString('en-GB', {
+              day: '2-digit', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+            });
+          } else {
+            formattedTs = String(r.timestamp);
+          }
+        } catch {
+          formattedTs = String(r.timestamp);
+        }
+      }
+      return {
+        ...r,
+        patient_name: r.sukraa_full_name || r.patient_name || 'Unknown Patient',
+        patient_id: r.sukraa_pid || r.patient_id,
+        sukraa_pid: r.sukraa_pid || r.patient_id,
+        dob: r.sukraa_dob || '',
+        gender: r.sukraa_gender || '',
+        age: r.sukraa_age || '',
+        insurance: r.sukraa_referrer_name
+          ? `${r.sukraa_referrer_name}${r.sukraa_ref_type ? ` (${r.sukraa_ref_type})` : ''}`
+          : (r.sukraa_insurance || 'Private'),
+        vitals_snapshot: {
+          bp: r.vitals_bp || null,
+          pulse: r.vitals_pulse ? `${r.vitals_pulse} bpm` : null,
+          temp: r.vitals_temp ? `${r.vitals_temp} °C` : null,
+          spo2: r.vitals_spo2 ? `${r.vitals_spo2}%` : null,
+        },
+        formatted_timestamp: formattedTs
+      };
+    });
 
     res.json({ success: true, data: result });
   } catch (error) {
@@ -4910,15 +4929,12 @@ exports.getRFQs = async (req, res) => {
   try {
     const { rows } = await db.query(`
       SELECT r.*, 
-        COUNT(DISTINCT ri.id) as item_count, 
-        COUNT(DISTINCT rs.vendor_id) as supplier_count 
+        (SELECT COUNT(ri.id) FROM rfq_items ri WHERE ri.rfq_id = r.id) as item_count, 
+        (SELECT COUNT(DISTINCT rs.vendor_id) FROM rfq_suppliers rs WHERE rs.rfq_id = r.id) as supplier_count 
       FROM rfqs r 
-      LEFT JOIN rfq_items ri ON r.id = ri.rfq_id 
-      LEFT JOIN rfq_suppliers rs ON r.id = rs.rfq_id 
-      GROUP BY r.id 
       ORDER BY r.created_at DESC
     `);
-    res.json({ success: true, data: rows });
+    res.json({ success: true, data: rows || [] });
   } catch (error) {
     console.error('Error in getRFQs:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -5262,15 +5278,29 @@ exports.getSupplierPerformance = async (req, res) => {
     const receivedQty = Number(fulfillmentRows[0]?.received || 0);
     const fulfillmentRate = orderedQty > 0 ? Math.min(100, Math.round((receivedQty / orderedQty) * 100)) : 100;
 
+    const avgLeadTimeDays = leadRows[0]?.avg_lead_days ? Math.round(leadRows[0].avg_lead_days * 10) / 10 : null;
+
     res.json({
       success: true,
       data: {
         totalSpend: spendRows[0]?.total_spend || 0,
         totalPOs: spendRows[0]?.total_pos || 0,
         spendThisMonth: spendRows[0]?.spend_this_month || 0,
-        avgLeadDays: leadRows[0]?.avg_lead_days ? Math.round(leadRows[0].avg_lead_days * 10) / 10 : null,
+        avgLeadDays: avgLeadTimeDays,
         qualityIncidents,
-        fulfillmentRate
+        fulfillmentRate,
+        performance: {
+          fulfillment_rate: fulfillmentRate,
+          avg_lead_time_days: avgLeadTimeDays,
+          total_spend: spendRows[0]?.total_spend || 0,
+          quality_incidents_count: qualityIncidents,
+        },
+        summary: {
+          total_pos: spendRows[0]?.total_pos || 0,
+          total_grns: avgLeadTimeDays !== null ? 1 : 0,
+          spend_this_month: spendRows[0]?.spend_this_month || 0,
+        },
+        incidents: []
       }
     });
   } catch (error) {

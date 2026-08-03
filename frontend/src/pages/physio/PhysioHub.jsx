@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConsumablesLog from '../ConsumablesLog';
+import PatientAutocomplete from '../../components/PatientAutocomplete';
 import {
   getPhysioSessions,
   createPhysioSession,
@@ -156,7 +157,7 @@ const PhysioHub = () => {
   const handleCreateSession = async (e) => {
     e.preventDefault();
     if (!newSession.patient_id || !newSession.session_date) {
-      return toast.error('Patient ID and Session Date are required.');
+      return toast.error('Select a patient from the SUKRAA register and a session date.');
     }
 
     try {
@@ -188,7 +189,7 @@ const PhysioHub = () => {
   const handleCreateAssessment = async (e) => {
     e.preventDefault();
     if (!newAssessment.patient_id || !newAssessment.body_part) {
-      return toast.error('Patient ID and anatomical body part are required.');
+      return toast.error('Select a patient from the SUKRAA register and an anatomical body part.');
     }
 
     try {
@@ -769,29 +770,41 @@ const PhysioHub = () => {
             </div>
 
             <form onSubmit={handleCreateSession} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400">Patient ID</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="PAT-1001"
-                    value={newSession.patient_id}
-                    onChange={e => setNewSession({ ...newSession, patient_id: e.target.value })}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400">Patient Name</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="John Doe"
-                    value={newSession.patient_name}
-                    onChange={e => setNewSession({ ...newSession, patient_name: e.target.value })}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-emerald-500"
-                  />
-                </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400">Patient (SUKRAA Register)</label>
+                <PatientAutocomplete
+                  value={newSession.patient_name}
+                  onChange={(val) => {
+                    // Clear the resolved patient when the user re-types
+                    setNewSession(prev => (
+                      prev.patient_id && val !== prev.patient_name
+                        ? { ...prev, patient_name: val, patient_id: '' }
+                        : { ...prev, patient_name: val }
+                    ));
+                  }}
+                  onPatientSelect={(p) => setNewSession(prev => ({
+                    ...prev,
+                    patient_id: p.pid || '',
+                    patient_name: p.full_name || ''
+                  }))}
+                  placeholder="Search name, PID or phone..."
+                  inputStyle={{
+                    width: '100%',
+                    marginTop: '4px',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '8px 12px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    outline: 'none'
+                  }}
+                />
+                {newSession.patient_id && (
+                  <div className="mt-1.5 text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                    <CheckCircle2 size={12} /> Linked to PID {newSession.patient_id}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -863,29 +876,41 @@ const PhysioHub = () => {
             </div>
 
             <form onSubmit={handleCreateAssessment} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400">Patient ID</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="PAT-1001"
-                    value={newAssessment.patient_id}
-                    onChange={e => setNewAssessment({ ...newAssessment, patient_id: e.target.value })}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400">Patient Name</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="John Doe"
-                    value={newAssessment.patient_name}
-                    onChange={e => setNewAssessment({ ...newAssessment, patient_name: e.target.value })}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-emerald-500"
-                  />
-                </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400">Patient (SUKRAA Register)</label>
+                <PatientAutocomplete
+                  value={newAssessment.patient_name}
+                  onChange={(val) => {
+                    // Clear the resolved patient when the user re-types
+                    setNewAssessment(prev => (
+                      prev.patient_id && val !== prev.patient_name
+                        ? { ...prev, patient_name: val, patient_id: '' }
+                        : { ...prev, patient_name: val }
+                    ));
+                  }}
+                  onPatientSelect={(p) => setNewAssessment(prev => ({
+                    ...prev,
+                    patient_id: p.pid || '',
+                    patient_name: p.full_name || ''
+                  }))}
+                  placeholder="Search name, PID or phone..."
+                  inputStyle={{
+                    width: '100%',
+                    marginTop: '4px',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '8px 12px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    outline: 'none'
+                  }}
+                />
+                {newAssessment.patient_id && (
+                  <div className="mt-1.5 text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                    <CheckCircle2 size={12} /> Linked to PID {newAssessment.patient_id}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

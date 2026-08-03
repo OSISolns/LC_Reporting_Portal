@@ -21,7 +21,14 @@ import {
   CheckCircle2,
   Sparkles,
   Save,
-  Loader2
+  Loader2,
+  FlaskConical,
+  ArrowRightCircle,
+  Clock,
+  CheckCheck,
+  AlertCircle,
+  PackageCheck,
+  PauseCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -34,7 +41,9 @@ import {
   updateClinicCase,
   deleteClinicCase,
   listCharts,
-  getChart
+  getChart,
+  referClinicCaseToLab,
+  getLabReferralStatus
 } from '../../api/dental';
 import { searchPatients } from '../../api/patients';
 import { useAuth } from '../../context/AuthContext';
@@ -46,6 +55,17 @@ const CONDITION_COLORS = {
   Caries: 'bg-rose-100 text-rose-800 border-rose-200',
   Missing: 'bg-slate-100 text-slate-700 border-slate-200',
   Restored: 'bg-amber-100 text-amber-900 border-amber-200',
+};
+
+// Lab referral status metadata
+const REFERRAL_STATUS_META = {
+  'Not Referred':         { color: 'bg-slate-100 text-slate-500',      icon: null },
+  'Referred':             { color: 'bg-blue-100 text-blue-700',         icon: Clock },
+  'In Progress':          { color: 'bg-amber-100 text-amber-800',       icon: RefreshCw },
+  'Ready for Collection': { color: 'bg-emerald-100 text-emerald-700',   icon: PackageCheck },
+  'Completed':            { color: 'bg-green-100 text-green-800',        icon: CheckCheck },
+  'On Hold':              { color: 'bg-orange-100 text-orange-700',      icon: PauseCircle },
+  'Cancelled':            { color: 'bg-red-100 text-red-700',            icon: AlertCircle },
 };
 
 const StatCard = ({ icon: Icon, label, value, sub, colorClass, bgClass }) => (
@@ -82,7 +102,15 @@ export default function ClinicCasesLog() {
   const [showForm, setShowForm] = useState(false);
   const [editCase, setEditCase] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [viewChartsPatient, setViewChartsPatient] = useState(null); // { patientId, patientName, selectedChartId }
+  const [viewChartsPatient, setViewChartsPatient] = useState(null);
+
+  // Referral States
+  const [referralTarget, setReferralTarget] = useState(null);   // { id, patient_name, dentist_name }
+  const [referralNotes, setReferralNotes] = useState('');
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [progressTarget, setProgressTarget] = useState(null);   // clinic case object
+  const [progressData, setProgressData] = useState(null);
+  const [progressLoading, setProgressLoading] = useState(false);
 
   const handleViewCharts = (patientId, patientName, linkedChartId) => {
     setViewChartsPatient({
@@ -148,6 +176,39 @@ export default function ClinicCasesLog() {
       toast.error(err.message || 'Failed to save case.');
     }
   };
+
+  const handleReferToLab = async () => {
+    if (!referralTarget) return;
+    setReferralLoading(true);
+    try {
+      const res = await referClinicCaseToLab(referralTarget.id, { referral_notes: referralNotes });
+      toast.success(`Case referred to the Dental Lab. Lab ref: ${res.data?.data?.lab_case_ref}`);
+      setReferralTarget(null);
+      setReferralNotes('');
+      fetchCases();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to refer case.';
+      toast.error(msg);
+    } finally {
+      setReferralLoading(false);
+    }
+  };
+
+  const handleViewProgress = async (c) => {
+    if (!c.lab_referral_id) return;
+    setProgressTarget(c);
+    setProgressData(null);
+    setProgressLoading(true);
+    try {
+      const res = await getLabReferralStatus(c.id);
+      setProgressData(res.data?.data);
+    } catch (err) {
+      toast.error('Failed to load lab progress.');
+    } finally {
+      setProgressLoading(false);
+    }
+  };
+
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -435,7 +496,7 @@ export default function ClinicCasesLog() {
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wider">
+                              <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wider">
                   <th className="py-3 px-4 text-center">Ref</th>
                   <th className="py-3 px-4">Consultation Date</th>
                   <th className="py-3 px-4">Patient</th>
@@ -444,6 +505,7 @@ export default function ClinicCasesLog() {
                   <th className="py-3 px-4">Treatment Summary</th>
                   <th className="py-3 px-4 text-right">Charges</th>
                   <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-4 text-center">Lab Referral</th>
                   <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
@@ -495,6 +557,32 @@ export default function ClinicCasesLog() {
                         {c.status}
                       </span>
                     </td>
+
+                    {/* Lab Referral Status */}
+                    <td className="py-3 px-4 text-center">
+                      {(() => {
+                        const refStatus = c.lab_referral_status || 'Not Referred';
+                        const meta = REFERRAL_STATUS_META[refStatus] || REFERRAL_STATUS_META['Not Referred'];
+                        const StatusIcon = meta.icon;
+                        return (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold ${meta.color}`}>
+                              {StatusIcon && <StatusIcon size={9} />}
+                              {refStatus}
+                            </span>
+                            {c.lab_referral_id && (
+                              <button
+                                onClick={() => handleViewProgress(c)}
+                                className="text-[9px] text-indigo-500 hover:text-indigo-700 hover:underline font-semibold transition"
+                              >
+                                View Progress
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
+
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
@@ -504,6 +592,18 @@ export default function ClinicCasesLog() {
                         >
                           <Stethoscope size={13} />
                         </button>
+
+                        {/* Refer to Lab — show only if not yet referred and user can edit */}
+                        {canEdit && !c.lab_referral_id && (
+                          <button
+                            onClick={() => { setReferralTarget(c); setReferralNotes(''); }}
+                            className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition cursor-pointer"
+                            title="Refer to Dental Lab"
+                          >
+                            <FlaskConical size={13} />
+                          </button>
+                        )}
+
                         {canEdit && (
                           <>
                             <button
@@ -596,6 +696,143 @@ export default function ClinicCasesLog() {
           patientName={viewChartsPatient.patientName}
           defaultChartId={viewChartsPatient.selectedChartId}
         />
+      )}
+
+
+      {/* ── Refer to Lab Modal ─────────────────────────────────────────────── */}
+      {referralTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-teal-50 border-b border-teal-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-teal-100 rounded-xl">
+                  <FlaskConical size={18} className="text-teal-700" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-teal-800 uppercase tracking-wider">Refer to Dental Lab</p>
+                  <p className="text-[10px] text-teal-600">{referralTarget.patient_name} — Dr. {referralTarget.dentist_name}</p>
+                </div>
+              </div>
+              <button onClick={() => setReferralTarget(null)} className="p-1.5 hover:bg-teal-100 rounded-lg transition">
+                <X size={16} className="text-teal-700" />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                This will create a new case in the <span className="font-bold text-slate-800">Dental Lab</span> pre-filled with this patient's details.
+                Lab technicians will be notified immediately.
+              </p>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Referral Instructions / Notes <span className="font-normal normal-case text-slate-400">(optional)</span>
+                </label>
+                <textarea
+                  rows={4}
+                  value={referralNotes}
+                  onChange={e => setReferralNotes(e.target.value)}
+                  className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-200 resize-none transition"
+                />
+              </div>
+            </div>
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-slate-50">
+              <button
+                onClick={() => setReferralTarget(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReferToLab}
+                disabled={referralLoading}
+                className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition disabled:opacity-60"
+              >
+                {referralLoading ? <Loader2 size={13} className="animate-spin" /> : <ArrowRightCircle size={13} />}
+                {referralLoading ? 'Referring…' : 'Refer to Lab'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Lab Progress Drawer ────────────────────────────────────────────── */}
+      {progressTarget && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg mx-0 sm:mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div>
+                <p className="text-xs font-black text-slate-700 uppercase tracking-wider">Lab Case Progress</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{progressTarget.patient_name} — {progressTarget.case_ref}</p>
+              </div>
+              <button onClick={() => { setProgressTarget(null); setProgressData(null); }} className="p-1.5 hover:bg-slate-100 rounded-lg transition">
+                <X size={16} className="text-slate-500" />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="px-6 py-5">
+              {progressLoading ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-slate-400">
+                  <Loader2 size={20} className="animate-spin" />
+                  <span className="text-sm">Loading progress…</span>
+                </div>
+              ) : progressData ? (
+                <div className="space-y-4">
+                  {/* Status row */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lab Case Status</span>
+                    {(() => {
+                      const refStatus = progressData.lab_referral_status || progressData.lab_status || 'Referred';
+                      const meta = REFERRAL_STATUS_META[refStatus] || REFERRAL_STATUS_META['Referred'];
+                      const SI = meta.icon;
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${meta.color}`}>
+                          {SI && <SI size={10} />}
+                          {refStatus}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Grid details */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 rounded-xl p-3">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Lab Case Ref</p>
+                      <p className="text-xs font-mono font-bold text-slate-700 mt-1">{progressData.lab_case_ref || '—'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-3">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Lab Status</p>
+                      <p className="text-xs font-semibold text-slate-700 mt-1">{progressData.lab_status || '—'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-3">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Technologist</p>
+                      <p className="text-xs font-semibold text-slate-700 mt-1">{progressData.technologist || 'Not yet assigned'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-3">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Required By</p>
+                      <p className="text-xs font-semibold text-slate-700 mt-1">{progressData.required_date || '—'}</p>
+                    </div>
+                  </div>
+
+                  {progressData.delivery_notes && (
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                      <p className="text-[9px] font-bold text-amber-600 uppercase tracking-wider mb-1">Lab Notes / Delivery Instructions</p>
+                      <p className="text-xs text-amber-800 leading-relaxed">{progressData.delivery_notes}</p>
+                    </div>
+                  )}
+
+                  <p className="text-[9px] text-slate-400 text-right">
+                    Last updated: {progressData.lab_updated_at ? new Date(progressData.lab_updated_at).toLocaleString() : '—'}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-400 text-sm">No progress data available.</div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

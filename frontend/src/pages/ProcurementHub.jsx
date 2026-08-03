@@ -4093,7 +4093,26 @@ export default function ProcurementHub() {
                 </div>
               ) : (
                 <div className="flex-1 overflow-y-auto space-y-6 pr-1 animate-none">
-                  {supplierScorecard ? (
+                  {supplierScorecard ? (() => {
+                    const perf = supplierScorecard.performance || {
+                      fulfillment_rate: supplierScorecard.fulfillmentRate,
+                      avg_lead_time_days: supplierScorecard.avgLeadDays,
+                      total_spend: supplierScorecard.totalSpend,
+                      quality_incidents_count: supplierScorecard.qualityIncidents
+                    };
+                    const summ = supplierScorecard.summary || {
+                      total_pos: supplierScorecard.totalPOs || 0,
+                      total_grns: (perf.avg_lead_time_days !== null && perf.avg_lead_time_days !== undefined) ? 1 : 0
+                    };
+                    const incs = supplierScorecard.incidents || [];
+                    const fulfillmentRateVal = perf.fulfillment_rate ?? supplierScorecard.fulfillmentRate ?? null;
+                    const avgLeadVal = perf.avg_lead_time_days ?? supplierScorecard.avgLeadDays ?? null;
+                    const totalSpendVal = perf.total_spend ?? supplierScorecard.totalSpend ?? 0;
+                    const qualityIncVal = perf.quality_incidents_count ?? supplierScorecard.qualityIncidents ?? 0;
+                    const totalPosVal = summ.total_pos ?? supplierScorecard.totalPOs ?? 0;
+                    const totalGrnsVal = summ.total_grns ?? 0;
+
+                    return (
                     <>
                       {/* Metric Score Cards */}
                       <div className="grid grid-cols-2 gap-4">
@@ -4101,17 +4120,17 @@ export default function ProcurementHub() {
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fulfillment Rate</span>
                           <div className="mt-2 flex items-baseline gap-1">
                             <span className="text-2xl font-black text-slate-850">
-                              {supplierScorecard.performance.fulfillment_rate !== null ? `${supplierScorecard.performance.fulfillment_rate.toFixed(1)}%` : '—'}
+                              {fulfillmentRateVal !== null ? `${Number(fulfillmentRateVal).toFixed(1)}%` : '—'}
                             </span>
                             <span className="text-[9px] text-slate-450 font-bold">delivered vs ordered</span>
                           </div>
                           <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
                             <div 
                               className={`h-1.5 rounded-full ${
-                                (supplierScorecard.performance.fulfillment_rate || 0) >= 90 ? 'bg-emerald-500' :
-                                (supplierScorecard.performance.fulfillment_rate || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                                (fulfillmentRateVal || 0) >= 90 ? 'bg-emerald-500' :
+                                (fulfillmentRateVal || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
                               }`} 
-                              style={{ width: `${supplierScorecard.performance.fulfillment_rate || 0}%` }}
+                              style={{ width: `${fulfillmentRateVal || 0}%` }}
                             />
                           </div>
                         </div>
@@ -4120,12 +4139,12 @@ export default function ProcurementHub() {
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Average Lead Time</span>
                           <div className="mt-2 flex items-baseline gap-1">
                             <span className="text-2xl font-black text-slate-850">
-                              {supplierScorecard.performance.avg_lead_time_days !== null ? `${supplierScorecard.performance.avg_lead_time_days.toFixed(1)} days` : '—'}
+                              {avgLeadVal !== null ? `${Number(avgLeadVal).toFixed(1)} days` : '—'}
                             </span>
                             <span className="text-[9px] text-slate-450 font-bold">order to delivery</span>
                           </div>
                           <div className="mt-2 text-[9px] font-bold text-slate-450">
-                            Based on {supplierScorecard.summary.total_grns} fulfilled shipments
+                            Based on {totalGrnsVal} fulfilled shipments
                           </div>
                         </div>
                       </div>
@@ -4136,11 +4155,11 @@ export default function ProcurementHub() {
                         <div className="grid grid-cols-2 gap-4 pt-1">
                           <div>
                             <p className="text-[9px] font-bold text-slate-450 uppercase">Total Spend (Life-time)</p>
-                            <p className="text-sm font-black text-teal-700 mt-0.5">{fmtRWF(supplierScorecard.performance.total_spend)}</p>
+                            <p className="text-sm font-black text-teal-700 mt-0.5">{fmtRWF(totalSpendVal)}</p>
                           </div>
                           <div>
                             <p className="text-[9px] font-bold text-slate-450 uppercase">Purchase Orders (POs)</p>
-                            <p className="text-sm font-black text-slate-850 mt-0.5">{supplierScorecard.summary.total_pos} active POs</p>
+                            <p className="text-sm font-black text-slate-850 mt-0.5">{totalPosVal} active POs</p>
                           </div>
                         </div>
                       </div>
@@ -4150,14 +4169,14 @@ export default function ProcurementHub() {
                         <div className="flex justify-between items-center">
                           <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Quality / Delivery Incidents</h4>
                           <span className={`px-2 py-0.5 text-[9px] font-black rounded-full ${
-                            supplierScorecard.performance.quality_incidents_count > 0 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                            qualityIncVal > 0 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                           }`}>
-                            {supplierScorecard.performance.quality_incidents_count} logged
+                            {qualityIncVal} logged
                           </span>
                         </div>
 
                         <div className="border border-slate-100 rounded-2xl overflow-hidden max-h-[200px] overflow-y-auto">
-                          {supplierScorecard.incidents.length > 0 ? (
+                          {incs.length > 0 ? (
                             <table className="min-w-full text-xs text-left divide-y divide-slate-100">
                               <thead className="bg-slate-50 text-slate-450 uppercase text-[9px] font-black">
                                 <tr>
@@ -4167,7 +4186,7 @@ export default function ProcurementHub() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100 text-slate-650 font-bold font-medium">
-                                {supplierScorecard.incidents.map((inc, i) => (
+                                {incs.map((inc, i) => (
                                   <tr key={i} className="hover:bg-slate-50/40">
                                     <td className="p-3 font-semibold whitespace-nowrap">{new Date(inc.incident_date || inc.created_at).toLocaleDateString()}</td>
                                     <td className="p-3">
@@ -4189,7 +4208,8 @@ export default function ProcurementHub() {
                         </div>
                       </div>
                     </>
-                  ) : (
+                    );
+                  })() : (
                     <div className="text-center text-slate-400 p-8">No performance records found.</div>
                   )}
                 </div>
@@ -4261,24 +4281,32 @@ export default function ProcurementHub() {
                   <div className="space-y-6">
                     {loadingVendorProfile ? (
                       <div className="flex justify-center py-10"><Loader2 className="animate-spin text-teal-650" size={24} /></div>
-                    ) : supplierScorecard ? (
+                    ) : supplierScorecard ? (() => {
+                      const perf = supplierScorecard.performance || {
+                        fulfillment_rate: supplierScorecard.fulfillmentRate,
+                        avg_lead_time_days: supplierScorecard.avgLeadDays
+                      };
+                      const fulfillmentRateVal = perf.fulfillment_rate ?? supplierScorecard.fulfillmentRate ?? null;
+                      const avgLeadVal = perf.avg_lead_time_days ?? supplierScorecard.avgLeadDays ?? null;
+
+                      return (
                       <div className="space-y-6">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fulfillment Rate</span>
                             <div className="mt-2 flex items-baseline gap-1">
                               <span className="text-2xl font-black text-slate-850">
-                                {supplierScorecard.performance.fulfillment_rate !== null ? `${supplierScorecard.performance.fulfillment_rate.toFixed(1)}%` : '—'}
+                                {fulfillmentRateVal !== null ? `${Number(fulfillmentRateVal).toFixed(1)}%` : '—'}
                               </span>
                               <span className="text-[9px] text-slate-450 font-bold">delivered vs ordered</span>
                             </div>
                             <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
                               <div 
                                 className={`h-1.5 rounded-full ${
-                                  (supplierScorecard.performance.fulfillment_rate || 0) >= 90 ? 'bg-emerald-500' :
-                                  (supplierScorecard.performance.fulfillment_rate || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                                  (fulfillmentRateVal || 0) >= 90 ? 'bg-emerald-500' :
+                                  (fulfillmentRateVal || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
                                 }`} 
-                                style={{ width: `${supplierScorecard.performance.fulfillment_rate || 0}%` }}
+                                style={{ width: `${fulfillmentRateVal || 0}%` }}
                               />
                             </div>
                           </div>
@@ -4287,14 +4315,15 @@ export default function ProcurementHub() {
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Average Lead Time</span>
                             <div className="mt-2 flex items-baseline gap-1">
                               <span className="text-2xl font-black text-slate-850">
-                                {supplierScorecard.performance.avg_lead_time_days !== null ? `${supplierScorecard.performance.avg_lead_time_days.toFixed(1)} days` : '—'}
+                                {avgLeadVal !== null ? `${Number(avgLeadVal).toFixed(1)} days` : '—'}
                               </span>
                               <span className="text-[9px] text-slate-450 font-bold">order to delivery</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    ) : (
+                      );
+                    })() : (
                       <div className="text-center text-slate-400 py-10 font-bold">No scorecard data available.</div>
                     )}
                   </div>

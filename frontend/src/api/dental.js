@@ -23,6 +23,10 @@ export const saveChart                = (data)       => api.post('/dental/charts
 export const deleteChart              = (id)         => api.delete(`/dental/charts/${id}`);
 export const generateDentalAiNote     = (data)       => api.post('/ai/clinical/dental-note', data);
 export const suggestProstheticReplacement = (data)   => api.post('/ai/clinical/prosthetics-suggestion', data);
+export const generateLabChefNote      = (data)       => api.post('/ai/clinical/lab-chef-note', data);
+export const referClinicCaseToLab     = (id, data)   => api.post(`/dental/clinic-cases/${id}/refer-to-lab`, data);
+export const getLabReferralStatus     = (id)         => api.get(`/dental/clinic-cases/${id}/lab-status`);
+
 
 // ─── Appointments (forward-looking scheduling) ───────────────────────────────
 export const listAppointments         = (params) => api.get('/dental/appointments', { params });

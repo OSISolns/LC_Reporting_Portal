@@ -802,6 +802,142 @@ const SURFACE_FULL_NAMES = {
   L: 'Lingual/Palatal'
 };
 
+// ── Lumina AI — Lab Chief Technologist Master Note Generator ───────────────────
+// Generates a full prosthetics lab master note from the odontogram case data.
+// Input: { odontogramData, patientName, patientRef, labTech, caseRef, dentist }
+function generateLabChefNote({ odontogramData = {}, patientName = '', patientRef = '', labTech = '', caseRef = '', dentist = '' } = {}) {
+  const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const lines = [];
+
+  // Filter out metadata keys (e.g. _chef_note)
+  const teethEntries = Object.entries(odontogramData).filter(([k, v]) => !k.startsWith('_') && v && typeof v === 'object');
+
+  if (!teethEntries.length) {
+    return `LUMINA AI — CHIEF TECHNOLOGIST MASTER NOTE\nDate: ${today}\n\nNo prosthetic units have been logged on this case. Please complete the odontogram chart before generating a master note.`;
+  }
+
+  // Classify teeth by work type
+  const groups = {};
+  const missingTeeth = [];
+  const shadeMap = {};
+
+  teethEntries.forEach(([toothNum, data]) => {
+    const label = FDI_TOOTH_NAMES[toothNum] || `Tooth #${toothNum}`;
+    const workType = data.work_type || 'Unspecified';
+    const isMissing = data.is_missing || workType.toLowerCase().includes('missing');
+
+    if (isMissing) {
+      missingTeeth.push({ num: toothNum, label, strategy: data.replacement_strategy || 'To Be Planned' });
+      return;
+    }
+
+    if (!groups[workType]) groups[workType] = [];
+    groups[workType].push({ num: toothNum, label, data });
+
+    if (data.shade && !shadeMap[data.shade]) shadeMap[data.shade] = [];
+    if (data.shade) shadeMap[data.shade].push(label);
+  });
+
+  const groupKeys = Object.keys(groups);
+  const totalUnits = teethEntries.length - missingTeeth.length;
+
+  // ── Header ──────────────────────────────────────────────────────────────────
+  lines.push(`LUMINA AI — CHIEF TECHNOLOGIST MASTER NOTE`);
+  lines.push(`Date: ${today}`);
+  if (caseRef) lines.push(`Case Reference: ${caseRef}`);
+  if (patientName || patientRef) lines.push(`Patient: ${patientName || 'N/A'}${patientRef ? ` (Ref: ${patientRef})` : ''}`);
+  if (dentist) lines.push(`Prescribing Dentist: ${dentist}`);
+  if (labTech) lines.push(`Assigned Technologist: ${labTech}`);
+  lines.push(``);
+
+  // ── 1. Prosthetic Scope Summary ────────────────────────────────────────────
+  lines.push(`1. PROSTHETIC SCOPE SUMMARY:`);
+  lines.push(`   Total Prosthetic Units: ${totalUnits}`);
+  if (missingTeeth.length) lines.push(`   Missing / Edentulous Sites: ${missingTeeth.length}`);
+  groupKeys.forEach(wt => {
+    const nums = groups[wt].map(t => `#${t.num}`).join(', ');
+    lines.push(`   ${wt} (${groups[wt].length} unit${groups[wt].length > 1 ? 's' : ''}): ${nums}`);
+  });
+  lines.push(``);
+
+  // ── 2. Shade & Aesthetics Protocol ────────────────────────────────────────
+  const shadeKeys = Object.keys(shadeMap);
+  lines.push(`2. SHADE & AESTHETICS PROTOCOL:`);
+  if (shadeKeys.length) {
+    shadeKeys.forEach(shade => {
+      lines.push(`   Shade ${shade} assigned to: ${shadeMap[shade].join(', ')}.`);
+    });
+    if (shadeKeys.length === 1) {
+      lines.push(`   Monochromatic shade prescription — uniform shade ${shadeKeys[0]} across all units. Verify against vita shade guide under daylight and dental operatory light.`);
+    } else {
+      lines.push(`   Multi-shade prescription detected. Ensure seamless shade blending at contact zones and across arch segments.`);
+    }
+  } else {
+    lines.push(`   No shade specified. Default to Vita Classical A2 unless otherwise instructed by prescribing dentist.`);
+  }
+  lines.push(``);
+
+  // ── 3. Work Type Detail ─────────────────────────────────────────────────────
+  lines.push(`3. WORK TYPE DETAIL:`);
+  groupKeys.forEach(workType => {
+    const items = groups[workType];
+    items.forEach(({ num, label, data }) => {
+      const statusLine = data.status ? ` | Status: ${data.status}` : '';
+      const shadeLine  = data.shade  ? ` | Shade: ${data.shade}`  : '';
+      const noteLine   = data.notes  ? `\n      Notes: ${data.notes}` : '';
+      lines.push(`   Tooth #${num} (${label}) — ${workType}${shadeLine}${statusLine}${noteLine}`);
+    });
+  });
+
+  // Missing teeth
+  if (missingTeeth.length) {
+    lines.push(``);
+    lines.push(`   Missing / Edentulous Sites:`);
+    missingTeeth.forEach(({ num, label, strategy }) => {
+      lines.push(`   Tooth #${num} (${label}) — Declared Missing. Planned approach: ${strategy}.`);
+    });
+  }
+  lines.push(``);
+
+  // ── 4. Articulation & Occlusion ─────────────────────────────────────────────
+  lines.push(`4. ARTICULATION & OCCLUSION GUIDANCE:`);
+  const hasBridge = groupKeys.some(k => k.toLowerCase().includes('bridge'));
+  const hasCrown  = groupKeys.some(k => k.toLowerCase().includes('crown'));
+  const hasImplant = groupKeys.some(k => k.toLowerCase().includes('implant'));
+  const hasDenture = groupKeys.some(k => k.toLowerCase().includes('denture'));
+
+  if (hasBridge) {
+    lines.push(`   Bridge units: Mount on semi-adjustable articulator with facebow transfer. Verify pontic tissue contact is gentle (ovoid or modified ridge lap). Check connector width ≥4mm² for posterior segments.`);
+  }
+  if (hasCrown) {
+    lines.push(`   Crown units: Verify occlusal contacts in centric occlusion and protrusive/lateral excursion. No premature contacts. Coping thickness ≥0.5mm (Zirconia) or ≥0.3mm (E-Max) in non-functional cusps.`);
+  }
+  if (hasImplant) {
+    lines.push(`   Implant-supported unit(s): Confirm platform specifications with prescribing dentist. Screw-access or cement-retained as per Rx. Torque to manufacturer specification (typically 30–35 Ncm).`);
+  }
+  if (hasDenture) {
+    lines.push(`   Removable appliance: Establish bilateral balanced occlusion. Verify retention clasps and rests. No rocking or lift on try-in model.`);
+  }
+  if (!hasBridge && !hasCrown && !hasImplant && !hasDenture) {
+    lines.push(`   Verify occlusal contacts in maximum intercuspation. No premature or high points on prosthetic units.`);
+  }
+  lines.push(``);
+
+  // ── 5. QC & Finishing Instructions ─────────────────────────────────────────
+  lines.push(`5. QUALITY CONTROL & FINISHING:`);
+  lines.push(`   • Inspect all margins under ×10 magnification. Zero visible gaps or open margins acceptable.`);
+  lines.push(`   • Polish all prosthetic surfaces to mirror finish. Remove all lab bur marks or grinding artifacts.`);
+  lines.push(`   • Verify contact points with 8-micron shimstock — all units should hold shimstock with light resistance.`);
+  lines.push(`   • Final glazing and staining as per shade prescription above.`);
+  lines.push(`   • Label, disinfect, and package in individual cases. Mark case reference on each unit.`);
+  lines.push(``);
+
+  // ── Signature footer ────────────────────────────────────────────────────────
+  lines.push(`Generated by Lumina AI — Dental Lab Intelligence Module. Review and countersign prior to case dispatch.`);
+
+  return lines.join('\n');
+}
+
 function generateDentalNote({ toothData = {}, treatmentPlan = [], patientName = '', patientId = '', dentitionType = 'adult', existingNotes = '', provider = '' }) {
   const lines = [];
 
@@ -1225,6 +1361,7 @@ module.exports = {
   suggestMedications,
   suggestDentalMedications,
   suggestProstheticReplacement,
+  generateLabChefNote,
   generateAssessmentComments,
   generateProgressNote, 
   generateSBAR, 

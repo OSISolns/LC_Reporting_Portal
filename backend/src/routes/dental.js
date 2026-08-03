@@ -16,12 +16,17 @@ router.put('/cases/:id',      dentalController.updateCase);
 router.delete('/cases/:id',   dentalController.deleteCase);
 
 // Clinic Cases CRUD (Dental Clinic)
-router.get('/clinic-cases',          dentalController.listClinicCases);
-router.get('/clinic-cases/stats',    dentalController.getClinicCasesStats);
-router.get('/clinic-cases/:id',      dentalController.getClinicCase);
-router.post('/clinic-cases',         dentalController.createClinicCase);
-router.put('/clinic-cases/:id',      dentalController.updateClinicCase);
-router.delete('/clinic-cases/:id',   dentalController.deleteClinicCase);
+router.get('/clinic-cases',                      dentalController.listClinicCases);
+router.get('/clinic-cases/stats',                dentalController.getClinicCasesStats);
+router.get('/clinic-cases/:id',                  dentalController.getClinicCase);
+router.post('/clinic-cases',                     dentalController.createClinicCase);
+router.put('/clinic-cases/:id',                  dentalController.updateClinicCase);
+router.delete('/clinic-cases/:id',               dentalController.deleteClinicCase);
+
+// Clinic → Lab Referral
+router.post('/clinic-cases/:id/refer-to-lab',    dentalController.referClinicCaseToLab);
+router.get('/clinic-cases/:id/lab-status',       dentalController.getLabReferralStatus);
+
 
 // Worklist (Patient Queue)
 router.get('/worklist',              dentalController.listWorklist);

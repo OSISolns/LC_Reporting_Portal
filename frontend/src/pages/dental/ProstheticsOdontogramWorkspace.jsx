@@ -110,13 +110,15 @@ const ProstheticsOdontogramWorkspace = () => {
     setOdontogramMap(nextMap);
     if (!selectedCase) return;
 
+    const chefNoteVal = nextMap._chef_note || selectedCase.chef_note || '';
+
     setSaveStatus('saving');
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
-        await updateDentalCase(selectedCase.id, { odontogram_data: nextMap });
+        await updateDentalCase(selectedCase.id, { odontogram_data: nextMap, chef_note: chefNoteVal });
         setSaveStatus('saved');
-        setCases(prev => prev.map(c => c.id === selectedCase.id ? { ...c, odontogram_data: nextMap } : c));
+        setCases(prev => prev.map(c => c.id === selectedCase.id ? { ...c, odontogram_data: nextMap, chef_note: chefNoteVal } : c));
       } catch {
         setSaveStatus('error');
         toast.error('Failed to save odontogram changes.');
@@ -334,6 +336,7 @@ const ProstheticsOdontogramWorkspace = () => {
           orthoEnabled={!!selectedCase.ortho_enabled}
           orthoArch={selectedCase.ortho_arch || ''}
           onOrthoArchChange={canEdit ? handleOrthoArchChange : undefined}
+          chefNote={selectedCase.chef_note || odontogramMap._chef_note || ''}
           caseContext={{
             patientAge: patient?.age,
             patientGender: patient?.gender,

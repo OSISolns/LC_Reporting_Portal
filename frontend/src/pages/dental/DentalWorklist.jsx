@@ -99,8 +99,14 @@ export default function DentalWorklist() {
     try {
       setLoading(true);
       const [worklistRes, statsRes] = await Promise.all([
-        listWorklist({ date: formattedDate }),
-        getWorklistStats({ date: formattedDate })
+        listWorklist({ date: formattedDate }).catch(err => {
+          console.warn('Error fetching worklist:', err?.response?.data || err.message);
+          return { data: { data: [] } };
+        }),
+        getWorklistStats({ date: formattedDate }).catch(err => {
+          console.warn('Error fetching worklist stats:', err?.response?.data || err.message);
+          return { data: { data: null } };
+        })
       ]);
       // Normalize: handle both { data: [...] } (axios wrapper) and raw arrays
       const worklistData = worklistRes?.data?.data ?? worklistRes?.data ?? worklistRes ?? [];
@@ -108,7 +114,7 @@ export default function DentalWorklist() {
       setEntries(Array.isArray(worklistData) ? worklistData : []);
       setStats(statsData);
     } catch (error) {
-      toast.error('Failed to load worklist data');
+      console.error('Failed to load worklist data:', error);
     } finally {
       setLoading(false);
     }

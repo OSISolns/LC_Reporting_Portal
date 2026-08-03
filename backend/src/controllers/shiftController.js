@@ -660,10 +660,11 @@ exports.getLatestHandover = async (req, res, next) => {
     const shiftRole = req.query.shift_role || req.user.role;
     
     // Authorization check
-    const isSupervisor = ['admin', 'coo', 'deputy_coo'].includes(req.user.role);
+    const isSupervisor = ['admin', 'coo', 'deputy_coo', 'chef-nurse', 'medical_director'].includes(req.user.role);
+    const clinicalRoles = ['nurse', 'chef-nurse', 'doctor', 'consultant', 'pa', 'medical_director'];
     let isAuthorized = isSupervisor;
     if (!isAuthorized) {
-      if (req.user.role === shiftRole) {
+      if (req.user.role === shiftRole || (shiftRole === 'nurse' && clinicalRoles.includes(req.user.role))) {
         isAuthorized = true;
       } else if (req.user.role === 'customer_care' && (shiftRole === 'customer_care' || shiftRole === 'vip_lounge' || shiftRole === 'helpdesk' || shiftRole === 'call_center' || shiftRole === 'cashier')) {
         isAuthorized = true;

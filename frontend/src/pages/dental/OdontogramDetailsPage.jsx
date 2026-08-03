@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, ClipboardList, User, Cake, Phone, Building2,
-  AlertTriangle, Layers, CheckCircle2, Clock, AlertCircle,
+  AlertTriangle, Layers, CheckCircle2, Clock, AlertCircle, Award, FileText,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { getDentalCase } from '../../api/dental';
@@ -58,7 +58,8 @@ const OdontogramDetailsPage = () => {
   }, [id]);
 
   const odontogramMap = useMemo(() => parseOdontogram(caseItem?.odontogram_data), [caseItem]);
-  const entries = useMemo(() => Object.entries(odontogramMap), [odontogramMap]);
+  const entries = useMemo(() => Object.entries(odontogramMap).filter(([k]) => !k.startsWith('_')), [odontogramMap]);
+  const chefNote = useMemo(() => caseItem?.chef_note || odontogramMap?._chef_note || odontogramMap?.chef_note || '', [caseItem, odontogramMap]);
 
   const stats = useMemo(() => {
     const values = entries.map(([, v]) => v);
@@ -171,6 +172,21 @@ const OdontogramDetailsPage = () => {
         <StatChip icon={Loader2} label="In Production" value={stats.inProgress} colorClass="text-indigo-700" bgClass="bg-indigo-100" />
         <StatChip icon={CheckCircle2} label="Completed" value={stats.completed} colorClass="text-emerald-700" bgClass="bg-emerald-100" />
       </div>
+
+      {/* Chef Note for Whole Prosthetic Work Done */}
+      {chefNote && (
+        <div className="relative overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/80 via-orange-50/40 to-white p-4 space-y-2 shadow-xs">
+          <div className="flex items-center gap-2 text-amber-900 font-extrabold text-xs">
+            <span className="p-1.5 rounded-lg bg-amber-100 text-amber-700">
+              <Award size={16} />
+            </span>
+            <span>👨‍🔬 Chief Technologist Master Note (Whole Prosthetic Work Done)</span>
+          </div>
+          <div className="bg-white/80 border border-amber-200/70 rounded-xl p-3 text-xs font-semibold text-amber-950 whitespace-pre-wrap">
+            {chefNote}
+          </div>
+        </div>
+      )}
 
       {/* Jaw Skeleton Diagram */}
       <JawSkeletonDiagram odontogramData={odontogramMap} dentitionMode="adult" />

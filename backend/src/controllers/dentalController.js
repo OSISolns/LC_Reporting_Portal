@@ -1,6 +1,7 @@
 'use strict';
 const db = require('../config/db');
 const { logAction } = require('../middleware/audit');
+const Notification = require('../models/notification');
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 // Generate a prosthetics case reference number: DC-YYMMDD-XXXX
@@ -32,12 +33,17 @@ exports.listCases = async (req, res, next) => {
 
     const { rows } = await db.query(
       `SELECT dc.*,
+              COALESCE(dc.odontogram_data, ch.tooth_data, pch.tooth_data) AS odontogram_data,
               u.full_name AS reported_by_name,
-              ch.chart_date AS linked_chart_date,
-              ch.provider AS linked_chart_provider
+              COALESCE(ch.chart_date, pch.chart_date) AS linked_chart_date,
+              COALESCE(ch.provider, pch.provider) AS linked_chart_provider
        FROM   dental_cases dc
        LEFT JOIN users u ON u.id = dc.reported_by_user_id
-       LEFT JOIN dental_charts ch ON ch.id = dc.linked_chart_id
+       LEFT JOIN dental_clinic_cases cc ON cc.id = dc.clinic_case_id
+       LEFT JOIN dental_charts ch ON ch.id = COALESCE(dc.linked_chart_id, cc.linked_chart_id)
+       LEFT JOIN dental_charts pch ON pch.id = (
+         SELECT id FROM dental_charts WHERE patient_id = dc.patient_id ORDER BY chart_date DESC, id DESC LIMIT 1
+       )
        ${dateFilter}
        ORDER  BY dc.created_at DESC`,
       params
@@ -52,12 +58,18 @@ exports.getCase = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { rows } = await db.query(
-      `SELECT dc.*, u.full_name AS reported_by_name,
-              ch.chart_date AS linked_chart_date,
-              ch.provider AS linked_chart_provider
+      `SELECT dc.*,
+              COALESCE(dc.odontogram_data, ch.tooth_data, pch.tooth_data) AS odontogram_data,
+              u.full_name AS reported_by_name,
+              COALESCE(ch.chart_date, pch.chart_date) AS linked_chart_date,
+              COALESCE(ch.provider, pch.provider) AS linked_chart_provider
        FROM   dental_cases dc
        LEFT JOIN users u ON u.id = dc.reported_by_user_id
-       LEFT JOIN dental_charts ch ON ch.id = dc.linked_chart_id
+       LEFT JOIN dental_clinic_cases cc ON cc.id = dc.clinic_case_id
+       LEFT JOIN dental_charts ch ON ch.id = COALESCE(dc.linked_chart_id, cc.linked_chart_id)
+       LEFT JOIN dental_charts pch ON pch.id = (
+         SELECT id FROM dental_charts WHERE patient_id = dc.patient_id ORDER BY chart_date DESC, id DESC LIMIT 1
+       )
        WHERE  dc.id = ?`,
       [id]
     );
@@ -110,6 +122,7 @@ exports.createCase = async (req, res, next) => {
       reported_by,
       odontogram_data,
       linked_chart_id,
+      chef_note,
     } = req.body;
 
     // At least one work type must be present
@@ -148,8 +161,8 @@ exports.createCase = async (req, res, next) => {
          ortho_enabled, ortho_appliance_type, ortho_appliance_other,
          ortho_technologist, ortho_units, ortho_unit_cost, ortho_cost, ortho_notes, ortho_arch,
          total_cost, status, delivery_notes, delivered_to, delivered_at,
-         reported_by, reported_by_user_id, odontogram_data, linked_chart_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         reported_by, reported_by_user_id, odontogram_data, linked_chart_id, chef_note
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         case_ref, received_date, required_date, work_command_origin || null,
         clinic_of_origin || null, clinician_name || null, patient_id || null, patient_name || null,
@@ -161,7 +174,7 @@ exports.createCase = async (req, res, next) => {
         ortho_technologist || null, parsedOrthoUnits, parsedOrthoUnitCost, parsedOrthoCost, ortho_notes || null, ortho_arch || null,
         parsedTotal,
         status || 'Received', delivery_notes || null, delivered_to || null, delivered_at || null,
-        reported_by || null, reported_by_user_id, serializedOdontogram, parseNum(linked_chart_id)
+        reported_by || null, reported_by_user_id, serializedOdontogram, parseNum(linked_chart_id), chef_note || null
       ]
     );
 
@@ -188,7 +201,7 @@ exports.updateCase = async (req, res, next) => {
       ortho_enabled, ortho_appliance_type, ortho_appliance_other,
       ortho_technologist, ortho_units, ortho_unit_cost, ortho_cost, ortho_notes, ortho_arch,
       total_cost, status, delivery_notes, delivered_to, delivered_at,
-      reported_by, odontogram_data, linked_chart_id,
+      reported_by, odontogram_data, linked_chart_id, chef_note,
     } = req.body;
 
     const { rows: existing } = await db.query('SELECT * FROM dental_cases WHERE id = ?', [id]);
@@ -212,7 +225,7 @@ exports.updateCase = async (req, res, next) => {
          ortho_enabled = ?, ortho_appliance_type = ?, ortho_appliance_other = ?,
          ortho_technologist = ?, ortho_units = ?, ortho_unit_cost = ?, ortho_cost = ?, ortho_notes = ?, ortho_arch = ?,
          total_cost = ?, status = ?, delivery_notes = ?, delivered_to = ?, delivered_at = ?,
-         reported_by = ?, odontogram_data = ?, linked_chart_id = ?, updated_at = CURRENT_TIMESTAMP
+         reported_by = ?, odontogram_data = ?, linked_chart_id = ?, chef_note = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
         received_date ?? current.received_date,
@@ -247,11 +260,53 @@ exports.updateCase = async (req, res, next) => {
         reported_by ?? current.reported_by,
         serializedOdontogram,
         linked_chart_id !== undefined ? parseNum(linked_chart_id) : current.linked_chart_id,
+        chef_note !== undefined ? (chef_note || null) : current.chef_note,
         id,
       ]
     );
 
     await logAction(req, 'DENTAL_CASE_UPDATE', 'dental_cases', id, { status: updatedStatus, work_done, ortho_appliance_type });
+
+    // — If this lab case was created from a clinic referral, sync the status back —
+    if (current.clinic_case_id) {
+      try {
+        const LAB_TO_REFERRAL_STATUS = {
+          'Received':    'Referred',
+          'In Progress': 'In Progress',
+          'Quality Check': 'In Progress',
+          'Ready':       'Ready for Collection',
+          'Delivered':   'Completed',
+          'Completed':   'Completed',
+          'On Hold':     'On Hold',
+          'Cancelled':   'Cancelled',
+        };
+        const referralStatus = LAB_TO_REFERRAL_STATUS[updatedStatus] || 'In Progress';
+        await db.query(
+          `UPDATE dental_clinic_cases SET lab_referral_status = ?, updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) WHERE id = ?`,
+          [referralStatus, current.clinic_case_id]
+        );
+
+        if (['Ready for Collection', 'Completed'].includes(referralStatus)) {
+          const { rows: clinicCase } = await db.query(
+            'SELECT referred_by_user_id, patient_name, case_ref FROM dental_clinic_cases WHERE id = ?',
+            [current.clinic_case_id]
+          );
+          if (clinicCase[0]?.referred_by_user_id) {
+            const label = referralStatus === 'Completed' ? 'completed' : 'ready for collection';
+            await Notification.create({
+              userId: clinicCase[0].referred_by_user_id,
+              title: `Lab Case ${label.charAt(0).toUpperCase() + label.slice(1)}`,
+              message: `The dental lab case for patient ${clinicCase[0].patient_name} (Ref: ${clinicCase[0].case_ref}) is now ${label}.`,
+              type: 'success',
+              link: '/dental/clinic/cases',
+            });
+          }
+        }
+      } catch (syncErr) {
+        console.warn('Lab→Clinic status sync failed (non-fatal):', syncErr.message);
+      }
+    }
+
     res.json({ success: true, message: 'Case updated successfully.' });
   } catch (err) { next(err); }
 };
@@ -362,12 +417,12 @@ exports.getWorklistStats = async (req, res, next) => {
     const { rows } = await db.query(
       `SELECT
          COUNT(*) AS total,
-         SUM(CASE WHEN status = 'Waiting'    THEN 1 ELSE 0 END) AS waiting,
-         SUM(CASE WHEN status = 'In Chair'   THEN 1 ELSE 0 END) AS in_chair,
-         SUM(CASE WHEN status = 'Post-op'    THEN 1 ELSE 0 END) AS post_op,
-         SUM(CASE WHEN status = 'Discharged' THEN 1 ELSE 0 END) AS discharged,
-         SUM(CASE WHEN status = 'No Show'    THEN 1 ELSE 0 END) AS no_show,
-         SUM(CASE WHEN status = 'Cancelled'  THEN 1 ELSE 0 END) AS cancelled
+         COALESCE(SUM(CASE WHEN status = 'Waiting'    THEN 1 ELSE 0 END), 0) AS waiting,
+         COALESCE(SUM(CASE WHEN status = 'In Chair'   THEN 1 ELSE 0 END), 0) AS in_chair,
+         COALESCE(SUM(CASE WHEN status = 'Post-op'    THEN 1 ELSE 0 END), 0) AS post_op,
+         COALESCE(SUM(CASE WHEN status = 'Discharged' THEN 1 ELSE 0 END), 0) AS discharged,
+         COALESCE(SUM(CASE WHEN status = 'No Show'    THEN 1 ELSE 0 END), 0) AS no_show,
+         COALESCE(SUM(CASE WHEN status = 'Cancelled'  THEN 1 ELSE 0 END), 0) AS cancelled
        FROM dental_worklist
        WHERE date(appointment_date) = ${date ? 'date(?)' : "date('now')"}`,
       date ? [date] : []
@@ -646,12 +701,12 @@ exports.getAppointmentStats = async (req, res, next) => {
       `SELECT
          appointment_date,
          COUNT(*) AS total,
-         SUM(CASE WHEN status = 'Scheduled'  THEN 1 ELSE 0 END) AS scheduled,
-         SUM(CASE WHEN status = 'Confirmed'  THEN 1 ELSE 0 END) AS confirmed,
-         SUM(CASE WHEN status = 'Checked-In' THEN 1 ELSE 0 END) AS checked_in,
-         SUM(CASE WHEN status = 'Completed'  THEN 1 ELSE 0 END) AS completed,
-         SUM(CASE WHEN status = 'Cancelled'  THEN 1 ELSE 0 END) AS cancelled,
-         SUM(CASE WHEN status = 'No-Show'    THEN 1 ELSE 0 END) AS no_show
+         COALESCE(SUM(CASE WHEN status = 'Scheduled'  THEN 1 ELSE 0 END), 0) AS scheduled,
+         COALESCE(SUM(CASE WHEN status = 'Confirmed'  THEN 1 ELSE 0 END), 0) AS confirmed,
+         COALESCE(SUM(CASE WHEN status = 'Checked-In' THEN 1 ELSE 0 END), 0) AS checked_in,
+         COALESCE(SUM(CASE WHEN status = 'Completed'  THEN 1 ELSE 0 END), 0) AS completed,
+         COALESCE(SUM(CASE WHEN status = 'Cancelled'  THEN 1 ELSE 0 END), 0) AS cancelled,
+         COALESCE(SUM(CASE WHEN status = 'No-Show'    THEN 1 ELSE 0 END), 0) AS no_show
        FROM dental_appointments
        ${dateFilter}
        GROUP BY appointment_date`,
@@ -1009,6 +1064,135 @@ exports.deleteClinicCase = async (req, res, next) => {
     await db.query('DELETE FROM dental_clinic_cases WHERE id = ?', [id]);
     await logAction(req, 'DENTAL_CLINIC_CASE_DELETE', 'dental_clinic_cases', id, {});
     res.json({ success: true, message: 'Clinic case deleted.' });
+  } catch (err) { next(err); }
+};
+
+// ─── Refer a clinic case to the dental lab ──────────────────────────────────────────
+exports.referClinicCaseToLab = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { referral_notes } = req.body;
+
+    // Fetch the clinic case
+    const { rows: clinicRows } = await db.query(
+      'SELECT * FROM dental_clinic_cases WHERE id = ?', [id]
+    );
+    if (!clinicRows.length) {
+      return res.status(404).json({ success: false, message: 'Clinic case not found.' });
+    }
+    const cc = clinicRows[0];
+
+    if (cc.lab_referral_id) {
+      return res.status(409).json({ success: false, message: 'This case has already been referred to the lab.' });
+    }
+
+    // Attempt to fetch linked chart or latest patient chart for odontogram
+    let linkedChartId = cc.linked_chart_id || null;
+    let odontogramDataJson = null;
+
+    if (linkedChartId) {
+      const { rows: chartRows } = await db.query('SELECT id, tooth_data FROM dental_charts WHERE id = ?', [linkedChartId]);
+      if (chartRows.length && chartRows[0].tooth_data) {
+        odontogramDataJson = typeof chartRows[0].tooth_data === 'string' ? chartRows[0].tooth_data : JSON.stringify(chartRows[0].tooth_data);
+      }
+    }
+
+    if (!odontogramDataJson && cc.patient_id) {
+      const { rows: patientCharts } = await db.query('SELECT id, tooth_data FROM dental_charts WHERE patient_id = ? ORDER BY chart_date DESC, id DESC LIMIT 1', [cc.patient_id]);
+      if (patientCharts.length && patientCharts[0].tooth_data) {
+        linkedChartId = linkedChartId || patientCharts[0].id;
+        odontogramDataJson = typeof patientCharts[0].tooth_data === 'string' ? patientCharts[0].tooth_data : JSON.stringify(patientCharts[0].tooth_data);
+      }
+    }
+
+    // Create a corresponding lab case (dental_cases) pre-populated from clinic data
+    const case_ref = generateCaseRef();
+    const today = new Date().toISOString().slice(0, 10);
+    const requiredDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    await db.query(
+      `INSERT INTO dental_cases (
+         case_ref, received_date, required_date, work_command_origin,
+         clinic_of_origin, clinician_name, patient_id, patient_name,
+         prosthetics_enabled, work_done, work_done_other, status,
+         reported_by, reported_by_user_id,
+         delivery_notes, clinic_case_id, referred_by_clinician, referred_at,
+         linked_chart_id, odontogram_data
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        case_ref, today, requiredDate, 'Clinic Referral',
+        cc.dentist_name ? `Dental Clinic — Dr. ${cc.dentist_name}` : 'Dental Clinic',
+        cc.dentist_name || null,
+        cc.patient_id || null, cc.patient_name,
+        1, 'Other', cc.treatment_summary || 'Clinic Referral — See clinical notes',
+        'Received',
+        req.user?.full_name || null, req.user?.id || null,
+        referral_notes || cc.clinical_notes || null,
+        id, cc.dentist_name || null, new Date().toISOString(),
+        linkedChartId, odontogramDataJson
+      ]
+    );
+
+    const { rows: inserted } = await db.query(
+      'SELECT id FROM dental_cases WHERE case_ref = ?', [case_ref]
+    );
+    const labCaseId = inserted[0]?.id;
+
+    // Update the clinic case with the referral link
+    await db.query(
+      `UPDATE dental_clinic_cases SET
+         lab_referral_id = ?, lab_referral_status = 'Referred',
+         lab_referral_notes = ?, referred_by_user_id = ?,
+         updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+       WHERE id = ?`,
+      [labCaseId, referral_notes || null, req.user?.id || null, id]
+    );
+
+    // Notify all dental lab users
+    try {
+      const { rows: labUsers } = await db.query(
+        `SELECT id FROM users WHERE role IN ('dental_lab_manager', 'dental_hod', 'dental_lab', 'dental_tech') AND is_active = 1`
+      );
+      await Promise.all(labUsers.map(u =>
+        Notification.create({
+          userId: u.id,
+          title: 'New Clinic Referral',
+          message: `Dr. ${cc.dentist_name || 'Clinician'} referred patient "${cc.patient_name}" from the Dental Clinic. Case ref: ${case_ref}.`,
+          type: 'info',
+          link: '/dental/lab/cases',
+        }).catch(() => {})
+      ));
+    } catch (notifErr) {
+      console.warn('Notification dispatch failed (non-fatal):', notifErr.message);
+    }
+
+    await logAction(req, 'DENTAL_CLINIC_REFERRAL', 'dental_clinic_cases', id, { lab_case_id: labCaseId, case_ref });
+    res.status(201).json({
+      success: true,
+      message: 'Case referred to the dental lab successfully.',
+      data: { lab_case_id: labCaseId, lab_case_ref: case_ref },
+    });
+  } catch (err) { next(err); }
+};
+
+// ─── Get lab referral status for a clinic case ───────────────────────────────
+exports.getLabReferralStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(
+      `SELECT cc.lab_referral_id, cc.lab_referral_status, cc.lab_referral_notes, cc.referred_by_user_id,
+              dc.case_ref AS lab_case_ref, dc.status AS lab_status,
+              dc.technologist, dc.delivery_notes, dc.updated_at AS lab_updated_at,
+              dc.work_done, dc.received_date, dc.required_date
+       FROM dental_clinic_cases cc
+       LEFT JOIN dental_cases dc ON dc.id = cc.lab_referral_id
+       WHERE cc.id = ?`,
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Clinic case not found.' });
+    }
+    res.json({ success: true, data: rows[0] });
   } catch (err) { next(err); }
 };
 

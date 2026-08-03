@@ -76,8 +76,14 @@ export default function DentalAppointments() {
     setLoading(true);
     try {
       const [apptRes, statsRes] = await Promise.all([
-        listAppointments({ from: rangeFrom, to: rangeTo }),
-        getAppointmentStats({ from: rangeFrom, to: rangeTo }),
+        listAppointments({ from: rangeFrom, to: rangeTo }).catch(err => {
+          console.warn('Error fetching appointments list:', err?.response?.data || err.message);
+          return { data: { data: [] } };
+        }),
+        getAppointmentStats({ from: rangeFrom, to: rangeTo }).catch(err => {
+          console.warn('Error fetching appointment stats:', err?.response?.data || err.message);
+          return { data: { data: [] } };
+        }),
       ]);
       const apptData = apptRes?.data?.data ?? apptRes?.data ?? apptRes ?? [];
       setAppointments(Array.isArray(apptData) ? apptData : []);
@@ -89,7 +95,7 @@ export default function DentalAppointments() {
       });
       setDayCounts(counts);
     } catch (err) {
-      toast.error('Failed to load appointments');
+      console.error('Failed to load appointments:', err);
     } finally {
       setLoading(false);
     }

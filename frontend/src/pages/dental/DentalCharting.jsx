@@ -303,7 +303,52 @@ export default function DentalCharting() {
   
   // Tooth Data Store
   const [toothData, setToothData] = useState(generateDefaultToothData());
-  const [selectedTooth, setSelectedTooth] = useState(null);
+  const [selectedTeeth, setSelectedTeeth] = useState([]); // Array of tooth number strings e.g. ['11', '12', '13']
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const selectedTooth = selectedTeeth[0] || null; // For single-tooth backward compatibility
+
+  const handleToothClick = (numberStr, e) => {
+    const numStr = numberStr.toString();
+    const isMulti = e?.shiftKey || e?.ctrlKey || e?.metaKey || multiSelectMode;
+    if (isMulti) {
+      setSelectedTeeth(prev => 
+        prev.includes(numStr) ? prev.filter(t => t !== numStr) : [...prev, numStr]
+      );
+    } else {
+      setSelectedTeeth(prev => 
+        (prev.length === 1 && prev[0] === numStr) ? [] : [numStr]
+      );
+    }
+  };
+
+  const handleSelectUpperArch = () => {
+    const upperTeeth = dentitionType === 'pediatric' 
+      ? PEDIATRIC_UPPER_TEETH.map(n => n.toString())
+      : ADULT_UPPER_TEETH.map(n => n.toString());
+    setSelectedTeeth(upperTeeth);
+    toast.success(`Selected Upper Arch (${upperTeeth.length} teeth)`);
+  };
+
+  const handleSelectLowerArch = () => {
+    const lowerTeeth = dentitionType === 'pediatric' 
+      ? PEDIATRIC_LOWER_TEETH.map(n => n.toString())
+      : ADULT_LOWER_TEETH.map(n => n.toString());
+    setSelectedTeeth(lowerTeeth);
+    toast.success(`Selected Lower Arch (${lowerTeeth.length} teeth)`);
+  };
+
+  const handleSelectAllTeeth = () => {
+    const allTeeth = dentitionType === 'pediatric' 
+      ? [...PEDIATRIC_UPPER_TEETH, ...PEDIATRIC_LOWER_TEETH].map(n => n.toString())
+      : [...ADULT_UPPER_TEETH, ...ADULT_LOWER_TEETH].map(n => n.toString());
+    setSelectedTeeth(allTeeth);
+    toast.success(`Selected All Teeth (${allTeeth.length} teeth)`);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedTeeth([]);
+  };
+
   const [hoveredTooth, setHoveredTooth] = useState(null);
 
   const handleToothEnter = (number, e) => {
@@ -666,44 +711,67 @@ export default function DentalCharting() {
     }
   };
 
-  const updateTooth = (toothNumber, updates) => {
-    setToothData(prev => ({
-      ...prev,
-      [toothNumber]: {
-        ...(prev[toothNumber] || DEFAULT_TOOTH_STRUCTURE),
-        ...updates
-      }
-    }));
+  const updateTooth = (toothNumberOrArray, updates) => {
+    const targetNumbers = Array.isArray(toothNumberOrArray) 
+      ? toothNumberOrArray 
+      : (selectedTeeth.length > 1 && selectedTeeth.includes(toothNumberOrArray.toString())
+          ? selectedTeeth 
+          : [toothNumberOrArray.toString()]);
+
+    setToothData(prev => {
+      const next = { ...prev };
+      targetNumbers.forEach(n => {
+        if (n) {
+          next[n] = {
+            ...(next[n] || DEFAULT_TOOTH_STRUCTURE),
+            ...updates
+          };
+        }
+      });
+      return next;
+    });
   };
 
   const handleDirectSurfaceClick = (toothNumber, surfaceKey) => {
     if (!canEdit) return;
-    setSelectedTooth(toothNumber);
+    const targetNumbers = selectedTeeth.length > 1 && selectedTeeth.includes(toothNumber.toString())
+      ? selectedTeeth
+      : [toothNumber.toString()];
+    setSelectedTeeth(targetNumbers);
     if (!activeTool) return;
 
     setToothData(prev => {
-      const currentTooth = prev[toothNumber] || DEFAULT_TOOTH_STRUCTURE;
-      const newSurfaces = { ...currentTooth.surfaces, [surfaceKey]: activeTool };
-      return {
-        ...prev,
-        [toothNumber]: {
+      const next = { ...prev };
+      targetNumbers.forEach(n => {
+        const currentTooth = prev[n] || DEFAULT_TOOTH_STRUCTURE;
+        const newSurfaces = { ...currentTooth.surfaces, [surfaceKey]: activeTool };
+        next[n] = {
           ...currentTooth,
           surfaces: newSurfaces
-        }
-      };
+        };
+      });
+      return next;
     });
-    toast.success(`Applied "${activeTool}" to Tooth #${toothNumber} (${surfaceKey})`, { duration: 1500 });
+    toast.success(`Applied "${activeTool}" (${surfaceKey}) to ${targetNumbers.length} tooth/teeth (#${targetNumbers.join(', #')})`, { duration: 1500 });
   };
 
   const applyActiveToolToAllSurfaces = () => {
-    if (!selectedTooth || !canEdit) return;
-    const currentTooth = toothData[selectedTooth] || DEFAULT_TOOTH_STRUCTURE;
-    const newSurfaces = { ...currentTooth.surfaces };
-    Object.keys(newSurfaces).forEach(k => {
-      newSurfaces[k] = activeTool;
+    if (!selectedTeeth.length || !canEdit) return;
+    setToothData(prev => {
+      const next = { ...prev };
+      selectedTeeth.forEach(n => {
+        const currentTooth = prev[n] || DEFAULT_TOOTH_STRUCTURE;
+        const newSurfaces = { ...currentTooth.surfaces };
+        Object.keys(newSurfaces).forEach(k => { newSurfaces[k] = activeTool; });
+        next[n] = {
+          ...currentTooth,
+          condition: activeTool,
+          surfaces: newSurfaces
+        };
+      });
+      return next;
     });
-    updateTooth(selectedTooth, { condition: activeTool, surfaces: newSurfaces });
-    toast.success(`Applied "${activeTool}" to all surfaces of Tooth #${selectedTooth}`);
+    toast.success(`Applied "${activeTool}" to all surfaces of ${selectedTeeth.length} selected tooth/teeth (#${selectedTeeth.join(', #')})`);
   };
 
   // ─── PROCEDURE COMPLETION & AUTOMATIC ODONTOGRAM UPDATER ──────────────────
@@ -813,9 +881,13 @@ export default function DentalCharting() {
   const handleAddProcedure = (e) => {
     e.preventDefault();
     if (!newProcName.trim()) return toast.error('Enter a procedure description.');
+    const formattedToothString = newProcTooth 
+      ? newProcTooth 
+      : (selectedTeeth.length > 0 ? selectedTeeth.map(t => `#${t}`).join(', ') : 'General');
+
     const newItem = {
       id: Date.now().toString(),
-      tooth: newProcTooth || (selectedTooth ? `#${selectedTooth}` : 'General'),
+      tooth: formattedToothString,
       surface: newProcSurface || 'All',
       procedure: newProcName,
       status: newProcStatus,
@@ -824,10 +896,13 @@ export default function DentalCharting() {
     setTreatmentPlan(prev => [...prev, newItem]);
 
     if (newItem.status === 'Completed') {
-      const toothNum = extractToothNumber(newItem.tooth);
-      if (toothNum) {
-        applyCompletedProcedureToTooth(toothNum, newItem.procedure);
-      }
+      const teethToApply = selectedTeeth.length > 0 && !newProcTooth 
+        ? selectedTeeth 
+        : [extractToothNumber(newItem.tooth)].filter(Boolean);
+
+      teethToApply.forEach(tNum => {
+        applyCompletedProcedureToTooth(tNum, newItem.procedure);
+      });
     }
 
     setNewProcName('');
@@ -1093,8 +1168,8 @@ export default function DentalCharting() {
               key={num} 
               number={num} 
               data={toothData[num.toString()]} 
-              isSelected={selectedTooth === num.toString()} 
-              onClick={setSelectedTooth}
+              isSelected={selectedTeeth.includes(num.toString())} 
+              onClick={(nStr, e) => handleToothClick(nStr, e)}
               onSurfaceClick={handleDirectSurfaceClick}
               activeToolCondition={activeTool}
               isUpper={isUpper}
@@ -1110,8 +1185,8 @@ export default function DentalCharting() {
               key={num} 
               number={num} 
               data={toothData[num.toString()]} 
-              isSelected={selectedTooth === num.toString()} 
-              onClick={setSelectedTooth}
+              isSelected={selectedTeeth.includes(num.toString())} 
+              onClick={(nStr, e) => handleToothClick(nStr, e)}
               onSurfaceClick={handleDirectSurfaceClick}
               activeToolCondition={activeTool}
               isUpper={isUpper}
@@ -1370,6 +1445,90 @@ export default function DentalCharting() {
             </div>
           </div>
 
+          {/* QUICK MULTI-TEETH SELECTION TOOLBAR */}
+          <div className="mb-4 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mr-1">Quick Arch Selection:</span>
+              <button
+                type="button"
+                onClick={handleSelectUpperArch}
+                className="px-2.5 py-1 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-bold text-xs rounded-lg border border-slate-200 shadow-3xs transition cursor-pointer"
+              >
+                Upper Arch
+              </button>
+              <button
+                type="button"
+                onClick={handleSelectLowerArch}
+                className="px-2.5 py-1 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-bold text-xs rounded-lg border border-slate-200 shadow-3xs transition cursor-pointer"
+              >
+                Lower Arch
+              </button>
+              <button
+                type="button"
+                onClick={handleSelectAllTeeth}
+                className="px-2.5 py-1 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-bold text-xs rounded-lg border border-slate-200 shadow-3xs transition cursor-pointer"
+              >
+                Select All
+              </button>
+              {selectedTeeth.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearSelection}
+                  className="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs rounded-lg transition cursor-pointer"
+                >
+                  Clear ({selectedTeeth.length})
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMultiSelectMode(prev => !prev)}
+              className={`px-3 py-1 text-xs font-extrabold rounded-lg border transition cursor-pointer ${
+                multiSelectMode 
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs' 
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              {multiSelectMode ? '✓ Multi-Select Active' : '+ Multi-Select Mode'}
+            </button>
+          </div>
+
+          {/* MULTI-TEETH BATCH FLOATING BANNER */}
+          {selectedTeeth.length > 1 && (
+            <div className="mb-4 p-3 bg-gradient-to-r from-rose-50 to-indigo-50 border border-rose-200 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                <p className="text-xs font-bold text-slate-800">
+                  <span className="text-rose-600 font-black">{selectedTeeth.length} Teeth Selected:</span> #{selectedTeeth.join(', #')}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={applyActiveToolToAllSurfaces}
+                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg transition cursor-pointer shadow-3xs"
+                >
+                  Apply "{activeTool}" to All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateTooth(selectedTeeth, { missing: true })}
+                  className="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-800 font-bold text-[11px] rounded-lg transition cursor-pointer"
+                >
+                  Mark All Missing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateTooth(selectedTeeth, { condition: 'Healthy', missing: false })}
+                  className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[11px] rounded-lg transition cursor-pointer"
+                >
+                  Mark All Healthy
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="min-w-[760px]">
             {/* ADULT / PERMANENT DENTITION */}
             {(dentitionType === 'adult' || dentitionType === 'mixed') && (
@@ -1452,38 +1611,44 @@ export default function DentalCharting() {
         <div className="lg:w-[32%] bg-white rounded-xl border border-slate-200/80 shadow-2xs flex flex-col overflow-hidden print:hidden">
           <div className="p-3.5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
             <h2 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Tooth Inspection</h2>
-            {selectedTooth && (
+            {selectedTeeth.length > 0 && (
               <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-100">
-                Tooth #{selectedTooth}
+                {selectedTeeth.length === 1 ? `Tooth #${selectedTeeth[0]}` : `${selectedTeeth.length} Teeth Selected`}
               </span>
             )}
           </div>
           
           <div className="p-4 flex-grow overflow-y-auto max-h-[650px] space-y-4">
-            {!selectedTooth ? (
+            {selectedTeeth.length === 0 ? (
               <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center text-slate-400 gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shadow-3xs">
                   <Stethoscope size={20} />
                 </div>
-                <p className="text-[11px] font-semibold text-slate-400">Click any tooth on the Odontogram<br/>to edit individual surfaces & notes.</p>
+                <p className="text-[11px] font-semibold text-slate-400">Click any tooth on the Odontogram<br/>or use multi-select to chart multiple teeth.</p>
               </div>
             ) : (
               <div className="space-y-5">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">Tooth #{selectedTooth}</h3>
-                  <p className="text-xs text-slate-500 font-medium">{getQuadrantName(selectedTooth)}</p>
+                  <h3 className="text-lg font-black text-slate-900">
+                    {selectedTeeth.length === 1 ? `Tooth #${selectedTeeth[0]}` : `${selectedTeeth.length} Teeth Selected`}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium font-mono">
+                    {selectedTeeth.length === 1 ? getQuadrantName(selectedTeeth[0]) : `#${selectedTeeth.join(', #')}`}
+                  </p>
                 </div>
 
                 {/* Missing Checkbox */}
                 <label className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
                   <input
                     type="checkbox"
-                    checked={toothData[selectedTooth]?.missing || false}
-                    onChange={(e) => updateTooth(selectedTooth, { missing: e.target.checked })}
+                    checked={selectedTeeth.every(t => toothData[t]?.missing)}
+                    onChange={(e) => updateTooth(selectedTeeth, { missing: e.target.checked })}
                     className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
                     disabled={!canEdit}
                   />
-                  <span className="font-bold text-slate-800 text-xs">Mark Tooth as Missing / Extracted</span>
+                  <span className="font-bold text-slate-800 text-xs">
+                    {selectedTeeth.length === 1 ? 'Mark Tooth as Missing / Extracted' : `Mark All ${selectedTeeth.length} Teeth as Missing`}
+                  </span>
                 </label>
 
                 {!toothData[selectedTooth]?.missing && (

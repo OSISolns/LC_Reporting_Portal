@@ -4,6 +4,7 @@ const {
   suggestMedications,
   suggestDentalMedications,
   suggestProstheticReplacement,
+  generateLabChefNote,
   generateAssessmentComments,
   generateProgressNote,
   generateSBAR,
@@ -49,6 +50,20 @@ exports.suggestProstheticReplacement = (req, res, next) => {
       tooth, dentitionType, patientAge, patientGender, workDone, clinicOfOrigin, adjacentMissingCount,
     });
     res.json({ success: true, data });
+  } catch (err) { next(err); }
+};
+
+// POST /api/ai/clinical/lab-chef-note
+// Body: { odontogramData, patientName, patientRef, labTech, caseRef, dentist }
+// Generates a full master prosthetics lab note from the case odontogram data using Lumina AI.
+exports.generateLabChefNote = (req, res, next) => {
+  try {
+    const { odontogramData, patientName, patientRef, labTech, caseRef, dentist } = req.body;
+    if (!odontogramData || typeof odontogramData !== 'object') {
+      return res.status(400).json({ success: false, message: 'odontogramData object is required' });
+    }
+    const note = generateLabChefNote({ odontogramData, patientName, patientRef, labTech, caseRef, dentist });
+    res.json({ success: true, data: { note } });
   } catch (err) { next(err); }
 };
 

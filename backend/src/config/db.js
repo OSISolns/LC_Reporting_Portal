@@ -2946,6 +2946,10 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         'ortho_units INTEGER DEFAULT 1',
         'ortho_unit_cost REAL',
         'ortho_arch TEXT',
+        'chef_note TEXT',
+        'clinic_case_id INTEGER',
+        'referred_by_clinician TEXT',
+        'referred_at TEXT',
       ];
       for (const col of dentalNewCols) {
         try {
@@ -2957,7 +2961,25 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ dental_cases new-column migration error:', err.message);
     }
 
-    // ─── Dental Worklist Table ────────────────────────────────────────────────
+    // ─── Dental Clinic Cases — New Column Migrations ──────────────────────────
+    try {
+      const clinicCaseNewCols = [
+        'lab_referral_id INTEGER',
+        "lab_referral_status TEXT DEFAULT 'Not Referred'",
+        'lab_referral_notes TEXT',
+        'referred_by_user_id INTEGER',
+      ];
+      for (const col of clinicCaseNewCols) {
+        try {
+          await client.execute(`ALTER TABLE dental_clinic_cases ADD COLUMN ${col}`);
+        } catch (e) { /* column already exists — safe to ignore */ }
+      }
+      console.log('✅ dental_clinic_cases: ensured referral columns.');
+    } catch (err) {
+      console.error('❌ dental_clinic_cases column migration error:', err.message);
+    }
+
+
     try {
       await client.execute(`
         CREATE TABLE IF NOT EXISTS dental_worklist (

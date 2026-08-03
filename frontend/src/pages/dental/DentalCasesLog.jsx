@@ -7,7 +7,7 @@ import {
   BarChart3, AlertCircle, CheckCircle2, Filter, Download,
   Loader2, RefreshCw, Stethoscope, ChevronLeft, ChevronRight,
   CalendarDays, Building2, Wrench, Coins, UserCheck, Truck,
-  CheckCircle, Layers, ArrowRight, FileText, Save
+  CheckCircle, Layers, ArrowRight, FileText, Save, FlaskConical
 } from 'lucide-react';
 import { format, parseISO, subDays, startOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -318,6 +318,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
         ortho_notes: editCase.ortho_notes || '',
         ortho_arch: editCase.ortho_arch || '',
         prosthetics_cost: editCase.prosthetics_cost ?? editCase.total_cost ?? '',
+        chef_note: editCase.chef_note || parsedOdontogram._chef_note || '',
       });
       setDraftStatus(null);
       setDraftAvailable(null);
@@ -518,7 +519,8 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
     try {
       const payload = {
         ...form,
-        odontogram_data: odontogramMap
+        chef_note: form.chef_note || odontogramMap._chef_note || '',
+        odontogram_data: { ...odontogramMap, _chef_note: form.chef_note || odontogramMap._chef_note || '' }
       };
       await onSave(payload);
       clearDraft(); // Clear draft on successful save
@@ -1309,6 +1311,7 @@ const DentalCasesLog = () => {
   const [search, setSearch] = useState('');
   const [workFilter, setWorkFilter] = useState('');
   const [stageFilter, setStageFilter] = useState('');
+  const [onlyReferrals, setOnlyReferrals] = useState(false);
   
   const [showForm, setShowForm] = useState(false);
   const [editCase, setEditCase] = useState(null);
@@ -1427,6 +1430,9 @@ const DentalCasesLog = () => {
 
   const filtered = useMemo(() => {
     let result = cases;
+    if (onlyReferrals) {
+      result = result.filter(c => c.clinic_case_id || c.work_command_origin === 'Clinic Referral' || c.referred_by_clinician);
+    }
     if (workFilter) result = result.filter(c => c.work_done === workFilter);
     if (stageFilter) {
       if (stageFilter === 'In Production') {
@@ -1438,12 +1444,12 @@ const DentalCasesLog = () => {
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(c =>
-        [c.case_ref, c.clinician_name, c.patient_id, c.clinic_of_origin, c.technologist, c.reported_by, c.delivered_to]
+        [c.case_ref, c.clinician_name, c.patient_id, c.clinic_of_origin, c.technologist, c.reported_by, c.delivered_to, c.referred_by_clinician]
           .some(v => v && v.toLowerCase().includes(q))
       );
     }
     return result;
-  }, [cases, workFilter, stageFilter, search]);
+  }, [cases, workFilter, stageFilter, search, onlyReferrals]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -1849,6 +1855,18 @@ const DentalCasesLog = () => {
             <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
 
+          <button
+            onClick={() => { setOnlyReferrals(prev => !prev); setPage(1); }}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition ${
+              onlyReferrals
+                ? 'bg-teal-600 text-white border-teal-600'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <FlaskConical size={13} />
+            Clinic Referrals Only
+          </button>
+
           <span className="text-xs text-slate-400 ml-auto">
             {filtered.length} case{filtered.length !== 1 ? 's' : ''}
           </span>
@@ -1894,6 +1912,11 @@ const DentalCasesLog = () => {
                         <span className="font-mono text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg font-bold">
                           {c.case_ref}
                         </span>
+                        {(c.clinic_case_id || c.work_command_origin === 'Clinic Referral' || c.referred_by_clinician) && (
+                          <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-bold bg-teal-100 text-teal-800 border border-teal-200 px-1.5 py-0.5 rounded" title={`Referred by ${c.referred_by_clinician || c.clinician_name || 'Clinic'}`}>
+                            <FlaskConical size={10} /> Clinic Referral
+                          </span>
+                        )}
                         <span className="block text-[10px] text-slate-400 font-normal mt-0.5">{c.clinic_of_origin || '—'}</span>
                       </td>
 
