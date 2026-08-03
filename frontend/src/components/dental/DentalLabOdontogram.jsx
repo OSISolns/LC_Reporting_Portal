@@ -315,20 +315,58 @@ export const normalizeOdontogramData = (raw) => {
   Object.keys(sourceTeeth).forEach(key => {
     if (!isFdiToothKey(key)) return;
     const item = sourceTeeth[key];
-    if (item && typeof item === 'object') {
+    if (!item || typeof item !== 'object') return;
+
+    // Case 1: Tooth already has explicit lab work logged in Dental Lab
+    if (item.work_type) {
       map[key] = {
         tooth: key,
-        work_type: item.work_type || (item.missing ? 'Declared Missing (To Be Replaced)' : (item.condition && item.condition !== 'Healthy' ? `Crown (${item.condition})` : 'Crown (Zirconia)')),
+        work_type: item.work_type,
         status: item.status || 'Planning',
         shade: item.shade || 'A2',
-        notes: item.notes || (item.condition ? `Clinic Condition: ${item.condition}` : ''),
-        is_missing: !!item.missing,
+        notes: item.notes || '',
+        is_missing: !!item.is_missing || item.work_type === 'Declared Missing (To Be Replaced)',
         ...item
       };
+      return;
     }
+
+    // Case 2: Clinic charted tooth conditions (DentalCharting schema)
+    const isMissing = !!item.missing || item.condition === 'Extraction Planned';
+    const cond = item.condition;
+    const isDiseased = cond && cond !== 'Healthy';
+
+    if (isMissing) {
+      map[key] = {
+        tooth: key,
+        work_type: 'Declared Missing (To Be Replaced)',
+        status: 'Planning',
+        shade: 'A2',
+        notes: item.notes || (cond ? `Clinic: ${cond}` : 'Missing'),
+        is_missing: true,
+      };
+    } else if (isDiseased) {
+      let workType = 'Crown (Zirconia)';
+      if (cond === 'Root Canal' || cond === 'Root Canal (RCT)') workType = 'Post & Core';
+      else if (cond === 'Implant') workType = 'Implant Crown';
+      else if (cond === 'Bridge / Pontic' || cond === 'Bridge') workType = 'Bridge Abutment';
+      else if (cond === 'Crown / Veneer' || cond === 'Crown') workType = 'Crown (Zirconia)';
+      else if (cond === 'Caries / Decay' || cond === 'Caries') workType = 'Crown (Zirconia)';
+      else if (cond === 'Fractured' || cond === 'Fractured / Broken') workType = 'Crown (Zirconia)';
+
+      map[key] = {
+        tooth: key,
+        work_type: workType,
+        status: 'Planning',
+        shade: 'A2',
+        notes: item.notes || `Clinic condition: ${cond}`,
+        is_missing: false,
+      };
+    }
+    // Healthy teeth with no missing flag and no explicit work_type ARE NOT ADDED as work units!
   });
 
-  // Extract from treatment_plan array if available
+  // Case 3: Extract procedures from clinic treatment_plan array if present
   if (Array.isArray(data.treatment_plan)) {
     data.treatment_plan.forEach(tp => {
       if (!tp || !tp.tooth) return;
@@ -336,13 +374,27 @@ export const normalizeOdontogramData = (raw) => {
       if (matches) {
         matches.forEach(tNum => {
           if (!map[tNum]) {
+            const proc = (tp.procedure || '').toLowerCase();
+            let workType = 'Crown (Zirconia)';
+            if (proc.includes('extraction') || proc.includes('missing')) {
+              workType = 'Declared Missing (To Be Replaced)';
+            } else if (proc.includes('implant')) {
+              workType = 'Implant Crown';
+            } else if (proc.includes('bridge')) {
+              workType = 'Bridge Abutment';
+            } else if (proc.includes('denture')) {
+              workType = 'Partial Denture Unit';
+            } else if (proc.includes('root canal')) {
+              workType = 'Post & Core';
+            }
+
             map[tNum] = {
               tooth: tNum,
-              work_type: tp.procedure || 'Crown (Zirconia)',
+              work_type: workType,
               status: tp.status === 'Completed' ? 'Completed' : tp.status === 'In Progress' ? 'In-progress' : 'Planning',
               shade: 'A2',
-              notes: tp.surface ? `Surface: ${tp.surface}` : '',
-              is_missing: false,
+              notes: tp.procedure ? `${tp.procedure}${tp.surface ? ` (${tp.surface})` : ''}` : '',
+              is_missing: workType === 'Declared Missing (To Be Replaced)',
             };
           }
         });
