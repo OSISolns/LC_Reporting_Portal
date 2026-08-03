@@ -1694,21 +1694,22 @@ function PatientChartsViewerModal({ isOpen, onClose, patientId, patientName, def
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl w-full max-w-6xl h-[88vh] max-h-[92vh] flex flex-col overflow-hidden my-auto shrink-0 relative">
         {/* Modal Header */}
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50 shrink-0 z-10">
           <div className="space-y-0.5">
-            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center gap-1.5">
-              <Stethoscope size={16} className="text-rose-500" />
-              Patient Dental Chart History
+            <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2 m-0">
+              <Stethoscope size={18} className="text-rose-500" />
+              Patient Dental Chart History &amp; Comparison
             </h3>
-            <p className="text-[11px] text-slate-500 font-semibold">
+            <p className="text-xs text-slate-500 font-semibold m-0">
               Patient: <strong className="text-slate-800">{patientName}</strong> (PID: {patientId})
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => {
                 setCompareMode(!compareMode);
                 if (!compareMode && charts.length > 1) {
@@ -1717,7 +1718,7 @@ function PatientChartsViewerModal({ isOpen, onClose, patientId, patientName, def
                 }
               }}
               disabled={charts.length < 2}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                 compareMode 
                   ? 'bg-rose-50 text-rose-600 border border-rose-200' 
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40'
@@ -1725,7 +1726,12 @@ function PatientChartsViewerModal({ isOpen, onClose, patientId, patientName, def
             >
               {compareMode ? 'Exit Comparison' : 'Compare Two Charts'}
             </button>
-            <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer">
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
+              title="Close modal"
+            >
               <X size={18} />
             </button>
           </div>
@@ -1837,18 +1843,25 @@ function PatientChartsViewerModal({ isOpen, onClose, patientId, patientName, def
               // Single Chart View Mode
               <div className="h-full flex flex-col space-y-4">
                 {chartAData ? (
-                  <div className="border border-slate-200/80 rounded-xl p-5 bg-white space-y-4">
-                    <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                  <div className="border border-slate-200/80 rounded-2xl p-5 bg-white space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                       <div>
-                        <h4 className="text-sm font-bold text-slate-800">Chart Date: {chartAData.chart_date}</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">Treating Provider: <strong className="text-slate-700">Dr. {chartAData.provider}</strong></p>
+                        <h4 className="text-sm font-bold text-slate-800 m-0">Chart Date: {chartAData.chart_date}</h4>
+                        <p className="text-xs text-slate-500 m-0 mt-0.5">Treating Provider: <strong className="text-slate-700 font-bold">Dr. {chartAData.provider}</strong></p>
                       </div>
-                      {chartAData.general_notes && (
-                        <div className="max-w-md bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-xs italic text-slate-500">
-                          "{chartAData.general_notes}"
-                        </div>
-                      )}
                     </div>
+
+                    {chartAData.general_notes && (
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                          Clinical Consultation &amp; Examination Notes
+                        </span>
+                        <p className="text-xs text-slate-700 leading-relaxed font-mono whitespace-pre-wrap m-0 bg-white p-3.5 rounded-xl border border-slate-200/60 max-h-48 overflow-y-auto">
+                          {chartAData.general_notes}
+                        </p>
+                      </div>
+                    )}
+
                     {loadingA ? (
                       <div className="py-24 flex justify-center"><RefreshCw className="animate-spin text-rose-500" /></div>
                     ) : (
