@@ -341,7 +341,11 @@ const ProstheticsOdontogramWorkspace = () => {
             patientAge: patient?.age,
             patientGender: patient?.gender,
             workDone: selectedCase.work_done,
+            workDoneOther: selectedCase.work_done_other,
             clinicOfOrigin: selectedCase.clinic_of_origin,
+            clinicianName: selectedCase.clinician_name || selectedCase.referred_by_clinician,
+            deliveryNotes: selectedCase.delivery_notes,
+            caseRef: selectedCase.case_ref,
           }}
         />
       ) : (

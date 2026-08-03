@@ -571,12 +571,18 @@ export default function ClinicCasesLog() {
                               {refStatus}
                             </span>
                             {c.lab_referral_id && (
-                              <button
-                                onClick={() => handleViewProgress(c)}
-                                className="text-[9px] text-indigo-500 hover:text-indigo-700 hover:underline font-semibold transition"
-                              >
-                                View Progress
-                              </button>
+                              <>
+                                <div className="text-[10px] text-teal-700 font-bold flex items-center justify-center gap-1 mt-0.5" title="Assigned Dental Lab Tech">
+                                  <User size={10} className="text-teal-600" />
+                                  <span>{c.assigned_tech_name || c.lab_technologist || 'Assigned Tech'}</span>
+                                </div>
+                                <button
+                                  onClick={() => handleViewProgress(c)}
+                                  className="text-[9px] text-indigo-500 hover:text-indigo-700 hover:underline font-semibold transition"
+                                >
+                                  View Progress
+                                </button>
+                              </>
                             )}
                           </div>
                         );
@@ -806,9 +812,11 @@ export default function ClinicCasesLog() {
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Lab Status</p>
                       <p className="text-xs font-semibold text-slate-700 mt-1">{progressData.lab_status || '—'}</p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-3">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Technologist</p>
-                      <p className="text-xs font-semibold text-slate-700 mt-1">{progressData.technologist || 'Not yet assigned'}</p>
+                    <div className="bg-teal-50/70 border border-teal-100 rounded-xl p-3">
+                      <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wider flex items-center gap-1">
+                        <User size={10} className="text-teal-600" /> Assigned Lab Tech
+                      </p>
+                      <p className="text-xs font-black text-teal-950 mt-1">{progressData.assigned_tech_name || progressData.technologist || 'Not yet assigned'}</p>
                     </div>
                     <div className="bg-slate-50 rounded-xl p-3">
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Required By</p>

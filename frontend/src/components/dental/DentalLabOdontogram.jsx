@@ -4,10 +4,10 @@ import {
   Sparkles, CheckCircle2, Clock, AlertCircle, Wrench,
   ChevronDown, ChevronUp, Layers, ShieldCheck, Check, Trash2, Eye,
   PlusCircle, RefreshCw, Loader2, Smile, CheckSquare, Square,
-  Users, Edit3, SlidersHorizontal, FileText, Award
+  Users, Edit3, SlidersHorizontal, FileText, Award, Stethoscope
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { suggestProstheticReplacement } from '../../api/dental';
+import { suggestProstheticReplacement, generateLabChefNote } from '../../api/dental';
 
 // ─── FDI Notation Teeth Definition ─────────────────────────────────────────────
 export const PERMANENT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -727,6 +727,50 @@ export default function DentalLabOdontogram({
         </div>
       </div>
 
+      {/* ─── DENTAL CLINICIAN REFERRAL & INSTRUCTIONS PRIORITY BANNER ─── */}
+      {(caseContext?.deliveryNotes || caseContext?.workDoneOther || caseContext?.clinicianName) && (
+        <div className="bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-cyan-500/10 border-2 border-teal-500/30 rounded-3xl p-5 space-y-3.5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-teal-200/60 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold shadow-sm">
+                <Stethoscope size={18} />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-teal-950 tracking-tight m-0 flex items-center gap-2">
+                  Dental Clinician Referral Note &amp; Prosthetic Specifications
+                </h4>
+                <p className="text-xs text-teal-800 font-semibold m-0 mt-0.5">
+                  Issued by <strong className="text-teal-900 font-black">{caseContext.clinicianName ? `Dr. ${caseContext.clinicianName}` : 'Dental Clinician'}</strong> {caseContext.clinicOfOrigin ? `• ${caseContext.clinicOfOrigin}` : ''}
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-600 text-white shadow-xs self-start sm:self-center">
+              <Sparkles size={11} /> Top Priority Clinician Directive
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            {caseContext.deliveryNotes && (
+              <div className="bg-white/90 border border-teal-200/70 rounded-2xl p-3.5 space-y-1 shadow-2xs">
+                <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider flex items-center gap-1">
+                  <FileText size={11} className="text-teal-600" /> Clinician Referral &amp; Case Notes
+                </span>
+                <p className="text-slate-800 font-bold leading-relaxed whitespace-pre-wrap m-0 text-xs">{caseContext.deliveryNotes}</p>
+              </div>
+            )}
+
+            {caseContext.workDoneOther && (
+              <div className="bg-white/90 border border-teal-200/70 rounded-2xl p-3.5 space-y-1 shadow-2xs">
+                <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider flex items-center gap-1">
+                  <Wrench size={11} className="text-teal-600" /> Prosthetic Replacement / Appliance Directive
+                </span>
+                <p className="text-slate-900 font-black leading-relaxed m-0 text-xs">{caseContext.workDoneOther}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* SUMMARY STATUS CHIPS */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex items-center justify-between">
@@ -1300,9 +1344,22 @@ export default function DentalLabOdontogram({
                 onClick={async () => {
                   setLuminaLoading(true);
                   try {
-                    const suggestion = await suggestProstheticReplacement({ teeth: toothEntries.map(([k]) => k) });
-                    if (suggestion) handleChefNoteSubmit(chefNoteText ? `${chefNoteText}\n${suggestion}` : suggestion);
-                  } catch { /* silent */ } finally { setLuminaLoading(false); }
+                    const res = await generateLabChefNote({
+                      odontogramData: toothMap,
+                      patientName: patientName || '',
+                      caseRef: caseRef || '',
+                      dentist: caseContext?.clinicianName || '',
+                      clinicianNote: caseContext?.deliveryNotes || '',
+                      treatmentDirective: caseContext?.workDoneOther || '',
+                    });
+                    const note = res?.data?.data?.note;
+                    if (note) {
+                      handleChefNoteSubmit(note);
+                      toast.success('Lumina AI generated full master chef note incorporating clinician notes.');
+                    }
+                  } catch {
+                    toast.error('Failed to generate Lumina master note.');
+                  } finally { setLuminaLoading(false); }
                 }}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-slate-400 hover:text-slate-600 border border-slate-200 hover:border-slate-300 rounded-md bg-white transition disabled:opacity-40 disabled:cursor-not-allowed"
               >

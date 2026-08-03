@@ -916,9 +916,15 @@ exports.listClinicCases = async (req, res, next) => {
     const { rows } = await db.query(
       `SELECT cc.*,
               ch.chart_date AS linked_chart_date,
-              ch.provider AS linked_chart_provider
+              ch.provider AS linked_chart_provider,
+              dc.case_ref AS lab_case_ref,
+              dc.status AS lab_case_status,
+              COALESCE(dc.technologist, tech.full_name, dc.reported_by) AS assigned_tech_name,
+              dc.technologist AS lab_technologist
        FROM   dental_clinic_cases cc
        LEFT JOIN dental_charts ch ON ch.id = cc.linked_chart_id
+       LEFT JOIN dental_cases dc ON dc.id = cc.lab_referral_id
+       LEFT JOIN users tech ON tech.id = dc.reported_by_user_id
        ${queryFilter}
        ORDER  BY cc.created_at DESC`,
       params
@@ -933,9 +939,15 @@ exports.getClinicCase = async (req, res, next) => {
     const { rows } = await db.query(
       `SELECT cc.*,
               ch.chart_date AS linked_chart_date,
-              ch.provider AS linked_chart_provider
+              ch.provider AS linked_chart_provider,
+              dc.case_ref AS lab_case_ref,
+              dc.status AS lab_case_status,
+              COALESCE(dc.technologist, tech.full_name, dc.reported_by) AS assigned_tech_name,
+              dc.technologist AS lab_technologist
        FROM   dental_clinic_cases cc
        LEFT JOIN dental_charts ch ON ch.id = cc.linked_chart_id
+       LEFT JOIN dental_cases dc ON dc.id = cc.lab_referral_id
+       LEFT JOIN users tech ON tech.id = dc.reported_by_user_id
        WHERE  cc.id = ?`,
       [id]
     );
@@ -1182,10 +1194,13 @@ exports.getLabReferralStatus = async (req, res, next) => {
     const { rows } = await db.query(
       `SELECT cc.lab_referral_id, cc.lab_referral_status, cc.lab_referral_notes, cc.referred_by_user_id,
               dc.case_ref AS lab_case_ref, dc.status AS lab_status,
-              dc.technologist, dc.delivery_notes, dc.updated_at AS lab_updated_at,
+              COALESCE(dc.technologist, tech.full_name, dc.reported_by, 'Not yet assigned') AS technologist,
+              COALESCE(dc.technologist, tech.full_name, dc.reported_by) AS assigned_tech_name,
+              dc.delivery_notes, dc.updated_at AS lab_updated_at,
               dc.work_done, dc.received_date, dc.required_date
        FROM dental_clinic_cases cc
        LEFT JOIN dental_cases dc ON dc.id = cc.lab_referral_id
+       LEFT JOIN users tech ON tech.id = dc.reported_by_user_id
        WHERE cc.id = ?`,
       [id]
     );

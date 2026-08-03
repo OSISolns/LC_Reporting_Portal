@@ -805,7 +805,16 @@ const SURFACE_FULL_NAMES = {
 // ── Lumina AI — Lab Chief Technologist Master Note Generator ───────────────────
 // Generates a full prosthetics lab master note from the odontogram case data.
 // Input: { odontogramData, patientName, patientRef, labTech, caseRef, dentist }
-function generateLabChefNote({ odontogramData = {}, patientName = '', patientRef = '', labTech = '', caseRef = '', dentist = '' } = {}) {
+function generateLabChefNote({
+  odontogramData = {},
+  patientName = '',
+  patientRef = '',
+  labTech = '',
+  caseRef = '',
+  dentist = '',
+  clinicianNote = '',
+  treatmentDirective = '',
+} = {}) {
   const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const lines = [];
 
@@ -846,9 +855,16 @@ function generateLabChefNote({ odontogramData = {}, patientName = '', patientRef
   lines.push(`Date: ${today}`);
   if (caseRef) lines.push(`Case Reference: ${caseRef}`);
   if (patientName || patientRef) lines.push(`Patient: ${patientName || 'N/A'}${patientRef ? ` (Ref: ${patientRef})` : ''}`);
-  if (dentist) lines.push(`Prescribing Dentist: ${dentist}`);
+  if (dentist) lines.push(`Prescribing Clinician: ${dentist}`);
   if (labTech) lines.push(`Assigned Technologist: ${labTech}`);
   lines.push(``);
+
+  if (clinicianNote || treatmentDirective) {
+    lines.push(`CLINICIAN REFERRAL DIRECTIVE & PRIORITY INSTRUCTIONS:`);
+    if (clinicianNote) lines.push(`   • Clinician Note: "${clinicianNote}"`);
+    if (treatmentDirective) lines.push(`   • Appliance Directive: "${treatmentDirective}"`);
+    lines.push(``);
+  }
 
   // ── 1. Prosthetic Scope Summary ────────────────────────────────────────────
   lines.push(`1. PROSTHETIC SCOPE SUMMARY:`);
