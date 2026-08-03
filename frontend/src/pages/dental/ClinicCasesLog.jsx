@@ -1904,6 +1904,50 @@ function OdontogramViewer({ data }) {
   const PEDIATRIC_UPPER = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
   const PEDIATRIC_LOWER = [85, 84, 83, 82, 81, 75, 74, 73, 72, 71];
 
+  const dentureItems = useMemo(() => {
+    const items = [];
+    Object.entries(toothMap).forEach(([toothNum, tData]) => {
+      if (!tData || typeof tData !== 'object' || toothNum.startsWith('_')) return;
+      const condition = tData.condition || '';
+      const workType = tData.work_type || tData.replacement_strategy || '';
+      const procName = tData.procedure_name || tData.procedure || '';
+      const fullStr = `${condition} ${workType} ${procName}`.toLowerCase();
+      if (
+        fullStr.includes('denture') ||
+        fullStr.includes('acrylic') ||
+        fullStr.includes('flexible') ||
+        fullStr.includes('valplast') ||
+        fullStr.includes('cast partial') ||
+        fullStr.includes('pontic') ||
+        fullStr.includes('overdenture')
+      ) {
+        items.push({
+          tooth: toothNum,
+          type: workType || condition || 'Denture Unit',
+          status: tData.status || tData.work_status || 'Planned',
+          notes: tData.notes || (tData.shade ? `Shade: ${tData.shade}` : '')
+        });
+      }
+    });
+
+    const treatmentPlan = data?.tooth_data?.treatment_plan || data?.treatment_plan || [];
+    if (Array.isArray(treatmentPlan)) {
+      treatmentPlan.forEach(tp => {
+        const procStr = `${tp.procedure || tp.name || ''}`.toLowerCase();
+        if (procStr.includes('denture') || procStr.includes('acrylic') || procStr.includes('flexible') || procStr.includes('valplast') || procStr.includes('pontic')) {
+          items.push({
+            tooth: tp.tooth || 'Arch Directive',
+            type: tp.procedure || 'Denture Directive',
+            status: tp.status || 'Planned',
+            notes: tp.notes || ''
+          });
+        }
+      });
+    }
+
+    return items;
+  }, [toothMap, data]);
+
   const renderViewerRow = (teethArray) => (
     <div className="flex flex-wrap gap-1.5 justify-center">
       {teethArray.map(num => (
@@ -1914,6 +1958,49 @@ function OdontogramViewer({ data }) {
 
   return (
     <div className="space-y-6">
+      {/* ── DENTURE & REMOVABLE PROSTHETICS DIRECTIVES CARD ── */}
+      {dentureItems.length > 0 && (
+        <div className="bg-gradient-to-r from-pink-500/10 via-rose-500/5 to-purple-500/10 border-2 border-pink-300/70 rounded-2xl p-4 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between border-b border-pink-200/80 pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-xl bg-pink-600 text-white font-bold text-xs flex items-center justify-center">
+                <Wrench size={15} />
+              </span>
+              <div>
+                <h5 className="text-xs font-black text-pink-950 uppercase tracking-wider m-0">
+                  Denture &amp; Removable Appliance Work Summary
+                </h5>
+                <p className="text-[10.5px] text-pink-800 font-semibold m-0 mt-0.5">
+                  {dentureItems.length} denture unit{dentureItems.length > 1 ? 's' : ''} / appliance specifications logged on this chart
+                </p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-pink-600 text-white shadow-3xs">
+              Denture Plan
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            {dentureItems.map((item, idx) => (
+              <div key={idx} className="bg-white/95 border border-pink-200/80 rounded-xl p-3 space-y-1 shadow-3xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-800">
+                    {item.tooth ? (item.tooth.toString().startsWith('#') ? item.tooth : `Tooth #${item.tooth}`) : 'Appliance Directive'}
+                  </span>
+                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800 uppercase tracking-wider">
+                    {item.status}
+                  </span>
+                </div>
+                <p className="text-[11.5px] font-black text-pink-950 m-0">
+                  {item.type}
+                </p>
+                {item.notes && <p className="text-[10.5px] text-slate-500 font-medium italic m-0">{item.notes}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {(dentitionType === 'adult' || dentitionType === 'mixed') && (
         <div className="space-y-4">
           <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider text-center">Permanent Dentition (Adult)</div>
@@ -1942,8 +2029,19 @@ function OdontogramViewer({ data }) {
 // ─── Mini Tooth Layout helper ────────────────────────────────────────────────
 function MiniTooth({ number, data }) {
   const toothData = data || { condition: 'Healthy', surfaces: {} };
-  const missing = toothData.missing;
+  const missing = toothData.missing || toothData.is_missing || toothData.condition === 'Missing' || toothData.condition === 'Extraction Planned';
   const condition = toothData.condition || 'Healthy';
+  const workType = toothData.work_type || toothData.replacement_strategy || '';
+  const isDenture = !!(
+    workType.toLowerCase().includes('denture') ||
+    workType.toLowerCase().includes('acrylic') ||
+    workType.toLowerCase().includes('flexible') ||
+    workType.toLowerCase().includes('valplast') ||
+    workType.toLowerCase().includes('cast partial') ||
+    condition.toLowerCase().includes('denture')
+  );
+  const isPontic = !!(workType.toLowerCase().includes('pontic') || workType.toLowerCase().includes('bridge'));
+
   const s = toothData.surfaces || {};
 
   const getSurfaceColor = (surfVal) => {
@@ -1955,57 +2053,49 @@ function MiniTooth({ number, data }) {
     return '#ef4444';
   };
 
-  const getConditionBadgeColor = (c) => {
-    if (c === 'Healthy') return 'text-slate-400';
-    if (c === 'Caries') return 'text-rose-600 font-extrabold';
-    if (c === 'Missing' || c === 'Extraction Planned') return 'text-slate-600 font-extrabold';
-    if (c === 'Restored' || c === 'Filled') return 'text-amber-600 font-extrabold';
-    return 'text-indigo-600 font-extrabold';
+  const getConditionLabel = () => {
+    if (isDenture) return 'DENTURE';
+    if (isPontic) return 'PONTIC';
+    if (condition === 'Healthy') return '';
+    return condition;
   };
 
   return (
-    <div className="flex flex-col items-center p-1 bg-white border border-slate-100 rounded-lg w-[42px] h-[60px] shadow-3xs shrink-0 select-none">
-      <span className="text-[9px] font-black text-slate-500 mb-0.5">{number}</span>
-      {missing ? (
-        <div className="flex-1 flex items-center justify-center w-7 h-7 rounded border border-dashed border-slate-200 bg-slate-50 text-[10px] text-slate-400 font-black">
+    <div className={`flex flex-col items-center p-1 border rounded-lg w-[44px] h-[64px] shadow-3xs shrink-0 select-none transition-all ${
+      isDenture
+        ? 'bg-pink-50/90 border-pink-300 ring-1 ring-pink-400/40'
+        : isPontic
+        ? 'bg-indigo-50/90 border-indigo-300'
+        : 'bg-white border-slate-100'
+    }`}>
+      <span className={`text-[9px] font-black ${isDenture ? 'text-pink-900' : 'text-slate-500'} mb-0.5`}>{number}</span>
+      
+      {isDenture ? (
+        <div className="flex-1 flex flex-col items-center justify-center w-7 h-7 rounded-md bg-pink-600 text-white font-black text-[10px] shadow-2xs">
+          <span>D</span>
+        </div>
+      ) : isPontic ? (
+        <div className="flex-1 flex flex-col items-center justify-center w-7 h-7 rounded-md bg-indigo-600 text-white font-black text-[9px] shadow-2xs">
+          <span>P</span>
+        </div>
+      ) : missing ? (
+        <div className="flex-1 flex items-center justify-center w-7 h-7 rounded border border-dashed border-slate-300 bg-rose-50 text-[10px] text-rose-500 font-black">
           X
         </div>
       ) : (
         <svg width="24" height="24" viewBox="0 0 32 32" className="block mx-auto shrink-0">
-          <polygon
-            points="2,2 30,2 24,8 8,8"
-            fill={getSurfaceColor(s.B)}
-            stroke="#cbd5e1"
-            strokeWidth="0.75"
-          />
-          <polygon
-            points="2,2 8,8 8,24 2,30"
-            fill={getSurfaceColor(s.M)}
-            stroke="#cbd5e1"
-            strokeWidth="0.75"
-          />
-          <rect
-            x="8" y="8" width="16" height="16"
-            fill={getSurfaceColor(s.O)}
-            stroke="#cbd5e1"
-            strokeWidth="0.75"
-          />
-          <polygon
-            points="30,2 24,8 24,24 30,30"
-            fill={getSurfaceColor(s.D)}
-            stroke="#cbd5e1"
-            strokeWidth="0.75"
-          />
-          <polygon
-            points="8,24 24,24 30,30 2,30"
-            fill={getSurfaceColor(s.L)}
-            stroke="#cbd5e1"
-            strokeWidth="0.75"
-          />
+          <polygon points="2,2 30,2 24,8 8,8" fill={getSurfaceColor(s.B)} stroke="#cbd5e1" strokeWidth="0.75" />
+          <polygon points="2,2 8,8 8,24 2,30" fill={getSurfaceColor(s.M)} stroke="#cbd5e1" strokeWidth="0.75" />
+          <rect x="8" y="8" width="16" height="16" fill={getSurfaceColor(s.O)} stroke="#cbd5e1" strokeWidth="0.75" />
+          <polygon points="30,2 24,8 24,24 30,30" fill={getSurfaceColor(s.D)} stroke="#cbd5e1" strokeWidth="0.75" />
+          <polygon points="8,24 24,24 30,30 2,30" fill={getSurfaceColor(s.L)} stroke="#cbd5e1" strokeWidth="0.75" />
         </svg>
       )}
-      <span className={`text-[7.5px] mt-0.5 truncate max-w-full text-center tracking-tighter leading-none ${getConditionBadgeColor(condition)}`}>
-        {condition === 'Healthy' ? '' : condition}
+      
+      <span className={`text-[7.5px] mt-0.5 truncate max-w-full text-center tracking-tighter leading-none font-black ${
+        isDenture ? 'text-pink-700' : isPontic ? 'text-indigo-700' : missing ? 'text-rose-600' : 'text-slate-600'
+      }`}>
+        {getConditionLabel()}
       </span>
     </div>
   );

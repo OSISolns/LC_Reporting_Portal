@@ -920,7 +920,15 @@ export default function DentalLabOdontogram({
               const work = toothMap[strNum];
               const isCompleted = work?.status === 'Completed';
               const isMissing = (work?.is_missing || work?.work_type === 'Declared Missing (To Be Replaced)') && !isCompleted;
-              const isInProgress = work?.status === 'In-progress';
+              const isInProgress = work?.status === 'In-progress' || work?.status === 'In Progress';
+              const isDentureUnit = !!(
+                work?.work_type?.toLowerCase().includes('denture') ||
+                work?.work_type?.toLowerCase().includes('acrylic') ||
+                work?.work_type?.toLowerCase().includes('flexible') ||
+                work?.replacement_strategy?.toLowerCase().includes('denture') ||
+                work?.replacement_strategy?.toLowerCase().includes('acrylic') ||
+                work?.condition?.toLowerCase().includes('denture')
+              );
 
               return (
                 <button
@@ -933,6 +941,8 @@ export default function DentalLabOdontogram({
                   className={`relative group flex flex-col items-center p-2 rounded-2xl transition-all cursor-pointer border-2 ${
                     isSelected
                       ? 'bg-indigo-50 border-indigo-600 ring-4 ring-indigo-500/30 scale-105 z-20 shadow-md'
+                      : isDentureUnit
+                      ? 'bg-pink-50/90 border-pink-500 shadow-xs'
                       : work
                       ? isMissing
                         ? 'bg-rose-50/90 border-rose-500 shadow-xs'
@@ -953,7 +963,7 @@ export default function DentalLabOdontogram({
                   )}
 
                   <span className={`text-[11px] font-mono font-black mb-1 ${
-                    isSelected ? 'text-indigo-700 font-extrabold' : work ? 'text-slate-900' : 'text-slate-600'
+                    isSelected ? 'text-indigo-700 font-extrabold' : isDentureUnit ? 'text-pink-950 font-black' : work ? 'text-slate-900' : 'text-slate-600'
                   }`}>
                     {num}
                   </span>
@@ -961,7 +971,12 @@ export default function DentalLabOdontogram({
                   {/* Solid Anatomical SVG Tooth Graphic */}
                   <div className="relative flex-1 flex items-center justify-center">
                     <svg width="34" height="42" viewBox="0 0 34 42" className="block">
-                      {isMissing ? (
+                      {isDentureUnit ? (
+                        <g>
+                          <rect x="3" y="10" width="28" height="28" fill="#fbcfe8" stroke="#db2777" strokeWidth="2" rx="6" />
+                          <circle cx="17" cy="24" r="7" fill="#be185d" />
+                        </g>
+                      ) : isMissing ? (
                         <g>
                           <rect x="3" y="10" width="28" height="28" fill="#fff1f2" stroke="#f43f5e" strokeWidth="2" strokeDasharray="3,3" rx="6" />
                           <line x1="7" y1="14" x2="27" y2="34" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" />
@@ -987,18 +1002,18 @@ export default function DentalLabOdontogram({
 
                     {work && (
                       <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-black shadow-xs ${
-                        isMissing ? 'bg-rose-600 text-white' : isCompleted ? 'bg-emerald-600 text-white' : isInProgress ? 'bg-indigo-600 text-white animate-pulse' : 'bg-amber-500 text-white'
+                        isDentureUnit ? 'bg-pink-600 text-white font-extrabold' : isMissing ? 'bg-rose-600 text-white' : isCompleted ? 'bg-emerald-600 text-white' : isInProgress ? 'bg-indigo-600 text-white animate-pulse' : 'bg-amber-500 text-white'
                       }`}>
-                        {isMissing ? 'M' : isCompleted ? '✓' : isInProgress ? 'P' : '!'}
+                        {isDentureUnit ? 'D' : isMissing ? 'M' : isCompleted ? '✓' : isInProgress ? 'P' : '!'}
                       </span>
                     )}
                   </div>
 
                   {work && (
                     <span className={`text-[8px] font-black uppercase truncate w-full text-center mt-1 ${
-                      isMissing ? 'text-rose-700' : isCompleted ? 'text-emerald-800' : isInProgress ? 'text-indigo-800' : 'text-amber-800'
+                      isDentureUnit ? 'text-pink-800 font-extrabold' : isMissing ? 'text-rose-700' : isCompleted ? 'text-emerald-800' : isInProgress ? 'text-indigo-800' : 'text-amber-800'
                     }`}>
-                      {isMissing ? 'REPLACE' : (work.shade || work.work_type?.split(' ')[0])}
+                      {isDentureUnit ? 'DENTURE' : isMissing ? 'REPLACE' : (work.shade || work.work_type?.split(' ')[0])}
                     </span>
                   )}
                 </button>
@@ -1027,7 +1042,15 @@ export default function DentalLabOdontogram({
               const work = toothMap[strNum];
               const isCompleted = work?.status === 'Completed';
               const isMissing = (work?.is_missing || work?.work_type === 'Declared Missing (To Be Replaced)') && !isCompleted;
-              const isInProgress = work?.status === 'In-progress';
+              const isInProgress = work?.status === 'In-progress' || work?.status === 'In Progress';
+              const isDentureUnit = !!(
+                work?.work_type?.toLowerCase().includes('denture') ||
+                work?.work_type?.toLowerCase().includes('acrylic') ||
+                work?.work_type?.toLowerCase().includes('flexible') ||
+                work?.replacement_strategy?.toLowerCase().includes('denture') ||
+                work?.replacement_strategy?.toLowerCase().includes('acrylic') ||
+                work?.condition?.toLowerCase().includes('denture')
+              );
 
               return (
                 <button
@@ -1040,6 +1063,8 @@ export default function DentalLabOdontogram({
                   className={`relative group flex flex-col items-center p-2 rounded-2xl transition-all cursor-pointer border-2 ${
                     isSelected
                       ? 'bg-indigo-50 border-indigo-600 ring-4 ring-indigo-500/30 scale-105 z-20 shadow-md'
+                      : isDentureUnit
+                      ? 'bg-pink-50/90 border-pink-500 shadow-xs'
                       : work
                       ? isMissing
                         ? 'bg-rose-50/90 border-rose-500 shadow-xs'
@@ -1061,15 +1086,20 @@ export default function DentalLabOdontogram({
 
                   {work && (
                     <span className={`text-[8px] font-black uppercase truncate w-full text-center mb-0.5 ${
-                      isMissing ? 'text-rose-700' : isCompleted ? 'text-emerald-800' : isInProgress ? 'text-indigo-800' : 'text-amber-800'
+                      isDentureUnit ? 'text-pink-800 font-extrabold' : isMissing ? 'text-rose-700' : isCompleted ? 'text-emerald-800' : isInProgress ? 'text-indigo-800' : 'text-amber-800'
                     }`}>
-                      {isMissing ? 'REPLACE' : (work.shade || work.work_type?.split(' ')[0])}
+                      {isDentureUnit ? 'DENTURE' : isMissing ? 'REPLACE' : (work.shade || work.work_type?.split(' ')[0])}
                     </span>
                   )}
 
                   <div className="relative flex-1 flex items-center justify-center">
                     <svg width="34" height="42" viewBox="0 0 34 42" className="block">
-                      {isMissing ? (
+                      {isDentureUnit ? (
+                        <g>
+                          <rect x="3" y="4" width="28" height="28" fill="#fbcfe8" stroke="#db2777" strokeWidth="2" rx="6" />
+                          <circle cx="17" cy="18" r="7" fill="#be185d" />
+                        </g>
+                      ) : isMissing ? (
                         <g>
                           <rect x="3" y="4" width="28" height="28" fill="#fff1f2" stroke="#f43f5e" strokeWidth="2" strokeDasharray="3,3" rx="6" />
                           <line x1="7" y1="8" x2="27" y2="28" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" />
@@ -1095,15 +1125,15 @@ export default function DentalLabOdontogram({
 
                     {work && (
                       <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-black shadow-xs ${
-                        isMissing ? 'bg-rose-600 text-white' : isCompleted ? 'bg-emerald-600 text-white' : isInProgress ? 'bg-indigo-600 text-white animate-pulse' : 'bg-amber-500 text-white'
+                        isDentureUnit ? 'bg-pink-600 text-white font-extrabold' : isMissing ? 'bg-rose-600 text-white' : isCompleted ? 'bg-emerald-600 text-white' : isInProgress ? 'bg-indigo-600 text-white animate-pulse' : 'bg-amber-500 text-white'
                       }`}>
-                        {isMissing ? 'M' : isCompleted ? '✓' : isInProgress ? 'P' : '!'}
+                        {isDentureUnit ? 'D' : isMissing ? 'M' : isCompleted ? '✓' : isInProgress ? 'P' : '!'}
                       </span>
                     )}
                   </div>
 
                   <span className={`text-[11px] font-mono font-black mt-1 ${
-                    isSelected ? 'text-indigo-700 font-extrabold' : work ? 'text-slate-900' : 'text-slate-600'
+                    isSelected ? 'text-indigo-700 font-extrabold' : isDentureUnit ? 'text-pink-950 font-black' : work ? 'text-slate-900' : 'text-slate-600'
                   }`}>
                     {num}
                   </span>

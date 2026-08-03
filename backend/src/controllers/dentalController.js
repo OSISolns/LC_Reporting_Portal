@@ -210,11 +210,34 @@ exports.updateCase = async (req, res, next) => {
     }
     const current = existing[0];
 
-    const updatedStatus = status !== undefined ? status : (current.status || 'Received');
-    const updatedDeliveredAt = delivered_at !== undefined ? delivered_at : (updatedStatus === 'Delivered' ? (current.delivered_at || new Date().toISOString()) : current.delivered_at);
+    let updatedStatus = status !== undefined ? status : (current.status || 'Received');
+
+    // ── AUTOMATIC LAB PROGRESS PROGRESSION ──
+    const activeTech = technologist !== undefined ? technologist : current.technologist;
+    const hasWorkStarted = !!(activeTech || odontogram_data !== undefined || chef_note !== undefined);
+
+    if ((updatedStatus === 'Received' || updatedStatus === 'Referred') && hasWorkStarted) {
+      updatedStatus = 'In Progress';
+    }
+
     const serializedOdontogram = odontogram_data !== undefined
       ? (typeof odontogram_data === 'string' ? odontogram_data : JSON.stringify(odontogram_data))
       : current.odontogram_data;
+
+    if (serializedOdontogram) {
+      try {
+        const parsed = typeof serializedOdontogram === 'string' ? JSON.parse(serializedOdontogram) : serializedOdontogram;
+        const toothEntries = Object.entries(parsed).filter(([k, v]) => !k.startsWith('_') && v && typeof v === 'object');
+        if (toothEntries.length > 0) {
+          const allDone = toothEntries.every(([_, v]) => v.status === 'Completed' || v.work_status === 'Completed');
+          if (allDone && (updatedStatus === 'In Progress' || updatedStatus === 'Received')) {
+            updatedStatus = 'Ready';
+          }
+        }
+      } catch { /* ignore parse */ }
+    }
+
+    const updatedDeliveredAt = delivered_at !== undefined ? delivered_at : (updatedStatus === 'Delivered' ? (current.delivered_at || new Date().toISOString()) : current.delivered_at);
 
     await db.query(
       `UPDATE dental_cases SET
