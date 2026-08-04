@@ -1173,10 +1173,11 @@ exports.referClinicCaseToLab = async (req, res, next) => {
     );
     const labCaseId = inserted[0]?.id;
 
-    // Update the clinic case with the referral link
+    // Update the clinic case with the referral link and auto-update status to 'Referred to Dental Lab'
     await db.query(
       `UPDATE dental_clinic_cases SET
          lab_referral_id = ?, lab_referral_status = 'Referred',
+         status = 'Referred to Dental Lab',
          lab_referral_notes = ?, referred_by_user_id = ?,
          updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
        WHERE id = ?`,

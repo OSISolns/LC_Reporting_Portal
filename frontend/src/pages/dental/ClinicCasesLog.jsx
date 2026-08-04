@@ -551,6 +551,7 @@ export default function ClinicCasesLog() {
                     <td className="py-3 px-4 text-center">
                       <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${
                         c.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
+                        c.status === 'Referred to Dental Lab' ? 'bg-teal-100 text-teal-900 border border-teal-300 font-extrabold' :
                         c.status === 'In Treatment' ? 'bg-indigo-100 text-indigo-800' :
                         c.status === 'Follow-Up' ? 'bg-amber-100 text-amber-800' :
                         'bg-rose-100 text-rose-800'
@@ -1416,12 +1417,7 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
 
           {/* Diagnosed Conditions Fields */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest m-0">Diagnosed Pathology Totals</p>
-              <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 rounded-full shadow-3xs">
-                <Sparkles size={10} className="text-emerald-600" /> Automagically Synced with Odontogram
-              </span>
-            </div>
+            <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-3">Diagnosed Pathology Totals</p>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
@@ -1514,6 +1510,7 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-300"
               >
                 <option value="Diagnosed">Diagnosed (Active)</option>
+                <option value="Referred to Dental Lab">Referred to Dental Lab</option>
                 <option value="In Treatment">In Treatment</option>
                 <option value="Completed">Completed</option>
                 <option value="Follow-Up">Follow-Up</option>
@@ -1714,6 +1711,22 @@ function PatientChartsViewerModal({ isOpen, onClose, patientId, patientName, def
     };
     loadB();
   }, [chartBId]);
+
+  // Real-time live polling to update denture plan & odontogram work in real time as worked on in lab
+  useEffect(() => {
+    if (!isOpen || !chartAId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await getChart(chartAId);
+        if (res.data?.data) {
+          setChartAData(res.data.data);
+        }
+      } catch {
+        // Silent catch for background polling
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isOpen, chartAId]);
 
   if (!isOpen) return null;
 
@@ -1973,7 +1986,7 @@ function OdontogramViewer({ data }) {
   }, [toothMap, data]);
 
   const renderViewerRow = (teethArray) => (
-    <div className="flex flex-wrap gap-1.5 justify-center">
+    <div className="flex flex-nowrap gap-0.5 sm:gap-1 justify-center overflow-x-auto py-1 max-w-full">
       {teethArray.map(num => (
         <MiniTooth key={num} number={num} data={toothMap[num.toString()]} />
       ))}
@@ -1985,13 +1998,13 @@ function OdontogramViewer({ data }) {
       {/* ── DENTURE & REMOVABLE PROSTHETICS DIRECTIVES CARD ── */}
       {dentureItems.length > 0 && (
         <div className="bg-gradient-to-r from-pink-500/10 via-rose-500/5 to-purple-500/10 border-2 border-pink-300/70 rounded-2xl p-4 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between border-b border-pink-200/80 pb-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-pink-200/80 pb-2.5">
             <div className="flex items-center gap-2">
               <span className="p-1.5 rounded-xl bg-pink-600 text-white font-bold text-xs flex items-center justify-center">
                 <Wrench size={15} />
               </span>
               <div>
-                <h5 className="text-xs font-black text-pink-950 uppercase tracking-wider m-0">
+                <h5 className="text-xs font-black text-pink-950 uppercase tracking-wider m-0 flex items-center gap-1.5">
                   Denture &amp; Removable Appliance Work Summary
                 </h5>
                 <p className="text-[10.5px] text-pink-800 font-semibold m-0 mt-0.5">
@@ -1999,28 +2012,46 @@ function OdontogramViewer({ data }) {
                 </p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-pink-600 text-white shadow-3xs">
-              Denture Plan
-            </span>
+            <div className="flex items-center gap-2 self-start sm:self-center">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-pink-600 text-white shadow-3xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping" /> Denture Plan • Realtime Sync
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-            {dentureItems.map((item, idx) => (
-              <div key={idx} className="bg-white/95 border border-pink-200/80 rounded-xl p-3 space-y-1 shadow-3xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-800">
-                    {item.tooth ? (item.tooth.toString().startsWith('#') ? item.tooth : `Tooth #${item.tooth}`) : 'Appliance Directive'}
-                  </span>
-                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800 uppercase tracking-wider">
-                    {item.status}
-                  </span>
+            {dentureItems.map((item, idx) => {
+              const stLower = (item.status || '').toLowerCase();
+              const isComplete = stLower === 'completed' || stLower === 'ready' || stLower === 'done';
+              const isInProgress = stLower.includes('progress') || stLower.includes('production') || stLower.includes('wax') || stLower.includes('milling');
+
+              return (
+                <div key={idx} className="bg-white/95 border border-pink-200/80 rounded-xl p-3 space-y-1 shadow-3xs">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-black text-slate-800">
+                      {item.tooth ? (item.tooth.toString().startsWith('#') ? item.tooth : `Tooth #${item.tooth}`) : 'Appliance Directive'}
+                    </span>
+                    {isComplete ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase tracking-wider">
+                        <CheckCircle2 size={10} className="text-emerald-600" /> Completed
+                      </span>
+                    ) : isInProgress ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-300 uppercase tracking-wider animate-pulse">
+                        <RefreshCw size={10} className="animate-spin text-indigo-600" /> {item.status}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 uppercase tracking-wider">
+                        <Clock size={10} className="text-amber-600" /> {item.status || 'Planned'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11.5px] font-black text-pink-950 m-0">
+                    {item.type}
+                  </p>
+                  {item.notes && <p className="text-[10.5px] text-slate-500 font-medium italic m-0">{item.notes}</p>}
                 </div>
-                <p className="text-[11.5px] font-black text-pink-950 m-0">
-                  {item.type}
-                </p>
-                {item.notes && <p className="text-[10.5px] text-slate-500 font-medium italic m-0">{item.notes}</p>}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -2085,7 +2116,7 @@ function MiniTooth({ number, data }) {
   };
 
   return (
-    <div className={`flex flex-col items-center p-1 border rounded-lg w-[44px] h-[64px] shadow-3xs shrink-0 select-none transition-all ${
+    <div className={`flex flex-col items-center p-0.5 sm:p-1 border rounded-lg w-[36px] sm:w-[42px] h-[58px] sm:h-[64px] shadow-3xs shrink-0 select-none transition-all ${
       isDenture
         ? 'bg-pink-50/90 border-pink-300 ring-1 ring-pink-400/40'
         : isPontic
