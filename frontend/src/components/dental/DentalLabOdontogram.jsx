@@ -677,8 +677,54 @@ export default function DentalLabOdontogram({
   const totalUnits = toothEntries.length;
   const missingReplacementUnits = toothEntries.filter(([, t]) => t.is_missing || t.work_type === 'Declared Missing (To Be Replaced)').length;
   const planningUnits = toothEntries.filter(([, t]) => t.status === 'Planning').length;
-  const inProgressUnits = toothEntries.filter(([, t]) => t.status === 'In-progress').length;
+  const inProgressUnits = toothEntries.filter(([, t]) => t.status === 'In-progress' || t.status === 'In Progress').length;
   const completedUnits = toothEntries.filter(([, t]) => t.status === 'Completed').length;
+
+  const manufacturingStageInfo = useMemo(() => {
+    if (totalUnits === 0) {
+      return {
+        stage: 'Model Prep & Design',
+        step: 1,
+        pct: 10,
+        color: 'bg-amber-500 text-white',
+        borderColor: 'border-amber-200',
+        bgTint: 'bg-amber-50/60',
+        description: 'Initial Case Received & Model Inspection'
+      };
+    }
+    if (completedUnits === totalUnits) {
+      return {
+        stage: 'Quality Control & Ready',
+        step: 4,
+        pct: 100,
+        color: 'bg-emerald-600 text-white',
+        borderColor: 'border-emerald-200',
+        bgTint: 'bg-emerald-50/60',
+        description: '100% FDI Units Completed — Case Ready for Collection'
+      };
+    }
+    if (inProgressUnits > 0 || completedUnits > 0) {
+      const calcPct = Math.round(30 + (completedUnits / totalUnits) * 60);
+      return {
+        stage: 'Active Manufacturing',
+        step: 2,
+        pct: calcPct,
+        color: 'bg-indigo-600 text-white',
+        borderColor: 'border-indigo-200',
+        bgTint: 'bg-indigo-50/60',
+        description: `Fabrication in Progress — ${completedUnits} of ${totalUnits} FDI units finished`
+      };
+    }
+    return {
+      stage: 'Work Unit Planning',
+      step: 1,
+      pct: 20,
+      color: 'bg-slate-700 text-white',
+      borderColor: 'border-slate-200',
+      bgTint: 'bg-slate-50/60',
+      description: `${totalUnits} FDI units logged — awaiting manufacturing start`
+    };
+  }, [totalUnits, completedUnits, inProgressUnits]);
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-sm space-y-6 font-sans">
@@ -770,6 +816,74 @@ export default function DentalLabOdontogram({
           </div>
         </div>
       )}
+
+      {/* ─── MANUFACTURING STAGE & FDI ODONTOGRAM SYNC TRACKER ─── */}
+      <div className={`border-2 ${manufacturingStageInfo.borderColor} ${manufacturingStageInfo.bgTint} rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-sm`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 pb-3">
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold shadow-sm ${manufacturingStageInfo.color}`}>
+              <Layers size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-black text-slate-900 tracking-tight m-0">
+                  Manufacturing Stage: <span className="text-indigo-700 font-black">{manufacturingStageInfo.stage}</span>
+                </h4>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${manufacturingStageInfo.color}`}>
+                  {manufacturingStageInfo.pct}% Complete
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 font-semibold m-0 mt-0.5">
+                {manufacturingStageInfo.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-center bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-3xs">
+            <span className="text-xs font-bold text-slate-700">FDI Chart Progress:</span>
+            <span className="text-xs font-black text-indigo-700">{completedUnits}/{totalUnits} Units Done</span>
+          </div>
+        </div>
+
+        {/* 4-Step Pipeline Stepper */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+          <div className={`p-2.5 rounded-xl border text-center transition-all ${
+            manufacturingStageInfo.step >= 1 ? 'bg-white border-amber-300 shadow-3xs' : 'bg-slate-100/60 border-slate-200 opacity-50'
+          }`}>
+            <span className="text-[9px] font-black text-amber-700 uppercase tracking-wider block">Stage 1</span>
+            <span className="text-xs font-black text-slate-800">Model Prep &amp; Design</span>
+          </div>
+
+          <div className={`p-2.5 rounded-xl border text-center transition-all ${
+            manufacturingStageInfo.step >= 2 ? 'bg-white border-indigo-300 shadow-3xs' : 'bg-slate-100/60 border-slate-200 opacity-50'
+          }`}>
+            <span className="text-[9px] font-black text-indigo-700 uppercase tracking-wider block">Stage 2</span>
+            <span className="text-xs font-black text-slate-800">Active Fabrication</span>
+          </div>
+
+          <div className={`p-2.5 rounded-xl border text-center transition-all ${
+            manufacturingStageInfo.step >= 3 ? 'bg-white border-purple-300 shadow-3xs' : 'bg-slate-100/60 border-slate-200 opacity-50'
+          }`}>
+            <span className="text-[9px] font-black text-purple-700 uppercase tracking-wider block">Stage 3</span>
+            <span className="text-xs font-black text-slate-800">Staining &amp; Acrylic</span>
+          </div>
+
+          <div className={`p-2.5 rounded-xl border text-center transition-all ${
+            manufacturingStageInfo.step >= 4 ? 'bg-white border-emerald-400 shadow-3xs ring-1 ring-emerald-400/40' : 'bg-slate-100/60 border-slate-200 opacity-50'
+          }`}>
+            <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wider block">Stage 4</span>
+            <span className="text-xs font-black text-slate-800">QC &amp; Ready for Clinic</span>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full bg-slate-200/80 h-2 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 transition-all duration-500"
+            style={{ width: `${manufacturingStageInfo.pct}%` }}
+          />
+        </div>
+      </div>
 
       {/* SUMMARY STATUS CHIPS */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

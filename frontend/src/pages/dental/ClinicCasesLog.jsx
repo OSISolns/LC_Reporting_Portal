@@ -1063,11 +1063,18 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
     fetchPatientCharts(pid);
   };
 
-  const fetchPatientCharts = async (pid) => {
+  const fetchPatientCharts = async (pid, currentLinkedId = form.linked_chart_id) => {
     setLoadingCharts(true);
     try {
       const res = await listCharts(pid);
-      setPatientCharts(res.data?.data || res.data || []);
+      const charts = res.data?.data || res.data || [];
+      setPatientCharts(charts);
+
+      // Automagically analyze & sync odontogram charts if linked or available
+      const targetChartId = currentLinkedId || (charts.length > 0 ? charts[0].id : null);
+      if (targetChartId) {
+        handleChartChange(targetChartId, charts);
+      }
     } catch (err) {
       console.warn('Failed to load patient charts:', err);
     } finally {
@@ -1075,15 +1082,16 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
     }
   };
 
-  // Sync / Parse selected chart tooth data
-  const handleChartChange = (chartId) => {
-    setForm(prev => ({ ...prev, linked_chart_id: chartId }));
-    if (!chartId) {
+  // Sync / Parse selected chart tooth data automagically
+  const handleChartChange = (chartId, chartsList = patientCharts) => {
+    const nextChartId = chartId ? String(chartId) : '';
+    setForm(prev => ({ ...prev, linked_chart_id: nextChartId }));
+    if (!nextChartId) {
       setAnalysisReport(null);
       return;
     }
 
-    const selectedChart = patientCharts.find(c => String(c.id) === String(chartId));
+    const selectedChart = (chartsList || []).find(c => String(c.id) === nextChartId);
     if (!selectedChart || !selectedChart.tooth_data) return;
 
     let parsed = selectedChart.tooth_data;
@@ -1155,6 +1163,7 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
 
     setForm(prev => ({
       ...prev,
+      linked_chart_id: nextChartId,
       caries_count: caries,
       missing_count: missing,
       restored_count: restored,
@@ -1170,7 +1179,28 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
       estimatedCost
     });
 
-    toast.success(`Chart analyzed: ${caries} Caries, ${missing} Missing, ${restored} Restored.`, { duration: 3000 });
+    toast.success(`Odontogram automagically synced: ${caries} Caries, ${missing} Missing, ${restored} Restored.`, { duration: 2500 });
+  };
+
+  // Vice versa: Update Odontogram analysis report automagically when Diagnosed Pathology Totals change
+  const handlePathologyCountChange = (field, rawVal) => {
+    const countVal = Math.max(0, parseInt(rawVal) || 0);
+    const nextForm = { ...form, [field]: countVal };
+    setForm(nextForm);
+    scheduleDraftSave(nextForm, patSearch);
+
+    setAnalysisReport(prev => {
+      const base = prev || { cariesTeeth: [], missingTeeth: [], restoredTeeth: [], procedures: [], estimatedCost: form.total_charges };
+      const nextCaries = field === 'caries_count' ? Array.from({ length: countVal }, (_, i) => `Auto-${i + 1}`) : base.cariesTeeth;
+      const nextMissing = field === 'missing_count' ? Array.from({ length: countVal }, (_, i) => `Auto-${i + 1}`) : base.missingTeeth;
+      const nextRestored = field === 'restored_count' ? Array.from({ length: countVal }, (_, i) => `Auto-${i + 1}`) : base.restoredTeeth;
+      return {
+        ...base,
+        cariesTeeth: nextCaries,
+        missingTeeth: nextMissing,
+        restoredTeeth: nextRestored,
+      };
+    });
   };
 
   const handleSaveSubmit = (e) => {
@@ -1385,7 +1415,12 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
 
           {/* Diagnosed Conditions Fields */}
           <div>
-            <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-3">Diagnosed Pathology Totals</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest m-0">Diagnosed Pathology Totals</p>
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 rounded-full shadow-3xs">
+                <Sparkles size={10} className="text-emerald-600" /> Automagically Synced with Odontogram
+              </span>
+            </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
@@ -1395,12 +1430,8 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
                   type="number"
                   min="0"
                   value={form.caries_count}
-                  onChange={(e) => {
-                    const nextForm = { ...form, caries_count: parseInt(e.target.value) || 0 };
-                    setForm(nextForm);
-                    scheduleDraftSave(nextForm, patSearch);
-                  }}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
+                  onChange={(e) => handlePathologyCountChange('caries_count', e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 font-bold text-rose-700 bg-white"
                 />
               </div>
               <div>
@@ -1411,12 +1442,8 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
                   type="number"
                   min="0"
                   value={form.missing_count}
-                  onChange={(e) => {
-                    const nextForm = { ...form, missing_count: parseInt(e.target.value) || 0 };
-                    setForm(nextForm);
-                    scheduleDraftSave(nextForm, patSearch);
-                  }}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
+                  onChange={(e) => handlePathologyCountChange('missing_count', e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 font-bold text-slate-700 bg-white"
                 />
               </div>
               <div>
@@ -1427,12 +1454,8 @@ function CaseFormModal({ isOpen, onClose, onSave, editCase, currentUser }) {
                   type="number"
                   min="0"
                   value={form.restored_count}
-                  onChange={(e) => {
-                    const nextForm = { ...form, restored_count: parseInt(e.target.value) || 0 };
-                    setForm(nextForm);
-                    scheduleDraftSave(nextForm, patSearch);
-                  }}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300"
+                  onChange={(e) => handlePathologyCountChange('restored_count', e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-300 font-bold text-amber-700 bg-white"
                 />
               </div>
             </div>

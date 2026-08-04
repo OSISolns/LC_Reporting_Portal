@@ -88,6 +88,9 @@ const STAGE_CONFIG = {
   'Wax-Up / Framework':   { label: 'Wax-Up / Framework',   color: 'text-blue-700',  bg: 'bg-blue-50',  border: 'border-blue-200',  step: 2 },
   'Casting / Milling':    { label: 'Casting / Milling',    color: 'text-purple-700',bg: 'bg-purple-50',border: 'border-purple-200',step: 3 },
   'Porcelain / Finishing':{ label: 'Porcelain / Finishing',color: 'text-indigo-700',bg: 'bg-indigo-50',border: 'border-indigo-200',step: 4 },
+  'In Progress':           { label: 'In Progress',           color: 'text-indigo-700',bg: 'bg-indigo-50',border: 'border-indigo-200',step: 4 },
+  'Ready':                 { label: 'Ready for Collection',  color: 'text-emerald-700',bg: 'bg-emerald-50',border: 'border-emerald-200',step: 5 },
+  'Quality Check':         { label: 'Quality Check & Ready', color: 'text-emerald-700',bg: 'bg-emerald-50',border: 'border-emerald-200',step: 5 },
   'Completed':            { label: 'Completed (Ready)',    color: 'text-emerald-700',bg: 'bg-emerald-50',border: 'border-emerald-200',step: 5 },
   'Delivered':            { label: 'Delivered',            color: 'text-slate-700', bg: 'bg-slate-100', border: 'border-slate-300', step: 6 },
 };
@@ -1903,7 +1906,16 @@ const DentalCasesLog = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-semibold">
                 {paginated.map((c) => {
-                  const currentSt = c.status || 'Received';
+                  const summary = getOdontogramSummary(c);
+                  let currentSt = c.status || 'Received';
+
+                  // Dynamic Manufacturing Stage sync with FDI Odontogram
+                  if (summary.allComplete && currentSt !== 'Delivered') {
+                    currentSt = 'Completed';
+                  } else if (summary.completed > 0 && (currentSt === 'Received' || currentSt === 'Referred')) {
+                    currentSt = 'In Progress';
+                  }
+
                   const stConf = STAGE_CONFIG[currentSt] || STAGE_CONFIG['Received'];
 
                   return (
