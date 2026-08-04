@@ -1181,7 +1181,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
             {(useDentalMode || isHodOrStock) && (
               <button
                 onClick={() => setLuminaOpen(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-extrabold rounded-xl shadow-md transition-all cursor-pointer"
+                className="flex items-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow-xs transition-all cursor-pointer"
               >
                 <Sparkles size={14} />
                 <span className="hidden sm:inline">Lumina AI Report</span>
@@ -1197,17 +1197,17 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         {/* KPIs */}
         {summary && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-teal-50 to-teal-100 border border-teal-200 rounded-2xl p-4">
+            <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
               <p className="text-[10px] text-teal-600 font-black uppercase tracking-wider">Logged Today</p>
               <p className="text-3xl font-black text-teal-900 mt-1">{summary.today.entries}</p>
               <p className="text-[10px] text-teal-700 font-semibold mt-1">{summary.today.units} units consumed</p>
             </div>
-            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-2xl p-4">
-              <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider">Top Item (30d)</p>
-              <p className="text-lg font-black text-indigo-900 mt-1 truncate">{summary.top_items[0]?.item_name || '—'}</p>
-              <p className="text-[10px] text-indigo-700 font-semibold mt-1">{summary.top_items[0]?.units || 0} units</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+              <p className="text-[10px] text-blue-600 font-black uppercase tracking-wider">Top Item (30d)</p>
+              <p className="text-lg font-black text-blue-900 mt-1 truncate">{summary.top_items[0]?.item_name || '—'}</p>
+              <p className="text-[10px] text-blue-700 font-semibold mt-1">{summary.top_items[0]?.units || 0} units</p>
             </div>
-            <div className="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-2xl p-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
               <p className="text-[10px] text-amber-600 font-black uppercase tracking-wider">
                 {userDept ? 'My Department' : 'Departments Active'}
               </p>
@@ -1218,7 +1218,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 {userDept ? 'Logged in view' : 'consuming in last 30d'}
               </p>
             </div>
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
               <p className="text-[10px] text-slate-600 font-black uppercase tracking-wider">Log Entries</p>
               <p className="text-3xl font-black text-slate-900 mt-1">{entries.length}</p>
               <p className="text-[10px] text-slate-700 font-semibold mt-1">shown below</p>
@@ -2390,21 +2390,21 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
               className="bg-white border border-slate-200 rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
             >
               {/* Modal Header */}
-              <div className="p-6 bg-gradient-to-r from-indigo-900 via-slate-900 to-purple-900 text-white flex items-center justify-between">
+              <div className="p-6 bg-blue-600 text-white flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-indigo-500/20 border border-indigo-400/30 rounded-2xl">
-                    <Sparkles size={24} className="text-indigo-300" />
+                  <div className="p-2.5 bg-white/10 border border-white/20 rounded-2xl">
+                    <Sparkles size={24} className="text-white" />
                   </div>
                   <div>
                     <h3 className="text-xl font-black tracking-tight">Lumina AI — Consumables Intelligence</h3>
-                    <p className="text-xs text-indigo-200/80 font-semibold">
-                      Material usage analysis & projections for Stock Manager & HoD
+                    <p className="text-xs text-blue-100 font-semibold">
+                      Material usage analysis &amp; projections for Stock Manager &amp; HoD
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setLuminaOpen(false)}
-                  className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -2432,7 +2432,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 <button
                   onClick={generateLuminaReport}
                   disabled={luminaLoading}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
                 >
                   {luminaLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                   <span>{luminaReport ? 'Regenerate Analysis' : 'Generate Analysis'}</span>
@@ -2443,7 +2443,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
               <div className="p-6 overflow-y-auto space-y-6 flex-1">
                 {!luminaReport && !luminaLoading && (
                   <div className="text-center py-16 space-y-3">
-                    <div className="w-16 h-16 bg-indigo-50 border border-indigo-100 rounded-3xl flex items-center justify-center mx-auto text-indigo-600">
+                    <div className="w-16 h-16 bg-blue-50 border border-blue-100 rounded-3xl flex items-center justify-center mx-auto text-blue-600">
                       <BarChart3 size={32} />
                     </div>
                     <h4 className="text-base font-bold text-slate-800">Generate Consumables Intelligence</h4>
@@ -2455,7 +2455,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
                 {luminaLoading && (
                   <div className="text-center py-20 space-y-3">
-                    <Loader2 size={36} className="animate-spin text-indigo-600 mx-auto" />
+                    <Loader2 size={36} className="animate-spin text-blue-600 mx-auto" />
                     <p className="text-sm font-bold text-slate-700">Lumina AI is analyzing material logs and learning usage patterns…</p>
                   </div>
                 )}
@@ -2463,9 +2463,9 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 {luminaReport && !luminaLoading && (
                   <div className="space-y-6">
                     {/* Executive Narrative */}
-                    <div className="bg-indigo-50/60 border border-indigo-200 rounded-2xl p-5 space-y-2">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-indigo-900 flex items-center gap-2">
-                        <Sparkles size={14} className="text-indigo-600" /> Executive Narrative
+                    <div className="bg-blue-50/60 border border-blue-200 rounded-2xl p-5 space-y-2">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-blue-900 flex items-center gap-2">
+                        <Sparkles size={14} className="text-blue-600" /> Executive Narrative
                       </h4>
                       <p className="text-sm font-medium text-slate-800 leading-relaxed">
                         {luminaReport.narrative}
@@ -2484,7 +2484,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                       </div>
                       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
                         <p className="text-[10px] font-black uppercase text-slate-400">Unique Items</p>
-                        <p className="text-2xl font-black text-indigo-700 mt-0.5">{luminaReport.summary?.unique_items ?? 0}</p>
+                        <p className="text-2xl font-black text-blue-700 mt-0.5">{luminaReport.summary?.unique_items ?? 0}</p>
                       </div>
                       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
                         <p className="text-[10px] font-black uppercase text-slate-400">Work Categories</p>
@@ -2497,17 +2497,20 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
                         <h4 className="text-xs font-extrabold text-amber-900 flex items-center gap-2">
                           <AlertTriangle size={15} className="text-amber-600" />
-                          Items Open In-Use &gt; 72 Hours ({luminaReport.stale_items.length})
+                          Items Open In-Use &gt; 3 Days ({luminaReport.stale_items.length})
                         </h4>
                         <div className="divide-y divide-amber-200/60 max-h-40 overflow-y-auto">
-                          {luminaReport.stale_items.map((stale, i) => (
-                            <div key={i} className="py-1.5 flex items-center justify-between text-xs">
-                              <span className="font-bold text-slate-800">{stale.item}</span>
-                              <span className="text-[11px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
-                                Open for {stale.hrs_open} hrs
-                              </span>
-                            </div>
-                          ))}
+                          {luminaReport.stale_items.map((stale, i) => {
+                            const daysCount = (stale.hrs_open / 24).toFixed(1);
+                            return (
+                              <div key={i} className="py-1.5 flex items-center justify-between text-xs">
+                                <span className="font-bold text-slate-800">{stale.item}</span>
+                                <span className="text-[11px] font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200/80">
+                                  Open for {daysCount} days
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

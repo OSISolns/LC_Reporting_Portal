@@ -254,10 +254,10 @@ exports.generateConsumablesReport = async (req, res, next) => {
     }
     if (staleCount > 0) {
       narrativeParts.push(
-        `⚠️ ${staleCount} item${staleCount !== 1 ? 's are' : ' is'} still marked In Use for over 72 hours without being marked Finished — this may indicate waste, extended use, or missed logging. Review recommended.`
+        `⚠️ ${staleCount} item${staleCount !== 1 ? 's are' : ' is'} still marked In Use for over 3 days without being marked Finished — this may indicate waste, extended use, or missed logging. Review recommended.`
       );
     } else {
-      narrativeParts.push('All In Use items have been resolved within 72 hours — good material turnover.');
+      narrativeParts.push('All In Use items have been resolved within 3 days — good material turnover.');
     }
     if (patterns.length > 0) {
       const projected = patterns.slice(0, 3).map(p =>
