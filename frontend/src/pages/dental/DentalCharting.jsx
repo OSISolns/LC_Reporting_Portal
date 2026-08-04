@@ -295,7 +295,7 @@ export default function DentalCharting() {
   const [patientSource, setPatientSource] = useState(null); // 'cache' | 'live'
   
   const [chartDate, setChartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [provider, setProvider] = useState(user?.fullName || '');
+  const [provider, setProvider] = useState(user?.fullName || user?.full_name || '');
   const [generalNotes, setGeneralNotes] = useState('');
   
   // Dentition Type: 'adult' | 'pediatric' | 'mixed'
@@ -443,8 +443,9 @@ export default function DentalCharting() {
 
   // Sync provider if user is loaded
   useEffect(() => {
-    if (user?.fullName && !provider) {
-      setProvider(user.fullName);
+    const uName = user?.fullName || user?.full_name;
+    if (uName && !provider) {
+      setProvider(uName);
     }
   }, [user]);
 
@@ -566,7 +567,7 @@ export default function DentalCharting() {
     setSelectedTooth(null);
     setIsChartLoaded(false);
     setChartDate(format(new Date(), 'yyyy-MM-dd'));
-    setProvider(user?.fullName || '');
+    setProvider(user?.fullName || user?.full_name || '');
   };
 
   const loadSpecificChart = async (id) => {

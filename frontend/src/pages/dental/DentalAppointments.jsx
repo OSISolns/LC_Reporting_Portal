@@ -66,7 +66,7 @@ export default function DentalAppointments() {
   const [conflictInfo, setConflictInfo] = useState(null);
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-  const [formData, setFormData] = useState(emptyForm(selectedDateStr, user?.fullName || ''));
+  const [formData, setFormData] = useState(emptyForm(selectedDateStr, user?.fullName || user?.full_name || ''));
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const rangeFrom = format(weekStart, 'yyyy-MM-dd');
@@ -138,7 +138,7 @@ export default function DentalAppointments() {
 
   const openAddModal = () => {
     setEditingAppt(null);
-    setFormData(emptyForm(selectedDateStr, user?.fullName || ''));
+    setFormData(emptyForm(selectedDateStr, user?.fullName || user?.full_name || ''));
     setIsModalOpen(true);
   };
 
