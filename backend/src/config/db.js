@@ -1907,6 +1907,16 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.log('✅ SQLite Schema Migration: added storage column to stock_batches');
       } catch (e) { /* already exists */ }
 
+      for (const col of [
+        "status TEXT DEFAULT 'active'",
+        'deactivated_at DATETIME',
+        'deactivated_by_name TEXT',
+        'deactivation_reason TEXT'
+      ]) {
+        try { await client.execute(`ALTER TABLE department_stock ADD COLUMN ${col}`); } catch (e) { /* already exists */ }
+        try { await client.execute(`ALTER TABLE stock_batches ADD COLUMN ${col}`); } catch (e) { /* already exists */ }
+      }
+
       console.log('✅ SQLite Schema Migration: created stock management relational tables');
     } catch (err) {
       console.error('❌ Failed to initialize stock management tables:', err);

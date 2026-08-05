@@ -127,9 +127,16 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const [filterTo, setFilterTo] = useState('');
 
   // Tabs
-  const [activeSubTab, setActiveSubTab] = useState('history'); // 'history', 'stock', 'requisitions'
+  const [activeSubTab, setActiveSubTab] = useState('history'); // 'history', 'stock', 'requisitions', 'deactivated'
   const [stockTab, setStockTab] = useState('local'); // 'local', 'central'
   const [stockSearchTerm, setStockSearchTerm] = useState('');
+
+  // Deactivated & Expired Items
+  const [deactivatedItems, setDeactivatedItems] = useState([]);
+  const [deactSearchTerm, setDeactSearchTerm] = useState('');
+  const [deactModalItem, setDeactModalItem] = useState(null);
+  const [deactReasonInput, setDeactReasonInput] = useState('');
+  const [submittingDeact, setSubmittingDeact] = useState(false);
 
   // Consumption History pagination (15 rows per page)
   const HISTORY_PAGE_SIZE = 15;
@@ -201,7 +208,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     try {
       const deptId = userDept?.id || null;
       const res = await api.post('/ai/dental/consumables-report', {
-        department_id: deptId ? parseInt(deptId, 10) : undefined,
+        department_name: userDept?.name || defaultDeptName || undefined,
         from_date: luminaFrom,
         to_date:   luminaTo,
       });
@@ -216,7 +223,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     isSilent ? setRefreshing(true) : setLoading(true);
     try {
       const targetDept = userDept ? userDept.id : filterDept;
-      const [deptRes, stockRes, logRes, sumRes, reqRes, masterRes] = await Promise.allSettled([
+      const [deptRes, stockRes, logRes, sumRes, reqRes, masterRes, deactRes] = await Promise.allSettled([
         api.get('/clinical/inventory/departments'),
         api.get('/clinical/inventory/distributed-stock?include_central=true'),
         api.get('/clinical/inventory/consumables', {
@@ -227,6 +234,9 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         }),
         api.get('/clinical/inventory/requisitions'),
         api.get('/clinical/inventory/master'),
+        api.get('/clinical/inventory/consumables/deactivated', {
+          params: { department_id: targetDept || undefined }
+        }),
       ]);
       if (deptRes.status === 'fulfilled' && deptRes.value.data.success) setDepartments(deptRes.value.data.data || []);
       if (stockRes.status === 'fulfilled' && stockRes.value.data.success) setDistributedStock(stockRes.value.data.data || []);
@@ -234,6 +244,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       if (sumRes.status === 'fulfilled' && sumRes.value.data.success) setSummary(sumRes.value.data.data);
       if (reqRes.status === 'fulfilled' && reqRes.value.data.success) setRequisitions(reqRes.value.data.data || []);
       if (masterRes.status === 'fulfilled' && masterRes.value.data.success) setMasterItems(masterRes.value.data.data || []);
+      if (deactRes.status === 'fulfilled' && deactRes.value.data.success) setDeactivatedItems(deactRes.value.data.data || []);
     } catch (err) {
       console.error(err);
       toast.error('Failed to load consumables data.');
@@ -241,6 +252,51 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       setLoading(false);
       setRefreshing(false);
       setInitialLoaded(true);
+    }
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!deactModalItem) return;
+    setSubmittingDeact(true);
+    try {
+      const res = await api.post('/clinical/inventory/consumables/deactivate', {
+        dept_stock_id: deactModalItem.dept_stock_id || null,
+        batch_id: deactModalItem.batch_id || null,
+        item_id: deactModalItem.item_id,
+        department_id: userDept ? userDept.id : formDept,
+        reason: deactReasonInput.trim() || 'Expired Item Write-off',
+      });
+      if (res.data?.success) {
+        toast.success('Expired item deactivated successfully');
+        setDeactModalItem(null);
+        setDeactReasonInput('');
+        loadData(true);
+      } else {
+        toast.error(res.data?.message || 'Failed to deactivate item');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error deactivating item');
+    } finally {
+      setSubmittingDeact(false);
+    }
+  };
+
+  const handleReactivateItem = async (row) => {
+    try {
+      const res = await api.post('/clinical/inventory/consumables/reactivate', {
+        dept_stock_id: row.dept_stock_id || null,
+        batch_id: row.batch_id || null,
+      });
+      if (res.data?.success) {
+        toast.success('Item reactivated successfully');
+        loadData(true);
+      } else {
+        toast.error(res.data?.message || 'Failed to reactivate item');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error reactivating item');
     }
   };
 
@@ -583,18 +639,66 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       }));
     }
 
-    return deptStockItems.map(item => ({
-      dept_stock_id: item.item_id,
-      item_id: item.item_id,
-      name: item.name,
-      sku: item.sku || '',
-      category: item.category,
-      quantity: item.available,
-      expiry_date: null,
-      batch_number: null,
-      department: item.department
-    }));
-  }, [stockTab, masterItems, deptStockItems, userDept, filterDept, formDept, defaultDeptName, departments, generalStoreDept, isAdmin]);
+    const activeDeptId = activeD;
+    const localDeptBatches = distributedStock.filter(row => String(row.department_id) === String(activeDeptId));
+
+    const result = [];
+    const processedItemIds = new Set();
+
+    for (const item of deptStockItems) {
+      processedItemIds.add(String(item.item_id));
+      const matchingBatches = localDeptBatches.filter(row => String(row.item_id) === String(item.item_id));
+
+      if (matchingBatches.length > 0) {
+        for (const b of matchingBatches) {
+          result.push({
+            dept_stock_id: b.dept_stock_id || item.item_id,
+            item_id: item.item_id,
+            name: item.name,
+            sku: b.sku || item.sku || '',
+            category: item.category,
+            quantity: Number(b.quantity || 0),
+            expiry_date: b.expiry_date || null,
+            batch_number: b.batch_number || null,
+            lot_number: b.lot_number || null,
+            department: item.department
+          });
+        }
+      } else {
+        result.push({
+          dept_stock_id: item.item_id,
+          item_id: item.item_id,
+          name: item.name,
+          sku: item.sku || '',
+          category: item.category,
+          quantity: item.available,
+          expiry_date: null,
+          batch_number: null,
+          lot_number: null,
+          department: item.department
+        });
+      }
+    }
+
+    for (const b of localDeptBatches) {
+      if (!processedItemIds.has(String(b.item_id))) {
+        result.push({
+          dept_stock_id: b.dept_stock_id || b.item_id,
+          item_id: b.item_id,
+          name: b.name,
+          sku: b.sku || '',
+          category: b.category,
+          quantity: Number(b.quantity || 0),
+          expiry_date: b.expiry_date || null,
+          batch_number: b.batch_number || null,
+          lot_number: b.lot_number || null,
+          department: b.department || activeDeptName
+        });
+      }
+    }
+
+    return result;
+  }, [stockTab, masterItems, deptStockItems, userDept, filterDept, formDept, defaultDeptName, departments, generalStoreDept, isAdmin, distributedStock]);
 
   const filteredDeptStock = useMemo(() => {
     let list = currentDeptStock;
@@ -650,6 +754,9 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
           const lotB = String(b.lot_number || b.batch_number || '');
           return lotA.localeCompare(lotB, undefined, { numeric: true });
         });
+        const earliestWithExpiry = item.batches.find(b => b.expiry_date);
+        item.expiry_date = earliestWithExpiry ? earliestWithExpiry.expiry_date : (item.batches[0]?.expiry_date || null);
+        item.batch_number = earliestWithExpiry ? earliestWithExpiry.batch_number : (item.batches[0]?.batch_number || null);
       }
       return Array.from(itemMap.values()).sort((a, b) =>
         (a.name || '').localeCompare(b.name || '')
@@ -658,6 +765,20 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
     return list;
   }, [currentDeptStock, stockSearchTerm, stockTab]);
+
+  const filteredDeactItems = useMemo(() => {
+    let list = deactivatedItems;
+    if (deactSearchTerm.trim()) {
+      const q = deactSearchTerm.toLowerCase();
+      list = list.filter(item =>
+        (item.name || '').toLowerCase().includes(q) ||
+        (item.sku || '').toLowerCase().includes(q) ||
+        (item.batch_number || '').toLowerCase().includes(q) ||
+        (item.deactivation_reason || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [deactivatedItems, deactSearchTerm]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1696,6 +1817,21 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 >
                   <ArrowRight size={14} /> Requisitions
                 </button>
+                <button
+                  onClick={() => setActiveSubTab('deactivated')}
+                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeSubTab === 'deactivated'
+                      ? 'bg-teal-700 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
+                  }`}
+                >
+                  <AlertTriangle size={14} /> Deactivated & Expired
+                  {deactivatedItems.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-700 font-extrabold">
+                      {deactivatedItems.length}
+                    </span>
+                  )}
+                </button>
               </div>
 
               <div className="flex items-center gap-2">
@@ -1878,8 +2014,8 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                         <th className="text-left px-3 py-2.5">Items</th>
                         <th className="text-left px-3 py-2.5">Category</th>
                         {stockTab === 'central' && <th className="text-left px-3 py-2.5">Batch#</th>}
-                        {stockTab === 'central' && <th className="text-left px-3 py-2.5">Exp. Date</th>}
-                        {stockTab === 'central' && <th className="text-center px-3 py-2.5">Status</th>}
+                        <th className="text-left px-3 py-2.5">Exp. Date</th>
+                        <th className="text-center px-3 py-2.5">Status</th>
                         {stockTab === 'local' && <th className="text-center px-3 py-2.5">Batches / Details</th>}
                         <th className="text-center px-3 py-2.5">Stock In Hands</th>
                         {stockTab === 'local' && <th className="text-right px-3 py-2.5">Action</th>}
@@ -1927,18 +2063,23 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                               {stockTab === 'central' && (
                                 <td className="px-3 py-2.5 font-mono text-[11px] text-slate-500">{row.batch_number || '—'}</td>
                               )}
-                              {stockTab === 'central' && (
-                                <td className="px-3 py-2.5 text-slate-500 text-xs font-medium">
-                                  {row.expiry_date ? row.expiry_date.split('T')[0] : '—'}
-                                </td>
-                              )}
-                              {stockTab === 'central' && (
-                                <td className="px-3 py-2.5 text-center">
-                                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border ${status.color}`}>
-                                    {status.text}
-                                  </span>
-                                </td>
-                              )}
+                              <td className="px-3 py-2.5 text-slate-600 text-xs font-medium">
+                                {row.expiry_date ? (
+                                  <div className="flex items-center gap-1">
+                                    <span>{row.expiry_date.split('T')[0]}</span>
+                                    {stockTab === 'local' && batchCount > 1 && (
+                                      <span className="text-[9px] text-slate-400 font-normal shrink-0">(Earliest)</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border ${status.color}`}>
+                                  {status.text}
+                                </span>
+                              </td>
                               {stockTab === 'local' && (
                                 <td className="px-3 py-2.5 text-center">
                                   <span
@@ -1958,20 +2099,35 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                               </td>
                               {stockTab === 'local' && (
                                 <td className="px-3 py-2.5 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleQuickReorderItem(row);
-                                    }}
-                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs ${
-                                      row.quantity <= 5
-                                        ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200 animate-pulse'
-                                        : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200'
-                                    }`}
-                                  >
-                                    + Reorder
-                                  </button>
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {status.text === 'Expired' && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeactModalItem(row);
+                                          setDeactReasonInput('Expired item write-off');
+                                        }}
+                                        className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-700 hover:bg-slate-800 text-white transition-all cursor-pointer shadow-2xs"
+                                      >
+                                        Deactivate
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleQuickReorderItem(row);
+                                      }}
+                                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs ${
+                                        row.quantity <= 5
+                                          ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200 animate-pulse'
+                                          : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200'
+                                      }`}
+                                    >
+                                      + Reorder
+                                    </button>
+                                  </div>
                                 </td>
                               )}
                             </tr>
@@ -1979,7 +2135,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                             {/* Expanded sub-row showing batch variables */}
                             {stockTab === 'local' && isExpanded && row.batches && (
                               <tr className="bg-slate-50/70 border-t border-slate-100">
-                                <td colSpan={4} className="p-3 pl-8">
+                                <td colSpan={7} className="p-3 pl-8">
                                   <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2">
                                     <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
                                       <Boxes size={12} className="text-indigo-600" />
@@ -2011,6 +2167,19 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                                   <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${bStatus.color}`}>
                                                     {bStatus.text}
                                                   </span>
+                                                  {bStatus.text === 'Expired' && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeactModalItem(b);
+                                                        setDeactReasonInput('Expired batch write-off');
+                                                      }}
+                                                      className="ml-2 px-1.5 py-0.5 bg-slate-700 hover:bg-slate-800 text-white rounded text-[8px] font-bold uppercase transition-all cursor-pointer shadow-2xs"
+                                                    >
+                                                      Deactivate
+                                                    </button>
+                                                  )}
                                                 </td>
                                                 <td className="px-2.5 py-1.5 text-right font-black text-slate-800">
                                                   {b.quantity} {b.unit_of_measure || ''}
@@ -2030,7 +2199,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                       })}
                       {filteredDeptStock.length === 0 && (
                         <tr>
-                          <td colSpan={stockTab === 'central' ? 6 : 4} className="px-3 py-10 text-center text-slate-400">
+                          <td colSpan={stockTab === 'central' ? 6 : 7} className="px-3 py-10 text-center text-slate-400">
                             {stockSearchTerm.trim() ? (
                               <div className="space-y-1.5">
                                 <p className="font-semibold text-xs text-slate-500">No available items match "{stockSearchTerm}"</p>
@@ -2375,9 +2544,195 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 </div>
               </div>
             )}
+
+            {/* Deactivated & Expired Items Tab */}
+            {activeSubTab === 'deactivated' && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-slate-100 text-slate-700 rounded-xl border border-slate-200">
+                      <AlertTriangle size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900">Deactivated & Expired Inventory Record</h4>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        Items and batches that have expired or been written off. Deactivated stock is quarantined from patient logging.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-black text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl">
+                      {filteredDeactItems.length} Deactivated Record(s)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative flex-1 min-w-[240px]">
+                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search deactivated items by name, SKU, batch #, or reason..."
+                      value={deactSearchTerm}
+                      onChange={(e) => setDeactSearchTerm(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-slate-400 focus:bg-white"
+                    />
+                    {deactSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setDeactSearchTerm('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-2xs">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-black tracking-wider">
+                      <tr>
+                        <th className="text-left px-3.5 py-3">Item Name & SKU</th>
+                        <th className="text-left px-3.5 py-3">Category</th>
+                        <th className="text-left px-3.5 py-3">Batch / Lot Code</th>
+                        <th className="text-left px-3.5 py-3">Exp. Date</th>
+                        <th className="text-left px-3.5 py-3">Deactivated At & By</th>
+                        <th className="text-left px-3.5 py-3">Write-off Reason</th>
+                        <th className="text-right px-3.5 py-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {filteredDeactItems.map((item) => (
+                        <tr key={item.dept_stock_id || item.item_id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-3.5 py-3">
+                            <div className="font-bold text-slate-900">{item.name}</div>
+                            {item.sku && <div className="text-[10px] text-slate-400 font-mono mt-0.5">{item.sku}</div>}
+                          </td>
+                          <td className="px-3.5 py-3 text-slate-600 text-xs font-semibold uppercase tracking-tight">
+                            {item.category?.replace(/_/g, ' ') || '—'}
+                          </td>
+                          <td className="px-3.5 py-3 font-mono text-xs text-slate-700">
+                            {item.batch_number || 'No batch #'}
+                            {item.lot_number && <span className="text-slate-400 font-normal ml-1">(Lot: {item.lot_number})</span>}
+                          </td>
+                          <td className="px-3.5 py-3 text-xs text-slate-700 font-bold">
+                            <div className="flex items-center gap-1.5">
+                              <span>{item.expiry_date ? item.expiry_date.split('T')[0] : '—'}</span>
+                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-50 text-amber-700 border border-amber-200">
+                                Expired
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3.5 py-3 text-xs text-slate-600">
+                            <div>{item.deactivated_at ? new Date(item.deactivated_at).toLocaleString() : '—'}</div>
+                            <div className="text-[10px] text-slate-400 font-semibold">{item.deactivated_by_name || 'Staff User'}</div>
+                          </td>
+                          <td className="px-3.5 py-3 text-xs italic text-slate-600 max-w-[220px] truncate" title={item.deactivation_reason}>
+                            {item.deactivation_reason || 'Expired item write-off'}
+                          </td>
+                          <td className="px-3.5 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleReactivateItem(item)}
+                              className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs"
+                              title="Restore item batch back to active inventory"
+                            >
+                              Reactivate
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredDeactItems.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-12 text-center text-slate-400 italic text-xs">
+                            {deactSearchTerm.trim() ? (
+                              <p>No deactivated items match "{deactSearchTerm}"</p>
+                            ) : (
+                              <p>No deactivated or expired items recorded for this department.</p>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* ── Deactivate Expired Item Modal ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {deactModalItem && (
+          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl max-w-md w-full space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2 text-slate-900 font-black text-base">
+                  <AlertTriangle size={20} className="text-slate-700" /> Deactivate Expired Consumable
+                </div>
+                <button type="button" onClick={() => setDeactModalItem(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <p className="text-slate-700 font-medium leading-relaxed">
+                  You are deactivating and writing off <strong className="text-slate-900">{deactModalItem.name}</strong>
+                  {deactModalItem.batch_number ? ` (Batch #${deactModalItem.batch_number})` : ''}.
+                </p>
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 font-medium space-y-1">
+                  <p className="font-bold text-[11px] uppercase tracking-wider">Effect of Deactivation:</p>
+                  <ul className="list-disc list-inside text-[11px] space-y-0.5">
+                    <li>Quarantines live available quantity to 0</li>
+                    <li>Excludes item from patient clinical consumption sheets</li>
+                    <li>Logs a write-off entry in the Deactivated & Expired Items tab</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
+                    Reason for Deactivation / Write-off
+                  </label>
+                  <input
+                    type="text"
+                    value={deactReasonInput}
+                    onChange={(e) => setDeactReasonInput(e.target.value)}
+                    placeholder="e.g. Expired batch write-off / Damaged packaging"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-slate-400 focus:bg-white"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setDeactModalItem(null)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeactivate}
+                  disabled={submittingDeact}
+                  className="px-4 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  {submittingDeact ? <Loader2 size={14} className="animate-spin" /> : <AlertTriangle size={14} />}
+                  Confirm Deactivation
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── Lumina AI Consumables Intelligence Report Modal ───────────────────────── */}
       <AnimatePresence>

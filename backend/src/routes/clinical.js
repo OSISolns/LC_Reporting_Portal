@@ -99,6 +99,9 @@ router.get('/inventory/distributed-stock', checkInventoryOrClinicalRole('view'),
 router.get('/inventory/consumables', checkInventoryOrClinicalRole('view'), clinicalController.getConsumablesLog);
 router.get('/inventory/consumables/summary', checkInventoryOrClinicalRole('view'), clinicalController.getConsumablesSummary);
 router.post('/inventory/consumables', checkInventoryOrClinicalRole('edit'), clinicalController.logConsumable);
+router.post('/inventory/consumables/deactivate', checkInventoryOrClinicalRole('edit'), clinicalController.deactivateConsumable);
+router.post('/inventory/consumables/reactivate', checkInventoryOrClinicalRole('edit'), clinicalController.reactivateConsumable);
+router.get('/inventory/consumables/deactivated', checkInventoryOrClinicalRole('view'), clinicalController.getDeactivatedConsumables);
 router.post('/inventory/master', checkPermission('inventory', 'create'), clinicalController.createmasterInventory);
 router.get('/inventory/master/ai-classify', checkPermission('inventory', 'edit'), clinicalController.aiClassifyMasterItems);
 router.post('/inventory/master/ai-apply', checkPermission('inventory', 'edit'), clinicalController.aiApplyMasterItemsClassifications);

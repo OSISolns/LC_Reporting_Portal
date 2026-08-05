@@ -2769,7 +2769,7 @@ const getDepartmentForRole = async (role) => {
 
 exports.getDistributedStock = async (req, res) => {
   try {
-    const { include_central } = req.query;
+    const { include_central, include_deactivated } = req.query;
     
     // Fetch General Store ID dynamically
     const { rows: gsRows } = await db.query("SELECT id FROM departments WHERE UPPER(name) = 'GENERAL STORE' LIMIT 1");
@@ -2793,7 +2793,11 @@ exports.getDistributedStock = async (req, res) => {
           sb.created_at as purchase_time,
           sb.purchase_price as price,
           ds.quantity,
-          v.name as vendor
+          v.name as vendor,
+          COALESCE(ds.status, 'active') as status,
+          ds.deactivated_at,
+          ds.deactivated_by_name,
+          ds.deactivation_reason
         FROM department_stock ds
         JOIN master_inventory mi ON ds.item_id = mi.id
         LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
@@ -2803,6 +2807,7 @@ exports.getDistributedStock = async (req, res) => {
         -- run out and needs re-ordering; only negatives (anomalies) are hidden.
         WHERE ds.quantity >= 0
           AND (d.name IS NULL OR (d.name NOT LIKE '%Central%' AND d.name NOT LIKE '%Store%'))
+          ${include_deactivated === 'true' ? '' : "AND (ds.status IS NULL OR ds.status != 'deactivated')"}
     `;
 
     if (include_central === 'true') {
@@ -2824,11 +2829,16 @@ exports.getDistributedStock = async (req, res) => {
         sb.created_at as purchase_time,
         sb.purchase_price as price,
         sb.quantity,
-        v.name as vendor
+        v.name as vendor,
+        COALESCE(sb.status, 'active') as status,
+        sb.deactivated_at,
+        sb.deactivated_by_name,
+        sb.deactivation_reason
       FROM stock_batches sb
       JOIN master_inventory mi ON sb.item_id = mi.id
       LEFT JOIN vendors v ON sb.vendor_id = v.id
       WHERE sb.quantity > 0
+        ${include_deactivated === 'true' ? '' : "AND (sb.status IS NULL OR sb.status != 'deactivated')"}
       `;
     }
 
@@ -2839,6 +2849,172 @@ exports.getDistributedStock = async (req, res) => {
   } catch (error) {
     console.error('Error in getDistributedStock:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ── Deactivate Expired Consumable Item Batch ──────────────────────────────────
+exports.deactivateConsumable = async (req, res) => {
+  try {
+    const { dept_stock_id, batch_id, item_id, department_id, reason } = req.body;
+    const userName = req.user?.name || req.user?.username || 'Staff User';
+    const userId = req.user?.id || null;
+    const deactivationReason = reason || 'Expired Item Write-off';
+
+    let itemInfo = null;
+    let deptName = null;
+
+    if (department_id) {
+      const { rows: dRows } = await db.query('SELECT name FROM departments WHERE id = $1', [department_id]);
+      deptName = dRows[0]?.name || null;
+    }
+
+    if (item_id) {
+      const { rows: iRows } = await db.query('SELECT name, unit_of_measure FROM master_inventory WHERE id = $1', [item_id]);
+      itemInfo = iRows[0] || null;
+    }
+
+    let quarantinedQty = 0;
+
+    if (dept_stock_id) {
+      const { rows: dsRows } = await db.query('SELECT quantity FROM department_stock WHERE id = $1', [dept_stock_id]);
+      quarantinedQty = Number(dsRows[0]?.quantity || 0);
+
+      await db.query(
+        `UPDATE department_stock 
+         SET status = 'deactivated', 
+             quantity = 0,
+             deactivated_at = CURRENT_TIMESTAMP, 
+             deactivated_by_name = $1, 
+             deactivation_reason = $2 
+         WHERE id = $3`,
+        [userName, deactivationReason, dept_stock_id]
+      );
+    } else if (batch_id) {
+      const { rows: sbRows } = await db.query('SELECT quantity FROM stock_batches WHERE id = $1', [batch_id]);
+      quarantinedQty = Number(sbRows[0]?.quantity || 0);
+
+      await db.query(
+        `UPDATE stock_batches 
+         SET status = 'deactivated', 
+             quantity = 0,
+             deactivated_at = CURRENT_TIMESTAMP, 
+             deactivated_by_name = $1, 
+             deactivation_reason = $2 
+         WHERE id = $3`,
+        [userName, deactivationReason, batch_id]
+      );
+    }
+
+    // Insert an audit trail entry in consumables_log
+    if (item_id && department_id) {
+      await db.query(
+        `INSERT INTO consumables_log 
+         (department_id, department_name, item_id, item_name, batch_id, quantity, unit, notes, logged_by, logged_by_name, consumed_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)`,
+        [
+          department_id,
+          deptName || 'DEPARTMENT',
+          item_id,
+          itemInfo?.name || 'Consumable Item',
+          batch_id || null,
+          0,
+          itemInfo?.unit_of_measure || 'pcs',
+          `[DEACTIVATED EXPIRED STOCK] Write-off (${quarantinedQty} pcs quarantined): ${deactivationReason}`,
+          userId,
+          userName
+        ]
+      );
+    }
+
+    res.json({ success: true, message: 'Expired item deactivated and quarantined successfully.' });
+  } catch (error) {
+    console.error('Error in deactivateConsumable:', error);
+    res.status(500).json({ success: false, message: 'Failed to deactivate consumable item' });
+  }
+};
+
+// ── Reactivate Consumable Item Batch ──────────────────────────────────────────
+exports.reactivateConsumable = async (req, res) => {
+  try {
+    const { dept_stock_id, batch_id } = req.body;
+
+    if (dept_stock_id) {
+      await db.query(
+        `UPDATE department_stock 
+         SET status = 'active', 
+             deactivated_at = NULL, 
+             deactivated_by_name = NULL, 
+             deactivation_reason = NULL 
+         WHERE id = $1`,
+        [dept_stock_id]
+      );
+    }
+
+    if (batch_id) {
+      await db.query(
+        `UPDATE stock_batches 
+         SET status = 'active', 
+             deactivated_at = NULL, 
+             deactivated_by_name = NULL, 
+             deactivation_reason = NULL 
+         WHERE id = $1`,
+        [batch_id]
+      );
+    }
+
+    res.json({ success: true, message: 'Consumable item reactivated successfully.' });
+  } catch (error) {
+    console.error('Error in reactivateConsumable:', error);
+    res.status(500).json({ success: false, message: 'Failed to reactivate consumable item' });
+  }
+};
+
+// ── Fetch Deactivated Consumables Log ────────────────────────────────────────
+exports.getDeactivatedConsumables = async (req, res) => {
+  try {
+    const { department_id } = req.query;
+
+    let sql = `
+      SELECT
+        ds.id as dept_stock_id,
+        ds.department_id,
+        d.name as department,
+        mi.id as item_id,
+        mi.name,
+        mi.sku,
+        mi.unit_of_measure,
+        mi.category,
+        ds.batch_id,
+        sb.batch_number,
+        sb.lot_number,
+        sb.expiry_date,
+        ds.quantity,
+        v.name as vendor,
+        ds.status,
+        ds.deactivated_at,
+        ds.deactivated_by_name,
+        ds.deactivation_reason
+      FROM department_stock ds
+      JOIN master_inventory mi ON ds.item_id = mi.id
+      LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
+      LEFT JOIN departments d ON ds.department_id = d.id
+      LEFT JOIN vendors v ON sb.vendor_id = v.id
+      WHERE ds.status = 'deactivated'
+    `;
+
+    const params = [];
+    if (department_id) {
+      params.push(department_id);
+      sql += ` AND ds.department_id = $${params.length}`;
+    }
+
+    sql += ' ORDER BY ds.deactivated_at DESC';
+
+    const { rows } = await db.query(sql, params);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error in getDeactivatedConsumables:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch deactivated consumables' });
   }
 };
 
