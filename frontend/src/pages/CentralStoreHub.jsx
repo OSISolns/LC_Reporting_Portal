@@ -159,18 +159,59 @@ export default function CentralStoreHub() {
   const handleExcelFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // 1. File type validation
+    const validExts = ['.xlsx', '.xls', '.csv'];
+    const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if (!validExts.includes(ext)) {
+      toast.error(`❌ Unsupported file type "${ext}". Please upload a .xlsx, .xls, or .csv file.`);
+      e.target.value = '';
+      return;
+    }
+
+    // 2. File size guard (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('❌ File is too large (max 10MB). Please reduce the file size and try again.');
+      e.target.value = '';
+      return;
+    }
+
     setExcelFileName(file.name);
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
         const bstr = evt.target.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
+
+        // 3. Workbook must have at least one sheet
+        if (!wb.SheetNames || wb.SheetNames.length === 0) {
+          toast.error('❌ The uploaded file contains no sheets. Please use the provided template.');
+          setExcelFileName('');
+          return;
+        }
+
         const wsName = wb.SheetNames[0];
         const ws = wb.Sheets[wsName];
         const parsedData = XLSX.utils.sheet_to_json(ws);
 
+        // 4. Sheet must have rows
         if (!parsedData || parsedData.length === 0) {
-          toast.error("The uploaded Excel sheet contains no rows.");
+          toast.error(`❌ Sheet "${wsName}" is empty. Please fill in your stock data and re-upload.`);
+          setExcelFileName('');
+          return;
+        }
+
+        // 5. Detect column headers — at least one recognizable column must be present
+        const firstRow = parsedData[0];
+        const colKeys = Object.keys(firstRow).map(k => k.toLowerCase().trim());
+        const knownCols = ['item name', 'item_name', 'name', 'item', 'sku', 'quantity', 'qty', 'expiry date', 'expiry_date', 'expiry'];
+        const hasRecognisedCols = knownCols.some(c => colKeys.includes(c));
+        if (!hasRecognisedCols) {
+          toast.error(
+            `❌ Unrecognised column headers in "${file.name}". Expected columns like "Item Name", "SKU", "Quantity", "Expiry Date". Download the template and try again.`,
+            { duration: 7000 }
+          );
+          setExcelFileName('');
           return;
         }
 
@@ -186,36 +227,89 @@ export default function CentralStoreHub() {
           department: String(row['Department'] || row['department'] || 'GENERAL STORE').trim()
         })).filter(item => item.item_name || item.sku);
 
+        // 6. Validate that we got some usable rows
+        const skippedRows = parsedData.length - mappedItems.length;
+        if (mappedItems.length === 0) {
+          toast.error(
+            `❌ No valid items found in "${file.name}". Every row must have at least an "Item Name" or "SKU". Skipped ${skippedRows} rows.`,
+            { duration: 6000 }
+          );
+          setExcelFileName('');
+          return;
+        }
+
         setExcelPreviewItems(mappedItems);
-        toast.success(`Loaded ${mappedItems.length} items from ${file.name}`);
+
+        // Show a helpful warning if some rows were skipped
+        if (skippedRows > 0) {
+          toast(`⚠️ Loaded ${mappedItems.length} valid items. ${skippedRows} row(s) skipped — missing Item Name and SKU.`, {
+            icon: '⚠️', duration: 5000
+          });
+        } else {
+          toast.success(`✅ Loaded ${mappedItems.length} items from ${file.name}`);
+        }
       } catch (err) {
-        console.error("Error reading Excel file:", err);
-        toast.error("Failed to parse Excel file. Please ensure it is a valid .xlsx or .xls file.");
+        console.error('Error reading Excel file:', err);
+        // Surface a specific message for common parse errors
+        const msg = err?.message || '';
+        if (msg.includes('password') || msg.includes('encrypted')) {
+          toast.error('❌ This file appears to be password-protected. Please remove the password and re-upload.');
+        } else if (msg.includes('zip') || msg.includes('magic number') || msg.includes('CFB')) {
+          toast.error('❌ The file is corrupt or not a valid Excel file. Please re-save it as .xlsx and re-upload.');
+        } else {
+          toast.error('❌ Failed to read the file. Please ensure it is a valid .xlsx, .xls, or .csv and not corrupted.');
+        }
+        setExcelFileName('');
       }
+    };
+    reader.onerror = () => {
+      toast.error('❌ Could not read the file. Please try again.');
+      setExcelFileName('');
     };
     reader.readAsBinaryString(file);
   };
 
   const handleConfirmExcelImport = async () => {
     if (excelPreviewItems.length === 0) {
-      toast.error("No items to import.");
+      toast.error('❌ No items to import. Please upload a valid Excel file first.');
       return;
     }
     try {
       setUploadingExcel(true);
       const res = await api.post('/clinical/inventory/import-excel', { items: excelPreviewItems });
       if (res.data.success) {
-        toast.success(res.data.message || "Stock successfully updated from Excel!");
+        const { updatedCount = 0, createdCount = 0, failedCount = 0, totalProcessed = 0 } = res.data;
+        if (failedCount > 0 && (updatedCount + createdCount) === 0) {
+          toast.error(`⚠️ Import completed but all ${failedCount} items failed to save. Please check your data format.`, { duration: 7000 });
+        } else if (failedCount > 0) {
+          toast(`⚠️ Import partially successful: ${updatedCount} updated, ${createdCount} created. ${failedCount} item(s) could not be saved.`, {
+            icon: '⚠️', duration: 6000
+          });
+        } else {
+          toast.success(res.data.message || `✅ Stock updated! ${updatedCount} updated, ${createdCount} new items added.`);
+        }
         setExcelImportOpen(false);
         setExcelPreviewItems([]);
         setExcelFileName('');
         loadData(true);
       } else {
-        toast.error(res.data.message || "Failed to update stock from Excel.");
+        toast.error(`❌ ${res.data.message || 'Failed to update stock from Excel.'}`, { duration: 6000 });
       }
     } catch (err) {
-      console.error("Error importing Excel stock:", err);
-      toast.error(err.response?.data?.message || "Failed to import stock from Excel.");
+      console.error('Error importing Excel stock:', err);
+      const status = err?.response?.status;
+      const serverMsg = err?.response?.data?.message;
+      if (status === 400) {
+        toast.error(`❌ Invalid data: ${serverMsg || 'The uploaded items could not be processed.'}`, { duration: 6000 });
+      } else if (status === 401 || status === 403) {
+        toast.error('❌ You do not have permission to import stock. Please contact your administrator.');
+      } else if (status === 413) {
+        toast.error('❌ The payload is too large. Please split your Excel file into smaller batches.');
+      } else if (status >= 500) {
+        toast.error(`❌ Server error during import: ${serverMsg || 'An unexpected error occurred. Please try again or contact IT.'}`, { duration: 7000 });
+      } else {
+        toast.error(`❌ ${serverMsg || 'Failed to import stock from Excel. Please check your connection and try again.'}`);
+      }
     } finally {
       setUploadingExcel(false);
     }
