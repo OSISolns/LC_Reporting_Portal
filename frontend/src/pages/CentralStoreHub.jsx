@@ -292,7 +292,7 @@ export default function CentralStoreHub() {
         }).filter(item => item.item_name || item.sku);
 
         // 6. Validate that we got some usable rows
-        const skippedRows = parsedData.length - mappedItems.length;
+        const skippedRows = allSheetRows.length - mappedItems.length;
         if (mappedItems.length === 0) {
           toast.error(
             `❌ No valid items found in "${file.name}". Every row must have at least an "Item Name" or "SKU". Skipped ${skippedRows} rows.`,
