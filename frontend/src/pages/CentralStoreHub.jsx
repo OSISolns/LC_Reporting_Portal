@@ -178,6 +178,7 @@ export default function CentralStoreHub() {
           sku: String(row['SKU'] || row['sku'] || row['Sku'] || '').trim(),
           item_name: String(row['Item Name'] || row['item_name'] || row['NAME'] || row['Item'] || '').trim(),
           batch_number: String(row['Batch Number'] || row['batch_number'] || row['BATCH'] || row['Batch'] || '').trim(),
+          lot_number: String(row['Lot Number'] || row['Lot'] || row['LOT'] || row['Lot #'] || row['lot_number'] || '').trim(),
           quantity: Number(row['Quantity'] || row['quantity'] || row['QTY'] || row['Qty'] || 0),
           expiry_date: parseExcelDate(row['Expiry Date'] || row['expiry_date'] || row['EXPIRY'] || row['Expiry'] || ''),
           unit_price: Number(row['Unit Price'] || row['unit_price'] || row['PRICE'] || row['Price'] || 0),
