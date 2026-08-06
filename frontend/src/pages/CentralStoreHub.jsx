@@ -715,7 +715,7 @@ export default function CentralStoreHub() {
       const itemNameUpper = item.name ? item.name.toUpperCase() : '';
 
       let matchDept = false;
-      if (activeDept === 'All Departments') {
+      if (activeDept === 'All Departments' || activeDept === 'GENERAL STORE' || !activeDept) {
         matchDept = true;
       } else if (activeDept === 'DENTAL CLINIC') {
         if (itemDept === 'DENTAL LAB') {
