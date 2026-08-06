@@ -2514,9 +2514,16 @@ exports.importStockExcel = async (req, res) => {
       }
     }
 
-    // Execute all updates/inserts in a single batch
-    if (updateStatements.length > 0) {
-      await db.batch(updateStatements);
+    // Execute all updates/inserts sequentially with per-statement error isolation
+    for (const stmt of updateStatements) {
+      try {
+        await db.query(stmt.sql, stmt.args);
+      } catch (stmtErr) {
+        console.error('❌ importStockExcel statement failed:', stmtErr.message);
+        console.error('  SQL:', stmt.sql);
+        console.error('  Args:', stmt.args);
+        // Non-fatal: continue processing remaining statements
+      }
     }
 
     res.json({
