@@ -141,37 +141,59 @@ export default function CentralStoreHub() {
     XLSX.writeFile(wb, "Stock_Update_Template.xlsx");
   };
 
+  const getRowVal = (row, possibleNames) => {
+    if (!row || typeof row !== 'object') return null;
+    const keys = Object.keys(row);
+    for (const name of possibleNames) {
+      const cleanTarget = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const matchedKey = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanTarget);
+      if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null) {
+        const val = String(row[matchedKey]).trim();
+        if (val !== '') return row[matchedKey];
+      }
+    }
+    return null;
+  };
+
   const parseExcelDate = (val) => {
     if (val === null || val === undefined || val === '') return '';
-    // If it's a numeric Excel serial date
-    if (typeof val === 'number') {
-      if (val > 30000 && val < 70000) {
-        const d = new Date(Math.round((val - 25569) * 86400 * 1000));
-        const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const y = d.getUTCFullYear();
-        return `${m}/${y}`;
-      }
+    if (val instanceof Date && !isNaN(val.getTime())) {
+      const m = String(val.getUTCMonth() + 1).padStart(2, '0');
+      return `${m}/${val.getUTCFullYear()}`;
+    }
+    if (typeof val === 'number' && val > 30000 && val < 70000) {
+      const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      return `${m}/${d.getUTCFullYear()}`;
     }
     const str = String(val).trim();
     if (!str) return '';
-    // Numeric string serial date
     if (/^\d{5}$/.test(str)) {
       const num = Number(str);
       if (num > 30000 && num < 70000) {
         const d = new Date(Math.round((num - 25569) * 86400 * 1000));
         const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const y = d.getUTCFullYear();
-        return `${m}/${y}`;
+        return `${m}/${d.getUTCFullYear()}`;
       }
     }
-    // YYYY-MM-DD → MM/YYYY
-    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (isoMatch) return `${isoMatch[2]}/${isoMatch[1]}`;
-    // MM/YYYY or MM-YYYY already
-    if (/^\d{2}[\/\-]\d{4}$/.test(str)) return str.replace('-', '/');
-    // YYYY-MM → MM/YYYY
-    const shortIso = str.match(/^(\d{4})-(\d{2})$/);
-    if (shortIso) return `${shortIso[2]}/${shortIso[1]}`;
+    const isoFull = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (isoFull) {
+      return `${isoFull[2].padStart(2, '0')}/${isoFull[1]}`;
+    }
+    const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (dmy) {
+      return `${dmy[2].padStart(2, '0')}/${dmy[3]}`;
+    }
+    const my = str.match(/^(\d{1,2})[\/\-](\d{4})/);
+    if (my) {
+      return `${my[1].padStart(2, '0')}/${my[2]}`;
+    }
+    const myShort = str.match(/^(\d{1,2})[\/\-](\d{2})$/);
+    if (myShort) {
+      const m = myShort[1].padStart(2, '0');
+      const yr = Number(myShort[2]) > 50 ? `19${myShort[2]}` : `20${myShort[2]}`;
+      return `${m}/${yr}`;
+    }
     return str;
   };
 
@@ -222,8 +244,8 @@ export default function CentralStoreHub() {
 
         // 5. Detect column headers — at least one recognizable column must be present
         const firstRow = parsedData[0];
-        const colKeys = Object.keys(firstRow).map(k => k.toLowerCase().trim());
-        const knownCols = ['item name', 'item_name', 'name', 'item', 'sku', 'quantity', 'qty', 'expiry date', 'expiry_date', 'expiry'];
+        const colKeys = Object.keys(firstRow).map(k => k.toLowerCase().replace(/[^a-z0-9]/g, ''));
+        const knownCols = ['itemname', 'name', 'item', 'sku', 'quantity', 'qty', 'expirydate', 'expiry', 'expdate', 'stock'];
         const hasRecognisedCols = knownCols.some(c => colKeys.includes(c));
         if (!hasRecognisedCols) {
           toast.error(
@@ -235,28 +257,29 @@ export default function CentralStoreHub() {
         }
 
         const mappedItems = parsedData.map(row => {
-          // Broad column alias matching
-          const rawName = row['Item Name'] ?? row['item_name'] ?? row['NAME'] ?? row['Item'] ?? row['ITEM NAME'] ?? '';
-          const rawSku  = row['SKU'] ?? row['sku'] ?? row['Sku'] ?? row['SKU No'] ?? '';
-          const rawBatch = row['Batch Number'] ?? row['batch_number'] ?? row['BATCH'] ?? row['Batch'] ?? row['Batch #'] ?? row['BATCH NUMBER'] ?? '';
-          const rawLot  = row['Lot Number'] ?? row['Lot'] ?? row['LOT'] ?? row['Lot #'] ?? row['lot_number'] ?? row['LOT NUMBER'] ?? '';
-          const rawQty  = row['Quantity'] ?? row['quantity'] ?? row['QTY'] ?? row['Qty'] ?? row['QUANTITY'] ?? row['Qty Received'] ?? row['Stock Qty'] ?? null;
-          const rawExp  = row['Expiry Date'] ?? row['expiry_date'] ?? row['EXPIRY'] ?? row['Expiry'] ?? row['EXPIRY DATE'] ?? row['Exp Date'] ?? row['Exp. Date'] ?? row['EXP DATE'] ?? null;
-          const rawPrice = row['Unit Price'] ?? row['unit_price'] ?? row['PRICE'] ?? row['Price'] ?? row['Cost'] ?? null;
-          const rawCat  = row['Category'] ?? row['category'] ?? null;
-          const rawDept = row['Department'] ?? row['department'] ?? null;
+          const rawName  = getRowVal(row, ['item name', 'item_name', 'name', 'item', 'description', 'product name', 'product']);
+          const rawSku   = getRowVal(row, ['sku', 'item code', 'code', 'barcode', 'sku no', 'skuno']);
+          const rawBatch = getRowVal(row, ['batch number', 'batch_number', 'batch', 'batch #', 'batch no', 'lot number', 'lot']);
+          const rawLot   = getRowVal(row, ['lot number', 'lot_number', 'lot', 'lot #', 'lot no']);
+          const rawQty   = getRowVal(row, ['quantity', 'qty', 'stock', 'qty received', 'stock qty', 'qty in hand', 'in hand', 'current stock', 'balance', 'count']);
+          const rawExp   = getRowVal(row, ['expiry date', 'expiry_date', 'expiry', 'exp date', 'exp. date', 'expiration date', 'exp']);
+          const rawPrice = getRowVal(row, ['unit price', 'unit_price', 'price', 'cost', 'rate', 'purchase price']);
+          const rawCat   = getRowVal(row, ['category', 'cat']);
+          const rawDept  = getRowVal(row, ['department', 'dept']);
+
+          const skuStr = rawSku !== null ? String(rawSku).trim() : '';
+          const nameStr = rawName !== null ? String(rawName).trim() : '';
 
           return {
-            sku:          String(rawSku || '').trim(),
-            item_name:    String(rawName || '').trim(),
-            batch_number: String(rawBatch || '').trim(),
-            lot_number:   String(rawLot || '').trim(),
-            // Use explicit parse — avoid || so qty=0 isn't swallowed
-            quantity:     rawQty !== null && rawQty !== '' ? Number(rawQty) : 0,
+            sku:          skuStr,
+            item_name:    nameStr,
+            batch_number: rawBatch !== null ? String(rawBatch).trim() : '',
+            lot_number:   rawLot !== null ? String(rawLot).trim() : '',
+            quantity:     rawQty !== null && !isNaN(Number(rawQty)) ? Number(rawQty) : null,
             expiry_date:  parseExcelDate(rawExp),
-            unit_price:   rawPrice !== null && rawPrice !== '' ? Number(rawPrice) : 0,
-            category:     String(rawCat || 'consumables').trim(),
-            department:   String(rawDept || 'GENERAL STORE').trim()
+            unit_price:   rawPrice !== null && !isNaN(Number(rawPrice)) ? Number(rawPrice) : null,
+            category:     rawCat !== null ? String(rawCat).trim() : 'consumables',
+            department:   rawDept !== null ? String(rawDept).trim() : 'GENERAL STORE'
           };
         }).filter(item => item.item_name || item.sku);
 

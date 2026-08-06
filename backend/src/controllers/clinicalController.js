@@ -2362,8 +2362,8 @@ exports.importStockExcel = async (req, res) => {
       masterNormList.push({ id: m.id, normName: normName || '', normSku: normSku || '' });
     });
 
-    // 2. Bulk pre-fetch all stock batches
-    const { rows: allBatches } = await db.query("SELECT id, item_id, quantity, batch_number, expiry_date FROM stock_batches ORDER BY id DESC");
+    // 2. Bulk pre-fetch all stock batches including lot_number
+    const { rows: allBatches } = await db.query("SELECT id, item_id, quantity, batch_number, lot_number, expiry_date FROM stock_batches ORDER BY id DESC");
     const batchesByItemId = new Map();
     allBatches.forEach(b => {
       if (!batchesByItemId.has(b.item_id)) batchesByItemId.set(b.item_id, []);
@@ -2383,18 +2383,17 @@ exports.importStockExcel = async (req, res) => {
     // Helper to normalise expiry date from any format to MM/YYYY
     const parseExp = (val) => {
       if (val === null || val === undefined || val === '') return null;
-      // Numeric Excel serial date
-      if (typeof val === 'number') {
-        if (val > 30000 && val < 70000) {
-          const d = new Date(Math.round((val - 25569) * 86400 * 1000));
-          const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-          return `${m}/${d.getUTCFullYear()}`;
-        }
-        return null;
+      if (val instanceof Date && !isNaN(val.getTime())) {
+        const m = String(val.getUTCMonth() + 1).padStart(2, '0');
+        return `${m}/${val.getUTCFullYear()}`;
+      }
+      if (typeof val === 'number' && val > 30000 && val < 70000) {
+        const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+        const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+        return `${m}/${d.getUTCFullYear()}`;
       }
       const str = String(val).trim();
       if (!str) return null;
-      // Numeric string serial
       if (/^\d{5}$/.test(str)) {
         const num = Number(str);
         if (num > 30000 && num < 70000) {
@@ -2403,14 +2402,24 @@ exports.importStockExcel = async (req, res) => {
           return `${m}/${d.getUTCFullYear()}`;
         }
       }
-      // YYYY-MM-DD → MM/YYYY
-      const isoFull = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (isoFull) return `${isoFull[2]}/${isoFull[1]}`;
-      // YYYY-MM → MM/YYYY
-      const isoShort = str.match(/^(\d{4})-(\d{2})$/);
-      if (isoShort) return `${isoShort[2]}/${isoShort[1]}`;
-      // MM/YYYY or MM-YYYY already — normalise separator
-      if (/^\d{2}[\/\-]\d{4}$/.test(str)) return str.replace('-', '/');
+      const isoFull = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+      if (isoFull) {
+        return `${isoFull[2].padStart(2, '0')}/${isoFull[1]}`;
+      }
+      const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+      if (dmy) {
+        return `${dmy[2].padStart(2, '0')}/${dmy[3]}`;
+      }
+      const my = str.match(/^(\d{1,2})[\/\-](\d{4})/);
+      if (my) {
+        return `${my[1].padStart(2, '0')}/${my[2]}`;
+      }
+      const myShort = str.match(/^(\d{1,2})[\/\-](\d{2})$/);
+      if (myShort) {
+        const m = myShort[1].padStart(2, '0');
+        const yr = Number(myShort[2]) > 50 ? `19${myShort[2]}` : `20${myShort[2]}`;
+        return `${m}/${yr}`;
+      }
       return str;
     };
 
@@ -2421,10 +2430,12 @@ exports.importStockExcel = async (req, res) => {
         const batchNum = (item.batch_number || item.batch || '').toString().trim() || null;
         const lotNum = (item.lot_number || item.lot || '').toString().trim() || null;
         const expDate = parseExp(item.expiry_date ?? item.expiry);
-        // Use nullish coalescing so qty=0 is preserved (not swallowed by ||)
-        const rawQty = item.quantity ?? item.qty ?? 0;
-        const qty = Math.max(0, Number(rawQty) || 0);
-        const price = parseFloat(item.unit_price || item.price) || 0;
+
+        const hasQty = item.quantity !== null && item.quantity !== undefined;
+        const qty = hasQty ? Math.max(0, Number(item.quantity) || 0) : 0;
+
+        const hasPrice = item.unit_price !== null && item.unit_price !== undefined && item.unit_price !== '';
+        const price = hasPrice ? Math.max(0, Number(item.unit_price) || 0) : 0;
 
         if (!cleanName && !cleanSku) continue;
 
@@ -2467,7 +2478,7 @@ exports.importStockExcel = async (req, res) => {
           masterBySku.set(cleanSku.toUpperCase(), itemId);
         }
 
-        // 2. Resolve Department ID if specified
+        // Resolve Department ID if specified in Excel
         let deptId = defaultDeptId;
         if (item.department) {
           const { rows: specifiedDept } = await db.query("SELECT id FROM departments WHERE UPPER(TRIM(name)) = UPPER(TRIM($1)) LIMIT 1", [item.department.toString().trim()]);
@@ -2476,7 +2487,7 @@ exports.importStockExcel = async (req, res) => {
           }
         }
 
-        // 3. Matching & Update Logic for Stock Batches / Stock In Hand
+        // Matching & Update Logic for Stock Batches / Stock In Hand
         const existingBatches = batchesByItemId.get(itemId) || [];
         let matchedBatch = null;
 
@@ -2484,7 +2495,10 @@ exports.importStockExcel = async (req, res) => {
           const searchBatch = batchNum || lotNum;
           if (searchBatch || expDate) {
             matchedBatch = existingBatches.find(b => 
-              (searchBatch && b.batch_number && b.batch_number.trim().toUpperCase() === searchBatch.toUpperCase()) ||
+              (searchBatch && (
+                (b.batch_number && b.batch_number.trim().toUpperCase() === searchBatch.toUpperCase()) ||
+                (b.lot_number && b.lot_number.trim().toUpperCase() === searchBatch.toUpperCase())
+              )) ||
               (expDate && b.expiry_date && b.expiry_date.trim() === expDate)
             );
           }
@@ -2500,14 +2514,24 @@ exports.importStockExcel = async (req, res) => {
           const effectiveLot = lotNum || batchNum;
           updateStatements.push({
             sql: `UPDATE stock_batches 
-                  SET quantity     = CASE WHEN $1 > 0 THEN $1 ELSE quantity END,
-                      purchase_price = CASE WHEN $2 > 0 THEN $2 ELSE purchase_price END,
-                      expiry_date  = CASE WHEN $3 IS NOT NULL AND $3 != '' THEN $3 ELSE expiry_date END,
-                      batch_number = CASE WHEN $4 IS NOT NULL AND $4 != '' THEN $4 ELSE batch_number END,
-                      lot_number   = CASE WHEN $5 IS NOT NULL AND $5 != '' THEN $5 ELSE lot_number END,
-                      department_id = COALESCE($6, department_id)
-                  WHERE id = $7`,
-            args: [qty, price, expDate, batchNum || effectiveLot, effectiveLot, deptId, matchedBatch.id]
+                  SET quantity       = CASE WHEN $1 = 1 THEN $2 ELSE quantity END,
+                      purchase_price = CASE WHEN $3 = 1 THEN $4 ELSE purchase_price END,
+                      expiry_date    = CASE WHEN $5 IS NOT NULL AND $5 != '' THEN $5 ELSE expiry_date END,
+                      batch_number   = CASE WHEN $6 IS NOT NULL AND $6 != '' THEN $6 ELSE batch_number END,
+                      lot_number     = CASE WHEN $7 IS NOT NULL AND $7 != '' THEN $7 ELSE lot_number END,
+                      department_id  = COALESCE($8, department_id)
+                  WHERE id = $9`,
+            args: [
+              hasQty ? 1 : 0, 
+              qty, 
+              hasPrice ? 1 : 0, 
+              price, 
+              expDate, 
+              batchNum || effectiveLot, 
+              effectiveLot, 
+              deptId, 
+              matchedBatch.id
+            ]
           });
           updatedCount++;
         } else {
@@ -2517,7 +2541,7 @@ exports.importStockExcel = async (req, res) => {
           updateStatements.push({
             sql: `INSERT INTO stock_batches (item_id, batch_number, lot_number, expiry_date, quantity, purchase_price, department_id, storage, status)
                   VALUES ($1, $2, $3, $4, $5, $6, $7, 'Main Shelf', 'Normal')`,
-            args: [itemId, newBatchNum, newLotNum, expDate, qty, price, defaultDeptId]
+            args: [itemId, newBatchNum, newLotNum, expDate, qty, price, deptId]
           });
           createdCount++;
         }
