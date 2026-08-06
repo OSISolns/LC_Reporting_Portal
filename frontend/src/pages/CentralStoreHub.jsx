@@ -224,48 +224,56 @@ export default function CentralStoreHub() {
         const bstr = evt.target.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
 
-        // 3. Workbook must have at least one sheet
-        if (!wb.SheetNames || wb.SheetNames.length === 0) {
-          toast.error('❌ The uploaded file contains no sheets. Please use the provided template.');
+        // 3. Scan all sheets and parse rows starting from the header row
+        let allSheetRows = [];
+        const knownCols = ['itemname', 'name', 'item', 'sku', 'quantity', 'qty', 'expirydate', 'expiry', 'expdate', 'stock', 'product', 'description'];
+
+        for (const sheetName of wb.SheetNames) {
+          const ws = wb.Sheets[sheetName];
+          if (!ws || !ws['!ref']) continue;
+
+          // Convert sheet to 2D array to locate the actual header row
+          const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          if (!rawRows || rawRows.length === 0) continue;
+
+          // Find the header row (first row with recognisable column names)
+          let headerIndex = -1;
+          for (let r = 0; r < Math.min(rawRows.length, 15); r++) {
+            const rowArr = rawRows[r];
+            if (!Array.isArray(rowArr)) continue;
+            const rowStr = rowArr.map(cell => String(cell).toLowerCase().replace(/[^a-z0-9]/g, '')).join(' ');
+            if (knownCols.some(k => rowStr.includes(k))) {
+              headerIndex = r;
+              break;
+            }
+          }
+
+          if (headerIndex === -1) headerIndex = 0;
+
+          // Parse objects starting from the header row
+          const sheetObjects = XLSX.utils.sheet_to_json(ws, { range: headerIndex, defval: '' });
+          if (Array.isArray(sheetObjects) && sheetObjects.length > 0) {
+            allSheetRows = allSheetRows.concat(sheetObjects);
+          }
+        }
+
+        // 4. Workbook must have rows
+        if (allSheetRows.length === 0) {
+          toast.error('❌ Could not find any valid stock data rows in the file. Please check column headers and try again.');
           setExcelFileName('');
           return;
         }
 
-        const wsName = wb.SheetNames[0];
-        const ws = wb.Sheets[wsName];
-        const parsedData = XLSX.utils.sheet_to_json(ws);
-
-        // 4. Sheet must have rows
-        if (!parsedData || parsedData.length === 0) {
-          toast.error(`❌ Sheet "${wsName}" is empty. Please fill in your stock data and re-upload.`);
-          setExcelFileName('');
-          return;
-        }
-
-        // 5. Detect column headers — at least one recognizable column must be present
-        const firstRow = parsedData[0];
-        const colKeys = Object.keys(firstRow).map(k => k.toLowerCase().replace(/[^a-z0-9]/g, ''));
-        const knownCols = ['itemname', 'name', 'item', 'sku', 'quantity', 'qty', 'expirydate', 'expiry', 'expdate', 'stock'];
-        const hasRecognisedCols = knownCols.some(c => colKeys.includes(c));
-        if (!hasRecognisedCols) {
-          toast.error(
-            `❌ Unrecognised column headers in "${file.name}". Expected columns like "Item Name", "SKU", "Quantity", "Expiry Date". Download the template and try again.`,
-            { duration: 7000 }
-          );
-          setExcelFileName('');
-          return;
-        }
-
-        const mappedItems = parsedData.map(row => {
-          const rawName  = getRowVal(row, ['item name', 'item_name', 'name', 'item', 'description', 'product name', 'product']);
-          const rawSku   = getRowVal(row, ['sku', 'item code', 'code', 'barcode', 'sku no', 'skuno']);
+        const mappedItems = allSheetRows.map(row => {
+          const rawName  = getRowVal(row, ['item name', 'item_name', 'name', 'item', 'description', 'product name', 'product', 'article']);
+          const rawSku   = getRowVal(row, ['sku', 'item code', 'code', 'barcode', 'sku no', 'skuno', 'ref']);
           const rawBatch = getRowVal(row, ['batch number', 'batch_number', 'batch', 'batch #', 'batch no', 'lot number', 'lot']);
           const rawLot   = getRowVal(row, ['lot number', 'lot_number', 'lot', 'lot #', 'lot no']);
-          const rawQty   = getRowVal(row, ['quantity', 'qty', 'stock', 'qty received', 'stock qty', 'qty in hand', 'in hand', 'current stock', 'balance', 'count']);
-          const rawExp   = getRowVal(row, ['expiry date', 'expiry_date', 'expiry', 'exp date', 'exp. date', 'expiration date', 'exp']);
-          const rawPrice = getRowVal(row, ['unit price', 'unit_price', 'price', 'cost', 'rate', 'purchase price']);
-          const rawCat   = getRowVal(row, ['category', 'cat']);
-          const rawDept  = getRowVal(row, ['department', 'dept']);
+          const rawQty   = getRowVal(row, ['quantity', 'qty', 'stock', 'qty received', 'stock qty', 'qty in hand', 'in hand', 'current stock', 'balance', 'count', 'qte']);
+          const rawExp   = getRowVal(row, ['expiry date', 'expiry_date', 'expiry', 'exp date', 'exp. date', 'expiration date', 'exp', 'peremption']);
+          const rawPrice = getRowVal(row, ['unit price', 'unit_price', 'price', 'cost', 'rate', 'purchase price', 'prix']);
+          const rawCat   = getRowVal(row, ['category', 'cat', 'type']);
+          const rawDept  = getRowVal(row, ['department', 'dept', 'service']);
 
           const skuStr = rawSku !== null ? String(rawSku).trim() : '';
           const nameStr = rawName !== null ? String(rawName).trim() : '';
