@@ -2543,7 +2543,9 @@ exports.getRequisitions = async (req, res) => {
             'item_name', mi.name,
             'unit_of_measure', COALESCE(mi.unit_of_measure, 'pcs'),
             'quantity', ri2.requested_quantity,
-            'approved_quantity', ri2.approved_quantity))
+            'approved_quantity', ri2.approved_quantity,
+            'expiry_date', ri2.expiry_date,
+            'batch_number', ri2.batch_number))
          FROM requisition_items ri2
          JOIN master_inventory mi ON ri2.item_id = mi.id
          WHERE ri2.requisition_id = r.id) AS items

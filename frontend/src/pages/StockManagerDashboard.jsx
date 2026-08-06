@@ -2163,14 +2163,14 @@ export default function StockManagerDashboard() {
               {/* Action Buttons */}
               <div className="mt-6 border-t border-slate-200 pt-5 flex flex-col gap-3">
                 {selectedRequisition.status === 'Pending' && (
-                  <div className="flex gap-3">
+                  <div className="flex items-center gap-3">
                     <button
                       onClick={() => {
                         setRequisitionToReject(selectedRequisition.id);
                         setShowRejectConfirm(true);
                       }}
                       disabled={processingAction}
-                      className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-sm py-3 rounded-xl border border-rose-200 transition-all cursor-pointer text-center flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-sm py-3 rounded-xl border border-rose-200 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-50"
                     >
                       <XCircle size={16} />
                       Reject
@@ -2178,30 +2178,30 @@ export default function StockManagerDashboard() {
                     <button
                       onClick={() => handleApproveRequisition(selectedRequisition.id)}
                       disabled={processingAction}
-                      className="flex-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow disabled:opacity-50"
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-600/30 hover:shadow-xl hover:shadow-emerald-600/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-50"
                     >
                       {processingAction ? (
                         <Loader2 className="h-4 w-4 animate-spin text-white" />
                       ) : (
                         <CheckCircle size={16} />
                       )}
-                      Approve Requisition
+                      Approve
                     </button>
                   </div>
                 )}
                 
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => setSelectedRequisition(null)}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm py-3 rounded-xl transition-all cursor-pointer text-center"
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-sm py-3 rounded-xl border border-slate-200/70 transition-all cursor-pointer text-center flex items-center justify-center shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
                   >
                     Close Drawer
                   </button>
                   <button
                     onClick={() => navigate('/central-store')}
-                    className="flex-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow"
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/30 hover:shadow-xl hover:shadow-indigo-600/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
                   >
-                    Manage in Store Hub
+                    Manage
                     <ArrowUpRight size={16} />
                   </button>
                 </div>
