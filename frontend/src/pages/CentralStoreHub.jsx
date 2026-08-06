@@ -141,6 +141,21 @@ export default function CentralStoreHub() {
     XLSX.writeFile(wb, "Stock_Update_Template.xlsx");
   };
 
+  const parseExcelDate = (val) => {
+    if (val === null || val === undefined || val === '') return '';
+    const str = String(val).trim();
+    if (!isNaN(str) && !str.includes('/') && !str.includes('-')) {
+      const num = Number(str);
+      if (num > 30000 && num < 70000) {
+        const d = new Date(Math.round((num - 25569) * 86400 * 1000));
+        const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const y = d.getUTCFullYear();
+        return `${m}/${y}`;
+      }
+    }
+    return str;
+  };
+
   const handleExcelFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -164,7 +179,7 @@ export default function CentralStoreHub() {
           item_name: String(row['Item Name'] || row['item_name'] || row['NAME'] || row['Item'] || '').trim(),
           batch_number: String(row['Batch Number'] || row['batch_number'] || row['BATCH'] || row['Batch'] || '').trim(),
           quantity: Number(row['Quantity'] || row['quantity'] || row['QTY'] || row['Qty'] || 0),
-          expiry_date: String(row['Expiry Date'] || row['expiry_date'] || row['EXPIRY'] || row['Expiry'] || '').trim(),
+          expiry_date: parseExcelDate(row['Expiry Date'] || row['expiry_date'] || row['EXPIRY'] || row['Expiry'] || ''),
           unit_price: Number(row['Unit Price'] || row['unit_price'] || row['PRICE'] || row['Price'] || 0),
           category: String(row['Category'] || row['category'] || 'consumables').trim(),
           department: String(row['Department'] || row['department'] || 'GENERAL STORE').trim()

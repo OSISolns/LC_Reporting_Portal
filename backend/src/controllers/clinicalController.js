@@ -2352,16 +2352,52 @@ exports.importStockExcel = async (req, res) => {
     const { rows: deptRows } = await db.query("SELECT id FROM departments WHERE UPPER(name) = 'GENERAL STORE' OR UPPER(name) = 'CENTRAL STORE' ORDER BY id ASC LIMIT 1");
     const defaultDeptId = deptRows[0]?.id || 130;
 
+    // 1. Bulk pre-fetch all master inventory items
+    const { rows: allMaster } = await db.query("SELECT id, sku, name FROM master_inventory");
+    const masterBySku = new Map();
+    const masterByName = new Map();
+
+    allMaster.forEach(m => {
+      if (m.sku) masterBySku.set(m.sku.trim().toUpperCase(), m.id);
+      if (m.name) masterByName.set(m.name.trim().toUpperCase(), m.id);
+    });
+
+    // 2. Bulk pre-fetch all stock batches
+    const { rows: allBatches } = await db.query("SELECT id, item_id, quantity, batch_number, expiry_date FROM stock_batches ORDER BY id DESC");
+    const batchesByItemId = new Map();
+    allBatches.forEach(b => {
+      if (!batchesByItemId.has(b.item_id)) batchesByItemId.set(b.item_id, []);
+      batchesByItemId.get(b.item_id).push(b);
+    });
+
     let updatedCount = 0;
     let createdCount = 0;
     let failedCount = 0;
+
+    const updateStatements = [];
+
+    // Helper to format Excel serial dates if present
+    const parseExp = (val) => {
+      if (!val) return null;
+      const str = val.toString().trim();
+      if (!isNaN(str) && !str.includes('/') && !str.includes('-')) {
+        const num = Number(str);
+        if (num > 30000 && num < 70000) {
+          const d = new Date(Math.round((num - 25569) * 86400 * 1000));
+          const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const y = d.getUTCFullYear();
+          return `${m}/${y}`;
+        }
+      }
+      return str || null;
+    };
 
     for (const item of items) {
       try {
         const cleanName = (item.item_name || item.name || '').toString().trim();
         const cleanSku = (item.sku || '').toString().trim();
         const batchNum = (item.batch_number || item.batch || '').toString().trim() || null;
-        const expDate = (item.expiry_date || item.expiry || '').toString().trim() || null;
+        const expDate = parseExp(item.expiry_date || item.expiry);
         const qty = Math.max(0, parseInt(item.quantity || item.qty, 10) || 0);
         const price = parseFloat(item.unit_price || item.price) || 0;
         const category = (item.category || 'consumables').toString().trim();
@@ -2370,17 +2406,13 @@ exports.importStockExcel = async (req, res) => {
 
         // 1. Resolve or Create Master Inventory Item
         let itemId = null;
-        let masterRes = null;
-        if (cleanSku) {
-          masterRes = await db.query("SELECT id, name FROM master_inventory WHERE UPPER(sku) = UPPER($1) LIMIT 1", [cleanSku]);
-        }
-        if ((!masterRes || masterRes.rows.length === 0) && cleanName) {
-          masterRes = await db.query("SELECT id, name FROM master_inventory WHERE UPPER(TRIM(name)) = UPPER(TRIM($1)) LIMIT 1", [cleanName]);
+        if (cleanSku && masterBySku.has(cleanSku.toUpperCase())) {
+          itemId = masterBySku.get(cleanSku.toUpperCase());
+        } else if (cleanName && masterByName.has(cleanName.toUpperCase())) {
+          itemId = masterByName.get(cleanName.toUpperCase());
         }
 
-        if (masterRes && masterRes.rows.length > 0) {
-          itemId = masterRes.rows[0].id;
-        } else {
+        if (!itemId) {
           const genPrefix = (cleanName || 'ITEM').replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
           const generatedSku = cleanSku || `${genPrefix}${Math.floor(1000 + Math.random() * 9000)}`;
           const newItemRes = await db.query(
@@ -2391,6 +2423,10 @@ exports.importStockExcel = async (req, res) => {
           if (!itemId) {
             const { rows: fetched } = await db.query("SELECT id FROM master_inventory WHERE UPPER(sku) = UPPER($1) LIMIT 1", [generatedSku]);
             itemId = fetched[0]?.id;
+          }
+          if (itemId) {
+            masterBySku.set(generatedSku.toUpperCase(), itemId);
+            if (cleanName) masterByName.set(cleanName.toUpperCase(), itemId);
           }
         }
 
@@ -2409,11 +2445,7 @@ exports.importStockExcel = async (req, res) => {
         }
 
         // 3. Matching & Update Logic for Stock Batches / Stock In Hand
-        const { rows: existingBatches } = await db.query(
-          "SELECT id, quantity, batch_number, expiry_date FROM stock_batches WHERE item_id = $1 ORDER BY id DESC",
-          [itemId]
-        );
-
+        const existingBatches = batchesByItemId.get(itemId) || [];
         let matchedBatch = null;
 
         if (existingBatches.length > 0) {
@@ -2435,31 +2467,37 @@ exports.importStockExcel = async (req, res) => {
           // Update existing item stock batch
           const finalBatchNum = batchNum || matchedBatch.batch_number;
           const finalExpDate = expDate || matchedBatch.expiry_date;
-          await db.query(
-            `UPDATE stock_batches 
-             SET quantity = quantity + $1, 
-                 purchase_price = CASE WHEN $2 > 0 THEN $2 ELSE purchase_price END,
-                 expiry_date = $3,
-                 batch_number = $4,
-                 department_id = $5
-             WHERE id = $6`,
-            [qty, price, finalExpDate, finalBatchNum, deptId, matchedBatch.id]
-          );
+          updateStatements.push({
+            sql: `UPDATE stock_batches 
+                  SET quantity = quantity + $1, 
+                      purchase_price = CASE WHEN $2 > 0 THEN $2 ELSE purchase_price END,
+                      expiry_date = $3,
+                      batch_number = $4,
+                      department_id = $5
+                  WHERE id = $6`,
+            args: [qty, price, finalExpDate, finalBatchNum, deptId, matchedBatch.id]
+          });
+          matchedBatch.quantity += qty;
           updatedCount++;
         } else {
           // Create new stock batch for item
           const newBatchNum = batchNum || `BATCH-${Date.now().toString().slice(-4)}`;
-          await db.query(
-            `INSERT INTO stock_batches (item_id, batch_number, expiry_date, quantity, purchase_price, department_id, storage, status)
-             VALUES ($1, $2, $3, $4, $5, $6, 'Main Shelf', 'Normal')`,
-            [itemId, newBatchNum, expDate, qty, price, deptId]
-          );
+          updateStatements.push({
+            sql: `INSERT INTO stock_batches (item_id, batch_number, expiry_date, quantity, purchase_price, department_id, storage, status)
+                  VALUES ($1, $2, $3, $4, $5, $6, 'Main Shelf', 'Normal')`,
+            args: [itemId, newBatchNum, expDate, qty, price, deptId]
+          });
           createdCount++;
         }
       } catch (itemErr) {
         console.error("Error processing item in importStockExcel:", itemErr);
         failedCount++;
       }
+    }
+
+    // Execute all updates/inserts in a single batch
+    if (updateStatements.length > 0) {
+      await db.batch(updateStatements);
     }
 
     res.json({
