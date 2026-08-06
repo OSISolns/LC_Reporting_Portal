@@ -594,3 +594,76 @@ main { padding: var(--page-padding); }
   animation: gradient-shift 3s ease infinite;
 }
 
+@layer utilities {
+  .bg-indigo-650 {
+    background-color: #4f46e5;
+  }
+  .hover\:bg-indigo-650:hover {
+    background-color: #4338ca;
+  }
+  .text-indigo-650 {
+    color: #4f46e5;
+  }
+  .hover\:text-indigo-650:hover {
+    color: #4338ca;
+  }
+
+  .bg-slate-650 {
+    background-color: #475569;
+  }
+  .text-slate-650 {
+    color: #475569;
+  }
+
+  .bg-sky-650 {
+    background-color: #0284c7;
+  }
+  .text-sky-650 {
+    color: #0284c7;
+  }
+
+  .bg-purple-650 {
+    background-color: #9333ea;
+  }
+  .text-purple-650 {
+    color: #9333ea;
+  }
+
+  .bg-emerald-650 {
+    background-color: #059669;
+  }
+  .text-emerald-650 {
+    color: #059669;
+  }
+
+  .bg-red-650 {
+    background-color: #dc2626;
+  }
+  .text-red-650 {
+    color: #dc2626;
+  }
+
+  .bg-red-105 {
+    background-color: #fee2e2;
+  }
+  .text-red-655 {
+    color: #b91c1c;
+  }
+  .border-red-150 {
+    border-color: #fecaca;
+  }
+
+  .bg-slate-105 {
+    background-color: #f1f5f9;
+  }
+  .border-slate-350 {
+    border-color: #cbd5e1;
+  }
+
+  .px-4\.5 {
+    padding-left: 1.125rem;
+    padding-right: 1.125rem;
+  }
+}
+
+

@@ -103,6 +103,7 @@ router.post('/inventory/consumables/deactivate', checkInventoryOrClinicalRole('e
 router.post('/inventory/consumables/reactivate', checkInventoryOrClinicalRole('edit'), clinicalController.reactivateConsumable);
 router.get('/inventory/consumables/deactivated', checkInventoryOrClinicalRole('view'), clinicalController.getDeactivatedConsumables);
 router.post('/inventory/master', checkPermission('inventory', 'create'), clinicalController.createmasterInventory);
+router.post('/inventory/import-excel', checkInventoryOrClinicalRole('edit'), clinicalController.importStockExcel);
 router.get('/inventory/master/ai-classify', checkPermission('inventory', 'edit'), clinicalController.aiClassifyMasterItems);
 router.post('/inventory/master/ai-apply', checkPermission('inventory', 'edit'), clinicalController.aiApplyMasterItemsClassifications);
 router.put('/inventory/master/:id', checkPermission('inventory', 'edit'), clinicalController.updatemasterInventory);

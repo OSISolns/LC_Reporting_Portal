@@ -2337,9 +2337,122 @@ exports.createmasterInventory = async (req, res) => {
     res.json({ success: true, message: 'Items added successfully' });
   } catch (error) {
     console.error('Error in createmasterInventory:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+exports.importStockExcel = async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'No valid items provided in Excel payload.' });
+    }
+
+    // Default department for Central Store / General Store stock
+    const { rows: deptRows } = await db.query("SELECT id FROM departments WHERE UPPER(name) = 'GENERAL STORE' OR UPPER(name) = 'CENTRAL STORE' ORDER BY id ASC LIMIT 1");
+    const defaultDeptId = deptRows[0]?.id || 130;
+
+    let updatedCount = 0;
+    let createdCount = 0;
+
+    for (const item of items) {
+      const cleanName = (item.item_name || item.name || '').trim();
+      const cleanSku = (item.sku || '').trim();
+      const batchNum = (item.batch_number || item.batch || '').trim();
+      const expDate = (item.expiry_date || item.expiry || '').trim();
+      const qty = Math.max(0, parseInt(item.quantity || item.qty, 10) || 0);
+      const price = parseFloat(item.unit_price || item.price) || 0;
+      const category = (item.category || 'consumables').trim();
+
+      if (!cleanName && !cleanSku) continue;
+
+      // 1. Resolve or Create Master Inventory Item
+      let itemId = null;
+      let masterRes = null;
+      if (cleanSku) {
+        masterRes = await db.query("SELECT id, name FROM master_inventory WHERE UPPER(sku) = UPPER($1) LIMIT 1", [cleanSku]);
+      }
+      if ((!masterRes || masterRes.rows.length === 0) && cleanName) {
+        masterRes = await db.query("SELECT id, name FROM master_inventory WHERE UPPER(TRIM(name)) = UPPER(TRIM($1)) LIMIT 1", [cleanName]);
+      }
+
+      if (masterRes && masterRes.rows.length > 0) {
+        itemId = masterRes.rows[0].id;
+      } else {
+        const genPrefix = (cleanName || 'ITEM').replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
+        const generatedSku = cleanSku || `${genPrefix}${Math.floor(1000 + Math.random() * 9000)}`;
+        const newItemRes = await db.query(
+          "INSERT INTO master_inventory (name, sku, category, unit_of_measure) VALUES ($1, $2, $3, 'pcs') RETURNING id",
+          [cleanName || generatedSku, generatedSku, category]
+        );
+        itemId = newItemRes.rows[0].id;
+      }
+
+      // 2. Resolve Department ID if specified
+      let deptId = defaultDeptId;
+      if (item.department) {
+        const { rows: specifiedDept } = await db.query("SELECT id FROM departments WHERE UPPER(TRIM(name)) = UPPER(TRIM($1)) LIMIT 1", [item.department]);
+        if (specifiedDept.length > 0) {
+          deptId = specifiedDept[0].id;
+        }
+      }
+
+      // 3. Matching & Update Logic for Stock Batches / Stock In Hand
+      const { rows: existingBatches } = await db.query(
+        "SELECT id, quantity, batch_number, expiry_date FROM stock_batches WHERE item_id = $1 ORDER BY id DESC",
+        [itemId]
+      );
+
+      let matchedBatch = null;
+
+      if (existingBatches.length > 0) {
+        // Try matching by batch_number OR expiry_date
+        if (batchNum || expDate) {
+          matchedBatch = existingBatches.find(b => 
+            (batchNum && b.batch_number && b.batch_number.trim().toUpperCase() === batchNum.toUpperCase()) ||
+            (expDate && b.expiry_date && b.expiry_date.trim() === expDate)
+          );
+        }
+        
+        // Fallback: If no match found by batch_number/expiry_date, or if batch/expiry unavailable, update existing item batch anyway!
+        if (!matchedBatch) {
+          matchedBatch = existingBatches[0];
+        }
+      }
+
+      if (matchedBatch) {
+        // Update existing item stock batch
+        await db.query(
+          `UPDATE stock_batches 
+           SET quantity = quantity + $1, 
+               purchase_price = CASE WHEN $2 > 0 THEN $2 ELSE purchase_price END,
+               expiry_date = COALESCE(NULLIF($3, ''), expiry_date),
+               batch_number = COALESCE(NULLIF($4, ''), batch_number),
+               department_id = COALESCE($5, department_id)
+           WHERE id = $6`,
+          [qty, price, expDate, batchNum, deptId, matchedBatch.id]
+        );
+        updatedCount++;
+      } else {
+        // Create new stock batch for item
+        await db.query(
+          `INSERT INTO stock_batches (item_id, batch_number, expiry_date, quantity, purchase_price, department_id, storage, status)
+           VALUES ($1, $2, $3, $4, $5, $6, 'Main Shelf', 'Normal')`,
+          [itemId, batchNum || `BATCH-${Date.now().toString().slice(-4)}`, expDate || null, qty, price, deptId]
+        );
+        createdCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully processed ${items.length} items from Excel. Updated: ${updatedCount}, Created: ${createdCount}.`,
+      totalProcessed: items.length,
+      updatedCount,
+      createdCount
+    });
+  } catch (error) {
+    console.error('Error in importStockExcel:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to import stock from Excel.' });
   }
 };
+
 
 exports.updatemasterInventory = async (req, res) => {
   try {

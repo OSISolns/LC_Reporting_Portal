@@ -2206,7 +2206,7 @@ export default function MasterModule() {
         </div>
       </Modal>
 
-      <style jsx>{`
+      <style>{`
         .scrollbar-none::-webkit-scrollbar {
           display: none;
         }
