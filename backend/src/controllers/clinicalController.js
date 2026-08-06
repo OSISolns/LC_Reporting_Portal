@@ -2379,8 +2379,7 @@ exports.importStockExcel = async (req, res) => {
     let updatedCount = 0;
     let createdCount = 0;
     let failedCount = 0;
-    const unmatchedItems = [];
-    const updateStatements = [];
+    const newlyCreatedMaster = [];
 
     // Helper: normalise a string for fuzzy matching (remove spaces, hyphens, punctuation)
     const normalise = (s) => s ? s.replace(/[\s\-\/\.]/g, '').toUpperCase() : '';
@@ -2459,31 +2458,51 @@ exports.importStockExcel = async (req, res) => {
         if (!itemId && cleanName) {
           const normSearch = normalise(cleanName);
           const fuzzy = masterNormList.find(m =>
-            (m.normName && (m.normName.includes(normSearch) || normSearch.includes(m.normName))) ||
-            (m.normSku && cleanSku && m.normSku === normalise(cleanSku))
+            (m.normName && (m.normName === normSearch || m.normName.includes(normSearch) || normSearch.includes(m.normName)))
           );
           if (fuzzy) {
             itemId = fuzzy.id;
           }
         }
 
-        // ── Step 4: No match — record as unmatched ──────────────────────────
+        // ── Step 4: Auto-Create in master_inventory if missing ───────────────
         if (!itemId) {
-          unmatchedItems.push({ item_name: cleanName || cleanSku, sku: cleanSku, quantity: qty });
+          const safeName = cleanName || cleanSku;
+          const prefix = safeName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase() || 'ITEM';
+          const genSku = cleanSku || `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
+
+          try {
+            const newMasterRes = await db.query(
+              "INSERT INTO master_inventory (name, sku, category, unit_of_measure) VALUES ($1, $2, $3, 'pcs') RETURNING id",
+              [safeName, genSku, item.category || 'consumables']
+            );
+            itemId = newMasterRes.rows?.[0]?.id || newMasterRes.lastInsertRowid;
+          } catch {
+            // Fallback if insertion/conflict
+            const { rows: fetched } = await db.query("SELECT id FROM master_inventory WHERE UPPER(TRIM(name)) = UPPER(TRIM($1)) LIMIT 1", [safeName]);
+            itemId = fetched[0]?.id;
+          }
+
+          if (itemId) {
+            masterByName.set(safeName.toUpperCase(), itemId);
+            masterBySku.set(genSku.toUpperCase(), itemId);
+            masterNormList.push({ id: itemId, normName: normalise(safeName), normSku: normalise(genSku) });
+            newlyCreatedMaster.push({ name: safeName, sku: genSku });
+          }
+        }
+
+        if (!itemId) {
           failedCount++;
           continue;
         }
 
         // Auto-update SKU on master_inventory if provided and missing
         if (cleanSku) {
-          updateStatements.push({
-            sql: "UPDATE master_inventory SET sku = $1 WHERE id = $2 AND (sku IS NULL OR sku = '')",
-            args: [cleanSku, itemId]
-          });
+          await db.query("UPDATE master_inventory SET sku = $1 WHERE id = $2 AND (sku IS NULL OR sku = '')", [cleanSku, itemId]);
           masterBySku.set(cleanSku.toUpperCase(), itemId);
         }
 
-        // Resolve Department ID if specified in Excel (using pre-fetched map)
+        // Resolve Department ID if specified in Excel
         let deptId = defaultDeptId;
         if (item.department) {
           const normDeptName = item.department.toString().trim().toUpperCase();
@@ -2521,16 +2540,16 @@ exports.importStockExcel = async (req, res) => {
         if (matchedBatch) {
           // Update existing stock batch
           const effectiveLot = lotNum || batchNum;
-          updateStatements.push({
-            sql: `UPDATE stock_batches 
-                  SET quantity       = CASE WHEN $1 = 1 THEN $2 ELSE quantity END,
-                      purchase_price = CASE WHEN $3 = 1 THEN $4 ELSE purchase_price END,
-                      expiry_date    = CASE WHEN $5 IS NOT NULL AND $5 != '' THEN $5 ELSE expiry_date END,
-                      batch_number   = CASE WHEN $6 IS NOT NULL AND $6 != '' THEN $6 ELSE batch_number END,
-                      lot_number     = CASE WHEN $7 IS NOT NULL AND $7 != '' THEN $7 ELSE lot_number END,
-                      department_id  = COALESCE($8, department_id)
-                  WHERE id = $9`,
-            args: [
+          await db.query(
+            `UPDATE stock_batches 
+             SET quantity       = CASE WHEN $1 = 1 THEN $2 ELSE quantity END,
+                 purchase_price = CASE WHEN $3 = 1 THEN $4 ELSE purchase_price END,
+                 expiry_date    = CASE WHEN $5 IS NOT NULL AND $5 != '' THEN $5 ELSE expiry_date END,
+                 batch_number   = CASE WHEN $6 IS NOT NULL AND $6 != '' THEN $6 ELSE batch_number END,
+                 lot_number     = CASE WHEN $7 IS NOT NULL AND $7 != '' THEN $7 ELSE lot_number END,
+                 department_id  = COALESCE($8, department_id)
+             WHERE id = $9`,
+            [
               hasQty ? 1 : 0, 
               qty, 
               hasPrice ? 1 : 0, 
@@ -2541,9 +2560,8 @@ exports.importStockExcel = async (req, res) => {
               deptId, 
               matchedBatch.id
             ]
-          });
+          );
 
-          // Real-time in-memory update so subsequent loop items see updated state
           if (hasQty) matchedBatch.quantity = qty;
           if (expDate) matchedBatch.expiry_date = expDate;
           if (batchNum || effectiveLot) matchedBatch.batch_number = batchNum || effectiveLot;
@@ -2554,14 +2572,15 @@ exports.importStockExcel = async (req, res) => {
           // Create new distinct stock batch for item
           const newBatchNum = batchNum || lotNum || `BATCH-${Date.now().toString().slice(-4)}`;
           const newLotNum = lotNum || newBatchNum;
-          updateStatements.push({
-            sql: `INSERT INTO stock_batches (item_id, batch_number, lot_number, expiry_date, quantity, purchase_price, department_id, storage, status)
-                  VALUES ($1, $2, $3, $4, $5, $6, $7, 'Main Shelf', 'Normal')`,
-            args: [itemId, newBatchNum, newLotNum, expDate, qty, price, deptId]
-          });
+          const insertRes = await db.query(
+            `INSERT INTO stock_batches (item_id, batch_number, lot_number, expiry_date, quantity, purchase_price, department_id, storage, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'Main Shelf', 'Normal') RETURNING id`,
+            [itemId, newBatchNum, newLotNum, expDate, qty, price, deptId]
+          );
 
+          const createdId = insertRes.rows?.[0]?.id || insertRes.lastInsertRowid || Date.now();
           const newBatchObj = {
-            id: Date.now() + Math.floor(Math.random() * 1000),
+            id: createdId,
             item_id: itemId,
             batch_number: newBatchNum,
             lot_number: newLotNum,
@@ -2578,21 +2597,10 @@ exports.importStockExcel = async (req, res) => {
       }
     }
 
-    // Execute all updates/inserts in fast parallel chunks of 25
-    const CHUNK_SIZE = 25;
-    for (let i = 0; i < updateStatements.length; i += CHUNK_SIZE) {
-      const chunk = updateStatements.slice(i, i + CHUNK_SIZE);
-      await Promise.all(
-        chunk.map(stmt => db.query(stmt.sql, stmt.args).catch(err => {
-          console.error('❌ Batch item statement execution error:', err.message);
-        }))
-      );
-    }
-
     const matchedCount = updatedCount + createdCount;
-    let message = `Processed ${items.length} rows: ${updatedCount} updated, ${createdCount} new batch(es) added.`;
-    if (unmatchedItems.length > 0) {
-      message += ` ${unmatchedItems.length} item(s) NOT found in master inventory and were skipped.`;
+    let message = `Successfully imported ${matchedCount} items from Excel. (${updatedCount} updated, ${createdCount} new batches created).`;
+    if (newlyCreatedMaster.length > 0) {
+      message += ` ${newlyCreatedMaster.length} new item(s) registered into Master Inventory.`;
     }
 
     res.json({
@@ -2603,7 +2611,7 @@ exports.importStockExcel = async (req, res) => {
       updatedCount,
       createdCount,
       failedCount,
-      unmatchedItems
+      newlyCreatedMasterCount: newlyCreatedMaster.length
     });
   } catch (error) {
     console.error('Error in importStockExcel:', error);
