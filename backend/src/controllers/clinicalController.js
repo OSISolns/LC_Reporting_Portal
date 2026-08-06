@@ -2337,6 +2337,10 @@ exports.createmasterInventory = async (req, res) => {
     res.json({ success: true, message: 'Items added successfully' });
   } catch (error) {
     console.error('Error in createmasterInventory:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 exports.importStockExcel = async (req, res) => {
   try {
     const { items } = req.body;
