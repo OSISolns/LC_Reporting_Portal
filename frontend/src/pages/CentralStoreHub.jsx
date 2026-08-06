@@ -334,27 +334,14 @@ export default function CentralStoreHub() {
       setUploadingExcel(true);
       const res = await api.post('/clinical/inventory/import-excel', { items: excelPreviewItems });
       if (res.data.success) {
-        const { updatedCount = 0, createdCount = 0, failedCount = 0, unmatchedItems = [] } = res.data;
+        const { updatedCount = 0, createdCount = 0, newlyCreatedMasterCount = 0, matchedCount = 0 } = res.data;
 
-        if (updatedCount + createdCount === 0 && unmatchedItems.length > 0) {
-          // Nothing matched at all
-          toast.error(
-            `❌ No items were updated — ${unmatchedItems.length} item(s) not found in master inventory. Please check item names and try again.`,
-            { duration: 8000 }
-          );
-        } else {
-          // Some matched, some may not have
-          if (updatedCount + createdCount > 0) {
-            toast.success(`✅ Stock updated: ${updatedCount} updated, ${createdCount} new batch(es) added.`);
-          }
-          if (unmatchedItems.length > 0) {
-            const names = unmatchedItems.slice(0, 5).map(i => i.item_name || i.sku).join(', ');
-            const extra = unmatchedItems.length > 5 ? ` and ${unmatchedItems.length - 5} more…` : '';
-            toast(`⚠️ ${unmatchedItems.length} item(s) NOT found in master inventory and were skipped:\n${names}${extra}`, {
-              icon: '⚠️', duration: 9000
-            });
-          }
+        let msg = `✅ Stock successfully imported! ${updatedCount} batch(es) updated, ${createdCount} new batch(es) created.`;
+        if (newlyCreatedMasterCount > 0) {
+          msg += ` (${newlyCreatedMasterCount} new item(s) registered into Master Inventory).`;
         }
+        toast.success(msg, { duration: 8000 });
+
         setExcelImportOpen(false);
         setExcelPreviewItems([]);
         setExcelFileName('');
