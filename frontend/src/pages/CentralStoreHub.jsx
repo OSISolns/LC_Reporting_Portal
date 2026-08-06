@@ -278,15 +278,26 @@ export default function CentralStoreHub() {
       setUploadingExcel(true);
       const res = await api.post('/clinical/inventory/import-excel', { items: excelPreviewItems });
       if (res.data.success) {
-        const { updatedCount = 0, createdCount = 0, failedCount = 0, totalProcessed = 0 } = res.data;
-        if (failedCount > 0 && (updatedCount + createdCount) === 0) {
-          toast.error(`⚠️ Import completed but all ${failedCount} items failed to save. Please check your data format.`, { duration: 7000 });
-        } else if (failedCount > 0) {
-          toast(`⚠️ Import partially successful: ${updatedCount} updated, ${createdCount} created. ${failedCount} item(s) could not be saved.`, {
-            icon: '⚠️', duration: 6000
-          });
+        const { updatedCount = 0, createdCount = 0, failedCount = 0, unmatchedItems = [] } = res.data;
+
+        if (updatedCount + createdCount === 0 && unmatchedItems.length > 0) {
+          // Nothing matched at all
+          toast.error(
+            `❌ No items were updated — ${unmatchedItems.length} item(s) not found in master inventory. Please check item names and try again.`,
+            { duration: 8000 }
+          );
         } else {
-          toast.success(res.data.message || `✅ Stock updated! ${updatedCount} updated, ${createdCount} new items added.`);
+          // Some matched, some may not have
+          if (updatedCount + createdCount > 0) {
+            toast.success(`✅ Stock updated: ${updatedCount} updated, ${createdCount} new batch(es) added.`);
+          }
+          if (unmatchedItems.length > 0) {
+            const names = unmatchedItems.slice(0, 5).map(i => i.item_name || i.sku).join(', ');
+            const extra = unmatchedItems.length > 5 ? ` and ${unmatchedItems.length - 5} more…` : '';
+            toast(`⚠️ ${unmatchedItems.length} item(s) NOT found in master inventory and were skipped:\n${names}${extra}`, {
+              icon: '⚠️', duration: 9000
+            });
+          }
         }
         setExcelImportOpen(false);
         setExcelPreviewItems([]);

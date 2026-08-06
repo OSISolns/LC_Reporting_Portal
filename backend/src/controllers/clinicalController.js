@@ -2299,7 +2299,6 @@ exports.createmasterInventory = async (req, res) => {
         }
       } else {
         skuPrefix = sku || generateSkuPrefix(name);
-        // Insert into master_inventory
         const { rows: itemRows } = await db.query(
           "INSERT INTO master_inventory (name, sku, unit_of_measure, category) VALUES ($1, $2, $3, $4) RETURNING id",
           [name, skuPrefix, unit_of_measure, category]
@@ -2315,7 +2314,7 @@ exports.createmasterInventory = async (req, res) => {
           [itemId]
         );
         const nextLotInt = (Number(batchCount[0]?.cnt) || 0) + 1;
-        lotNumber = String(nextLotInt).padStart(2, '0'); // minimalist e.g. "01", "02"
+        lotNumber = String(nextLotInt).padStart(2, '0');
       }
 
       // 3. Insert into stock_batches
@@ -2324,11 +2323,7 @@ exports.createmasterInventory = async (req, res) => {
         formattedPurchaseTime = `${formattedPurchaseTime}T00:00:00.000Z`;
       }
 
-      // department_id/storage are descriptive tracking fields on the batch
-      // only -- they must NOT create department_stock (distributed stock)
-      // rows. Distribution only ever happens through an approved requisition
-      // (see approveRequisition), which is the sole writer of department_stock.
-      const { rows: batchRows } = await db.query(
+      await db.query(
         "INSERT INTO stock_batches (item_id, vendor_id, batch_number, lot_number, expiry_date, purchase_price, quantity, department_id, storage, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, CURRENT_TIMESTAMP)) RETURNING id",
         [itemId, vendor_id || null, batch_number || null, lotNumber, expiry_date || null, price || 0, quantity || 0, department_id || null, storage || null, formattedPurchaseTime]
       );
@@ -2356,10 +2351,15 @@ exports.importStockExcel = async (req, res) => {
     const { rows: allMaster } = await db.query("SELECT id, sku, name FROM master_inventory");
     const masterBySku = new Map();
     const masterByName = new Map();
+    // Build normalised name list for fuzzy fallback
+    const masterNormList = [];
 
     allMaster.forEach(m => {
-      if (m.sku) masterBySku.set(m.sku.trim().toUpperCase(), m.id);
-      if (m.name) masterByName.set(m.name.trim().toUpperCase(), m.id);
+      const normSku = m.sku ? m.sku.trim().toUpperCase() : null;
+      const normName = m.name ? m.name.trim().toUpperCase() : null;
+      if (normSku) masterBySku.set(normSku, m.id);
+      if (normName) masterByName.set(normName, m.id);
+      masterNormList.push({ id: m.id, normName: normName || '', normSku: normSku || '' });
     });
 
     // 2. Bulk pre-fetch all stock batches
@@ -2373,8 +2373,12 @@ exports.importStockExcel = async (req, res) => {
     let updatedCount = 0;
     let createdCount = 0;
     let failedCount = 0;
+    const unmatchedItems = [];
 
     const updateStatements = [];
+
+    // Helper: normalise a string for fuzzy matching (remove spaces, hyphens, punctuation)
+    const normalise = (s) => s ? s.replace(/[\s\-\/\.]/g, '').toUpperCase() : '';
 
     // Helper to format Excel serial dates if present
     const parseExp = (val) => {
@@ -2401,56 +2405,46 @@ exports.importStockExcel = async (req, res) => {
         const expDate = parseExp(item.expiry_date || item.expiry);
         const qty = Math.max(0, parseInt(item.quantity || item.qty, 10) || 0);
         const price = parseFloat(item.unit_price || item.price) || 0;
-        const category = (item.category || 'consumables').toString().trim();
 
         if (!cleanName && !cleanSku) continue;
 
-        // 1. Resolve or Create Master Inventory Item
+        // ── Step 1: Exact SKU match ──────────────────────────────────────────
         let itemId = null;
         if (cleanSku && masterBySku.has(cleanSku.toUpperCase())) {
           itemId = masterBySku.get(cleanSku.toUpperCase());
-        } else if (cleanName && masterByName.has(cleanName.toUpperCase())) {
+        }
+
+        // ── Step 2: Exact name match ─────────────────────────────────────────
+        if (!itemId && cleanName && masterByName.has(cleanName.toUpperCase())) {
           itemId = masterByName.get(cleanName.toUpperCase());
         }
 
-        if (!itemId) {
-          const genPrefix = (cleanName || 'ITEM').replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
-          const generatedSku = cleanSku || `${genPrefix}${Math.floor(1000 + Math.random() * 9000)}`;
-          const newItemRes = await db.query(
-            "INSERT INTO master_inventory (name, sku, category, unit_of_measure) VALUES ($1, $2, $3, 'pcs') RETURNING id",
-            [cleanName || generatedSku, generatedSku, category]
+        // ── Step 3: Fuzzy partial name match (normalised, no spaces/hyphens) ─
+        if (!itemId && cleanName) {
+          const normSearch = normalise(cleanName);
+          const fuzzy = masterNormList.find(m =>
+            (m.normName && (m.normName.includes(normSearch) || normSearch.includes(m.normName))) ||
+            (m.normSku && cleanSku && m.normSku === normalise(cleanSku))
           );
-          itemId = newItemRes.rows?.[0]?.id || newItemRes.lastInsertRowid;
-          if (!itemId) {
-            const { rows: fetched } = await db.query("SELECT id FROM master_inventory WHERE UPPER(sku) = UPPER($1) LIMIT 1", [generatedSku]);
-            itemId = fetched[0]?.id;
-          }
-          if (itemId) {
-            masterBySku.set(generatedSku.toUpperCase(), itemId);
-            if (cleanName) masterByName.set(cleanName.toUpperCase(), itemId);
+          if (fuzzy) {
+            itemId = fuzzy.id;
           }
         }
 
+        // ── Step 4: No match — record as unmatched, do NOT auto-create ───────
         if (!itemId) {
+          unmatchedItems.push({ item_name: cleanName || cleanSku, sku: cleanSku, quantity: qty });
           failedCount++;
           continue;
         }
 
-        // Auto-update SKU on master_inventory if cleanSku is provided or auto-generated
+        // Auto-update SKU on master_inventory if provided and missing
         if (cleanSku) {
           updateStatements.push({
-            sql: "UPDATE master_inventory SET sku = $1 WHERE id = $2 AND (sku IS NULL OR sku = '' OR UPPER(sku) != UPPER($1))",
+            sql: "UPDATE master_inventory SET sku = $1 WHERE id = $2 AND (sku IS NULL OR sku = '')",
             args: [cleanSku, itemId]
           });
           masterBySku.set(cleanSku.toUpperCase(), itemId);
-        } else {
-          const genPrefix = (cleanName || 'ITEM').replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
-          const autoGeneratedSku = `${genPrefix}${1000 + (itemId % 9000)}`;
-          updateStatements.push({
-            sql: "UPDATE master_inventory SET sku = $1 WHERE id = $2 AND (sku IS NULL OR sku = '')",
-            args: [autoGeneratedSku, itemId]
-          });
-          masterBySku.set(autoGeneratedSku.toUpperCase(), itemId);
         }
 
         // 2. Resolve Department ID if specified
@@ -2475,7 +2469,7 @@ exports.importStockExcel = async (req, res) => {
             );
           }
           
-          // Fallback: If no match found by batch/expiry, or if batch/expiry unavailable, update existing item batch anyway!
+          // Fallback: update most recent batch if no specific match
           if (!matchedBatch) {
             matchedBatch = existingBatches[0];
           }
@@ -2493,7 +2487,7 @@ exports.importStockExcel = async (req, res) => {
                       lot_number = COALESCE($5, lot_number),
                       department_id = COALESCE($6, department_id)
                   WHERE id = $7`,
-            args: [qty, price, expDate, batchNum || effectiveLot, effectiveLot, defaultDeptId, matchedBatch.id]
+            args: [qty, price, expDate, batchNum || effectiveLot, effectiveLot, deptId, matchedBatch.id]
           });
           if (qty > 0) matchedBatch.quantity += qty;
           updatedCount++;
