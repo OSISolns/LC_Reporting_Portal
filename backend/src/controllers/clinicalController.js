@@ -2380,20 +2380,38 @@ exports.importStockExcel = async (req, res) => {
     // Helper: normalise a string for fuzzy matching (remove spaces, hyphens, punctuation)
     const normalise = (s) => s ? s.replace(/[\s\-\/\.]/g, '').toUpperCase() : '';
 
-    // Helper to format Excel serial dates if present
+    // Helper to normalise expiry date from any format to MM/YYYY
     const parseExp = (val) => {
-      if (!val) return null;
-      const str = val.toString().trim();
-      if (!isNaN(str) && !str.includes('/') && !str.includes('-')) {
+      if (val === null || val === undefined || val === '') return null;
+      // Numeric Excel serial date
+      if (typeof val === 'number') {
+        if (val > 30000 && val < 70000) {
+          const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+          const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+          return `${m}/${d.getUTCFullYear()}`;
+        }
+        return null;
+      }
+      const str = String(val).trim();
+      if (!str) return null;
+      // Numeric string serial
+      if (/^\d{5}$/.test(str)) {
         const num = Number(str);
         if (num > 30000 && num < 70000) {
           const d = new Date(Math.round((num - 25569) * 86400 * 1000));
           const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-          const y = d.getUTCFullYear();
-          return `${m}/${y}`;
+          return `${m}/${d.getUTCFullYear()}`;
         }
       }
-      return str || null;
+      // YYYY-MM-DD → MM/YYYY
+      const isoFull = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (isoFull) return `${isoFull[2]}/${isoFull[1]}`;
+      // YYYY-MM → MM/YYYY
+      const isoShort = str.match(/^(\d{4})-(\d{2})$/);
+      if (isoShort) return `${isoShort[2]}/${isoShort[1]}`;
+      // MM/YYYY or MM-YYYY already — normalise separator
+      if (/^\d{2}[\/\-]\d{4}$/.test(str)) return str.replace('-', '/');
+      return str;
     };
 
     for (const item of items) {
@@ -2402,8 +2420,10 @@ exports.importStockExcel = async (req, res) => {
         const cleanSku = (item.sku || '').toString().trim();
         const batchNum = (item.batch_number || item.batch || '').toString().trim() || null;
         const lotNum = (item.lot_number || item.lot || '').toString().trim() || null;
-        const expDate = parseExp(item.expiry_date || item.expiry);
-        const qty = Math.max(0, parseInt(item.quantity || item.qty, 10) || 0);
+        const expDate = parseExp(item.expiry_date ?? item.expiry);
+        // Use nullish coalescing so qty=0 is preserved (not swallowed by ||)
+        const rawQty = item.quantity ?? item.qty ?? 0;
+        const qty = Math.max(0, Number(rawQty) || 0);
         const price = parseFloat(item.unit_price || item.price) || 0;
 
         if (!cleanName && !cleanSku) continue;
@@ -2476,20 +2496,19 @@ exports.importStockExcel = async (req, res) => {
         }
 
         if (matchedBatch) {
-          // Update existing item stock batch -- ONLY update non-empty fields!
+          // Update existing stock batch — SET values from Excel (use existing if blank)
           const effectiveLot = lotNum || batchNum;
           updateStatements.push({
             sql: `UPDATE stock_batches 
-                  SET quantity = CASE WHEN $1 > 0 THEN quantity + $1 ELSE quantity END, 
+                  SET quantity     = CASE WHEN $1 > 0 THEN $1 ELSE quantity END,
                       purchase_price = CASE WHEN $2 > 0 THEN $2 ELSE purchase_price END,
-                      expiry_date = COALESCE($3, expiry_date),
-                      batch_number = COALESCE($4, batch_number),
-                      lot_number = COALESCE($5, lot_number),
+                      expiry_date  = CASE WHEN $3 IS NOT NULL AND $3 != '' THEN $3 ELSE expiry_date END,
+                      batch_number = CASE WHEN $4 IS NOT NULL AND $4 != '' THEN $4 ELSE batch_number END,
+                      lot_number   = CASE WHEN $5 IS NOT NULL AND $5 != '' THEN $5 ELSE lot_number END,
                       department_id = COALESCE($6, department_id)
                   WHERE id = $7`,
             args: [qty, price, expDate, batchNum || effectiveLot, effectiveLot, deptId, matchedBatch.id]
           });
-          if (qty > 0) matchedBatch.quantity += qty;
           updatedCount++;
         } else {
           // Create new stock batch for item

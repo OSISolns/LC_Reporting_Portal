@@ -143,8 +143,19 @@ export default function CentralStoreHub() {
 
   const parseExcelDate = (val) => {
     if (val === null || val === undefined || val === '') return '';
+    // If it's a numeric Excel serial date
+    if (typeof val === 'number') {
+      if (val > 30000 && val < 70000) {
+        const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+        const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const y = d.getUTCFullYear();
+        return `${m}/${y}`;
+      }
+    }
     const str = String(val).trim();
-    if (!isNaN(str) && !str.includes('/') && !str.includes('-')) {
+    if (!str) return '';
+    // Numeric string serial date
+    if (/^\d{5}$/.test(str)) {
       const num = Number(str);
       if (num > 30000 && num < 70000) {
         const d = new Date(Math.round((num - 25569) * 86400 * 1000));
@@ -153,6 +164,14 @@ export default function CentralStoreHub() {
         return `${m}/${y}`;
       }
     }
+    // YYYY-MM-DD → MM/YYYY
+    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) return `${isoMatch[2]}/${isoMatch[1]}`;
+    // MM/YYYY or MM-YYYY already
+    if (/^\d{2}[\/\-]\d{4}$/.test(str)) return str.replace('-', '/');
+    // YYYY-MM → MM/YYYY
+    const shortIso = str.match(/^(\d{4})-(\d{2})$/);
+    if (shortIso) return `${shortIso[2]}/${shortIso[1]}`;
     return str;
   };
 
@@ -215,17 +234,31 @@ export default function CentralStoreHub() {
           return;
         }
 
-        const mappedItems = parsedData.map(row => ({
-          sku: String(row['SKU'] || row['sku'] || row['Sku'] || '').trim(),
-          item_name: String(row['Item Name'] || row['item_name'] || row['NAME'] || row['Item'] || '').trim(),
-          batch_number: String(row['Batch Number'] || row['batch_number'] || row['BATCH'] || row['Batch'] || '').trim(),
-          lot_number: String(row['Lot Number'] || row['Lot'] || row['LOT'] || row['Lot #'] || row['lot_number'] || '').trim(),
-          quantity: Number(row['Quantity'] || row['quantity'] || row['QTY'] || row['Qty'] || 0),
-          expiry_date: parseExcelDate(row['Expiry Date'] || row['expiry_date'] || row['EXPIRY'] || row['Expiry'] || ''),
-          unit_price: Number(row['Unit Price'] || row['unit_price'] || row['PRICE'] || row['Price'] || 0),
-          category: String(row['Category'] || row['category'] || 'consumables').trim(),
-          department: String(row['Department'] || row['department'] || 'GENERAL STORE').trim()
-        })).filter(item => item.item_name || item.sku);
+        const mappedItems = parsedData.map(row => {
+          // Broad column alias matching
+          const rawName = row['Item Name'] ?? row['item_name'] ?? row['NAME'] ?? row['Item'] ?? row['ITEM NAME'] ?? '';
+          const rawSku  = row['SKU'] ?? row['sku'] ?? row['Sku'] ?? row['SKU No'] ?? '';
+          const rawBatch = row['Batch Number'] ?? row['batch_number'] ?? row['BATCH'] ?? row['Batch'] ?? row['Batch #'] ?? row['BATCH NUMBER'] ?? '';
+          const rawLot  = row['Lot Number'] ?? row['Lot'] ?? row['LOT'] ?? row['Lot #'] ?? row['lot_number'] ?? row['LOT NUMBER'] ?? '';
+          const rawQty  = row['Quantity'] ?? row['quantity'] ?? row['QTY'] ?? row['Qty'] ?? row['QUANTITY'] ?? row['Qty Received'] ?? row['Stock Qty'] ?? null;
+          const rawExp  = row['Expiry Date'] ?? row['expiry_date'] ?? row['EXPIRY'] ?? row['Expiry'] ?? row['EXPIRY DATE'] ?? row['Exp Date'] ?? row['Exp. Date'] ?? row['EXP DATE'] ?? null;
+          const rawPrice = row['Unit Price'] ?? row['unit_price'] ?? row['PRICE'] ?? row['Price'] ?? row['Cost'] ?? null;
+          const rawCat  = row['Category'] ?? row['category'] ?? null;
+          const rawDept = row['Department'] ?? row['department'] ?? null;
+
+          return {
+            sku:          String(rawSku || '').trim(),
+            item_name:    String(rawName || '').trim(),
+            batch_number: String(rawBatch || '').trim(),
+            lot_number:   String(rawLot || '').trim(),
+            // Use explicit parse — avoid || so qty=0 isn't swallowed
+            quantity:     rawQty !== null && rawQty !== '' ? Number(rawQty) : 0,
+            expiry_date:  parseExcelDate(rawExp),
+            unit_price:   rawPrice !== null && rawPrice !== '' ? Number(rawPrice) : 0,
+            category:     String(rawCat || 'consumables').trim(),
+            department:   String(rawDept || 'GENERAL STORE').trim()
+          };
+        }).filter(item => item.item_name || item.sku);
 
         // 6. Validate that we got some usable rows
         const skippedRows = parsedData.length - mappedItems.length;
