@@ -207,12 +207,19 @@ const interceptAndFilterQuery = (sql, params) => {
   return { newSql, inMemoryFilters, placeholdersUsed, postLimit, postOffset };
 };
 
-if (tursoUrl && tursoToken) {
+const isProduction = process.env.NODE_ENV === 'production';
+const forceTurso = process.env.FORCE_TURSO === 'true';
+
+if ((isProduction || forceTurso) && tursoUrl && tursoToken) {
   libsql = createClient({
     url: tursoUrl,
     authToken: tursoToken,
   });
+  console.log('🔌 DATABASE: Connected to Turso Cloud (production).');
 } else {
+  if (tursoUrl && tursoToken && !isProduction) {
+    console.log('🔌 DATABASE: Turso credentials found but skipped in development. Using local SQLite (Prisma). Set FORCE_TURSO=true to override.');
+  }
   const { PrismaClient } = require('@prisma/client');
   prisma = new PrismaClient();
   console.log('🔌 DATABASE: Connected to local SQLite database (via Prisma).');
