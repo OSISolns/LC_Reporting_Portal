@@ -214,8 +214,15 @@ const LabHub = () => {
 
     setSaving(true);
     try {
+      // 1. Auto-save parameter measurements first
+      await api.post(`/lab/orders/${selectedOrder.id}/results`, {
+        results: resultParams,
+        hil_index: selectedOrder.hil_index || 'Normal'
+      });
+
+      // 2. Perform official technologist sign-off
       const res = await api.post(`/lab/orders/${selectedOrder.id}/verify`, {
-        verified_by_name: 'MedTech (Verified)'
+        verified_by_name: 'Medical Technologist (Signed)'
       });
       if (res.data.success) {
         toast.success('Lab report verified and signed off!');
@@ -1126,17 +1133,25 @@ const LabHub = () => {
             </div>
 
             {/* Footer Sign-off */}
-            <div className="flex justify-between items-center pt-4 border-t border-slate-200 text-xs">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-4 border-t border-slate-200 text-xs">
               <div>
                 <p className="font-bold text-slate-800">Verified By: {selectedOrder.verified_by_name || 'LIS Auto-Verification Engine'}</p>
                 <p className="text-[10px] text-slate-400">Date Verified: {selectedOrder.verified_at || new Date().toLocaleString()}</p>
               </div>
-              <button
-                onClick={() => window.print()}
-                className="px-5 py-2.5 bg-slate-900 text-white font-black text-xs uppercase tracking-wider rounded-xl cursor-pointer"
-              >
-                Print Official PDF
-              </button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => handleNotifyPatient(selectedOrder.id)}
+                  className="flex-1 sm:flex-none px-4 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-black text-xs uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-teal-600/20"
+                >
+                  <Send size={14} /> Dispatch & Notify Patient
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="flex-1 sm:flex-none px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Printer size={14} /> Print Official PDF
+                </button>
+              </div>
             </div>
           </div>
         </div>
