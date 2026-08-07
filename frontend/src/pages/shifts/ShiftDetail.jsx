@@ -273,41 +273,41 @@ export default function ShiftDetail() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       {/* Header */}
-      <header className="mb-12 border-b-2 border-slate-100 pb-12">
+      <header className="mb-8 bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-3 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] hover:text-[#1b669d] transition-all mb-8 group"
+          className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-[#1b669d] transition-all mb-4 group"
         >
-          <ArrowLeft size={16} className="group-hover:-translate-x-2 transition-transform" /> Back to logs
+          <ArrowLeft size={15} className="group-hover:-translate-x-1 transition-transform" /> Back to logs
         </button>
 
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
-          <div className="flex items-center gap-8">
-            <div className="w-24 h-24 rounded-[40px] bg-gradient-to-br from-[#1b669d] to-[#124d77] flex items-center justify-center text-white shadow-2xl shadow-[#1b669d]/30">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-[#1b669d]/10 border border-[#1b669d]/20 flex items-center justify-center text-[#1b669d] shrink-0">
               {{
-                cashier: <CreditCard size={40} />,
-                helpdesk: <Monitor size={40} />,
-                call_center: <Phone size={40} />,
-                nurse: <Stethoscope size={40} />,
-                vip_lounge: <Crown size={40} />
-              }[shift.shift_role] || <Briefcase size={40} />}
+                cashier: <CreditCard size={26} />,
+                helpdesk: <Monitor size={26} />,
+                call_center: <Phone size={26} />,
+                nurse: <Stethoscope size={26} />,
+                vip_lounge: <Crown size={26} />
+              }[shift.shift_role] || <Briefcase size={26} />}
             </div>
             <div>
-              <div className="flex items-center gap-4 mb-2">
-                <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Shift Summary</h1>
-                <span className={`px-4 py-1.5 rounded-2xl border-4 text-[10px] font-black uppercase tracking-widest ${shift.status === 'open' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                  shift.status === 'draft' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                    'bg-blue-50 text-blue-700 border-blue-100'
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Shift Summary</h1>
+                <span className={`px-3 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                  shift.status === 'open' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                  shift.status === 'draft' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                    'bg-slate-100 text-slate-600 border border-slate-200'
                   }`}>{shift.status}</span>
               </div>
-              <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">{ROLE_LABELS[shift.shift_role]} Report · ID: #{shift.id}</p>
+              <p className="text-slate-500 font-medium text-xs mt-0.5">{ROLE_LABELS[shift.shift_role]} Report · ID: #{shift.id}</p>
             </div>
           </div>
 
           {shift.is_flagged && (
-            <div className="flex items-center gap-4 px-8 py-4 rounded-[24px] bg-rose-50 border-4 border-rose-100 text-rose-600 shadow-2xl shadow-rose-500/5">
-              <AlertTriangle size={24} />
-              <div className="text-[10px] font-black uppercase tracking-[0.2em]">Security Anomaly Flagged</div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+              <AlertTriangle size={16} /> Security Anomaly Flagged
             </div>
           )}
         </div>

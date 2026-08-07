@@ -289,7 +289,8 @@ function KanbanBoard({ shifts, navigate }) {
 export default function ShiftDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isSupervisor = ['admin', 'deputy_coo'].includes(user?.role);
+  const isChefNurse = ['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head'].some(r => user?.role?.toLowerCase()?.includes(r) || user?.role?.toLowerCase() === r);
+  const isSupervisor = ['admin', 'deputy_coo', 'coo'].includes(user?.role) || isChefNurse;
   const isPrincipalCashier = user?.role === 'principal_cashier';
 
   const [shifts, setShifts] = useState([]);
@@ -551,18 +552,18 @@ export default function ShiftDashboard() {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="flex flex-col lg:flex-row lg:items-center justify-between gap-6"
+        className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs"
       >
-        <div className="flex items-center gap-5">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#1b669d] to-[#0f4c75] flex items-center justify-center text-white shadow-xl shadow-[#1b669d]/25 shrink-0">
-            <History size={26} />
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-[#1b669d]/10 border border-[#1b669d]/20 flex items-center justify-center text-[#1b669d] shrink-0">
+            <History size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none">
-              Shift Log
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Shift Management
             </h1>
-            <p className="text-slate-400 text-sm font-semibold mt-1">
-              Operational audit &amp; compliance dashboard
+            <p className="text-slate-500 text-xs font-medium mt-0.5">
+              {isChefNurse ? 'Nursing shift logs & handover verification' : 'Operational shift logs & compliance records'}
             </p>
           </div>
         </div>

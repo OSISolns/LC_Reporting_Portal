@@ -312,40 +312,50 @@ export default function NurseShiftDashboard() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center gap-5">
-          <div className="w-16 h-16 rounded-[24px] bg-[#1b669d] flex items-center justify-center text-white shadow-xl shadow-[#1b669d]/20">
-            <Stethoscope size={32} />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-[#1b669d]/10 border border-[#1b669d]/20 flex items-center justify-center text-[#1b669d] shrink-0">
+            <Stethoscope size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Nurse Shift Control</h1>
-            <p className="text-slate-500 font-bold flex items-center gap-2">
-              <ShieldCheck size={14} className="text-emerald-500" /> Professional Clinical Workflow
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Nurse Shift Control</h1>
+            <p className="text-slate-500 text-xs font-medium flex items-center gap-1.5 mt-0.5">
+              <ShieldCheck size={14} className="text-emerald-600" /> Clinical Shift & Handover Management
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head'].some(r => user?.role?.toLowerCase()?.includes(r) || user?.role?.toLowerCase() === r) && (
+            <Button
+              onClick={() => navigate('/shifts')}
+              variant="outline"
+              className="h-10 px-4 rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs flex items-center gap-2"
+            >
+              <ClipboardList size={15} /> Manage All Shift Logs
+            </Button>
+          )}
+
           <Button
             onClick={() => setIsLogModalOpen(true)}
-            className="h-14 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-wider shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+            className="h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-2"
           >
-            <Plus size={18} /> Log Individual Activity
+            <Plus size={15} /> Log Individual Activity
           </Button>
 
           {!activeShift ? (
             <Button 
               onClick={() => navigate('/shifts/open')}
-              className="h-14 px-8 rounded-2xl bg-[#1b669d] hover:bg-[#124d77] text-white font-black uppercase tracking-widest shadow-lg shadow-[#1b669d]/20"
+              className="h-10 px-5 rounded-lg bg-[#1b669d] hover:bg-[#124d77] text-white font-semibold text-xs"
             >
-              Start New Shift <ArrowRight size={18} className="ml-2" />
+              Start New Shift <ArrowRight size={15} className="ml-1.5" />
             </Button>
           ) : (
             <Button 
               onClick={() => navigate(`/shifts/close/${activeShift.id}`)}
-              className="h-14 px-8 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-widest shadow-lg shadow-rose-600/20"
+              className="h-10 px-5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs"
             >
-              End Shift & Handover <ArrowRight size={18} className="ml-2" />
+              End Shift & Handover <ArrowRight size={15} className="ml-1.5" />
             </Button>
           )}
         </div>

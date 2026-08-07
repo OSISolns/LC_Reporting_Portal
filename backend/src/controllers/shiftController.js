@@ -10,7 +10,14 @@ const MAX_SHIFT_HOURS  = 8;   // Auto-close threshold
 const MIN_SHIFT_HOURS  = 6;   // Agent self-close minimum (general)
 const EVENING_MIN_HOURS = 5;  // Special minimum for 3PM-8PM shift
 const COOLDOWN_HOURS   = 12;  // Required rest between shifts
-const SUPERVISOR_ROLES = ['admin', 'deputy_coo'];
+const CHEF_NURSE_ROLES = ['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head'];
+
+const isChefNurseRole = (role) => {
+  const r = String(role || '').toLowerCase();
+  return CHEF_NURSE_ROLES.some(k => r.includes(k) || r === k);
+};
+
+const SUPERVISOR_ROLES = ['admin', 'deputy_coo', 'coo', 'medical_director', ...CHEF_NURSE_ROLES];
 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -580,11 +587,11 @@ exports.getAllShifts = async (req, res, next) => {
   try {
     const { role, date_from, date_to, employee_name, status, flagged, page = 1, limit = 25 } = req.query;
 
-    let where = "s.shift_role != 'nurse'";
-    if (req.user.role === 'chef-nurse') {
+    let where = "1=1";
+    if (isChefNurseRole(req.user.role)) {
+      where = role ? "1=1" : "s.shift_role = 'nurse'";
+    } else if (req.user.role === 'nurse') {
       where = "s.shift_role = 'nurse'";
-    } else if (req.user.role === 'admin' || req.user.role === 'it_officer') {
-      where = "1=1";
     }
     const args = [];
 
@@ -644,8 +651,8 @@ exports.getShiftById = async (req, res, next) => {
     if (!shift) return res.status(404).json({ success: false, message: 'Shift not found.' });
 
     // Non-reviewers can only see their own shifts
-    const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'pa', 'operations_staff'];
-    if (!REVIEWER_ROLES.includes(req.user.role) && shift.user_id !== req.user.id) {
+    const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'pa', 'operations_staff', ...CHEF_NURSE_ROLES];
+    if (!REVIEWER_ROLES.includes(req.user.role) && !isChefNurseRole(req.user.role) && shift.user_id !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
@@ -1168,11 +1175,11 @@ exports.exportExcel = async (req, res, next) => {
   try {
     const { role, date_from, date_to, employee_name, status, flagged } = req.query;
 
-    let where = "s.shift_role != 'nurse'";
-    if (req.user.role === 'chef-nurse') {
+    let where = "1=1";
+    if (isChefNurseRole(req.user.role)) {
+      where = role ? "1=1" : "s.shift_role = 'nurse'";
+    } else if (req.user.role === 'nurse') {
       where = "s.shift_role = 'nurse'";
-    } else if (req.user.role === 'admin' || req.user.role === 'it_officer') {
-      where = "1=1";
     }
     const args = [];
 

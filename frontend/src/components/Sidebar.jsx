@@ -75,7 +75,7 @@ const Sidebar = ({ onClose }) => {
     { configKey: 'permissions',   name: 'Permissions',       icon: <Shield size={20} />,         path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
     { configKey: 'audit_logs',    name: 'Audit Logs',        icon: <History size={20} />,        path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin'] },
     // Shift Module
-    { configKey: 'shifts',        name: 'Shift Management',  icon: <Clock size={20} />,          path: '/shifts',       requiredPerm: null, allowedRoles: ['nurse', 'chef-nurse', 'cashier', 'customer_care', 'principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'pa'] },
+    { configKey: 'shifts',        name: 'Shift Management',  icon: <Clock size={20} />,          path: '/shifts',       requiredPerm: null, allowedRoles: ['nurse', 'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'cashier', 'customer_care', 'principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'pa'] },
     { configKey: 'feedbacks',     name: 'Internal Feedback', icon: <MessageSquare size={20} />,  path: '/feedbacks',    requiredPerm: { mod: 'feedbacks', act: 'view' }, allowedRoles: ['coo', 'deputy_coo', 'chef-nurse', 'medical_director'] },
   ];
 
