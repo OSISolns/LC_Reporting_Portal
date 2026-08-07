@@ -117,7 +117,7 @@ const ResultTransferList = () => {
     } catch (err) { alert('Action failed'); }
   };
 
-  const canCreate = ['cashier', 'customer_care', 'admin'].includes(user?.role);
+  const canCreate = ['cashier', 'customer_care', 'operations_staff', 'operations', 'operations_manager', 'ops_lead', 'admin'].includes(user?.role);
 
   return (
     <div>
