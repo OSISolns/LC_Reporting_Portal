@@ -158,59 +158,11 @@ async function up() {
       }
     }
 
-    // Seed some mock lab orders for testing if table is empty
-    const { rows: orders } = await db.query('SELECT id FROM lab_orders LIMIT 1');
-    if (orders.length === 0) {
-      console.log('🌱 Seeding mock lab orders and results...');
-      
-      // Order 1: Full Blood Count
-      await db.query(`
-        INSERT INTO lab_orders (accession_number, patient_id, patient_name, patient_age, patient_gender, referring_provider, specimen_type, specimen_barcode, status)
-        VALUES ('L-260714-001', 'P-10023', 'John Doe', '45', 'Male', 'Dr. Sarah Connor', 'Blood', 'BAR-86411', 'Collected')
-      `);
-      
-      // Order 2: Liver Function Test
-      await db.query(`
-        INSERT INTO lab_orders (accession_number, patient_id, patient_name, patient_age, patient_gender, referring_provider, specimen_type, specimen_barcode, status)
-        VALUES ('L-260714-002', 'P-10045', 'Alice Smith', '32', 'Female', 'Dr. Bruce Banner', 'Blood', 'BAR-86412', 'Completed')
-      `);
-      
-      const { rows: insertedOrders } = await db.query('SELECT id, accession_number FROM lab_orders');
-      const order1 = insertedOrders.find(o => o.accession_number === 'L-260714-001')?.id;
-      const order2 = insertedOrders.find(o => o.accession_number === 'L-260714-002')?.id;
+    // Purge mock lab orders if present
+    await db.query("DELETE FROM lab_orders WHERE accession_number LIKE 'L-260714%' OR patient_name IN ('John Doe', 'Alice Smith')");
+    await db.query("DELETE FROM lab_results WHERE order_id NOT IN (SELECT id FROM lab_orders)");
 
-      if (order1) {
-        const params = [
-          { name: 'Hemoglobin', unit: 'g/dL', range: '13.5 - 17.5' },
-          { name: 'White Blood Cell (WBC)', unit: '10^9/L', range: '4.0 - 11.0' },
-          { name: 'Platelets', unit: '10^9/L', range: '150 - 450' },
-          { name: 'Red Blood Cell (RBC)', unit: '10^12/L', range: '4.5 - 5.9' },
-        ];
-        for (const p of params) {
-          await db.query(
-            'INSERT INTO lab_results (order_id, parameter_name, reference_range, unit) VALUES (?, ?, ?, ?)',
-            [order1, p.name, p.range, p.unit]
-          );
-        }
-      }
-
-      if (order2) {
-        const params = [
-          { name: 'Alanine Aminotransferase (ALT)', val: '24', range: '7 - 56', unit: 'U/L', abnormal: 0 },
-          { name: 'Aspartate Aminotransferase (AST)', val: '58', range: '10 - 40', unit: 'U/L', abnormal: 1 },
-          { name: 'Alkaline Phosphatase (ALP)', val: '88', range: '44 - 147', unit: 'U/L', abnormal: 0 },
-          { name: 'Total Bilirubin', val: '0.8', range: '0.2 - 1.2', unit: 'mg/dL', abnormal: 0 },
-        ];
-        for (const p of params) {
-          await db.query(
-            'INSERT INTO lab_results (order_id, parameter_name, parameter_value, reference_range, unit, is_abnormal) VALUES (?, ?, ?, ?, ?, ?)',
-            [order2, p.name, p.val, p.range, p.unit, p.abnormal]
-          );
-        }
-      }
-    }
-
-    console.log('✅ Lab schema + seed complete.');
+    console.log('✅ Lab schema complete (no mock data).');
   } catch (err) {
     console.error('❌ Lab migration failed:', err);
     process.exitCode = 1;

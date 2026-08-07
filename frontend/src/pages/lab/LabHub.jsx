@@ -41,7 +41,7 @@ const LabHub = () => {
   const [patientName, setPatientName] = useState('');
   const [patientAge, setPatientAge] = useState('');
   const [patientGender, setPatientGender] = useState('Male');
-  const [refProvider, setRefProvider] = useState('Dr. Sarah Connor');
+  const [refProvider, setRefProvider] = useState('');
   const [specimenType, setSpecimenType] = useState('Venous Blood');
   const [tubeType, setTubeType] = useState('Purple EDTA');
   const [urgency, setUrgency] = useState('Routine');
@@ -58,11 +58,11 @@ const LabHub = () => {
 
   // Westgard QC Form State
   const [qcAnalyzer, setQcAnalyzer] = useState('Biochemistry Analyzer (Mindray BS-240)');
-  const [qcParam, setQcParam] = useState('Potassium (Serum)');
+  const [qcParam, setQcParam] = useState('');
   const [qcLevel, setQcLevel] = useState('Level 1 Normal');
-  const [qcMean, setQcMean] = useState('4.2');
-  const [qcSD, setQcSD] = useState('0.2');
-  const [qcValue, setQcValue] = useState('4.3');
+  const [qcMean, setQcMean] = useState('');
+  const [qcSD, setQcSD] = useState('');
+  const [qcValue, setQcValue] = useState('');
   const [qcCorrective, setQcCorrective] = useState('');
 
   // Analyzer Simulation State
