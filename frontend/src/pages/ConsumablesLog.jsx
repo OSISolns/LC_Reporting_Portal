@@ -1532,9 +1532,9 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                     {group.category.replace(/_/g, ' ')}
                                   </h5>
                                   <div className="space-y-0.5">
-                                    {group.items.map(item => (
+                                    {group.items.map((item, idx) => (
                                       <button
-                                        key={item.item_id}
+                                        key={`${item.dept_stock_id || item.item_id}-${item.batch_number || ''}-${idx}`}
                                         type="button"
                                         onClick={() => {
                                           setFormItemId(item.item_id);
@@ -2371,7 +2371,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                         {group.category.replace(/_/g, ' ')}
                                       </h5>
                                       <div className="space-y-0.5">
-                                        {group.items.map(item => (
+                                        {group.items.map((item, idx) => (
                                           <button
                                             key={item.item_id}
                                             type="button"
