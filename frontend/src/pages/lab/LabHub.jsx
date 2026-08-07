@@ -76,6 +76,9 @@ const LabHub = () => {
   const [qcValue, setQcValue] = useState('');
   const [qcCorrective, setQcCorrective] = useState('');
 
+  // Analyzer Simulation State
+  const [analyzerStatus, setAnalyzerStatus] = useState('Idle');
+
   // SUKRAA Patient Database Search State
   const [patientSearchQuery, setPatientSearchQuery] = useState('');
   const [sukraaPatients, setSukraaPatients] = useState([]);
