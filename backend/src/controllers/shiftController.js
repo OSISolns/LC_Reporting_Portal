@@ -10,7 +10,7 @@ const MAX_SHIFT_HOURS  = 8;   // Auto-close threshold
 const MIN_SHIFT_HOURS  = 6;   // Agent self-close minimum (general)
 const EVENING_MIN_HOURS = 5;  // Special minimum for 3PM-8PM shift
 const COOLDOWN_HOURS   = 12;  // Required rest between shifts
-const CHEF_NURSE_ROLES = ['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head'];
+const CHEF_NURSE_ROLES = ['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'deputy_head_nurse'];
 
 const isChefNurseRole = (role) => {
   const r = String(role || '').toLowerCase();

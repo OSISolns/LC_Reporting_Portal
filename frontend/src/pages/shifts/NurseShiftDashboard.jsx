@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  ClipboardList, 
-  Clock, 
-  ArrowRight, 
-  CheckCircle2, 
-  AlertTriangle, 
+import {
+  ClipboardList,
+  Clock,
+  ArrowRight,
+  CheckCircle2,
+  AlertTriangle,
   Users,
   Stethoscope,
   Heart,
@@ -92,16 +92,27 @@ export default function NurseShiftDashboard() {
   const [shiftActivities, setShiftActivities] = useState([]);
   const [latestHandover, setLatestHandover] = useState(null);
   const [myHistory, setMyHistory] = useState([]);
-  
+  const [allDepartmentShifts, setAllDepartmentShifts] = useState([]);
+
+  const isChefNurseOrDeputy = useMemo(() => {
+    const r = String(user?.role || '').toLowerCase();
+    const CHEF_NURSE_ROLES = [
+      'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 
+      'nursing_lead', 'nurse_manager', 'nursing_head', 
+      'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'deputy_head_nurse'
+    ];
+    return CHEF_NURSE_ROLES.some(k => r.includes(k) || r === k);
+  }, [user?.role]);
+
   // Filtering & View toggles
-  const [viewMode, setViewMode] = useState('INDIVIDUAL_LOGS'); // 'INDIVIDUAL_LOGS' | 'CLINICAL_SHEETS'
+  const [viewMode, setViewMode] = useState(isChefNurseOrDeputy ? 'DEPARTMENT_SHIFTS' : 'INDIVIDUAL_LOGS'); // 'DEPARTMENT_SHIFTS' | 'INDIVIDUAL_LOGS' | 'CLINICAL_SHEETS'
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
-  
+
   // Modals
   const [activeClinicalPatient, setActiveClinicalPatient] = useState(null);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
-  
+
   // New Individual Activity Form state
   const [activityForm, setActivityForm] = useState({
     patient_id: '',
@@ -133,7 +144,7 @@ export default function NurseShiftDashboard() {
   useEffect(() => {
     async function init() {
       try {
-        const [shiftRes, obsRes, handoverRes, histRes] = await Promise.all([
+        const fetchTasks = [
           getMyActiveShift(),
           api.get('/clinical/observations/recent'),
           getLatestHandover('nurse').catch(err => {
@@ -144,12 +155,33 @@ export default function NurseShiftDashboard() {
             console.error('Failed to fetch my history', err);
             return { data: { data: [] } };
           })
-        ]);
+        ];
+
+        if (isChefNurseOrDeputy) {
+          fetchTasks.push(
+            api.get('/shifts', { params: { limit: 100 } }).catch(err => {
+              console.error('Failed to fetch department shifts', err);
+              return { data: { data: [] } };
+            })
+          );
+        }
+
+        const results = await Promise.all(fetchTasks);
+        const shiftRes = results[0];
+        const obsRes = results[1];
+        const handoverRes = results[2];
+        const histRes = results[3];
+        const deptShiftsRes = results[4];
+
         const shiftData = shiftRes.data?.data || null;
         setActiveShift(shiftData);
         setRecentObservations(obsRes.data?.data || []);
         setLatestHandover(handoverRes.data?.data || null);
         setMyHistory(histRes.data?.data || []);
+
+        if (deptShiftsRes) {
+          setAllDepartmentShifts(deptShiftsRes.data?.data || (Array.isArray(deptShiftsRes.data) ? deptShiftsRes.data : []));
+        }
 
         await fetchShiftActivities(shiftData?.id);
       } catch (err) {
@@ -159,7 +191,7 @@ export default function NurseShiftDashboard() {
       }
     }
     init();
-  }, []);
+  }, [isChefNurseOrDeputy]);
 
   // Search Sukraa patients for individual logging modal
   useEffect(() => {
@@ -318,19 +350,23 @@ export default function NurseShiftDashboard() {
             <Stethoscope size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Nurse Shift Control</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              {isChefNurseOrDeputy ? 'Nursing Shift Control & Oversight' : 'Nursing Shift Control'}
+            </h1>
             <p className="text-slate-500 text-xs font-medium flex items-center gap-1.5 mt-0.5">
-              <ShieldCheck size={14} className="text-emerald-600" /> Clinical Shift & Handover Management
+              <ShieldCheck size={14} className="text-emerald-600" />
+              {isChefNurseOrDeputy
+                ? 'Departmental Nursing Shift Supervision, Verification & Handover Oversight'
+                : 'Clinical Shift & Handover Management'}
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head'].some(r => user?.role?.toLowerCase()?.includes(r) || user?.role?.toLowerCase() === r) && (
+          {isChefNurseOrDeputy && (
             <Button
               onClick={() => navigate('/shifts')}
-              variant="outline"
-              className="h-10 px-4 rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs flex items-center gap-2"
+              className="h-10 px-4 rounded-lg bg-[#1b669d] hover:bg-[#124d77] text-white font-semibold text-xs flex items-center gap-2"
             >
               <ClipboardList size={15} /> Manage All Shift Logs
             </Button>
@@ -340,79 +376,127 @@ export default function NurseShiftDashboard() {
             onClick={() => setIsLogModalOpen(true)}
             className="h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-2"
           >
-            <Plus size={15} /> Log Individual Activity
+            <Plus size={15} /> {isChefNurseOrDeputy ? 'Log Department Activity' : 'Log Individual Activity'}
           </Button>
 
-          {!activeShift ? (
-            <Button 
-              onClick={() => navigate('/shifts/open')}
-              className="h-10 px-5 rounded-lg bg-[#1b669d] hover:bg-[#124d77] text-white font-semibold text-xs"
-            >
-              Start New Shift <ArrowRight size={15} className="ml-1.5" />
-            </Button>
-          ) : (
-            <Button 
-              onClick={() => navigate(`/shifts/close/${activeShift.id}`)}
-              className="h-10 px-5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs"
-            >
-              End Shift & Handover <ArrowRight size={15} className="ml-1.5" />
-            </Button>
+          {!isChefNurseOrDeputy && (
+            !activeShift ? (
+              <Button
+                onClick={() => navigate('/shifts/open')}
+                className="h-10 px-5 rounded-lg bg-[#1b669d] hover:bg-[#124d77] text-white font-semibold text-xs"
+              >
+                Start New Shift <ArrowRight size={15} className="ml-1.5" />
+              </Button>
+            ) : (
+              <Button
+                onClick={() => navigate(`/shifts/close/${activeShift.id}`)}
+                className="h-10 px-5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs"
+              >
+                End Shift & Handover <ArrowRight size={15} className="ml-1.5" />
+              </Button>
+            )
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Active Shift Card */}
-        <Card className="lg:col-span-1 p-8 space-y-6 relative overflow-hidden">
-          {activeShift && <div className="absolute top-0 right-0 p-4 animate-pulse"><Badge variant="success">LIVE SESSION</Badge></div>}
-          
-          <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-            <Clock size={20} className="text-[#1b669d]" /> Session Details
-          </h3>
+        {/* Left Column Card */}
+        {isChefNurseOrDeputy ? (
+          <Card className="lg:col-span-1 p-8 space-y-6 relative overflow-hidden bg-slate-900 text-white border-none shadow-2xl rounded-[28px]">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div>
+                <Badge variant="info" className="mb-2 bg-sky-500/20 text-sky-300 border-sky-500/30">SUPERVISOR CONTROL</Badge>
+                <h3 className="text-xl font-black text-white flex items-center gap-2.5">
+                  <ShieldCheck size={22} className="text-sky-400" /> Department Supervision
+                </h3>
+              </div>
+            </div>
 
-          {activeShift ? (
             <div className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Shift Started</p>
-                <p className="font-black text-slate-800 text-lg">
-                  {getWaveStartTime(activeShift) ? getWaveStartTime(activeShift).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
-                </p>
-                <p className="text-xs text-slate-500 font-bold mt-0.5">
-                  {getWaveStartTime(activeShift) ? getWaveStartTime(activeShift).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : '—'}
+              <div className="p-4 bg-slate-800/80 rounded-2xl border border-slate-700/60">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Active Nurse Shifts</p>
+                <p className="font-black text-emerald-400 text-2xl flex items-center justify-between">
+                  {allDepartmentShifts.filter(s => s.status === 'open' || s.status === 'active').length}
+                  <span className="text-xs font-bold text-slate-400">On Duty</span>
                 </p>
               </div>
-              {activeShift.wave && (
+
+              <div className="p-4 bg-slate-800/80 rounded-2xl border border-slate-700/60">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pending Shift Reviews</p>
+                <p className="font-black text-amber-400 text-2xl flex items-center justify-between">
+                  {allDepartmentShifts.filter(s => s.status === 'closed' || s.status === 'pending').length}
+                  <span className="text-xs font-bold text-slate-400">Awaiting Review</span>
+                </p>
+              </div>
+
+              <div className="p-4 bg-slate-800/80 rounded-2xl border border-slate-700/60">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Activities Logged Today</p>
+                <p className="font-black text-sky-400 text-2xl flex items-center justify-between">
+                  {shiftActivities.length}
+                  <span className="text-xs font-bold text-slate-400">Interventions</span>
+                </p>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => navigate('/shifts')}
+              className="w-full h-12 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-lg shadow-sky-600/30 flex items-center justify-center gap-2"
+            >
+              <ClipboardList size={18} /> Manage & Review All Shift Logs
+            </Button>
+          </Card>
+        ) : (
+          <Card className="lg:col-span-1 p-8 space-y-6 relative overflow-hidden">
+            {activeShift && <div className="absolute top-0 right-0 p-4 animate-pulse"><Badge variant="success">LIVE SESSION</Badge></div>}
+
+            <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+              <Clock size={20} className="text-[#1b669d]" /> Session Details
+            </h3>
+
+            {activeShift ? (
+              <div className="space-y-4">
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Allocated Wave</p>
-                  <p className="font-black text-slate-800 text-lg uppercase tracking-wider">{activeShift.wave}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Shift Started</p>
+                  <p className="font-black text-slate-800 text-lg">
+                    {getWaveStartTime(activeShift) ? getWaveStartTime(activeShift).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </p>
                   <p className="text-xs text-slate-500 font-bold mt-0.5">
-                    {activeShift.start_hour === '07:00' ? '07:00 AM - 03:00 PM' :
-                     activeShift.start_hour === '08:00' ? '08:00 AM - 04:00 PM' :
-                     activeShift.start_hour === '09:00' ? '09:00 AM - 05:00 PM' :
-                     activeShift.start_hour === '15:00' ? '03:00 PM - 09:00 PM' : ''}
+                    {getWaveStartTime(activeShift) ? getWaveStartTime(activeShift).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : '—'}
                   </p>
                 </div>
-              )}
-              <div className="p-4 bg-sky-50 rounded-2xl border border-sky-100">
-                <p className="text-[10px] font-black text-sky-600 uppercase tracking-widest mb-1">Assigned Nursing Station</p>
-                <p className="font-black text-slate-900 text-lg">{activeShift.nursing_ward || 'STATION 1'}</p>
-                <p className="text-xs text-sky-800 font-bold mt-1">
-                  {activeShift.nursing_ward === 'STATION 2' ? 'Cardiology Clinic (Vitals, ECG, TMT)' :
-                   activeShift.nursing_ward === 'MINOR SURGERY' ? 'Minor Surgical Procedures & Care' :
-                   activeShift.nursing_ward === 'PAEDIATRICS' ? 'Paediatric Vitals & Vaccinations (Minors & Adults)' :
-                   'Vital Signs Check & Patient Orientation'}
-                </p>
+                {activeShift.wave && (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Allocated Wave</p>
+                    <p className="font-black text-slate-800 text-lg uppercase tracking-wider">{activeShift.wave}</p>
+                    <p className="text-xs text-slate-500 font-bold mt-0.5">
+                      {activeShift.start_hour === '07:00' ? '07:00 AM - 03:00 PM' :
+                        activeShift.start_hour === '08:00' ? '08:00 AM - 04:00 PM' :
+                          activeShift.start_hour === '09:00' ? '09:00 AM - 05:00 PM' :
+                            activeShift.start_hour === '15:00' ? '03:00 PM - 09:00 PM' : ''}
+                    </p>
+                  </div>
+                )}
+                <div className="p-4 bg-sky-50 rounded-2xl border border-sky-100">
+                  <p className="text-[10px] font-black text-sky-600 uppercase tracking-widest mb-1">Assigned Nursing Station</p>
+                  <p className="font-black text-slate-900 text-lg">{activeShift.nursing_ward || 'STATION 1'}</p>
+                  <p className="text-xs text-sky-800 font-bold mt-1">
+                    {activeShift.nursing_ward === 'STATION 2' ? 'Cardiology Clinic (Vitals, ECG, TMT)' :
+                      activeShift.nursing_ward === 'MINOR SURGERY' ? 'Minor Surgical Procedures & Care' :
+                        activeShift.nursing_ward === 'PAEDIATRICS' ? 'Paediatric Vitals & Vaccinations (Minors & Adults)' :
+                          'Vital Signs Check & Patient Orientation'}
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="py-10 text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-300">
-                <Clock size={32} />
+            ) : (
+              <div className="py-10 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-300">
+                  <Clock size={32} />
+                </div>
+                <p className="text-slate-400 font-bold">No active shift session. Please start your shift to begin clinical documentation.</p>
               </div>
-              <p className="text-slate-400 font-bold">No active shift session. Please start your shift to begin clinical documentation.</p>
-            </div>
-          )}
-        </Card>
+            )}
+          </Card>
+        )}
 
         {/* Clinical Activity Summary Card */}
         <div className="lg:col-span-2 space-y-6">
@@ -423,20 +507,22 @@ export default function NurseShiftDashboard() {
                   <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-sky-100 text-sky-800 rounded-md flex items-center gap-1">
                     <Database size={10} /> Sukraa HIMS Sync
                   </span>
-                  <span className="text-xs text-slate-400 font-semibold">• Individual Shift Logs</span>
+                  <span className="text-xs text-slate-400 font-semibold">• {isChefNurseOrDeputy ? 'Department Logs & Shift Oversight' : 'Individual Shift Logs'}</span>
                 </div>
                 <h3 className="text-xl font-black text-slate-900 flex items-center gap-2.5">
-                  <ClipboardList size={22} className="text-[#1b669d]" /> Clinical Activity Summary
+                  <ClipboardList size={22} className="text-[#1b669d]" /> {isChefNurseOrDeputy ? 'Department Shift Control' : 'Clinical Activity Summary'}
                 </h3>
                 <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                  Individual patient activities, nursing interventions, and observations recorded during shift
+                  {isChefNurseOrDeputy
+                    ? 'Review, verify, and inspect nursing shift logs, handovers, and ward interventions'
+                    : 'Individual patient activities, nursing interventions, and observations recorded during shift'}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <Button 
+                <Button
                   onClick={() => setIsLogModalOpen(true)}
-                  size="sm" 
+                  size="sm"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
                 >
                   <Plus size={14} className="mr-1" /> Log Activity
@@ -447,26 +533,35 @@ export default function NurseShiftDashboard() {
               </div>
             </div>
 
-            {/* View Mode Toggle: Individual Activity Logs vs Clinical Sheets */}
+            {/* View Mode Toggle */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl w-full sm:w-auto">
+              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl w-full sm:w-auto overflow-x-auto">
+                {isChefNurseOrDeputy && (
+                  <button
+                    onClick={() => setViewMode('DEPARTMENT_SHIFTS')}
+                    className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${viewMode === 'DEPARTMENT_SHIFTS'
+                        ? 'bg-white text-sky-900 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                  >
+                    <Clock size={14} /> Department Shifts ({allDepartmentShifts.length})
+                  </button>
+                )}
                 <button
                   onClick={() => setViewMode('INDIVIDUAL_LOGS')}
-                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                    viewMode === 'INDIVIDUAL_LOGS'
+                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${viewMode === 'INDIVIDUAL_LOGS'
                       ? 'bg-white text-sky-900 shadow-2xs'
                       : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                    }`}
                 >
-                  <Activity size={14} /> Individual Activity Logs ({shiftActivities.length})
+                  <Activity size={14} /> Activity Logs ({shiftActivities.length})
                 </button>
                 <button
                   onClick={() => setViewMode('CLINICAL_SHEETS')}
-                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                    viewMode === 'CLINICAL_SHEETS'
+                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${viewMode === 'CLINICAL_SHEETS'
                       ? 'bg-white text-sky-900 shadow-2xs'
                       : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                    }`}
                 >
                   <FileText size={14} /> Clinical Sheets ({recentObservations.length})
                 </button>
@@ -477,13 +572,72 @@ export default function NurseShiftDashboard() {
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search PID, patient, notes..."
+                  placeholder="Search PID, nurse, notes..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-sky-500 focus:bg-white"
                 />
               </div>
             </div>
+
+            {/* Department Shifts View Mode for Chef Nurse and Deputy Chef Nurse */}
+            {viewMode === 'DEPARTMENT_SHIFTS' && isChefNurseOrDeputy && (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 scrollbar-thin">
+                {allDepartmentShifts.length > 0 ? (
+                  allDepartmentShifts
+                    .filter(s => {
+                      if (!searchQuery.trim()) return true;
+                      const q = searchQuery.toLowerCase().trim();
+                      return (
+                        (s.user_name && s.user_name.toLowerCase().includes(q)) ||
+                        (s.nursing_ward && s.nursing_ward.toLowerCase().includes(q)) ||
+                        (s.status && s.status.toLowerCase().includes(q))
+                      );
+                    })
+                    .map((s) => (
+                      <div
+                        key={s.id}
+                        className="p-4 border border-slate-200/80 rounded-2xl bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-sky-300 transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 flex items-center justify-center font-black shrink-0">
+                            {s.user_name?.substring(0, 2).toUpperCase() || 'NS'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-extrabold text-slate-900 text-sm">{s.user_name || 'Staff Nurse'}</h4>
+                              <span className={`px-2.5 py-0.5 text-[10px] font-black rounded-full uppercase ${
+                                s.status === 'open' || s.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                s.status === 'closed' || s.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                'bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}>
+                                {s.status}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                              Ward: <span className="text-slate-800 font-bold">{s.nursing_ward || 'General Station'}</span> • Opened: {formatExactDate(s.opened_at)} {formatExactTime(s.opened_at)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            onClick={() => navigate('/shifts')}
+                            className="bg-[#1b669d] hover:bg-[#124d77] text-white font-bold text-xs"
+                          >
+                            Review Log
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <div className="py-12 text-center text-slate-400 font-bold">
+                    No department shift logs found.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Category Filter Pills for Individual Activity Logs */}
             {viewMode === 'INDIVIDUAL_LOGS' && (
@@ -492,11 +646,10 @@ export default function NurseShiftDashboard() {
                   <button
                     key={cat}
                     onClick={() => setCategoryFilter(cat)}
-                    className={`px-3 py-1 rounded-full text-[10px] font-extrabold whitespace-nowrap transition-all cursor-pointer border ${
-                      categoryFilter === cat
+                    className={`px-3 py-1 rounded-full text-[10px] font-extrabold whitespace-nowrap transition-all cursor-pointer border ${categoryFilter === cat
                         ? 'bg-sky-900 text-white border-sky-900 shadow-2xs'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     {cat === 'ALL' ? 'All Categories' : cat}
                   </button>
@@ -660,24 +813,24 @@ export default function NurseShiftDashboard() {
 
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div className="bg-white p-6 rounded-[28px] border border-slate-200 shadow-sm flex items-center gap-5">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <Activity size={24} />
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-slate-900 leading-none">{shiftActivities.length}</p>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Individual Shift Activities</p>
-                </div>
-             </div>
-             <div className="bg-white p-6 rounded-[28px] border border-slate-200 shadow-sm flex items-center gap-5">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#1b669d] flex items-center justify-center">
-                  <Thermometer size={24} />
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-slate-900 leading-none">{recentObservations.length}</p>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Sukraa Clinical Sheets</p>
-                </div>
-             </div>
+            <div className="bg-white p-6 rounded-[28px] border border-slate-200 shadow-sm flex items-center gap-5">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Activity size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 leading-none">{shiftActivities.length}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Individual Shift Activities</p>
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-[28px] border border-slate-200 shadow-sm flex items-center gap-5">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#1b669d] flex items-center justify-center">
+                <Thermometer size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 leading-none">{recentObservations.length}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Sukraa Clinical Sheets</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -897,7 +1050,7 @@ export default function NurseShiftDashboard() {
                 if (res.data?.success && res.data?.data) {
                   setRecentObservations(res.data.data);
                 }
-              }).catch(() => {});
+              }).catch(() => { });
             }}
           />
         )}

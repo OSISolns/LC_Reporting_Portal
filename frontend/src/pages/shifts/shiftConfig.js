@@ -138,7 +138,7 @@ export const CALL_REASON_OPTIONS = [
 ];
 
 // ─── Reviewer roles (must match backend) ─────────────────────────────────────
-export const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'pa', 'operations_staff', 'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head'];
+export const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'pa', 'operations_staff', 'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'deputy_head_nurse'];
 
 // ─── Staff roles that can open shifts ────────────────────────────────────────
 export const STAFF_SHIFT_ROLES = ['cashier', 'customer_care', 'operations_staff', 'nurse'];
