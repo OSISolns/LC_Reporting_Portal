@@ -114,7 +114,9 @@ const ResultTransferList = () => {
       await actionFn(id, ...args);
       fetchRequests();
       setShowViewModal(false);
-    } catch (err) { alert('Action failed'); }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Action failed');
+    }
   };
 
   const canCreate = ['cashier', 'customer_care', 'operations_staff', 'operations', 'operations_manager', 'ops_lead', 'admin'].includes(user?.role);

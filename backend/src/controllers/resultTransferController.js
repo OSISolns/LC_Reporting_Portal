@@ -65,6 +65,12 @@ exports.getRequestById = async (req, res, next) => {
 
 exports.reviewRequest = async (req, res, next) => {
   try {
+    const existing = await ResultTransfer.findById(req.params.id);
+    if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (existing.status !== 'pending') {
+      return res.status(400).json({ success: false, message: `Request is currently in '${existing.status}' status and cannot be reviewed.` });
+    }
+
     const request = await ResultTransfer.review(req.params.id, req.user.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be reviewed' });
     await logAction(req, 'REVIEW', 'result_transfer', request.id);
@@ -88,6 +94,12 @@ exports.reviewRequest = async (req, res, next) => {
 exports.approveRequest = async (req, res, next) => {
   try {
     const { editedByName } = req.body;
+    const existing = await ResultTransfer.findById(req.params.id);
+    if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (existing.status !== 'reviewed') {
+      return res.status(400).json({ success: false, message: `Request must be reviewed by Operations before approval. Current status: '${existing.status}'` });
+    }
+
     const request = await ResultTransfer.approve(req.params.id, req.user.id, editedByName);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be approved' });
     await logAction(req, 'APPROVE', 'result_transfer', request.id);
