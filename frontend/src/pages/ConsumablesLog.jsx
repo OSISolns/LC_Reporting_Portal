@@ -327,7 +327,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     const list = [];
     const seenItemIds = new Set();
 
-    // Helper to determine if an item is strictly a Dental Lab material
+    // Helper to determine if an item is strictly a Dental/Clinical Lab material
     const checkIsExplicitLab = (item) => {
       const dept = (item.department || '').toUpperCase();
       const storage = (item.storage || '').toUpperCase();
@@ -349,11 +349,27 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       return labKeywords.some(k => name.includes(k));
     };
 
+    // Helper to determine if an item is strictly a Nursing consumable
+    const checkIsNursingItem = (item) => {
+      const dept = (item.department || '').toUpperCase();
+      const name = (item.name || '').toUpperCase();
+
+      if (dept.includes('NURSING')) return true;
+
+      const nursingKeywords = [
+        'ADRENALINE', 'AQUABLOC', 'AQUABLOCK', 'PLASTER', 'BUSCOPAN', 'DICLOFENAC', 'ACCU-CHECK',
+        'CANNULA', 'INFUSION', 'SYRINGE', 'NEEDLE', 'GAUZE', 'COTTON', 'BANDAGE', 'SALINE', 'SODIUM CHLORIDE',
+        'DEXTROSE', 'RINGER', 'PARACETAMOL', 'HYDROCORTISONE', 'CLEFT', 'IV SET', 'AIGUILLE'
+      ];
+      return nursingKeywords.some(k => name.includes(k));
+    };
+
     // 1. Process master items from Stock Manager's Catalog
     if (masterItems && masterItems.length > 0) {
       for (const item of masterItems) {
         const itemDeptName = (item.department || '').toUpperCase();
         const isLabItem = checkIsExplicitLab(item);
+        const isNursingItem = checkIsNursingItem(item);
 
         let matchesDept = false;
         if (isGS) {
@@ -366,7 +382,28 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
           matchesDept = itemDeptName.includes('DENTAL LAB') || isLabItem;
         } else if (activeDeptName === 'DENTAL') {
           matchesDept = itemDeptName.includes('DENTAL');
-        } else if (activeDeptName) {
+        } else if (activeDeptName === 'LABORATORY' || activeDeptName === 'LAB') {
+          // Strictly exclude Nursing items from Laboratory!
+          if (isNursingItem) {
+            matchesDept = false;
+          } else if (itemDeptName.includes('LAB') || isLabItem) {
+            matchesDept = true;
+          } else if (itemDeptName && (itemDeptName.includes('NURSING') || itemDeptName.includes('DENTAL') || itemDeptName.includes('PHYSIO'))) {
+            matchesDept = false;
+          } else {
+            matchesDept = localDeptStockMap.has(item.id);
+          }
+        } else if (activeDeptName === 'NURSING') {
+          if (isLabItem) {
+            matchesDept = false;
+          } else if (itemDeptName.includes('NURSING') || isNursingItem) {
+            matchesDept = true;
+          } else if (itemDeptName && (itemDeptName.includes('LAB') || itemDeptName.includes('DENTAL') || itemDeptName.includes('PHYSIO'))) {
+            matchesDept = false;
+          } else {
+            matchesDept = localDeptStockMap.has(item.id);
+          }
+        } else if (activeDeptName && itemDeptName) {
           matchesDept = itemDeptName.includes(activeDeptName) || activeDeptName.includes(itemDeptName);
         }
 
@@ -375,6 +412,8 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         if (localQty > 0) {
           if (activeDeptName === 'DENTAL CLINIC' && isLabItem) {
             matchesDept = false; // Never show Lab items in Dental Clinic!
+          } else if ((activeDeptName === 'LABORATORY' || activeDeptName === 'LAB') && isNursingItem) {
+            matchesDept = false; // Never show Nursing items in Laboratory!
           } else {
             matchesDept = true;
           }
@@ -403,9 +442,11 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     for (const row of distributedStock) {
       if (String(row.department_id) === String(activeD) && !seenItemIds.has(row.item_id)) {
         const isLabRow = checkIsExplicitLab(row);
-        if (activeDeptName === 'DENTAL CLINIC' && isLabRow) {
-          continue; // Filter out Lab rows from Dental Clinic
-        }
+        const isNursingRow = checkIsNursingItem(row);
+
+        if (activeDeptName === 'DENTAL CLINIC' && isLabRow) continue;
+        if ((activeDeptName === 'LABORATORY' || activeDeptName === 'LAB') && isNursingRow) continue;
+        if (activeDeptName === 'NURSING' && isLabRow) continue;
 
         seenItemIds.add(row.item_id);
         const qty = Number(row.quantity || 0);

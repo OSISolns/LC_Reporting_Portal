@@ -3061,11 +3061,22 @@ const getDepartmentForRole = async (role) => {
 
 exports.getDistributedStock = async (req, res) => {
   try {
-    const { include_central, include_deactivated } = req.query;
+    const { include_central, include_deactivated, department_id } = req.query;
     
+    // Role-based department restriction for non-admins
+    const deptLimit = await getDepartmentForRole(req.user.role);
+    const targetDeptId = deptLimit ? deptLimit.id : (department_id ? parseInt(department_id, 10) : null);
+
     // Fetch General Store ID dynamically
     const { rows: gsRows } = await db.query("SELECT id FROM departments WHERE UPPER(name) = 'GENERAL STORE' LIMIT 1");
     const gsId = gsRows[0]?.id || 134; // Fallback to 134 if not found
+
+    const params = [];
+    let deptCondition = '';
+    if (targetDeptId) {
+      params.push(targetDeptId);
+      deptCondition = `AND ds.department_id = $${params.length}`;
+    }
 
     let sql = `
       SELECT * FROM (
@@ -3095,14 +3106,13 @@ exports.getDistributedStock = async (req, res) => {
         LEFT JOIN stock_batches sb ON ds.batch_id = sb.id
         LEFT JOIN departments d ON ds.department_id = d.id
         LEFT JOIN vendors v ON sb.vendor_id = v.id
-        -- Include zero-stock items (>= 0) so the Stock Manager can see what has
-        -- run out and needs re-ordering; only negatives (anomalies) are hidden.
         WHERE ds.quantity >= 0
+          ${deptCondition}
           AND (d.name IS NULL OR (d.name NOT LIKE '%Central%' AND d.name NOT LIKE '%Store%'))
           ${include_deactivated === 'true' ? '' : "AND (ds.status IS NULL OR ds.status != 'deactivated')"}
     `;
 
-    if (include_central === 'true') {
+    if (include_central === 'true' && !targetDeptId) {
       sql += `
       UNION ALL
       SELECT
@@ -3136,7 +3146,7 @@ exports.getDistributedStock = async (req, res) => {
 
     sql += ') AS stock_combined ORDER BY department ASC, name ASC, (expiry_date IS NULL) ASC, expiry_date ASC, lot_number ASC, dept_stock_id ASC';
 
-    const { rows } = await db.query(sql);
+    const { rows } = await db.query(sql, params);
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error in getDistributedStock:', error);
