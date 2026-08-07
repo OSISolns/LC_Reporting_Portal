@@ -28,6 +28,16 @@ const LIFECYCLE_STAGES = [
   { id: 'Notified', phase: 'completed', label: '7. Report Dispatched' }
 ];
 
+// ── FLOATING BUBBLE GUIDE TOOLTIP ────────────────────────────────────────────
+const FieldTooltip = ({ text, children }) => (
+  <div className="relative group w-full">
+    {children}
+    <div className="absolute bottom-full mb-1.5 left-2 z-50 px-2.5 py-1 bg-slate-900 text-white text-[10px] font-normal rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none whitespace-nowrap after:content-[''] after:absolute after:top-full after:left-4 after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-slate-900">
+      {text}
+    </div>
+  </div>
+);
+
 const LabHub = () => {
   const [activeTab, setActiveTab] = useState('worklist'); // 'worklist', 'draw_order', 'analyzers', 'qc'
   const [phaseFilter, setPhaseFilter] = useState('all'); // 'all', 'pre-analytical', 'analytical', 'post-analytical'
@@ -651,16 +661,18 @@ const LabHub = () => {
                           <span className="font-medium">{param.parameter_name}</span>
                           <span className="text-[10px] text-slate-400 font-mono">{param.reference_range} {param.unit}</span>
                         </div>
-                        <input
-                          type="text"
-                          value={param.parameter_value || ''}
-                          onChange={e => {
-                            const val = e.target.value;
-                            setResultParams(prev => prev.map(p => p.id === param.id ? { ...p, parameter_value: val } : p));
-                          }}
-                          placeholder="Enter measurement..."
-                          className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-slate-400"
-                        />
+                        <FieldTooltip text={`Reference range: ${param.reference_range || 'Standard'} ${param.unit || ''}`}>
+                          <input
+                            type="text"
+                            value={param.parameter_value || ''}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setResultParams(prev => prev.map(p => p.id === param.id ? { ...p, parameter_value: val } : p));
+                            }}
+                            placeholder="Enter measurement..."
+                            className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-slate-400"
+                          />
+                        </FieldTooltip>
                       </div>
                     ))}
                   </div>
@@ -878,12 +890,14 @@ const LabHub = () => {
               {/* SUKRAA Patient Lookup Field */}
               <div className="relative">
                 <label className="text-[10px] font-semibold text-slate-700 block mb-1">Search SUKRAA Patient Database</label>
-                <input
-                  type="text"
-                  value={patientSearchQuery}
-                  onChange={e => setPatientSearchQuery(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-400"
-                />
+                <FieldTooltip text="Search by name, PID, or phone number to auto-populate patient record">
+                  <input
+                    type="text"
+                    value={patientSearchQuery}
+                    onChange={e => setPatientSearchQuery(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-400"
+                  />
+                </FieldTooltip>
                 {searchingPatients && (
                   <span className="absolute right-2.5 top-7 text-[10px] text-slate-400">Searching...</span>
                 )}
@@ -911,102 +925,118 @@ const LabHub = () => {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] font-medium text-slate-500 block mb-1">Patient ID *</label>
-                  <input
-                    type="text"
-                    required
-                    value={patientId}
-                    onChange={e => setPatientId(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-mono font-medium text-slate-900"
-                  />
+                  <FieldTooltip text="Unique patient identifier assigned in medical record system">
+                    <input
+                      type="text"
+                      required
+                      value={patientId}
+                      onChange={e => setPatientId(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-mono font-medium text-slate-900"
+                    />
+                  </FieldTooltip>
                 </div>
                 <div>
                   <label className="text-[10px] font-medium text-slate-500 block mb-1">Patient Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={patientName}
-                    onChange={e => setPatientName(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
-                  />
+                  <FieldTooltip text="Full legal patient name">
+                    <input
+                      type="text"
+                      required
+                      value={patientName}
+                      onChange={e => setPatientName(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
+                    />
+                  </FieldTooltip>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="text-[10px] font-medium text-slate-500 block mb-1">Age</label>
-                  <input
-                    type="text"
-                    value={patientAge}
-                    onChange={e => setPatientAge(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
-                  />
+                  <FieldTooltip text="Patient age in years">
+                    <input
+                      type="text"
+                      value={patientAge}
+                      onChange={e => setPatientAge(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
+                    />
+                  </FieldTooltip>
                 </div>
                 <div>
                   <label className="text-[10px] font-medium text-slate-500 block mb-1">Gender</label>
-                  <select
-                    value={patientGender}
-                    onChange={e => setPatientGender(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
-                  >
-                    <option>Male</option>
-                    <option>Female</option>
-                  </select>
+                  <FieldTooltip text="Biological gender baseline">
+                    <select
+                      value={patientGender}
+                      onChange={e => setPatientGender(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
+                    >
+                      <option>Male</option>
+                      <option>Female</option>
+                    </select>
+                  </FieldTooltip>
                 </div>
                 <div>
                   <label className="text-[10px] font-medium text-slate-500 block mb-1">Urgency</label>
-                  <select
-                    value={urgency}
-                    onChange={e => setUrgency(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
-                  >
-                    <option value="Routine">Routine</option>
-                    <option value="STAT">STAT</option>
-                  </select>
+                  <FieldTooltip text="STAT = emergency processing (<45m)">
+                    <select
+                      value={urgency}
+                      onChange={e => setUrgency(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
+                    >
+                      <option value="Routine">Routine</option>
+                      <option value="STAT">STAT</option>
+                    </select>
+                  </FieldTooltip>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] font-medium text-slate-500 block mb-1">Test Assay</label>
-                  <select
-                    value={testName}
-                    onChange={e => setTestName(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
-                  >
-                    <option>Full Blood Count (FBC/CBC)</option>
-                    <option>Liver Function Test (LFT)</option>
-                    <option>Renal & Electrolytes (RFT)</option>
-                    <option>Cardiac Troponin I (STAT)</option>
-                  </select>
+                  <FieldTooltip text="Target laboratory diagnostic panel">
+                    <select
+                      value={testName}
+                      onChange={e => setTestName(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
+                    >
+                      <option>Full Blood Count (FBC/CBC)</option>
+                      <option>Liver Function Test (LFT)</option>
+                      <option>Renal & Electrolytes (RFT)</option>
+                      <option>Cardiac Troponin I (STAT)</option>
+                    </select>
+                  </FieldTooltip>
                 </div>
                 <div>
                   <label className="text-[10px] font-medium text-slate-500 block mb-1">Tube Selection</label>
-                  <select
-                    value={tubeType}
-                    onChange={e => setTubeType(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
-                  >
-                    {TUBE_TYPES.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
+                  <FieldTooltip text="Container top color based on CLSI H3-A6 order of draw">
+                    <select
+                      value={tubeType}
+                      onChange={e => setTubeType(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
+                    >
+                      {TUBE_TYPES.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </FieldTooltip>
                 </div>
               </div>
 
               <div>
                 <label className="text-[10px] font-medium text-slate-500 block mb-1">Barcode Label *</label>
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    required
-                    value={barcode}
-                    onChange={e => setBarcode(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-mono font-medium text-slate-900"
-                  />
+                  <FieldTooltip text="Unique barcode identifier printed on physical specimen tube">
+                    <input
+                      type="text"
+                      required
+                      value={barcode}
+                      onChange={e => setBarcode(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-mono font-medium text-slate-900"
+                    />
+                  </FieldTooltip>
                   <button
                     type="button"
                     onClick={handleGenerateBarcode}
-                    className="px-3 py-2 bg-slate-800 text-white font-medium text-xs rounded cursor-pointer"
+                    className="px-3 py-2 bg-slate-800 text-white font-medium text-xs rounded cursor-pointer shrink-0"
                   >
                     Gen
                   </button>
