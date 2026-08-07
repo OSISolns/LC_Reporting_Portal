@@ -3019,33 +3019,44 @@ const checkDepartmentAccess = async (userRole, departmentId) => {
 // Helper to map role to department dynamically
 const getDepartmentForRole = async (role) => {
   const r = String(role || '').toLowerCase();
+
+  // 1. Department-specific role matching (MUST execute before generic title keywords)
+  let name = null;
+  if (r.includes('dental_lab') || r.includes('dental_tech')) {
+    name = 'DENTAL LAB';
+  } else if (r.includes('dental') || r.includes('dentist') || r.includes('ortho') || r.includes('prostho')) {
+    name = 'DENTAL CLINIC';
+  } else if (r.includes('lab') || r.includes('pathology') || r.includes('medtech')) {
+    name = 'LABORATORY';
+  } else if (r.includes('nurse') || r.includes('nursing')) {
+    name = 'NURSING';
+  } else if (r.includes('physio')) {
+    name = 'PHYSIO';
+  } else if (r.includes('operations') || r.includes('ops')) {
+    name = 'OPERATIONS';
+  } else if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) {
+    name = 'IMAGING';
+  }
+
+  if (name) {
+    try {
+      const { rows } = await db.query("SELECT id, name FROM departments WHERE UPPER(name) LIKE $1 LIMIT 1", [`%${name}%`]);
+      if (rows[0]) return rows[0];
+    } catch (err) {
+      console.error('Error resolving department for role:', err);
+    }
+  }
+
+  // 2. Global system administrative roles (unrestricted multi-department view)
   if (
     r === 'admin' || r === 'superadmin' ||
-    r.includes('director') || r.includes('coo') || r.includes('stock') ||
-    r.includes('procurement') || r.includes('manager') || r.includes('officer') ||
-    r.includes('lead') || r.includes('head')
+    r.includes('director') || r.includes('coo') || r.includes('deputy_coo') ||
+    r.includes('stock_manager') || r.includes('procurement')
   ) {
     return null;
   }
 
-  let name = null;
-  if (r.includes('nurse')) name = 'NURSING';
-  else if (r.includes('lab') && !r.includes('dental')) name = 'LABORATORY';
-  else if (r.includes('physio')) name = 'PHYSIO';
-  else if (r.includes('operations') || r.includes('ops')) name = 'OPERATIONS';
-  else if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) name = 'IMAGING';
-  else if (r.includes('dental_lab') || r.includes('dental_tech')) name = 'DENTAL LAB';
-  else if (r.includes('dental') || r.includes('dentist') || r.includes('ortho') || r.includes('prostho')) name = 'DENTAL CLINIC';
-
-  if (!name) return null;
-
-  try {
-    const { rows } = await db.query("SELECT id, name FROM departments WHERE UPPER(name) LIKE $1 LIMIT 1", [`%${name}%`]);
-    return rows[0] || null;
-  } catch (err) {
-    console.error('Error resolving department for role:', err);
-    return null;
-  }
+  return null;
 };
 
 exports.getDistributedStock = async (req, res) => {

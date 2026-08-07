@@ -45,12 +45,12 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
     const r = String(user?.role || '').toLowerCase();
     let deptName = null;
-    if (r.includes('nurse')) deptName = 'NURSING';
-    else if (r.includes('lab') && !r.includes('dental')) deptName = 'LABORATORY';
+    if (r.includes('nurse') || r.includes('nursing')) deptName = 'NURSING';
+    else if (r.includes('dental_lab') || r.includes('dental_tech')) deptName = 'DENTAL LAB';
+    else if (r.includes('dental') || r.includes('dentist') || r.includes('ortho') || r.includes('prostho')) deptName = 'DENTAL CLINIC';
+    else if (r.includes('lab') || r.includes('pathology') || r.includes('medtech')) deptName = 'LABORATORY';
     else if (r.includes('stock') || r.includes('procurement')) deptName = 'GENERAL STORE';
     else if (r.includes('physio')) deptName = 'PHYSIO';
-    else if (r.includes('dental_lab') || r.includes('lab_manager') || r.includes('dental_tech')) deptName = 'DENTAL LAB';
-    else if (r.includes('dental') || r.includes('dentist')) deptName = 'DENTAL CLINIC';
     else if (r.includes('operations') || r.includes('ops')) deptName = 'OPERATIONS';
     else if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) deptName = 'IMAGING';
     else if (r === 'admin') return null;
