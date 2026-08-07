@@ -17,8 +17,11 @@ const ResultTransferDetailsView = ({ data, onReview, onApprove, onReject, onExpo
 
   if (!data) return null;
 
-  const isOperations = hasPermission('results_transfer', 'review');
-  const isLabLead    = hasPermission('results_transfer', 'approve');
+  const opsRoles = ['operations_staff', 'operations', 'operations_manager', 'ops_lead', 'coo', 'deputy_coo', 'admin'];
+  const labLeadRoles = ['lab_team_lead', 'lab_lead', 'lab_manager', 'lab_head', 'lab_supervisor', 'admin'];
+
+  const isOperations = hasPermission('results_transfer', 'review') || opsRoles.includes(user?.role);
+  const isLabLead    = hasPermission('results_transfer', 'approve') || labLeadRoles.includes(user?.role);
 
   return (
     <div className="print-body-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
