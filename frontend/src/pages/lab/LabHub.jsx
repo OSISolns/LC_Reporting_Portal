@@ -66,8 +66,46 @@ const LabHub = () => {
   const [qcValue, setQcValue] = useState('');
   const [qcCorrective, setQcCorrective] = useState('');
 
-  // Analyzer Simulation State
-  const [analyzerStatus, setAnalyzerStatus] = useState('Idle');
+  // SUKRAA Patient Database Search State
+  const [patientSearchQuery, setPatientSearchQuery] = useState('');
+  const [sukraaPatients, setSukraaPatients] = useState([]);
+  const [searchingPatients, setSearchingPatients] = useState(false);
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+
+  // Search SUKRAA Patients
+  useEffect(() => {
+    if (!patientSearchQuery || patientSearchQuery.trim().length < 2) {
+      setSukraaPatients([]);
+      setShowPatientDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearchingPatients(true);
+      try {
+        const res = await api.get(`/patients/search?q=${encodeURIComponent(patientSearchQuery.trim())}&limit=10`);
+        if (res.data?.success) {
+          setSukraaPatients(res.data.data || []);
+          setShowPatientDropdown(true);
+        }
+      } catch (err) {
+        console.error('Failed to search SUKRAA patient DB:', err);
+      } finally {
+        setSearchingPatients(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [patientSearchQuery]);
+
+  const handleSelectSukraaPatient = (pat) => {
+    setPatientId(pat.pid || '');
+    setPatientName(pat.full_name || '');
+    setPatientAge(pat.age ? String(pat.age) : '');
+    setPatientGender(pat.gender || 'Male');
+    if (pat.referrer_name) setRefProvider(pat.referrer_name);
+    setPatientSearchQuery('');
+    setShowPatientDropdown(false);
+    toast.success(`Selected patient ${pat.full_name} (${pat.pid})`);
+  };
 
   // Fetch Orders
   const fetchOrders = async () => {
@@ -836,7 +874,40 @@ const LabHub = () => {
               <button onClick={() => setShowRegModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer text-base">✕</button>
             </div>
 
-            <form onSubmit={handleRegisterSpecimen} className="space-y-2.5 text-xs">
+            <form onSubmit={handleRegisterSpecimen} className="space-y-3 text-xs">
+              {/* SUKRAA Patient Lookup Field */}
+              <div className="relative">
+                <label className="text-[10px] font-semibold text-slate-700 block mb-1">Search SUKRAA Patient Database</label>
+                <input
+                  type="text"
+                  value={patientSearchQuery}
+                  onChange={e => setPatientSearchQuery(e.target.value)}
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-400"
+                />
+                {searchingPatients && (
+                  <span className="absolute right-2.5 top-7 text-[10px] text-slate-400">Searching...</span>
+                )}
+                {showPatientDropdown && sukraaPatients.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-slate-100 text-xs">
+                    {sukraaPatients.map(pat => (
+                      <div
+                        key={pat.pid}
+                        onClick={() => handleSelectSukraaPatient(pat)}
+                        className="p-2 hover:bg-slate-50 cursor-pointer flex justify-between items-center"
+                      >
+                        <div>
+                          <span className="font-semibold text-slate-900 block">{pat.full_name}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">PID: {pat.pid} • {pat.age || '—'} yrs • {pat.gender || '—'}</span>
+                        </div>
+                        {pat.referrer_name && (
+                          <span className="text-[10px] text-slate-400 italic">{pat.referrer_name}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] font-medium text-slate-500 block mb-1">Patient ID *</label>
@@ -845,7 +916,6 @@ const LabHub = () => {
                     required
                     value={patientId}
                     onChange={e => setPatientId(e.target.value)}
-                    placeholder="P-10023"
                     className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-mono font-medium text-slate-900"
                   />
                 </div>
@@ -856,7 +926,6 @@ const LabHub = () => {
                     required
                     value={patientName}
                     onChange={e => setPatientName(e.target.value)}
-                    placeholder="John Doe"
                     className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
                   />
                 </div>
@@ -869,7 +938,6 @@ const LabHub = () => {
                     type="text"
                     value={patientAge}
                     onChange={e => setPatientAge(e.target.value)}
-                    placeholder="45"
                     className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
                   />
                 </div>
