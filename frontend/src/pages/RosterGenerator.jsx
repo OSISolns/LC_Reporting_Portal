@@ -18,12 +18,17 @@ const PRINT_STYLES = `
   @media print {
     body * { visibility: hidden !important; }
     #roster-print-zone,
-    #roster-print-zone * { visibility: visible !important; }
-    #roster-print-zone {
+    #roster-print-zone *,
+    #modal-roster-print-zone,
+    #modal-roster-print-zone * { visibility: visible !important; }
+    #roster-print-zone,
+    #modal-roster-print-zone {
       position: fixed !important;
-      inset: 0 !important;
-      width: 210mm !important;
-      max-height: 222mm !important;
+      top: 5mm !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      width: fit-content !important;
+      max-width: 200mm !important;
       margin: 0 auto !important;
       padding: 6mm 8mm !important;
       background: #fff !important;
@@ -49,7 +54,7 @@ function renderShiftCell(shifts) {
 
   // Check for "Not Available" marker
   if (shifts.length === 1 && shifts[0].staff?.[0] === 'Not Available') {
-    return <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '11.5px' }}>Not Available</span>;
+    return <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '11.5px', whiteSpace: 'nowrap' }}>Not Available</span>;
   }
 
   return (
@@ -62,13 +67,14 @@ function renderShiftCell(shifts) {
               fontSize: '10.5px',
               color: '#007b8a',
               marginBottom: '2px',
-              fontStyle: 'italic'
+              fontStyle: 'italic',
+              whiteSpace: 'nowrap'
             }}>
               {shift.time}
             </div>
           )}
           {shift.staff.map((name, ni) => (
-            <div key={ni} style={{ fontSize: '11.5px', color: '#1e293b', lineHeight: '1.3', fontWeight: '500' }}>
+            <div key={ni} style={{ fontSize: '11.5px', color: '#1e293b', lineHeight: '1.3', fontWeight: '500', whiteSpace: 'nowrap' }}>
               {name}
             </div>
           ))}
@@ -97,7 +103,7 @@ function renderRosterTableRows(unitsList) {
         }}
       >
         <td style={{
-          padding: '5px 8px',
+          padding: '5px 10px',
           fontWeight: '700',
           fontSize: '11.5px',
           color: '#003B44',
@@ -105,25 +111,25 @@ function renderRosterTableRows(unitsList) {
           borderRight: '1px solid #e2f0f0',
           borderLeft: isDental ? '3px solid #0284c7' : '3px solid #007b8a',
           backgroundColor: isEven ? '#ffffff' : '#f8fffe',
-          width: '22%',
           whiteSpace: 'nowrap',
+          width: 'auto',
         }}>
           {unit.unit}
         </td>
         <td style={{
-          padding: '5px 8px',
+          padding: '5px 10px',
           verticalAlign: 'top',
           borderRight: '1px solid #e2f0f0',
           backgroundColor: isEven ? '#f0fffe' : '#e8fffe',
-          width: '39%',
+          width: 'auto',
         }}>
           {renderShiftCell(unit.morning)}
         </td>
         <td style={{
-          padding: '5px 8px',
+          padding: '5px 10px',
           verticalAlign: 'top',
           backgroundColor: isEven ? '#fffbf0' : '#fff8e8',
-          width: '39%',
+          width: 'auto',
         }}>
           {renderShiftCell(unit.evening)}
         </td>
@@ -755,11 +761,12 @@ export default function RosterGenerator() {
                 </button>
               </div>
 
-              {/* ── PRINTABLE ROSTER TABLE — pinned to A4 width ─────────────── */}
+              {/* ── PRINTABLE ROSTER TABLE — tightly fitted to content ─────────────── */}
               <div
                 id="roster-print-zone"
                 style={{
-                  width: `${A4_W}px`,
+                  width: 'fit-content',
+                  minWidth: '540px',
                   maxWidth: '100%',
                   margin: '0 auto',
                   backgroundColor: '#ffffff',
@@ -767,6 +774,7 @@ export default function RosterGenerator() {
                   border: '1px solid #e2e8f0',
                   boxShadow: '0 4px 24px rgba(0,0,0,0.07)',
                   fontFamily: "'Segoe UI', Arial, sans-serif",
+                  overflow: 'hidden',
                 }}
               >
                 {/* Letterhead */}
@@ -826,14 +834,14 @@ export default function RosterGenerator() {
                     width: '100%',
                     borderCollapse: 'collapse',
                     fontSize: '11.5px',
-                    tableLayout: 'fixed',
+                    tableLayout: 'auto',
                   }}>
                     <thead>
                       <tr style={{ backgroundColor: '#003B44' }}>
                         <th
                           rowSpan={2}
                           style={{
-                            padding: '6px 10px',
+                            padding: '6px 12px',
                             color: '#ffffff',
                             fontWeight: '800',
                             fontSize: '12px',
@@ -842,8 +850,9 @@ export default function RosterGenerator() {
                             textTransform: 'uppercase',
                             borderRight: '2px solid rgba(255,255,255,0.25)',
                             verticalAlign: 'middle',
-                            width: '22%',
                             backgroundColor: '#003B44',
+                            whiteSpace: 'nowrap',
+                            width: 'auto',
                           }}
                         >
                           UNIT
@@ -851,7 +860,7 @@ export default function RosterGenerator() {
                         <th
                           colSpan={2}
                           style={{
-                            padding: '6px 10px',
+                            padding: '6px 12px',
                             color: '#7ee8f8',
                             fontWeight: '800',
                             fontSize: '12px',
@@ -868,7 +877,7 @@ export default function RosterGenerator() {
                       <tr style={{ backgroundColor: '#00505c' }}>
                         <th
                           style={{
-                            padding: '5px 10px',
+                            padding: '5px 12px',
                             color: '#a5f3fc',
                             fontWeight: '700',
                             fontSize: '11px',
@@ -876,23 +885,25 @@ export default function RosterGenerator() {
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
                             borderRight: '1px solid rgba(255,255,255,0.15)',
-                            width: '39%',
                             backgroundColor: '#00505c',
+                            whiteSpace: 'nowrap',
+                            width: 'auto',
                           }}
                         >
                           MORNING / TIME
                         </th>
                         <th
                           style={{
-                            padding: '5px 10px',
+                            padding: '5px 12px',
                             color: '#fde68a',
                             fontWeight: '700',
                             fontSize: '11px',
                             textAlign: 'left',
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
-                            width: '39%',
                             backgroundColor: '#00505c',
+                            whiteSpace: 'nowrap',
+                            width: 'auto',
                           }}
                         >
                           EVENING / TIME
@@ -1665,8 +1676,10 @@ export default function RosterGenerator() {
               <div
                 id="modal-roster-print-zone"
                 style={{
-                  width: `${A4_W}px`,
+                  width: 'fit-content',
+                  minWidth: '540px',
                   maxWidth: '100%',
+                  margin: '0 auto',
                   backgroundColor: '#ffffff',
                   borderRadius: '10px',
                   border: '1px solid #e2e8f0',
@@ -1706,13 +1719,13 @@ export default function RosterGenerator() {
                 </div>
 
                 {/* Table */}
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', tableLayout: 'fixed' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', tableLayout: 'auto' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#003B44' }}>
                       <th
                         rowSpan={2}
                         style={{
-                          padding: '6px 10px',
+                          padding: '6px 12px',
                           color: '#ffffff',
                           fontWeight: '800',
                           fontSize: '12px',
@@ -1721,8 +1734,9 @@ export default function RosterGenerator() {
                           textTransform: 'uppercase',
                           borderRight: '2px solid rgba(255,255,255,0.25)',
                           verticalAlign: 'middle',
-                          width: '22%',
                           backgroundColor: '#003B44',
+                          whiteSpace: 'nowrap',
+                          width: 'auto',
                         }}
                       >
                         UNIT
@@ -1730,7 +1744,7 @@ export default function RosterGenerator() {
                       <th
                         colSpan={2}
                         style={{
-                          padding: '6px 10px',
+                          padding: '6px 12px',
                           color: '#7ee8f8',
                           fontWeight: '800',
                           fontSize: '12px',
@@ -1747,7 +1761,7 @@ export default function RosterGenerator() {
                     <tr style={{ backgroundColor: '#00505c' }}>
                       <th
                         style={{
-                          padding: '5px 10px',
+                          padding: '5px 12px',
                           color: '#a5f3fc',
                           fontWeight: '700',
                           fontSize: '11px',
@@ -1755,23 +1769,25 @@ export default function RosterGenerator() {
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
                           borderRight: '1px solid rgba(255,255,255,0.15)',
-                          width: '39%',
                           backgroundColor: '#00505c',
+                          whiteSpace: 'nowrap',
+                          width: 'auto',
                         }}
                       >
                         MORNING / TIME
                       </th>
                       <th
                         style={{
-                          padding: '5px 10px',
+                          padding: '5px 12px',
                           color: '#fde68a',
                           fontWeight: '700',
                           fontSize: '11px',
                           textAlign: 'left',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
-                          width: '39%',
                           backgroundColor: '#00505c',
+                          whiteSpace: 'nowrap',
+                          width: 'auto',
                         }}
                       >
                         EVENING / TIME
