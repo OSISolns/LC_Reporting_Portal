@@ -57,6 +57,7 @@ import PhysioHub from './pages/physio/PhysioHub';
 import PhysiotherapistDashboard from './pages/physio/PhysiotherapistDashboard';
 import PhysioManagerDashboard from './pages/physio/PhysioManagerDashboard';
 import OperationsHub from './pages/operations/OperationsHub';
+import RosterGenerator from './pages/RosterGenerator';
 
 const ShiftDashboardRedirect = () => {
   const { user } = useAuth();
@@ -177,6 +178,14 @@ function App() {
                 'admin', 'deputy_coo', 'operations_staff', 'coo'
               ]}>
                 <OperationsHub />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/roster-generator" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'coo', 'pa', 'medical_director', 'doctor', 'consultant', 'chef-nurse'
+              ]}>
+                <RosterGenerator />
               </ProtectedRoute>
             } />
 

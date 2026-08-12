@@ -580,6 +580,25 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create dental_clinic_cases:', err.message);
       });
 
+      console.log('⚙️ Running doctor_schedules table migration...');
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS doctor_schedules (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          file_name TEXT NOT NULL,
+          roster_date TEXT NOT NULL,
+          parsed_json TEXT NOT NULL,
+          file_base64 TEXT NOT NULL,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          created_by_name TEXT
+        )
+      `).then(async () => {
+        console.log('  ✅ Table doctor_schedules created/verified.');
+        // Purge historical non-roster files accidentally saved to doctor_schedules
+        await client.execute(`DELETE FROM doctor_schedules WHERE file_name LIKE '%Handover%' OR file_name LIKE '%Social Media%' OR parsed_json = '[]' OR parsed_json IS NULL`).catch(() => {});
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create doctor_schedules:', err.message);
+      });
+
       const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
       console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));
       

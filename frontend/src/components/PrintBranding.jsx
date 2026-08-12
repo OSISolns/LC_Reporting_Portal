@@ -11,7 +11,7 @@ export const PrintHeader = ({ title, docType, docId, issuedAt, alwaysVisible = f
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <img src="/logo.png" style={{ height: "55px", width: "auto", display: "block" }} alt="Legacy Clinics Logo" />
           <div style={{ fontSize: '7.5pt', color: '#64748b', lineHeight: '1.4', fontWeight: 500 }}>
-            Legacy Medical Center Rwanda<br />
+            Legacy Clinics and Diagnostics<br />
             KK3 RD 134, Kicukiro, Kigali<br />
             Contact: +250 788 122 100/+250 788 382 000
           </div>

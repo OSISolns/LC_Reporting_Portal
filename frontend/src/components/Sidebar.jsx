@@ -66,6 +66,7 @@ const Sidebar = ({ onClose }) => {
     { configKey: 'supplier',      name: 'Supplier Portal Management',   icon: <Building size={20} />,       path: '/supplier-portal-manager', requiredPerm: null, allowedRoles: ['admin', 'procurement-manager', 'deputy_coo'] },
     { configKey: 'daily_report',  name: 'Daily Report',      icon: <Activity size={20} />,       path: '/nursing-hub/daily-report', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'] },
     { configKey: 'daily_board',   name: 'Daily Reports Board', icon: <FileText size={20} />,     path: '/daily-reports-board', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'pa', 'medical_director'] },
+    { configKey: 'roster_generator', name: 'Roster Generator', icon: <FileText size={20} />,     path: '/roster-generator', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'pa', 'medical_director', 'doctor', 'consultant', 'chef-nurse'] },
     { configKey: 'clinical_sheets', name: 'Clinical Sheets',  icon: <FileText size={20} />,     path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director'] },
     { configKey: 'insights',      name: 'Insights',          icon: <Brain size={20} />,          path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'medical_director'] },
     { configKey: 'revenue',       name: 'Revenue Tracker',   icon: <TrendingDown size={20} />,   path: '/revenue-tracker', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'chairman', 'admin', 'principal_cashier', 'deputy_coo'] },
@@ -92,6 +93,8 @@ const Sidebar = ({ onClose }) => {
 
     // ── Gate 3: Admin sidebar config override (localStorage) ─────────────────
     // Admin can additionally hide items per-role via Permissions > Sidebar Config.
+    // IMPORTANT: Only suppress the item if the config EXPLICITLY sets it to false.
+    // Unknown/new keys (not yet in config) must default to visible (true).
     const roleCfg = sidebarConfigState[user?.role];
     if (roleCfg && item.configKey && roleCfg[item.configKey] === false) {
       const isHsfpsCore = user?.role === 'hsfp' && ['incidents', 'safety', 'risk', 'infection', 'compliance'].includes(item.configKey);

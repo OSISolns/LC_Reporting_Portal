@@ -85,6 +85,7 @@ const SIDEBAR_ITEMS = [
   { key: 'permissions',     name: 'Permissions',         Icon: Shield,          path: '/permissions',              allowedRoles: ['admin'] },
   { key: 'audit_logs',      name: 'Audit Logs',          Icon: History,         path: '/audit-logs',               allowedRoles: ['admin'] },
   { key: 'shifts',          name: 'Shifts',              Icon: Clock,           path: '/shifts',                   allowedRoles: ['cashier','customer_care','nurse','principal_cashier','sales_manager','deputy_coo','coo','admin','operations_staff','chef-nurse','pa'] },
+  { key: 'roster_generator', name: 'Roster Generator',   Icon: FileText,        path: '/roster-generator',         allowedRoles: ['admin','deputy_coo','coo','pa','medical_director','doctor','consultant','chef-nurse'] },
   { key: 'feedbacks',       name: 'Internal Feedback',   Icon: MessageSquare,   path: '/feedbacks',                allowedRoles: ['coo','deputy_coo','chef-nurse','medical_director'] },
 ];
 

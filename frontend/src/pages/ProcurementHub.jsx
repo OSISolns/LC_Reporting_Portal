@@ -136,7 +136,7 @@ export default function ProcurementHub() {
   const printRef = useRef(null);
   const [poPrintData, setPoPrintData] = useState(null); // PO selected for PDF preview
   const [grnPrintData, setGrnPrintData] = useState(null); // GRN selected for PDF preview
-  
+
   // Tab State: 'overview' | 'store_requisitions' | 'purchase_orders' | 'goods_receipts' | 'returns' | 'suppliers' | 'incidents'
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
@@ -149,7 +149,7 @@ export default function ProcurementHub() {
   const [masterInventory, setMasterInventory] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [dashboardData, setDashboardData] = useState(null);
-  
+
   // Tenders & RFQs State
   const [rfqs, setRfqs] = useState([]);
   const [selectedRFQ, setSelectedRFQ] = useState(null);
@@ -158,7 +158,7 @@ export default function ProcurementHub() {
   const [showCreateRFQModal, setShowCreateRFQModal] = useState(false);
   const [loadingRFQDetails, setLoadingRFQDetails] = useState(false);
   const [submittingRFQ, setSubmittingRFQ] = useState(false);
-  
+
   // RFQ Form States
   const [rfqTitle, setRfqTitle] = useState('');
   const [rfqCategory, setRfqCategory] = useState('medical_supplies');
@@ -169,17 +169,17 @@ export default function ProcurementHub() {
   const [tempRfqItemName, setTempRfqItemName] = useState('');
   const [tempRfqItemQty, setTempRfqItemQty] = useState('');
   const [tempRfqItemUnit, setTempRfqItemUnit] = useState('pcs');
-  
+
   // Quote Input States
   const [quoteInputs, setQuoteInputs] = useState({}); // { [item_id_supplier_id]: price }
   const [noBidInputs, setNoBidInputs] = useState({}); // { [item_id_supplier_id]: boolean }
   const [submittingQuotes, setSubmittingQuotes] = useState(false);
-  
+
   // Award Selection States
   const [awardSelections, setAwardSelections] = useState({}); // { [item_id]: { vendor_id, reason, reason_note } }
   const [submittingAwards, setSubmittingAwards] = useState(false);
   const [generatingPOs, setGeneratingPOs] = useState(false);
-  
+
   // Supplier Scorecard States
   const [supplierScorecard, setSupplierScorecard] = useState(null);
   const [loadingScorecard, setLoadingScorecard] = useState(false);
@@ -301,7 +301,7 @@ export default function ProcurementHub() {
   const [submittingIncident, setSubmittingIncident] = useState(false);
 
   // --- Form States ---
-  
+
   // PO Form
   const [poVendorId, setPoVendorId] = useState('');
   const [poNotes, setPoNotes] = useState('');
@@ -676,7 +676,7 @@ export default function ProcurementHub() {
       const res = await api.get(`/clinical/inventory/rfqs/${rfqId}`);
       if (res.data.success) {
         setRfqDetails(res.data.data);
-        
+
         // Populate inputs from existing quotes
         const inputs = {};
         const noBids = {};
@@ -1224,7 +1224,7 @@ export default function ProcurementHub() {
 
       if (approveRes.data.success) {
         toast.success('Requisition approved by Procurement!');
-        
+
         // Pre-fill PO modal state
         setPoNotes(`Replenishment for Requisition #REQ-${req.id}`);
         setPoItems(reqItems.map(i => ({
@@ -1510,8 +1510,8 @@ export default function ProcurementHub() {
     return purchaseOrders.filter(po => {
       const vendorName = po.vendor_name || '';
       return po.po_number.toLowerCase().includes(poSearch.toLowerCase()) ||
-             vendorName.toLowerCase().includes(poSearch.toLowerCase()) ||
-             po.status.toLowerCase().includes(poSearch.toLowerCase());
+        vendorName.toLowerCase().includes(poSearch.toLowerCase()) ||
+        po.status.toLowerCase().includes(poSearch.toLowerCase());
     });
   }, [purchaseOrders, poSearch]);
 
@@ -1519,8 +1519,8 @@ export default function ProcurementHub() {
     return goodsReceipts.filter(grn => {
       const vendorName = grn.vendor_name || '';
       return grn.grn_number.toLowerCase().includes(grnSearch.toLowerCase()) ||
-             vendorName.toLowerCase().includes(grnSearch.toLowerCase()) ||
-             (grn.invoice_number && grn.invoice_number.toLowerCase().includes(grnSearch.toLowerCase()));
+        vendorName.toLowerCase().includes(grnSearch.toLowerCase()) ||
+        (grn.invoice_number && grn.invoice_number.toLowerCase().includes(grnSearch.toLowerCase()));
     });
   }, [goodsReceipts, grnSearch]);
 
@@ -1530,36 +1530,36 @@ export default function ProcurementHub() {
 
   const filteredIncidents = useMemo(() => {
     return incidents.filter(inc => {
-      return inc.description?.toLowerCase().includes(incSearch.toLowerCase()) || 
-             inc.incident_type?.toLowerCase().includes(incSearch.toLowerCase()) ||
-             inc.department?.toLowerCase().includes(incSearch.toLowerCase());
+      return inc.description?.toLowerCase().includes(incSearch.toLowerCase()) ||
+        inc.incident_type?.toLowerCase().includes(incSearch.toLowerCase()) ||
+        inc.department?.toLowerCase().includes(incSearch.toLowerCase());
     });
   }, [incidents, incSearch]);
 
   const filteredStoreRequisitions = useMemo(() => {
     return requisitions.filter(req => {
-      const isStore = req.department_name.toLowerCase().includes('central') || 
-                      req.department_name.toLowerCase().includes('store');
+      const isStore = req.department_name.toLowerCase().includes('central') ||
+        req.department_name.toLowerCase().includes('store');
       if (!isStore) return false;
 
       return (req.notes || '').toLowerCase().includes(requisitionSearch.toLowerCase()) ||
-             req.id.toString().includes(requisitionSearch);
+        req.id.toString().includes(requisitionSearch);
     });
   }, [requisitions, requisitionSearch]);
 
   const filteredReturns = useMemo(() => {
     return returnsList.filter(ret => {
       return (ret.vendor_name || '').toLowerCase().includes(returnSearch.toLowerCase()) ||
-             ret.return_number.toLowerCase().includes(returnSearch.toLowerCase()) ||
-             (ret.notes || '').toLowerCase().includes(returnSearch.toLowerCase());
+        ret.return_number.toLowerCase().includes(returnSearch.toLowerCase()) ||
+        (ret.notes || '').toLowerCase().includes(returnSearch.toLowerCase());
     });
   }, [returnsList, returnSearch]);
 
   const filteredRFQs = useMemo(() => {
     return rfqs.filter(r => {
       return r.title.toLowerCase().includes(rfqSearch.toLowerCase()) ||
-             r.reference_no.toLowerCase().includes(rfqSearch.toLowerCase()) ||
-             (r.category || '').toLowerCase().includes(rfqSearch.toLowerCase());
+        r.reference_no.toLowerCase().includes(rfqSearch.toLowerCase()) ||
+        (r.category || '').toLowerCase().includes(rfqSearch.toLowerCase());
     });
   }, [rfqs, rfqSearch]);
 
@@ -1619,9 +1619,9 @@ export default function ProcurementHub() {
       <div className="absolute bottom-0 left-0 -ml-48 -mb-48 w-[700px] h-[700px] bg-sky-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto relative z-10">
-        
+
         {/* Header Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6 border-b border-slate-200 pb-6"
@@ -1643,15 +1643,15 @@ export default function ProcurementHub() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <button 
-              onClick={handleSync} 
+            <button
+              onClick={handleSync}
               disabled={refreshing}
               className="flex-1 lg:flex-none bg-white border border-slate-200 text-slate-700 hover:text-teal-700 hover:border-teal-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
             >
               <RefreshCw size={16} className={`${refreshing ? 'animate-spin text-teal-600' : ''}`} />
               Sync Inventory
             </button>
-            <button 
+            <button
               onClick={() => setShowCreateIncidentModal(true)}
               className="flex-1 lg:flex-none bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
             >
@@ -1663,12 +1663,12 @@ export default function ProcurementHub() {
 
         {/* Back to Dashboard Breadcrumb (Visible only in Sub-modules) */}
         {activeTab !== 'overview' && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             className="mb-8 flex items-center gap-3"
           >
-            <button 
+            <button
               onClick={() => setActiveTab('overview')}
               className="flex items-center gap-2 bg-white border border-slate-200 hover:border-teal-500 hover:text-teal-700 text-slate-600 px-4 py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all cursor-pointer"
             >
@@ -1676,20 +1676,20 @@ export default function ProcurementHub() {
             </button>
             <span className="text-slate-350">/</span>
             <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-              {activeTab === 'store_requisitions' ? 'Store Requests' : 
-               activeTab === 'purchase_orders' ? 'Purchase Orders' :
-               activeTab === 'goods_receipts' ? 'Goods Receipts' :
-               activeTab === 'returns' ? 'Supplier Returns' :
-               activeTab === 'suppliers' ? 'Suppliers & Vendor Management' :
-               activeTab === 'incidents' ? 'Quality Incidents' :
-               activeTab === 'tenders' ? 'Tenders & RFQs' :
-               activeTab === 'invoices' ? 'Invoicing & Accounts Payable' :
-               activeTab === 'analytics' ? 'Analytics & Reporting' :
-               activeTab === 'catalog' ? 'Procurement Catalog' :
-               activeTab === 'budgets' ? 'Department Budgets' :
-               activeTab === 'central_stock' ? 'General Store Stock' :
-               activeTab === 'department_stocks' ? 'Departmental Stocks' :
-               activeTab.replace(/_/g, ' ')}
+              {activeTab === 'store_requisitions' ? 'Store Requests' :
+                activeTab === 'purchase_orders' ? 'Purchase Orders' :
+                  activeTab === 'goods_receipts' ? 'Goods Receipts' :
+                    activeTab === 'returns' ? 'Supplier Returns' :
+                      activeTab === 'suppliers' ? 'Suppliers & Vendor Management' :
+                        activeTab === 'incidents' ? 'Quality Incidents' :
+                          activeTab === 'tenders' ? 'Tenders & RFQs' :
+                            activeTab === 'invoices' ? 'Invoicing & Accounts Payable' :
+                              activeTab === 'analytics' ? 'Analytics & Reporting' :
+                                activeTab === 'catalog' ? 'Procurement Catalog' :
+                                  activeTab === 'budgets' ? 'Department Budgets' :
+                                    activeTab === 'central_stock' ? 'General Store Stock' :
+                                      activeTab === 'department_stocks' ? 'Departmental Stocks' :
+                                        activeTab.replace(/_/g, ' ')}
             </span>
           </motion.div>
         )}
@@ -1708,7 +1708,7 @@ export default function ProcurementHub() {
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.15 }}
             >
-              
+
               {/* ─── TAB 1: OVERVIEW — Operational Cockpit (NetSuite-style) ─── */}
               {activeTab === 'overview' && (
                 <div className="space-y-6">
@@ -1950,11 +1950,10 @@ export default function ProcurementHub() {
                       <button
                         key={tab.id}
                         onClick={() => setRequisitionMode(tab.id)}
-                        className={`flex items-center gap-2 px-5 py-3 border-b-2 font-black text-xs transition-all cursor-pointer ${
-                          requisitionMode === tab.id
+                        className={`flex items-center gap-2 px-5 py-3 border-b-2 font-black text-xs transition-all cursor-pointer ${requisitionMode === tab.id
                             ? 'border-teal-600 text-teal-700'
                             : 'border-transparent text-slate-400 hover:text-slate-600'
-                        }`}
+                          }`}
                       >
                         <tab.icon size={14} />
                         {tab.label}
@@ -1970,9 +1969,9 @@ export default function ProcurementHub() {
                         <p className="text-[10px] text-slate-400 font-bold mt-0.5">Please ensure the department has sufficient budget allocation before requesting items.</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <select 
-                          value={customReqDept} 
-                          onChange={(e) => setCustomReqDept(e.target.value)} 
+                        <select
+                          value={customReqDept}
+                          onChange={(e) => setCustomReqDept(e.target.value)}
                           className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none"
                         >
                           {(departments.length > 0 ? departments.map(d => d.name) : ['NURSING', 'PHARMACY', 'LABORATORY', 'DENTAL', 'RADIOLOGY', 'ADMINISTRATION']).map(d => (
@@ -1988,8 +1987,8 @@ export default function ProcurementHub() {
                           const yearStr = String(now.getFullYear());
                           const monthStr = String(now.getMonth() + 1).padStart(2, '0');
                           const spent = requisitions
-                            .filter(r => 
-                              r.department_name?.toLowerCase() === customReqDept?.toLowerCase() && 
+                            .filter(r =>
+                              r.department_name?.toLowerCase() === customReqDept?.toLowerCase() &&
                               ['approved', 'received'].includes(r.status) &&
                               r.created_at?.startsWith(`${yearStr}-${monthStr}`)
                             )
@@ -2015,7 +2014,7 @@ export default function ProcurementHub() {
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs animate-none">
                         <div className="relative w-full md:max-w-md">
                           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                          <input 
+                          <input
                             type="text"
                             placeholder="Search store requests..."
                             value={requisitionSearch}
@@ -2047,22 +2046,20 @@ export default function ProcurementHub() {
                                   <td className="p-4 text-slate-750 font-bold">{req.department_name}</td>
                                   <td className="p-4 text-slate-500">{req.created_at ? new Date(req.created_at).toLocaleString() : '—'}</td>
                                   <td className="p-4">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                                      req.urgency === 'Urgent' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
-                                      req.urgency === 'Critical' ? 'bg-red-50 text-red-650 border border-red-100 font-black' :
-                                      'bg-slate-50 text-slate-500 border border-slate-100'
-                                    }`}>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${req.urgency === 'Urgent' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
+                                        req.urgency === 'Critical' ? 'bg-red-50 text-red-650 border border-red-100 font-black' :
+                                          'bg-slate-50 text-slate-500 border border-slate-100'
+                                      }`}>
                                       {req.urgency}
                                     </span>
                                   </td>
                                   <td className="p-4 text-slate-650">{req.items_count} items</td>
                                   <td className="p-4 text-slate-500 max-w-xs truncate">{req.notes || '—'}</td>
                                   <td className="p-4">
-                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
-                                      req.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                      req.status === 'Rejected' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
-                                      'bg-amber-50 text-amber-600 border border-amber-100'
-                                    }`}>
+                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${req.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                                        req.status === 'Rejected' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
+                                          'bg-amber-50 text-amber-600 border border-amber-100'
+                                      }`}>
                                       {req.status}
                                     </span>
                                   </td>
@@ -2104,12 +2101,12 @@ export default function ProcurementHub() {
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
                         <div className="relative w-full md:max-w-md">
                           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                          <input 
-                            type="text" 
-                            placeholder="Search approved catalog..." 
-                            value={catalogSearch} 
-                            onChange={e => setCatalogSearch(e.target.value)} 
-                            className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-xs outline-none focus:border-teal-350 focus:bg-white transition-all" 
+                          <input
+                            type="text"
+                            placeholder="Search approved catalog..."
+                            value={catalogSearch}
+                            onChange={e => setCatalogSearch(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-xs outline-none focus:border-teal-350 focus:bg-white transition-all"
                           />
                         </div>
                       </div>
@@ -2151,9 +2148,9 @@ export default function ProcurementHub() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           <div className="flex flex-col gap-1.5">
                             <label className="text-xs font-black text-slate-550 uppercase">Requesting Department</label>
-                            <select 
-                              value={customReqDept} 
-                              onChange={(e) => setCustomReqDept(e.target.value)} 
+                            <select
+                              value={customReqDept}
+                              onChange={(e) => setCustomReqDept(e.target.value)}
                               className="bg-slate-50 border border-slate-250 rounded-xl px-3.5 py-3 text-xs outline-none"
                             >
                               {(departments.length > 0 ? departments.map(d => d.name) : ['NURSING', 'PHARMACY', 'LABORATORY', 'DENTAL', 'RADIOLOGY', 'ADMINISTRATION']).map(d => (
@@ -2163,9 +2160,9 @@ export default function ProcurementHub() {
                           </div>
                           <div className="flex flex-col gap-1.5">
                             <label className="text-xs font-black text-slate-550 uppercase">Urgency Priority</label>
-                            <select 
-                              value={customReqUrgency} 
-                              onChange={(e) => setCustomReqUrgency(e.target.value)} 
+                            <select
+                              value={customReqUrgency}
+                              onChange={(e) => setCustomReqUrgency(e.target.value)}
                               className="bg-slate-50 border border-slate-250 rounded-xl px-3.5 py-3 text-xs outline-none font-bold"
                             >
                               <option value="Routine">Routine</option>
@@ -2181,22 +2178,22 @@ export default function ProcurementHub() {
                           <div className="grid grid-cols-12 gap-3 items-end">
                             <div className="col-span-6 flex flex-col gap-1.5">
                               <label className="text-[10px] font-black text-slate-400 uppercase">Item Description</label>
-                              <input 
-                                type="text" 
-                                placeholder="Enter item name..." 
-                                value={tempReqItemName} 
-                                onChange={(e) => setTempReqItemName(e.target.value)} 
-                                className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none" 
+                              <input
+                                type="text"
+                                placeholder="Enter item name..."
+                                value={tempReqItemName}
+                                onChange={(e) => setTempReqItemName(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none"
                               />
                             </div>
                             <div className="col-span-3 flex flex-col gap-1.5">
                               <label className="text-[10px] font-black text-slate-400 uppercase">Quantity</label>
-                              <input 
-                                type="number" 
-                                placeholder="Qty" 
-                                value={tempReqItemQty} 
-                                onChange={(e) => setTempReqItemQty(e.target.value)} 
-                                className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none" 
+                              <input
+                                type="number"
+                                placeholder="Qty"
+                                value={tempReqItemQty}
+                                onChange={(e) => setTempReqItemQty(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none"
                               />
                             </div>
                             <div className="col-span-3 flex flex-col gap-1.5">
@@ -2238,9 +2235,9 @@ export default function ProcurementHub() {
                                       <td className="p-3 text-center">{item.quantity}</td>
                                       <td className="p-3 text-center text-slate-450">{item.unit || 'Unit'}</td>
                                       <td className="p-3 text-center">
-                                        <button 
-                                          type="button" 
-                                          onClick={() => setCustomReqItems(prev => prev.filter((_, i) => i !== idx))} 
+                                        <button
+                                          type="button"
+                                          onClick={() => setCustomReqItems(prev => prev.filter((_, i) => i !== idx))}
                                           className="text-rose-500 hover:text-rose-700 cursor-pointer"
                                         >
                                           <Trash2 size={14} />
@@ -2256,25 +2253,25 @@ export default function ProcurementHub() {
 
                         <div className="flex flex-col gap-1.5 pt-4">
                           <label className="text-xs font-black text-slate-550 uppercase">Notes / Special Instructions</label>
-                          <textarea 
-                            placeholder="Provide details about supplier preferences, specifications, or urgency..." 
-                            rows={3} 
-                            value={customReqNotes} 
-                            onChange={(e) => setCustomReqNotes(e.target.value)} 
-                            className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs outline-none focus:border-teal-350 focus:bg-white transition-all" 
+                          <textarea
+                            placeholder="Provide details about supplier preferences, specifications, or urgency..."
+                            rows={3}
+                            value={customReqNotes}
+                            onChange={(e) => setCustomReqNotes(e.target.value)}
+                            className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs outline-none focus:border-teal-350 focus:bg-white transition-all"
                           />
                         </div>
 
                         <div className="border-t border-slate-100 pt-6 flex justify-end gap-2">
-                          <button 
-                            type="button" 
-                            onClick={() => setRequisitionMode('list')} 
+                          <button
+                            type="button"
+                            onClick={() => setRequisitionMode('list')}
                             className="bg-white border border-slate-200 text-slate-650 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-bold text-xs cursor-pointer"
                           >
                             Cancel
                           </button>
-                          <button 
-                            type="submit" 
+                          <button
+                            type="submit"
                             className="bg-teal-650 hover:bg-teal-700 text-white px-6 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
                           >
                             Submit Requisition
@@ -2292,7 +2289,7 @@ export default function ProcurementHub() {
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
                     <div className="relative w-full md:max-w-md">
                       <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input 
+                      <input
                         type="text"
                         placeholder="Search POs by number, supplier..."
                         value={poSearch}
@@ -2300,7 +2297,7 @@ export default function ProcurementHub() {
                         className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-xs outline-none focus:border-teal-300 focus:bg-white transition-all"
                       />
                     </div>
-                    <button 
+                    <button
                       onClick={() => setShowCreatePOModal(true)}
                       className="w-full md:w-auto px-5 py-2.5 bg-teal-700 hover:bg-teal-650 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
@@ -2331,12 +2328,11 @@ export default function ProcurementHub() {
                               <td className="p-4 text-slate-500">{(po.items || []).length}</td>
                               <td className="p-4 text-teal-700 font-bold">{po.total_amount ? `${po.total_amount.toLocaleString()} RWF` : '—'}</td>
                               <td className="p-4">
-                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
-                                  po.status === 'Fulfilled' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                  po.status === 'Sent to Supplier' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
-                                  po.status === 'Approved' ? 'bg-teal-50 text-teal-600 border border-teal-100' :
-                                  'bg-slate-50 text-slate-500 border border-slate-100'
-                                }`}>
+                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${po.status === 'Fulfilled' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                                    po.status === 'Sent to Supplier' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
+                                      po.status === 'Approved' ? 'bg-teal-50 text-teal-600 border border-teal-100' :
+                                        'bg-slate-50 text-slate-500 border border-slate-100'
+                                  }`}>
                                   {po.status}
                                 </span>
                               </td>
@@ -2371,7 +2367,7 @@ export default function ProcurementHub() {
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
                     <div className="relative w-full md:max-w-md">
                       <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input 
+                      <input
                         type="text"
                         placeholder="Search GRNs by number, supplier..."
                         value={grnSearch}
@@ -2379,7 +2375,7 @@ export default function ProcurementHub() {
                         className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-xs outline-none focus:border-teal-300 focus:bg-white transition-all"
                       />
                     </div>
-                    <button 
+                    <button
                       onClick={() => setShowCreateGRNModal(true)}
                       className="w-full md:w-auto px-5 py-2.5 bg-teal-700 hover:bg-teal-650 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
@@ -2441,7 +2437,7 @@ export default function ProcurementHub() {
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs animate-none">
                     <div className="relative w-full md:max-w-md">
                       <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input 
+                      <input
                         type="text"
                         placeholder="Search supplier returns..."
                         value={returnSearch}
@@ -2449,7 +2445,7 @@ export default function ProcurementHub() {
                         className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-xs outline-none focus:border-teal-350 focus:bg-white transition-all animate-none"
                       />
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         setReturnItems([]);
                         setReturnNotes('');
@@ -2704,7 +2700,7 @@ export default function ProcurementHub() {
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
                     <div className="relative w-full md:max-w-md">
                       <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input 
+                      <input
                         type="text"
                         placeholder="Search suppliers directory..."
                         value={vendorSearch}
@@ -2712,7 +2708,7 @@ export default function ProcurementHub() {
                         className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-xs outline-none focus:border-teal-300 focus:bg-white transition-all"
                       />
                     </div>
-                    <button 
+                    <button
                       onClick={() => setShowCreateVendorModal(true)}
                       className="w-full md:w-auto px-5 py-2.5 bg-teal-700 hover:bg-teal-650 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
@@ -2734,8 +2730,8 @@ export default function ProcurementHub() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
                           {filteredVendors.map(vendor => (
-                            <tr 
-                              key={vendor.id} 
+                            <tr
+                              key={vendor.id}
                               onClick={() => { loadVendorProfile(vendor); fetchSupplierPerformance(vendor.id); }}
                               className="hover:bg-slate-50/50 transition-all cursor-pointer group"
                             >
@@ -2744,9 +2740,8 @@ export default function ProcurementHub() {
                               <td className="p-4 text-slate-500">{vendor.contact || '—'}</td>
                               <td className="p-4 text-slate-500">{vendor.contract_terms || 'Net 30'}</td>
                               <td className="p-4">
-                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
-                                  vendor.is_active ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
-                                }`}>
+                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${vendor.is_active ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
+                                  }`}>
                                   {vendor.is_active ? 'Active' : 'Inactive'}
                                 </span>
                               </td>
@@ -2773,7 +2768,7 @@ export default function ProcurementHub() {
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
                     <div className="relative w-full md:max-w-md">
                       <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input 
+                      <input
                         type="text"
                         placeholder="Search incident reports..."
                         value={incSearch}
@@ -2805,9 +2800,8 @@ export default function ProcurementHub() {
                               <td className="p-4 text-slate-500">{inc.area_of_incident}</td>
                               <td className="p-4 text-slate-500 max-w-xs truncate">{inc.description}</td>
                               <td className="p-4">
-                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
-                                  inc.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
-                                }`}>
+                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${inc.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
+                                  }`}>
                                   {inc.status}
                                 </span>
                               </td>
@@ -2836,7 +2830,7 @@ export default function ProcurementHub() {
                       <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                         <div>
                           <h3 className="text-lg font-black text-slate-900">Invoice #{selectedInvoice.invoice_no || selectedInvoice.id}</h3>
-                          <p className="text-xs text-slate-400 font-bold">{selectedInvoice.vendor_name} • {selectedInvoice.invoice_date?.substring(0,10)}</p>
+                          <p className="text-xs text-slate-400 font-bold">{selectedInvoice.vendor_name} • {selectedInvoice.invoice_date?.substring(0, 10)}</p>
                         </div>
                         <button onClick={() => setSelectedInvoice(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X size={20} /></button>
                       </div>
@@ -2848,14 +2842,13 @@ export default function ProcurementHub() {
                           {/* Status badges */}
                           <div className="flex flex-wrap gap-2">
                             {[['status', selectedInvoice.status], ['match', selectedInvoice.match_status]].map(([k, v]) => (
-                              <span key={k} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                                v === 'matched' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                v === 'discrepancy' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                v === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                v === 'paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                v === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                                'bg-amber-50 text-amber-700 border-amber-200'
-                              }`}>{v}</span>
+                              <span key={k} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${v === 'matched' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                  v === 'discrepancy' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                    v === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                      v === 'paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                        v === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                                          'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}>{v}</span>
                             ))}
                           </div>
 
@@ -2865,10 +2858,10 @@ export default function ProcurementHub() {
                               ['Vendor', invoiceDetail.vendor_name || '—'],
                               ['PO Ref', invoiceDetail.po_reference || '—'],
                               ['GRN Ref', invoiceDetail.grn_reference || '—'],
-                              ['Due Date', invoiceDetail.due_date ? invoiceDetail.due_date.substring(0,10) : '—'],
-                              ['Subtotal', `${Number(invoiceDetail.subtotal||0).toLocaleString()} RWF`],
-                              ['Tax', `${Number(invoiceDetail.tax_amount||0).toLocaleString()} RWF`],
-                              ['Total', `${Number(invoiceDetail.total_amount||0).toLocaleString()} RWF`],
+                              ['Due Date', invoiceDetail.due_date ? invoiceDetail.due_date.substring(0, 10) : '—'],
+                              ['Subtotal', `${Number(invoiceDetail.subtotal || 0).toLocaleString()} RWF`],
+                              ['Tax', `${Number(invoiceDetail.tax_amount || 0).toLocaleString()} RWF`],
+                              ['Total', `${Number(invoiceDetail.total_amount || 0).toLocaleString()} RWF`],
                               ['Terms', invoiceDetail.payment_terms || '—'],
                             ].map(([label, value]) => (
                               <div key={label} className="bg-slate-50 rounded-2xl p-3">
@@ -2901,8 +2894,8 @@ export default function ProcurementHub() {
                                         <td className="p-3 text-center">{item.quantity}</td>
                                         <td className="p-3 text-center text-slate-400">{item.po_quantity ?? '—'}</td>
                                         <td className="p-3 text-center text-slate-400">{item.grn_quantity ?? '—'}</td>
-                                        <td className="p-3 text-right">{Number(item.unit_price||0).toLocaleString()}</td>
-                                        <td className="p-3 text-right font-bold">{Number(item.total_price||0).toLocaleString()}</td>
+                                        <td className="p-3 text-right">{Number(item.unit_price || 0).toLocaleString()}</td>
+                                        <td className="p-3 text-right font-bold">{Number(item.total_price || 0).toLocaleString()}</td>
                                         <td className="p-3 text-center">{discrepancy ? <span className="text-rose-600 font-black">⚠</span> : <span className="text-emerald-600">✓</span>}</td>
                                       </tr>
                                     );
@@ -2913,7 +2906,7 @@ export default function ProcurementHub() {
                           </div>
 
                           {/* Actions */}
-                          {!['paid','rejected'].includes(selectedInvoice.status) && (
+                          {!['paid', 'rejected'].includes(selectedInvoice.status) && (
                             <div className="flex flex-wrap gap-2 pt-2">
                               {selectedInvoice.status === 'draft' && (
                                 <button onClick={async () => {
@@ -2962,7 +2955,7 @@ export default function ProcurementHub() {
                           </div>
                           <select value={invoiceStatusFilter} onChange={e => setInvoiceStatusFilter(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl text-xs px-3 py-2 outline-none">
                             <option value="">All Statuses</option>
-                            {['draft','submitted','under_review','approved','rejected','paid'].map(s => (
+                            {['draft', 'submitted', 'under_review', 'approved', 'rejected', 'paid'].map(s => (
                               <option key={s} value={s}>{s.replace('_', ' ')}</option>
                             ))}
                           </select>
@@ -2994,24 +2987,22 @@ export default function ProcurementHub() {
                                 <tr key={inv.id} className={`border-b border-slate-50 hover:bg-slate-50/60 transition-colors ${idx % 2 === 0 ? '' : 'bg-slate-50/20'}`}>
                                   <td className="p-4 font-black text-slate-800">{inv.invoice_no || `INV-${inv.id}`}</td>
                                   <td className="p-4 text-slate-600">{inv.vendor_name || '—'}</td>
-                                  <td className="p-4 text-slate-500">{inv.invoice_date?.substring(0,10) || '—'}</td>
-                                  <td className="p-4 text-slate-500">{inv.due_date?.substring(0,10) || '—'}</td>
-                                  <td className="p-4 text-right font-bold text-slate-800">{Number(inv.total_amount||0).toLocaleString()} RWF</td>
+                                  <td className="p-4 text-slate-500">{inv.invoice_date?.substring(0, 10) || '—'}</td>
+                                  <td className="p-4 text-slate-500">{inv.due_date?.substring(0, 10) || '—'}</td>
+                                  <td className="p-4 text-right font-bold text-slate-800">{Number(inv.total_amount || 0).toLocaleString()} RWF</td>
                                   <td className="p-4 text-center">
-                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
-                                      inv.status === 'paid' ? 'bg-blue-50 text-blue-700' :
-                                      inv.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
-                                      inv.status === 'rejected' ? 'bg-red-50 text-red-700' :
-                                      inv.status === 'submitted' ? 'bg-teal-50 text-teal-700' :
-                                      'bg-amber-50 text-amber-700'
-                                    }`}>{inv.status}</span>
+                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${inv.status === 'paid' ? 'bg-blue-50 text-blue-700' :
+                                        inv.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                                          inv.status === 'rejected' ? 'bg-red-50 text-red-700' :
+                                            inv.status === 'submitted' ? 'bg-teal-50 text-teal-700' :
+                                              'bg-amber-50 text-amber-700'
+                                      }`}>{inv.status}</span>
                                   </td>
                                   <td className="p-4 text-center">
-                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
-                                      inv.match_status === 'matched' ? 'bg-emerald-50 text-emerald-700' :
-                                      inv.match_status === 'discrepancy' ? 'bg-rose-50 text-rose-700' :
-                                      'bg-slate-100 text-slate-500'
-                                    }`}>{inv.match_status || 'unmatched'}</span>
+                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${inv.match_status === 'matched' ? 'bg-emerald-50 text-emerald-700' :
+                                        inv.match_status === 'discrepancy' ? 'bg-rose-50 text-rose-700' :
+                                          'bg-slate-100 text-slate-500'
+                                      }`}>{inv.match_status || 'unmatched'}</span>
                                   </td>
                                   <td className="p-4 text-center">
                                     <button onClick={() => loadInvoiceDetail(inv)} className="text-teal-650 hover:text-teal-800 font-bold text-xs cursor-pointer">View</button>
@@ -3037,7 +3028,7 @@ export default function ProcurementHub() {
                     <h3 className="text-lg font-black text-slate-800">Procurement Analytics</h3>
                     <div className="flex items-center gap-3">
                       <select value={analyticsYear} onChange={e => { setAnalyticsYear(e.target.value); setTimeout(loadAnalytics, 100); }} className="bg-white border border-slate-200 rounded-xl text-xs px-3 py-2 outline-none">
-                        {[2023,2024,2025,2026].map(y => <option key={y} value={y}>{y}</option>)}
+                        {[2023, 2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
                       </select>
                       <button onClick={loadAnalytics} className="flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
                         <RefreshCw size={13} /> Refresh
@@ -3062,13 +3053,13 @@ export default function ProcurementHub() {
                             ) : (
                               <div className="space-y-3">
                                 {analyticsData.by_department.map((dept, i) => {
-                                  const max = Math.max(1, ...analyticsData.by_department.map(d => Number(d.total_spend||0)));
-                                  const pct = Math.min(100, Math.round((Number(dept.total_spend||0) / max) * 100));
+                                  const max = Math.max(1, ...analyticsData.by_department.map(d => Number(d.total_spend || 0)));
+                                  const pct = Math.min(100, Math.round((Number(dept.total_spend || 0) / max) * 100));
                                   return (
                                     <div key={i}>
                                       <div className="flex justify-between text-xs mb-1">
                                         <span className="font-bold text-slate-700">{dept.department}</span>
-                                        <span className="font-black text-slate-800">{Number(dept.total_spend||0).toLocaleString()} RWF</span>
+                                        <span className="font-black text-slate-800">{Number(dept.total_spend || 0).toLocaleString()} RWF</span>
                                       </div>
                                       <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                                         <div className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
@@ -3092,13 +3083,13 @@ export default function ProcurementHub() {
                             ) : (
                               <div className="space-y-2">
                                 {analyticsData.by_month.map((m, i) => {
-                                  const max = Math.max(1, ...analyticsData.by_month.map(x => Number(x.total||0)));
-                                  const pct = Math.min(100, Math.round((Number(m.total||0) / max) * 100));
+                                  const max = Math.max(1, ...analyticsData.by_month.map(x => Number(x.total || 0)));
+                                  const pct = Math.min(100, Math.round((Number(m.total || 0) / max) * 100));
                                   return (
                                     <div key={i}>
                                       <div className="flex justify-between text-xs mb-1">
                                         <span className="font-bold text-slate-600">{m.month}</span>
-                                        <span className="font-black text-slate-800">{Number(m.total||0).toLocaleString()} RWF</span>
+                                        <span className="font-black text-slate-800">{Number(m.total || 0).toLocaleString()} RWF</span>
                                       </div>
                                       <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                                         <div className="h-full bg-gradient-to-r from-teal-600 to-teal-400 rounded-full" style={{ width: `${pct}%` }} />
@@ -3139,8 +3130,8 @@ export default function ProcurementHub() {
                                 };
                                 const forecastLabel = d.next_expected_date
                                   ? (d.overdue
-                                      ? `Overdue by ${Math.abs(d.days_until_next)} day${Math.abs(d.days_until_next) === 1 ? '' : 's'}`
-                                      : `~${d.days_until_next} day${d.days_until_next === 1 ? '' : 's'} (${new Date(d.next_expected_date).toLocaleDateString()})`)
+                                    ? `Overdue by ${Math.abs(d.days_until_next)} day${Math.abs(d.days_until_next) === 1 ? '' : 's'}`
+                                    : `~${d.days_until_next} day${d.days_until_next === 1 ? '' : 's'} (${new Date(d.next_expected_date).toLocaleDateString()})`)
                                   : 'Not enough history';
                                 return (
                                   <div key={d.department_id} className={`border rounded-2xl p-4 ${d.overdue ? 'border-rose-200 bg-rose-50/40' : 'border-slate-150 bg-slate-50/40'}`}>
@@ -3213,17 +3204,17 @@ export default function ProcurementHub() {
                                 <th className="p-3 text-center">Avg Rating</th>
                               </tr></thead>
                               <tbody>
-                                {supplierLeaderboard.slice(0,10).map((s, i) => (
+                                {supplierLeaderboard.slice(0, 10).map((s, i) => (
                                   <tr key={s.id} className="border-b border-slate-50">
-                                    <td className="p-3 font-black text-slate-400">#{i+1}</td>
+                                    <td className="p-3 font-black text-slate-400">#{i + 1}</td>
                                     <td className="p-3 font-bold text-slate-800">{s.name}</td>
                                     <td className="p-3 text-center text-slate-600">{s.total_pos}</td>
                                     <td className="p-3 text-center text-slate-600">{s.total_grns}</td>
-                                    <td className="p-3 text-right font-black text-slate-800">{Number(s.total_spend||0).toLocaleString()} RWF</td>
+                                    <td className="p-3 text-right font-black text-slate-800">{Number(s.total_spend || 0).toLocaleString()} RWF</td>
                                     <td className="p-3 text-center">
                                       <span className="flex items-center justify-center gap-1">
                                         <Star size={11} className="text-amber-400 fill-amber-400" />
-                                        <span className="font-black">{Number(s.avg_rating||0).toFixed(1)}</span>
+                                        <span className="font-black">{Number(s.avg_rating || 0).toFixed(1)}</span>
                                       </span>
                                     </td>
                                   </tr>
@@ -3247,7 +3238,7 @@ export default function ProcurementHub() {
                                   <p className="text-xs font-black text-slate-800">{c.title}</p>
                                   <p className="text-[10px] text-slate-400 font-bold">{c.vendor_name} • {c.contract_no || 'No ref'}</p>
                                 </div>
-                                <span className="text-xs font-black text-rose-600">{c.end_date?.substring(0,10)}</span>
+                                <span className="text-xs font-black text-rose-600">{c.end_date?.substring(0, 10)}</span>
                               </div>
                             ))}
                           </div>
@@ -3265,7 +3256,7 @@ export default function ProcurementHub() {
                                   <span className="font-bold text-slate-700 capitalize">{s.status}</span>
                                   <div className="flex gap-4">
                                     <span className="text-slate-500">{s.count} invoices</span>
-                                    <span className="font-black text-slate-800">{Number(s.total||0).toLocaleString()} RWF</span>
+                                    <span className="font-black text-slate-800">{Number(s.total || 0).toLocaleString()} RWF</span>
                                   </div>
                                 </div>
                               ))}
@@ -3273,9 +3264,9 @@ export default function ProcurementHub() {
                           </div>
                           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
                             <h4 className="text-sm font-black text-slate-800 mb-4">Overdue Invoices Alert</h4>
-                            <div className={`p-4 rounded-2xl ${Number(invoiceAnalytics.overdue?.count||0) > 0 ? 'bg-rose-50 border border-rose-200' : 'bg-emerald-50 border border-emerald-200'}`}>
-                              <p className={`text-2xl font-black ${Number(invoiceAnalytics.overdue?.count||0) > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{invoiceAnalytics.overdue?.count || 0} Overdue</p>
-                              <p className="text-xs font-bold text-slate-500 mt-1">{Number(invoiceAnalytics.overdue?.total||0).toLocaleString()} RWF outstanding</p>
+                            <div className={`p-4 rounded-2xl ${Number(invoiceAnalytics.overdue?.count || 0) > 0 ? 'bg-rose-50 border border-rose-200' : 'bg-emerald-50 border border-emerald-200'}`}>
+                              <p className={`text-2xl font-black ${Number(invoiceAnalytics.overdue?.count || 0) > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{invoiceAnalytics.overdue?.count || 0} Overdue</p>
+                              <p className="text-xs font-bold text-slate-500 mt-1">{Number(invoiceAnalytics.overdue?.total || 0).toLocaleString()} RWF outstanding</p>
                             </div>
                           </div>
                         </div>
@@ -3296,7 +3287,7 @@ export default function ProcurementHub() {
                       </div>
                       <select value={catalogCategory} onChange={e => setCatalogCategory(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl text-xs px-3 py-2 outline-none">
                         <option value="">All Categories</option>
-                        {['medical_supplies','pharmaceuticals','equipment','laboratory','office','maintenance','other'].map(c => (
+                        {['medical_supplies', 'pharmaceuticals', 'equipment', 'laboratory', 'office', 'maintenance', 'other'].map(c => (
                           <option key={c} value={c}>{c.replace('_', ' ')}</option>
                         ))}
                       </select>
@@ -3322,7 +3313,7 @@ export default function ProcurementHub() {
                           .map((item, i) => (
                             <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
                               <td className="p-4 font-bold text-slate-800">{item.item_name}</td>
-                              <td className="p-4"><span className="px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase">{item.category?.replace('_',' ')}</span></td>
+                              <td className="p-4"><span className="px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase">{item.category?.replace('_', ' ')}</span></td>
                               <td className="p-4 text-slate-500">{item.unit_of_measure || 'Unit'}</td>
                               <td className="p-4 text-slate-600">{item.preferred_vendor_name || '—'}</td>
                               <td className="p-4 text-right font-bold">{item.last_unit_price ? Number(item.last_unit_price).toLocaleString() : '—'}</td>
@@ -3349,7 +3340,7 @@ export default function ProcurementHub() {
                       <h3 className="text-sm font-black text-slate-800">Department Budgets</h3>
                       <p className="text-xs text-slate-400 font-bold mt-0.5">Track department budget allocations and real-time spending utilization.</p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => setShowAddBudgetModal(true)}
                       className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md cursor-pointer"
                     >
@@ -3364,8 +3355,8 @@ export default function ProcurementHub() {
                       const yearStr = String(now.getFullYear());
                       const monthStr = String(now.getMonth() + 1).padStart(2, '0');
                       const spent = requisitions
-                        .filter(r => 
-                          r.department_name?.toLowerCase() === b.department_name?.toLowerCase() && 
+                        .filter(r =>
+                          r.department_name?.toLowerCase() === b.department_name?.toLowerCase() &&
                           ['approved', 'received'].includes(r.status) &&
                           r.created_at?.startsWith(`${yearStr}-${monthStr}`)
                         )
@@ -3407,11 +3398,10 @@ export default function ProcurementHub() {
                               <span>{utilization}%</span>
                             </div>
                             <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                              <div 
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  utilization >= 90 ? 'bg-rose-500' :
-                                  utilization >= 75 ? 'bg-amber-500' : 'bg-indigo-600'
-                                }`}
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${utilization >= 90 ? 'bg-rose-500' :
+                                    utilization >= 75 ? 'bg-amber-500' : 'bg-indigo-600'
+                                  }`}
                                 style={{ width: `${utilization}%` }}
                               />
                             </div>
@@ -3440,13 +3430,12 @@ export default function ProcurementHub() {
                             <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md bg-teal-50 text-teal-700 border border-teal-150">
                               {rfqDetails?.rfq.category ? rfqDetails.rfq.category.replace('_', ' ') : 'Category'}
                             </span>
-                            <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md ${
-                              rfqDetails?.rfq.status === 'Draft' ? 'bg-slate-100 text-slate-650' :
-                              rfqDetails?.rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
-                              rfqDetails?.rfq.status === 'UnderReview' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' :
-                              rfqDetails?.rfq.status === 'Awarded' ? 'bg-teal-50 text-teal-700 border border-teal-150' :
-                              'bg-emerald-50 text-emerald-700 border border-emerald-150'
-                            }`}>
+                            <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md ${rfqDetails?.rfq.status === 'Draft' ? 'bg-slate-100 text-slate-650' :
+                                rfqDetails?.rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
+                                  rfqDetails?.rfq.status === 'UnderReview' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' :
+                                    rfqDetails?.rfq.status === 'Awarded' ? 'bg-teal-50 text-teal-700 border border-teal-150' :
+                                      'bg-emerald-50 text-emerald-700 border border-emerald-150'
+                              }`}>
                               {rfqDetails?.rfq.status}
                             </span>
                           </div>
@@ -3510,7 +3499,7 @@ export default function ProcurementHub() {
                                     <th className="p-4 min-w-[200px]">Item Description</th>
                                     <th className="p-4 text-center w-20">Qty</th>
                                     <th className="p-4 text-center w-20">Unit</th>
-                                    
+
                                     {/* Invited Suppliers Columns */}
                                     {rfqDetails?.suppliers.map(sup => (
                                       <th key={sup.id} className="p-4 text-center border-l border-slate-150 bg-slate-50/50 min-w-[160px]">
@@ -3556,7 +3545,7 @@ export default function ProcurementHub() {
                                         <td className="p-4 font-bold text-slate-850">{item.item_name}</td>
                                         <td className="p-4 text-center font-black">{item.quantity || '—'}</td>
                                         <td className="p-4 text-center font-bold text-slate-400">{item.unit || 'pcs'}</td>
-                                        
+
                                         {/* Invited Suppliers Quote cells */}
                                         {rfqDetails.suppliers.map(sup => {
                                           const key = `${item.id}_${sup.id}`;
@@ -3575,7 +3564,7 @@ export default function ProcurementHub() {
                                                   )
                                                 ) : (
                                                   <>
-                                                    <input 
+                                                    <input
                                                       type="number"
                                                       placeholder="Unit price..."
                                                       value={noBid ? '' : price}
@@ -3584,7 +3573,7 @@ export default function ProcurementHub() {
                                                       className="w-full max-w-[120px] bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-center text-xs font-bold outline-none focus:border-teal-350 focus:bg-white focus:shadow-xs disabled:opacity-40"
                                                     />
                                                     <label className="flex items-center gap-1 text-[9px] text-slate-450 font-bold select-none cursor-pointer">
-                                                      <input 
+                                                      <input
                                                         type="checkbox"
                                                         checked={noBid}
                                                         onChange={(e) => {
@@ -3634,7 +3623,7 @@ export default function ProcurementHub() {
                                                     <option key={sup.id} value={sup.vendor_id}>{sup.vendor_name}</option>
                                                   ))}
                                                 </select>
-                                                
+
                                                 {awardSelections[item.id]?.vendor_id && awardSelections[item.id]?.vendor_id !== 'no_offers' && (
                                                   <div className="grid grid-cols-2 gap-1.5">
                                                     <select
@@ -3649,7 +3638,7 @@ export default function ProcurementHub() {
                                                       <option value="quality">Quality Brand</option>
                                                       <option value="sole_source">Sole Source</option>
                                                     </select>
-                                                    <input 
+                                                    <input
                                                       type="text"
                                                       placeholder="Reason / Note..."
                                                       value={awardSelections[item.id]?.reason_note || ''}
@@ -3671,7 +3660,7 @@ export default function ProcurementHub() {
                                 </tbody>
                               </table>
                             </div>
-                            
+
                             {rfqDetails.rfq.status !== 'Awarded' && rfqDetails.rfq.status !== 'Closed' && (() => {
                               const decidedCount = Object.values(awardSelections).filter(s => s?.vendor_id).length;
                               const totalItems = rfqDetails.items.length;
@@ -3747,13 +3736,12 @@ export default function ProcurementHub() {
                                   <td className="p-4 text-center font-bold">{rfq.supplier_count}</td>
                                   <td className="p-4 text-center font-bold">{rfq.item_count}</td>
                                   <td className="p-4 text-center">
-                                    <span className={`px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full ${
-                                      rfq.status === 'Draft' ? 'bg-slate-105 text-slate-650' :
-                                      rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
-                                      rfq.status === 'UnderReview' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' :
-                                      rfq.status === 'Awarded' ? 'bg-teal-50 text-teal-700 border border-teal-150' :
-                                      'bg-emerald-50 text-emerald-700 border border-emerald-150'
-                                    }`}>
+                                    <span className={`px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full ${rfq.status === 'Draft' ? 'bg-slate-105 text-slate-650' :
+                                        rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
+                                          rfq.status === 'UnderReview' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' :
+                                            rfq.status === 'Awarded' ? 'bg-teal-50 text-teal-700 border border-teal-150' :
+                                              'bg-emerald-50 text-emerald-700 border border-emerald-150'
+                                      }`}>
                                       {rfq.status}
                                     </span>
                                   </td>
@@ -3769,13 +3757,12 @@ export default function ProcurementHub() {
                                       return (
                                         <button
                                           onClick={() => { setSelectedRFQ(rfq.id); fetchRFQDetails(rfq.id); }}
-                                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-xs border ${
-                                            done
+                                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-xs border ${done
                                               ? 'bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300'
                                               : reviewing
                                                 ? 'bg-teal-650 border-teal-650 text-white hover:bg-teal-700'
                                                 : 'bg-white border-teal-200 text-teal-700 hover:bg-teal-50'
-                                          }`}
+                                            }`}
                                         >
                                           <Icon size={13} /> {label}
                                         </button>
@@ -3801,7 +3788,7 @@ export default function ProcurementHub() {
                 </div>
               )}
 
-          </motion.div>
+            </motion.div>
           </AnimatePresence>
         )}
       </div>
@@ -3810,14 +3797,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {showCreateRFQModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowCreateRFQModal(false)}
               className="absolute inset-0 bg-slate-900"
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -3895,7 +3882,7 @@ export default function ProcurementHub() {
 
                 <div className="space-y-1">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-450">Notes / Instructions</label>
-                  <textarea 
+                  <textarea
                     placeholder="Enter additional terms or guidelines..."
                     rows={2}
                     value={rfqNotes}
@@ -3950,8 +3937,8 @@ export default function ProcurementHub() {
                     </div>
                     <div className="col-span-2 space-y-1">
                       <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Qty</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="Qty..."
                         value={tempRfqItemQty}
                         onChange={(e) => setTempRfqItemQty(e.target.value)}
@@ -3960,8 +3947,8 @@ export default function ProcurementHub() {
                     </div>
                     <div className="col-span-2 space-y-1">
                       <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Unit</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Unit..."
                         value={tempRfqItemUnit}
                         onChange={(e) => setTempRfqItemUnit(e.target.value)}
@@ -4011,8 +3998,8 @@ export default function ProcurementHub() {
                               <td className="p-3 text-center">{item.quantity}</td>
                               <td className="p-3 text-center text-slate-400">{item.unit}</td>
                               <td className="p-3 text-center">
-                                <button 
-                                  type="button" 
+                                <button
+                                  type="button"
                                   onClick={() => setRfqItems(prev => prev.filter((_, i) => i !== index).map((it, idx) => ({ ...it, line_no: idx + 1 })))}
                                   className="text-rose-500 hover:text-rose-700 cursor-pointer"
                                 >
@@ -4065,14 +4052,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {selectedVendorForScorecard && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
               onClick={() => { setSelectedVendorForScorecard(null); setSupplierScorecard(null); }}
               className="absolute inset-0 bg-slate-900"
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -4113,101 +4100,99 @@ export default function ProcurementHub() {
                     const totalGrnsVal = summ.total_grns ?? 0;
 
                     return (
-                    <>
-                      {/* Metric Score Cards */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fulfillment Rate</span>
-                          <div className="mt-2 flex items-baseline gap-1">
-                            <span className="text-2xl font-black text-slate-850">
-                              {fulfillmentRateVal !== null ? `${Number(fulfillmentRateVal).toFixed(1)}%` : '—'}
-                            </span>
-                            <span className="text-[9px] text-slate-450 font-bold">delivered vs ordered</span>
-                          </div>
-                          <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
-                            <div 
-                              className={`h-1.5 rounded-full ${
-                                (fulfillmentRateVal || 0) >= 90 ? 'bg-emerald-500' :
-                                (fulfillmentRateVal || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
-                              }`} 
-                              style={{ width: `${fulfillmentRateVal || 0}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Average Lead Time</span>
-                          <div className="mt-2 flex items-baseline gap-1">
-                            <span className="text-2xl font-black text-slate-850">
-                              {avgLeadVal !== null ? `${Number(avgLeadVal).toFixed(1)} days` : '—'}
-                            </span>
-                            <span className="text-[9px] text-slate-450 font-bold">order to delivery</span>
-                          </div>
-                          <div className="mt-2 text-[9px] font-bold text-slate-450">
-                            Based on {totalGrnsVal} fulfilled shipments
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Spend / Volume Info */}
-                      <div className="bg-teal-50/40 border border-teal-100 rounded-2xl p-4 space-y-2">
-                        <h4 className="text-xs font-black text-teal-850 uppercase tracking-wider">Tender & Purchase Volume</h4>
-                        <div className="grid grid-cols-2 gap-4 pt-1">
-                          <div>
-                            <p className="text-[9px] font-bold text-slate-450 uppercase">Total Spend (Life-time)</p>
-                            <p className="text-sm font-black text-teal-700 mt-0.5">{fmtRWF(totalSpendVal)}</p>
-                          </div>
-                          <div>
-                            <p className="text-[9px] font-bold text-slate-450 uppercase">Purchase Orders (POs)</p>
-                            <p className="text-sm font-black text-slate-850 mt-0.5">{totalPosVal} active POs</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Quality Incidents List */}
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Quality / Delivery Incidents</h4>
-                          <span className={`px-2 py-0.5 text-[9px] font-black rounded-full ${
-                            qualityIncVal > 0 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                          }`}>
-                            {qualityIncVal} logged
-                          </span>
-                        </div>
-
-                        <div className="border border-slate-100 rounded-2xl overflow-hidden max-h-[200px] overflow-y-auto">
-                          {incs.length > 0 ? (
-                            <table className="min-w-full text-xs text-left divide-y divide-slate-100">
-                              <thead className="bg-slate-50 text-slate-450 uppercase text-[9px] font-black">
-                                <tr>
-                                  <th className="p-3">Incident Date</th>
-                                  <th className="p-3">Type</th>
-                                  <th className="p-3">Brief Description</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100 text-slate-650 font-bold font-medium">
-                                {incs.map((inc, i) => (
-                                  <tr key={i} className="hover:bg-slate-50/40">
-                                    <td className="p-3 font-semibold whitespace-nowrap">{new Date(inc.incident_date || inc.created_at).toLocaleDateString()}</td>
-                                    <td className="p-3">
-                                      <span className="bg-rose-50 text-rose-600 px-2 py-0.5 rounded font-bold text-[9px] uppercase">
-                                        {inc.incident_type}
-                                      </span>
-                                    </td>
-                                    <td className="p-3 font-medium text-slate-700 truncate max-w-[220px]" title={inc.description}>{inc.description}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <div className="p-8 text-center text-slate-400">
-                              <CheckCircle className="mx-auto opacity-30 mb-2 text-emerald-500" size={32} />
-                              Excellent quality record. No incidents logged.
+                      <>
+                        {/* Metric Score Cards */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fulfillment Rate</span>
+                            <div className="mt-2 flex items-baseline gap-1">
+                              <span className="text-2xl font-black text-slate-850">
+                                {fulfillmentRateVal !== null ? `${Number(fulfillmentRateVal).toFixed(1)}%` : '—'}
+                              </span>
+                              <span className="text-[9px] text-slate-450 font-bold">delivered vs ordered</span>
                             </div>
-                          )}
+                            <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
+                              <div
+                                className={`h-1.5 rounded-full ${(fulfillmentRateVal || 0) >= 90 ? 'bg-emerald-500' :
+                                    (fulfillmentRateVal || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                                  }`}
+                                style={{ width: `${fulfillmentRateVal || 0}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Average Lead Time</span>
+                            <div className="mt-2 flex items-baseline gap-1">
+                              <span className="text-2xl font-black text-slate-850">
+                                {avgLeadVal !== null ? `${Number(avgLeadVal).toFixed(1)} days` : '—'}
+                              </span>
+                              <span className="text-[9px] text-slate-450 font-bold">order to delivery</span>
+                            </div>
+                            <div className="mt-2 text-[9px] font-bold text-slate-450">
+                              Based on {totalGrnsVal} fulfilled shipments
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </>
+
+                        {/* Spend / Volume Info */}
+                        <div className="bg-teal-50/40 border border-teal-100 rounded-2xl p-4 space-y-2">
+                          <h4 className="text-xs font-black text-teal-850 uppercase tracking-wider">Tender & Purchase Volume</h4>
+                          <div className="grid grid-cols-2 gap-4 pt-1">
+                            <div>
+                              <p className="text-[9px] font-bold text-slate-450 uppercase">Total Spend (Life-time)</p>
+                              <p className="text-sm font-black text-teal-700 mt-0.5">{fmtRWF(totalSpendVal)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-bold text-slate-450 uppercase">Purchase Orders (POs)</p>
+                              <p className="text-sm font-black text-slate-850 mt-0.5">{totalPosVal} active POs</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quality Incidents List */}
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Quality / Delivery Incidents</h4>
+                            <span className={`px-2 py-0.5 text-[9px] font-black rounded-full ${qualityIncVal > 0 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                              }`}>
+                              {qualityIncVal} logged
+                            </span>
+                          </div>
+
+                          <div className="border border-slate-100 rounded-2xl overflow-hidden max-h-[200px] overflow-y-auto">
+                            {incs.length > 0 ? (
+                              <table className="min-w-full text-xs text-left divide-y divide-slate-100">
+                                <thead className="bg-slate-50 text-slate-450 uppercase text-[9px] font-black">
+                                  <tr>
+                                    <th className="p-3">Incident Date</th>
+                                    <th className="p-3">Type</th>
+                                    <th className="p-3">Brief Description</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-slate-650 font-bold font-medium">
+                                  {incs.map((inc, i) => (
+                                    <tr key={i} className="hover:bg-slate-50/40">
+                                      <td className="p-3 font-semibold whitespace-nowrap">{new Date(inc.incident_date || inc.created_at).toLocaleDateString()}</td>
+                                      <td className="p-3">
+                                        <span className="bg-rose-50 text-rose-600 px-2 py-0.5 rounded font-bold text-[9px] uppercase">
+                                          {inc.incident_type}
+                                        </span>
+                                      </td>
+                                      <td className="p-3 font-medium text-slate-700 truncate max-w-[220px]" title={inc.description}>{inc.description}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <div className="p-8 text-center text-slate-400">
+                                <CheckCircle className="mx-auto opacity-30 mb-2 text-emerald-500" size={32} />
+                                Excellent quality record. No incidents logged.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
                     );
                   })() : (
                     <div className="text-center text-slate-400 p-8">No performance records found.</div>
@@ -4223,14 +4208,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {selectedVendorProfile && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.3 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedVendorProfile(null)}
               className="fixed inset-0 bg-slate-900 z-40 backdrop-blur-xs"
             />
-            <motion.div 
+            <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -4243,7 +4228,7 @@ export default function ProcurementHub() {
                   <h3 className="text-lg font-black text-slate-900 mt-1">{selectedVendorProfile.name}</h3>
                   <p className="text-xs text-slate-500 font-bold mt-0.5">{selectedVendorProfile.contact || 'No contact details'}</p>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedVendorProfile(null)}
                   className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                 >
@@ -4263,11 +4248,10 @@ export default function ProcurementHub() {
                   <button
                     key={tab.id}
                     onClick={() => setVendorProfileTab(tab.id)}
-                    className={`flex items-center gap-1.5 px-4 py-2 border-b-2 font-black text-xs transition-all cursor-pointer ${
-                      vendorProfileTab === tab.id
+                    className={`flex items-center gap-1.5 px-4 py-2 border-b-2 font-black text-xs transition-all cursor-pointer ${vendorProfileTab === tab.id
                         ? 'border-teal-600 text-teal-700'
                         : 'border-transparent text-slate-400 hover:text-slate-650'
-                    }`}
+                      }`}
                   >
                     <tab.icon size={13} />
                     {tab.label}
@@ -4290,38 +4274,37 @@ export default function ProcurementHub() {
                       const avgLeadVal = perf.avg_lead_time_days ?? supplierScorecard.avgLeadDays ?? null;
 
                       return (
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fulfillment Rate</span>
-                            <div className="mt-2 flex items-baseline gap-1">
-                              <span className="text-2xl font-black text-slate-850">
-                                {fulfillmentRateVal !== null ? `${Number(fulfillmentRateVal).toFixed(1)}%` : '—'}
-                              </span>
-                              <span className="text-[9px] text-slate-450 font-bold">delivered vs ordered</span>
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fulfillment Rate</span>
+                              <div className="mt-2 flex items-baseline gap-1">
+                                <span className="text-2xl font-black text-slate-850">
+                                  {fulfillmentRateVal !== null ? `${Number(fulfillmentRateVal).toFixed(1)}%` : '—'}
+                                </span>
+                                <span className="text-[9px] text-slate-450 font-bold">delivered vs ordered</span>
+                              </div>
+                              <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
+                                <div
+                                  className={`h-1.5 rounded-full ${(fulfillmentRateVal || 0) >= 90 ? 'bg-emerald-500' :
+                                      (fulfillmentRateVal || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                                    }`}
+                                  style={{ width: `${fulfillmentRateVal || 0}%` }}
+                                />
+                              </div>
                             </div>
-                            <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
-                              <div 
-                                className={`h-1.5 rounded-full ${
-                                  (fulfillmentRateVal || 0) >= 90 ? 'bg-emerald-500' :
-                                  (fulfillmentRateVal || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
-                                }`} 
-                                style={{ width: `${fulfillmentRateVal || 0}%` }}
-                              />
-                            </div>
-                          </div>
 
-                          <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Average Lead Time</span>
-                            <div className="mt-2 flex items-baseline gap-1">
-                              <span className="text-2xl font-black text-slate-850">
-                                {avgLeadVal !== null ? `${Number(avgLeadVal).toFixed(1)} days` : '—'}
-                              </span>
-                              <span className="text-[9px] text-slate-450 font-bold">order to delivery</span>
+                            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Average Lead Time</span>
+                              <div className="mt-2 flex items-baseline gap-1">
+                                <span className="text-2xl font-black text-slate-850">
+                                  {avgLeadVal !== null ? `${Number(avgLeadVal).toFixed(1)} days` : '—'}
+                                </span>
+                                <span className="text-[9px] text-slate-450 font-bold">order to delivery</span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
                       );
                     })() : (
                       <div className="text-center text-slate-400 py-10 font-bold">No scorecard data available.</div>
@@ -4355,7 +4338,7 @@ export default function ProcurementHub() {
                               <span className={`px-2 py-0.5 rounded text-[9px] font-black border ${expiryTone}`}>
                                 {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
                               </span>
-                              <p className="text-[9px] text-slate-400 font-bold mt-1.5">{c.start_date?.substring(0,10)} to {c.end_date?.substring(0,10)}</p>
+                              <p className="text-[9px] text-slate-400 font-bold mt-1.5">{c.start_date?.substring(0, 10)} to {c.end_date?.substring(0, 10)}</p>
                             </div>
                           </div>
                         );
@@ -4384,7 +4367,7 @@ export default function ProcurementHub() {
                             <p className="text-[10px] text-slate-400 font-bold mt-1 capitalize">Type: {doc.doc_type?.replace('_', ' ')} • Ref: {doc.file_ref || 'None'}</p>
                           </div>
                           <div className="text-right">
-                            <span className="text-[10px] font-bold text-slate-500">Expires: {doc.expiry_date ? doc.expiry_date.substring(0,10) : 'Never'}</span>
+                            <span className="text-[10px] font-bold text-slate-500">Expires: {doc.expiry_date ? doc.expiry_date.substring(0, 10) : 'Never'}</span>
                           </div>
                         </div>
                       ))}
@@ -4429,7 +4412,7 @@ export default function ProcurementHub() {
                 {vendorProfileTab === 'portal' && vendorActiveSession && (
                   <div className="space-y-4 animate-none">
                     <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Active Supplier Portal</h4>
-                    
+
                     <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 shadow-xs relative overflow-hidden">
                       <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-200">
                         <div className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl">
@@ -4606,7 +4589,7 @@ export default function ProcurementHub() {
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] uppercase text-slate-455">Star Rating (1-5)</label>
                   <div className="flex gap-2">
-                    {[1,2,3,4,5].map((star) => (
+                    {[1, 2, 3, 4, 5].map((star) => (
                       <button type="button" key={star} onClick={() => setRatingValue(star)} className="text-2xl cursor-pointer transition-transform hover:scale-110 focus:outline-none">
                         <Star className={star <= ratingValue ? 'text-amber-400 fill-amber-400' : 'text-slate-200'} size={24} />
                       </button>
@@ -4717,14 +4700,14 @@ export default function ProcurementHub() {
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] uppercase text-slate-450">Budget Year</label>
                     <select value={budgetYear} onChange={e => setBudgetYear(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none">
-                      {[2024,2025,2026,2027].map(y => <option key={y} value={String(y)}>{y}</option>)}
+                      {[2024, 2025, 2026, 2027].map(y => <option key={y} value={String(y)}>{y}</option>)}
                     </select>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] uppercase text-slate-455">Budget Month</label>
                     <select value={budgetMonth} onChange={e => setBudgetMonth(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none">
                       {Array.from({ length: 12 }).map((_, i) => (
-                        <option key={i+1} value={String(i+1)}>{new Date(2026, i, 1).toLocaleString('default', { month: 'long' })}</option>
+                        <option key={i + 1} value={String(i + 1)}>{new Date(2026, i, 1).toLocaleString('default', { month: 'long' })}</option>
                       ))}
                     </select>
                   </div>
@@ -4783,7 +4766,7 @@ export default function ProcurementHub() {
                     <select value={invGrnId} onChange={e => { setInvGrnId(e.target.value); setInvPoId(''); }} className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none font-bold">
                       <option value="">No GRN Link</option>
                       {goodsReceipts.filter(g => Number(g.vendor_id) === Number(invVendorId)).map(grn => (
-                        <option key={grn.id} value={grn.id}>GRN #{grn.grn_no || grn.id} ({grn.created_at?.substring(0,10)})</option>
+                        <option key={grn.id} value={grn.id}>GRN #{grn.grn_no || grn.id} ({grn.created_at?.substring(0, 10)})</option>
                       ))}
                     </select>
                   </div>
@@ -4861,14 +4844,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {showCreatePOModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowCreatePOModal(false)}
               className="absolute inset-0 bg-slate-900"
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -4882,8 +4865,8 @@ export default function ProcurementHub() {
               <form onSubmit={handleCreatePOSubmit} className="space-y-4 overflow-y-auto flex-1 pr-1">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600">Select Supplier</label>
-                  <select 
-                    value={poVendorId} 
+                  <select
+                    value={poVendorId}
                     onChange={(e) => setPoVendorId(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none focus:bg-white"
                     required
@@ -4895,8 +4878,8 @@ export default function ProcurementHub() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600">Additional Instructions/Notes</label>
-                  <textarea 
-                    value={poNotes} 
+                  <textarea
+                    value={poNotes}
                     onChange={(e) => setPoNotes(e.target.value)}
                     placeholder="Enter instructions, payment terms, delivery address..."
                     className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none focus:bg-white h-20 resize-none"
@@ -4930,9 +4913,9 @@ export default function ProcurementHub() {
 
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-slate-400">Quantity</label>
-                      <input 
-                        type="number" 
-                        placeholder="Qty" 
+                      <input
+                        type="number"
+                        placeholder="Qty"
                         value={tempPoItemQty}
                         onChange={(e) => setTempPoItemQty(e.target.value)}
                         className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs"
@@ -4942,15 +4925,15 @@ export default function ProcurementHub() {
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-slate-400">Estimated Unit Price (RWF)</label>
                       <div className="flex gap-2">
-                        <input 
-                          type="number" 
-                          placeholder="Price" 
+                        <input
+                          type="number"
+                          placeholder="Price"
                           value={tempPoItemPrice}
                           onChange={(e) => setTempPoItemPrice(e.target.value)}
                           className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs flex-1"
                         />
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={handleAddPoItem}
                           className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl cursor-pointer"
                         >Add</button>
@@ -5003,8 +4986,8 @@ export default function ProcurementHub() {
                   >
                     {submittingPO ? <Loader2 size={14} className="animate-spin" /> : 'Generate PO Draft'}
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowCreatePOModal(false)}
                     className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold text-xs rounded-xl cursor-pointer"
                   >Cancel</button>
@@ -5141,14 +5124,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {showCreateGRNModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowCreateGRNModal(false)}
               className="absolute inset-0 bg-slate-900"
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -5160,12 +5143,12 @@ export default function ProcurementHub() {
               </div>
 
               <form onSubmit={handleCreateGRNSubmit} className="space-y-4 overflow-y-auto flex-1 pr-1">
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600">Link Purchase Order (Optional)</label>
-                    <select 
-                      value={grnPoId} 
+                    <select
+                      value={grnPoId}
                       onChange={(e) => handlePoChangeInGrn(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none cursor-pointer"
                     >
@@ -5178,8 +5161,8 @@ export default function ProcurementHub() {
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600">Select Supplier</label>
-                    <select 
-                      value={grnVendorId} 
+                    <select
+                      value={grnVendorId}
                       onChange={(e) => setGrnVendorId(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none cursor-pointer"
                       disabled={!!grnPoId}
@@ -5194,8 +5177,8 @@ export default function ProcurementHub() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600">Invoice Number</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="e.g. INV-10029"
                       value={grnInvoice}
                       onChange={(e) => setGrnInvoice(e.target.value)}
@@ -5205,8 +5188,8 @@ export default function ProcurementHub() {
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600">Delivery Note Number</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="e.g. DN-883"
                       value={grnDeliveryNote}
                       onChange={(e) => setGrnDeliveryNote(e.target.value)}
@@ -5225,9 +5208,9 @@ export default function ProcurementHub() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-slate-400">Product Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="Product name..." 
+                      <input
+                        type="text"
+                        placeholder="Product name..."
                         list="grn-items-datalist"
                         value={tempGrnItemName}
                         onChange={(e) => setTempGrnItemName(e.target.value)}
@@ -5240,9 +5223,9 @@ export default function ProcurementHub() {
 
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-slate-400">Quantity Received</label>
-                      <input 
-                        type="number" 
-                        placeholder="Qty" 
+                      <input
+                        type="number"
+                        placeholder="Qty"
                         value={tempGrnItemQty}
                         onChange={(e) => setTempGrnItemQty(e.target.value)}
                         className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs"
@@ -5251,9 +5234,9 @@ export default function ProcurementHub() {
 
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-slate-400">Purchase Price (RWF)</label>
-                      <input 
-                        type="number" 
-                        placeholder="Price" 
+                      <input
+                        type="number"
+                        placeholder="Price"
                         value={tempGrnItemPrice}
                         onChange={(e) => setTempGrnItemPrice(e.target.value)}
                         className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs"
@@ -5264,9 +5247,9 @@ export default function ProcurementHub() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-slate-400">Batch Number</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. B-901" 
+                      <input
+                        type="text"
+                        placeholder="e.g. B-901"
                         value={tempGrnItemBatch}
                         onChange={(e) => setTempGrnItemBatch(e.target.value)}
                         className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs"
@@ -5276,15 +5259,15 @@ export default function ProcurementHub() {
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-slate-400">Expiry Date</label>
                       <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="e.g. 12/2028 or YYYY-MM-DD" 
+                        <input
+                          type="text"
+                          placeholder="e.g. 12/2028 or YYYY-MM-DD"
                           value={tempGrnItemExpiry}
                           onChange={(e) => setTempGrnItemExpiry(e.target.value)}
                           className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs flex-1"
                         />
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={handleAddGrnItem}
                           className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl cursor-pointer"
                         >Add</button>
@@ -5326,8 +5309,8 @@ export default function ProcurementHub() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600">Receipt Notes</label>
-                  <textarea 
-                    value={grnNotes} 
+                  <textarea
+                    value={grnNotes}
                     onChange={(e) => setGrnNotes(e.target.value)}
                     placeholder="Enter details on condition, discrepancies..."
                     className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none focus:bg-white h-20 resize-none"
@@ -5335,15 +5318,15 @@ export default function ProcurementHub() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={submittingGRN}
                     className="flex-1 py-3 bg-teal-700 hover:bg-teal-650 text-white font-bold text-xs rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
                   >
                     {submittingGRN ? <Loader2 size={14} className="animate-spin" /> : 'Process Goods Receipt Note'}
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowCreateGRNModal(false)}
                     className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold text-xs rounded-xl cursor-pointer"
                   >Cancel</button>
@@ -5358,14 +5341,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {showCreateVendorModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowCreateVendorModal(false)}
               className="absolute inset-0 bg-slate-900"
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -5379,8 +5362,8 @@ export default function ProcurementHub() {
               <form onSubmit={handleCreateVendorSubmit} className="space-y-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600">Supplier / Corporate Name</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     placeholder="Enter supplier name..."
                     value={vendorName}
@@ -5391,8 +5374,8 @@ export default function ProcurementHub() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600">Contact Details</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="e.g. Email, phone, or representative..."
                     value={vendorContact}
                     onChange={(e) => setVendorContact(e.target.value)}
@@ -5402,8 +5385,8 @@ export default function ProcurementHub() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600">Contract Payment Terms</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="e.g. Net 30, Cash on Delivery..."
                     value={vendorTerms}
                     onChange={(e) => setVendorTerms(e.target.value)}
@@ -5412,15 +5395,15 @@ export default function ProcurementHub() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={submittingVendor}
                     className="flex-1 py-3 bg-teal-700 hover:bg-teal-650 text-white font-bold text-xs rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
                   >
                     {submittingVendor ? <Loader2 size={14} className="animate-spin" /> : 'Register Supplier'}
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowCreateVendorModal(false)}
                     className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold text-xs rounded-xl cursor-pointer"
                   >Cancel</button>
@@ -5435,14 +5418,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {showCreateIncidentModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowCreateIncidentModal(false)}
               className="absolute inset-0 bg-slate-900"
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -5460,9 +5443,9 @@ export default function ProcurementHub() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600">Incident Classification</label>
-                    <select 
+                    <select
                       value={incidentFormData.incidentType}
-                      onChange={(e) => setIncidentFormData({...incidentFormData, incidentType: e.target.value})}
+                      onChange={(e) => setIncidentFormData({ ...incidentFormData, incidentType: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none"
                     >
                       <option value="Equipment">Storage/Equipment Issue</option>
@@ -5474,8 +5457,8 @@ export default function ProcurementHub() {
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600">Department</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={incidentFormData.department}
                       disabled
                       className="w-full bg-slate-100 border border-slate-250 px-3 py-2.5 rounded-xl text-xs outline-none cursor-not-allowed"
@@ -5486,24 +5469,24 @@ export default function ProcurementHub() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600">Area/Location of Incident</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       required
                       placeholder="e.g. General Store Shelf B"
                       value={incidentFormData.areaOfIncident}
-                      onChange={(e) => setIncidentFormData({...incidentFormData, areaOfIncident: e.target.value})}
+                      onChange={(e) => setIncidentFormData({ ...incidentFormData, areaOfIncident: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none"
                     />
                   </div>
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600">Personnel Involved</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       required
                       placeholder="e.g. Supplier Driver, Intake Clerk"
                       value={incidentFormData.namesInvolved}
-                      onChange={(e) => setIncidentFormData({...incidentFormData, namesInvolved: e.target.value})}
+                      onChange={(e) => setIncidentFormData({ ...incidentFormData, namesInvolved: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none"
                     />
                   </div>
@@ -5511,10 +5494,10 @@ export default function ProcurementHub() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600">Detailed Description</label>
-                  <textarea 
+                  <textarea
                     required
-                    value={incidentFormData.description} 
-                    onChange={(e) => setIncidentFormData({...incidentFormData, description: e.target.value})}
+                    value={incidentFormData.description}
+                    onChange={(e) => setIncidentFormData({ ...incidentFormData, description: e.target.value })}
                     placeholder="Provide a comprehensive timeline of the occurrence..."
                     className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none h-24 resize-none focus:bg-white"
                   />
@@ -5522,24 +5505,24 @@ export default function ProcurementHub() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600">Immediate Corrective Actions Taken</label>
-                  <textarea 
-                    value={incidentFormData.immediateActions} 
-                    onChange={(e) => setIncidentFormData({...incidentFormData, immediateActions: e.target.value})}
+                  <textarea
+                    value={incidentFormData.immediateActions}
+                    onChange={(e) => setIncidentFormData({ ...incidentFormData, immediateActions: e.target.value })}
                     placeholder="What measures were taken immediately to contain the issue?"
                     className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none h-20 resize-none focus:bg-white"
                   />
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={submittingIncident}
                     className="flex-1 py-3 bg-rose-650 hover:bg-rose-600 text-white font-bold text-xs rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
                   >
                     {submittingIncident ? <Loader2 size={14} className="animate-spin" /> : 'Log Quality Incident'}
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowCreateIncidentModal(false)}
                     className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold text-xs rounded-xl cursor-pointer"
                   >Cancel</button>
@@ -5554,14 +5537,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {selectedPO && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.3 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedPO(null)}
               className="fixed inset-0 bg-slate-900 z-45"
             />
-            <motion.div 
+            <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -5628,13 +5611,13 @@ export default function ProcurementHub() {
               <div className="mt-6 space-y-3">
                 {(selectedPO.status === 'Draft' || selectedPO.status === 'Pending Approval') && (
                   <div className="flex gap-3">
-                    <button 
+                    <button
                       onClick={() => handleUpdatePOStatus(selectedPO.id, 'Approved')}
                       className="flex-1 py-3 bg-teal-750 hover:bg-teal-700 text-white font-bold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <Check size={14} /> Approve PO
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleUpdatePOStatus(selectedPO.id, 'Sent to Supplier')}
                       className="flex-1 py-3 bg-indigo-650 hover:bg-indigo-600 text-white font-bold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
                     >
@@ -5659,14 +5642,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {selectedGRN && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.3 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedGRN(null)}
               className="fixed inset-0 bg-slate-900 z-45"
             />
-            <motion.div 
+            <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -5755,14 +5738,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {selectedSubmission && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.3 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedSubmission(null)}
               className="fixed inset-0 bg-slate-900 z-45"
             />
-            <motion.div 
+            <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -5835,7 +5818,7 @@ export default function ProcurementHub() {
                     <ShieldAlert className="flex-shrink-0" size={18} />
                     Confirming will automatically register these batch numbers and expiry records and merge received quantities into the General Store inventory.
                   </div>
-                  <button 
+                  <button
                     onClick={() => handleReceiveStock(selectedSubmission.id)}
                     disabled={processingReceive}
                     className="w-full py-3 bg-teal-700 hover:bg-teal-650 text-white font-bold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5 transition-all"
@@ -5853,7 +5836,7 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {showCreateReturnModal && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
@@ -5873,7 +5856,7 @@ export default function ProcurementHub() {
                   </span>
                   <h3 className="text-lg font-black text-slate-900">Log Return to Supplier</h3>
                 </div>
-                <button 
+                <button
                   onClick={() => setShowCreateReturnModal(false)}
                   className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
                 >
@@ -5883,7 +5866,7 @@ export default function ProcurementHub() {
 
               <div className="flex-1 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
                 <form id="modal-return-form" onSubmit={handleCreateReturnSubmit} className="space-y-4 animate-none">
-                  
+
                   {/* General Config */}
                   <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl grid grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">
@@ -5931,7 +5914,7 @@ export default function ProcurementHub() {
                   {/* Add Items Section */}
                   <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl space-y-3">
                     <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Stock Lots to Return</h4>
-                    
+
                     <div className="grid grid-cols-3 gap-3 items-end">
                       <div className="col-span-2 flex flex-col gap-1">
                         <label className="text-[10px] uppercase font-bold text-slate-455">Select Lot/Batch (from Store Inventory) *</label>
@@ -6053,14 +6036,14 @@ export default function ProcurementHub() {
       <AnimatePresence>
         {selectedRequisition && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.3 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedRequisition(null)}
               className="fixed inset-0 bg-slate-900 z-40 backdrop-blur-xs"
             />
-            <motion.div 
+            <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -6076,7 +6059,7 @@ export default function ProcurementHub() {
                     {selectedRequisition.isReturn ? `${selectedRequisition.id}` : `Requisition #${selectedRequisition.id}`}
                   </h3>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedRequisition(null)}
                   className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                 >
@@ -6096,19 +6079,17 @@ export default function ProcurementHub() {
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-455 uppercase font-black">Priority / Classification</p>
-                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-block mt-0.5 ${
-                    selectedRequisition.urgency === 'Critical' ? 'bg-red-50 text-red-655 border border-red-100' :
-                    selectedRequisition.urgency === 'High' ? 'bg-amber-50 text-amber-655 border border-amber-100' :
-                    'bg-slate-100 text-slate-550 border border-slate-200'
-                  }`}>{selectedRequisition.urgency}</span>
+                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-block mt-0.5 ${selectedRequisition.urgency === 'Critical' ? 'bg-red-50 text-red-655 border border-red-100' :
+                      selectedRequisition.urgency === 'High' ? 'bg-amber-50 text-amber-655 border border-amber-100' :
+                        'bg-slate-100 text-slate-550 border border-slate-200'
+                    }`}>{selectedRequisition.urgency}</span>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-455 uppercase font-black">Status</p>
-                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-block mt-0.5 ${
-                    selectedRequisition.status === 'Pending' ? 'bg-amber-50 text-amber-655 border border-amber-100' :
-                    selectedRequisition.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                    'bg-slate-100 text-slate-550 border border-slate-200'
-                  }`}>{selectedRequisition.status}</span>
+                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-block mt-0.5 ${selectedRequisition.status === 'Pending' ? 'bg-amber-50 text-amber-655 border border-amber-100' :
+                      selectedRequisition.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                        'bg-slate-100 text-slate-550 border border-slate-200'
+                    }`}>{selectedRequisition.status}</span>
                 </div>
                 {selectedRequisition.notes && (
                   <div className="col-span-2 border-t border-slate-150 pt-2.5">
@@ -6132,16 +6113,14 @@ export default function ProcurementHub() {
                     </div>
                     <div className="text-slate-300">➔</div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
-                        selectedRequisition.status === 'Pending' ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'
-                      }`}>
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${selectedRequisition.status === 'Pending' ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'
+                        }`}>
                         {selectedRequisition.status === 'Pending' ? '?' : '✓'}
                       </div>
                       <div>
                         <p className="font-bold text-slate-700">2. Procurement</p>
-                        <p className={`text-[9px] font-bold ${
-                          selectedRequisition.status === 'Pending' ? 'text-amber-600' : 'text-emerald-600'
-                        }`}>{selectedRequisition.status}</p>
+                        <p className={`text-[9px] font-bold ${selectedRequisition.status === 'Pending' ? 'text-amber-600' : 'text-emerald-600'
+                          }`}>{selectedRequisition.status}</p>
                       </div>
                     </div>
                   </div>
@@ -6151,7 +6130,7 @@ export default function ProcurementHub() {
               {/* Items List */}
               <div className="flex-1 flex flex-col min-h-0">
                 <h4 className="font-bold text-xs text-slate-450 uppercase tracking-widest mb-3">Itemized Details</h4>
-                
+
                 {loadingReqItems ? (
                   <div className="flex-1 flex flex-col items-center justify-center gap-2">
                     <Loader2 className="h-8 w-8 animate-spin text-teal-650" />
@@ -6239,7 +6218,7 @@ export default function ProcurementHub() {
               {/* The A4 print-preview body */}
               <div className="overflow-y-auto flex-1 p-6 bg-slate-100">
                 <div id="grn-print-template" className="grn-page bg-white shadow-lg mx-auto" style={{ width: '210mm', minHeight: '297mm', padding: '16mm 14mm', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#111' }}>
-                  
+
                   {/* ── HEADER ── */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     {/* Logo */}
@@ -6394,7 +6373,7 @@ export default function ProcurementHub() {
               {/* The A4 print-preview body */}
               <div className="overflow-y-auto flex-1 p-6 bg-slate-100">
                 <div id="po-print-template" className="po-page bg-white shadow-lg mx-auto" style={{ width: '210mm', minHeight: '297mm', padding: '16mm 14mm', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#111' }}>
-                  
+
                   {/* ── HEADER ── */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     {/* Logo + Name */}
