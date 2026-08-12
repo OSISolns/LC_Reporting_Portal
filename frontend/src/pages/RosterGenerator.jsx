@@ -50,23 +50,23 @@ function injectPrintStyles() {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function renderShiftCell(shifts) {
-  if (!shifts || shifts.length === 0) return <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '34.5px' }}>—</span>;
+  if (!shifts || shifts.length === 0) return <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '13px' }}>—</span>;
 
   // Check for "Not Available" marker
   if (shifts.length === 1 && shifts[0].staff?.[0] === 'Not Available') {
-    return <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '34.5px' }}>Not Available</span>;
+    return <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '13px' }}>Not Available</span>;
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', textAlign: 'center' }}>
       {shifts.map((shift, si) => (
         <div key={si} style={{ textAlign: 'center' }}>
           {shift.time && (
             <div style={{
               fontWeight: 700,
-              fontSize: '31.5px',
+              fontSize: '12px',
               color: '#007b8a',
-              marginBottom: '4px',
+              marginBottom: '2px',
               fontStyle: 'italic',
               textAlign: 'center'
             }}>
@@ -74,7 +74,7 @@ function renderShiftCell(shifts) {
             </div>
           )}
           {shift.staff.map((name, ni) => (
-            <div key={ni} style={{ fontSize: '34.5px', color: '#1e293b', lineHeight: '1.4', fontWeight: '500', textAlign: 'center' }}>
+            <div key={ni} style={{ fontSize: '13.5px', color: '#1e293b', lineHeight: '1.38', fontWeight: '600', textAlign: 'center' }}>
               {name}
             </div>
           ))}
@@ -99,35 +99,35 @@ function renderRosterTableRows(unitsList) {
       <tr
         key={idx}
         style={{
-          borderBottom: '2px solid #e2f0f0',
+          borderBottom: '1px solid #e2f0f0',
         }}
       >
         <td style={{
-          padding: '16px 14px',
+          padding: '10px 10px',
           fontWeight: '700',
-          fontSize: '34.5px',
+          fontSize: '13.5px',
           color: '#003B44',
           verticalAlign: 'middle',
           textAlign: 'center',
-          borderRight: '2px solid #e2f0f0',
-          borderLeft: isDental ? '8px solid #0284c7' : '8px solid #007b8a',
+          borderRight: '1px solid #e2f0f0',
+          borderLeft: isDental ? '4px solid #0284c7' : '4px solid #007b8a',
           backgroundColor: isEven ? '#ffffff' : '#f8fffe',
           width: '30%',
         }}>
           {unit.unit}
         </td>
         <td style={{
-          padding: '16px 14px',
+          padding: '10px 10px',
           verticalAlign: 'middle',
           textAlign: 'center',
-          borderRight: '2px solid #e2f0f0',
+          borderRight: '1px solid #e2f0f0',
           backgroundColor: isEven ? '#f0fffe' : '#e8fffe',
           width: '35%',
         }}>
           {renderShiftCell(unit.morning)}
         </td>
         <td style={{
-          padding: '16px 14px',
+          padding: '10px 10px',
           verticalAlign: 'middle',
           textAlign: 'center',
           backgroundColor: isEven ? '#fffbf0' : '#fff8e8',
@@ -783,46 +783,47 @@ export default function RosterGenerator() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '16px 24px 12px',
-                  borderBottom: '4px solid #007b8a',
+                  padding: '12px 18px',
+                  borderBottom: '3px solid #007b8a',
                   background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%)',
+                  gap: '12px',
                 }}>
                   {/* Logo + Clinic Name */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '0', flexShrink: 1 }}>
                     <img
                       src="/legacy-logo.png"
                       alt="Legacy Clinics"
-                      style={{ height: '75px', width: 'auto', objectFit: 'contain' }}
+                      style={{ height: '44px', width: 'auto', objectFit: 'contain', flexShrink: 0 }}
                     />
-                    <div>
-                      <div style={{ fontSize: '30px', fontWeight: '700', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    <div style={{ minWidth: '0' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                         Legacy Clinics and Diagnostics
                       </div>
-                      <div style={{ fontSize: '28.5px', color: '#94a3b8', marginTop: '3px' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap' }}>
                         KK3 RD 134, Kicukiro, Kigali &nbsp;|&nbsp; +250 788 122 100
                       </div>
                     </div>
                   </div>
 
                   {/* Title block */}
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '48px', fontWeight: '800', color: '#003B44', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '20px', fontWeight: '800', color: '#003B44', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
                       Doctor's Schedule
                     </div>
-                    <div style={{ marginTop: '6px', display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <div style={{ marginTop: '3px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{
                         display: 'inline-block',
                         backgroundColor: '#007b8a',
                         color: '#fff',
                         fontWeight: '700',
-                        fontSize: '33px',
-                        padding: '4px 18px',
-                        borderRadius: '24px',
+                        fontSize: '11.5px',
+                        padding: '2px 10px',
+                        borderRadius: '14px',
                         letterSpacing: '0.03em'
                       }}>
                         {rosterData.dayName}
                       </span>
-                      <span style={{ fontSize: '36px', color: '#475569', fontWeight: '600' }}>
+                      <span style={{ fontSize: '13px', color: '#334155', fontWeight: '700' }}>
                         {rosterData.dateStr}
                       </span>
                     </div>
@@ -834,7 +835,7 @@ export default function RosterGenerator() {
                   <table style={{
                     width: '100%',
                     borderCollapse: 'collapse',
-                    fontSize: '34.5px',
+                    fontSize: '13px',
                     tableLayout: 'fixed',
                   }}>
                     <thead>
@@ -842,10 +843,10 @@ export default function RosterGenerator() {
                         <th
                           rowSpan={2}
                           style={{
-                            padding: '14px 12px',
+                            padding: '8px 10px',
                             color: '#ffffff',
                             fontWeight: '800',
-                            fontSize: '36px',
+                            fontSize: '13px',
                             textAlign: 'center',
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
@@ -860,14 +861,14 @@ export default function RosterGenerator() {
                         <th
                           colSpan={2}
                           style={{
-                            padding: '12px 12px',
+                            padding: '6px 10px',
                             color: '#7ee8f8',
                             fontWeight: '800',
-                            fontSize: '36px',
+                            fontSize: '13px',
                             textAlign: 'center',
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
-                            borderBottom: '2px solid rgba(255,255,255,0.2)',
+                            borderBottom: '1px solid rgba(255,255,255,0.2)',
                             backgroundColor: '#003B44',
                           }}
                         >
@@ -877,14 +878,14 @@ export default function RosterGenerator() {
                       <tr style={{ backgroundColor: '#00505c' }}>
                         <th
                           style={{
-                            padding: '12px 12px',
+                            padding: '6px 10px',
                             color: '#a5f3fc',
                             fontWeight: '700',
-                            fontSize: '33px',
+                            fontSize: '12px',
                             textAlign: 'center',
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
-                            borderRight: '2px solid rgba(255,255,255,0.15)',
+                            borderRight: '1px solid rgba(255,255,255,0.15)',
                             backgroundColor: '#00505c',
                             width: '35%',
                           }}
@@ -893,10 +894,10 @@ export default function RosterGenerator() {
                         </th>
                         <th
                           style={{
-                            padding: '12px 12px',
+                            padding: '6px 10px',
                             color: '#fde68a',
                             fontWeight: '700',
-                            fontSize: '33px',
+                            fontSize: '12px',
                             textAlign: 'center',
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
@@ -1690,42 +1691,43 @@ export default function RosterGenerator() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '16px 24px 12px',
-                  borderBottom: '4px solid #007b8a',
+                  padding: '12px 18px',
+                  borderBottom: '3px solid #007b8a',
                   background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%)',
+                  gap: '12px',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-                    <img src="/legacy-logo.png" alt="Legacy Clinics" style={{ height: '75px', width: 'auto', objectFit: 'contain' }} />
-                    <div>
-                      <div style={{ fontSize: '30px', fontWeight: '700', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '0', flexShrink: 1 }}>
+                    <img src="/legacy-logo.png" alt="Legacy Clinics" style={{ height: '44px', width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
+                    <div style={{ minWidth: '0' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                         Legacy Clinics and Diagnostics
                       </div>
-                      <div style={{ fontSize: '28.5px', color: '#94a3b8', marginTop: '3px' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap' }}>
                         KK3 RD 134, Kicukiro, Kigali &nbsp;|&nbsp; +250 788 122 100
                       </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '48px', fontWeight: '800', color: '#003B44', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '20px', fontWeight: '800', color: '#003B44', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
                       {modalDoctorFilter ? `${modalDoctorFilter}'s Schedule` : "Doctor's Schedule"}
                     </div>
-                    <div style={{ marginTop: '4px', fontSize: '36px', color: '#475569', fontWeight: '600' }}>
+                    <div style={{ marginTop: '3px', fontSize: '13px', color: '#334155', fontWeight: '700' }}>
                       {previewModalItem.roster_date}
                     </div>
                   </div>
                 </div>
 
                 {/* Table */}
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '34.5px', tableLayout: 'fixed' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', tableLayout: 'fixed' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#003B44' }}>
                       <th
                         rowSpan={2}
                         style={{
-                          padding: '14px 12px',
+                          padding: '8px 10px',
                           color: '#ffffff',
                           fontWeight: '800',
-                          fontSize: '36px',
+                          fontSize: '13px',
                           textAlign: 'center',
                           letterSpacing: '0.06em',
                           textTransform: 'uppercase',
@@ -1740,14 +1742,14 @@ export default function RosterGenerator() {
                       <th
                         colSpan={2}
                         style={{
-                          padding: '12px 12px',
+                          padding: '6px 10px',
                           color: '#7ee8f8',
                           fontWeight: '800',
-                          fontSize: '36px',
+                          fontSize: '13px',
                           textAlign: 'center',
                           letterSpacing: '0.06em',
                           textTransform: 'uppercase',
-                          borderBottom: '2px solid rgba(255,255,255,0.2)',
+                          borderBottom: '1px solid rgba(255,255,255,0.2)',
                           backgroundColor: '#003B44',
                         }}
                       >
@@ -1757,14 +1759,14 @@ export default function RosterGenerator() {
                     <tr style={{ backgroundColor: '#00505c' }}>
                       <th
                         style={{
-                          padding: '12px 12px',
+                          padding: '6px 10px',
                           color: '#a5f3fc',
                           fontWeight: '700',
-                          fontSize: '33px',
+                          fontSize: '12px',
                           textAlign: 'center',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
-                          borderRight: '2px solid rgba(255,255,255,0.15)',
+                          borderRight: '1px solid rgba(255,255,255,0.15)',
                           backgroundColor: '#00505c',
                           width: '35%',
                         }}
@@ -1773,10 +1775,10 @@ export default function RosterGenerator() {
                       </th>
                       <th
                         style={{
-                          padding: '12px 12px',
+                          padding: '6px 10px',
                           color: '#fde68a',
                           fontWeight: '700',
-                          fontSize: '33px',
+                          fontSize: '12px',
                           textAlign: 'center',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
