@@ -5,13 +5,201 @@ import {
   UploadCloud, Printer, FileCode, RefreshCw, CalendarDays, FileText, ShieldCheck,
   History, Download, Sparkles, ArrowRightLeft, AlertTriangle, UserPlus, UserMinus,
   Eye, X, UserCheck, Search, Copy, User, Filter, Trash2, CheckSquare, Square,
-  BarChart3, ListFilter, CheckCircle2, Trash
+  BarChart3, ListFilter, CheckCircle2, Trash, FileSpreadsheet
 } from 'lucide-react';
 
 // A4 at 96 dpi = 794 × 1123 px (3/4 height = 842 px)
 const A4_W = 794;
 const A4_H = 1123;
 const A4_THREE_QUARTER_H = 842;
+
+// ─── Excel Export Helper ───────────────────────────────────────────────────────
+const exportRosterToExcel = async (dayName, dateStr, unitsList, filenamePrefix = 'Doctors_Schedule') => {
+  if (!unitsList || unitsList.length === 0) {
+    toast.error("No schedule data available to export.");
+    return;
+  }
+
+  const toastId = toast.loading("Generating Excel schedule...");
+
+  try {
+    const ExcelJS = await import('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Legacy Clinics Portal';
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet('Doctor Schedule', {
+      pageSetup: { paperSize: 9, orientation: 'portrait' }
+    });
+
+    // Column widths
+    sheet.columns = [
+      { key: 'unit', width: 32 },
+      { key: 'morning', width: 40 },
+      { key: 'evening', width: 40 },
+    ];
+
+    // Row 1: Header Title 1
+    sheet.mergeCells('A1:C1');
+    const titleCell1 = sheet.getCell('A1');
+    titleCell1.value = 'LEGACY CLINICS AND DIAGNOSTICS';
+    titleCell1.font = { name: 'Segoe UI', size: 13, bold: true, color: { argb: 'FFFFFF' } };
+    titleCell1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '003B44' } };
+    titleCell1.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(1).height = 28;
+
+    // Row 2: Header Title 2
+    sheet.mergeCells('A2:C2');
+    const titleCell2 = sheet.getCell('A2');
+    titleCell2.value = "DOCTOR'S SCHEDULE";
+    titleCell2.font = { name: 'Segoe UI', size: 15, bold: true, color: { argb: '7EE8F8' } };
+    titleCell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '003B44' } };
+    titleCell2.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(2).height = 30;
+
+    // Row 3: Day & Date Subtitle
+    sheet.mergeCells('A3:C3');
+    const subCell = sheet.getCell('A3');
+    subCell.value = `${dayName ? dayName.toUpperCase() + ' - ' : ''}${dateStr || ''}`;
+    subCell.font = { name: 'Segoe UI', size: 11.5, bold: true, color: { argb: '00505C' } };
+    subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E0F2FE' } };
+    subCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(3).height = 24;
+
+    // Row 4: Empty separator
+    sheet.getRow(4).height = 8;
+
+    // Row 5: Table Header Level 1 (UNIT, DOCTORS / PROVIDERS)
+    sheet.mergeCells('A5:A6');
+    const unitTh = sheet.getCell('A5');
+    unitTh.value = 'UNIT';
+    unitTh.font = { name: 'Segoe UI', size: 11.5, bold: true, color: { argb: 'FFFFFF' } };
+    unitTh.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '003B44' } };
+    unitTh.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    sheet.mergeCells('B5:C5');
+    const docsTh = sheet.getCell('B5');
+    docsTh.value = 'DOCTORS / PROVIDERS';
+    docsTh.font = { name: 'Segoe UI', size: 11.5, bold: true, color: { argb: '7EE8F8' } };
+    docsTh.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '003B44' } };
+    docsTh.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(5).height = 22;
+
+    // Row 6: Subheaders (MORNING / TIME, EVENING / TIME)
+    const morningTh = sheet.getCell('B6');
+    morningTh.value = 'MORNING / TIME';
+    morningTh.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'A5F3FC' } };
+    morningTh.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00505C' } };
+    morningTh.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    const eveningTh = sheet.getCell('C6');
+    eveningTh.value = 'EVENING / TIME';
+    eveningTh.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FDE68A' } };
+    eveningTh.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00505C' } };
+    eveningTh.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(6).height = 22;
+
+    // Borders for header cells
+    ['A5', 'A6', 'B5', 'C5', 'B6', 'C6'].forEach(cellRef => {
+      const cell = sheet.getCell(cellRef);
+      cell.border = {
+        top: { style: 'medium', color: { argb: '003B44' } },
+        left: { style: 'thin', color: { argb: 'FFFFFF' } },
+        bottom: { style: 'medium', color: { argb: '003B44' } },
+        right: { style: 'thin', color: { argb: 'FFFFFF' } }
+      };
+    });
+
+    // Helper to format shifts for Excel cell
+    const formatShiftsText = (shifts) => {
+      if (!shifts || shifts.length === 0) return '—';
+      if (shifts.length === 1 && shifts[0].staff?.[0] === 'Not Available') return 'Not Available';
+
+      return shifts.map(s => {
+        const timePart = s.time ? `(${s.time})\n` : '';
+        const staffPart = (s.staff || []).join('\n');
+        return `${timePart}${staffPart}`;
+      }).join('\n\n');
+    };
+
+    // Filter clinical and dental units
+    const clinicalUnits = unitsList.filter(u => !u.unit.startsWith('Dental'));
+    const dentalUnits = unitsList.filter(u => u.unit.startsWith('Dental'));
+    const orderedUnits = [...clinicalUnits, ...dentalUnits];
+
+    let rowIdx = 7;
+    orderedUnits.forEach((unit, i) => {
+      const isEven = i % 2 === 0;
+      const row = sheet.getRow(rowIdx);
+
+      const unitText = unit.unit;
+      const morningText = formatShiftsText(unit.morning);
+      const eveningText = formatShiftsText(unit.evening);
+
+      row.getCell(1).value = unitText;
+      row.getCell(2).value = morningText;
+      row.getCell(3).value = eveningText;
+
+      const bgColor = isEven ? 'FFFFFF' : 'F8FFFE';
+      const morningBgColor = isEven ? 'F0FFFE' : 'E8FFFE';
+      const eveningBgColor = isEven ? 'FFFBF0' : 'FFF8E8';
+
+      // Style Unit Cell
+      row.getCell(1).font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: '003B44' } };
+      row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+      row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+      // Style Morning Cell
+      row.getCell(2).font = { name: 'Segoe UI', size: 10.5, color: { argb: morningText === 'Not Available' ? 'EF4444' : '1E293B' } };
+      row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: morningBgColor } };
+      row.getCell(2).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+      // Style Evening Cell
+      row.getCell(3).font = { name: 'Segoe UI', size: 10.5, color: { argb: eveningText === 'Not Available' ? 'EF4444' : '1E293B' } };
+      row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: eveningBgColor } };
+      row.getCell(3).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+      // Borders for data row
+      [1, 2, 3].forEach(c => {
+        row.getCell(c).border = {
+          top: { style: 'thin', color: { argb: 'E2F0F0' } },
+          left: { style: 'thin', color: { argb: 'E2F0F0' } },
+          bottom: { style: 'thin', color: { argb: 'E2F0F0' } },
+          right: { style: 'thin', color: { argb: 'E2F0F0' } }
+        };
+      });
+
+      // Calculate row height dynamically based on line breaks
+      const maxLines = Math.max(
+        1,
+        morningText.split('\n').length,
+        eveningText.split('\n').length
+      );
+      row.height = Math.max(26, maxLines * 18);
+
+      rowIdx++;
+    });
+
+    // Write to buffer & trigger browser download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+
+    const sanitizedDate = (dateStr || 'Schedule').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    link.download = `${filenamePrefix}_${sanitizedDate}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success("Excel schedule exported successfully!", { id: toastId });
+  } catch (err) {
+    console.error("Failed to export Excel schedule:", err);
+    toast.error("Failed to generate Excel file.", { id: toastId });
+  }
+};
 
 // ─── Print styles injected into <head> on mount ────────────────────────────────
 const PRINT_STYLES = `
@@ -756,6 +944,12 @@ export default function RosterGenerator() {
                   <FileCode size={16} /> Export as HTML
                 </button>
                 <button
+                  onClick={() => exportRosterToExcel(rosterData?.dayName, rosterData?.dateStr, rosterData?.parsedUnits, 'Doctors_Schedule')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', backgroundColor: '#166534', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                >
+                  <FileSpreadsheet size={16} /> Export Excel (.xlsx)
+                </button>
+                <button
                   onClick={() => { setRosterData(null); setFile(null); }}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '7px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
                 >
@@ -1304,6 +1498,13 @@ export default function RosterGenerator() {
                               <Download size={13} /> .docx
                             </button>
                             <button
+                              onClick={() => exportRosterToExcel('', item.roster_date, item.schedule_json, 'Doctors_Schedule')}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 10px', backgroundColor: '#166534', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+                              title="Export Schedule as Excel (.xlsx)"
+                            >
+                              <FileSpreadsheet size={13} /> .xlsx
+                            </button>
+                            <button
                               onClick={() => triggerAiForSchedule(item)}
                               style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 10px', backgroundColor: '#7c3aed', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
                               title="Lumina AI Audit"
@@ -1593,6 +1794,12 @@ export default function RosterGenerator() {
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', backgroundColor: '#007b8a', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s' }}
                 >
                   <FileCode size={14} /> Export HTML
+                </button>
+                <button
+                  onClick={() => exportRosterToExcel('', previewModalItem?.roster_date, previewModalDisplayUnits, 'Doctors_Schedule')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', backgroundColor: '#166534', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s' }}
+                >
+                  <FileSpreadsheet size={14} /> Excel (.xlsx)
                 </button>
                 <button
                   onClick={() => window.print()}
