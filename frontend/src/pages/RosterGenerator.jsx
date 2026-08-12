@@ -54,13 +54,13 @@ function renderShiftCell(shifts) {
 
   // Check for "Not Available" marker
   if (shifts.length === 1 && shifts[0].staff?.[0] === 'Not Available') {
-    return <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '11.5px', whiteSpace: 'nowrap' }}>Not Available</span>;
+    return <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '11.5px' }}>Not Available</span>;
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', textAlign: 'center' }}>
       {shifts.map((shift, si) => (
-        <div key={si}>
+        <div key={si} style={{ textAlign: 'center' }}>
           {shift.time && (
             <div style={{
               fontWeight: 700,
@@ -68,13 +68,13 @@ function renderShiftCell(shifts) {
               color: '#007b8a',
               marginBottom: '2px',
               fontStyle: 'italic',
-              whiteSpace: 'nowrap'
+              textAlign: 'center'
             }}>
               {shift.time}
             </div>
           )}
           {shift.staff.map((name, ni) => (
-            <div key={ni} style={{ fontSize: '11.5px', color: '#1e293b', lineHeight: '1.3', fontWeight: '500', whiteSpace: 'nowrap' }}>
+            <div key={ni} style={{ fontSize: '11.5px', color: '#1e293b', lineHeight: '1.35', fontWeight: '500', textAlign: 'center' }}>
               {name}
             </div>
           ))}
@@ -103,33 +103,35 @@ function renderRosterTableRows(unitsList) {
         }}
       >
         <td style={{
-          padding: '5px 10px',
+          padding: '10px 10px',
           fontWeight: '700',
           fontSize: '11.5px',
           color: '#003B44',
-          verticalAlign: 'top',
+          verticalAlign: 'middle',
+          textAlign: 'center',
           borderRight: '1px solid #e2f0f0',
-          borderLeft: isDental ? '3px solid #0284c7' : '3px solid #007b8a',
+          borderLeft: isDental ? '4px solid #0284c7' : '4px solid #007b8a',
           backgroundColor: isEven ? '#ffffff' : '#f8fffe',
-          whiteSpace: 'nowrap',
-          width: 'auto',
+          width: '30%',
         }}>
           {unit.unit}
         </td>
         <td style={{
-          padding: '5px 10px',
-          verticalAlign: 'top',
+          padding: '10px 10px',
+          verticalAlign: 'middle',
+          textAlign: 'center',
           borderRight: '1px solid #e2f0f0',
           backgroundColor: isEven ? '#f0fffe' : '#e8fffe',
-          width: 'auto',
+          width: '35%',
         }}>
           {renderShiftCell(unit.morning)}
         </td>
         <td style={{
-          padding: '5px 10px',
-          verticalAlign: 'top',
+          padding: '10px 10px',
+          verticalAlign: 'middle',
+          textAlign: 'center',
           backgroundColor: isEven ? '#fffbf0' : '#fff8e8',
-          width: 'auto',
+          width: '35%',
         }}>
           {renderShiftCell(unit.evening)}
         </td>
@@ -761,13 +763,12 @@ export default function RosterGenerator() {
                 </button>
               </div>
 
-              {/* ── PRINTABLE ROSTER TABLE — tightly fitted to content ─────────────── */}
+              {/* ── PRINTABLE ROSTER TABLE — Optimized Compact Layout ─────────────── */}
               <div
                 id="roster-print-zone"
                 style={{
-                  width: 'fit-content',
-                  minWidth: '540px',
-                  maxWidth: '100%',
+                  width: '100%',
+                  maxWidth: '760px',
                   margin: '0 auto',
                   backgroundColor: '#ffffff',
                   borderRadius: '10px',
@@ -834,25 +835,24 @@ export default function RosterGenerator() {
                     width: '100%',
                     borderCollapse: 'collapse',
                     fontSize: '11.5px',
-                    tableLayout: 'auto',
+                    tableLayout: 'fixed',
                   }}>
                     <thead>
                       <tr style={{ backgroundColor: '#003B44' }}>
                         <th
                           rowSpan={2}
                           style={{
-                            padding: '6px 12px',
+                            padding: '8px 10px',
                             color: '#ffffff',
                             fontWeight: '800',
                             fontSize: '12px',
-                            textAlign: 'left',
+                            textAlign: 'center',
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
                             borderRight: '2px solid rgba(255,255,255,0.25)',
                             verticalAlign: 'middle',
                             backgroundColor: '#003B44',
-                            whiteSpace: 'nowrap',
-                            width: 'auto',
+                            width: '30%',
                           }}
                         >
                           UNIT
@@ -860,7 +860,7 @@ export default function RosterGenerator() {
                         <th
                           colSpan={2}
                           style={{
-                            padding: '6px 12px',
+                            padding: '6px 10px',
                             color: '#7ee8f8',
                             fontWeight: '800',
                             fontSize: '12px',
@@ -877,33 +877,31 @@ export default function RosterGenerator() {
                       <tr style={{ backgroundColor: '#00505c' }}>
                         <th
                           style={{
-                            padding: '5px 12px',
+                            padding: '6px 10px',
                             color: '#a5f3fc',
                             fontWeight: '700',
                             fontSize: '11px',
-                            textAlign: 'left',
+                            textAlign: 'center',
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
                             borderRight: '1px solid rgba(255,255,255,0.15)',
                             backgroundColor: '#00505c',
-                            whiteSpace: 'nowrap',
-                            width: 'auto',
+                            width: '35%',
                           }}
                         >
                           MORNING / TIME
                         </th>
                         <th
                           style={{
-                            padding: '5px 12px',
+                            padding: '6px 10px',
                             color: '#fde68a',
                             fontWeight: '700',
                             fontSize: '11px',
-                            textAlign: 'left',
+                            textAlign: 'center',
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
                             backgroundColor: '#00505c',
-                            whiteSpace: 'nowrap',
-                            width: 'auto',
+                            width: '35%',
                           }}
                         >
                           EVENING / TIME
@@ -1676,9 +1674,8 @@ export default function RosterGenerator() {
               <div
                 id="modal-roster-print-zone"
                 style={{
-                  width: 'fit-content',
-                  minWidth: '540px',
-                  maxWidth: '100%',
+                  width: '100%',
+                  maxWidth: '760px',
                   margin: '0 auto',
                   backgroundColor: '#ffffff',
                   borderRadius: '10px',
@@ -1719,24 +1716,23 @@ export default function RosterGenerator() {
                 </div>
 
                 {/* Table */}
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', tableLayout: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', tableLayout: 'fixed' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#003B44' }}>
                       <th
                         rowSpan={2}
                         style={{
-                          padding: '6px 12px',
+                          padding: '8px 10px',
                           color: '#ffffff',
                           fontWeight: '800',
                           fontSize: '12px',
-                          textAlign: 'left',
+                          textAlign: 'center',
                           letterSpacing: '0.06em',
                           textTransform: 'uppercase',
                           borderRight: '2px solid rgba(255,255,255,0.25)',
                           verticalAlign: 'middle',
                           backgroundColor: '#003B44',
-                          whiteSpace: 'nowrap',
-                          width: 'auto',
+                          width: '30%',
                         }}
                       >
                         UNIT
@@ -1744,7 +1740,7 @@ export default function RosterGenerator() {
                       <th
                         colSpan={2}
                         style={{
-                          padding: '6px 12px',
+                          padding: '6px 10px',
                           color: '#7ee8f8',
                           fontWeight: '800',
                           fontSize: '12px',
@@ -1761,33 +1757,31 @@ export default function RosterGenerator() {
                     <tr style={{ backgroundColor: '#00505c' }}>
                       <th
                         style={{
-                          padding: '5px 12px',
+                          padding: '6px 10px',
                           color: '#a5f3fc',
                           fontWeight: '700',
                           fontSize: '11px',
-                          textAlign: 'left',
+                          textAlign: 'center',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
                           borderRight: '1px solid rgba(255,255,255,0.15)',
                           backgroundColor: '#00505c',
-                          whiteSpace: 'nowrap',
-                          width: 'auto',
+                          width: '35%',
                         }}
                       >
                         MORNING / TIME
                       </th>
                       <th
                         style={{
-                          padding: '5px 12px',
+                          padding: '6px 10px',
                           color: '#fde68a',
                           fontWeight: '700',
                           fontSize: '11px',
-                          textAlign: 'left',
+                          textAlign: 'center',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
                           backgroundColor: '#00505c',
-                          whiteSpace: 'nowrap',
-                          width: 'auto',
+                          width: '35%',
                         }}
                       >
                         EVENING / TIME
