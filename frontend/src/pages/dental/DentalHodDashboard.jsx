@@ -134,6 +134,7 @@ export default function DentalHodDashboard() {
 
   const nameString = user?.fullName || user?.full_name || '';
   const firstName = nameString ? nameString.split(' ')[0] : 'HoD';
+  const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
 
   const totalPatients = worklistStats?.total ?? 0;
   const waitingPatients = worklistStats?.waiting ?? 0;

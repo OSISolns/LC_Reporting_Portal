@@ -23,6 +23,276 @@ const getItemStatus = (expiryDate) => {
   return { text: 'Active', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
 };
 
+// ── Storage Unit Group component ────────────────────────────────────────────
+function StorageUnitGroup({
+  unit, rows,
+  expandedItemIds, toggleExpandItem,
+  storageAssignments, STORAGE_UNITS,
+  assignPickerItemId, setAssignPickerItemId,
+  assignItemToUnit, removeItemAssignment,
+  setDeactModalItem, setDeactReasonInput,
+  handleQuickReorderItem, getItemStatus,
+  defaultExpanded = false,
+  emptyMessage = null,
+  showAssignHint = false,
+}) {
+  const [open, setOpen] = React.useState(defaultExpanded);
+
+  const headerBg =
+    unit.type === 'freezer' ? 'bg-indigo-50 border-indigo-200 text-indigo-800' :
+    unit.type === 'fridge'  ? 'bg-sky-50 border-sky-200 text-sky-800' :
+    'bg-slate-50 border-slate-200 text-slate-700';
+
+  const dotColor =
+    unit.type === 'freezer' ? 'bg-indigo-500' :
+    unit.type === 'fridge'  ? 'bg-sky-500' :
+    'bg-slate-400';
+
+  return (
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      {/* Group header */}
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className={`w-full flex items-center justify-between px-4 py-2.5 border-b text-xs font-black uppercase tracking-wider transition-colors cursor-pointer ${headerBg}`}
+      >
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+          {unit.label}
+          <span className="font-semibold text-[10px] opacity-70 normal-case tracking-normal">
+            {rows.length} item{rows.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        {open
+          ? <ChevronUp size={14} className="opacity-60" />
+          : <ChevronDown size={14} className="opacity-60" />
+        }
+      </button>
+
+      {open && (
+        <div>
+          {rows.length === 0 ? (
+            <div className="px-4 py-6 text-center text-xs text-slate-400 italic">
+              {emptyMessage || 'No items in this unit.'}
+              {showAssignHint && (
+                <p className="mt-1 text-[10px] text-slate-300">
+                  Use the Assign button on any item in the All Items view.
+                </p>
+              )}
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-black tracking-wider">
+                <tr>
+                  <th className="text-left px-3 py-2">Item</th>
+                  <th className="text-left px-3 py-2">Category</th>
+                  <th className="text-left px-3 py-2">Exp. Date</th>
+                  <th className="text-center px-3 py-2">Status</th>
+                  <th className="text-center px-3 py-2">Batches</th>
+                  <th className="text-center px-3 py-2">Qty</th>
+                  <th className="text-center px-3 py-2">Unit</th>
+                  <th className="text-right px-3 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const status = getItemStatus(row.expiry_date);
+                  const isExpanded = !!expandedItemIds[row.item_id];
+                  const batchCount = row.batches ? row.batches.length : 1;
+                  const isPickerOpen = assignPickerItemId === String(row.item_id);
+
+                  return (
+                    <React.Fragment key={`${row.item_id}-${row.dept_stock_id}`}>
+                      <tr
+                        className="border-t border-slate-100 hover:bg-slate-50/80 cursor-pointer transition-colors"
+                        onClick={() => toggleExpandItem(row.item_id)}
+                      >
+                        <td className="px-3 py-2.5 text-slate-800">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); toggleExpandItem(row.item_id); }}
+                              className="p-0.5 text-slate-400 hover:text-slate-700 rounded transition-all cursor-pointer"
+                            >
+                              {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            </button>
+                            <div>
+                              <div className="font-bold text-slate-900 text-xs">{row.name}</div>
+                              {row.sku && <div className="text-[9px] text-slate-400 font-mono">{row.sku}</div>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-[10px] text-slate-500 font-semibold uppercase tracking-tight">
+                          {row.category?.replace(/_/g, ' ') || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 text-[11px] text-slate-600">
+                          {row.expiry_date ? (
+                            <span>
+                              {row.expiry_date.split('T')[0]}
+                              {batchCount > 1 && <span className="ml-1 text-[9px] text-slate-400">(Earliest)</span>}
+                            </span>
+                          ) : <span className="text-slate-400">—</span>}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${status.color}`}>
+                            {status.text}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            batchCount > 1 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            <Layers size={9} />{batchCount}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-black text-slate-900 text-sm">
+                          {row.quantity}
+                        </td>
+                        <td className="px-3 py-2.5 text-center text-[10px] text-slate-500 font-semibold">
+                          {row.unit_of_measure || ''}
+                        </td>
+                        <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1 relative">
+                            {/* Assign / Move button */}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAssignPickerItemId(isPickerOpen ? null : String(row.item_id));
+                                }}
+                                className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer"
+                              >
+                                {storageAssignments[String(row.item_id)] ? 'Move' : 'Assign'}
+                              </button>
+
+                              {/* Assignment picker dropdown */}
+                              {isPickerOpen && (
+                                <>
+                                  <div className="fixed inset-0 z-30" onClick={() => setAssignPickerItemId(null)} />
+                                  <div className="absolute right-0 z-40 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 min-w-[130px]">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-2 py-1">Assign to</p>
+                                    {STORAGE_UNITS.map(u => (
+                                      <button
+                                        key={u.id}
+                                        type="button"
+                                        onClick={() => assignItemToUnit(row.item_id, u.id)}
+                                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                          storageAssignments[String(row.item_id)] === u.id
+                                            ? 'bg-slate-800 text-white'
+                                            : 'hover:bg-slate-50 text-slate-700'
+                                        }`}
+                                      >
+                                        {u.label}
+                                      </button>
+                                    ))}
+                                    {storageAssignments[String(row.item_id)] && (
+                                      <>
+                                        <div className="h-px bg-slate-100 my-1" />
+                                        <button
+                                          type="button"
+                                          onClick={() => { removeItemAssignment(row.item_id); setAssignPickerItemId(null); }}
+                                          className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                                        >
+                                          Unassign
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            {status.text === 'Expired' && (
+                              <button
+                                type="button"
+                                onClick={() => { setDeactModalItem(row); setDeactReasonInput('Expired item write-off'); }}
+                                className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-700 hover:bg-slate-800 text-white transition-all cursor-pointer"
+                              >
+                                Deactivate
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleQuickReorderItem(row)}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                row.quantity <= 5
+                                  ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse'
+                                  : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200'
+                              }`}
+                            >
+                              + Reorder
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Batch expansion sub-row */}
+                      {isExpanded && row.batches && (
+                        <tr className="bg-slate-50/60 border-t border-slate-100">
+                          <td colSpan={8} className="p-3 pl-10">
+                            <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-1.5">
+                              <div className="text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                <Boxes size={10} className="text-indigo-600" />
+                                Batch Breakdown for {row.name}
+                              </div>
+                              <table className="w-full text-xs">
+                                <thead className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                                  <tr>
+                                    <th className="text-left px-2 py-1">Batch / Lot</th>
+                                    <th className="text-left px-2 py-1">Exp. Date</th>
+                                    <th className="text-center px-2 py-1">Status</th>
+                                    <th className="text-right px-2 py-1">Qty</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {row.batches.map((b, bIdx) => {
+                                    const bStatus = getItemStatus(b.expiry_date);
+                                    return (
+                                      <tr key={b.dept_stock_id || bIdx} className="hover:bg-slate-50">
+                                        <td className="px-2 py-1.5 font-mono text-[10px] text-slate-700 font-bold">
+                                          {b.batch_number || 'No batch #'}
+                                          {b.lot_number && <span className="text-slate-400 font-normal ml-1">(Lot: {b.lot_number})</span>}
+                                        </td>
+                                        <td className="px-2 py-1.5 text-slate-600">{b.expiry_date ? b.expiry_date.split('T')[0] : 'N/A'}</td>
+                                        <td className="px-2 py-1.5 text-center">
+                                          <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${bStatus.color}`}>
+                                            {bStatus.text}
+                                          </span>
+                                          {bStatus.text === 'Expired' && (
+                                            <button
+                                              type="button"
+                                              onClick={() => { setDeactModalItem(b); setDeactReasonInput('Expired batch write-off'); }}
+                                              className="ml-1.5 px-1.5 py-0.5 bg-slate-700 hover:bg-slate-800 text-white rounded text-[8px] font-bold uppercase cursor-pointer"
+                                            >
+                                              Deactivate
+                                            </button>
+                                          )}
+                                        </td>
+                                        <td className="px-2 py-1.5 text-right font-black text-slate-800">
+                                          {b.quantity} {b.unit_of_measure || ''}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ConsumablesLog({ defaultDeptName = null }) {
   const { user } = useAuth();
   
@@ -130,6 +400,47 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const [activeSubTab, setActiveSubTab] = useState('history'); // 'history', 'stock', 'requisitions', 'deactivated'
   const [stockTab, setStockTab] = useState('local'); // 'local', 'central'
   const [stockSearchTerm, setStockSearchTerm] = useState('');
+
+  // Fridge / Freezer storage unit system
+  const STORAGE_UNITS = [
+    { id: 'fridge_1',   label: 'Fridge 1',  type: 'fridge'  },
+    { id: 'fridge_2',   label: 'Fridge 2',  type: 'fridge'  },
+    { id: 'fridge_3',   label: 'Fridge 3',  type: 'fridge'  },
+    { id: 'fridge_4',   label: 'Fridge 4',  type: 'fridge'  },
+    { id: 'fridge_5',   label: 'Fridge 5',  type: 'fridge'  },
+    { id: 'fridge_6',   label: 'Fridge 6',  type: 'fridge'  },
+    { id: 'fridge_7',   label: 'Fridge 7',  type: 'fridge'  },
+    { id: 'fridge_8',   label: 'Fridge 8',  type: 'fridge'  },
+    { id: 'freezer_1',  label: 'Freezer 1', type: 'freezer' },
+  ];
+  // null = show all items grouped; unit id = show only that unit
+  const [selectedStorageUnit, setSelectedStorageUnit] = useState(null);
+  // Persisted map: { itemId: unitId | null }
+  const [storageAssignments, setStorageAssignments] = useState(() => {
+    try {
+      const raw = localStorage.getItem('lc_storage_assignments');
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+  // Which item row is showing the assignment picker
+  const [assignPickerItemId, setAssignPickerItemId] = useState(null);
+
+  const persistAssignments = (next) => {
+    setStorageAssignments(next);
+    try { localStorage.setItem('lc_storage_assignments', JSON.stringify(next)); } catch {}
+  };
+
+  const assignItemToUnit = (itemId, unitId) => {
+    const next = { ...storageAssignments, [String(itemId)]: unitId };
+    persistAssignments(next);
+    setAssignPickerItemId(null);
+  };
+
+  const removeItemAssignment = (itemId) => {
+    const next = { ...storageAssignments };
+    delete next[String(itemId)];
+    persistAssignments(next);
+  };
 
   // Deactivated & Expired Items
   const [deactivatedItems, setDeactivatedItems] = useState([]);
@@ -1997,6 +2308,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
             {/* Available Items Tab */}
             {activeSubTab === 'stock' && (
               <>
+                {/* Sub-tab switcher: Local / General Store */}
                 <div className="flex gap-2 mb-4">
                   <button
                     onClick={() => setStockTab('local')}
@@ -2019,6 +2331,8 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     General Store Items
                   </button>
                 </div>
+
+                {/* Filters row */}
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   {isAdmin && stockTab === 'local' && (
                     <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}
@@ -2031,238 +2345,259 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Search available items by name, SKU, category, or batch #..."
+                      placeholder="Search items by name, SKU, category, or batch #..."
                       value={stockSearchTerm}
                       onChange={(e) => setStockSearchTerm(e.target.value)}
                       className="w-full pl-9 pr-8 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-400 focus:bg-white"
                     />
                     {stockSearchTerm && (
-                      <button
-                        type="button"
-                        onClick={() => setStockSearchTerm('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                      >
+                      <button type="button" onClick={() => setStockSearchTerm('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
                         <X size={13} />
                       </button>
                     )}
                   </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-100">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-black tracking-wider">
-                      <tr>
-                        <th className="text-left px-3 py-2.5">Items</th>
-                        <th className="text-left px-3 py-2.5">Category</th>
-                        {stockTab === 'central' && <th className="text-left px-3 py-2.5">Batch#</th>}
-                        <th className="text-left px-3 py-2.5">Exp. Date</th>
-                        <th className="text-center px-3 py-2.5">Status</th>
-                        {stockTab === 'local' && <th className="text-center px-3 py-2.5">Batches / Details</th>}
-                        <th className="text-center px-3 py-2.5">Stock In Hands</th>
-                        {stockTab === 'local' && <th className="text-right px-3 py-2.5">Action</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredDeptStock.map((row) => {
-                        const status = getItemStatus(row.expiry_date);
-                        const isExpanded = !!expandedItemIds[row.item_id];
-                        const batchCount = row.batches ? row.batches.length : 1;
+                {/* Local Items: sidebar + table layout */}
+                {stockTab === 'local' ? (
+                  <div className="flex gap-4">
 
+                    {/* Storage Unit Sidebar */}
+                    <div className="w-36 shrink-0 flex flex-col gap-1">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1 mb-1">Storage Units</p>
+
+                      {/* All Items */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStorageUnit(null)}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          selectedStorageUnit === null
+                            ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        All Items
+                        <span className={`block text-[9px] font-semibold mt-0.5 ${
+                          selectedStorageUnit === null ? 'text-slate-300' : 'text-slate-400'
+                        }`}>
+                          {filteredDeptStock.length} item{filteredDeptStock.length !== 1 ? 's' : ''}
+                        </span>
+                      </button>
+
+                      <div className="h-px bg-slate-100 my-1" />
+
+                      {/* Fridges */}
+                      {STORAGE_UNITS.filter(u => u.type === 'fridge').map(unit => {
+                        const count = filteredDeptStock.filter(r =>
+                          storageAssignments[String(r.item_id)] === unit.id
+                        ).length;
+                        const isActive = selectedStorageUnit === unit.id;
                         return (
-                          <React.Fragment key={`${row.item_id}-${row.dept_stock_id}`}>
-                            <tr
-                              className={`border-t border-slate-100 transition-colors ${
-                                stockTab === 'local' ? 'hover:bg-slate-50/80 cursor-pointer' : 'hover:bg-slate-50/60'
-                              }`}
-                              onClick={() => {
-                                if (stockTab === 'local') toggleExpandItem(row.item_id);
-                              }}
-                            >
-                              <td className="px-3 py-2.5 text-slate-800">
-                                <div className="flex items-center gap-2">
-                                  {stockTab === 'local' && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleExpandItem(row.item_id);
-                                      }}
-                                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-all cursor-pointer"
-                                    >
-                                      {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                    </button>
-                                  )}
-                                  <div>
-                                    <div className="font-bold text-slate-900">{row.name}</div>
-                                    {row.sku && <div className="text-[10px] text-slate-400 font-mono mt-0.5">{row.sku}</div>}
-                                  </div>
+                          <button
+                            key={unit.id}
+                            type="button"
+                            onClick={() => setSelectedStorageUnit(isActive ? null : unit.id)}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              isActive
+                                ? 'bg-sky-700 text-white border-sky-700 shadow-sm'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            }`}
+                          >
+                            {unit.label}
+                            <span className={`block text-[9px] font-semibold mt-0.5 ${
+                              isActive ? 'text-sky-200' : 'text-slate-400'
+                            }`}>
+                              {count} item{count !== 1 ? 's' : ''}
+                            </span>
+                          </button>
+                        );
+                      })}
+
+                      <div className="h-px bg-slate-100 my-1" />
+
+                      {/* Freezer */}
+                      {STORAGE_UNITS.filter(u => u.type === 'freezer').map(unit => {
+                        const count = filteredDeptStock.filter(r =>
+                          storageAssignments[String(r.item_id)] === unit.id
+                        ).length;
+                        const isActive = selectedStorageUnit === unit.id;
+                        return (
+                          <button
+                            key={unit.id}
+                            type="button"
+                            onClick={() => setSelectedStorageUnit(isActive ? null : unit.id)}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              isActive
+                                ? 'bg-indigo-700 text-white border-indigo-700 shadow-sm'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            }`}
+                          >
+                            {unit.label}
+                            <span className={`block text-[9px] font-semibold mt-0.5 ${
+                              isActive ? 'text-indigo-200' : 'text-slate-400'
+                            }`}>
+                              {count} item{count !== 1 ? 's' : ''}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Main table area */}
+                    <div className="flex-1 min-w-0">
+                      {selectedStorageUnit === null ? (
+                        /* ALL ITEMS — grouped by storage unit, collapsible */
+                        <div className="space-y-3">
+                          {(() => {
+                            // Build groups: each storage unit + Unassigned
+                            const groups = STORAGE_UNITS.map(unit => ({
+                              unit,
+                              rows: filteredDeptStock.filter(r =>
+                                storageAssignments[String(r.item_id)] === unit.id
+                              ),
+                            })).filter(g => g.rows.length > 0);
+
+                            const unassigned = filteredDeptStock.filter(r =>
+                              !storageAssignments[String(r.item_id)]
+                            );
+
+                            if (groups.length === 0 && unassigned.length === 0) {
+                              return (
+                                <div className="rounded-xl border border-slate-100 px-4 py-10 text-center text-slate-400 italic text-xs">
+                                  {stockSearchTerm.trim() ? `No items match "${stockSearchTerm}"` : 'No available items found.'}
                                 </div>
+                              );
+                            }
+
+                            return (
+                              <>
+                                {groups.map(({ unit, rows }) => (
+                                  <StorageUnitGroup
+                                    key={unit.id}
+                                    unit={unit}
+                                    rows={rows}
+                                    expandedItemIds={expandedItemIds}
+                                    toggleExpandItem={toggleExpandItem}
+                                    storageAssignments={storageAssignments}
+                                    STORAGE_UNITS={STORAGE_UNITS}
+                                    assignPickerItemId={assignPickerItemId}
+                                    setAssignPickerItemId={setAssignPickerItemId}
+                                    assignItemToUnit={assignItemToUnit}
+                                    removeItemAssignment={removeItemAssignment}
+                                    setDeactModalItem={setDeactModalItem}
+                                    setDeactReasonInput={setDeactReasonInput}
+                                    handleQuickReorderItem={handleQuickReorderItem}
+                                    getItemStatus={getItemStatus}
+                                    defaultExpanded={true}
+                                  />
+                                ))}
+                                {unassigned.length > 0 && (
+                                  <StorageUnitGroup
+                                    key="unassigned"
+                                    unit={{ id: null, label: 'Unassigned', type: 'unassigned' }}
+                                    rows={unassigned}
+                                    expandedItemIds={expandedItemIds}
+                                    toggleExpandItem={toggleExpandItem}
+                                    storageAssignments={storageAssignments}
+                                    STORAGE_UNITS={STORAGE_UNITS}
+                                    assignPickerItemId={assignPickerItemId}
+                                    setAssignPickerItemId={setAssignPickerItemId}
+                                    assignItemToUnit={assignItemToUnit}
+                                    removeItemAssignment={removeItemAssignment}
+                                    setDeactModalItem={setDeactModalItem}
+                                    setDeactReasonInput={setDeactReasonInput}
+                                    handleQuickReorderItem={handleQuickReorderItem}
+                                    getItemStatus={getItemStatus}
+                                    defaultExpanded={true}
+                                  />
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        /* SINGLE UNIT view */
+                        <div className="space-y-3">
+                          {(() => {
+                            const unit = STORAGE_UNITS.find(u => u.id === selectedStorageUnit);
+                            const rows = filteredDeptStock.filter(r =>
+                              storageAssignments[String(r.item_id)] === selectedStorageUnit
+                            );
+                            return (
+                              <StorageUnitGroup
+                                unit={unit}
+                                rows={rows}
+                                expandedItemIds={expandedItemIds}
+                                toggleExpandItem={toggleExpandItem}
+                                storageAssignments={storageAssignments}
+                                STORAGE_UNITS={STORAGE_UNITS}
+                                assignPickerItemId={assignPickerItemId}
+                                setAssignPickerItemId={setAssignPickerItemId}
+                                assignItemToUnit={assignItemToUnit}
+                                removeItemAssignment={removeItemAssignment}
+                                setDeactModalItem={setDeactModalItem}
+                                setDeactReasonInput={setDeactReasonInput}
+                                handleQuickReorderItem={handleQuickReorderItem}
+                                getItemStatus={getItemStatus}
+                                defaultExpanded={true}
+                                emptyMessage={`No items assigned to ${unit?.label}.`}
+                                showAssignHint={true}
+                              />
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* CENTRAL / General Store view — unchanged table */
+                  <div className="overflow-x-auto rounded-xl border border-slate-100">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-black tracking-wider">
+                        <tr>
+                          <th className="text-left px-3 py-2.5">Items</th>
+                          <th className="text-left px-3 py-2.5">Category</th>
+                          <th className="text-left px-3 py-2.5">Batch#</th>
+                          <th className="text-left px-3 py-2.5">Exp. Date</th>
+                          <th className="text-center px-3 py-2.5">Status</th>
+                          <th className="text-center px-3 py-2.5">Stock In Hands</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredDeptStock.map((row) => {
+                          const status = getItemStatus(row.expiry_date);
+                          return (
+                            <tr key={`${row.item_id}-${row.dept_stock_id}`} className="border-t border-slate-100 hover:bg-slate-50/60">
+                              <td className="px-3 py-2.5 text-slate-800">
+                                <div className="font-bold text-slate-900">{row.name}</div>
+                                {row.sku && <div className="text-[10px] text-slate-400 font-mono mt-0.5">{row.sku}</div>}
                               </td>
                               <td className="px-3 py-2.5 text-slate-650 text-xs font-semibold uppercase tracking-tight">
                                 {row.category?.replace(/_/g, ' ') || '—'}
                               </td>
-                              {stockTab === 'central' && (
-                                <td className="px-3 py-2.5 font-mono text-[11px] text-slate-500">{row.batch_number || '—'}</td>
-                              )}
+                              <td className="px-3 py-2.5 font-mono text-[11px] text-slate-500">{row.batch_number || '—'}</td>
                               <td className="px-3 py-2.5 text-slate-600 text-xs font-medium">
-                                {row.expiry_date ? (
-                                  <div className="flex items-center gap-1">
-                                    <span>{row.expiry_date.split('T')[0]}</span>
-                                    {stockTab === 'local' && batchCount > 1 && (
-                                      <span className="text-[9px] text-slate-400 font-normal shrink-0">(Earliest)</span>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className="text-slate-400">—</span>
-                                )}
+                                {row.expiry_date ? row.expiry_date.split('T')[0] : <span className="text-slate-400">—</span>}
                               </td>
                               <td className="px-3 py-2.5 text-center">
                                 <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border ${status.color}`}>
                                   {status.text}
                                 </span>
                               </td>
-                              {stockTab === 'local' && (
-                                <td className="px-3 py-2.5 text-center">
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                      batchCount > 1
-                                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                                        : 'bg-slate-100 text-slate-600'
-                                    }`}
-                                  >
-                                    <Layers size={10} />
-                                    {batchCount} {batchCount === 1 ? 'batch' : 'batches'}
-                                  </span>
-                                </td>
-                              )}
                               <td className="px-3 py-2.5 text-center font-black text-slate-850 text-sm">
                                 {row.quantity} <span className="text-slate-450 font-bold text-xs">{row.unit_of_measure || ''}</span>
                               </td>
-                              {stockTab === 'local' && (
-                                <td className="px-3 py-2.5 text-right">
-                                  <div className="flex items-center justify-end gap-1.5">
-                                    {status.text === 'Expired' && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDeactModalItem(row);
-                                          setDeactReasonInput('Expired item write-off');
-                                        }}
-                                        className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-700 hover:bg-slate-800 text-white transition-all cursor-pointer shadow-2xs"
-                                      >
-                                        Deactivate
-                                      </button>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleQuickReorderItem(row);
-                                      }}
-                                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs ${
-                                        row.quantity <= 5
-                                          ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200 animate-pulse'
-                                          : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200'
-                                      }`}
-                                    >
-                                      + Reorder
-                                    </button>
-                                  </div>
-                                </td>
-                              )}
                             </tr>
-
-                            {/* Expanded sub-row showing batch variables */}
-                            {stockTab === 'local' && isExpanded && row.batches && (
-                              <tr className="bg-slate-50/70 border-t border-slate-100">
-                                <td colSpan={7} className="p-3 pl-8">
-                                  <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2">
-                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
-                                      <Boxes size={12} className="text-indigo-600" />
-                                      Batch Breakdown & Variables for {row.name}
-                                    </div>
-                                    <div className="overflow-x-auto">
-                                      <table className="w-full text-xs text-left">
-                                        <thead className="bg-slate-50 text-slate-500 text-[9px] uppercase font-bold">
-                                          <tr>
-                                            <th className="px-2.5 py-1.5">Batch / Lot Code</th>
-                                            <th className="px-2.5 py-1.5">Exp. Date</th>
-                                            <th className="px-2.5 py-1.5 text-center">Status</th>
-                                            <th className="px-2.5 py-1.5 text-right">Quantity</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 font-medium">
-                                          {row.batches.map((b, bIdx) => {
-                                            const bStatus = getItemStatus(b.expiry_date);
-                                            return (
-                                              <tr key={b.dept_stock_id || bIdx} className="hover:bg-slate-50">
-                                                <td className="px-2.5 py-1.5 font-mono text-[11px] text-slate-700 font-bold">
-                                                  {b.batch_number || 'No batch #'}
-                                                  {b.lot_number && <span className="text-slate-400 font-normal ml-1">(Lot: {b.lot_number})</span>}
-                                                </td>
-                                                <td className="px-2.5 py-1.5 text-slate-600">
-                                                  {b.expiry_date ? b.expiry_date.split('T')[0] : 'N/A'}
-                                                </td>
-                                                <td className="px-2.5 py-1.5 text-center">
-                                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${bStatus.color}`}>
-                                                    {bStatus.text}
-                                                  </span>
-                                                  {bStatus.text === 'Expired' && (
-                                                    <button
-                                                      type="button"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setDeactModalItem(b);
-                                                        setDeactReasonInput('Expired batch write-off');
-                                                      }}
-                                                      className="ml-2 px-1.5 py-0.5 bg-slate-700 hover:bg-slate-800 text-white rounded text-[8px] font-bold uppercase transition-all cursor-pointer shadow-2xs"
-                                                    >
-                                                      Deactivate
-                                                    </button>
-                                                  )}
-                                                </td>
-                                                <td className="px-2.5 py-1.5 text-right font-black text-slate-800">
-                                                  {b.quantity} {b.unit_of_measure || ''}
-                                                </td>
-                                              </tr>
-                                            );
-                                          })}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
-                      {filteredDeptStock.length === 0 && (
-                        <tr>
-                          <td colSpan={stockTab === 'central' ? 6 : 7} className="px-3 py-10 text-center text-slate-400">
-                            {stockSearchTerm.trim() ? (
-                              <div className="space-y-1.5">
-                                <p className="font-semibold text-xs text-slate-500">No available items match "{stockSearchTerm}"</p>
-                                <button
-                                  type="button"
-                                  onClick={() => setStockSearchTerm('')}
-                                  className="text-xs font-bold text-teal-600 hover:underline cursor-pointer"
-                                >
-                                  Clear search filter
-                                </button>
-                              </div>
-                            ) : !filterDept && !userDept ? (
-                              <p className="italic text-xs">Select a department to view available items.</p>
-                            ) : (
-                              <p className="italic text-xs">No available items found.</p>
-                            )}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                          );
+                        })}
+                        {filteredDeptStock.length === 0 && (
+                          <tr><td colSpan={6} className="px-3 py-10 text-center text-slate-400 italic text-xs">No available items found.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </>
             )}
 

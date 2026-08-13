@@ -110,6 +110,7 @@ export default function DentalLabDashboard() {
 
   const nameString = user?.fullName || user?.full_name || '';
   const firstName = nameString ? nameString.split(' ')[0] : 'Technician';
+  const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
 
   const totalCases = labStats?.totals?.total_cases ?? recentCases.length;
   const totalUnits = labStats?.totals?.total_units ?? 0;
