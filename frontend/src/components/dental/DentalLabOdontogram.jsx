@@ -31,6 +31,7 @@ export const PROSTHETIC_WORK_TYPES = [
   { id: 'Partial Denture Unit', label: 'Partial Removable Denture Tooth', category: 'Removable Prosthetics', color: '#f97316' },
   { id: 'Complete Denture Unit', label: 'Full Denture Tooth Unit', category: 'Removable Prosthetics', color: '#ea580c' },
   { id: 'Night Guard / Splint', label: 'Night Guard / Occlusal Appliance', category: 'Appliance', color: '#64748b' },
+  { id: 'Vacuum Formed Retainer', label: 'Vacuum Formed Retainer (VFR / Essix)', category: 'Appliance', color: '#0284c7' },
 ];
 
 export const WORK_STATUSES = {
@@ -105,29 +106,27 @@ const OrthoArchSelector = ({ value, onChange, readOnly }) => {
   const active = ORTHO_ARCH_OPTIONS.find(o => o.id === value) || null;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-violet-200/80 bg-gradient-to-br from-violet-50 via-fuchsia-50/50 to-white p-5 shadow-xs">
-      <div className="absolute -top-8 -right-8 w-40 h-40 bg-violet-300/20 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+    <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-xs">
+      <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2.5">
-          <span className="p-2 rounded-xl bg-violet-100 text-violet-600">
-            <Smile size={18} />
+          <span className="p-2 rounded-lg bg-slate-200/80 text-slate-700">
+            <Smile size={16} />
           </span>
           <div>
-            <h4 className="text-sm font-extrabold text-slate-800 m-0 flex items-center gap-2">
+            <h4 className="text-xs font-bold text-slate-900 m-0 flex items-center gap-2">
               Orthodontic Appliance — Treatment Arch
             </h4>
-            <p className="text-[11px] text-slate-500 m-0 font-medium">
+            <p className="text-[11px] text-slate-500 m-0 font-normal">
               {active
-                ? <>Appliance targets the <span className={`font-black ${active.activeText}`}>{active.label}</span> ({active.sub}).</>
+                ? <>Appliance targets the <span className={`font-semibold ${active.activeText}`}>{active.label}</span> ({active.sub}).</>
                 : 'Select which arch this removable / functional appliance is fabricated for.'}
             </p>
           </div>
         </div>
 
         {active && (
-          <span className={`inline-flex items-center gap-1.5 self-start px-3 py-1.5 rounded-xl text-[11px] font-black border ${active.chip}`}>
-            <CheckCircle2 size={13} /> {active.label}
+          <span className={`inline-flex items-center gap-1.5 self-start px-2.5 py-1 rounded-md text-[10px] font-semibold border ${active.chip}`}>
+            <CheckCircle2 size={12} /> {active.label}
           </span>
         )}
       </div>
@@ -142,30 +141,27 @@ const OrthoArchSelector = ({ value, onChange, readOnly }) => {
               type="button"
               disabled={readOnly}
               onClick={() => !readOnly && onChange?.(isActive ? '' : opt.id)}
-              className={`relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 px-3 py-4 transition-all ${
+              className={`relative flex flex-col items-center justify-center gap-1 rounded-lg border-2 px-3 py-3 transition-colors ${
                 readOnly ? 'cursor-default' : 'cursor-pointer'
               } ${
                 isActive
-                  ? `bg-white ${opt.ring} ring-4 shadow-md scale-[1.02]`
-                  : 'bg-white/70 border-slate-200 hover:border-slate-300 hover:bg-white'
+                  ? `bg-white border-[#1B669E] shadow-xs`
+                  : 'bg-white border-slate-200 hover:border-slate-300'
               }`}
             >
               {isActive && (
-                <motion.span
-                  layoutId="ortho-arch-active"
-                  className={`absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider text-white bg-gradient-to-r ${opt.grad} shadow-sm`}
-                >
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider text-white bg-[#1B669E]">
                   Selected
-                </motion.span>
+                </span>
               )}
               <span
-                className={`w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br ${opt.grad} text-white shadow-sm ${
-                  isActive ? '' : 'opacity-70'
+                className={`w-7 h-7 rounded flex items-center justify-center ${
+                  isActive ? 'bg-[#1B669E] text-white' : 'bg-slate-100 text-slate-600'
                 }`}
               >
-                <Icon size={18} strokeWidth={2.6} />
+                <Icon size={16} />
               </span>
-              <span className={`text-xs font-black ${isActive ? opt.activeText : 'text-slate-700'}`}>
+              <span className={`text-xs font-semibold ${isActive ? 'text-[#1B669E]' : 'text-slate-700'}`}>
                 {opt.label}
               </span>
               <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
@@ -218,28 +214,28 @@ const LuminaProstheticsSuggestion = ({
   };
 
   return (
-    <div className="bg-gradient-to-br from-indigo-50 via-purple-50/60 to-white border border-indigo-200/80 rounded-2xl p-4 space-y-3">
+    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
-            <Sparkles size={14} />
+          <span className="p-1 rounded bg-slate-200 text-slate-700">
+            <Stethoscope size={14} />
           </span>
-          <span className="text-xs font-extrabold text-indigo-900">Lumina AI Replacement Suggestion</span>
+          <span className="text-xs font-bold text-slate-900">Clinical Replacement Assistant</span>
         </div>
         <button
           type="button"
           onClick={handleAsk}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition disabled:opacity-60 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg transition disabled:opacity-60 cursor-pointer"
         >
-          {loading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-          {suggestion ? 'Re-ask Lumina AI' : `Ask Lumina AI for Tooth #${tooth}`}
+          {loading ? <Loader2 size={12} className="animate-spin" /> : <Stethoscope size={12} />}
+          {suggestion ? 'Re-evaluate Protocol' : `Get Clinical Protocol for Tooth #${tooth}`}
         </button>
       </div>
 
       {error && (
-        <p className="text-[11px] text-rose-600 font-semibold m-0">
-          Lumina AI couldn't generate a suggestion for this tooth — try again.
+        <p className="text-[11px] text-rose-600 font-medium m-0">
+          Clinical assistant could not generate a recommendation for this tooth — try again.
         </p>
       )}
 
@@ -546,14 +542,17 @@ export default function DentalLabOdontogram({
     }
 
     const nextMap = { ...toothMap };
-    const isMissingType = batchWorkType === 'Declared Missing (To Be Replaced)';
+    const effectiveWorkType = (caseRef || caseContext?.caseRef || caseContext?.workDone) && caseContext?.workDone 
+      ? caseContext.workDone 
+      : batchWorkType;
+    const isMissingType = effectiveWorkType === 'Declared Missing (To Be Replaced)';
 
     selectedTeeth.forEach(strNum => {
       const existing = nextMap[strNum] || { tooth: strNum };
       nextMap[strNum] = {
         ...existing,
         tooth: strNum,
-        work_type: batchWorkType,
+        work_type: effectiveWorkType,
         status: batchStatus,
         shade: batchShade,
         notes: batchNotes || existing.notes || '',
@@ -564,7 +563,7 @@ export default function DentalLabOdontogram({
 
     if (chefNoteText) nextMap._chef_note = chefNoteText;
     onChange(nextMap);
-    toast.success(`Applied "${batchWorkType}" to ${selectedTeeth.length} selected teeth (#${selectedTeeth.join(', #')})!`);
+    toast.success(`Applied "${effectiveWorkType}" specifications to ${selectedTeeth.length} selected teeth (#${selectedTeeth.join(', #')})!`);
   };
 
   // Batch declare missing
@@ -727,22 +726,22 @@ export default function DentalLabOdontogram({
   }, [totalUnits, completedUnits, inProgressUnits]);
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-sm space-y-6 font-sans">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-5 font-sans">
       
       {/* HEADER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600 font-bold">
+            <span className="p-2 rounded-lg bg-slate-100 text-slate-700 font-semibold">
               <Wrench size={18} />
             </span>
             <div>
-              <h3 className="text-base font-extrabold text-slate-800 tracking-tight m-0">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight m-0">
                 Dental Lab Prosthetics &amp; Replacement Odontogram (FDI)
               </h3>
-              <p className="text-xs text-slate-500 m-0 font-medium">
+              <p className="text-xs text-slate-500 m-0 font-normal">
                 {patientName ? `Prosthetic fabrication & edentulous replacement for ${patientName}` : 'Select one or several teeth to plan crowns, bridges, dentures & declare missing teeth to replace.'}
-                {caseRef && <span className="ml-1 text-indigo-600 font-bold">({caseRef})</span>}
+                {caseRef && <span className="ml-1 text-slate-900 font-semibold">({caseRef})</span>}
               </p>
             </div>
           </div>
@@ -750,12 +749,12 @@ export default function DentalLabOdontogram({
 
         <div className="flex items-center gap-3 self-start sm:self-center">
           {/* Dentition Selector */}
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200">
+          <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-1 border border-slate-200">
             <button
               type="button"
               onClick={() => setDentitionMode('adult')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                dentitionMode === 'adult' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+              className={`px-3 py-1 text-xs font-semibold rounded transition-colors cursor-pointer ${
+                dentitionMode === 'adult' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               Permanent (11-48)
@@ -763,8 +762,8 @@ export default function DentalLabOdontogram({
             <button
               type="button"
               onClick={() => setDentitionMode('pediatric')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                dentitionMode === 'pediatric' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+              className={`px-3 py-1 text-xs font-semibold rounded transition-colors cursor-pointer ${
+                dentitionMode === 'pediatric' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               Primary (51-85)
@@ -775,42 +774,42 @@ export default function DentalLabOdontogram({
 
       {/* ─── DENTAL CLINICIAN REFERRAL & INSTRUCTIONS PRIORITY BANNER ─── */}
       {(caseContext?.deliveryNotes || caseContext?.workDoneOther || caseContext?.clinicianName) && (
-        <div className="bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-cyan-500/10 border-2 border-teal-500/30 rounded-3xl p-5 space-y-3.5 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-teal-200/60 pb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold shadow-sm">
-                <Stethoscope size={18} />
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#1B669E] text-white flex items-center justify-center font-semibold">
+                <Stethoscope size={16} />
               </div>
               <div>
-                <h4 className="text-sm font-black text-teal-950 tracking-tight m-0 flex items-center gap-2">
+                <h4 className="text-xs font-bold text-slate-900 tracking-tight m-0">
                   Dental Clinician Referral Note &amp; Prosthetic Specifications
                 </h4>
-                <p className="text-xs text-teal-800 font-semibold m-0 mt-0.5">
-                  Issued by <strong className="text-teal-900 font-black">{caseContext.clinicianName ? `Dr. ${caseContext.clinicianName}` : 'Dental Clinician'}</strong> {caseContext.clinicOfOrigin ? `• ${caseContext.clinicOfOrigin}` : ''}
+                <p className="text-[11px] text-slate-600 font-medium m-0 mt-0.5">
+                  Issued by <strong className="text-slate-900 font-semibold">{caseContext.clinicianName ? `Dr. ${caseContext.clinicianName}` : 'Dental Clinician'}</strong> {caseContext.clinicOfOrigin ? `• ${caseContext.clinicOfOrigin}` : ''}
                 </p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-600 text-white shadow-xs self-start sm:self-center">
-              <Sparkles size={11} /> Top Priority Clinician Directive
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-semibold uppercase tracking-wider bg-[#1B669E] text-white self-start sm:self-center">
+              Clinician Directive
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
             {caseContext.deliveryNotes && (
-              <div className="bg-white/90 border border-teal-200/70 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-                <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider flex items-center gap-1">
-                  <FileText size={11} className="text-teal-600" /> Clinician Referral &amp; Case Notes
+              <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1">
+                  <FileText size={11} className="text-slate-600" /> Clinician Referral &amp; Case Notes
                 </span>
-                <p className="text-slate-800 font-bold leading-relaxed whitespace-pre-wrap m-0 text-xs">{caseContext.deliveryNotes}</p>
+                <p className="text-slate-800 font-medium leading-relaxed whitespace-pre-wrap m-0 text-xs">{caseContext.deliveryNotes}</p>
               </div>
             )}
 
             {caseContext.workDoneOther && (
-              <div className="bg-white/90 border border-teal-200/70 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-                <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider flex items-center gap-1">
-                  <Wrench size={11} className="text-teal-600" /> Prosthetic Replacement / Appliance Directive
+              <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1">
+                  <Wrench size={11} className="text-slate-600" /> Prosthetic Replacement / Appliance Directive
                 </span>
-                <p className="text-slate-900 font-black leading-relaxed m-0 text-xs">{caseContext.workDoneOther}</p>
+                <p className="text-slate-900 font-semibold leading-relaxed m-0 text-xs">{caseContext.workDoneOther}</p>
               </div>
             )}
           </div>
@@ -818,68 +817,68 @@ export default function DentalLabOdontogram({
       )}
 
       {/* ─── MANUFACTURING STAGE & FDI ODONTOGRAM SYNC TRACKER ─── */}
-      <div className={`border-2 ${manufacturingStageInfo.borderColor} ${manufacturingStageInfo.bgTint} rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-sm`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 pb-3">
+      <div className="border border-slate-200 bg-slate-50/60 rounded-xl p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2.5">
           <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold shadow-sm ${manufacturingStageInfo.color}`}>
-              <Layers size={18} />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-semibold bg-[#1B669E] text-white">
+              <Layers size={16} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-black text-slate-900 tracking-tight m-0">
-                  Manufacturing Stage: <span className="text-indigo-700 font-black">{manufacturingStageInfo.stage}</span>
+                <h4 className="text-xs font-bold text-slate-900 tracking-tight m-0">
+                  Manufacturing Stage: <span className="text-slate-900 font-bold">{manufacturingStageInfo.stage}</span>
                 </h4>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${manufacturingStageInfo.color}`}>
+                <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-slate-200 text-slate-800">
                   {manufacturingStageInfo.pct}% Complete
                 </span>
               </div>
-              <p className="text-xs text-slate-600 font-semibold m-0 mt-0.5">
+              <p className="text-xs text-slate-600 font-medium m-0 mt-0.5">
                 {manufacturingStageInfo.description}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-center bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-3xs">
-            <span className="text-xs font-bold text-slate-700">FDI Chart Progress:</span>
-            <span className="text-xs font-black text-indigo-700">{completedUnits}/{totalUnits} Units Done</span>
+          <div className="flex items-center gap-2 self-start sm:self-center bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+            <span className="text-xs font-medium text-slate-600">FDI Chart Progress:</span>
+            <span className="text-xs font-bold text-slate-900">{completedUnits}/{totalUnits} Units Done</span>
           </div>
         </div>
 
         {/* 4-Step Pipeline Stepper */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-          <div className={`p-2.5 rounded-xl border text-center transition-all ${
-            manufacturingStageInfo.step >= 1 ? 'bg-white border-amber-300 shadow-3xs' : 'bg-slate-100/60 border-slate-200 opacity-50'
+          <div className={`p-2.5 rounded-lg border text-center transition-colors ${
+            manufacturingStageInfo.step >= 1 ? 'bg-white border-slate-300 shadow-xs' : 'bg-slate-100/60 border-slate-200 opacity-50'
           }`}>
-            <span className="text-[9px] font-black text-amber-700 uppercase tracking-wider block">Stage 1</span>
-            <span className="text-xs font-black text-slate-800">Model Prep &amp; Design</span>
+            <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Stage 1</span>
+            <span className="text-xs font-semibold text-slate-900">Model Prep &amp; Design</span>
           </div>
 
-          <div className={`p-2.5 rounded-xl border text-center transition-all ${
-            manufacturingStageInfo.step >= 2 ? 'bg-white border-indigo-300 shadow-3xs' : 'bg-slate-100/60 border-slate-200 opacity-50'
+          <div className={`p-2.5 rounded-lg border text-center transition-colors ${
+            manufacturingStageInfo.step >= 2 ? 'bg-white border-slate-300 shadow-xs' : 'bg-slate-100/60 border-slate-200 opacity-50'
           }`}>
-            <span className="text-[9px] font-black text-indigo-700 uppercase tracking-wider block">Stage 2</span>
-            <span className="text-xs font-black text-slate-800">Active Fabrication</span>
+            <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Stage 2</span>
+            <span className="text-xs font-semibold text-slate-900">Active Fabrication</span>
           </div>
 
-          <div className={`p-2.5 rounded-xl border text-center transition-all ${
-            manufacturingStageInfo.step >= 3 ? 'bg-white border-purple-300 shadow-3xs' : 'bg-slate-100/60 border-slate-200 opacity-50'
+          <div className={`p-2.5 rounded-lg border text-center transition-colors ${
+            manufacturingStageInfo.step >= 3 ? 'bg-white border-slate-300 shadow-xs' : 'bg-slate-100/60 border-slate-200 opacity-50'
           }`}>
-            <span className="text-[9px] font-black text-purple-700 uppercase tracking-wider block">Stage 3</span>
-            <span className="text-xs font-black text-slate-800">Staining &amp; Acrylic</span>
+            <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Stage 3</span>
+            <span className="text-xs font-semibold text-slate-900">Staining &amp; Acrylic</span>
           </div>
 
-          <div className={`p-2.5 rounded-xl border text-center transition-all ${
-            manufacturingStageInfo.step >= 4 ? 'bg-white border-emerald-400 shadow-3xs ring-1 ring-emerald-400/40' : 'bg-slate-100/60 border-slate-200 opacity-50'
+          <div className={`p-2.5 rounded-lg border text-center transition-colors ${
+            manufacturingStageInfo.step >= 4 ? 'bg-white border-emerald-500 shadow-xs ring-1 ring-emerald-500/30' : 'bg-slate-100/60 border-slate-200 opacity-50'
           }`}>
-            <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wider block">Stage 4</span>
-            <span className="text-xs font-black text-slate-800">QC &amp; Ready for Clinic</span>
+            <span className="text-[9px] font-semibold text-emerald-700 uppercase tracking-wider block">Stage 4</span>
+            <span className="text-xs font-semibold text-slate-900">QC &amp; Ready for Clinic</span>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-slate-200/80 h-2 rounded-full overflow-hidden">
+        <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 transition-all duration-500"
+            className="h-full bg-[#1B669E] transition-all duration-500"
             style={{ width: `${manufacturingStageInfo.pct}%` }}
           />
         </div>
@@ -887,53 +886,53 @@ export default function DentalLabOdontogram({
 
       {/* SUMMARY STATUS CHIPS */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Total Work Units</span>
-            <span className="text-xl font-black text-slate-800">{totalUnits} units</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block">Total Work Units</span>
+            <span className="text-lg font-bold text-slate-900">{totalUnits} units</span>
           </div>
-          <span className="p-2.5 rounded-xl bg-slate-200/60 text-slate-600 font-black">
-            <Layers size={16} />
+          <span className="p-2 rounded bg-slate-200/70 text-slate-700 font-semibold">
+            <Layers size={15} />
           </span>
         </div>
 
-        <div className="bg-rose-50/70 border border-rose-200/80 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-rose-50/70 border border-rose-200/80 rounded-lg p-3 flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-rose-700 block">To Be Replaced</span>
-            <span className="text-xl font-black text-rose-900">{missingReplacementUnits}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-700 block">To Be Replaced</span>
+            <span className="text-lg font-bold text-rose-900">{missingReplacementUnits}</span>
           </div>
-          <span className="p-2.5 rounded-xl bg-rose-100 text-rose-700 font-black">
-            <AlertCircle size={16} />
+          <span className="p-2 rounded bg-rose-100 text-rose-700 font-semibold">
+            <AlertCircle size={15} />
           </span>
         </div>
 
-        <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-3 flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 block">Planning</span>
-            <span className="text-xl font-black text-amber-900">{planningUnits}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 block">Planning</span>
+            <span className="text-lg font-bold text-amber-900">{planningUnits}</span>
           </div>
-          <span className="p-2.5 rounded-xl bg-amber-100 text-amber-700 font-black">
-            <Clock size={16} />
+          <span className="p-2 rounded bg-amber-100 text-amber-700 font-semibold">
+            <Clock size={15} />
           </span>
         </div>
 
-        <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-lg p-3 flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 block">In Production</span>
-            <span className="text-xl font-black text-indigo-900">{inProgressUnits}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-700 block">In Production</span>
+            <span className="text-lg font-bold text-indigo-900">{inProgressUnits}</span>
           </div>
-          <span className="p-2.5 rounded-xl bg-indigo-100 text-indigo-700 font-black">
-            <Sparkles size={16} />
+          <span className="p-2 rounded bg-indigo-100 text-indigo-700 font-semibold">
+            <Wrench size={15} />
           </span>
         </div>
 
-        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-lg p-3 flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 block">Completed</span>
-            <span className="text-xl font-black text-emerald-900">{completedUnits}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 block">Completed</span>
+            <span className="text-lg font-bold text-emerald-900">{completedUnits}</span>
           </div>
-          <span className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700 font-black">
-            <CheckCircle2 size={16} />
+          <span className="p-2 rounded bg-emerald-100 text-emerald-700 font-semibold">
+            <CheckCircle2 size={15} />
           </span>
         </div>
       </div>
@@ -949,16 +948,16 @@ export default function DentalLabOdontogram({
 
       {/* QUICK MULTI-TEETH SELECTION TOOLBAR */}
       {!readOnly && (
-        <div className="bg-gradient-to-r from-slate-50 via-indigo-50/40 to-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
-              <Users size={15} />
+            <span className="p-1 rounded bg-slate-200 text-slate-700">
+              <Users size={14} />
             </span>
             <div>
-              <span className="text-xs font-black text-slate-800 block">Multi-Teeth Selection Tool</span>
-              <span className="text-[11px] text-slate-500 font-medium">
+              <span className="text-xs font-semibold text-slate-900 block">Multi-Teeth Selection Tool</span>
+              <span className="text-[11px] text-slate-500 font-normal">
                 {selectedTeeth.length > 0
-                  ? <><span className="font-bold text-indigo-600">{selectedTeeth.length} teeth selected</span> (#{selectedTeeth.join(', #')})</>
+                  ? <><span className="font-semibold text-slate-900">{selectedTeeth.length} teeth selected</span> (#{selectedTeeth.join(', #')})</>
                   : 'Click teeth on chart or use shortcuts below to select multiple teeth.'}
               </span>
             </div>
@@ -968,28 +967,28 @@ export default function DentalLabOdontogram({
             <button
               type="button"
               onClick={selectUpperArch}
-              className="px-2.5 py-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition cursor-pointer"
+              className="px-2.5 py-1 text-xs font-medium text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded transition cursor-pointer"
             >
               Upper Arch
             </button>
             <button
               type="button"
               onClick={selectLowerArch}
-              className="px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition cursor-pointer"
+              className="px-2.5 py-1 text-xs font-medium text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded transition cursor-pointer"
             >
               Lower Arch
             </button>
             <button
               type="button"
               onClick={selectAllTeeth}
-              className="px-2.5 py-1 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition cursor-pointer"
+              className="px-2.5 py-1 text-xs font-medium text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded transition cursor-pointer"
             >
               Select All
             </button>
             <button
               type="button"
               onClick={selectLoggedTeeth}
-              className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition cursor-pointer"
+              className="px-2.5 py-1 text-xs font-medium text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded transition cursor-pointer"
             >
               Logged Units
             </button>
@@ -997,7 +996,7 @@ export default function DentalLabOdontogram({
               <button
                 type="button"
                 onClick={clearSelection}
-                className="px-2.5 py-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition cursor-pointer"
+                className="px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded transition cursor-pointer"
               >
                 Clear ({selectedTeeth.length})
               </button>
@@ -1007,17 +1006,15 @@ export default function DentalLabOdontogram({
       )}
 
       {/* GRAPHICAL FDI ODONTOGRAM CHART */}
-      <div className="bg-gradient-to-b from-slate-50/90 via-indigo-50/30 to-purple-50/20 rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-6 relative overflow-hidden">
-        <div className="absolute -top-10 -right-10 w-72 h-72 bg-indigo-200/20 rounded-full blur-3xl" />
-
+      <div className="bg-slate-50/50 rounded-xl p-5 border border-slate-200 shadow-xs space-y-5 relative overflow-hidden">
         {/* Quadrant Legend */}
-        <div className="flex items-center justify-between text-xs font-bold text-slate-600 pb-3 border-b border-slate-200/80">
+        <div className="flex items-center justify-between text-xs font-semibold text-slate-600 pb-2.5 border-b border-slate-200">
           <span className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
             <span>MAXILLARY (UPPER ARCH)</span>
           </span>
           {upperArchActive && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r from-blue-500 to-sky-500 shadow-sm">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider text-white bg-[#1B669E]">
               <Smile size={12} /> Appliance Arch
             </span>
           )}
@@ -1257,36 +1254,36 @@ export default function DentalLabOdontogram({
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs font-bold text-slate-600 pt-2 border-t border-slate-200/80">
+        <div className="flex items-center justify-between text-xs font-semibold text-slate-600 pt-2 border-t border-slate-200">
           <span className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
             <span>MANDIBULAR (LOWER ARCH)</span>
             {lowerArchActive && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-sm">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider text-white bg-[#1B669E]">
                 <Smile size={12} /> Appliance Arch
               </span>
             )}
           </span>
-          <span className="text-[10px] text-slate-500 font-extrabold uppercase">
+          <span className="text-[10px] text-slate-500 font-semibold uppercase">
             {readOnly ? 'Click teeth to view details' : 'Click/Shift+Click to select multiple teeth • Double-click missing • Right-click undo'}
           </span>
         </div>
       </div>
 
       {/* BATCH PROSTHETIC WORK TYPE EDITOR & SINGLE-TOOTH CONTROL CARD */}
-      <div className="bg-gradient-to-br from-indigo-50/60 via-white to-purple-50/40 border border-indigo-200/80 rounded-3xl p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-indigo-100">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-mono font-black text-sm shadow-md shadow-indigo-500/20">
+            <div className="w-9 h-9 rounded-lg bg-[#1B669E] text-white flex items-center justify-center font-mono font-bold text-sm">
               {selectedTeeth.length > 1 ? `${selectedTeeth.length}T` : `#${selectedTooth}`}
             </div>
             <div>
-              <h4 className="text-sm font-extrabold text-slate-800 m-0 flex items-center gap-2">
+              <h4 className="text-sm font-bold text-slate-900 m-0 flex items-center gap-2">
                 {selectedTeeth.length > 1
                   ? `Batch Apply Prosthetic Work Type (${selectedTeeth.length} Teeth Selected)`
                   : `Tooth #${selectedTooth} Prosthetics Order & Specification`}
               </h4>
-              <p className="text-xs text-slate-500 m-0 font-medium">
+              <p className="text-xs text-slate-500 m-0 font-normal">
                 {selectedTeeth.length > 1
                   ? `Target teeth: #${selectedTeeth.join(', #')} — Pick Prosthetic Work Type below to apply to all selected teeth at once.`
                   : currentToothWork?.is_missing
@@ -1303,7 +1300,7 @@ export default function DentalLabOdontogram({
               <button
                 type="button"
                 onClick={handleBatchRemoveWork}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition cursor-pointer"
               >
                 <Trash2 size={13} /> Clear Work ({selectedTeeth.length})
               </button>
@@ -1330,36 +1327,47 @@ export default function DentalLabOdontogram({
             {/* FORM CONTROLS & BATCH WORK TYPE SELECTOR */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Work Type / Replacement Type */}
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-wider text-indigo-700 block mb-1 flex items-center justify-between">
-                  <span>Prosthetic Work Type</span>
-                  {selectedTeeth.length > 1 && (
-                    <span className="text-[9px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded-full font-bold">
-                      Batch ({selectedTeeth.length})
-                    </span>
-                  )}
-                </label>
-                <select
-                  value={selectedTeeth.length === 1 ? (currentToothWork?.work_type || batchWorkType) : batchWorkType}
-                  onChange={(e) => {
-                    setBatchWorkType(e.target.value);
-                    if (selectedTeeth.length === 1) {
-                      handleUpdateTooth({ work_type: e.target.value, is_missing: e.target.value === 'Declared Missing (To Be Replaced)' });
-                    }
-                  }}
-                  className="w-full text-xs font-extrabold border border-indigo-200 rounded-xl px-3 py-2 bg-white text-indigo-900 outline-none focus:border-indigo-500 shadow-xs"
-                >
-                  {PROSTHETIC_WORK_TYPES.map((wt) => (
-                    <option key={wt.id} value={wt.id}>
-                      {wt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {caseRef || caseContext?.caseRef || caseContext?.workDone ? (
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                    Case Log Work Specification
+                  </label>
+                  <div className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 bg-slate-100 text-slate-800 truncate">
+                    {caseContext?.workDone ? `${caseContext.workDone}${caseContext.workDoneOther ? ` • ${caseContext.workDoneOther}` : ''}` : 'Defined by Case Log'}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 block mb-1 flex items-center justify-between">
+                    <span>Prosthetic Work Type</span>
+                    {selectedTeeth.length > 1 && (
+                      <span className="text-[9px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded font-semibold">
+                        Batch ({selectedTeeth.length})
+                      </span>
+                    )}
+                  </label>
+                  <select
+                    value={selectedTeeth.length === 1 ? (currentToothWork?.work_type || batchWorkType) : batchWorkType}
+                    onChange={(e) => {
+                      setBatchWorkType(e.target.value);
+                      if (selectedTeeth.length === 1) {
+                        handleUpdateTooth({ work_type: e.target.value, is_missing: e.target.value === 'Declared Missing (To Be Replaced)' });
+                      }
+                    }}
+                    className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-900 outline-none focus:border-slate-400"
+                  >
+                    {PROSTHETIC_WORK_TYPES.map((wt) => (
+                      <option key={wt.id} value={wt.id}>
+                        {wt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Manufacturing Status */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Manufacturing Status
                 </label>
                 <select
@@ -1368,7 +1376,7 @@ export default function DentalLabOdontogram({
                     setBatchStatus(e.target.value);
                     if (selectedTeeth.length === 1) handleUpdateTooth({ status: e.target.value });
                   }}
-                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 outline-none focus:border-indigo-500"
+                  className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 outline-none focus:border-slate-400"
                 >
                   <option value="Planning">Planning (Queue)</option>
                   <option value="In-progress">In-progress (Milling / Waxing)</option>
@@ -1378,28 +1386,46 @@ export default function DentalLabOdontogram({
 
               {/* Conventional & VITA Tooth Shade */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
-                  Conventional &amp; VITA Shade
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                  Tooth Shade
                 </label>
-                <select
-                  value={selectedTeeth.length === 1 ? (currentToothWork?.shade || batchShade) : batchShade}
-                  onChange={(e) => {
-                    setBatchShade(e.target.value);
-                    if (selectedTeeth.length === 1) handleUpdateTooth({ shade: e.target.value });
-                  }}
-                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 outline-none focus:border-indigo-500"
-                >
-                  {CONVENTIONAL_SHADES.map((s) => (
-                    <option key={s} value={s}>
-                      Shade {s}
-                    </option>
-                  ))}
-                </select>
+                {orthoEnabled || !!(
+                  caseContext?.workDone?.toLowerCase().includes('appliance') ||
+                  caseContext?.workDone?.toLowerCase().includes('ortho') ||
+                  caseContext?.workDone?.toLowerCase().includes('guard') ||
+                  caseContext?.workDone?.toLowerCase().includes('splint') ||
+                  caseContext?.workDone?.toLowerCase().includes('retainer') ||
+                  currentToothWork?.work_type?.toLowerCase().includes('appliance') ||
+                  currentToothWork?.work_type?.toLowerCase().includes('guard') ||
+                  currentToothWork?.work_type?.toLowerCase().includes('splint') ||
+                  batchWorkType?.toLowerCase().includes('appliance') ||
+                  batchWorkType?.toLowerCase().includes('guard') ||
+                  batchWorkType?.toLowerCase().includes('splint')
+                ) ? (
+                  <div className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 bg-slate-100 text-slate-500 italic">
+                    N/A (Appliance Case)
+                  </div>
+                ) : (
+                  <select
+                    value={selectedTeeth.length === 1 ? (currentToothWork?.shade || batchShade) : batchShade}
+                    onChange={(e) => {
+                      setBatchShade(e.target.value);
+                      if (selectedTeeth.length === 1) handleUpdateTooth({ shade: e.target.value });
+                    }}
+                    className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 outline-none focus:border-slate-400"
+                  >
+                    {CONVENTIONAL_SHADES.map((s) => (
+                      <option key={s} value={s}>
+                        Shade {s}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Material & Remarks */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Material / Lab Notes
                 </label>
                 <input
@@ -1410,26 +1436,26 @@ export default function DentalLabOdontogram({
                     setBatchNotes(e.target.value);
                     if (selectedTeeth.length === 1) handleUpdateTooth({ notes: e.target.value });
                   }}
-                  className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 outline-none focus:border-indigo-500"
+                  className="w-full text-xs font-medium border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 outline-none focus:border-slate-400"
                 />
               </div>
             </div>
 
             {/* BATCH ACTION BUTTONS */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-indigo-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleApplyBatchWork}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition cursor-pointer"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg transition shadow-xs cursor-pointer"
                 >
-                  <Wrench size={14} /> Apply Work Type to Selected ({selectedTeeth.length})
+                  <Wrench size={14} /> {(caseRef || caseContext?.caseRef || caseContext?.workDone) ? `Apply Specifications to Selected (${selectedTeeth.length})` : `Apply Work Type to Selected (${selectedTeeth.length})`}
                 </button>
 
                 <button
                   type="button"
                   onClick={handleBatchDeclareMissing}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition cursor-pointer"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition cursor-pointer"
                 >
                   <AlertCircle size={14} /> Declare Selected Missing ({selectedTeeth.length})
                 </button>
@@ -1564,7 +1590,7 @@ export default function DentalLabOdontogram({
                       </td>
                       <td className="px-3.5 py-2.5">
                         <span className="px-2 py-0.5 rounded bg-slate-100 font-mono text-[11px] font-bold text-slate-700">
-                          {data.shade || 'A2'}
+                          {orthoEnabled || data.work_type?.toLowerCase().includes('appliance') || data.work_type?.toLowerCase().includes('guard') || data.work_type?.toLowerCase().includes('splint') ? 'N/A' : (data.shade || 'A2')}
                         </span>
                       </td>
                       <td className="px-3.5 py-2.5 text-slate-500 text-[11px]">

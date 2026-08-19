@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { parseRosterFile, fetchRosterHistory, downloadRosterDocx, analyzeRosterAI, deleteRosterHistory, bulkDeleteRosterHistory } from '../api/roster';
+import { parseRosterFile, fetchRosterHistory, downloadRosterDocx, analyzeRosterAI, deleteRosterHistory, bulkDeleteRosterHistory, saveManualRoster } from '../api/roster';
+import { fetchRoster, fetchAttendance, downloadPdfReport, downloadExcelReport, fetchKaziStaff } from '../api/kaziSync';
+
 import { toast } from 'react-hot-toast';
 import {
   UploadCloud, Printer, FileCode, RefreshCw, CalendarDays, FileText, ShieldCheck,
   History, Download, Sparkles, ArrowRightLeft, AlertTriangle, UserPlus, UserMinus,
   Eye, X, UserCheck, Search, Copy, User, Filter, Trash2, CheckSquare, Square,
-  BarChart3, ListFilter, CheckCircle2, Trash, FileSpreadsheet
+  BarChart3, ListFilter, CheckCircle2, Trash, FileSpreadsheet, Building2, Building, Users, Clock,
+  PlusCircle, Pencil, CalendarCheck, Sunrise, Sunset, Save, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 // A4 at 96 dpi = 794 × 1123 px (3/4 height = 842 px)
@@ -237,14 +240,31 @@ function injectPrintStyles() {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-function renderShiftCell(shifts) {
+function renderShiftStaff(shifts) {
   if (!shifts || shifts.length === 0) return <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '13px' }}>—</span>;
-
-  // Check for "Not Available" marker
   if (shifts.length === 1 && shifts[0].staff?.[0] === 'Not Available') {
     return <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '13px' }}>Not Available</span>;
   }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', textAlign: 'center' }}>
+      {shifts.map((shift, si) => (
+        <div key={si} style={{ textAlign: 'center' }}>
+          {shift.staff.map((name, ni) => (
+            <div key={ni} style={{ fontSize: '13.5px', color: '#1e293b', lineHeight: '1.38', fontWeight: '600', textAlign: 'center' }}>
+              {name}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
+function renderShiftTime(shifts) {
+  if (!shifts || shifts.length === 0) return <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '13px' }}>—</span>;
+  if (shifts.length === 1 && shifts[0].staff?.[0] === 'Not Available') {
+    return <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '13px' }}>—</span>;
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', textAlign: 'center' }}>
       {shifts.map((shift, si) => (
@@ -261,23 +281,19 @@ function renderShiftCell(shifts) {
               {shift.time}
             </div>
           )}
-          {shift.staff.map((name, ni) => (
-            <div key={ni} style={{ fontSize: '13.5px', color: '#1e293b', lineHeight: '1.38', fontWeight: '600', textAlign: 'center' }}>
-              {name}
-            </div>
-          ))}
         </div>
       ))}
     </div>
   );
 }
 
-function renderRosterTableRows(unitsList) {
+function renderRosterTableRows(unitsList, dateStr = '') {
   if (!unitsList || unitsList.length === 0) return null;
 
   const clinicalUnits = unitsList.filter(u => !u.unit.startsWith('Dental'));
   const dentalUnits = unitsList.filter(u => u.unit.startsWith('Dental'));
   const orderedUnits = [...clinicalUnits, ...dentalUnits];
+  const totalUnits = orderedUnits.length;
 
   return orderedUnits.map((unit, idx) => {
     const isDental = unit.unit.startsWith('Dental');
@@ -287,56 +303,254 @@ function renderRosterTableRows(unitsList) {
       <tr
         key={idx}
         style={{
-          borderBottom: '1px solid #e2f0f0',
+          borderBottom: '1px solid #cbd5e1',
         }}
       >
+        {idx === 0 && (
+          <td
+            rowSpan={totalUnits}
+            style={{
+              padding: '10px 8px',
+              fontWeight: '800',
+              fontSize: '12px',
+              color: '#0f172a',
+              verticalAlign: 'middle',
+              textAlign: 'center',
+              borderRight: '1px solid #cbd5e1',
+              backgroundColor: '#f8fafc',
+              width: '18%',
+              lineHeight: '1.4',
+            }}
+          >
+            {dateStr || 'Monday 17th AUGUST 2026'}
+          </td>
+        )}
+
+        {idx === 0 && (
+          <td
+            rowSpan={clinicalUnits.length}
+            style={{
+              padding: '10px 8px',
+              fontWeight: '700',
+              fontSize: '12.5px',
+              color: '#003B44',
+              verticalAlign: 'middle',
+              textAlign: 'center',
+              borderRight: '1px solid #cbd5e1',
+              backgroundColor: '#f0fdfa',
+              width: '18%',
+            }}
+          >
+            Clinical Plaza
+          </td>
+        )}
+
+        {idx === clinicalUnits.length && dentalUnits.length > 0 && (
+          <td
+            rowSpan={dentalUnits.length}
+            style={{
+              padding: '10px 8px',
+              fontWeight: '700',
+              fontSize: '12.5px',
+              color: '#0284c7',
+              verticalAlign: 'middle',
+              textAlign: 'center',
+              borderRight: '1px solid #cbd5e1',
+              backgroundColor: '#f0f9ff',
+              width: '18%',
+            }}
+          >
+            Dental Department
+          </td>
+        )}
+
         <td style={{
           padding: '10px 10px',
           fontWeight: '700',
-          fontSize: '13.5px',
-          color: '#003B44',
+          fontSize: '13px',
+          color: '#1e293b',
           verticalAlign: 'middle',
-          textAlign: 'center',
-          borderRight: '1px solid #e2f0f0',
-          borderLeft: isDental ? '4px solid #0284c7' : '4px solid #007b8a',
-          backgroundColor: isEven ? '#ffffff' : '#f8fffe',
-          width: '30%',
+          textAlign: 'left',
+          borderRight: '1px solid #cbd5e1',
+          backgroundColor: isEven ? '#ffffff' : '#f8fafc',
+          width: '20%',
         }}>
           {unit.unit}
         </td>
+
         <td style={{
           padding: '10px 10px',
           verticalAlign: 'middle',
           textAlign: 'center',
-          borderRight: '1px solid #e2f0f0',
+          borderRight: '1px solid #cbd5e1',
           backgroundColor: isEven ? '#f0fffe' : '#e8fffe',
-          width: '35%',
+          width: '14%',
         }}>
-          {renderShiftCell(unit.morning)}
+          {renderShiftTime(unit.morning)}
         </td>
+
+        <td style={{
+          padding: '10px 10px',
+          verticalAlign: 'middle',
+          textAlign: 'center',
+          borderRight: '1px solid #cbd5e1',
+          backgroundColor: isEven ? '#f0fffe' : '#e8fffe',
+          width: '18%',
+        }}>
+          {renderShiftStaff(unit.morning)}
+        </td>
+
+        <td style={{
+          padding: '10px 10px',
+          verticalAlign: 'middle',
+          textAlign: 'center',
+          borderRight: '1px solid #cbd5e1',
+          backgroundColor: isEven ? '#fffbf0' : '#fff8e8',
+          width: '14%',
+        }}>
+          {renderShiftTime(unit.evening)}
+        </td>
+
         <td style={{
           padding: '10px 10px',
           verticalAlign: 'middle',
           textAlign: 'center',
           backgroundColor: isEven ? '#fffbf0' : '#fff8e8',
-          width: '35%',
+          width: '18%',
         }}>
-          {renderShiftCell(unit.evening)}
+          {renderShiftStaff(unit.evening)}
         </td>
       </tr>
     );
   });
 }
 
+const DEPARTMENT_UNITS_MAP = {
+  'Clinical Plaza': [
+    'Gynecology',
+    'Pediatrics',
+    'Neurology',
+    'Internal Medicine',
+    'Orthopedics',
+    'ENT',
+    'GP',
+    'Urology',
+    'Cardiology',
+    'Dermatology',
+    'Clinical Psychology',
+    'General Surgery'
+  ],
+  'Paramedical Staffs': [
+    'Nursing',
+    'EEG',
+    'Anesthesiology',
+    'Physiotherapy',
+    'QI',
+    'Tabara'
+  ],
+  'Laboratory': [
+    'Pathology',
+    'Lab Scientists',
+    'Phlebotomy',
+    'Team Leaders'
+  ],
+  'Imaging': [
+    'Radiology',
+    'Imaging Technologists'
+  ],
+  'Dental': [
+    'Dentists',
+    'Therapists',
+    'Chairside Assistants',
+    'Prosthetic Laboratory'
+  ],
+  'Operations': [
+    'Customer Care',
+    'Lounge',
+    'Call Center',
+    'Operations',
+    'Insurance & Compliance',
+    'Duty Managers',
+    'Tabara',
+    'IT'
+  ],
+  'Administration': [
+    'Finance',
+    'HR',
+    'Internal Auditor',
+    'Procurement',
+    'Logistics',
+    'Stock',
+    'Insurance Office'
+  ]
+};
+
+
+const ALL_DEPARTMENTS = Object.keys(DEPARTMENT_UNITS_MAP);
+const STANDARD_PRESET_UNITS = Object.values(DEPARTMENT_UNITS_MAP).flat();
+
+const STANDARD_SHIFT_TIMES = [
+  '07:00 – 14:00',
+  '14:00 – 21:00',
+  '08:00 – 17:00',
+  '07:00 – 19:00',
+  '19:00 – 07:00',
+  '21:00 – 07:00',
+  '08:00 – 13:00',
+  '24 Hours / On Call'
+];
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function RosterGenerator() {
-  const [activeTab, setActiveTab] = useState('generator'); // 'generator' | 'history' | 'ai'
+  const [activeTab, setActiveTab] = useState('studio'); // 'studio' | '' | 'doctor_search' | 'archives' | 'lumina_ai'
+  const [savingBuilder, setSavingBuilder] = useState(false);
+
+  // Helper: format a Date string as the canonical roster_date string e.g. "18TH AUGUST 2026"
+  const formatRosterDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = typeof dateStr === 'string' ? new Date(dateStr + 'T00:00:00') : new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    const ordinals = ['TH','ST','ND','RD'];
+    const v = d.getDate() % 100;
+    const suffix = ordinals[(v - 20) % 10] || ordinals[v] || ordinals[0];
+    const month = d.toLocaleString('default', { month: 'long' }).toUpperCase();
+    return `${d.getDate()}${suffix} ${month} ${d.getFullYear()}`;
+  };
+
+  const tomorrowDate = (() => { const t = new Date(); t.setDate(t.getDate() + 1); return t; })();
+  const [builderDate, setBuilderDate] = useState(tomorrowDate.toISOString().split('T')[0]);
+
+  const blankUnit = () => ({
+    _id: Math.random().toString(36).slice(2),
+    department: 'Clinical Plaza',
+    unit: 'Gynecology',
+    morning: [{ time: '07:00 – 14:00', staff: [] }],
+    evening: [{ time: '14:00 – 21:00', staff: [] }],
+  });
+
+
+
+  const [builderUnits, setBuilderUnits] = useState([blankUnit()]);
+  const [builderInputs, setBuilderInputs] = useState({}); // { unitId_shift: currentInputValue }
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rosterData, setRosterData] = useState(null);
   const [exporting, setExporting] = useState(false);
   const fileInputRef = useRef(null);
+
+  //  Integration State
+  const defaultToday = new Date().toISOString().split('T')[0];
+  const defaultStartOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  const [kaziStartDate, setKaziStartDate] = useState(defaultStartOfMonth);
+  const [kaziEndDate, setKaziEndDate] = useState(defaultToday);
+  const [kaziViewMode, setKaziViewMode] = useState('roster'); // 'roster' | 'attendance'
+  const [kaziRosterData, setKaziRosterData] = useState([]);
+  const [kaziAttendanceData, setKaziAttendanceData] = useState([]);
+  const [loadingKazi, setLoadingKazi] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+  const [kaziSearch, setKaziSearch] = useState('');
+  const [kaziDeptFilter, setKaziDeptFilter] = useState('');
 
   // History state
   const [historyList, setHistoryList] = useState([]);
@@ -363,78 +577,99 @@ export default function RosterGenerator() {
   // Preview Modal state
   const [previewModalItem, setPreviewModalItem] = useState(null);
 
-  // Doctor Extractor state
-  const [selectedDoctor, setSelectedDoctor] = useState('');
+  // Unit Extractor state
+  const [selectedUnit, setSelectedUnit] = useState('');
   const [modalDoctorFilter, setModalDoctorFilter] = useState('');
 
-  // Collect all unique doctors across all archived schedules
-  const uniqueDoctorsList = useMemo(() => {
-    const nameSet = new Set();
+  // Collect all unique units across all archived schedules
+  const uniqueUnitsList = useMemo(() => {
+    const unitSet = new Set();
     historyList.forEach(item => {
       (item.parsedUnits || []).forEach(unit => {
-        (unit.morning || []).forEach(shift => {
-          (shift.staff || []).forEach(name => {
-            if (name && name !== 'Not Available' && name !== '—') nameSet.add(name.trim());
-          });
-        });
-        (unit.evening || []).forEach(shift => {
-          (shift.staff || []).forEach(name => {
-            if (name && name !== 'Not Available' && name !== '—') nameSet.add(name.trim());
-          });
-        });
+        if (unit.unit && unit.unit !== '—') unitSet.add(unit.unit.trim());
       });
     });
-    return Array.from(nameSet).sort((a, b) => a.localeCompare(b));
+    return Array.from(unitSet).sort((a, b) => a.localeCompare(b));
   }, [historyList]);
 
-  // Filter shifts across history for selectedDoctor
-  const extractedDoctorShifts = useMemo(() => {
-    if (!selectedDoctor) return [];
-    const query = selectedDoctor.toLowerCase().trim();
+  // Kazisync DB staff list state
+  const [kaziStaffDbList, setKaziStaffDbList] = useState([]);
+
+  useEffect(() => {
+    const loadKaziStaff = async () => {
+      try {
+        const { data } = await fetchKaziStaff();
+        if (data?.success && Array.isArray(data.data)) {
+          setKaziStaffDbList(data.data);
+        }
+      } catch (err) {
+        console.warn('⚠️ KaziSync Staff DB fetch error:', err.message);
+      }
+    };
+    loadKaziStaff();
+  }, []);
+
+  // Collect all unique staff/doctor names across Kazisync DB + all archived schedules
+  const uniqueStaffList = useMemo(() => {
+    const staffSet = new Set(kaziStaffDbList);
+    historyList.forEach(item => {
+      (item.parsedUnits || []).forEach(unit => {
+        (unit.morning || []).forEach(s => (s.staff || []).forEach(st => {
+          if (st && st !== 'Not Available' && st !== '—') staffSet.add(st.trim());
+        }));
+        (unit.evening || []).forEach(s => (s.staff || []).forEach(st => {
+          if (st && st !== 'Not Available' && st !== '—') staffSet.add(st.trim());
+        }));
+      });
+    });
+    return Array.from(staffSet).sort((a, b) => a.localeCompare(b));
+  }, [historyList, kaziStaffDbList]);
+
+
+  // Filter shifts across history for selectedUnit
+  const extractedUnitShifts = useMemo(() => {
+    if (!selectedUnit) return [];
+    const query = selectedUnit.toLowerCase().trim();
 
     const results = [];
     historyList.forEach(item => {
       (item.parsedUnits || []).forEach(unit => {
+        if (!unit.unit.toLowerCase().includes(query)) return;
+        
         const isDental = unit.unit.startsWith('Dental');
         const dept = isDental ? 'Dental' : 'Clinical Plaza';
 
         (unit.morning || []).forEach(shift => {
-          const matchStaff = (shift.staff || []).filter(s => s.toLowerCase().includes(query));
-          if (matchStaff.length > 0) {
-            results.push({
-              scheduleId: item.id,
-              date: item.roster_date,
-              fileName: item.file_name,
-              dept,
-              unit: unit.unit,
-              shiftType: 'Morning',
-              time: shift.time || '(Morning Shift)',
-              matchedName: matchStaff[0],
-              coStaff: (shift.staff || []).filter(s => !s.toLowerCase().includes(query)),
-            });
-          }
+          results.push({
+            scheduleId: item.id,
+            date: item.roster_date,
+            fileName: item.file_name,
+            dept,
+            unit: unit.unit,
+            shiftType: 'Morning',
+            time: shift.time || '(Morning Shift)',
+            matchedName: (shift.staff || []).join(', '),
+            coStaff: [],
+          });
         });
 
         (unit.evening || []).forEach(shift => {
-          const matchStaff = (shift.staff || []).filter(s => s.toLowerCase().includes(query));
-          if (matchStaff.length > 0) {
-            results.push({
-              scheduleId: item.id,
-              date: item.roster_date,
-              fileName: item.file_name,
-              dept,
-              unit: unit.unit,
-              shiftType: 'Evening',
-              time: shift.time || '(Evening Shift)',
-              matchedName: matchStaff[0],
-              coStaff: (shift.staff || []).filter(s => !s.toLowerCase().includes(query)),
-            });
-          }
+          results.push({
+            scheduleId: item.id,
+            date: item.roster_date,
+            fileName: item.file_name,
+            dept,
+            unit: unit.unit,
+            shiftType: 'Evening',
+            time: shift.time || '(Evening Shift)',
+            matchedName: (shift.staff || []).join(', '),
+            coStaff: [],
+          });
         });
       });
     });
     return results;
-  }, [selectedDoctor, historyList]);
+  }, [selectedUnit, historyList]);
 
   // Modal doctor filter logic
   const previewModalDoctorList = useMemo(() => {
@@ -472,15 +707,15 @@ export default function RosterGenerator() {
     }).filter(Boolean);
   }, [previewModalItem, modalDoctorFilter]);
 
-  const handleCopyDoctorSchedule = (docName, shifts) => {
+  const handleCopyUnitSchedule = (unitName, shifts) => {
     if (!shifts || shifts.length === 0) return;
-    let txt = `🏥 LEGACY CLINICS & DIAGNOSTICS\n👨‍⚕️ DUTY SCHEDULE FOR: ${docName}\n${'─'.repeat(40)}\n\n`;
+    let txt = `🏥 LEGACY CLINICS & DIAGNOSTICS\n👨‍⚕️ DUTY SCHEDULE FOR UNIT: ${unitName}\n${'─'.repeat(40)}\n\n`;
     shifts.forEach((s, idx) => {
-      txt += `${idx + 1}. Date: ${s.date}\n   Unit: ${s.unit} (${s.dept})\n   Shift: ${s.shiftType} | ${s.time}\n\n`;
+      txt += `${idx + 1}. Date: ${s.date}\n   Shift: ${s.shiftType} | ${s.time}\n   Staff: ${s.matchedName}\n\n`;
     });
     txt += `Generated via Legacy Reporting Portal`;
     navigator.clipboard.writeText(txt);
-    toast.success(`Copied schedule for ${docName} to clipboard!`);
+    toast.success(`Copied schedule for ${unitName} to clipboard!`);
   };
 
   // Search, filter, and sort history records
@@ -518,18 +753,18 @@ export default function RosterGenerator() {
 
   const archiveStats = useMemo(() => {
     const totalSchedules = historyList.length;
-    const totalDoctors = uniqueDoctorsList.length;
+    const totalUnits = uniqueUnitsList.length;
     const latestSchedule = historyList[0]?.roster_date || 'N/A';
     const totalUnitsCount = historyList.reduce((acc, h) => acc + (h.unitCount || 0), 0);
     const avgUnits = totalSchedules > 0 ? Math.round(totalUnitsCount / totalSchedules) : 0;
 
     return {
       totalSchedules,
-      totalDoctors,
+      totalUnits,
       latestSchedule,
       avgUnits,
     };
-  }, [historyList, uniqueDoctorsList]);
+  }, [historyList, uniqueUnitsList]);
 
   const handleDeleteSingle = async (id) => {
     setDeleting(true);
@@ -595,7 +830,32 @@ export default function RosterGenerator() {
     try {
       const { data } = await fetchRosterHistory();
       if (data?.success) {
-        setHistoryList(data.data || []);
+        const hList = data.data || [];
+        setHistoryList(hList);
+        
+        // Auto-load tomorrow's record (or latest fallback) into the Tomorrow's Roster Studio
+        if (hList.length > 0 && !rosterData) {
+           const getOrdinal = (n) => {
+             const s = ['TH', 'ST', 'ND', 'RD'];
+             const v = n % 100;
+             return n + (s[(v - 20) % 10] || s[v] || s[0]);
+           };
+           const tomorrow = new Date();
+           tomorrow.setDate(tomorrow.getDate() + 1);
+           const month = tomorrow.toLocaleString('default', { month: 'long' }).toUpperCase();
+           const tomorrowStr = `${getOrdinal(tomorrow.getDate())} ${month} ${tomorrow.getFullYear()}`;
+           
+           let targetRecord = hList.find(r => r.roster_date === tomorrowStr);
+           if (!targetRecord) targetRecord = hList[0]; // fallback to most recent
+           
+           setRosterData({
+             id: targetRecord.id,
+             dateStr: targetRecord.roster_date,
+             parsedUnits: targetRecord.parsedUnits,
+             file_name: targetRecord.file_name,
+             tomorrowDate: targetRecord.roster_date,
+           });
+        }
       }
     } catch (err) {
       console.error('Failed to load history:', err);
@@ -603,6 +863,231 @@ export default function RosterGenerator() {
       setLoadingHistory(false);
     }
   };
+
+  // ── Builder helpers ─────────────────────────────────────────────────────────
+  const builderAddUnit = () => setBuilderUnits(prev => [...prev, blankUnit()]);
+
+  const builderRemoveUnit = (id) => setBuilderUnits(prev => prev.filter(u => u._id !== id));
+
+  const builderUpdateDepartment = (id, dept) => {
+    setBuilderUnits(prev => prev.map(u => {
+      if (u._id !== id) return u;
+      const allowedUnits = DEPARTMENT_UNITS_MAP[dept] || [];
+      const newUnit = allowedUnits.includes(u.unit) ? u.unit : (allowedUnits[0] || u.unit);
+      return { ...u, department: dept, unit: newUnit };
+    }));
+  };
+
+  const builderUpdateUnitName = (id, name) =>
+    setBuilderUnits(prev => prev.map(u => {
+      if (u._id !== id) return u;
+      let matchedDept = u.department || 'CLINICAL SERVICES';
+      for (const [deptKey, unitList] of Object.entries(DEPARTMENT_UNITS_MAP)) {
+        if (unitList.some(un => un.toLowerCase() === name.toLowerCase())) {
+          matchedDept = deptKey;
+          break;
+        }
+      }
+      return { ...u, unit: name, department: matchedDept };
+    }));
+
+  const builderUpdateShiftTime = (unitId, shift, time) =>
+    setBuilderUnits(prev => prev.map(u => {
+      if (u._id !== unitId) return u;
+      return {
+        ...u,
+        [shift]: u[shift].map((s, i) => i === 0 ? { ...s, time } : s),
+      };
+    }));
+
+  const builderAddStaff = (unitId, shift, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setBuilderUnits(prev => prev.map(u => {
+      if (u._id !== unitId) return u;
+      const updated = u[shift].length > 0
+        ? u[shift].map((s, i) => i === 0 ? { ...s, staff: [...s.staff, trimmed] } : s)
+        : [{ time: shift === 'morning' ? '07:00 – 14:00' : '14:00 – 21:00', staff: [trimmed] }];
+      return { ...u, [shift]: updated };
+    }));
+    setBuilderInputs(prev => ({ ...prev, [`${unitId}_${shift}`]: '' }));
+  };
+
+  const builderRemoveStaff = (unitId, shift, staffName) =>
+    setBuilderUnits(prev => prev.map(u => {
+      if (u._id !== unitId) return u;
+      return {
+        ...u,
+        [shift]: u[shift].map(s => ({ ...s, staff: s.staff.filter(st => st !== staffName) })),
+      };
+    }));
+
+  const handleSaveBuilderRoster = async () => {
+    const filledUnits = builderUnits.filter(u => u.unit.trim());
+    if (filledUnits.length === 0) {
+      toast.error('Please add at least one unit with a name before saving.');
+      return;
+    }
+    const rosterDateStr = formatRosterDate(builderDate);
+    // Convert builder units to the standard parsedUnits format
+    const parsedUnits = filledUnits.map(u => ({
+      department: u.department || 'CLINICAL SERVICES',
+      unit: u.unit.trim(),
+      morning: u.morning.filter(s => s.staff.length > 0 || s.time),
+      evening: u.evening.filter(s => s.staff.length > 0 || s.time),
+    }));
+
+    setSavingBuilder(true);
+    try {
+      const { data } = await saveManualRoster(rosterDateStr, parsedUnits);
+      if (data?.success) {
+        toast.success(`✅ Roster for ${rosterDateStr} saved!`);
+        // Reload history so it's immediately in archives and auto-loaded
+        await loadHistory();
+      } else {
+        toast.error(data?.message || 'Failed to save roster.');
+      }
+    } catch (err) {
+      toast.error('Failed to save roster: ' + (err?.response?.data?.message || err.message));
+    } finally {
+      setSavingBuilder(false);
+    }
+  };
+
+  const loadData = async () => {
+    setLoadingKazi(true);
+    try {
+      if (kaziViewMode === 'roster') {
+        const { data } = await fetchRoster(kaziStartDate, kaziEndDate);
+        if (data?.success) {
+          const raw = data.data;
+          let records = [];
+          if (Array.isArray(raw)) {
+            records = raw;
+          } else if (raw?.roster && typeof raw.roster === 'object' && !Array.isArray(raw.roster)) {
+            Object.entries(raw.roster).forEach(([d, items]) => {
+              if (Array.isArray(items)) {
+                items.forEach(item => records.push({ date: d, ...item }));
+              }
+            });
+          } else if (Array.isArray(raw?.roster)) {
+            records = raw.roster;
+          } else if (Array.isArray(raw?.records)) {
+            records = raw.records;
+          } else if (Array.isArray(raw?.data)) {
+            records = raw.data;
+          }
+          setKaziRosterData(Array.isArray(records) ? records : []);
+        } else {
+          setKaziRosterData([]);
+        }
+      } else {
+        const { data } = await fetchAttendance(kaziStartDate, kaziEndDate, 1, 100);
+        if (data?.success) {
+          const raw = data.data;
+          let records = [];
+          if (Array.isArray(raw)) {
+            records = raw;
+          } else if (raw?.attendance_records && typeof raw.attendance_records === 'object' && !Array.isArray(raw.attendance_records)) {
+            Object.entries(raw.attendance_records).forEach(([d, items]) => {
+              if (Array.isArray(items)) {
+                items.forEach(item => records.push({ date: d, ...item }));
+              }
+            });
+          } else if (Array.isArray(raw?.attendance_records)) {
+            records = raw.attendance_records;
+          } else if (Array.isArray(raw?.records)) {
+            records = raw.records;
+          } else if (Array.isArray(raw?.data)) {
+            records = raw.data;
+          }
+          setKaziAttendanceData(Array.isArray(records) ? records : []);
+        } else {
+          setKaziAttendanceData([]);
+        }
+      }
+    } catch (err) {
+      console.error(' fetch error:', err);
+      toast.error(err.response?.data?.message || 'Failed to fetch data from  API Gateway.');
+      setKaziRosterData([]);
+      setKaziAttendanceData([]);
+    } finally {
+      setLoadingKazi(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === '') {
+      loadData();
+    }
+  }, [activeTab, kaziViewMode, kaziStartDate, kaziEndDate]);
+
+  const handleDownloadKaziPdf = async () => {
+    setDownloadingReport(true);
+    const toastId = toast.loading('Generating  PDF Summary Report...');
+    try {
+      await downloadPdfReport(kaziStartDate, kaziEndDate);
+      toast.success(' PDF report downloaded successfully!', { id: toastId });
+    } catch (err) {
+      console.error('PDF download error:', err);
+      toast.error('Failed to download  PDF report.', { id: toastId });
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
+  const handleDownloadKaziExcel = async () => {
+    setDownloadingReport(true);
+    const toastId = toast.loading('Generating  Excel Summary Report...');
+    try {
+      await downloadExcelReport(kaziStartDate, kaziEndDate);
+      toast.success(' Excel report downloaded successfully!', { id: toastId });
+    } catch (err) {
+      console.error('Excel download error:', err);
+      toast.error('Failed to download  Excel report.', { id: toastId });
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
+  const kaziDepartmentsList = useMemo(() => {
+    const rawList = kaziViewMode === 'roster' ? kaziRosterData : kaziAttendanceData;
+    const list = Array.isArray(rawList) ? rawList : [];
+    const depts = new Set();
+    list.forEach(item => {
+      if (item && typeof item === 'object') {
+        const dept = item.department || item.department_name || item.unit || item.dept;
+        if (dept) depts.add(String(dept).trim());
+      }
+    });
+    return Array.from(depts).sort();
+  }, [kaziRosterData, kaziAttendanceData, kaziViewMode]);
+
+  const filteredKaziRecords = useMemo(() => {
+    const rawList = kaziViewMode === 'roster' ? kaziRosterData : kaziAttendanceData;
+    let list = Array.isArray(rawList) ? [...rawList] : [];
+
+    if (kaziSearch.trim()) {
+      const q = kaziSearch.toLowerCase().trim();
+      list = list.filter(item => {
+        if (!item || typeof item !== 'object') return false;
+        const name = (item.employee_name || item.name || item.staff_name || '').toLowerCase();
+        const dept = (item.department || item.department_name || item.unit || '').toLowerCase();
+        const role = (item.role || item.title || item.shift || '').toLowerCase();
+        return name.includes(q) || dept.includes(q) || role.includes(q);
+      });
+    }
+
+    if (kaziDeptFilter) {
+      list = list.filter(item => {
+        if (!item || typeof item !== 'object') return false;
+        const dept = item.department || item.department_name || item.unit || item.dept;
+        return String(dept || '').trim() === kaziDeptFilter.trim();
+      });
+    }
+
+    return list;
+  }, [kaziRosterData, kaziAttendanceData, kaziViewMode, kaziSearch, kaziDeptFilter]);
 
   const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false); };
@@ -755,7 +1240,7 @@ export default function RosterGenerator() {
   };
 
   const triggerAiForSchedule = (item) => {
-    setActiveTab('ai');
+    setActiveTab('lumina_ai');
     setSelectedSchedule2(item.id);
     // Find prior item if available
     const idx = historyList.findIndex(h => h.id === item.id);
@@ -784,7 +1269,7 @@ export default function RosterGenerator() {
             </h1>
           </div>
           <p style={{ color: '#64748b', fontSize: '13px', margin: 0, paddingLeft: '44px' }}>
-            Automated .docx duty roster extraction, printable A4 schedules, history archives, and Lumina AI Change Analytics.
+
           </p>
         </div>
         {rosterData?.tomorrowDate && (
@@ -796,335 +1281,998 @@ export default function RosterGenerator() {
       </div>
 
       {/* ── Tab Navigation ─────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '24px', gap: '8px' }}>
+      <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '24px', gap: '6px', overflowX: 'auto' }}>
         <button
-          onClick={() => setActiveTab('generator')}
+          onClick={() => setActiveTab('studio')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '12px 20px',
+            padding: '12px 18px',
             border: 'none',
-            borderBottom: activeTab === 'generator' ? '3px solid #007b8a' : '3px solid transparent',
-            backgroundColor: activeTab === 'generator' ? '#f0fdfa' : 'transparent',
-            color: activeTab === 'generator' ? '#007b8a' : '#64748b',
-            fontWeight: activeTab === 'generator' ? '700' : '600',
-            fontSize: '14px',
+            borderBottom: activeTab === 'studio' ? '3px solid #007b8a' : '3px solid transparent',
+            backgroundColor: activeTab === 'studio' ? '#f0fdfa' : 'transparent',
+            color: activeTab === 'studio' ? '#007b8a' : '#64748b',
+            fontWeight: activeTab === 'studio' ? '700' : '600',
+            fontSize: '13.5px',
             cursor: 'pointer',
             borderRadius: '8px 8px 0 0',
             transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
           }}
         >
-          <UploadCloud size={17} /> Roster Generator
+          <UploadCloud size={17} /> Tomorrow's Roster Studio
         </button>
+
         <button
-          onClick={() => { setActiveTab('history'); loadHistory(); }}
+          onClick={() => setActiveTab('')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '12px 20px',
+            padding: '12px 18px',
             border: 'none',
-            borderBottom: activeTab === 'history' ? '3px solid #007b8a' : '3px solid transparent',
-            backgroundColor: activeTab === 'history' ? '#f0fdfa' : 'transparent',
-            color: activeTab === 'history' ? '#007b8a' : '#64748b',
-            fontWeight: activeTab === 'history' ? '700' : '600',
-            fontSize: '14px',
+            borderBottom: activeTab === '' ? '3px solid #0284c7' : '3px solid transparent',
+            backgroundColor: activeTab === '' ? '#f0f9ff' : 'transparent',
+            color: activeTab === '' ? '#0284c7' : '#64748b',
+            fontWeight: activeTab === '' ? '700' : '600',
+            fontSize: '13.5px',
             cursor: 'pointer',
             borderRadius: '8px 8px 0 0',
             transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
           }}
         >
-          <History size={17} /> Past Schedules ({historyList.length})
+          <Building2 size={17} />  Department Rosters
         </button>
+
         <button
-          onClick={() => { setActiveTab('ai'); if (!aiAnalysis) runAiAudit(); }}
+          onClick={() => setActiveTab('doctor_search')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '12px 20px',
+            padding: '12px 18px',
             border: 'none',
-            borderBottom: activeTab === 'ai' ? '3px solid #7c3aed' : '3px solid transparent',
-            backgroundColor: activeTab === 'ai' ? '#f5f3ff' : 'transparent',
-            color: activeTab === 'ai' ? '#7c3aed' : '#64748b',
-            fontWeight: activeTab === 'ai' ? '700' : '600',
-            fontSize: '14px',
+            borderBottom: activeTab === 'doctor_search' ? '3px solid #0d9488' : '3px solid transparent',
+            backgroundColor: activeTab === 'doctor_search' ? '#f0fdfa' : 'transparent',
+            color: activeTab === 'doctor_search' ? '#0d9488' : '#64748b',
+            fontWeight: activeTab === 'doctor_search' ? '700' : '600',
+            fontSize: '13.5px',
             cursor: 'pointer',
             borderRadius: '8px 8px 0 0',
             transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
           }}
         >
-          <Sparkles size={17} /> Lumina AI Schedule Analytics
+          <UserCheck size={17} /> Doctor Shift Lookup
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('archives'); loadHistory(); }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 18px',
+            border: 'none',
+            borderBottom: activeTab === 'archives' ? '3px solid #007b8a' : '3px solid transparent',
+            backgroundColor: activeTab === 'archives' ? '#f0fdfa' : 'transparent',
+            color: activeTab === 'archives' ? '#007b8a' : '#64748b',
+            fontWeight: activeTab === 'archives' ? '700' : '600',
+            fontSize: '13.5px',
+            cursor: 'pointer',
+            borderRadius: '8px 8px 0 0',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <History size={17} /> Schedule Archives ({historyList.length})
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('lumina_ai'); if (!aiAnalysis) runAiAudit(); }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 18px',
+            border: 'none',
+            borderBottom: activeTab === 'lumina_ai' ? '3px solid #7c3aed' : '3px solid transparent',
+            backgroundColor: activeTab === 'lumina_ai' ? '#f5f3ff' : 'transparent',
+            color: activeTab === 'lumina_ai' ? '#7c3aed' : '#64748b',
+            fontWeight: activeTab === 'lumina_ai' ? '700' : '600',
+            fontSize: '13.5px',
+            cursor: 'pointer',
+            borderRadius: '8px 8px 0 0',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <Sparkles size={17} /> Lumina AI Intelligence
         </button>
       </div>
 
-      {/* ── TAB 1: Roster Generator ────────────────────────────────────────── */}
-      {activeTab === 'generator' && (
-        <>
-          {/* Privacy Banner */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#1e40af' }}>
-            <ShieldCheck size={18} style={{ flexShrink: 0 }} />
-            <span><strong>Privacy Safeguard Active:</strong> Phone numbers, TL identifiers, and administrative staff are automatically stripped from the output.</span>
-          </div>
+      {/* ── TAB 1: Tomorrow's Roster Studio (Interactive Builder) ─────────── */}
+      {activeTab === 'studio' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Header Bar with Date Picker & Actions */}
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px 20px', border: '1px solid #cbd5e1', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Pencil size={18} style={{ color: '#007b8a' }} />
+                Tomorrow's Duty Roster Studio ({formatRosterDate(builderDate)})
+              </h4>
+              <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                Define units & departments, assign staff to morning & evening shifts, and save directly to the system database.
+              </p>
+            </div>
 
-          {/* Duplicate Warning & Overwrite Banner */}
-          {duplicateWarning && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', backgroundColor: '#fff7ed', border: '1px solid #ffedd5', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', color: '#c2410c' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-                <span>{duplicateWarning}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#475569', fontWeight: '600', backgroundColor: '#f8fafc', padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <CalendarCheck size={16} style={{ color: '#007b8a' }} />
+                <span>Target Date:</span>
+                <input
+                  type="date"
+                  value={builderDate}
+                  onChange={(e) => setBuilderDate(e.target.value)}
+                  style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: '600', color: '#1e293b', backgroundColor: '#fff' }}
+                />
               </div>
+
               <button
-                onClick={() => file && uploadAndParse(file, true)}
-                style={{ padding: '6px 14px', backgroundColor: '#ea580c', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                onClick={builderAddUnit}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 16px',
+                  backgroundColor: '#f1f5f9',
+                  color: '#0f172a',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
               >
-                Overwrite Existing Roster
+                <PlusCircle size={16} /> Add Unit
+              </button>
+
+              <button
+                onClick={handleSaveBuilderRoster}
+                disabled={savingBuilder}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 20px',
+                  backgroundColor: '#166534',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '13.5px',
+                  fontWeight: '700',
+                  cursor: savingBuilder ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 6px rgba(22,101,52,0.25)',
+                  opacity: savingBuilder ? 0.7 : 1
+                }}
+              >
+                {savingBuilder ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
+                Save Roster
               </button>
             </div>
-          )}
+          </div>
 
-          {/* Upload Zone */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                border: `2px dashed ${isDragging ? '#0284c7' : '#cbd5e1'}`,
-                backgroundColor: isDragging ? '#f0f9ff' : '#f8fafc',
-                borderRadius: '10px',
-                padding: '32px 20px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                style={{ display: 'none' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-                <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
-                  <UploadCloud size={26} />
+          <datalist id="builder-units-datalist">
+            {Array.from(new Set([...STANDARD_PRESET_UNITS, ...uniqueUnitsList])).sort().map((unitName, idx) => (
+              <option key={idx} value={unitName} />
+            ))}
+          </datalist>
+
+          <datalist id="builder-shifttimes-datalist">
+            {STANDARD_SHIFT_TIMES.map((timeOpt, idx) => (
+              <option key={idx} value={timeOpt} />
+            ))}
+          </datalist>
+
+          <datalist id="builder-staff-datalist">
+            {uniqueStaffList.map((staffName, idx) => (
+              <option key={idx} value={staffName} />
+            ))}
+          </datalist>
+
+          {/* List of Unit Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))', gap: '20px' }}>
+            {builderUnits.map((u) => (
+              <div
+                key={u._id}
+                style={{
+                  backgroundColor: '#fff',
+                  borderRadius: '12px',
+                  border: '1px solid #cbd5e1',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Unit Header: Department & Unit Selection */}
+                <div style={{ backgroundColor: '#003B44', color: '#fff', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '800', color: '#7ee8f8' }}>
+                      <Building2 size={16} /> DEPARTMENT & UNIT SELECTION
+                    </div>
+                    {builderUnits.length > 1 && (
+                      <button
+                        onClick={() => builderRemoveUnit(u._id)}
+                        title="Remove Unit"
+                        style={{ backgroundColor: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center' }}
+                      >
+                        <Trash size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    {/* Department Dropdown */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: '700', color: '#a5f3fc', marginBottom: '3px', textTransform: 'uppercase' }}>
+                        Department
+                      </label>
+                      <select
+                        value={u.department || 'Clinical Plaza'}
+                        onChange={(e) => builderUpdateDepartment(u._id, e.target.value)}
+                        style={{
+                          width: '100%',
+                          backgroundColor: 'rgba(255,255,255,0.18)',
+                          border: '1px solid rgba(255,255,255,0.35)',
+                          borderRadius: '6px',
+                          padding: '6px 8px',
+                          color: '#fff',
+                          fontWeight: '700',
+                          fontSize: '12px',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {ALL_DEPARTMENTS.map((deptName, dIdx) => (
+                          <option key={dIdx} value={deptName} style={{ color: '#0f172a', backgroundColor: '#fff' }}>
+                            {deptName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Unit Selector */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: '700', color: '#a5f3fc', marginBottom: '3px', textTransform: 'uppercase' }}>
+                        Unit / Service
+                      </label>
+                      <input
+                        list={`builder-units-datalist-${u._id}`}
+                        type="text"
+                        placeholder="Select or type unit..."
+                        value={u.unit}
+                        onChange={(e) => builderUpdateUnitName(u._id, e.target.value)}
+                        style={{
+                          width: '100%',
+                          backgroundColor: 'rgba(255,255,255,0.18)',
+                          border: '1px solid rgba(255,255,255,0.35)',
+                          borderRadius: '6px',
+                          padding: '6px 8px',
+                          color: '#fff',
+                          fontWeight: '700',
+                          fontSize: '12px',
+                          outline: 'none'
+                        }}
+                      />
+                      <datalist id={`builder-units-datalist-${u._id}`}>
+                        {(DEPARTMENT_UNITS_MAP[u.department] || STANDARD_PRESET_UNITS).map((unitOpt, uIdx) => (
+                          <option key={uIdx} value={unitOpt} />
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+                </div>
+
+
+                {/* Shift Sections */}
+                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                  {/* MORNING SHIFT */}
+                  <div style={{ backgroundColor: '#f0fffe', border: '1px solid #ccfbf1', borderRadius: '8px', padding: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: '#0f766e' }}>
+                        <Sunrise size={16} style={{ color: '#0d9488' }} /> MORNING SHIFT
+                      </div>
+                      <input
+                        list="builder-shifttimes-datalist"
+                        type="text"
+                        placeholder="Select or type shift time..."
+                        value={u.morning[0]?.time || ''}
+                        onChange={(e) => builderUpdateShiftTime(u._id, 'morning', e.target.value)}
+                        style={{
+                          fontSize: '11.5px',
+                          fontWeight: '700',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid #99f6e4',
+                          color: '#0f766e',
+                          backgroundColor: '#fff',
+                          width: '150px',
+                          textAlign: 'center',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+
+                    {/* Staff Chips */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                      {(u.morning[0]?.staff || []).map((staffName, sIdx) => (
+                        <span
+                          key={sIdx}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', backgroundColor: '#99f6e4', color: '#134e4a', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}
+                        >
+                          <User size={12} /> {staffName}
+                          <X
+                            size={12}
+                            style={{ cursor: 'pointer', marginLeft: '2px' }}
+                            onClick={() => builderRemoveStaff(u._id, 'morning', staffName)}
+                          />
+                        </span>
+                      ))}
+                      {(u.morning[0]?.staff || []).length === 0 && (
+                        <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>No staff assigned yet</span>
+                      )}
+                    </div>
+
+                    {/* Add Staff Input */}
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <input
+                        list="builder-staff-datalist"
+                        type="text"
+                        placeholder="Select or type staff name..."
+                        value={builderInputs[`${u._id}_morning`] || ''}
+                        onChange={(e) => setBuilderInputs(prev => ({ ...prev, [`${u._id}_morning`]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            builderAddStaff(u._id, 'morning', builderInputs[`${u._id}_morning`] || '');
+                          }
+                        }}
+                        style={{ flex: 1, padding: '5px 10px', fontSize: '12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => builderAddStaff(u._id, 'morning', builderInputs[`${u._id}_morning`] || '')}
+                        style={{ padding: '5px 12px', backgroundColor: '#0d9488', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* EVENING SHIFT */}
+                  <div style={{ backgroundColor: '#fffbf0', border: '1px solid #fef3c7', borderRadius: '8px', padding: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: '#b45309' }}>
+                        <Sunset size={16} style={{ color: '#d97706' }} /> EVENING SHIFT
+                      </div>
+                      <input
+                        list="builder-shifttimes-datalist"
+                        type="text"
+                        placeholder="Select or type shift time..."
+                        value={u.evening[0]?.time || ''}
+                        onChange={(e) => builderUpdateShiftTime(u._id, 'evening', e.target.value)}
+                        style={{
+                          fontSize: '11.5px',
+                          fontWeight: '700',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid #fde68a',
+                          color: '#b45309',
+                          backgroundColor: '#fff',
+                          width: '150px',
+                          textAlign: 'center',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+
+
+                    {/* Staff Chips */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                      {(u.evening[0]?.staff || []).map((staffName, sIdx) => (
+                        <span
+                          key={sIdx}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', backgroundColor: '#fde68a', color: '#78350f', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}
+                        >
+                          <User size={12} /> {staffName}
+                          <X
+                            size={12}
+                            style={{ cursor: 'pointer', marginLeft: '2px' }}
+                            onClick={() => builderRemoveStaff(u._id, 'evening', staffName)}
+                          />
+                        </span>
+                      ))}
+                      {(u.evening[0]?.staff || []).length === 0 && (
+                        <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>No staff assigned yet</span>
+                      )}
+                    </div>
+
+                    {/* Add Staff Input */}
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <input
+                        list="builder-staff-datalist"
+                        type="text"
+                        placeholder="Select or type staff name..."
+                        value={builderInputs[`${u._id}_evening`] || ''}
+                        onChange={(e) => setBuilderInputs(prev => ({ ...prev, [`${u._id}_evening`]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            builderAddStaff(u._id, 'evening', builderInputs[`${u._id}_evening`] || '');
+                          }
+                        }}
+                        style={{ flex: 1, padding: '5px 10px', fontSize: '12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => builderAddStaff(u._id, 'evening', builderInputs[`${u._id}_evening`] || '')}
+                        style={{ padding: '5px 12px', backgroundColor: '#d97706', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
               </div>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: '#334155', margin: '0 0 4px' }}>
-                {file ? `Selected: ${file.name}` : 'Click to upload or drag & drop your .docx duty roster'}
-              </p>
-              <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Only .docx files are accepted</p>
-              {loading && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '14px', color: '#0284c7', fontSize: '13px', fontWeight: '600' }}>
-                  <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                  Parsing & scrubbing sensitive data...
+            ))}
+          </div>
+
+              {/* Bottom Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
+                <button
+                  onClick={builderAddUnit}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 20px',
+                    backgroundColor: '#f1f5f9',
+                    color: '#0f172a',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <PlusCircle size={16} /> Add Another Unit
+                </button>
+
+                <button
+                  onClick={handleSaveBuilderRoster}
+                  disabled={savingBuilder}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 24px',
+                    backgroundColor: '#166534',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: savingBuilder ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 2px 6px rgba(22,101,52,0.3)',
+                    opacity: savingBuilder ? 0.7 : 1
+                  }}
+                >
+                  {savingBuilder ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={18} />}
+                  Save Roster to Database
+                </button>
+              </div>
+        </div>
+      )}
+
+      {/* ── TAB 2:  Departmental Rosters ─────────────────────────── */}
+      {activeTab === '' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Header Banner */}
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #cbd5e1',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ padding: '12px', backgroundColor: '#e0f2fe', color: '#0284c7', borderRadius: '10px' }}>
+                <Building2 size={24} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                    Departmental Rosters & Attendance Hub
+                  </h2>
+                  <span style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700' }}>
+                    Production Gateway Active
+                  </span>
                 </div>
+                {/* Removed live integration paragraph */}
+              </div>
+            </div>
+
+            {/* Quick Action Download Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={handleDownloadKaziPdf}
+                disabled={downloadingReport}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '9px 16px',
+                  backgroundColor: '#dc2626',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '7px',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: downloadingReport ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.15s'
+                }}
+              >
+                <FileText size={16} /> Download PDF Summary
+              </button>
+
+              <button
+                onClick={handleDownloadKaziExcel}
+                disabled={downloadingReport}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '9px 16px',
+                  backgroundColor: '#166534',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '7px',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: downloadingReport ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.15s'
+                }}
+              >
+                <FileSpreadsheet size={16} /> Download Excel (.xlsx)
+              </button>
+            </div>
+          </div>
+
+          {/* Filter & Selector Toolbar */}
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', alignItems: 'end', marginBottom: '16px' }}>
+              {/* Date Range Start */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>Start Date</label>
+                <input
+                  type="date"
+                  value={kaziStartDate}
+                  onChange={(e) => setKaziStartDate(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '13px', backgroundColor: '#f8fafc', fontWeight: '600', color: '#0f172a' }}
+                />
+              </div>
+
+              {/* Date Range End */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>End Date</label>
+                <input
+                  type="date"
+                  value={kaziEndDate}
+                  onChange={(e) => setKaziEndDate(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '13px', backgroundColor: '#f8fafc', fontWeight: '600', color: '#0f172a' }}
+                />
+              </div>
+
+              {/* View Mode Toggle */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>View Dataset</label>
+                <div style={{ display: 'flex', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '7px', border: '1px solid #cbd5e1' }}>
+                  <button
+                    onClick={() => setKaziViewMode('roster')}
+                    style={{
+                      flex: 1,
+                      padding: '6px 12px',
+                      border: 'none',
+                      borderRadius: '5px',
+                      fontSize: '12.5px',
+                      fontWeight: '700',
+                      backgroundColor: kaziViewMode === 'roster' ? '#ffffff' : 'transparent',
+                      color: kaziViewMode === 'roster' ? '#0284c7' : '#64748b',
+                      boxShadow: kaziViewMode === 'roster' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Company Roster
+                  </button>
+                  <button
+                    onClick={() => setKaziViewMode('attendance')}
+                    style={{
+                      flex: 1,
+                      padding: '6px 12px',
+                      border: 'none',
+                      borderRadius: '5px',
+                      fontSize: '12.5px',
+                      fontWeight: '700',
+                      backgroundColor: kaziViewMode === 'attendance' ? '#ffffff' : 'transparent',
+                      color: kaziViewMode === 'attendance' ? '#0284c7' : '#64748b',
+                      boxShadow: kaziViewMode === 'attendance' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Attendance Logs
+                  </button>
+                </div>
+              </div>
+
+              {/* Refresh Button */}
+              <div>
+                <button
+                  onClick={loadData}
+                  disabled={loadingKazi}
+                  style={{
+                    width: '100%',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '9px 16px',
+                    backgroundColor: '#0284c7',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '7px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: loadingKazi ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <RefreshCw size={15} className={loadingKazi ? 'animate-spin' : ''} /> Refresh Gateway
+                </button>
+              </div>
+            </div>
+
+            {/* Sub-toolbar Search & Dept Filter */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+                <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  value={kaziSearch}
+                  onChange={(e) => setKaziSearch(e.target.value)}
+                  placeholder="Search staff name, department, role..."
+                  style={{ width: '100%', padding: '8px 12px 8px 34px', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '13px', backgroundColor: '#fff' }}
+                />
+                {kaziSearch && (
+                  <button onClick={() => setKaziSearch('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {kaziDepartmentsList.length > 0 && (
+                <select
+                  value={kaziDeptFilter}
+                  onChange={(e) => setKaziDeptFilter(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '13px', backgroundColor: '#fff', color: '#334155', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  <option value="">All Departments ({kaziDepartmentsList.length})</option>
+                  {kaziDepartmentsList.map((d, i) => (
+                    <option key={i} value={d}>{d}</option>
+                  ))}
+                </select>
               )}
             </div>
           </div>
 
-          {/* Roster Table Preview */}
-          {hasData && (
-            <>
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <button
-                  onClick={handlePrint}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', backgroundColor: '#007b8a', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
-                >
-                  <Printer size={16} /> Print / Save as PDF
-                </button>
-                <button
-                  onClick={() => handleExportHtml('roster-print-zone', rosterData?.dateStr)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', backgroundColor: '#007b8a', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}
-                >
-                  <FileCode size={16} /> Export as HTML
-                </button>
-                <button
-                  onClick={() => exportRosterToExcel(rosterData?.dayName, rosterData?.dateStr, rosterData?.parsedUnits, 'Doctors_Schedule')}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', backgroundColor: '#166534', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}
-                >
-                  <FileSpreadsheet size={16} /> Export Excel (.xlsx)
-                </button>
-                <button
-                  onClick={() => { setRosterData(null); setFile(null); }}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '7px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
-                >
-                  <FileText size={16} /> Upload New File
-                </button>
+          {/* Main Data Table */}
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ padding: '14px 20px', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontWeight: '700', fontSize: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {kaziViewMode === 'roster' ? <Users size={18} style={{ color: '#0284c7' }} /> : <Clock size={18} style={{ color: '#0284c7' }} />}
+                <span>{kaziViewMode === 'roster' ? 'Company Department Rosters' : 'Attendance Records & Clock Logs'}</span>
               </div>
-
-              {/* ── PRINTABLE ROSTER TABLE — Optimized Compact Layout ─────────────── */}
-              <div
-                id="roster-print-zone"
-                style={{
-                  width: '100%',
-                  maxWidth: '760px',
-                  margin: '0 auto',
-                  backgroundColor: '#ffffff',
-                  borderRadius: '10px',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.07)',
-                  fontFamily: "'Segoe UI', Arial, sans-serif",
-                  overflow: 'hidden',
-                }}
-              >
-                {/* Letterhead */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 18px',
-                  borderBottom: '3px solid #007b8a',
-                  background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%)',
-                  gap: '12px',
-                }}>
-                  {/* Logo + Clinic Name */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '0', flexShrink: 1 }}>
-                    <img
-                      src="/legacy-logo.png"
-                      alt="Legacy Clinics"
-                      style={{ height: '44px', width: 'auto', objectFit: 'contain', flexShrink: 0 }}
-                    />
-                    <div style={{ minWidth: '0' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                        Legacy Clinics and Diagnostics
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap' }}>
-                        KK3 RD 134, Kicukiro, Kigali &nbsp;|&nbsp; +250 788 122 100
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Title block */}
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: '20px', fontWeight: '800', color: '#003B44', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
-                      Doctor's Schedule
-                    </div>
-                    <div style={{ marginTop: '3px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{
-                        display: 'inline-block',
-                        backgroundColor: '#007b8a',
-                        color: '#fff',
-                        fontWeight: '700',
-                        fontSize: '11.5px',
-                        padding: '2px 10px',
-                        borderRadius: '14px',
-                        letterSpacing: '0.03em'
-                      }}>
-                        {rosterData.dayName}
-                      </span>
-                      <span style={{ fontSize: '13px', color: '#334155', fontWeight: '700' }}>
-                        {rosterData.dateStr}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Table */}
-                <div>
-                  <table style={{
-                    width: '100%',
-                    borderCollapse: 'collapse',
-                    fontSize: '13px',
-                    tableLayout: 'fixed',
-                  }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#003B44' }}>
-                        <th
-                          rowSpan={2}
-                          style={{
-                            padding: '8px 10px',
-                            color: '#ffffff',
-                            fontWeight: '800',
-                            fontSize: '13px',
-                            textAlign: 'center',
-                            letterSpacing: '0.06em',
-                            textTransform: 'uppercase',
-                            borderRight: '2px solid rgba(255,255,255,0.25)',
-                            verticalAlign: 'middle',
-                            backgroundColor: '#003B44',
-                            width: '30%',
-                          }}
-                        >
-                          UNIT
-                        </th>
-                        <th
-                          colSpan={2}
-                          style={{
-                            padding: '6px 10px',
-                            color: '#7ee8f8',
-                            fontWeight: '800',
-                            fontSize: '13px',
-                            textAlign: 'center',
-                            letterSpacing: '0.06em',
-                            textTransform: 'uppercase',
-                            borderBottom: '1px solid rgba(255,255,255,0.2)',
-                            backgroundColor: '#003B44',
-                          }}
-                        >
-                          DOCTORS / PROVIDERS
-                        </th>
-                      </tr>
-                      <tr style={{ backgroundColor: '#00505c' }}>
-                        <th
-                          style={{
-                            padding: '6px 10px',
-                            color: '#a5f3fc',
-                            fontWeight: '700',
-                            fontSize: '12px',
-                            textAlign: 'center',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            borderRight: '1px solid rgba(255,255,255,0.15)',
-                            backgroundColor: '#00505c',
-                            width: '35%',
-                          }}
-                        >
-                          MORNING / TIME
-                        </th>
-                        <th
-                          style={{
-                            padding: '6px 10px',
-                            color: '#fde68a',
-                            fontWeight: '700',
-                            fontSize: '12px',
-                            textAlign: 'center',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            backgroundColor: '#00505c',
-                            width: '35%',
-                          }}
-                        >
-                          EVENING / TIME
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {renderRosterTableRows(rosterData.parsedUnits)}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
-
-          {rosterData && !hasData && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px dashed #e2e8f0' }}>
-              <FileText size={40} style={{ marginBottom: '12px', opacity: 0.4 }} />
-              <p style={{ fontSize: '15px', fontWeight: '600', color: '#64748b', margin: '0 0 4px' }}>No clinical roster data found</p>
-              <p style={{ fontSize: '13px', margin: 0 }}>Make sure the uploaded file contains a recognisable duty roster table with department and doctor names.</p>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', backgroundColor: '#f1f5f9', padding: '3px 10px', borderRadius: '12px' }}>
+                {filteredKaziRecords.length} Record{filteredKaziRecords.length !== 1 ? 's' : ''}
+              </span>
             </div>
-          )}
-        </>
+
+            {loadingKazi ? (
+              <div style={{ padding: '50px 20px', textAlign: 'center', color: '#64748b' }}>
+                <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: '#0284c7' }} />
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#334155' }}>Communicating with  API Gateway...</p>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Fetching live departmental records for date range ({kaziStartDate} to {kaziEndDate})</p>
+              </div>
+            ) : filteredKaziRecords.length === 0 ? (
+              <div style={{ padding: '50px 20px', textAlign: 'center', color: '#64748b' }}>
+                <Building2 size={36} style={{ margin: '0 auto 12px', color: '#cbd5e1' }} />
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#334155' }}>No  records found</p>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94a3b8' }}>Try expanding your date range or adjusting search filters.</p>
+              </div>
+            ) : kaziViewMode === 'roster' ? (
+              /* Roster Table */
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0', color: '#475569', textAlign: 'left' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: '700' }}>Employee / Staff Name</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700' }}>Department / Unit</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700' }}>Role / Shift Title</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700' }}>Roster Date</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700', textAlign: 'center' }}>Shift Time</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700', textAlign: 'right' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredKaziRecords.map((row, idx) => {
+                    const name = row.employee_name || row.name || row.staff_name || 'Staff Member';
+                    const dept = row.department || row.department_name || row.unit || 'General';
+                    const role = row.role || row.title || row.shift || 'Duty Shift';
+                    const date = row.date || row.shift_date || row.start_date || row.created_at || '—';
+                    const time = row.time || row.shift_time || (row.start_time ? `${row.start_time} - ${row.end_time || ''}` : '—');
+                    const status = row.status || row.shift_status || 'Scheduled';
+
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                        <td style={{ padding: '12px 16px', fontWeight: '700', color: '#0f172a' }}>
+                          <User size={14} style={{ display: 'inline', marginRight: '6px', color: '#0284c7' }} />
+                          {name}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontWeight: '600', color: '#007b8a' }}>
+                          {dept}
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#475569' }}>
+                          {role}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontWeight: '600', color: '#334155' }}>
+                          {date}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '700', color: '#0284c7', fontStyle: 'italic' }}>
+                          {time}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            backgroundColor: String(status).toLowerCase().includes('absent') ? '#fee2e2' : '#dcfce7',
+                            color: String(status).toLowerCase().includes('absent') ? '#b91c1c' : '#15803d',
+                          }}>
+                            {status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              /* Attendance Table */
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0', color: '#475569', textAlign: 'left' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: '700' }}>Employee / Staff</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700' }}>Department</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700' }}>Date</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700', textAlign: 'center' }}>Clock In</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700', textAlign: 'center' }}>Clock Out</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700', textAlign: 'center' }}>Duration</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700', textAlign: 'right' }}>Attendance Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredKaziRecords.map((row, idx) => {
+                    const name = row.employee_name || row.name || row.staff_name || 'Staff Member';
+                    const dept = row.department || row.department_name || row.unit || 'General';
+                    const date = row.date || row.attendance_date || '—';
+                    const clockIn = row.clock_in || row.check_in || row.in_time || '—';
+                    const clockOut = row.clock_out || row.check_out || row.out_time || '—';
+                    const duration = row.duration || row.total_hours || row.hours_worked || '—';
+                    const status = row.status || row.attendance_status || 'Present';
+
+                    const isLate = String(status).toLowerCase().includes('late');
+                    const isAbsent = String(status).toLowerCase().includes('absent');
+
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                        <td style={{ padding: '12px 16px', fontWeight: '700', color: '#0f172a' }}>
+                          {name}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontWeight: '600', color: '#007b8a' }}>
+                          {dept}
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#334155', fontWeight: '600' }}>
+                          {date}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '700', color: '#166534' }}>
+                          {clockIn}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '700', color: '#991b1b' }}>
+                          {clockOut}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '700', color: '#0284c7' }}>
+                          {duration}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            backgroundColor: isAbsent ? '#fee2e2' : isLate ? '#fef3c7' : '#dcfce7',
+                            color: isAbsent ? '#b91c1c' : isLate ? '#b45309' : '#15803d',
+                          }}>
+                            {status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* ── TAB 2: Roster History ─────────────────────────────────────────── */}
-      {activeTab === 'history' && (
+      {/* ── TAB 3: Unit Shift Lookup ─────────────────────────────────────── */}
+      {activeTab === 'doctor_search' && (
+        <div>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #cbd5e1',
+            padding: '20px',
+            marginBottom: '24px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ padding: '8px', backgroundColor: '#e0f2fe', color: '#0284c7', borderRadius: '8px' }}>
+                  <Building size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Extract Unit Roster Schedule</h3>
+                  <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>Select any unit from past schedules to extract their complete duty roster, assigned staff, and shift times.</p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <select
+                  value={selectedUnit}
+                  onChange={(e) => setSelectedUnit(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #94a3b8',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: selectedUnit ? '#003B44' : '#64748b',
+                    backgroundColor: '#f8fafc',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="">-- Select a Unit to Extract Schedule ({uniqueUnitsList.length} Units Found) --</option>
+                  {uniqueUnitsList.map((unitName, i) => (
+                    <option key={i} value={unitName}>{unitName}</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedUnit && (
+                <button
+                  onClick={() => setSelectedUnit('')}
+                  style={{
+                    padding: '9px 14px',
+                    backgroundColor: '#f1f5f9',
+                    color: '#475569',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear Selection
+                </button>
+              )}
+            </div>
+
+            {/* Extracted Unit Schedule Display */}
+            {selectedUnit && (
+              <div style={{
+                backgroundColor: '#f0fffe',
+                border: '1px solid #99f6e4',
+                borderRadius: '10px',
+                padding: '18px',
+                marginTop: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid #007b8a', paddingBottom: '10px', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#007b8a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Legacy Clinics & Diagnostics • Unit Schedule</div>
+                    <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#003B44', margin: '2px 0 0' }}>{selectedUnit}</h2>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ backgroundColor: '#007b8a', color: '#fff', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: '700' }}>
+                      {extractedUnitShifts.length} Shift{extractedUnitShifts.length !== 1 ? 's' : ''} Found
+                    </span>
+                    <button
+                      onClick={() => handleCopyUnitSchedule(selectedUnit, extractedUnitShifts)}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                    >
+                      <Copy size={14} /> Copy Summary
+                    </button>
+                  </div>
+                </div>
+
+                {extractedUnitShifts.length === 0 ? (
+                  <p style={{ color: '#64748b', fontSize: '13px', fontStyle: 'italic', margin: 0 }}>No shifts found for {selectedUnit} in past records.</p>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#003B44', color: '#fff' }}>
+                        <th style={{ padding: '8px 12px', textAlign: 'left' }}>Roster Date</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left' }}>Department</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left' }}>Shift</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left' }}>Time Slot</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left' }}>Assigned Staff</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {extractedUnitShifts.map((shift, sIdx) => (
+                        <tr key={sIdx} style={{ borderBottom: '1px solid #ccfbf1', backgroundColor: sIdx % 2 === 0 ? '#fff' : '#f0fffe' }}>
+                          <td style={{ padding: '9px 12px', fontWeight: '700', color: '#007b8a' }}>{shift.date}</td>
+                          <td style={{ padding: '9px 12px', fontWeight: '600', color: '#334155' }}>{shift.dept}</td>
+                          <td style={{ padding: '9px 12px' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              backgroundColor: shift.shiftType === 'Morning' ? '#e0f2fe' : '#fef3c7',
+                              color: shift.shiftType === 'Morning' ? '#0369a1' : '#b45309'
+                            }}>
+                              {shift.shiftType}
+                            </span>
+                          </td>
+                          <td style={{ padding: '9px 12px', fontWeight: '700', color: '#007b8a', fontStyle: 'italic' }}>{shift.time}</td>
+                          <td style={{ padding: '9px 12px', fontWeight: '600', color: '#0f172a' }}>{shift.matchedName}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 4: Schedule Archives & Exports ─────────────────────────────── */}
+      {activeTab === 'archives' && (
         <div>
           {/* ── Top Archive Stats Overview ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -1140,11 +2288,11 @@ export default function RosterGenerator() {
 
             <div style={{ backgroundColor: '#fff', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{ padding: '10px', backgroundColor: '#f0fdf4', color: '#166534', borderRadius: '10px' }}>
-                <UserCheck size={22} />
+                <Building size={22} />
               </div>
               <div>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Providers Tracked</div>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>{archiveStats.totalDoctors}</div>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Units Tracked</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>{archiveStats.totalUnits}</div>
               </div>
             </div>
 
@@ -1167,140 +2315,6 @@ export default function RosterGenerator() {
                 <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>{archiveStats.avgUnits} Units</div>
               </div>
             </div>
-          </div>
-
-          {/* Doctor Extractor Panel */}
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            border: '1px solid #cbd5e1',
-            padding: '20px',
-            marginBottom: '24px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ padding: '8px', backgroundColor: '#e0f2fe', color: '#0284c7', borderRadius: '8px' }}>
-                  <UserCheck size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Extract Doctor's Individual Schedule</h3>
-                  <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>Select any doctor from past schedules to extract their complete duty roster, units, and shift times.</p>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <div style={{ flex: 1 }}>
-                <select
-                  value={selectedDoctor}
-                  onChange={(e) => setSelectedDoctor(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #94a3b8',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    color: selectedDoctor ? '#003B44' : '#64748b',
-                    backgroundColor: '#f8fafc',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="">-- Select a Doctor to Extract Schedule ({uniqueDoctorsList.length} Providers Found) --</option>
-                  {uniqueDoctorsList.map((docName, i) => (
-                    <option key={i} value={docName}>{docName}</option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedDoctor && (
-                <button
-                  onClick={() => setSelectedDoctor('')}
-                  style={{
-                    padding: '9px 14px',
-                    backgroundColor: '#f1f5f9',
-                    color: '#475569',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear Selection
-                </button>
-              )}
-            </div>
-
-            {/* Extracted Doctor Schedule Display */}
-            {selectedDoctor && (
-              <div style={{
-                backgroundColor: '#f0fffe',
-                border: '1px solid #99f6e4',
-                borderRadius: '10px',
-                padding: '18px',
-                marginTop: '16px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid #007b8a', paddingBottom: '10px', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-                  <div>
-                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#007b8a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Legacy Clinics & Diagnostics • Provider Schedule</div>
-                    <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#003B44', margin: '2px 0 0' }}>{selectedDoctor}</h2>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ backgroundColor: '#007b8a', color: '#fff', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: '700' }}>
-                      {extractedDoctorShifts.length} Shift{extractedDoctorShifts.length !== 1 ? 's' : ''} Found
-                    </span>
-                    <button
-                      onClick={() => handleCopyDoctorSchedule(selectedDoctor, extractedDoctorShifts)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                    >
-                      <Copy size={14} /> Copy Summary
-                    </button>
-                  </div>
-                </div>
-
-                {extractedDoctorShifts.length === 0 ? (
-                  <p style={{ color: '#64748b', fontSize: '13px', fontStyle: 'italic', margin: 0 }}>No shifts found for {selectedDoctor} in past records.</p>
-                ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#003B44', color: '#fff' }}>
-                        <th style={{ padding: '8px 12px', textAlign: 'left' }}>Roster Date</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left' }}>Department</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left' }}>Unit</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left' }}>Shift</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left' }}>Time Slot</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {extractedDoctorShifts.map((shift, sIdx) => (
-                        <tr key={sIdx} style={{ borderBottom: '1px solid #ccfbf1', backgroundColor: sIdx % 2 === 0 ? '#fff' : '#f0fffe' }}>
-                          <td style={{ padding: '9px 12px', fontWeight: '700', color: '#007b8a' }}>{shift.date}</td>
-                          <td style={{ padding: '9px 12px', fontWeight: '600', color: '#334155' }}>{shift.dept}</td>
-                          <td style={{ padding: '9px 12px', fontWeight: '700', color: '#003B44' }}>{shift.unit}</td>
-                          <td style={{ padding: '9px 12px' }}>
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontSize: '11px',
-                              fontWeight: '700',
-                              backgroundColor: shift.shiftType === 'Morning' ? '#e0f2fe' : '#fef3c7',
-                              color: shift.shiftType === 'Morning' ? '#0369a1' : '#b45309'
-                            }}>
-                              {shift.shiftType}
-                            </span>
-                          </td>
-                          <td style={{ padding: '9px 12px', fontWeight: '700', color: '#007b8a', fontStyle: 'italic' }}>{shift.time}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Main Past Schedules Card */}
@@ -1390,7 +2404,7 @@ export default function RosterGenerator() {
                   {selectedHistoryIds.length === 2 && (
                     <button
                       onClick={() => {
-                        setActiveTab('ai');
+                        setActiveTab('lumina_ai');
                         setSelectedSchedule1(selectedHistoryIds[0]);
                         setSelectedSchedule2(selectedHistoryIds[1]);
                         runAiAudit(selectedHistoryIds[0], selectedHistoryIds[1]);
@@ -1530,9 +2544,8 @@ export default function RosterGenerator() {
         </div>
       )}
 
-
-      {/* ── TAB 3: Lumina AI Schedule Analytics ───────────────────────────── */}
-      {activeTab === 'ai' && (
+      {/* ── TAB 5: Lumina AI Intelligence ─────────────────────────────────── */}
+      {activeTab === 'lumina_ai' && (
         <div>
           {/* Controls */}
           <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>

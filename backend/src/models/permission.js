@@ -67,6 +67,18 @@ class Permission {
       if (!result[row.module]) result[row.module] = {};
       result[row.module][row.action] = !!row.granted;
     }
+
+    // Merge system defaults for any module/action missing from the DB
+    const defaults = ROLE_DEFAULTS[roleName] || {};
+    for (const [modName, actions] of Object.entries(defaults)) {
+      if (!result[modName]) result[modName] = {};
+      for (const [action, defaultGranted] of Object.entries(actions)) {
+        if (result[modName][action] === undefined) {
+          result[modName][action] = !!defaultGranted;
+        }
+      }
+    }
+
     return result;
   }
 

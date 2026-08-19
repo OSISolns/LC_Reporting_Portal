@@ -599,6 +599,25 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create doctor_schedules:', err.message);
       });
 
+      console.log('⚙️ Running operations_task_logs table migration...');
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS operations_task_logs (
+          id               INTEGER PRIMARY KEY AUTOINCREMENT,
+          log_date         TEXT NOT NULL,
+          created_by       INTEGER REFERENCES users(id),
+          created_by_name  TEXT,
+          tasks_json       TEXT DEFAULT '[]',
+          general_notes    TEXT DEFAULT '',
+          status           TEXT CHECK(status IN ('draft','submitted')) DEFAULT 'draft',
+          created_at       DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at       DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `).then(() => {
+        console.log('  ✅ Table operations_task_logs created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create operations_task_logs:', err.message);
+      });
+
       const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
       console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));
       

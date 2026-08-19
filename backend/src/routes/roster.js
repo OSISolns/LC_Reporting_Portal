@@ -25,10 +25,19 @@ const upload = multer({
 router.use(authMiddleware);
 
 router.post('/parse', upload.single('file'), rosterController.parseRoster);
+router.post('/save-manual', rosterController.saveManualRoster);
 router.get('/history', rosterController.getScheduleHistory);
 router.delete('/history/:id', rosterController.deleteScheduleHistory);
 router.post('/history/bulk-delete', rosterController.bulkDeleteScheduleHistory);
 router.get('/download/:id', rosterController.downloadScheduleDocx);
 router.post('/analyze-ai', rosterController.analyzeSchedulesWithAI);
+
+// KaziSync API Gateway endpoints
+router.get('/kazi/roster', rosterController.getRoster);
+router.get('/kazi/attendance', rosterController.getAttendance);
+router.get('/kazi/staff', rosterController.getKaziStaff);
+router.get('/kazi/reports/pdf', rosterController.downloadPdf);
+
+router.get('/kazi/reports/excel', rosterController.downloadExcel);
 
 module.exports = router;

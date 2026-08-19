@@ -38,10 +38,13 @@ const getMonthLabel = (s) => {
 // ─── Roles ─────────────────────────────────────────────────────────────────────
 const ALL_ROLES = [
   'admin', 'it_officer', 'coo', 'deputy_coo', 'chairman', 'sales_manager',
-  'cashier', 'principal_cashier', 'customer_care', 'lab_team_lead',
-  'consultant', 'operations_staff', 'pa', 'staff', 'hsfp', 'nurse',
-  'chef-nurse', 'stock-manager', 'doctor', 'medical_director',
-  'procurement-manager',
+  'cashier', 'principal_cashier', 'customer_care', 'lab_team_lead', 'lab_lead', 'lab_manager',
+  'consultant', 'operations_staff', 'operations', 'pa', 'staff', 'hsfp', 'nurse',
+  'chef-nurse', 'chief_nurse', 'head_nurse', 'nursing_lead', 'deputy_chef_nurse', 
+  'deputy-chef-nurse', 'deputy_chief_nurse', 'stock-manager', 'doctor', 'medical_director',
+  'procurement-manager', 'imaging_tech', 'imaging_manager', 'dental_hod', 'dental_tech', 
+  'dental_lab_manager', 'dental', 'dentist', 'lab_tech', 'lab', 'physio_manager', 'physio', 
+  'physiotherapist'
 ];
 
 // Role display colors for badges
@@ -49,10 +52,16 @@ const ROLE_COLORS = {
   admin: '#1C69A0', it_officer: '#2563eb', coo: '#0891b2', deputy_coo: '#0284c7',
   chairman: '#d97706', sales_manager: '#059669', cashier: '#0f766e',
   principal_cashier: '#0d9488', customer_care: '#1C69A0', lab_team_lead: '#4f46e5',
-  consultant: '#1C69A0', operations_staff: '#b45309', pa: '#1C69A0',
+  lab_lead: '#4f46e5', lab_manager: '#4338ca', consultant: '#1C69A0', 
+  operations_staff: '#b45309', operations: '#b45309', pa: '#1C69A0',
   staff: '#64748b', hsfp: '#dc2626', nurse: '#db2777', 'chef-nurse': '#1C69A0',
-  'stock-manager': '#16a34a', doctor: '#2563eb',
-  medical_director: '#be123c', 'procurement-manager': '#0d9488',
+  chief_nurse: '#1C69A0', head_nurse: '#1C69A0', nursing_lead: '#1C69A0', 
+  deputy_chef_nurse: '#0284c7', 'deputy-chef-nurse': '#0284c7', deputy_chief_nurse: '#0284c7',
+  'stock-manager': '#16a34a', doctor: '#2563eb', medical_director: '#be123c', 
+  'procurement-manager': '#0d9488', imaging_tech: '#8b5cf6', imaging_manager: '#7c3aed',
+  dental_hod: '#059669', dental_tech: '#10b981', dental_lab_manager: '#047857', 
+  dental: '#34d399', dentist: '#059669', lab_tech: '#6366f1', lab: '#818cf8',
+  physio_manager: '#ea580c', physio: '#f97316', physiotherapist: '#f97316'
 };
 
 const formatRole = (r) => r ? r.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';

@@ -175,10 +175,10 @@ const ProstheticsOdontogramWorkspace = () => {
   return (
     <div className="space-y-5">
       {/* Case Selector Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div ref={pickerRef} className="relative flex-1">
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
               Connected Prosthetics Case
             </label>
             <div className="relative">
@@ -189,7 +189,7 @@ const ProstheticsOdontogramWorkspace = () => {
                 onChange={(e) => { setSearch(e.target.value); setPickerOpen(true); }}
                 onFocus={() => setPickerOpen(true)}
                 placeholder="Search by case ref, patient PID, clinician…"
-                className="w-full pl-9 pr-9 py-2.5 text-sm font-semibold rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+                className="w-full pl-9 pr-9 py-2 text-sm font-medium rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400 transition bg-white"
               />
               <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
@@ -197,14 +197,14 @@ const ProstheticsOdontogramWorkspace = () => {
             <AnimatePresence>
               {pickerOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: -6 }}
+                  initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  className="absolute z-30 mt-1.5 w-full max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl"
+                  exit={{ opacity: 0, y: -4 }}
+                  className="absolute z-30 mt-1 w-full max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg"
                 >
                   {loadingCases ? (
                     <div className="p-4 text-center text-xs text-slate-400">
-                      <Loader2 size={16} className="animate-spin inline mr-1.5" /> Loading cases…
+                      <Loader2 size={15} className="animate-spin inline mr-1.5" /> Loading cases…
                     </div>
                   ) : filteredCases.length === 0 ? (
                     <div className="p-4 text-center text-xs text-slate-400">No matching cases found.</div>
@@ -214,21 +214,21 @@ const ProstheticsOdontogramWorkspace = () => {
                         key={c.id}
                         type="button"
                         onClick={() => handleSelectCase(c)}
-                        className="w-full text-left px-4 py-2.5 hover:bg-indigo-50/70 border-b border-slate-50 last:border-0 transition-colors cursor-pointer"
+                        className="w-full text-left px-4 py-2.5 hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors cursor-pointer"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-[11px] font-black text-indigo-600">{c.case_ref}</span>
-                          <span className="text-[10px] font-bold text-slate-400">{c.status || 'Received'}</span>
+                          <span className="font-mono text-[11px] font-bold text-slate-900">{c.case_ref}</span>
+                          <span className="text-[10px] font-semibold text-slate-500">{c.status || 'Received'}</span>
                         </div>
-                        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-500 font-medium">
+                        <div className="flex items-center gap-2.5 mt-0.5 text-[11px] text-slate-500 font-medium">
                           {c.patient_id ? (
-                            <span className="font-mono text-blue-600 font-bold">PID: {c.patient_id}</span>
+                            <span className="font-mono text-slate-700 font-semibold">PID: {c.patient_id}</span>
                           ) : (
-                            <span className="italic text-slate-300">No PID linked</span>
+                            <span className="italic text-slate-400">No PID linked</span>
                           )}
                           <span>{c.clinician_name || 'Dr. Dental'}</span>
                           <span className="text-slate-300">•</span>
-                          <span>{c.work_done}</span>
+                          <span className="truncate">{c.work_done}</span>
                         </div>
                       </button>
                     ))
@@ -243,7 +243,7 @@ const ProstheticsOdontogramWorkspace = () => {
               <button
                 type="button"
                 onClick={() => setSelectedCaseId(null)}
-                className="px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                className="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
               >
                 Clear
               </button>
@@ -251,7 +251,7 @@ const ProstheticsOdontogramWorkspace = () => {
             <button
               type="button"
               onClick={fetchCases}
-              className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition cursor-pointer"
               title="Refresh cases"
             >
               <RefreshCw size={15} />
@@ -261,39 +261,39 @@ const ProstheticsOdontogramWorkspace = () => {
 
         {/* Patient / Case Identity Strip */}
         {selectedCase && (
-          <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2.5">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black">
+          <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#1B669E] text-white text-xs font-semibold">
               <ClipboardList size={13} /> {selectedCase.case_ref}
             </span>
 
             {selectedCase.patient_id ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-xs font-black font-mono">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold font-mono">
                 PID: {selectedCase.patient_id}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
                 <AlertTriangle size={13} /> No patient PID linked to this case
               </span>
             )}
 
             {patientLoading && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-xs font-bold">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-500 text-xs font-medium">
                 <Loader2 size={12} className="animate-spin" /> Fetching patient record…
               </span>
             )}
 
             {patient && (
               <>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-black">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
                   <User size={13} /> {patient.full_name}
                 </span>
                 {(patient.age || patient.dob) && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium">
                     <Cake size={13} /> {patient.age ? `${patient.age} yrs` : patient.dob} {patient.gender ? `• ${patient.gender}` : ''}
                   </span>
                 )}
                 {patient.phone && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium">
                     <Phone size={13} /> {patient.phone}
                   </span>
                 )}
@@ -301,19 +301,19 @@ const ProstheticsOdontogramWorkspace = () => {
             )}
 
             {patientError && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
                 <AlertTriangle size={13} /> Patient record not found for this PID
               </span>
             )}
 
             {selectedCase.clinic_of_origin && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium">
                 <Building2 size={13} /> {selectedCase.clinic_of_origin}
               </span>
             )}
 
             {selectedCase.required_date && (
-              <span className="ml-auto text-[11px] font-bold text-slate-400">
+              <span className="ml-auto text-[11px] font-semibold text-slate-500">
                 Target delivery: {format(parseISO(selectedCase.required_date), 'dd MMM yyyy')}
               </span>
             )}

@@ -63,6 +63,7 @@ const ACRYLIC_WORK_SUBTYPES = [
   'Removable Orthodontic Functional',
   'Hawley Appliance with Appliance',
   'Hawley Retainers',
+  'Vacuum Formed Retainer',
   'Any Other Functional Appliance',
   'Any Wire Auxiliary',
   'Other',
@@ -78,9 +79,27 @@ const METAL_CERAMIC_SUBTYPES = [
   'Other',
 ];
 
+const TRAYS_SUBTYPES = [
+  'Vacuum Formed Retainer',
+  'Bleaching Trays',
+  'Custom Impression Trays',
+  'Night Guard / Splint',
+  'Other',
+];
+
+const CAD_CAM_SUBTYPES = [
+  'Vacuum Formed Retainer / Surgical Guide',
+  'Zirconia Crown / Bridge',
+  'E-Max Monolithic Restorations',
+  'Custom Abutments',
+  'Other',
+];
+
 const PROSTHETICS_SUBTYPES = {
   'Acrylic Work': ACRYLIC_WORK_SUBTYPES,
   'Metal & Ceramic': METAL_CERAMIC_SUBTYPES,
+  'Trays': TRAYS_SUBTYPES,
+  'CAD-CAM': CAD_CAM_SUBTYPES,
 };
 
 const STAGE_CONFIG = {
@@ -164,27 +183,24 @@ const getOdontogramSummary = (caseItem) => {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-const StatCard = ({ icon: Icon, label, value, sub, colorClass = 'text-rose-500', bgClass = 'bg-rose-50' }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 12 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex items-center gap-4"
-  >
-    <div className={`w-12 h-12 rounded-xl ${bgClass} flex items-center justify-center flex-shrink-0`}>
-      <Icon size={22} className={colorClass} />
+// ─── Sub-components ───────────────────────────────────────────────────────────
+const StatCard = ({ icon: Icon, label, value, sub, colorClass = 'text-slate-700', bgClass = 'bg-slate-100' }) => (
+  <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center gap-3.5">
+    <div className={`w-10 h-10 rounded-lg ${bgClass} flex items-center justify-center flex-shrink-0`}>
+      <Icon size={18} className={colorClass} />
     </div>
     <div className="min-w-0">
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide truncate">{label}</p>
-      <p className="text-2xl font-black text-slate-800 leading-tight">{value}</p>
-      {sub && <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>}
+      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">{label}</p>
+      <p className="text-xl font-bold text-slate-900 leading-tight">{value}</p>
+      {sub && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>}
     </div>
-  </motion.div>
+  </div>
 );
 
 const WorkTypeBadge = ({ type }) => {
   const c = WORK_TYPE_COLORS[type] || WORK_TYPE_COLORS['Other'];
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border ${c.bg} ${c.text} ${c.border}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
       {type}
     </span>
@@ -194,7 +210,7 @@ const WorkTypeBadge = ({ type }) => {
 const StageBadge = ({ status }) => {
   const st = STAGE_CONFIG[status] || STAGE_CONFIG['Received'];
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase border ${st.bg} ${st.color} ${st.border}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${st.bg} ${st.color} ${st.border}`}>
       <span>Step {st.step}/6:</span>
       <span>{st.label}</span>
     </span>
@@ -212,7 +228,7 @@ const OdontogramBadge = ({ caseItem, onClick }) => {
       <button
         type="button"
         onClick={onClick}
-        className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+        className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
         title="No odontogram logged yet — click to view/open"
       >
         <Layers size={11} /> No odontogram
@@ -224,10 +240,10 @@ const OdontogramBadge = ({ caseItem, onClick }) => {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+      className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
         allComplete
-          ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
-          : 'text-amber-700 bg-amber-50 hover:bg-amber-100'
+          ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+          : 'text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200'
       }`}
       title="View odontogram details"
     >
@@ -241,7 +257,7 @@ const OdontogramBadge = ({ caseItem, onClick }) => {
 // to remount (and lose focus on) every field after each character typed.
 const Field = ({ label, type = 'text', required, children, hint, value, error, onChange }) => (
   <div>
-    <label className="block text-xs font-semibold text-slate-600 mb-1">
+    <label className="block text-xs font-semibold text-slate-700 mb-1">
       {label} {required && <span className="text-rose-500">*</span>}
     </label>
     {children || (
@@ -249,7 +265,7 @@ const Field = ({ label, type = 'text', required, children, hint, value, error, o
         type={type}
         value={value}
         onChange={onChange}
-        className={`w-full px-3 py-2 text-sm rounded-xl border ${error ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-white'} focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
+        className={`w-full px-3 py-2 text-sm rounded-lg border ${error ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-white'} focus:outline-none focus:ring-2 focus:ring-slate-400 transition`}
       />
     )}
     {hint && <p className="text-[10px] text-slate-400 mt-0.5">{hint}</p>}
@@ -801,6 +817,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                 <Field label="Work Done / Prosthesis Type" required error={errors.work_done}>
                   <div className="relative">
                     <select
+                      disabled={!!editCase}
                       value={form.work_done}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -810,7 +827,7 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
                           return next;
                         });
                       }}
-                      className={`w-full px-3 py-2 text-sm rounded-xl border appearance-none bg-white pr-9 ${
+                      className={`w-full px-3 py-2 text-sm rounded-xl border appearance-none ${editCase ? 'bg-slate-100 cursor-not-allowed text-slate-700' : 'bg-white'} pr-9 ${
                         errors.work_done ? 'border-rose-400 bg-rose-50' : 'border-slate-200'
                       } focus:outline-none focus:ring-2 focus:ring-rose-300 transition`}
                     >
@@ -1680,35 +1697,35 @@ const DentalCasesLog = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-            <Stethoscope size={20} className="text-rose-500" /> Prosthetics Cases &amp; Delivery Log
+          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 tracking-tight">
+            <FlaskConical size={20} className="text-slate-700" /> Prosthetics Cases &amp; Delivery Log
           </h2>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Dental lab work orders, manufacturing stage pipeline &amp; delivery tracking — {periodLabel}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => { fetchCases(); fetchStats(); }}
-            className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+            className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition cursor-pointer"
             title="Refresh"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={15} />
           </button>
 
           <button
             onClick={handleExportXlsx}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition shadow-sm cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#1B669E] hover:bg-[#155280] text-white text-xs font-semibold rounded-lg transition cursor-pointer"
           >
-            <Download size={16} /> Export Excel
+            <Download size={15} /> Export Excel
           </button>
 
           {canEdit && (
             <button
               onClick={() => { setEditCase(null); setShowForm(true); }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition shadow-sm shadow-rose-200 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1B669E] hover:bg-[#155280] text-white text-xs font-semibold rounded-lg transition cursor-pointer"
             >
-              <Plus size={16} /> Log New Case
+              <Plus size={15} /> Log New Case
             </button>
           )}
         </div>
@@ -1718,14 +1735,14 @@ const DentalCasesLog = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {/* From → To Date Range */}
-          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
             <Calendar size={13} className="text-slate-400 shrink-0" />
             <input
               type="date"
               value={dateFrom}
               max={dateTo}
               onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-              className="text-xs font-bold text-slate-700 outline-none bg-transparent cursor-pointer"
+              className="text-xs font-semibold text-slate-700 outline-none bg-transparent cursor-pointer"
             />
             <span className="text-slate-300 text-xs">→</span>
             <input
@@ -1733,22 +1750,22 @@ const DentalCasesLog = () => {
               value={dateTo}
               min={dateFrom}
               onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-              className="text-xs font-bold text-slate-700 outline-none bg-transparent cursor-pointer"
+              className="text-xs font-semibold text-slate-700 outline-none bg-transparent cursor-pointer"
             />
           </div>
 
           {/* Quick Presets */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl w-fit">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg w-fit">
             {DATE_PRESETS.map(p => {
               const isActive = dateFrom === p.from() && dateTo === p.to();
               return (
                 <button
                   key={p.key}
                   onClick={() => { setDateFrom(p.from()); setDateTo(p.to()); setPage(1); }}
-                  className={`px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
                     isActive
-                      ? 'bg-white text-rose-600 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-white text-[#1B669E] shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   {p.label}
@@ -1769,9 +1786,9 @@ const DentalCasesLog = () => {
             <button
               key={st.value}
               onClick={() => { setStageFilter(st.value); setPage(1); }}
-              className={`px-3 py-1.5 text-xs font-extrabold rounded-xl border transition cursor-pointer ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition cursor-pointer ${
                 stageFilter === st.value
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  ? 'bg-[#1B669E] text-white border-[#1B669E] shadow-xs'
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
               }`}
             >
@@ -1785,7 +1802,7 @@ const DentalCasesLog = () => {
       {statsLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-slate-100 rounded-2xl h-24 animate-pulse" />
+            <div key={i} className="bg-slate-100 rounded-xl h-20 animate-pulse" />
           ))}
         </div>
       ) : stats ? (
@@ -1795,23 +1812,23 @@ const DentalCasesLog = () => {
             label="Total Cases"
             value={stats.totals?.total_cases ?? 0}
             sub={`${periodLabel}`}
-            colorClass="text-rose-500"
-            bgClass="bg-rose-50"
+            colorClass="text-slate-700"
+            bgClass="bg-slate-100"
           />
           <StatCard
             icon={Package}
             label="Total Units"
             value={stats.totals?.total_units ?? 0}
             sub="prosthetics produced"
-            colorClass="text-violet-500"
-            bgClass="bg-violet-50"
+            colorClass="text-indigo-600"
+            bgClass="bg-indigo-50"
           />
           <StatCard
             icon={DollarSign}
             label="Total Revenue"
             value={`RWF ${Number(stats.totals?.total_revenue ?? 0).toLocaleString()}`}
             sub="lab work billing"
-            colorClass="text-emerald-500"
+            colorClass="text-emerald-700"
             bgClass="bg-emerald-50"
           />
           <StatCard
@@ -1819,14 +1836,14 @@ const DentalCasesLog = () => {
             label="Delivered Cases"
             value={cases.filter(c => c.status === 'Delivered').length}
             sub="delivered to clinicians"
-            colorClass="text-indigo-500"
-            bgClass="bg-indigo-50"
+            colorClass="text-blue-700"
+            bgClass="bg-blue-50"
           />
         </div>
       ) : null}
 
       {/* Table Section */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 border-b border-slate-100">
           <div className="relative flex-1 max-w-sm">

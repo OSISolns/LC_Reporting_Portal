@@ -67,30 +67,30 @@ export default function LuminaDentalAiPrescriber({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* MODAL HEADER */}
-        <div className="bg-gradient-to-r from-indigo-700 via-purple-700 to-purple-800 p-6 text-white flex items-center justify-between">
+        <div className="bg-[#1B669E] p-5 text-white flex items-center justify-between border-b border-[#165380]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-indigo-200">
-              <Sparkles size={20} />
+            <div className="w-9 h-9 rounded-lg bg-[#155280] flex items-center justify-center text-white">
+              <Stethoscope size={18} />
             </div>
             <div>
-              <h3 className="text-lg font-black tracking-tight m-0 flex items-center gap-2">
-                Lumina AI Dental Prescriber
+              <h3 className="text-base font-bold tracking-tight m-0 flex items-center gap-2">
+                Clinical Dental Prescriber Assistant
               </h3>
-              <p className="text-xs text-indigo-200 m-0 font-medium">
-                {patientName ? `Evidence-based dental medication protocols for ${patientName}` : 'AI Dental Pharmacology & Evidence-based Protocols'}
+              <p className="text-xs text-blue-100 m-0 font-normal">
+                {patientName ? `Evidence-based dental medication protocols for ${patientName}` : 'Dental Pharmacology & Evidence-based Protocols'}
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-white cursor-pointer"
+            className="p-1.5 rounded-lg bg-[#155280] hover:bg-[#11446a] transition-colors text-white cursor-pointer"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 

@@ -48,7 +48,7 @@ const SECTIONS = [
 // ─── Suspense fallback ────────────────────────────────────────────────────────
 const TabLoader = () => (
   <div className="flex items-center justify-center py-24">
-    <Loader2 size={28} className="text-rose-400 animate-spin" />
+    <Loader2 size={24} className="text-slate-400 animate-spin" />
   </div>
 );
 
@@ -99,40 +99,40 @@ const DentalHub = () => {
     <div className="p-6">
       {/* ── Page Header ──────────────────────────────────────────────────── */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <Heart className="text-rose-500" size={24} />
+        <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2 tracking-tight">
+          <FlaskConical className="text-slate-700" size={22} />
           Dental Hub
         </h1>
-        <p className="text-sm text-slate-500 mt-0.5">
+        <p className="text-xs text-slate-500 mt-1">
           Odontology records, prosthetics lab workflow, and clinical management.
         </p>
       </div>
 
       {/* ── Section Switcher (Only shown if user has access to multiple sections) ── */}
       {visibleSections.length > 1 && (
-        <div className="flex gap-2.5 mb-5">
+        <div className="flex gap-2 mb-6">
           {visibleSections.map(({ key, label, icon: Icon, description }) => (
             <button
               key={key}
               onClick={() => setSection(key)}
-              className={`flex-1 max-w-xs flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-left transition-all ${
+              className={`flex-1 max-w-xs flex items-center gap-3 px-3.5 py-2.5 rounded-lg border text-left transition-colors ${
                 section === key
-                  ? 'border-rose-500 bg-rose-50/50 shadow-2xs'
-                  : 'border-slate-200 bg-white hover:border-slate-300'
+                  ? 'border-[#1B669E] bg-[#1B669E] text-white shadow-xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/50'
               }`}
             >
               <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                  section === key ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-400'
+                className={`w-7 h-7 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
+                  section === key ? 'bg-[#155280] text-white' : 'bg-slate-100 text-slate-500'
                 }`}
               >
                 <Icon size={14} />
               </div>
               <div className="min-w-0">
-                <p className={`text-xs font-black leading-none ${section === key ? 'text-rose-700' : 'text-slate-700'}`}>
+                <p className={`text-xs font-semibold leading-none ${section === key ? 'text-white' : 'text-slate-800'}`}>
                   {label}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5 leading-none truncate">
+                <p className={`text-[11px] mt-1 leading-none truncate ${section === key ? 'text-blue-100' : 'text-slate-400'}`}>
                   {description}
                 </p>
               </div>
@@ -142,15 +142,15 @@ const DentalHub = () => {
       )}
 
       {/* ── Sub-Tabs ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 border-b border-slate-200 mb-5 overflow-x-auto">
+      <div className="flex items-center gap-1 border-b border-slate-200 mb-6 overflow-x-auto">
         {currentSection.tabs.map(({ key, icon: Icon, label }) => (
           <button
             key={key}
             onClick={() => setActiveTab((prev) => ({ ...prev, [section]: key }))}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 -mb-px transition-colors whitespace-nowrap ${
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
               currentTab === key
-                ? 'border-rose-500 text-rose-600'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+                ? 'border-[#1B669E] text-[#1B669E] font-semibold'
+                : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
             }`}
           >
             <Icon size={14} />

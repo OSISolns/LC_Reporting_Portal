@@ -3,6 +3,7 @@
 const mammoth = require('mammoth');
 const cheerio = require('cheerio');
 const db = require('../config/db');
+const Service = require('../services/kaziSyncService');
 
 /**
  * Data Cleansing Function
@@ -30,7 +31,7 @@ const db = require('../config/db');
  */
 function scrubSensitiveData(text) {
   if (!text) return '';
-  
+
   return text
     // 1. Remove Team Lead markers with phone numbers e.g. (T.L:0788670200) or (TL: 078 302 1075)
     .replace(/\(\s*T\.?L\.?\s*:?\s*[\d\s\-]+\)/gi, '')
@@ -247,7 +248,7 @@ function normalizeUnitName(rawStr) {
   if (lower === 'gp' || lower.includes('general practitioner')) return 'General Practitioner';
   if (lower === 'fm' || lower.includes('family')) return 'Family Medicine';
   if (lower.includes('uro')) return 'Urology';
-  
+
   // Dental units
   if (lower.includes('dental surgeon') || lower.includes('dentist')) return 'Dental Surgeons';
   if (lower.includes('dental therapist')) return 'Dental Therapists';
@@ -319,7 +320,7 @@ exports.parseRoster = async (req, res) => {
     if (existing && existing.length > 0 && overwrite) {
       await db.query(`DELETE FROM doctor_schedules WHERE roster_date = ?`, [targetScheduleDateStr]);
     }
-    
+
     const parsedData = [];
     let currentSection = 'clinical'; // 'clinical' | 'paramedical' | 'admin'
 
@@ -366,7 +367,7 @@ exports.parseRoster = async (req, res) => {
           .split(/<br\s*\/?>|<p[^>]*>|<\/p>/i)
           .map(str => $('<div>' + str + '</div>').text().trim())
           .filter(Boolean);
-        
+
         if (lines.length > 0) {
           cellTexts.push(lines);
         } else {
@@ -428,8 +429,13 @@ exports.parseRoster = async (req, res) => {
             continue;
           }
 
-          // Check if line indicates shift time e.g. (From 9am-5pm)
-          if (/^\(?[Ff]rom\s+[\d:a-zA-Z\s\-]+(?:\)|$)/i.test(cleansed) || /^\(?\d+[:0-9]*[ap]m\s*-\s*\d+[:0-9]*[ap]m\)?/i.test(cleansed)) {
+          // Check if line indicates shift time e.g. (From 9am-5pm) or 08:00 - 17:00
+          const isTimeLine = /^\(?[Ff]rom\s+/i.test(cleansed) ||
+            /\b\d{1,2}(?::\d{2})?\s*[ap]m\b/i.test(cleansed) ||
+            /\b\d{1,2}:\d{2}\b/i.test(cleansed) ||
+            /^\(?\d+[:0-9]*[ap]m\s*-\s*\d+[:0-9]*[ap]m\)?/i.test(cleansed);
+
+          if (isTimeLine) {
             if (currentShiftTime && staffNames.length > 0) {
               results.push({ time: currentShiftTime, staff: [...staffNames] });
               staffNames = [];
@@ -587,6 +593,57 @@ exports.parseRoster = async (req, res) => {
 };
 
 /**
+ * POST /api/roster/save-manual
+ * Saves a manually constructed roster (no file upload required).
+ * Body: { roster_date: string, parsedUnits: Array }
+ */
+exports.saveManualRoster = async (req, res, next) => {
+  try {
+    const { roster_date, parsedUnits } = req.body;
+
+    if (!roster_date || !Array.isArray(parsedUnits) || parsedUnits.length === 0) {
+      return res.status(400).json({ success: false, message: 'roster_date and a non-empty parsedUnits array are required.' });
+    }
+
+    const uName = req.user ? (req.user.full_name || req.user.username || 'Admin') : 'System Admin';
+
+    // Check for existing record on this date
+    const existing = await db.query(
+      `SELECT id FROM doctor_schedules WHERE roster_date = ? LIMIT 1`,
+      [roster_date]
+    );
+
+    let savedId;
+    if (existing.rows?.length > 0) {
+      // Overwrite existing
+      await db.query(
+        `UPDATE doctor_schedules SET parsed_json = ?, file_name = ?, created_by_name = ? WHERE roster_date = ?`,
+        [JSON.stringify(parsedUnits), 'Manual_Builder.json', uName, roster_date]
+      );
+      savedId = existing.rows[0].id;
+    } else {
+      const insertRes = await db.query(
+        `INSERT INTO doctor_schedules (file_name, roster_date, parsed_json, file_base64, created_by_name)
+         VALUES (?, ?, ?, ?, ?) RETURNING id`,
+        ['Manual_Builder.json', roster_date, JSON.stringify(parsedUnits), '', uName]
+      );
+      savedId = insertRes.rows?.[0]?.id || null;
+    }
+
+    return res.json({
+      success: true,
+      message: `Roster for ${roster_date} saved successfully.`,
+      id: savedId,
+      parsedUnits,
+      tomorrowDate: roster_date,
+    });
+  } catch (err) {
+    console.error('Error saving manual roster:', err);
+    next(err);
+  }
+};
+
+/**
  * GET /api/roster/history
  * Returns historical parsed doctor schedules.
  */
@@ -613,7 +670,7 @@ exports.getScheduleHistory = async (req, res, next) => {
             if (s.staff?.[0] !== 'Not Available') doctorCount += (s.staff || []).length;
           });
         });
-      } catch (e) {}
+      } catch (e) { }
 
       return {
         id: r.id,
@@ -844,4 +901,85 @@ exports.analyzeSchedulesWithAI = async (req, res, next) => {
     next(err);
   }
 };
+
+/**
+ * Fetches Company Roster from  API Gateway.
+ */
+exports.getRoster = async (req, res, next) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const data = await Service.getCompanyRoster(start_date, end_date);
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Fetches Attendance Records from  API Gateway.
+ */
+exports.getAttendance = async (req, res, next) => {
+  try {
+    const { start_date, end_date, page, per_page } = req.query;
+    const data = await Service.getAttendanceRecords(start_date, end_date, page, per_page);
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Fetches Staff / Employees list from KaziSync DB.
+ */
+exports.getKaziStaff = async (req, res, next) => {
+  try {
+    const data = await Service.getEmployees();
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+/**
+ * Downloads Attendance Summary PDF from  API Gateway.
+ */
+exports.downloadPdf = async (req, res, next) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const response = await Service.downloadAttendancePdf(start_date, end_date);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="_Attendance_${start_date}_${end_date}.pdf"`);
+    return res.send(Buffer.from(response.data));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Downloads Attendance Summary Excel from  API Gateway.
+ */
+exports.downloadExcel = async (req, res, next) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const response = await Service.downloadAttendanceExcel(start_date, end_date);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="_Attendance_${start_date}_${end_date}.xlsx"`);
+    return res.send(Buffer.from(response.data));
+  } catch (err) {
+    next(err);
+  }
+};
+
 

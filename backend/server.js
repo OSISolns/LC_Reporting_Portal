@@ -37,6 +37,7 @@ const imagingRoutes = require('./src/routes/imaging');
 const labRoutes = require('./src/routes/lab');
 const dentalRoutes = require('./src/routes/dental');
 const rosterRoutes = require('./src/routes/roster');
+const operationsRoutes = require('./src/routes/operations');
 
 const app = express();
 
@@ -119,6 +120,7 @@ app.use('/api/imaging', imagingRoutes);
 app.use('/api/lab', labRoutes);
 app.use('/api/dental', dentalRoutes);
 app.use('/api/roster', rosterRoutes);
+app.use('/api/operations', operationsRoutes);
 
 
 

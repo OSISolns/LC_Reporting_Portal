@@ -60,3 +60,11 @@ export const bulkDeleteRosterHistory = (ids) => {
   return api.post('/roster/history/bulk-delete', { ids });
 };
 
+/**
+ * Saves a manually built roster (no file upload needed).
+ * @param {string} roster_date - e.g. "18TH AUGUST 2026"
+ * @param {Array}  parsedUnits - unit objects matching the parsedUnits schema
+ */
+export const saveManualRoster = (roster_date, parsedUnits) => {
+  return api.post('/roster/save-manual', { roster_date, parsedUnits });
+};
