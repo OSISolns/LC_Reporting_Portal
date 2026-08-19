@@ -434,7 +434,6 @@ const Permissions = () => {
       <div style={{ display: 'flex', gap: '2px', borderBottom: '1px solid var(--border-color)', marginBottom: '1.25rem', overflowX: 'auto' }}>
         <TabBtn id="roles"       label="Role Permissions"  icon={<Shield size={15} />} />
         <TabBtn id="sidebar"     label="Sidebar Config"    icon={<Menu size={15} />} />
-        <TabBtn id="stock_unlock" label="Stock Passcode"   icon={<Key size={15} />} />
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════════
@@ -714,125 +713,7 @@ const Permissions = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════════
-          TAB 3: STOCK PASSCODE
-      ══════════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'stock_unlock' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-          {/* Passcode generator */}
-          <div style={panelStyle}>
-            <div style={{ padding: '0.85rem 1.1rem', borderBottom: '1px solid var(--border-color)', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ padding: '8px', backgroundColor: 'rgba(0,123,138,0.1)', color: 'var(--primary-dark)', borderRadius: '8px' }}><Key size={17} /></div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-dark)' }}>Daily Stock Checkup Passcode</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Generate monthly override passwords for nursing staff to unlock stock editing</div>
-              </div>
-            </div>
-            <div style={{ padding: '1.25rem', display: 'flex', flexWrap: 'wrap', gap: '1.25rem', alignItems: 'flex-end' }}>
-              {/* Month */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: 190 }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Calendar size={13} /> Target Month
-                </label>
-                <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-                  style={{ padding: '9px 10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '8px', fontSize: '0.88rem', outline: 'none', cursor: 'pointer' }}>
-                  {DYNAMIC_MONTHS.map(m => <option key={m} value={m}>{getMonthLabel(m)}</option>)}
-                </select>
-              </div>
-              {/* Passcode display */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1, minWidth: 240 }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary-dark)' }}>Active Passcode</label>
-                <div style={{ display: 'flex', gap: '7px' }}>
-                  <div style={{ position: 'relative', flex: 1 }}>
-                    <input type={passcodeVisible ? 'text' : 'password'} readOnly
-                      value={loadingPasscode ? 'Loading…' : (monthPasscode || 'No passcode for this month')}
-                      style={{
-                        width: '100%', padding: '9px 36px 9px 12px',
-                        backgroundColor: monthPasscode ? '#f8fafc' : '#fff1f2',
-                        border: `1.5px solid ${monthPasscode ? 'var(--border-color)' : '#fecaca'}`,
-                        borderRadius: '8px', fontSize: '0.95rem', fontWeight: monthPasscode ? 700 : 400,
-                        color: monthPasscode ? 'var(--text-primary)' : '#b91c1c',
-                        letterSpacing: passcodeVisible && monthPasscode ? '0.12em' : 'normal', outline: 'none',
-                      }} />
-                    {monthPasscode && (
-                      <button type="button" onClick={() => setPasscodeVisible(v => !v)}
-                        style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                        {passcodeVisible ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                    )}
-                  </div>
-                  {monthPasscode && (
-                    <button type="button" onClick={handleCopy}
-                      style={{ padding: '0.55rem 0.8rem', backgroundColor: '#fff', border: '1.5px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer', color: copied ? '#10b981' : 'var(--text-primary)', transition: 'all 0.2s' }}>
-                      {copied ? <Check size={15} /> : <Copy size={15} />}
-                    </button>
-                  )}
-                </div>
-              </div>
-              {/* Action */}
-              <button type="button" onClick={handleRegenerate} disabled={regenerating || loadingPasscode}
-                style={{ ...btnStyle(monthPasscode ? 'primary' : 'success'), height: 40, opacity: regenerating || loadingPasscode ? 0.7 : 1 }}>
-                <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} />
-                {monthPasscode ? 'Regenerate' : 'Generate Passcode'}
-              </button>
-            </div>
-          </div>
-
-          {/* Unlock logs */}
-          <div style={panelStyle}>
-            <div style={{ padding: '0.85rem 1.1rem', borderBottom: '1px solid var(--border-color)', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ padding: '8px', backgroundColor: 'rgba(0,123,138,0.1)', color: 'var(--primary-dark)', borderRadius: '8px' }}><History size={17} /></div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-dark)' }}>Stock Unlock Audit Logs</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Staff who unlocked stock editing this period</div>
-                </div>
-              </div>
-              <button onClick={fetchLogs} disabled={loadingLogs} style={btnStyle('ghost-sm')}>
-                <RefreshCw size={13} className={loadingLogs ? 'animate-spin' : ''} /> Refresh
-              </button>
-            </div>
-            <div style={{ padding: loadingLogs || unlockLogs.length === 0 ? '2rem' : 0 }}>
-              {loadingLogs ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}><RefreshCw size={24} className="animate-spin" style={{ color: 'var(--primary)' }} /></div>
-              ) : unlockLogs.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2.5rem 0', border: '1.5px dashed var(--border-color)', borderRadius: '10px', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                  <History size={36} style={{ margin: '0 auto 0.5rem', opacity: 0.25 }} /><br />No unlock logs recorded.
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                    <thead>
-                      <tr style={{ textAlign: 'left', backgroundColor: '#f8fafc', borderBottom: '1.5px solid var(--border-color)' }}>
-                        {['Target Month', 'Staff Member', 'Username', 'Unlock Timestamp'].map(h => (
-                          <th key={h} style={{ padding: '0.65rem 1rem', fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unlockLogs.map(log => (
-                        <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.65rem 1rem', fontWeight: 700, color: 'var(--primary-dark)' }}>{getMonthLabel(log.month_year)}</td>
-                          <td style={{ padding: '0.65rem 1rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                              <User size={12} style={{ color: 'var(--text-secondary)' }} />{log.full_name || 'N/A'}
-                            </div>
-                          </td>
-                          <td style={{ padding: '0.65rem 1rem', color: 'var(--text-secondary)' }}>@{log.username}</td>
-                          <td style={{ padding: '0.65rem 1rem', color: 'var(--text-secondary)' }}>
-                            {new Date(log.unlocked_at).toLocaleString('default', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Reset Modal ────────────────────────────────────────────────────────── */}
       <Modal isOpen={isResetModalOpen} onClose={() => { setIsResetModalOpen(false); setAdminPassword(''); }} title="Protocol Reset Authorization" maxWidth="460px">

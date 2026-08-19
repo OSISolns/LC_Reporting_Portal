@@ -37,7 +37,7 @@ const checkInventoryOrClinicalRole = (action) => {
   };
 };
 
-const checkDailyStockOrClinicalRole = (action) => {
+const authorizeRoles(['admin', 'stock-manager']) = (action) => {
   return async (req, res, next) => {
     if (req.user?.role === 'admin') return next();
     const CLINICAL_ROLES = [
@@ -49,7 +49,7 @@ const checkDailyStockOrClinicalRole = (action) => {
     if (CLINICAL_ROLES.includes(req.user?.role)) {
       return next();
     }
-    return checkPermission('daily_stock', action)(req, res, next);
+    return checkPermission('inventory', action)(req, res, next);
   };
 };
 
@@ -120,7 +120,7 @@ router.get('/inventory/requisitions', checkInventoryOrClinicalRole('view'), clin
 router.post('/inventory/requisitions', checkInventoryOrClinicalRole('create'), clinicalController.createRequisition);
 router.post('/inventory/requisitions/:id/approve', checkPermission('inventory', 'edit'), clinicalController.approveRequisition);
 router.post('/inventory/requisitions/:id/reject', checkPermission('inventory', 'edit'), clinicalController.rejectRequisition);
-router.post('/inventory/requisitions/:id/receive', checkDailyStockOrClinicalRole('edit'), clinicalController.receiveRequisition);
+router.post('/inventory/requisitions/:id/receive', authorizeRoles(['admin', 'stock-manager'])('edit'), clinicalController.receiveRequisition);
 router.get('/inventory/vendors', checkPermission('inventory', 'view'), clinicalController.getVendors);
 router.post('/inventory/vendors', checkPermission('inventory', 'create'), clinicalController.createVendor);
 router.put('/inventory/vendors/:id', checkPermission('inventory', 'edit'), clinicalController.updateVendor);
@@ -157,24 +157,24 @@ router.get('/shift-activities', clinicalController.getShiftActivities);
 router.post('/shift-activities', clinicalController.logShiftActivity);
 
 // --- Nursing Daily Stock Checkup (module: daily_stock) ---
-router.get('/inventory', checkPermission('daily_stock', 'view'), clinicalController.getInventory);
-router.get('/inventory/export', checkPermission('daily_stock', 'view'), clinicalController.exportInventoryExcel);
-router.post('/inventory/sync-central-stock', checkPermission('daily_stock', 'edit'), clinicalController.syncCentralStockToNursing);
-router.get('/inventory/nursing-store-stock', checkPermission('daily_stock', 'view'), clinicalController.getNursingStoreStock);
+router.get('/inventory', checkPermission('inventory', 'view'), clinicalController.getInventory);
+router.get('/inventory/export', checkPermission('inventory', 'view'), clinicalController.exportInventoryExcel);
+router.post('/inventory/sync-central-stock', checkPermission('inventory', 'edit'), clinicalController.syncCentralStockToNursing);
+router.get('/inventory/nursing-store-stock', checkPermission('inventory', 'view'), clinicalController.getNursingStoreStock);
 // /inventory/items is a shared reference lookup used broadly (nursing MAR,
 // e-prescriptions autocomplete) -- left on its existing role list rather
 // than folded into daily_stock, so prescribing roles keep access.
 router.get('/inventory/items', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'medical_director', 'pa', 'stock-manager', 'procurement-manager']), clinicalController.getInventoryItems);
-router.post('/inventory/bulk', checkPermission('daily_stock', 'edit'), clinicalController.saveInventoryBulk);
-router.get('/inventory/deleted-items', checkPermission('daily_stock', 'view'), clinicalController.getDeletedItems);
-router.post('/inventory/deleted-items', checkPermission('daily_stock', 'edit'), clinicalController.saveDeletedItems);
-router.post('/inventory/unlock', checkPermission('daily_stock', 'edit'), clinicalController.unlockInventory);
+router.post('/inventory/bulk', checkPermission('inventory', 'edit'), clinicalController.saveInventoryBulk);
+router.get('/inventory/deleted-items', checkPermission('inventory', 'view'), clinicalController.getDeletedItems);
+router.post('/inventory/deleted-items', checkPermission('inventory', 'edit'), clinicalController.saveDeletedItems);
+router.post('/inventory/unlock', checkPermission('inventory', 'edit'), clinicalController.unlockInventory);
 // Stock unlock passcode management stays admin-only regardless of the matrix
 // -- too sensitive to expose as a general toggle.
 router.get('/inventory/stock-password', authorizeRoles(['admin']), clinicalController.getStockPassword);
 router.post('/inventory/regenerate-stock-password', authorizeRoles(['admin']), clinicalController.regenerateStockPassword);
-router.post('/inventory/sync', checkDailyStockOrClinicalRole('edit'), clinicalController.triggerInventorySync);
-router.get('/inventory/change-logs', checkPermission('daily_stock', 'view'), clinicalController.getInventoryChangeLogs);
+router.post('/inventory/sync', authorizeRoles(['admin', 'stock-manager'])('edit'), clinicalController.triggerInventorySync);
+router.get('/inventory/change-logs', checkPermission('inventory', 'view'), clinicalController.getInventoryChangeLogs);
 
 // Shared medication-name reference lookup (FDA cache) -- same reasoning as
 // /inventory/items above, left open to the broad router-level gate.
