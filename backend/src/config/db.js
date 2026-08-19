@@ -618,6 +618,132 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create operations_task_logs:', err.message);
       });
 
+      console.log('⚙️ Running imaging_studies table migration...');
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS imaging_orders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          accession_number TEXT UNIQUE,
+          patient_id TEXT NOT NULL,
+          patient_name TEXT,
+          referring_provider TEXT,
+          modality TEXT,
+          exam_type_loinc TEXT,
+          exam_type_display TEXT,
+          clinical_indication TEXT,
+          indication_code_json TEXT,
+          priority TEXT DEFAULT 'routine',
+          notes TEXT,
+          status TEXT DEFAULT 'ordered',
+          created_by INTEGER,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          FOREIGN KEY (created_by) REFERENCES users(id)
+        )
+      `).catch(() => {});
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS imaging_studies (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_id INTEGER,
+          accession_number TEXT,
+          patient_id TEXT NOT NULL,
+          patient_name TEXT,
+          modality TEXT,
+          sub_unit TEXT,
+          study_instance_uid TEXT,
+          room TEXT,
+          equipment TEXT,
+          performed_by INTEGER,
+          scheduled_at DATETIME,
+          checked_in_at DATETIME,
+          started_at DATETIME,
+          acquired_at DATETIME,
+          technical_notes TEXT,
+          consent_json TEXT,
+          status TEXT DEFAULT 'scheduled',
+          created_by INTEGER,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          FOREIGN KEY (order_id) REFERENCES imaging_orders(id),
+          FOREIGN KEY (performed_by) REFERENCES users(id),
+          FOREIGN KEY (created_by) REFERENCES users(id)
+        )
+      `).then(async () => {
+        console.log('  ✅ Table imaging_studies created/verified.');
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_studies_status ON imaging_studies(status)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_studies_modality ON imaging_studies(modality)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_studies_patient ON imaging_studies(patient_id)').catch(() => {});
+
+        for (const col of [
+          'referring_provider TEXT',
+          'clinical_indication TEXT',
+          'exam_type_loinc TEXT',
+          'exam_type_display TEXT',
+          'sid TEXT',
+          'exam_region TEXT',
+          'patient_age TEXT',
+          'patient_sex TEXT',
+          'acquisition_params_json TEXT'
+        ]) {
+          try { await client.execute(`ALTER TABLE imaging_studies ADD COLUMN ${col}`); } catch (e) {}
+        }
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create imaging_studies:', err.message);
+      });
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS imaging_series (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          study_id INTEGER NOT NULL,
+          series_instance_uid TEXT,
+          modality TEXT,
+          description TEXT,
+          number_of_instances INTEGER DEFAULT 0,
+          wado_url TEXT,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          FOREIGN KEY (study_id) REFERENCES imaging_studies(id)
+        )
+      `).catch(() => {});
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS imaging_instances (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          series_id INTEGER NOT NULL,
+          sop_instance_uid TEXT,
+          wado_url TEXT,
+          frame_count INTEGER DEFAULT 1,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          FOREIGN KEY (series_id) REFERENCES imaging_series(id)
+        )
+      `).catch(() => {});
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS imaging_reports (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          study_id INTEGER NOT NULL,
+          radiologist_id INTEGER,
+          technique TEXT,
+          findings_narrative TEXT,
+          findings_code_json TEXT,
+          impression TEXT,
+          diagnosis_code_json TEXT,
+          recommendations TEXT,
+          status TEXT DEFAULT 'draft',
+          checksum TEXT,
+          verified_by INTEGER,
+          verified_at DATETIME,
+          amended_at DATETIME,
+          amendment_reason TEXT,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          FOREIGN KEY (study_id) REFERENCES imaging_studies(id),
+          FOREIGN KEY (radiologist_id) REFERENCES users(id),
+          FOREIGN KEY (verified_by) REFERENCES users(id)
+        )
+      `).then(async () => {
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_reports_study ON imaging_reports(study_id)').catch(() => {});
+      }).catch(() => {});
+
       const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
       console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));
       
