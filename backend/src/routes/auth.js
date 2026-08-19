@@ -9,17 +9,17 @@ const rateLimit = require('express-rate-limit');
 
 const allowDevLogin = process.env.NODE_ENV !== 'production' && process.env.ALLOW_DEV_LOGIN !== 'false';
 
-// Login Brute-force Protection
+// Login Brute-force Protection (Bypassed for internal portal)
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each username to 5 login requests per windowMs
-  keyGenerator: (req, res) => {
-    // Lockout based on the username being attempted, fallback to IP
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  keyGenerator: (req) => {
     return req.body && req.body.username ? req.body.username.toLowerCase() : req.ip;
   },
   standardHeaders: true,
   legacyHeaders: false,
   validate: { trustProxy: false },
+  skip: () => true,
   message: { 
     success: false, 
     message: 'Too many login attempts for this account, please try again after 15 minutes.' 

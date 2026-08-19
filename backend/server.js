@@ -80,17 +80,17 @@ app.use(cors({
 // Explicitly handle OPTIONS preflight for all routes
 app.options('*', cors());
 
-// ── Rate limiting ────────────────────────────────────────────────────────────
+// ── Rate limiting (Bypassed for internal portal activity) ────────────────────
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: process.env.NODE_ENV === 'production' ? 5000 : 20000, // Generous limit for clinical portal activity
+  windowMs: 15 * 60 * 1000,
+  max: 100000,
   standardHeaders: true,
   legacyHeaders: false,
   validate: { trustProxy: false },
-  skip: () => process.env.NODE_ENV === 'development' || process.env.DISABLE_RATE_LIMIT === 'true',
+  skip: () => true, // Completely bypass rate limiting for internal portal APIs
   message: { success: false, message: 'Too many requests. Please try again later.' },
 });
-app.use('/api/', apiLimiter);
+// app.use('/api/', apiLimiter);
 
 // ── Body parsing ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
