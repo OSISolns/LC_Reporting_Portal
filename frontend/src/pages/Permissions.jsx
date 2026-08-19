@@ -713,8 +713,6 @@ const Permissions = () => {
         </div>
       )}
 
-
-
       {/* ── Reset Modal ────────────────────────────────────────────────────────── */}
       <Modal isOpen={isResetModalOpen} onClose={() => { setIsResetModalOpen(false); setAdminPassword(''); }} title="Protocol Reset Authorization" maxWidth="460px">
         <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>

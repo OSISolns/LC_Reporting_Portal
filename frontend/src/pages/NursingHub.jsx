@@ -75,7 +75,7 @@ export default function NursingHub() {
   };
 
   const handleQuickAction = (submodule) => {
-    if (submodule === 'Shift Management' || submodule === 'Daily Stock Checkup') {
+    if (submodule === 'Shift Management') {
       navigate('/shifts');
       return;
     }
