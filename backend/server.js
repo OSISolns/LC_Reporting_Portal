@@ -83,10 +83,11 @@ app.options('*', cors());
 // ── Rate limiting ────────────────────────────────────────────────────────────
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
-  max: 200,
+  max: process.env.NODE_ENV === 'production' ? 5000 : 20000, // Generous limit for clinical portal activity
   standardHeaders: true,
   legacyHeaders: false,
   validate: { trustProxy: false },
+  skip: () => process.env.NODE_ENV === 'development' || process.env.DISABLE_RATE_LIMIT === 'true',
   message: { success: false, message: 'Too many requests. Please try again later.' },
 });
 app.use('/api/', apiLimiter);
