@@ -1,72 +1,88 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, Save, RefreshCw, CheckCircle2, AlertCircle, X, ChevronRight,
   Lock, Key, Eye, EyeOff, Copy, Check, Calendar, History, User,
   Menu, Search, Zap, BarChart2, ToggleLeft, ToggleRight, Info,
   LayoutDashboard, FileText, ReceiptText, AlertTriangle, Users, Brain,
   Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building,
-  ShieldAlert, TrendingDown, ShieldCheck, Server, Database
+  ShieldAlert, TrendingDown, ShieldCheck, Server, Database, Filter, Sliders,
+  UserCheck, CornerDownRight, CheckSquare, Square, RotateCcw, HelpCircle,
+  FlaskConical, Heart, Dumbbell, Settings, ScanLine, ArrowRight
 } from 'lucide-react';
 import {
   getModules, getRoleMatrix, updateRolePermissions,
-  resetRolePermissions, getUnlockLogs, getStockPassword, regenerateStockPassword
+  resetRolePermissions, getUserEffectivePermissions, setUserOverride
 } from '../api/permissions';
+import api from '../api/axios';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
+import toast from 'react-hot-toast';
 
-// ─── Month helpers ─────────────────────────────────────────────────────────────
-const generateMonths = () => {
-  const months = [];
-  const start = new Date(2026, 2, 1);
-  const now = new Date();
-  const end = new Date(now.getFullYear(), now.getMonth(), 1);
-  let current = new Date(start);
-  while (current <= end) {
-    months.push(`${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`);
-    current.setMonth(current.getMonth() + 1);
+// ─── Roles List & Categorization ───────────────────────────────────────────────
+const ROLE_GROUPS = [
+  {
+    name: 'Executive & Management',
+    roles: ['admin', 'coo', 'deputy_coo', 'chairman', 'sales_manager', 'medical_director']
+  },
+  {
+    name: 'Clinical & Doctors',
+    roles: ['doctor', 'consultant', 'pa', 'staff']
+  },
+  {
+    name: 'Nursing Department',
+    roles: ['nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse']
+  },
+  {
+    name: 'Diagnostics & Labs',
+    roles: ['lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'imaging_tech', 'imaging_manager']
+  },
+  {
+    name: 'Specialized Clinics',
+    roles: ['dentist', 'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental', 'physiotherapist', 'physio', 'physio_manager']
+  },
+  {
+    name: 'Operations & Support',
+    roles: ['operations_staff', 'operations', 'cashier', 'principal_cashier', 'customer_care', 'stock-manager', 'procurement-manager', 'it_officer', 'hsfp']
   }
-  return months.reverse();
-};
-const DYNAMIC_MONTHS = generateMonths();
-const CURRENT_MONTH_STR = DYNAMIC_MONTHS[0];
-const getMonthLabel = (s) => {
-  if (!s) return '';
-  const [y, m] = s.split('-');
-  return new Date(+y, +m - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase();
-};
-
-// ─── Roles ─────────────────────────────────────────────────────────────────────
-const ALL_ROLES = [
-  'admin', 'it_officer', 'coo', 'deputy_coo', 'chairman', 'sales_manager',
-  'cashier', 'principal_cashier', 'customer_care', 'lab_team_lead', 'lab_lead', 'lab_manager',
-  'consultant', 'operations_staff', 'operations', 'pa', 'staff', 'hsfp', 'nurse',
-  'chef-nurse', 'chief_nurse', 'head_nurse', 'nursing_lead', 'deputy_chef_nurse', 
-  'deputy-chef-nurse', 'deputy_chief_nurse', 'stock-manager', 'doctor', 'medical_director',
-  'procurement-manager', 'imaging_tech', 'imaging_manager', 'dental_hod', 'dental_tech', 
-  'dental_lab_manager', 'dental', 'dentist', 'lab_tech', 'lab', 'physio_manager', 'physio', 
-  'physiotherapist'
 ];
+
+const ALL_ROLES = ROLE_GROUPS.flatMap(g => g.roles);
 
 // Role display colors for badges
 const ROLE_COLORS = {
   admin: '#1C69A0', it_officer: '#2563eb', coo: '#0891b2', deputy_coo: '#0284c7',
   chairman: '#d97706', sales_manager: '#059669', cashier: '#0f766e',
   principal_cashier: '#0d9488', customer_care: '#1C69A0', lab_team_lead: '#4f46e5',
-  lab_lead: '#4f46e5', lab_manager: '#4338ca', consultant: '#1C69A0', 
+  lab_lead: '#4f46e5', lab_manager: '#4338ca', consultant: '#1C69A0',
   operations_staff: '#b45309', operations: '#b45309', pa: '#1C69A0',
   staff: '#64748b', hsfp: '#dc2626', nurse: '#db2777', 'chef-nurse': '#1C69A0',
-  chief_nurse: '#1C69A0', head_nurse: '#1C69A0', nursing_lead: '#1C69A0', 
+  chief_nurse: '#1C69A0', head_nurse: '#1C69A0', nursing_lead: '#1C69A0',
   deputy_chef_nurse: '#0284c7', 'deputy-chef-nurse': '#0284c7', deputy_chief_nurse: '#0284c7',
-  'stock-manager': '#16a34a', doctor: '#2563eb', medical_director: '#be123c', 
+  'stock-manager': '#16a34a', doctor: '#2563eb', medical_director: '#be123c',
   'procurement-manager': '#0d9488', imaging_tech: '#8b5cf6', imaging_manager: '#7c3aed',
-  dental_hod: '#059669', dental_tech: '#10b981', dental_lab_manager: '#047857', 
+  dental_hod: '#059669', dental_tech: '#10b981', dental_lab_manager: '#047857',
   dental: '#34d399', dentist: '#059669', lab_tech: '#6366f1', lab: '#818cf8',
   physio_manager: '#ea580c', physio: '#f97316', physiotherapist: '#f97316'
 };
 
 const formatRole = (r) => r ? r.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
 
-// ─── Sidebar items ──────────────────────────────────────────────────────────────
+// ─── Module Categorization ─────────────────────────────────────────────────────
+const MODULE_GROUPS = {
+  'Core System & Admin': ['user_management', 'audit_logs', 'reports', 'ai_insights', 'it_support'],
+  'Clinical & Patient Care': ['clinical_observation', 'patients', 'incident_reports', 'feedbacks', 'staff_performance'],
+  'Diagnostics & Speciality': ['lab', 'imaging', 'dental', 'physio', 'results_transfer'],
+  'Operations & Logistics': ['operations', 'shifts', 'inventory', 'procurement', 'cancellations', 'refunds'],
+  'Quality & Governance': ['safety', 'compliance', 'revenue_leakage']
+};
+
+// ─── Sidebar config persistence ────────────────────────────────────────────────
+const SIDEBAR_CONFIG_KEY = 'lc_sidebar_config';
+const loadSidebarConfig = () => { try { return JSON.parse(localStorage.getItem(SIDEBAR_CONFIG_KEY) || '{}'); } catch { return {}; } };
+const persistSidebarConfig = (cfg) => { localStorage.setItem(SIDEBAR_CONFIG_KEY, JSON.stringify(cfg)); window.dispatchEvent(new CustomEvent('sidebar-config-changed')); };
+
+// ─── Sidebar Items List ────────────────────────────────────────────────────────
 const SIDEBAR_ITEMS = [
   { key: 'dashboard',       name: 'Dashboard',           Icon: LayoutDashboard, path: '/',                         allowedRoles: ALL_ROLES },
   { key: 'cancellations',   name: 'Cancellations',       Icon: FileText,        path: '/cancellations',            allowedRoles: ['cashier','principal_cashier','customer_care','operations_staff','sales_manager','coo','chairman','admin','deputy_coo','consultant'] },
@@ -79,6 +95,11 @@ const SIDEBAR_ITEMS = [
   { key: 'performance',     name: 'Performance',         Icon: Award,           path: '/performance',              allowedRoles: ['sales_manager','coo','chairman','admin','deputy_coo','cashier','principal_cashier','customer_care','operations_staff'] },
   { key: 'nursing_hub',     name: 'Nursing Hub',         Icon: Stethoscope,     path: '/nursing-hub',              allowedRoles: ['nurse','admin','chef-nurse'] },
   { key: 'doctor_hub',      name: 'Doctor Hub',          Icon: Stethoscope,     path: '/doctor-hub',               allowedRoles: ['doctor','consultant','admin','medical_director'] },
+  { key: 'imaging',         name: 'Imaging Hub',         Icon: ScanLine,        path: '/imaging',                  allowedRoles: ['imaging_tech','imaging_manager','admin','coo','deputy_coo','medical_director'] },
+  { key: 'lab_hub',         name: 'Laboratory Hub',      Icon: FlaskConical,    path: '/lab',                      allowedRoles: ['admin','deputy_coo','lab_team_lead','lab_tech','lab'] },
+  { key: 'dental_hub',      name: 'Dental Hub',          Icon: Heart,           path: '/dental',                   allowedRoles: ['admin','deputy_coo','dental','dentist','dental_tech','dental_hod','dental_lab_manager'] },
+  { key: 'physio_hub',      name: 'Physio Hub',          Icon: Dumbbell,        path: '/physio',                   allowedRoles: ['admin','deputy_coo','physiotherapist','physio','physio_manager'] },
+  { key: 'operations_hub',  name: 'Operations Hub',      Icon: Settings,        path: '/operations',               allowedRoles: ['admin','deputy_coo','operations_staff','coo'] },
   { key: 'central_store',   name: 'General Store',       Icon: Database,        path: '/central-store',            allowedRoles: ['admin','deputy_coo','stock-manager'] },
   { key: 'master',          name: 'Master Module',       Icon: Database,        path: '/master',                   allowedRoles: ['admin','stock-manager'] },
   { key: 'procurement',     name: 'Procurement Hub',     Icon: Building,        path: '/procurement',              allowedRoles: ['admin','procurement-manager','deputy_coo'] },
@@ -98,166 +119,115 @@ const SIDEBAR_ITEMS = [
   { key: 'feedbacks',       name: 'Internal Feedback',   Icon: MessageSquare,   path: '/feedbacks',                allowedRoles: ['coo','deputy_coo','chef-nurse','medical_director'] },
 ];
 
-// ─── Sidebar config persistence ────────────────────────────────────────────────
-const SIDEBAR_CONFIG_KEY = 'lc_sidebar_config';
-const loadSidebarConfig = () => { try { return JSON.parse(localStorage.getItem(SIDEBAR_CONFIG_KEY) || '{}'); } catch { return {}; } };
-const persistSidebarConfig = (cfg) => { localStorage.setItem(SIDEBAR_CONFIG_KEY, JSON.stringify(cfg)); window.dispatchEvent(new CustomEvent('sidebar-config-changed')); };
-
-// ─── All possible actions (superset) ───────────────────────────────────────────
-const ALL_ACTIONS = ['view', 'create', 'edit', 'review', 'approve', 'reject', 'delete', 'download'];
-
-// ─── Sub-components ────────────────────────────────────────────────────────────
-const Toggle = ({ checked, onChange, disabled = false }) => (
-  <label style={{ display: 'inline-flex', alignItems: 'center', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1 }}>
-    <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} style={{ display: 'none' }} />
-    <div style={{ width: 32, height: 18, borderRadius: 18, position: 'relative', backgroundColor: checked ? 'var(--primary)' : '#d1d5db', transition: 'background-color 0.2s', flexShrink: 0 }}>
-      <div style={{ position: 'absolute', top: '50%', left: checked ? '14px' : '2px', transform: 'translateY(-50%)', width: 14, height: 14, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-    </div>
-  </label>
-);
-
 const RoleBadge = ({ role, size = 'sm' }) => {
   const color = ROLE_COLORS[role] || '#64748b';
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '4px',
-      padding: size === 'sm' ? '2px 7px' : '3px 10px',
-      borderRadius: '99px', fontSize: size === 'sm' ? '0.65rem' : '0.72rem',
-      fontWeight: 700, letterSpacing: '0.02em',
-      backgroundColor: color + '15', color, border: `1px solid ${color}30`,
-    }}>
-      <div style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
+    <span className={`inline-flex items-center gap-1.5 rounded-full font-bold tracking-tight border ${size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm'}`}
+      style={{ backgroundColor: `${color}12`, color, borderColor: `${color}30` }}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
       {formatRole(role)}
     </span>
   );
 };
 
-// ─── Main Component ────────────────────────────────────────────────────────────
-const Permissions = () => {
-  // Core
+export default function Permissions() {
+  const [activeTab, setActiveTab] = useState('roles'); // 'roles' | 'overrides' | 'sidebar' | 'evaluator'
+
+  // Matrix state
   const [modules, setModules]       = useState([]);
   const [roleMatrix, setRoleMatrix] = useState({});
-  const [origMatrix, setOrigMatrix] = useState({});   // snapshot for diff highlighting
-  const [selectedRole, setSelectedRole] = useState(null);
+  const [origMatrix, setOrigMatrix] = useState({});
+  const [selectedRole, setSelectedRole] = useState('nurse');
   const [loading, setLoading]       = useState(true);
   const [saving, setSaving]         = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [toast, setToast]           = useState(null);
+  const [roleSearch, setRoleSearch] = useState('');
   const [moduleSearch, setModuleSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // Modals
+  // Copy modal
+  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+  const [copySourceRole, setCopySourceRole]   = useState('');
+
+  // Reset modal
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [adminPassword, setAdminPassword]       = useState('');
   const [resetting, setResetting]               = useState(false);
 
-  // Tabs
-  const [activeTab, setActiveTab] = useState('roles');
+  // Sidebar Config state
+  const [sidebarConfigState, setSidebarConfigState] = useState(() => loadSidebarConfig());
+  const [sidebarChanged, setSidebarChanged]         = useState(false);
 
-  // Stock passcode
-  const [unlockLogs, setUnlockLogs]         = useState([]);
-  const [loadingLogs, setLoadingLogs]       = useState(false);
-  const [selectedMonth, setSelectedMonth]   = useState(CURRENT_MONTH_STR);
-  const [monthPasscode, setMonthPasscode]   = useState(null);
-  const [loadingPasscode, setLoadingPasscode] = useState(false);
-  const [regenerating, setRegenerating]     = useState(false);
-  const [passcodeVisible, setPasscodeVisible] = useState(false);
-  const [copied, setCopied]                 = useState(false);
+  // User Overrides state
+  const [usersList, setUsersList]               = useState([]);
+  const [selectedUser, setSelectedUser]         = useState(null);
+  const [userEffectivePerms, setUserEffectivePerms] = useState({});
+  const [loadingUserPerms, setLoadingUserPerms] = useState(false);
+  const [overrideReason, setOverrideReason]     = useState('');
+  const [userSearchTerm, setUserSearchTerm]     = useState('');
 
-  // Sidebar config
-  const [sidebarConfig, setSidebarConfig] = useState(loadSidebarConfig);
-  const [sidebarRole, setSidebarRole]     = useState(ALL_ROLES[0]);
-  const [sidebarChanged, setSidebarChanged] = useState(false);
+  // Access Evaluator Simulator state
+  const [evalRole, setEvalRole]       = useState('nurse');
+  const [evalModule, setEvalModule] = useState('clinical_observation');
+  const [evalAction, setEvalAction] = useState('view');
 
-  // Auto-save debounce ref
-  const saveTimer = useRef(null);
-
-  // ── Data fetching ─────────────────────────────────────────────────────────────
-  const showToast = useCallback((message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+  // Load initial permissions matrix & modules
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [modRes, matrixRes, usersRes] = await Promise.all([
+        getModules(),
+        getRoleMatrix(),
+        api.get('/users').catch(() => ({ data: { data: [] } }))
+      ]);
+      setModules(modRes.data || []);
+      setRoleMatrix(matrixRes.data || {});
+      setOrigMatrix(JSON.parse(JSON.stringify(matrixRes.data || {})));
+      setUsersList(usersRes.data?.data || usersRes.data || []);
+    } catch (err) {
+      toast.error('Failed to load system permissions matrix');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Load user effective permissions when user selected in Overrides tab
+  const loadUserPerms = useCallback(async (userId) => {
+    if (!userId) return;
     try {
-      const [modRes, matRes] = await Promise.all([getModules(), getRoleMatrix()]);
-      const mods = modRes.data || [];
-      const mat  = matRes.data || {};
-      setModules(mods);
-      const full = {};
-      for (const role of ALL_ROLES) full[role] = mat[role] || {};
-      setRoleMatrix(full);
-      setOrigMatrix(JSON.parse(JSON.stringify(full)));
-      if (!selectedRole) setSelectedRole(ALL_ROLES[0]);
-    } catch { showToast('Could not load permission matrix.', 'error'); }
-    finally { setLoading(false); }
-  }, [selectedRole, showToast]);
+      setLoadingUserPerms(true);
+      const res = await getUserEffectivePermissions(userId);
+      setUserEffectivePerms(res.data || {});
+    } catch {
+      toast.error('Failed to fetch user permissions');
+    } finally {
+      setLoadingUserPerms(false);
+    }
+  }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    if (selectedUser?.id) loadUserPerms(selectedUser.id);
+  }, [selectedUser, loadUserPerms]);
 
-  // Passcode / logs
-  const loadPasscode = useCallback(async (month) => {
-    setLoadingPasscode(true);
-    try { const r = await getStockPassword(month); setMonthPasscode(r.success ? r.password : null); }
-    catch { showToast('Failed to load passcode.', 'error'); }
-    finally { setLoadingPasscode(false); }
-  }, [showToast]);
-
-  const fetchLogs = useCallback(async () => {
-    setLoadingLogs(true);
-    try { const r = await getUnlockLogs(); if (r.success) setUnlockLogs(r.data || []); }
-    catch { showToast('Failed to load logs.', 'error'); }
-    finally { setLoadingLogs(false); }
-  }, [showToast]);
-
-  useEffect(() => { if (activeTab === 'stock_unlock') { loadPasscode(selectedMonth); fetchLogs(); } }, [activeTab]);
-  useEffect(() => { if (activeTab === 'stock_unlock') loadPasscode(selectedMonth); }, [selectedMonth]);
-
-  // ── Permission helpers ─────────────────────────────────────────────────────────
-  const validModNames = new Set(modules.map(m => m.name));
-
-  const handleToggle = (modName, action) => {
+  // Matrix cell toggle
+  const handleToggle = (moduleName, action) => {
     setRoleMatrix(prev => {
       const next = JSON.parse(JSON.stringify(prev));
-      if (!next[selectedRole][modName]) next[selectedRole][modName] = {};
-      next[selectedRole][modName][action] = !next[selectedRole][modName][action];
+      if (!next[selectedRole]) next[selectedRole] = {};
+      if (!next[selectedRole][moduleName]) next[selectedRole][moduleName] = {};
+      next[selectedRole][moduleName][action] = !next[selectedRole][moduleName][action];
       return next;
     });
     setHasChanges(true);
   };
 
-  // Select-all for a whole row (module)
-  const toggleRow = (mod) => {
-    const supported = mod.actions;
-    const allOn = supported.every(a => roleMatrix[selectedRole]?.[mod.name]?.[a]);
+  // Bulk actions for role
+  const handleBulkGrantAll = () => {
     setRoleMatrix(prev => {
       const next = JSON.parse(JSON.stringify(prev));
-      if (!next[selectedRole][mod.name]) next[selectedRole][mod.name] = {};
-      supported.forEach(a => { next[selectedRole][mod.name][a] = !allOn; });
-      return next;
-    });
-    setHasChanges(true);
-  };
-
-  // Select-all for a whole column (action)
-  const toggleColumn = (action) => {
-    const supportedMods = modules.filter(m => m.actions.includes(action));
-    const allOn = supportedMods.every(m => roleMatrix[selectedRole]?.[m.name]?.[action]);
-    setRoleMatrix(prev => {
-      const next = JSON.parse(JSON.stringify(prev));
-      supportedMods.forEach(m => {
-        if (!next[selectedRole][m.name]) next[selectedRole][m.name] = {};
-        next[selectedRole][m.name][action] = !allOn;
-      });
-      return next;
-    });
-    setHasChanges(true);
-  };
-
-  // Grant all / revoke all for selected role
-  const grantAll = () => {
-    setRoleMatrix(prev => {
-      const next = JSON.parse(JSON.stringify(prev));
+      if (!next[selectedRole]) next[selectedRole] = {};
       modules.forEach(m => {
         if (!next[selectedRole][m.name]) next[selectedRole][m.name] = {};
         m.actions.forEach(a => { next[selectedRole][m.name][a] = true; });
@@ -265,10 +235,13 @@ const Permissions = () => {
       return next;
     });
     setHasChanges(true);
+    toast.success(`Granted all permissions for ${formatRole(selectedRole)}`);
   };
-  const revokeAll = () => {
+
+  const handleBulkRevokeAll = () => {
     setRoleMatrix(prev => {
       const next = JSON.parse(JSON.stringify(prev));
+      if (!next[selectedRole]) next[selectedRole] = {};
       modules.forEach(m => {
         if (!next[selectedRole][m.name]) next[selectedRole][m.name] = {};
         m.actions.forEach(a => { next[selectedRole][m.name][a] = false; });
@@ -276,496 +249,764 @@ const Permissions = () => {
       return next;
     });
     setHasChanges(true);
+    toast.success(`Revoked all permissions for ${formatRole(selectedRole)}`);
   };
 
-  // Is a cell changed from original?
-  const isDirty = (modName, action) => {
-    const orig = origMatrix[selectedRole]?.[modName]?.[action] ?? false;
-    const curr = roleMatrix[selectedRole]?.[modName]?.[action] ?? false;
-    return orig !== curr;
+  const handleCopyPermissions = () => {
+    if (!copySourceRole) return;
+    const sourcePerms = roleMatrix[copySourceRole] || {};
+    setRoleMatrix(prev => ({
+      ...prev,
+      [selectedRole]: JSON.parse(JSON.stringify(sourcePerms))
+    }));
+    setHasChanges(true);
+    setIsCopyModalOpen(false);
+    toast.success(`Copied permissions from ${formatRole(copySourceRole)} to ${formatRole(selectedRole)}`);
   };
 
-  // Granted count for a role
-  const grantedCount = (role) => {
-    let n = 0;
-    const perms = roleMatrix[role] || {};
-    for (const mod of Object.values(perms)) for (const v of Object.values(mod)) if (v) n++;
-    return n;
-  };
-
+  // Save role permissions
   const handleSave = async () => {
-    setSaving(true);
     try {
-      const cleaned = {};
-      for (const [k, v] of Object.entries(roleMatrix[selectedRole] || {})) {
-        if (validModNames.has(k)) cleaned[k] = v;
-      }
-      await updateRolePermissions(selectedRole, cleaned);
-      setOrigMatrix(prev => { const n = { ...prev }; n[selectedRole] = JSON.parse(JSON.stringify(cleaned)); return n; });
-      showToast(`Permissions for "${formatRole(selectedRole)}" saved.`, 'success');
+      setSaving(true);
+      const permsToSave = roleMatrix[selectedRole] || {};
+      await updateRolePermissions(selectedRole, permsToSave);
+      setOrigMatrix(JSON.parse(JSON.stringify(roleMatrix)));
       setHasChanges(false);
+      toast.success(`Access permissions for ${formatRole(selectedRole)} saved!`);
     } catch (err) {
-      showToast(err.response?.data?.message || 'Save failed.', 'error');
-    } finally { setSaving(false); }
+      toast.error(err.response?.data?.message || 'Failed to save role permissions');
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // Reset role to system defaults
   const handleReset = async (e) => {
     e.preventDefault();
-    setResetting(true);
+    if (!adminPassword) return toast.error('Admin password required');
     try {
+      setResetting(true);
       await resetRolePermissions(selectedRole, adminPassword);
-      showToast(`"${formatRole(selectedRole)}" reset to defaults.`, 'success');
-      setIsResetModalOpen(false); setAdminPassword('');
-      fetchData();
+      setIsResetModalOpen(false);
+      setAdminPassword('');
+      await loadData();
+      toast.success(`Permissions for ${formatRole(selectedRole)} reset to defaults.`);
     } catch (err) {
-      showToast(err.response?.data?.message || 'Authorization failed.', 'error');
-    } finally { setResetting(false); }
+      toast.error(err.response?.data?.message || 'Invalid admin password');
+    } finally {
+      setResetting(false);
+    }
   };
 
-  // Passcode actions
-  const handleRegenerate = async () => {
-    setRegenerating(true);
+  // User override action
+  const handleSetUserOverride = async (moduleName, actionName, currentVal) => {
+    if (!selectedUser) return;
+    const nextVal = currentVal === null ? true : currentVal === true ? false : null; // Toggle: Default -> Grant -> Deny -> Default
     try {
-      const r = await regenerateStockPassword(selectedMonth);
-      if (r.success) { setMonthPasscode(r.password); setPasscodeVisible(true); setCopied(false); showToast(`Passcode generated for ${getMonthLabel(selectedMonth)}.`); }
-    } catch (err) { showToast(err.response?.data?.message || 'Regeneration failed.', 'error'); }
-    finally { setRegenerating(false); }
+      await setUserOverride(selectedUser.id, moduleName, actionName, nextVal, overrideReason || 'Admin override');
+      toast.success(nextVal === null ? 'Override removed (reverted to role default)' : `Override set: ${nextVal ? 'GRANTED' : 'DENIED'}`);
+      loadUserPerms(selectedUser.id);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to set override');
+    }
   };
-  const handleCopy = () => { if (!monthPasscode) return; navigator.clipboard.writeText(monthPasscode).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); };
 
-  // ── Sidebar config helpers ────────────────────────────────────────────────────
-  const isVisible = (role, key) => { const c = sidebarConfig[role]; return !c || c[key] !== false; };
-
-  const toggleSidebarItem = (role, key) => {
-    setSidebarConfig(prev => {
-      const next = { ...prev, [role]: { ...(prev[role] || {}), [key]: !isVisible(role, key) } };
-      setSidebarChanged(true);
-      return next;
+  // Sidebar config toggle
+  const handleSidebarToggle = (role, itemKey) => {
+    setSidebarConfigState(prev => {
+      const roleCfg = { ...(prev[role] || {}) };
+      roleCfg[itemKey] = roleCfg[itemKey] === false ? true : false;
+      return { ...prev, [role]: roleCfg };
     });
+    setSidebarChanged(true);
   };
 
   const saveSidebarCfg = () => {
-    persistSidebarConfig(sidebarConfig);
+    persistSidebarConfig(sidebarConfigState);
     setSidebarChanged(false);
-    showToast('Sidebar configuration saved.');
+    toast.success('Sidebar visibility configuration saved!');
   };
 
-  const resetSidebarRole = (role) => {
-    const next = { ...sidebarConfig }; delete next[role];
-    setSidebarConfig(next);
-    persistSidebarConfig(next);
-    showToast(`Sidebar for "${formatRole(role)}" reset.`);
-  };
+  // Filtered modules by category & search
+  const filteredModules = useMemo(() => {
+    return modules.filter(m => {
+      const matchSearch = m.name.toLowerCase().includes(moduleSearch.toLowerCase()) ||
+                          (m.display || m.display_name || '').toLowerCase().includes(moduleSearch.toLowerCase());
+      if (selectedCategory === 'All') return matchSearch;
+      const groupModules = MODULE_GROUPS[selectedCategory] || [];
+      return matchSearch && groupModules.includes(m.name);
+    });
+  }, [modules, moduleSearch, selectedCategory]);
 
-  const visibleCount = (role) => SIDEBAR_ITEMS.filter(i => i.allowedRoles.includes(role) && isVisible(role, i.key)).length;
-  const totalAccessible = (role) => SIDEBAR_ITEMS.filter(i => i.allowedRoles.includes(role)).length;
+  // Diff count for current role
+  const diffCount = useMemo(() => {
+    let count = 0;
+    const cur = roleMatrix[selectedRole] || {};
+    const orig = origMatrix[selectedRole] || {};
+    modules.forEach(m => {
+      m.actions.forEach(a => {
+        if (!!cur[m.name]?.[a] !== !!orig[m.name]?.[a]) count++;
+      });
+    });
+    return count;
+  }, [roleMatrix, origMatrix, selectedRole, modules]);
 
-  // ── Derived ───────────────────────────────────────────────────────────────────
-  const filteredModules = modules.filter(m =>
-    !moduleSearch || m.display_name.toLowerCase().includes(moduleSearch.toLowerCase()) || m.name.toLowerCase().includes(moduleSearch.toLowerCase())
-  );
+  // Filtered users for overrides search
+  const filteredUsers = useMemo(() => {
+    if (!userSearchTerm) return usersList;
+    return usersList.filter(u =>
+      (u.full_name || u.fullName || '').toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      (u.username || '').toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      (u.role || '').toLowerCase().includes(userSearchTerm.toLowerCase())
+    );
+  }, [usersList, userSearchTerm]);
 
-  if (loading) return <LoadingSpinner />;
+  // Evaluation Simulator status computation
+  const evalResult = useMemo(() => {
+    if (evalRole === 'admin') return { granted: true, reason: 'Admin role bypass (full system access granted)' };
+    const curPerms = roleMatrix[evalRole] || {};
+    const granted = curPerms[evalModule]?.[evalAction] ?? false;
+    return {
+      granted,
+      reason: granted
+        ? `Access GRANTED for role '${formatRole(evalRole)}' on module '${evalModule}' (${evalAction})`
+        : `Access DENIED — role '${formatRole(evalRole)}' does not have '${evalAction}' permission on '${evalModule}'`
+    };
+  }, [evalRole, evalModule, evalAction, roleMatrix]);
 
-  // ── Render ────────────────────────────────────────────────────────────────────
-  const TabBtn = ({ id, label, icon }) => (
-    <button onClick={() => setActiveTab(id)} style={{
-      display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',
-      border: 'none', borderBottom: activeTab === id ? '2px solid var(--primary)' : '2px solid transparent',
-      backgroundColor: 'transparent',
-      color: activeTab === id ? 'var(--primary)' : 'var(--text-secondary)',
-      fontWeight: activeTab === id ? 700 : 500, fontSize: '0.88rem',
-      cursor: 'pointer', transition: 'all 0.2s', marginBottom: '-2px', whiteSpace: 'nowrap',
-    }}>
-      {icon}{label}
-    </button>
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
-    <div className="animate-fade-in" style={{ paddingBottom: '4rem' }}>
-
-      {/* ── Toast ─────────────────────────────────────────────────────────────── */}
-      {toast && (
-        <div style={{
-          position: 'fixed', top: 24, right: 24, zIndex: 9999,
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '12px 16px', borderRadius: 10, minWidth: 300,
-          backgroundColor: toast.type === 'success' ? '#f0fdf4' : '#fef2f2',
-          border: `1px solid ${toast.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.10)', animation: 'slideInRight 0.3s ease',
-        }}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} color="#16a34a" /> : <AlertCircle size={18} color="#dc2626" />}
-          <span style={{ fontSize: '0.84rem', fontWeight: 600, flex: 1, color: toast.type === 'success' ? '#15803d' : '#dc2626' }}>{toast.message}</span>
-          <button onClick={() => setToast(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}><X size={14} /></button>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 text-white">
+            <Shield size={24} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-black text-slate-800">Access Control Matrix & Governance</h1>
+              <span className="bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-blue-200">
+                v2.4 Production
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Manage system permissions, functional role matrices, user overrides, and navigation visibility
+            </p>
+          </div>
         </div>
-      )}
 
-      {/* ── Page Header ───────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--primary-dark)', marginBottom: '0.2rem', letterSpacing: '-0.02em' }}>
-            Access Control Matrix
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>
-            {ALL_ROLES.length} roles · {modules.length} modules · {SIDEBAR_ITEMS.length} sidebar items
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          {activeTab === 'roles' && <>
-            <button onClick={() => setIsResetModalOpen(true)} style={btnStyle('ghost-danger')}>
-              <RefreshCw size={14} /> Reset to Defaults
-            </button>
-            {hasChanges && (
-              <button onClick={handleSave} disabled={saving} style={btnStyle('success')}>
-                {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                {saving ? 'Saving…' : 'Save Changes'}
-              </button>
-            )}
-          </>}
-          {activeTab === 'sidebar' && sidebarChanged && (
-            <button onClick={saveSidebarCfg} style={btnStyle('success')}>
-              <Save size={14} /> Save Sidebar Config
+        {/* Global actions */}
+        <div className="flex items-center gap-2">
+          {hasChanges && (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50"
+            >
+              {saving ? <RefreshCw size={15} className="animate-spin" /> : <Save size={15} />}
+              Save Changes ({diffCount})
             </button>
           )}
+          <button
+            onClick={loadData}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors"
+          >
+            <RefreshCw size={15} /> Reload
+          </button>
         </div>
       </div>
 
-      {/* ── Tab Bar ───────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '2px', borderBottom: '1px solid var(--border-color)', marginBottom: '1.25rem', overflowX: 'auto' }}>
-        <TabBtn id="roles"       label="Role Permissions"  icon={<Shield size={15} />} />
-        <TabBtn id="sidebar"     label="Sidebar Config"    icon={<Menu size={15} />} />
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-px overflow-x-auto">
+        {[
+          { id: 'roles',     label: 'Role Permissions Matrix', icon: Shield },
+          { id: 'overrides', label: 'User Permission Overrides', icon: UserCheck },
+          { id: 'sidebar',   label: 'Sidebar Navigation Config', icon: Menu },
+          { id: 'evaluator', label: 'Access Simulator',         icon: Zap },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`inline-flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 -mb-px transition-all whitespace-nowrap ${
+              activeTab === id
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            <Icon size={16} />
+            {label}
+          </button>
+        ))}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════════
-          TAB 1: ROLE PERMISSIONS
-      ══════════════════════════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          TAB 1: ROLE PERMISSIONS MATRIX
+      ═══════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'roles' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: '1.1rem', alignItems: 'start' }}>
-
-          {/* Role selector panel */}
-          <div style={panelStyle}>
-            <div style={panelHeaderStyle}>
-              <Shield size={13} /> System Roles <span style={countBadge}>{ALL_ROLES.length}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column — Role Selector Panel */}
+          <div className="lg:col-span-4 bg-white border border-slate-100 rounded-3xl p-5 space-y-4 shadow-sm h-fit">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-400">Select Role</span>
+              <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{ALL_ROLES.length} Roles</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '75vh', overflowY: 'auto' }}>
-              {ALL_ROLES.map(role => {
-                const count = grantedCount(role);
-                const active = selectedRole === role;
-                const color = ROLE_COLORS[role] || '#64748b';
+
+            {/* Role Search */}
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search roles..."
+                value={roleSearch}
+                onChange={e => setRoleSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 outline-none focus:border-blue-400"
+              />
+            </div>
+
+            {/* Role Groups List */}
+            <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+              {ROLE_GROUPS.map(group => {
+                const groupRoles = group.roles.filter(r =>
+                  formatRole(r).toLowerCase().includes(roleSearch.toLowerCase()) || r.toLowerCase().includes(roleSearch.toLowerCase())
+                );
+                if (groupRoles.length === 0) return null;
+
                 return (
-                  <button key={role} onClick={() => {
-                    if (hasChanges && !window.confirm('Discard unsaved changes?')) return;
-                    setSelectedRole(role); setHasChanges(false); setModuleSearch('');
-                  }} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '7px 10px', borderRadius: '7px', border: 'none',
-                    backgroundColor: active ? color + '15' : 'transparent',
-                    color: active ? color : 'var(--text-primary)',
-                    fontWeight: active ? 700 : 500,
-                    textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s', fontSize: '0.8rem',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
-                      <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatRole(role)}</span>
+                  <div key={group.name} className="space-y-1">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 pt-1">{group.name}</div>
+                    {groupRoles.map(role => {
+                      const isSelected = selectedRole === role;
+                      const color = ROLE_COLORS[role] || '#64748b';
+                      return (
+                        <button
+                          key={role}
+                          onClick={() => {
+                            if (hasChanges && !window.confirm('Discard unsaved changes for the current role?')) return;
+                            setSelectedRole(role);
+                            setHasChanges(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
+                            isSelected
+                              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                              : 'text-slate-700 hover:bg-slate-50 border border-transparent'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isSelected ? '#ffffff' : color }} />
+                            <span>{formatRole(role)}</span>
+                          </div>
+                          <ChevronRight size={14} className={isSelected ? 'text-white' : 'text-slate-300'} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right Column — Permission Grid */}
+          <div className="lg:col-span-8 space-y-4">
+            {/* Header info & bulk actions bar */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-black text-slate-800">{formatRole(selectedRole)}</h2>
+                    <RoleBadge role={selectedRole} />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Configure granular functional permissions for users assigned the <span className="font-semibold text-slate-600">{selectedRole}</span> role.
+                  </p>
+                </div>
+
+                {/* Bulk Action Controls */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleBulkGrantAll}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors"
+                  >
+                    <CheckSquare size={13} /> Grant All
+                  </button>
+                  <button
+                    onClick={handleBulkRevokeAll}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors"
+                  >
+                    <Square size={13} /> Revoke All
+                  </button>
+                  <button
+                    onClick={() => setIsCopyModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 rounded-xl hover:bg-slate-200 transition-colors"
+                  >
+                    <Copy size={13} /> Copy From...
+                  </button>
+                  <button
+                    onClick={() => setIsResetModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors"
+                  >
+                    <RotateCcw size={13} /> Reset Defaults
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                <div className="flex items-center gap-2 overflow-x-auto">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide mr-1">Category:</span>
+                  {['All', ...Object.keys(MODULE_GROUPS)].map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
+                        selectedCategory === cat ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search module..."
+                    value={moduleSearch}
+                    onChange={e => setModuleSearch(e.target.value)}
+                    className="pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 outline-none focus:border-blue-400 w-44"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Matrix Table */}
+            <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase tracking-wider font-bold">
+                      <th className="px-5 py-3.5">Module</th>
+                      <th className="px-3 py-3.5 text-center">View</th>
+                      <th className="px-3 py-3.5 text-center">Create</th>
+                      <th className="px-3 py-3.5 text-center">Edit</th>
+                      <th className="px-3 py-3.5 text-center">Review</th>
+                      <th className="px-3 py-3.5 text-center">Approve</th>
+                      <th className="px-3 py-3.5 text-center">Reject</th>
+                      <th className="px-3 py-3.5 text-center">Delete</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                    {filteredModules.map((m, idx) => {
+                      const curPerms = roleMatrix[selectedRole]?.[m.name] || {};
+                      const origPerms = origMatrix[selectedRole]?.[m.name] || {};
+
+                      return (
+                        <tr key={m.name} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="px-5 py-3">
+                            <div className="font-bold text-slate-800">{m.display || m.display_name || m.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{m.name}</div>
+                          </td>
+                          {['view', 'create', 'edit', 'review', 'approve', 'reject', 'delete'].map(act => {
+                            const isSupported = m.actions.includes(act);
+                            if (!isSupported) {
+                              return <td key={act} className="px-3 py-3 text-center text-slate-200">—</td>;
+                            }
+                            const isChecked = !!curPerms[act];
+                            const isDiff = !!curPerms[act] !== !!origPerms[act];
+
+                            return (
+                              <td key={act} className={`px-3 py-3 text-center transition-colors ${isDiff ? 'bg-amber-50/50' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleToggle(m.name, act)}
+                                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                                />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          TAB 2: USER PERMISSION OVERRIDES
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'overrides' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column — User Selector */}
+          <div className="lg:col-span-4 bg-white border border-slate-100 rounded-3xl p-5 space-y-4 shadow-sm h-fit">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-400">Select User</span>
+              <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{usersList.length} Users</span>
+            </div>
+
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search staff by name or role..."
+                value={userSearchTerm}
+                onChange={e => setUserSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 outline-none focus:border-blue-400"
+              />
+            </div>
+
+            <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
+              {filteredUsers.map(u => {
+                const isSelected = selectedUser?.id === u.id;
+                return (
+                  <button
+                    key={u.id}
+                    onClick={() => setSelectedUser(u)}
+                    className={`w-full flex items-center justify-between p-3 rounded-2xl text-left border transition-all ${
+                      isSelected ? 'bg-blue-50 border-blue-300 text-blue-900 shadow-sm' : 'bg-slate-50/50 border-slate-100 hover:border-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <div>
+                      <div className="font-bold text-xs">{u.full_name || u.fullName || u.username}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">@{u.username} • {formatRole(u.role)}</div>
                     </div>
-                    <span style={{ fontSize: '0.65rem', color: active ? color : '#94a3b8', fontWeight: 700, background: active ? color + '20' : '#f1f5f9', padding: '1px 5px', borderRadius: '4px', flexShrink: 0 }}>
-                      {count}
-                    </span>
+                    <RoleBadge role={u.role} />
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Permissions table panel */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-            {selectedRole && (
-              <div style={{ ...panelStyle, overflow: 'hidden' }}>
-                {/* Panel header */}
-                <div style={{ padding: '0.85rem 1.1rem', borderBottom: '1px solid var(--border-color)', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.6rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ padding: '7px', backgroundColor: ROLE_COLORS[selectedRole] || 'var(--primary-dark)', color: '#fff', borderRadius: '8px' }}>
-                      <Lock size={15} />
-                    </div>
+          {/* Right Column — User Effective Matrix & Overrides */}
+          <div className="lg:col-span-8 space-y-4">
+            {!selectedUser ? (
+              <div className="bg-white border border-slate-100 rounded-3xl p-16 text-center space-y-3">
+                <UserCheck size={36} className="text-slate-300 mx-auto" />
+                <h3 className="text-sm font-bold text-slate-700">No User Selected</h3>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  Select a staff member from the left list to view their effective system permissions or grant/revoke specific custom overrides.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-dark)' }}>{formatRole(selectedRole)}</div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                        {grantedCount(selectedRole)} permissions granted · {hasChanges ? <span style={{ color: '#f59e0b', fontWeight: 700 }}>● Unsaved changes</span> : <span style={{ color: '#10b981' }}>● Saved</span>}
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-black text-slate-800">{selectedUser.full_name || selectedUser.fullName}</h2>
+                        <RoleBadge role={selectedUser.role} />
                       </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        User ID #{selectedUser.id} • User-level overrides supercede standard role defaults.
+                      </p>
                     </div>
                   </div>
-                  {/* Bulk actions */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <div style={{ position: 'relative' }}>
-                      <Search size={13} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                      <input
-                        type="text" placeholder="Filter modules…" value={moduleSearch}
-                        onChange={e => setModuleSearch(e.target.value)}
-                        style={{ paddingLeft: 26, paddingRight: 8, paddingTop: 6, paddingBottom: 6, border: '1.5px solid var(--border-color)', borderRadius: 7, fontSize: '0.78rem', outline: 'none', width: 150 }}
-                      />
-                    </div>
-                    <button onClick={grantAll} style={btnStyle('ghost-sm')} title="Grant all permissions"><ToggleRight size={14} /> All On</button>
-                    <button onClick={revokeAll} style={btnStyle('ghost-sm-danger')} title="Revoke all permissions"><ToggleLeft size={14} /> All Off</button>
+
+                  <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                    <label className="text-xs font-bold text-slate-500">Override Reason / Justification:</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Approved by COO for special project access..."
+                      value={overrideReason}
+                      onChange={e => setOverrideReason(e.target.value)}
+                      className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none focus:border-blue-400"
+                    />
                   </div>
                 </div>
 
-                {/* Table */}
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.77rem' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border-color)' }}>
-                        <th style={{ padding: '0.55rem 1rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.66rem', textAlign: 'left', minWidth: 160 }}>
-                          Module
-                        </th>
-                        {ALL_ACTIONS.map(action => (
-                          <th key={action} style={{ padding: '0.55rem 0.4rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <button
-                              onClick={() => toggleColumn(action)}
-                              title={`Toggle all "${action}" permissions`}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.66rem', padding: '2px 4px', borderRadius: '4px', transition: 'background 0.15s' }}
-                              onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.08)'}
-                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                            >
-                              {action}
-                            </button>
-                          </th>
-                        ))}
-                        <th style={{ padding: '0.55rem 0.6rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.66rem', textAlign: 'center', whiteSpace: 'nowrap' }}>Row</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredModules.length === 0 ? (
-                        <tr><td colSpan={ALL_ACTIONS.length + 2} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>No modules match "{moduleSearch}"</td></tr>
-                      ) : filteredModules.map((mod, idx) => {
-                        const supported = mod.actions;
-                        const allRowOn = supported.every(a => roleMatrix[selectedRole]?.[mod.name]?.[a]);
-                        return (
-                          <tr key={mod.name} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                            <td style={{ padding: '0.5rem 1rem' }}>
-                              <div style={{ fontWeight: 700, color: 'var(--primary-dark)', fontSize: '0.79rem', lineHeight: 1.2 }}>{mod.display_name}</div>
-                              <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontFamily: 'monospace', opacity: 0.8 }}>{mod.name}</div>
-                            </td>
-                            {ALL_ACTIONS.map(action => {
-                              const isSupported = supported.includes(action);
-                              const isGranted   = !!roleMatrix[selectedRole]?.[mod.name]?.[action];
-                              const changed     = isSupported && isDirty(mod.name, action);
-                              return (
-                                <td key={action} style={{ padding: '0.5rem 0.4rem', textAlign: 'center', position: 'relative' }}>
-                                  {isSupported ? (
-                                    <label style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
-                                      {changed && (
-                                        <div style={{ position: 'absolute', top: -2, right: -2, width: 6, height: 6, borderRadius: '50%', backgroundColor: '#f59e0b', zIndex: 1 }} title="Changed" />
-                                      )}
-                                      <input
-                                        type="checkbox" checked={isGranted}
-                                        onChange={() => handleToggle(mod.name, action)}
-                                        style={{ width: 14, height: 14, cursor: 'pointer', accentColor: ROLE_COLORS[selectedRole] || 'var(--primary)', margin: 0 }}
-                                      />
-                                    </label>
-                                  ) : (
-                                    <span style={{ fontSize: '0.55rem', color: '#e2e8f0' }}>—</span>
-                                  )}
-                                </td>
-                              );
-                            })}
-                            {/* Row toggle */}
-                            <td style={{ padding: '0.5rem 0.6rem', textAlign: 'center' }}>
-                              <button
-                                onClick={() => toggleRow(mod)}
-                                title={allRowOn ? 'Revoke all for this module' : 'Grant all for this module'}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: allRowOn ? '#10b981' : '#94a3b8', display: 'inline-flex', padding: '2px' }}
-                              >
-                                {allRowOn ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                              </button>
-                            </td>
+                <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+                  {loadingUserPerms ? (
+                    <div className="flex items-center justify-center py-16">
+                      <LoadingSpinner />
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase tracking-wider font-bold">
+                            <th className="px-5 py-3.5">Module</th>
+                            <th className="px-3 py-3.5 text-center">Action</th>
+                            <th className="px-3 py-3.5 text-center">Role Default</th>
+                            <th className="px-3 py-3.5 text-center">Effective Access</th>
+                            <th className="px-4 py-3.5 text-right">Custom Override Action</th>
                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                          {modules.map(m => {
+                            const userMod = userEffectivePerms[m.name] || {};
+                            return m.actions.map(act => {
+                              const item = userMod[act] || { granted: false, source: 'role' };
+                              const isOverride = item.source === 'override';
+
+                              return (
+                                <tr key={`${m.name}-${act}`} className={isOverride ? 'bg-amber-50/30' : 'hover:bg-slate-50/50'}>
+                                  <td className="px-5 py-2.5 font-bold text-slate-800">{m.display || m.name}</td>
+                                  <td className="px-3 py-2.5 text-center font-mono text-slate-500">{act}</td>
+                                  <td className="px-3 py-2.5 text-center text-slate-400">
+                                    {item.source === 'role' ? (item.granted ? 'Granted' : 'Denied') : 'Role default'}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                      item.granted ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                                    }`}>
+                                      {item.granted ? '✓ Granted' : '✗ Denied'}
+                                      {isOverride && <span className="text-amber-600 font-black ml-1">(Override)</span>}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-right">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <button
+                                        onClick={() => handleSetUserOverride(m.name, act, true)}
+                                        className="px-2 py-1 text-[10px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg"
+                                      >
+                                        Force Grant
+                                      </button>
+                                      <button
+                                        onClick={() => handleSetUserOverride(m.name, act, false)}
+                                        className="px-2 py-1 text-[10px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg"
+                                      >
+                                        Force Deny
+                                      </button>
+                                      {isOverride && (
+                                        <button
+                                          onClick={() => handleSetUserOverride(m.name, act, null)}
+                                          className="px-2 py-1 text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg"
+                                        >
+                                          Revert
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            });
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          TAB 3: SIDEBAR NAVIGATION CONFIG MATRIX
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'sidebar' && (
+        <div className="space-y-6">
+          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-black text-slate-800">Sidebar Menu Visibility Matrix</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Toggle which sidebar navigation links appear for each system role. Overrides default routing accessibility.
+              </p>
+            </div>
+
+            {sidebarChanged && (
+              <button
+                onClick={saveSidebarCfg}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-md"
+              >
+                <Save size={15} /> Save Sidebar Config
+              </button>
+            )}
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase tracking-wider font-bold">
+                    <th className="px-5 py-3.5 sticky left-0 bg-slate-50">Sidebar Link Item</th>
+                    {ALL_ROLES.map(r => (
+                      <th key={r} className="px-3 py-3.5 text-center min-w-[90px]">{formatRole(r)}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {SIDEBAR_ITEMS.map(item => (
+                    <tr key={item.key} className="hover:bg-slate-50/50">
+                      <td className="px-5 py-3 font-bold text-slate-800 sticky left-0 bg-white shadow-sm flex items-center gap-2">
+                        {item.Icon && <item.Icon size={15} className="text-slate-400" />}
+                        {item.name}
+                      </td>
+                      {ALL_ROLES.map(role => {
+                        const isRoleAllowed = item.allowedRoles.includes(role);
+                        const roleCfg = sidebarConfigState[role] || {};
+                        const isExplicitlyHidden = roleCfg[item.key] === false;
+                        const isVisible = isRoleAllowed && !isExplicitlyHidden;
+
+                        return (
+                          <td key={role} className="px-3 py-3 text-center">
+                            {isRoleAllowed ? (
+                              <button
+                                onClick={() => handleSidebarToggle(role, item.key)}
+                                className={`w-6 h-6 rounded-lg font-bold text-[11px] transition-all inline-flex items-center justify-center ${
+                                  isVisible
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                                }`}
+                              >
+                                {isVisible ? '✓' : '✕'}
+                              </button>
+                            ) : (
+                              <span className="text-slate-200">—</span>
+                            )}
+                          </td>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Diff legend + audit notice */}
-            {hasChanges && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.7rem 1rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '0.78rem', color: '#92400e' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#f59e0b', flexShrink: 0 }} />
-                <strong>Unsaved changes:</strong> Orange dots mark modified cells. Click <em>Save Changes</em> to commit.
-              </div>
-            )}
-            <div style={{ padding: '0.75rem 1rem', backgroundColor: 'rgba(0,123,138,0.04)', border: '1px dashed rgba(0,123,138,0.2)', borderRadius: '8px', fontSize: '0.76rem', color: 'var(--primary-dark)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-              <Info size={14} style={{ marginTop: 1, flexShrink: 0 }} />
-              <div><strong>Column headers</strong> are clickable to toggle that action across all modules. <strong>Row toggles (→)</strong> grant or revoke all actions for a single module. Orange dot = unsaved change.</div>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════════
-          TAB 2: SIDEBAR CONFIG
-      ══════════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'sidebar' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: '1.1rem', alignItems: 'start' }}>
-
-          {/* Role selector */}
-          <div style={panelStyle}>
-            <div style={panelHeaderStyle}><Menu size={13} /> Select Role</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '75vh', overflowY: 'auto' }}>
-              {ALL_ROLES.map(role => {
-                const active = sidebarRole === role;
-                const color  = ROLE_COLORS[role] || '#64748b';
-                const vis    = visibleCount(role);
-                const total  = totalAccessible(role);
-                return (
-                  <button key={role} onClick={() => setSidebarRole(role)} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '7px 10px', borderRadius: '7px', border: 'none',
-                    backgroundColor: active ? color + '15' : 'transparent',
-                    color: active ? color : 'var(--text-primary)',
-                    fontWeight: active ? 700 : 500, textAlign: 'left',
-                    cursor: 'pointer', transition: 'all 0.15s', fontSize: '0.8rem',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
-                      <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatRole(role)}</span>
-                    </div>
-                    <span style={{ fontSize: '0.63rem', color: active ? color : '#94a3b8', fontWeight: 700, background: active ? color + '20' : '#f1f5f9', padding: '1px 5px', borderRadius: '4px', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                      {vis}/{total}
-                    </span>
-                  </button>
-                );
-              })}
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          TAB 4: ACCESS SIMULATOR / INSPECTOR
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'evaluator' && (
+        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm space-y-6 max-w-3xl mx-auto">
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+            <div className="w-10 h-10 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-md">
+              <Zap size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-slate-800">Permission Evaluation Simulator</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Test real-time access rules for any role, module, and action combination.</p>
             </div>
           </div>
 
-          {/* Sidebar items */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-            <div style={{ ...panelStyle, overflow: 'hidden' }}>
-              {/* Header */}
-              <div style={{ padding: '0.85rem 1.1rem', borderBottom: '1px solid var(--border-color)', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ padding: '7px', backgroundColor: ROLE_COLORS[sidebarRole] || 'var(--primary-dark)', color: '#fff', borderRadius: '8px' }}>
-                    <Menu size={15} />
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-dark)' }}>Sidebar: {formatRole(sidebarRole)}</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                      <span style={{ color: '#10b981', fontWeight: 700 }}>{visibleCount(sidebarRole)} visible</span> of {totalAccessible(sidebarRole)} accessible items
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button onClick={() => resetSidebarRole(sidebarRole)} style={btnStyle('ghost-danger')}>
-                    <RefreshCw size={13} /> Reset
-                  </button>
-                </div>
-              </div>
-
-              {/* Item grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-                {SIDEBAR_ITEMS.map((item, idx) => {
-                  const hasAccess = item.allowedRoles.includes(sidebarRole);
-                  const visible   = isVisible(sidebarRole, item.key);
-                  const isLast    = idx === SIDEBAR_ITEMS.length - 1;
-                  const { Icon }  = item;
-                  return (
-                    <div key={item.key} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '0.6rem 0.9rem',
-                      borderBottom: isLast ? 'none' : '1px solid #f1f5f9',
-                      opacity: hasAccess ? 1 : 0.38,
-                      backgroundColor: !hasAccess ? '#fafbfc' : visible ? '#fff' : '#fff8f8',
-                      transition: 'background-color 0.15s',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
-                        <div style={{
-                          width: 30, height: 30, borderRadius: '7px', flexShrink: 0,
-                          backgroundColor: hasAccess && visible ? (ROLE_COLORS[sidebarRole] || 'var(--primary)') + '15' : '#f1f5f9',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: hasAccess && visible ? (ROLE_COLORS[sidebarRole] || 'var(--primary)') : '#9ca3af',
-                          transition: 'all 0.2s',
-                        }}>
-                          <Icon size={14} />
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
-                          <div style={{ fontSize: '0.63rem', color: 'var(--text-secondary)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.path}</div>
-                        </div>
-                      </div>
-                      <div style={{ flexShrink: 0, marginLeft: '0.5rem' }}>
-                        {!hasAccess
-                          ? <span style={{ fontSize: '0.62rem', color: '#94a3b8', fontWeight: 600, background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>No Access</span>
-                          : <Toggle checked={visible} onChange={() => toggleSidebarItem(sidebarRole, item.key)} />
-                        }
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">Select Role</label>
+              <select
+                value={evalRole}
+                onChange={e => setEvalRole(e.target.value)}
+                className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400"
+              >
+                {ALL_ROLES.map(r => <option key={r} value={r}>{formatRole(r)}</option>)}
+              </select>
             </div>
 
-            <div style={{ padding: '0.75rem 1rem', backgroundColor: 'rgba(245,158,11,0.05)', border: '1px dashed rgba(245,158,11,0.3)', borderRadius: '8px', fontSize: '0.76rem', color: '#92400e', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-              <AlertCircle size={14} style={{ marginTop: 1, flexShrink: 0 }} />
-              <div>Sidebar config is stored in the browser and takes effect immediately. Items with <strong>"No Access"</strong> cannot be enabled — they are blocked by route-level permissions. Toggling only hides items the role already has access to. Click <strong>"Save Sidebar Config"</strong> to persist changes.</div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">Select Module</label>
+              <select
+                value={evalModule}
+                onChange={e => setEvalModule(e.target.value)}
+                className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400"
+              >
+                {modules.map(m => <option key={m.name} value={m.name}>{m.display || m.name}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">Select Action</label>
+              <select
+                value={evalAction}
+                onChange={e => setEvalAction(e.target.value)}
+                className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400"
+              >
+                {['view', 'create', 'edit', 'review', 'approve', 'reject', 'delete', 'download'].map(a => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Simulation Output Card */}
+          <div className={`p-5 rounded-2xl border ${evalResult.granted ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+            <div className="flex items-center gap-3">
+              {evalResult.granted ? <CheckCircle2 size={24} className="text-green-600" /> : <AlertTriangle size={24} className="text-red-500" />}
+              <div>
+                <h3 className={`font-black text-sm ${evalResult.granted ? 'text-green-900' : 'text-red-900'}`}>
+                  {evalResult.granted ? 'ACCESS GRANTED' : 'ACCESS DENIED'}
+                </h3>
+                <p className={`text-xs mt-0.5 ${evalResult.granted ? 'text-green-700' : 'text-red-700'}`}>
+                  {evalResult.reason}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Reset Modal ────────────────────────────────────────────────────────── */}
-      <Modal isOpen={isResetModalOpen} onClose={() => { setIsResetModalOpen(false); setAdminPassword(''); }} title="Protocol Reset Authorization" maxWidth="460px">
-        <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-          <div style={{ padding: '1rem', backgroundColor: '#fff1f2', borderRadius: '9px', border: '1px solid #fecaca', color: '#991b1b', fontSize: '0.83rem', lineHeight: 1.6 }}>
-            <p style={{ margin: '0 0 6px', fontWeight: 700 }}>⚠ CRITICAL ACTION</p>
-            This will overwrite all custom permissions for <RoleBadge role={selectedRole} /> with system defaults. <strong>This cannot be undone.</strong>
+      {/* Copy Modal */}
+      <Modal isOpen={isCopyModalOpen} onClose={() => setIsCopyModalOpen(false)} title="Copy Role Permissions" maxWidth="420px">
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500">
+            Copy all permission module settings from another role to <span className="font-bold text-slate-800">{formatRole(selectedRole)}</span>.
+          </p>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">Source Role</label>
+            <select
+              value={copySourceRole}
+              onChange={e => setCopySourceRole(e.target.value)}
+              className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400"
+            >
+              <option value="">-- Select Source Role --</option>
+              {ALL_ROLES.filter(r => r !== selectedRole).map(r => <option key={r} value={r}>{formatRole(r)}</option>)}
+            </select>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-dark)' }}>Confirm with your password</label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-              <input type="password" required value={adminPassword} onChange={e => setAdminPassword(e.target.value)}
-                placeholder="Enter your admin password"
-                style={{ width: '100%', padding: '9px 9px 9px 34px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '8px', outline: 'none', fontSize: '0.9rem' }} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '0.65rem' }}>
-            <button type="submit" disabled={resetting || !adminPassword}
-              style={{ flex: 2, padding: '0.75rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', opacity: resetting || !adminPassword ? 0.7 : 1, fontSize: '0.88rem' }}>
-              {resetting ? 'Verifying…' : 'Confirm Reset'}
-            </button>
-            <button type="button" onClick={() => { setIsResetModalOpen(false); setAdminPassword(''); }}
-              style={{ flex: 1, padding: '0.75rem', backgroundColor: '#f1f5f9', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.88rem' }}>
+
+          <div className="flex justify-end gap-2 pt-3">
+            <button onClick={() => setIsCopyModalOpen(false)} className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200">
               Cancel
+            </button>
+            <button onClick={handleCopyPermissions} disabled={!copySourceRole} className="px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50">
+              Copy Permissions
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reset Modal */}
+      <Modal isOpen={isResetModalOpen} onClose={() => { setIsResetModalOpen(false); setAdminPassword(''); }} title="Protocol Reset Authorization" maxWidth="440px">
+        <form onSubmit={handleReset} className="space-y-4">
+          <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-800 leading-relaxed">
+            <div className="font-bold text-red-900 mb-1">⚠️ CRITICAL RESET ACTION</div>
+            This will overwrite all custom permissions for <span className="font-bold">{formatRole(selectedRole)}</span> with system default parameters.
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">Confirm Admin Password</label>
+            <input
+              type="password"
+              placeholder="Enter your password..."
+              value={adminPassword}
+              onChange={e => setAdminPassword(e.target.value)}
+              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={() => setIsResetModalOpen(false)} className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200">
+              Cancel
+            </button>
+            <button type="submit" disabled={resetting || !adminPassword} className="px-4 py-2 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-50">
+              {resetting ? 'Resetting...' : 'Reset to Defaults'}
             </button>
           </div>
         </form>
       </Modal>
-
-      <style>{`
-        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-        .animate-spin { animation: spin 1s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
-};
-
-// ─── Style helpers ─────────────────────────────────────────────────────────────
-const panelStyle = { backgroundColor: '#ffffff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid var(--border-color, #e2e8f0)' };
-const panelHeaderStyle = { padding: '0.55rem 0.85rem', fontSize: '0.67rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '5px' };
-const countBadge = { marginLeft: 'auto', fontSize: '0.6rem', fontWeight: 700, background: 'rgba(0,123,138,0.1)', color: 'var(--primary)', padding: '1px 5px', borderRadius: '4px' };
-
-const btnStyle = (variant) => {
-  const base = { display: 'inline-flex', alignItems: 'center', gap: '5px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.15s', fontSize: '0.82rem', padding: '0.55rem 1rem', whiteSpace: 'nowrap' };
-  const variants = {
-    primary:        { ...base, backgroundColor: 'var(--primary)', color: '#fff' },
-    success:        { ...base, backgroundColor: '#059669', color: '#fff', boxShadow: '0 4px 10px -2px rgba(5,150,105,0.3)' },
-    'ghost-danger': { ...base, backgroundColor: 'transparent', color: '#dc2626', border: '1.5px solid rgba(220,53,69,0.2)', padding: '0.45rem 0.9rem' },
-    'ghost-sm':     { ...base, backgroundColor: '#f8fafc', color: 'var(--text-primary)', border: '1.5px solid var(--border-color)', padding: '0.4rem 0.75rem', fontSize: '0.78rem' },
-    'ghost-sm-danger': { ...base, backgroundColor: '#fff8f8', color: '#dc2626', border: '1.5px solid #fecaca', padding: '0.4rem 0.75rem', fontSize: '0.78rem' },
-  };
-  return variants[variant] || base;
-};
-
-export default Permissions;
+}
