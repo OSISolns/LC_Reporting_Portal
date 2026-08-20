@@ -5,9 +5,9 @@
 
 ## 🏛️ 1. Executive Summary & Architecture Overview
 
-The **Legacy Clinics Lumina Reporting & Operations Portal** is an enterprise-grade, multi-specialty clinical operations, governance, financial tracking, and healthcare management platform built specifically for Legacy Clinics.
+The **Legacy Clinics Lumina Reporting & Operations Portal** is an enterprise-grade, multi-specialty clinical operations, governance, financial tracking, supply chain, IT asset management, and healthcare management platform built specifically for Legacy Clinics.
 
-The platform provides unified clinical workflows, diagnostic result management, supply chain logistics, multi-tier financial authorization, shift reconciliation, and AI-driven clinical analytics across all hospital departments.
+The platform provides unified clinical workflows, diagnostic result management, supply chain logistics, multi-tier financial authorization, shift reconciliation, IT helpdesk management, and AI-driven clinical analytics across all hospital departments.
 
 ```
 +-------------------------------------------------------------------+
@@ -37,7 +37,7 @@ The platform provides unified clinical workflows, diagnostic result management, 
 | **Frontend Framework** | React 18, Vite 5, React Router DOM v6 |
 | **UI & Styling** | Vanilla CSS Tokens, Tailwind Utilities, Framer Motion animations, Lucide Icons |
 | **Form & State** | React Hook Form, Custom Context API (`AuthContext`), React Hot Toast |
-| **Data & Charts** | Chart.js, Recharts, ExcelJS, jsPDF |
+| **Data & Charts** | Chart.js, Recharts, ExcelJS, jsPDF, html2canvas |
 | **Backend Framework** | Node.js (v20+), Express.js |
 | **Database Engine** | SQLite (Prisma local client) / Turso Cloud DB (LibSQL Client) |
 | **Security & Auth** | JWT (JSON Web Tokens), bcryptjs, Granular RBAC Permission Engine |
@@ -73,75 +73,183 @@ If a permission row for a new module is not explicitly saved in `role_permission
 
 ---
 
-## 🏥 4. Functional Subsystems & Domain Modules
+## 👑 4. Administration & System Governance Workspace (`/users`, `/permissions`, `/audit-logs`)
 
-### 4.1 Operations Hub (`/operations`)
-A 5-tab workspace designed for chief operations officers and operational staff:
-1. **📊 Overview Dashboard**: Real-time aggregated KPIs (shifts, pending transfers, pending cancellations/refunds, task completion %).
-2. **🕐 Shift Review Board**: Filterable shift table by role (`cashier`, `helpdesk`, `call_center`, `nurse`, `vip_lounge`), flag status, and supervisor review action.
-3. **🔁 Result Transfers**: Reconcile test result transfers across patient accounts.
-4. **📦 Consumables Log**: Departmental consumable tracking.
-5. **📝 Facility Task Log**: Categorized daily checklists (Inspection, Cleaning, Maintenance, Safety, Admin, Inventory) with draft saving and completion metrics.
+Designed for hospital administrators, IT directors, and compliance officers:
 
-### 4.2 Nursing Hub & MAR (`/nursing-hub`, `/clinical-sheets`)
-- **Patient Triage & Vitals**: Records blood pressure, pulse, temperature, SpO2, respiratory rate, and pain score.
-- **Medication Administration Record (MAR)**: Interactive dosing schedule matrix.
-- **Clinical Observation Sheets**: Continuous clinical progress notes and nursing activities.
-- **Daily Operational Report**: Shift procedure logs, patient volume count, and department metrics.
+### 4.1 User Management (`/users`)
+- **User Lifecycle**: Create, edit, activate/deactivate staff accounts across all 37 system roles.
+- **Credential Governance**: Mandatory password complexity rules and admin-forced password resets (`POST /api/users/:id/reset-password`).
+- **Staff Profiles**: Associate users with specific clinical departments (`NURSING`, `OPERATIONS`, `LABORATORY`, `IMAGING`, `DENTAL`, `GENERAL STORE`).
 
-### 4.3 Physician & Doctor Hub (`/doctor-hub`, `/e-prescriptions`)
-- **Encounter Workspace**: Search patient records, view past vitals, view lab/imaging history.
-- **ICD-11 Browser**: Real-time WHO ICD-11 coding search modal for diagnoses.
-- **Digital E-Prescriptions**: Prescription builder with FDA drug lookup, dosage instructions, and PDF generation.
+### 4.2 Access Control & Permissions Engine (`/permissions`)
+- **Categorized Role Permissions Matrix**: Interactive matrix to toggle `view`, `create`, `edit`, `review`, `approve`, `reject`, `delete`, `download` permissions across all 25 modules.
+- **Bulk Action Toolbar**: `Grant All`, `Revoke All`, `Copy Permissions From...`, and `Reset to Defaults`.
+- **User Permission Overrides**: Grant or revoke specific permissions for individual employees overriding role defaults with mandatory justification logging (`user_permission_overrides`).
+- **Sidebar Menu Config Matrix**: Interactive per-role sidebar navigation visibility matrix.
+- **Permission Evaluation Simulator**: Real-time permission evaluation simulation tool.
 
-### 4.4 Radiology & PACS/DICOM Imaging Portal (`/imaging`)
-- **Worklist & Modalities**: Filterable by `Radiography (X-Ray)`, `CT-Scan`, `MRI`, `Ultrasound`.
-- **PACS / DICOM Integration**: WADO image viewer integration supporting `imaging_series` and `imaging_instances`.
-- **Radiologist Reporting**: Report writer with technique, findings narrative, impression, and verification signature.
-
-### 4.5 Pathology & Laboratory Portal (`/lab`)
-- **Specimen & Order Register**: Track orders from `ordered` -> `sample_collected` -> `processing` -> `completed` / `verified`.
-- **Reference Ranges & Critical Values**: Auto-flag abnormal test parameters.
-
-### 4.6 Dental Hub & Prosthetic Worklist (`/dental`)
-- **Interactive Odontogram**: Tooth-by-tooth FDI notation charting (Fractions, Endodontics, Crowns, Extractions).
-- **Prosthetic Manufacturing Worklist**: Track lab jobs from impression -> wax-up -> casting -> porcelain -> delivery.
-
-### 4.7 Physiotherapy & Rehabilitation (`/physio`)
-- Initial musculoskeletal assessments, range of motion (ROM) tracking, rehab session logs, and functional score progression.
-
-### 4.8 Supply Chain: Procurement & Supplier Portal (`/procurement`, `/supplier-portal-manager`)
-- Purchase requisitions, vendor catalog, Goods Received Note (GRN) inspection, budget tracking, and public supplier portal (`/supplier-portal-public`).
-
-### 4.9 General Store & Master Inventory (`/central-store`, `/master`)
-- Central stock control, batch tracking, expiry alerts, 8-character SKU standardization, department stock dispatching.
-
-### 4.10 Financial Approval Workspaces: Cancellations & Refunds (`/cancellations`, `/refunds`)
-- **Multi-Tier Authorization**:
-  - L1: Reception/Cashier submission with bill attachment & reason.
-  - L2: Managerial approval/rejection with mandatory comment logs.
-
-### 4.11 Clinical Governance & Safety (`/incidents`, `/safety-management`, `/risk-register`, `/compliance`)
-- Incident reporting, infection control tracking, compliance license renewals, and Health & Safety Focal Point (HSFP) register.
-
-### 4.12 IT Support & Asset Ticketing (`/it-ticketing`)
-- Internal hardware/software ticket submission, workstation intervention logs, asset lifecycle tracking.
-
-### 4.13 Lumina AI Intelligence Engine (`/ai-insights`, `/revenue-tracker`)
-- Automated analysis of hospital revenue leakage, operational bottlenecks, staff performance metrics, and clinical trends.
+### 4.3 Audit Trail & System Logs (`/audit-logs`)
+- **Immutable Log Register**: Captures every `CREATE`, `UPDATE`, `DELETE`, `REVIEW`, `APPROVE`, `REJECT`, `LOGIN` action.
+- **Audit Context**: Stores acting user ID, username, role, client IP address, target entity ID, and detailed change payload (`details_json`).
 
 ---
 
-## 🗄️ 5. Database Schema Highlights
+## 💻 5. IT Support & Asset Ticketing Hub (`/it-ticketing`)
 
-The system manages over 100 auto-migrated tables:
+Full-lifecycle internal IT helpdesk and hardware asset management system:
+
+### 5.1 IT Support Ticketing (`it_tickets`)
+- **Ticket Dispatch**: Staff submit tickets choosing category (`Hardware`, `Software`, `Network`, `System Access`, `Printer/Scanner`) and priority (`Low`, `Medium`, `High`, `Critical`).
+- **Ticket Numbering**: Auto-incrementing identifier (`TKT-001`, `TKT-002`, ...).
+- **Workstation Intervention Log**: Track `working_station` (e.g. `Reception-01`, `Lab-PC-02`) and flag `it_intervention` logs.
+- **Lifecycle Tracking**: Status progression from `Open` -> `In Progress` -> `Resolved` -> `Closed`.
+
+### 5.2 IT Asset Inventory (`it_assets`)
+- **Asset Directory**: Comprehensive register of computers, printers, medical display monitors, routers, and peripheral devices.
+- **Asset Metadata**: `asset_tag`, `model`, `serial_number`, `category`, `assigned_user_id`, `working_station`, `purchase_date`, `warranty_expiry`, `status` (`Active`, `Maintenance`, `Retired`).
+
+---
+
+## 📦 6. Stock & General Store Management System (`/central-store`, `/master`)
+
+Centralized material management and inventory control across all hospital units:
+
+### 6.1 SKU Standardization & Master Inventory (`master_inventory`)
+- **Standardized SKUs**: All items enforced with uniform 8-character SKU codes.
+- **Item Master**: Reorder levels, minimum stock thresholds, unit of measure (`uoms`), and cost prices.
+
+### 6.2 Batch & Expiry Management (`stock_batches`)
+- **Batch Tracking**: Track batch number, manufacturing date, and expiry date for pharmaceuticals, reagents, and consumables.
+- **Automated Expiry Alerts**: Real-time warnings for items approaching 30/60/90-day expiration windows.
+
+### 6.3 Department Dispatches & Stock Transfers (`department_stock`, `requisitions`)
+- **Requisition Workflow**: Clinical departments (`NURSING`, `LAB`, `IMAGING`, `DENTAL`, `PHYSIO`) submit stock requisitions to the General Store.
+- **Store Approval & Dispatch**: Stock Manager approves and dispatches batches to department stock.
+- **Stock Movements Audit**: Complete audit trail (`nursing_stock_change_logs`) for received stock, stock-in-hand adjustments, and damaged/expired stock write-offs.
+
+---
+
+## 🏢 7. Procurement & Supplier Portal Network (`/procurement`, `/supplier-portal-manager`, `/supplier-portal-public`)
+
+Enterprise supply chain and vendor portal management:
+
+### 7.1 Procurement Lifecycle (`procurement_hubs`)
+- **Requisition to PO**: Requisition -> Request for Quotation (RFQ) -> Purchase Order (PO) -> Goods Received Note (GRN) Inspection -> Invoice Matching & Payment Authorization.
+- **GRN Quality Inspection**: Formal quality check on received shipments prior to inventory acceptance.
+- **Budget & Invoice Tracking**: Departmental procurement budget enforcement and invoice reconciliation.
+
+### 7.2 Supplier Portal Network (`/supplier-portal-manager`)
+- **Vendor Directory (`vendors`)**: Vendor catalog, contact metadata, compliance documents (`vendor_documents`), and vendor performance ratings.
+- **Public Supplier Portal (`/supplier-portal-public`)**: Secure public portal for external vendors to view active RFQs and submit item prices and batch availability.
+- **Automated Receipt Sync**: Accepting supplier submissions automatically registers batch numbers, expiry dates, and updates inventory levels.
+
+---
+
+## 📊 8. Operations Hub (`/operations`)
+
+Integrated operational control dashboard:
+
+1. **Overview Dashboard**: Aggregated operational KPIs (shifts today, open/closed/flagged shifts, pending result transfers, pending cancellations/refunds, task completion rate).
+2. **Shift Review Board**: Shift status filter by role (`cashier`, `helpdesk`, `call_center`, `nurse`, `vip_lounge`), flag indicators, and supervisor review verification.
+3. **Result Transfers**: Reconcile test result transfers between patient IDs.
+4. **Consumables Log**: Track consumable consumption by department.
+5. **Facility Task Log**: Daily operational checklists (Inspection, Cleaning, Maintenance, Safety, Admin, Inventory) with draft saving and completion metrics.
+
+---
+
+## 🩺 9. Nursing Hub & MAR (`/nursing-hub`, `/clinical-sheets`)
+
+- **Patient Triage & Vitals**: Capture blood pressure, pulse, temperature, SpO2, respiratory rate, and pain scores (`patient_vitals`).
+- **Medication Administration Record (MAR)**: Interactive dosing schedule matrix.
+- **Clinical Observation Sheets**: Continuous clinical progress notes (`clinical_observations`) and nursing activity logs (`nursing_clinical_activities`).
+- **Daily Operational Report (`/nursing-hub/daily-report`)**: Shift procedure logs, patient volume count, and department performance metrics.
+
+---
+
+## ⚕️ 10. Physician & Doctor Hub (`/doctor-hub`, `/e-prescriptions`)
+
+- **Encounter Workspace**: Patient search, past vitals history, diagnostic results review.
+- **ICD-11 Browser**: Real-time WHO ICD-11 coding search modal for standardized diagnosis entry.
+- **Digital E-Prescriptions**: Prescription authoring with FDA drug catalog lookup (`fda_medications`), dosage instructions, and PDF generation.
+
+---
+
+## 🔬 11. Radiology & PACS/DICOM Imaging Portal (`/imaging`)
+
+- **Modality Worklists**: Filterable by `Radiography (X-Ray)`, `CT-Scan`, `MRI`, `Ultrasound` (`imaging_orders`, `imaging_studies`).
+- **PACS / DICOM Integration**: WADO image viewer integration supporting `imaging_series` and `imaging_instances`.
+- **Radiologist Reporting**: Professional report writer with findings narrative, impression, LOINC/SNOMED coding, and digital verification (`imaging_reports`).
+
+---
+
+## 🧪 12. Pathology & Laboratory Portal (`/lab`)
+
+- **Specimen & Order Register**: Track orders from `ordered` -> `sample_collected` -> `processing` -> `completed` / `verified` (`lab_orders`).
+- **Reference Ranges & Critical Values**: Automated flagging of out-of-range lab parameters (`lab_results`).
+
+---
+
+## 🦷 13. Dental Hub & Prosthetic Worklist (`/dental`)
+
+- **Interactive Odontogram**: Tooth-by-tooth FDI notation charting (Fractions, Endodontics, Crowns, Extractions).
+- **Prosthetic Manufacturing Worklist**: Track lab jobs from impression -> wax-up -> casting -> porcelain -> delivery (`dental_cases`, `dental_worklist`).
+
+---
+
+## 🏃 14. Physiotherapy & Rehabilitation Workspace (`/physio`)
+
+- Initial musculoskeletal assessments (`physio_assessments`), range of motion (ROM) tracking, rehabilitation session logs (`physio_rehab_sessions`), and functional outcome metrics.
+
+---
+
+## 💳 15. Shift Management & Supervisor Review (`/shifts`)
+
+- **Role-Based Shift Sessions**: Support for Cashier, Customer Care, Nurse, VIP Lounge, and Operations staff (`shift_sessions`).
+- **Revenue & Cash Reconciliation**: Opening cash, closing cash, physical count, POS slip audit, and variance flagging.
+- **Supervisor Verification**: Supervisory review and sign-off on closed shifts.
+
+---
+
+## 💸 16. Financial Approvals: Cancellations & Refunds (`/cancellations`, `/refunds`)
+
+- **Multi-Tier Authorization**:
+  - L1: Reception/Cashier submission with bill attachment & reason (`cancellation_requests`, `refund_requests`).
+  - L2: Managerial approval/rejection with mandatory comment logs.
+
+---
+
+## 🛡️ 17. Clinical Governance, Risk, Safety & Infection Control (`/incidents`, `/safety-management`, `/risk-register`, `/compliance`)
+
+- **Incident Reporting**: Anonymized or named incident reports with root cause analysis.
+- **Infection Control & Safety**: Facility safety audits, risk register grading, and compliance certificate tracking (`compliance_licenses`, `compliance_facility_certs`).
+
+---
+
+## 🧠 18. Lumina AI Intelligence Engine (`/ai-insights`, `/revenue-tracker`, `/performance`)
+
+- Automated machine learning analysis of revenue leakage patterns, staff performance metrics, operational throughput, and clinical trends (`lumina_usage_patterns`, `revenue_leakages`).
+
+---
+
+## 🗄️ 19. Comprehensive Database Schema Architecture
+
+Over 100 auto-migrated database tables managed by `backend/src/config/db.js`:
 
 ```
-├── Authentication & RBAC
+├── Authentication & Governance
 │   ├── users
 │   ├── permission_modules
 │   ├── role_permissions
-│   └── user_permission_overrides
+│   ├── user_permission_overrides
+│   └── audit_logs
+├── Administration & IT Support
+│   ├── it_tickets
+│   ├── it_assets
+│   ├── system_settings
+│   ├── compliance_licenses
+│   ├── compliance_facility_certs
+│   └── compliance_audits
 ├── Clinical & Nursing
 │   ├── patients
 │   ├── clinical_observations
@@ -163,12 +271,15 @@ The system manages over 100 auto-migrated tables:
 │   ├── dental_worklist
 │   ├── physio_assessments
 │   └── physio_rehab_sessions
-├── Inventory & Procurement
+├── Inventory & Supply Chain
 │   ├── master_inventory
 │   ├── stock_batches
 │   ├── department_stock
 │   ├── requisitions
+│   ├── requisition_items
 │   ├── procurement_hubs
+│   ├── vendors
+│   ├── vendor_documents
 │   └── supplier_submissions
 └── Finance & Operations
     ├── shift_sessions
@@ -180,7 +291,7 @@ The system manages over 100 auto-migrated tables:
 
 ---
 
-## 🚀 6. Local Development & Operational Commands
+## 🚀 20. Operational Commands & Deployment Procedures
 
 ```bash
 # 1. Start Backend Server
