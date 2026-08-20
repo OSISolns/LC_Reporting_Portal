@@ -80,6 +80,8 @@ const METAL_CERAMIC_SUBTYPES = [
 ];
 
 const TRAYS_SUBTYPES = [
+  'Impression taking and casting, silicone based, per arch',
+  'Impression taking and casting, arginate, per arch',
   'Vacuum Formed Retainer',
   'Bleaching Trays',
   'Custom Impression Trays',
@@ -520,6 +522,8 @@ const CaseFormModal = ({ isOpen, onClose, onSave, editCase, currentUser }) => {
       if (!form.work_done) e.work_done = 'Required when Prosthetics is selected';
       if (form.work_done === 'Acrylic Work' && !form.work_done_other) e.work_done_other = 'Select or specify Acrylic Work detail';
       if (form.work_done === 'Metal & Ceramic' && !form.work_done_other) e.work_done_other = 'Select or specify Metal & Ceramic detail';
+      if (form.work_done === 'Trays' && !form.work_done_other) e.work_done_other = 'Select or specify Trays detail';
+      if (form.work_done === 'CAD-CAM' && !form.work_done_other) e.work_done_other = 'Select or specify CAD-CAM detail';
       if (form.work_done === 'Other' && !form.work_done_other) e.work_done_other = 'Please specify';
       if (!form.units_quantity || Number(form.units_quantity) < 1) e.units_quantity = 'Min 1';
     }

@@ -69,7 +69,7 @@ class User {
   }
 
   static async create({ fullName, username, email, password, roleId }) {
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
     
     const { rows } = await db.query(
@@ -142,7 +142,7 @@ class User {
   }
 
   static async resetPassword(id, newPassword) {
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(newPassword, salt);
     await db.query(
       'UPDATE users SET password_hash = ?, must_change_password = 1, failed_attempts = 0, lockout_until = NULL WHERE id = ?',
