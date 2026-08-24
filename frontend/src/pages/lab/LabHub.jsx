@@ -158,24 +158,69 @@ const TatCounter = ({ order }) => {
   const elapsedMins = Math.floor(elapsedMs / (1000 * 60));
   const elapsedSecs = Math.floor((elapsedMs / 1000) % 60);
 
-  const isStat = order.urgency === 'STAT';
-  const targetMins = isStat ? 45 : 120;
+  // Target TAT in Minutes based on clinical criteria:
+  // 1. Min In-House (STAT): 1 hour (60m)
+  // 2. Max In-House (Routine): 6 hours (360m)
+  // 3. Standard Outsourced: 7 Days (10,080m)
+  // 4. Special Outsourced: 1 Month / 30 Days (43,200m)
+  const targetMins = useMemo(() => {
+    const u = (order.urgency || '').toLowerCase();
+    const t = (order.processing_type || order.test_type || '').toLowerCase();
+    if (u.includes('special') || t.includes('special') || u.includes('1 month') || u.includes('month')) return 43200; // 30 days
+    if (u.includes('outsourced') || t.includes('outsourced') || u.includes('7 day') || u.includes('7d')) return 10080; // 7 days
+    if (u.includes('stat') || u.includes('1h') || u.includes('min in-house')) return 60; // 1 hour
+    return 360; // Default In-House Routine: 6 hours
+  }, [order.urgency, order.processing_type, order.test_type]);
+
   const remainingMins = targetMins - elapsedMins;
 
-  const formattedElapsed = `${elapsedMins}m ${elapsedSecs < 10 ? '0' : ''}${elapsedSecs}s`;
+  // Format Elapsed Time String
+  const formattedElapsed = useMemo(() => {
+    if (elapsedMins >= 1440) {
+      const days = Math.floor(elapsedMins / 1440);
+      const hrs = Math.floor((elapsedMins % 1440) / 60);
+      return `${days}d ${hrs}h`;
+    }
+    if (elapsedMins >= 60) {
+      const hrs = Math.floor(elapsedMins / 60);
+      const mins = elapsedMins % 60;
+      return `${hrs}h ${mins}m ${elapsedSecs < 10 ? '0' : ''}${elapsedSecs}s`;
+    }
+    return `${elapsedMins}m ${elapsedSecs < 10 ? '0' : ''}${elapsedSecs}s`;
+  }, [elapsedMins, elapsedSecs]);
+
+  // Target Badge Label
+  const targetLabel = useMemo(() => {
+    if (targetMins === 60) return '1h Target';
+    if (targetMins === 360) return '6h Target';
+    if (targetMins === 10080) return '7d Target';
+    if (targetMins === 43200) return '1m Target';
+    return `${Math.round(targetMins / 60)}h Target`;
+  }, [targetMins]);
 
   let badgeStyle = '';
   let statusText = '';
 
   if (remainingMins < 0) {
+    const overdueMins = Math.abs(remainingMins);
+    const overdueStr = overdueMins >= 1440 
+      ? `+${Math.floor(overdueMins / 1440)}d` 
+      : overdueMins >= 60 ? `+${Math.floor(overdueMins / 60)}h` : `+${overdueMins}m`;
     badgeStyle = 'bg-rose-100 text-rose-800 border-rose-300 font-extrabold animate-pulse';
-    statusText = `Overdue (+${Math.abs(remainingMins)}m)`;
-  } else if (remainingMins <= 10 || (isStat && remainingMins <= 15)) {
+    statusText = `Overdue (${overdueStr})`;
+  } else if (
+    (targetMins <= 60 && remainingMins <= 15) ||
+    (targetMins <= 360 && remainingMins <= 60) ||
+    (targetMins > 360 && remainingMins <= 1440)
+  ) {
+    const remStr = remainingMins >= 1440 
+      ? `${Math.floor(remainingMins / 1440)}d left` 
+      : remainingMins >= 60 ? `${Math.floor(remainingMins / 60)}h left` : `${remainingMins}m left`;
     badgeStyle = 'bg-amber-100 text-amber-800 border-amber-300 font-bold';
-    statusText = `${remainingMins}m left`;
+    statusText = remStr;
   } else {
     badgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold';
-    statusText = 'On Track';
+    statusText = `On Track (${targetLabel})`;
   }
 
   return (
@@ -627,51 +672,30 @@ const LabHub = () => {
         </div>
       </div>
 
-      {/* ── NAVIGATION TABS ── */}
+      {/* ── WORKLIST HEADER & PHASE FILTERS ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
-        <div className="flex gap-1.5">
-          {[
-            { id: 'worklist', label: 'Specimen Worklist', icon: Activity },
-            { id: 'draw_order', label: 'Order of Draw', icon: Droplet },
-            { id: 'analyzers', label: 'Analyzer Ingestion', icon: Play },
-            { id: 'qc', label: 'Quality Control', icon: ShieldCheck }
-          ].map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${
-                  isActive ? 'bg-slate-900 text-white font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Icon size={14} /> {tab.label}
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2">
+          <Activity size={16} className="text-slate-700" />
+          <h2 className="text-sm font-bold text-slate-900 tracking-tight">Specimen Worklist</h2>
         </div>
 
-        {activeTab === 'worklist' && (
-          <div className="flex items-center gap-1 text-xs">
-            <span className="text-slate-400 font-medium mr-1">Phase:</span>
-            {['all', 'pre-analytical', 'analytical', 'post-analytical'].map(p => (
-              <button
-                key={p}
-                onClick={() => setPhaseFilter(p)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium capitalize cursor-pointer transition-colors ${
-                  phaseFilter === p ? 'bg-slate-200 text-slate-900 font-semibold' : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-1 text-xs">
+          <span className="text-slate-400 font-medium mr-1">Phase:</span>
+          {['all', 'pre-analytical', 'analytical', 'post-analytical'].map(p => (
+            <button
+              key={p}
+              onClick={() => setPhaseFilter(p)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium capitalize cursor-pointer transition-colors ${
+                phaseFilter === p ? 'bg-slate-900 text-white font-semibold' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ── TAB 1: SPECIMEN WORKLIST ── */}
-      {activeTab === 'worklist' && (
+      {/* ── SPECIMEN WORKLIST GRID ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Left Table */}
           <div className="lg:col-span-2 space-y-3">
@@ -741,13 +765,21 @@ const LabHub = () => {
                             </td>
 
                             <td className="py-2.5 px-3">
-                              {order.urgency === 'STAT' ? (
-                                <span className="font-semibold text-rose-600 text-[11px]">
-                                  STAT
+                              {order.urgency?.includes('STAT') || order.urgency?.includes('1h') ? (
+                                <span className="font-bold text-rose-600 text-[11px] bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                                  In-House STAT (1h)
+                                </span>
+                              ) : order.urgency?.includes('Special') || order.urgency?.includes('1 Month') ? (
+                                <span className="font-bold text-purple-700 text-[11px] bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                                  Outsourced Special (1m)
+                                </span>
+                              ) : order.urgency?.includes('Outsourced') || order.urgency?.includes('7 Day') ? (
+                                <span className="font-medium text-amber-700 text-[11px] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                  Outsourced (7d)
                                 </span>
                               ) : (
-                                <span className="text-slate-500 text-[11px]">
-                                  Routine
+                                <span className="text-slate-600 text-[11px] bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                  In-House Routine (6h)
                                 </span>
                               )}
                             </td>
@@ -889,178 +921,7 @@ const LabHub = () => {
             )}
           </div>
         </div>
-      )}
 
-      {/* ── TAB 2: ORDER OF DRAW ── */}
-      {activeTab === 'draw_order' && (
-        <div className="space-y-4">
-          <div className="bg-white border border-slate-200/80 p-5 rounded-xl space-y-1">
-            <h2 className="text-sm font-semibold text-slate-900">Standardized Order of Draw (CLSI H3-A6)</h2>
-            <p className="text-xs text-slate-500">Phlebotomy sequence to prevent additive cross-contamination.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-            {[...TUBE_TYPES].sort((a, b) => a.drawOrder - b.drawOrder).map(tube => (
-              <div key={tube.id} className="bg-white border border-slate-200/80 rounded-xl p-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                    Step #{tube.drawOrder}
-                  </span>
-                </div>
-                <h3 className="text-xs font-bold text-slate-900">{tube.id}</h3>
-                <p className="text-[11px] text-slate-500">{tube.name}</p>
-                <div className="pt-2 border-t border-slate-100">
-                  <p className="text-[11px] text-slate-600">{tube.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── TAB 3: ANALYZER INGESTION ── */}
-      {activeTab === 'analyzers' && (
-        <div className="bg-white border border-slate-200/80 rounded-xl p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">Automated LIS Analyzer Interface</h3>
-            <p className="text-xs text-slate-500">Simulate data feed from Mindray and Sysmex automated analyzers.</p>
-          </div>
-
-          {selectedOrder ? (
-            <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-lg flex justify-between items-center">
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Specimen</span>
-                <span className="text-xs font-bold text-slate-900 font-mono">{selectedOrder.specimen_barcode} ({selectedOrder.patient_name})</span>
-              </div>
-              <button
-                onClick={handleSimulateIngestion}
-                disabled={analyzerStatus === 'Ingesting'}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs rounded transition-colors cursor-pointer"
-              >
-                {analyzerStatus === 'Ingesting' ? 'Ingesting...' : 'Simulate Analyzer Feed'}
-              </button>
-            </div>
-          ) : (
-            <p className="text-xs text-slate-500">Please select an order from the worklist first.</p>
-          )}
-        </div>
-      )}
-
-      {/* ── TAB 4: QUALITY CONTROL ── */}
-      {activeTab === 'qc' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Form */}
-          <div className="bg-white border border-slate-200/80 rounded-xl p-4 space-y-3">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Daily IQC Run Entry</h3>
-            <form onSubmit={handleRecordQCRun} className="space-y-2.5 text-xs">
-              <div>
-                <label className="text-[10px] font-medium text-slate-500 block mb-1">Analyzer</label>
-                <select
-                  value={qcAnalyzer}
-                  onChange={e => setQcAnalyzer(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-800"
-                >
-                  <option>Biochemistry Analyzer (Mindray BS-240)</option>
-                  <option>Hematology Analyzer (Sysmex XN-550)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-medium text-slate-500 block mb-1">Parameter</label>
-                <input
-                  type="text"
-                  value={qcParam}
-                  onChange={e => setQcParam(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-800"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-medium text-slate-500 block mb-1">Mean Target (μ)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={qcMean}
-                    onChange={e => setQcMean(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-mono text-slate-800"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-slate-500 block mb-1">SD Target (σ)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={qcSD}
-                    onChange={e => setQcSD(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-mono text-slate-800"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-medium text-slate-500 block mb-1">Measured Value</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={qcValue}
-                  onChange={e => setQcValue(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-mono text-slate-900"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs rounded transition-colors cursor-pointer"
-              >
-                Record QC Run
-              </button>
-            </form>
-          </div>
-
-          {/* Logs */}
-          <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-xl p-4 space-y-3">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Westgard QC Execution Logs</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-200/80">
-                  <tr>
-                    <th className="py-2 px-3">Analyzer & Param</th>
-                    <th className="py-2 px-3">Measured</th>
-                    <th className="py-2 px-3">Z-Score</th>
-                    <th className="py-2 px-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-normal text-slate-700">
-                  {qcLogs.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" className="py-6 text-center text-slate-400">No QC logs recorded.</td>
-                    </tr>
-                  ) : (
-                    qcLogs.map(log => (
-                      <tr key={log.id}>
-                        <td className="py-2 px-3">
-                          <span className="font-semibold text-slate-900 block">{log.parameter_name}</span>
-                          <span className="text-[10px] text-slate-400">{log.analyzer_name}</span>
-                        </td>
-                        <td className="py-2 px-3 font-mono font-medium">{log.measured_value}</td>
-                        <td className="py-2 px-3 font-mono">{log.z_score} SD</td>
-                        <td className="py-2 px-3">
-                          <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
-                            log.status === 'Passed' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                          }`}>
-                            {log.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── REGISTRATION MODAL ── */}
       {showRegModal && (
@@ -1160,15 +1021,17 @@ const LabHub = () => {
                   </FieldTooltip>
                 </div>
                 <div>
-                  <label className="text-[10px] font-medium text-slate-500 block mb-1">Urgency</label>
-                  <FieldTooltip text="STAT = emergency processing (<45m)">
+                  <label className="text-[10px] font-medium text-slate-500 block mb-1">Target TAT / Urgency</label>
+                  <FieldTooltip text="In-House: Min 1h (STAT), Max 6h (Routine). Outsourced: 7 Days (Standard), 1 Month (Special)">
                     <select
                       value={urgency}
                       onChange={e => setUrgency(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900 text-xs"
                     >
-                      <option value="Routine">Routine</option>
-                      <option value="STAT">STAT</option>
+                      <option value="In-House STAT (1h)">In-House STAT (Min: 1 Hour)</option>
+                      <option value="In-House Routine (6h)">In-House Routine (Max: 6 Hours)</option>
+                      <option value="Outsourced Standard (7 Days)">Outsourced Reference Lab (7 Days)</option>
+                      <option value="Outsourced Special (1 Month)">Special Outsourced Test (1 Month)</option>
                     </select>
                   </FieldTooltip>
                 </div>
