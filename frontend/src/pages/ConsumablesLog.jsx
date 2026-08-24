@@ -280,9 +280,9 @@ function StorageUnitGroup({
 
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 space-y-0.5">
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Accession Number</span>
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Specimen ID (SID)</span>
                                   <span className="font-mono font-bold text-slate-800 text-xs">
-                                    {row.specimenDetails?.accession_number || row.sku || 'ACC-001'}
+                                    {row.specimenDetails?.accession_number || row.sku || 'SID-001'}
                                   </span>
                                 </div>
 
