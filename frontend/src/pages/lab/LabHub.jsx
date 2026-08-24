@@ -1112,30 +1112,18 @@ const LabHub = () => {
                 </FieldTooltip>
               </div>
 
-              {/* Technical Assay Details Card */}
+              {/* Technical Assay Details Card (Concise Summary) */}
               {(() => {
                 const currentAssay = TEST_ASSAYS.find(a => a.name === testName || a.id === testName);
                 if (!currentAssay) return null;
                 return (
-                  <div className="bg-slate-50/90 border border-indigo-100 rounded-xl p-3 space-y-2 text-[11px] shadow-2xs">
-                    <div className="flex items-center justify-between border-b border-indigo-100/70 pb-1.5">
-                      <span className="font-extrabold text-indigo-700 uppercase tracking-wider text-[10px]">{currentAssay.category}</span>
-                      <span className="px-2 py-0.5 rounded bg-indigo-100/80 text-indigo-800 text-[10px] font-bold">{currentAssay.defaultTube}</span>
-                    </div>
-                    <div>
-                      <p className="text-slate-800 font-bold"><strong className="text-slate-500 font-medium">Core Focus:</strong> {currentAssay.focus}</p>
-                      <p className="text-slate-700 mt-0.5"><strong className="text-slate-500 font-medium">Key Pathologies:</strong> {currentAssay.pathologies}</p>
-                    </div>
-                    {currentAssay.essayPoints && (
-                      <div className="space-y-1 pt-1.5 border-t border-slate-200/60 text-[10px] text-slate-600">
-                        {currentAssay.essayPoints.map((pt, idx) => (
-                          <div key={idx} className="flex items-start gap-1.5">
-                            <span className="text-indigo-600 font-black shrink-0">•</span>
-                            <span>{pt}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  <div className="bg-indigo-50/50 border border-indigo-100/80 rounded-xl p-2 px-3 text-[11px] flex items-center justify-between gap-2">
+                    <p className="text-slate-600 font-medium truncate">
+                      <strong className="text-indigo-900 font-bold">{currentAssay.category}:</strong> {currentAssay.focus}
+                    </p>
+                    <span className="px-2 py-0.5 rounded bg-white text-indigo-700 text-[10px] font-bold border border-indigo-200/60 shrink-0">
+                      {currentAssay.defaultTube}
+                    </span>
                   </div>
                 );
               })()}
