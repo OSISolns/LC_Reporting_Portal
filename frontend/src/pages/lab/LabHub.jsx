@@ -10,11 +10,13 @@ import { toast } from 'react-hot-toast';
 // ── TUBE TYPES CONFIG (CLSI H3-A6 Order of Draw Sequence) ────────────────────
 const TUBE_TYPES = [
   { id: 'Blue Citrate', name: 'Sodium Citrate (Light Blue Top)', drawOrder: 1, desc: 'Coagulation Studies (PT, APTT, D-Dimer)' },
-  { id: 'SST Gold Gel', name: 'SST Gel Separator (Gold Top)', drawOrder: 2, desc: 'Clinical Chemistry, LFT, RFT, Electrolytes' },
-  { id: 'Green Heparin', name: 'Lithium Heparin (Green Top)', drawOrder: 3, desc: 'STAT Plasma Chemistry & Electrolytes' },
-  { id: 'Purple EDTA', name: 'EDTA K2/K3 (Purple Top)', drawOrder: 4, desc: 'Full Blood Count (FBC/CBC), ESR, HbA1c' },
-  { id: 'Grey Fluoride', name: 'Sodium Fluoride (Grey Top)', drawOrder: 5, desc: 'Fasting Blood Glucose, Lactate' },
-  { id: 'Yellow Urine Cup', name: 'Sterile Urine Container (Yellow Top)', drawOrder: 6, desc: 'Urinalysis, Urine Chemistry & Microscopy' },
+  { id: 'Redtop', name: 'Plain Clot Activator (Red Top)', drawOrder: 2, desc: 'Serology, Immunohematology, Blood Bank Crossmatch' },
+  { id: 'SST Gold Gel', name: 'SST Gel Separator (Gold Top)', drawOrder: 3, desc: 'Clinical Chemistry, LFT, RFT, Electrolytes' },
+  { id: 'Green Heparin', name: 'Lithium Heparin (Green Top)', drawOrder: 4, desc: 'STAT Plasma Chemistry & Electrolytes' },
+  { id: 'Purple EDTA', name: 'EDTA K2/K3 (Purple Top)', drawOrder: 5, desc: 'Full Blood Count (FBC/CBC), ESR, HbA1c' },
+  { id: 'Grey Fluoride', name: 'Sodium Fluoride (Grey Top)', drawOrder: 6, desc: 'Fasting Blood Glucose, Lactate' },
+  { id: 'NIPT Tube', name: 'Cell-Free DNA BCT (NIPT Specimen)', drawOrder: 7, desc: 'Non-Invasive Prenatal Testing & Genomic cfDNA' },
+  { id: 'Yellow Urine Cup', name: 'Sterile Urine Container (Yellow Top)', drawOrder: 8, desc: 'Urinalysis, Urine Chemistry & Microscopy' },
 ];
 
 // ── LIFECYCLE STAGES CONFIG ──────────────────────────────────────────────────
@@ -717,7 +719,7 @@ const LabHub = () => {
             <p className="text-xs text-slate-500">Phlebotomy sequence to prevent additive cross-contamination.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
             {[...TUBE_TYPES].sort((a, b) => a.drawOrder - b.drawOrder).map(tube => (
               <div key={tube.id} className="bg-white border border-slate-200/80 rounded-xl p-4 space-y-2">
                 <div className="flex justify-between items-center">
