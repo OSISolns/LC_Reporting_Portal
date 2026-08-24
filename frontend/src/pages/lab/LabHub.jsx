@@ -265,6 +265,84 @@ const LabHub = () => {
   const [saving, setSaving] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
 
+  // ── STORAGE UNIT & TAT MANAGEMENT ──
+  const availableStorageUnits = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('lc_storage_units_config');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [
+      { id: 'fridge_a', label: 'Fridge A (Main Stock / STAT Rapid Storage)', type: 'fridge' },
+      { id: 'fridge_b', label: 'Fridge B (Reagents & Samples - Routine 6h)', type: 'fridge' },
+      { id: 'freezer_a', label: 'Freezer A (-20°C Sample Bank - Outsourced 7d)', type: 'freezer' },
+      { id: 'freezer_b', label: 'Freezer B (-80°C Biobank - Special 1m)', type: 'freezer' }
+    ];
+  }, []);
+
+  const [storageAssignments, setStorageAssignments] = useState(() => {
+    try {
+      const raw = localStorage.getItem('lc_lab_specimen_storage');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {};
+  });
+
+  const [storageRacks, setStorageRacks] = useState(() => {
+    try {
+      const raw = localStorage.getItem('lc_lab_specimen_racks');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {};
+  });
+
+  const [storageBoxes, setStorageBoxes] = useState(() => {
+    try {
+      const raw = localStorage.getItem('lc_lab_specimen_boxes');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {};
+  });
+
+  const [selectedRegStorageUnit, setSelectedRegStorageUnit] = useState('');
+
+  const handleAssignOrderStorage = (orderId, unitId) => {
+    const next = { ...storageAssignments, [orderId]: unitId };
+    setStorageAssignments(next);
+    try { localStorage.setItem('lc_lab_specimen_storage', JSON.stringify(next)); } catch {}
+  };
+
+  const getRecommendedStorageUnit = (order) => {
+    if (!order) return 'fridge_a';
+    const u = (order.urgency || '').toLowerCase();
+    if (u.includes('special') || u.includes('1 month')) return 'freezer_b';
+    if (u.includes('outsourced') || u.includes('7 day')) return 'freezer_a';
+    if (u.includes('stat') || u.includes('1h')) return 'fridge_a';
+    return 'fridge_b'; // Default In-House Routine 6h
+  };
+
+  const getStorageRecommendationText = (order) => {
+    if (!order) return '';
+    const u = (order.urgency || '').toLowerCase();
+    if (u.includes('special') || u.includes('1 month')) {
+      return 'Freezer B (-80°C Biobank) — Required for 1-Month Special Outsourced Samples.';
+    }
+    if (u.includes('outsourced') || u.includes('7 day')) {
+      return 'Freezer A (-20°C Sample Bank) — Required for 7-Day Standard Outsourced Samples.';
+    }
+    if (u.includes('stat') || u.includes('1h')) {
+      return 'Fridge A (STAT Rapid Storage - 4°C) — Required for 1-Hour Urgent In-House Samples.';
+    }
+    return 'Fridge B (Routine Samples - 4°C) — Recommended for 6-Hour In-House Routine Samples.';
+  };
+
+  const getUnitLabel = (unitId) => {
+    const found = availableStorageUnits.find(u => u.id === unitId);
+    return found ? found.label : (unitId || 'Fridge A');
+  };
+
   // Westgard QC Form State
   const [qcAnalyzer, setQcAnalyzer] = useState('Biochemistry Analyzer (Mindray BS-240)');
   const [qcParam, setQcParam] = useState('');
@@ -717,9 +795,9 @@ const LabHub = () => {
                     <tr>
                       <th className="py-2.5 px-3">Patient / Accession</th>
                       <th className="py-2.5 px-3">Specimen / Tube</th>
-                      <th className="py-2.5 px-3">Stage</th>
-                      <th className="py-2.5 px-3">Urgency</th>
+                      <th className="py-2.5 px-3">Target TAT</th>
                       <th className="py-2.5 px-3">TAT Counter</th>
+                      <th className="py-2.5 px-3">Storage Unit (Fridge/Freezer)</th>
                       <th className="py-2.5 px-3 text-right">Action</th>
                     </tr>
                   </thead>
@@ -786,6 +864,28 @@ const LabHub = () => {
 
                             <td className="py-2.5 px-3">
                               <TatCounter order={order} />
+                            </td>
+
+                            <td className="py-2.5 px-3">
+                              {(() => {
+                                const assignedUnitId = storageAssignments[order.id] || getRecommendedStorageUnit(order);
+                                const unit = availableStorageUnits.find(u => u.id === assignedUnitId);
+                                const isFreezer = unit?.type === 'freezer' || String(assignedUnitId).includes('freezer');
+                                return (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 w-fit ${
+                                      isFreezer 
+                                        ? 'bg-sky-50 text-sky-800 border-sky-200' 
+                                        : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                                    }`}>
+                                      {isFreezer ? '🧊' : '❄️'} {unit?.label ? unit.label.split('(')[0].trim() : 'Fridge A'}
+                                    </span>
+                                    <span className="text-[9px] text-slate-400 font-mono">
+                                      {storageRacks[order.id] || 'Shelf 2'}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </td>
 
                             <td className="py-2.5 px-3.5 text-right">
@@ -858,41 +958,83 @@ const LabHub = () => {
                   </div>
                 </div>
 
-                {/* Parameter Verification Inputs */}
-                <div className="space-y-2 pt-2 border-t border-slate-100">
+                {/* Storage Unit Assignment Panel */}
+                <div className="space-y-3 pt-3 border-t border-slate-100">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold text-slate-800">Parameters</span>
-                    <button
-                      onClick={handleSaveResults}
-                      disabled={saving}
-                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded transition-colors cursor-pointer"
-                    >
-                      {saving ? 'Processing...' : 'Run Auto-Verify'}
-                    </button>
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <Droplet size={14} className="text-indigo-600" /> Sample Storage Location
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">TAT Storage Rule</span>
                   </div>
 
-                  <div className="space-y-2">
-                    {resultParams.map(param => (
-                      <div key={param.id} className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-lg space-y-1">
-                        <div className="flex justify-between text-[11px] text-slate-700">
-                          <span className="font-medium">{param.parameter_name}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">{param.reference_range} {param.unit}</span>
-                        </div>
-                        <FieldTooltip text={`Reference range: ${param.reference_range || 'Standard'} ${param.unit || ''}`}>
-                          <input
-                            type="text"
-                            value={param.parameter_value || ''}
-                            onChange={e => {
-                              const val = e.target.value;
-                              setResultParams(prev => prev.map(p => p.id === param.id ? { ...p, parameter_value: val } : p));
-                            }}
-                            placeholder="Enter measurement..."
-                            className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-slate-400"
-                          />
-                        </FieldTooltip>
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2.5 text-xs">
+                    <div>
+                      <label className="text-[10px] font-semibold text-slate-500 block mb-1">Target Storage Unit</label>
+                      <select
+                        value={storageAssignments[selectedOrder.id] || getRecommendedStorageUnit(selectedOrder)}
+                        onChange={e => handleAssignOrderStorage(selectedOrder.id, e.target.value)}
+                        className="w-full p-2 bg-white border border-slate-200 rounded font-semibold text-slate-900 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      >
+                        {availableStorageUnits.map(unit => (
+                          <option key={unit.id} value={unit.id}>
+                            {unit.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Recommendation Callout */}
+                    <div className="text-[10px] bg-indigo-50/80 border border-indigo-100 text-indigo-900 p-2 rounded-lg space-y-0.5">
+                      <p className="font-bold">TAT Recommended Storage:</p>
+                      <p className="text-indigo-700">
+                        {getStorageRecommendationText(selectedOrder)}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      <div>
+                        <label className="text-slate-500 font-medium block mb-1">Shelf / Rack</label>
+                        <input
+                          type="text"
+                          value={storageRacks[selectedOrder.id] || 'Shelf 2 (Rack B)'}
+                          onChange={e => {
+                            const val = e.target.value;
+                            const next = { ...storageRacks, [selectedOrder.id]: val };
+                            setStorageRacks(next);
+                            try { localStorage.setItem('lc_lab_specimen_racks', JSON.stringify(next)); } catch {}
+                          }}
+                          placeholder="e.g. Rack A-04"
+                          className="w-full p-1.5 bg-white border border-slate-200 rounded font-mono font-medium text-slate-900 text-[11px]"
+                        />
                       </div>
-                    ))}
+                      <div>
+                        <label className="text-slate-500 font-medium block mb-1">Box / Slot #</label>
+                        <input
+                          type="text"
+                          value={storageBoxes[selectedOrder.id] || 'Box #12'}
+                          onChange={e => {
+                            const val = e.target.value;
+                            const next = { ...storageBoxes, [selectedOrder.id]: val };
+                            setStorageBoxes(next);
+                            try { localStorage.setItem('lc_lab_specimen_boxes', JSON.stringify(next)); } catch {}
+                          }}
+                          placeholder="e.g. Slot 08"
+                          className="w-full p-1.5 bg-white border border-slate-200 rounded font-mono font-medium text-slate-900 text-[11px]"
+                        />
+                      </div>
+                    </div>
                   </div>
+
+                  <button
+                    onClick={() => {
+                      const currentUnit = storageAssignments[selectedOrder.id] || getRecommendedStorageUnit(selectedOrder);
+                      handleAssignOrderStorage(selectedOrder.id, currentUnit);
+                      toast.success(`Sample stored in ${getUnitLabel(currentUnit)}`);
+                    }}
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                  >
+                    <Save size={14} /> Store Sample in Unit
+                  </button>
                 </div>
 
                 {/* Footer Buttons */}
@@ -1021,11 +1163,18 @@ const LabHub = () => {
                   </FieldTooltip>
                 </div>
                 <div>
-                  <label className="text-[10px] font-medium text-slate-500 block mb-1">Target TAT / Urgency</label>
+                  <label className="text-[10px] font-medium text-slate-500 block mb-1">Target TAT / Processing Scope</label>
                   <FieldTooltip text="In-House: Min 1h (STAT), Max 6h (Routine). Outsourced: 7 Days (Standard), 1 Month (Special)">
                     <select
                       value={urgency}
-                      onChange={e => setUrgency(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setUrgency(val);
+                        if (val.includes('Special') || val.includes('1 Month')) setSelectedRegStorageUnit('freezer_b');
+                        else if (val.includes('Outsourced') || val.includes('7 Day')) setSelectedRegStorageUnit('freezer_a');
+                        else if (val.includes('STAT') || val.includes('1h')) setSelectedRegStorageUnit('fridge_a');
+                        else setSelectedRegStorageUnit('fridge_b');
+                      }}
                       className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900 text-xs"
                     >
                       <option value="In-House STAT (1h)">In-House STAT (Min: 1 Hour)</option>
@@ -1035,6 +1184,23 @@ const LabHub = () => {
                     </select>
                   </FieldTooltip>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-indigo-700 block mb-1">Assign Storage Fridge / Freezer *</label>
+                <FieldTooltip text="Select fridge/freezer storage unit based on TAT requirement">
+                  <select
+                    value={selectedRegStorageUnit || 'fridge_b'}
+                    onChange={e => setSelectedRegStorageUnit(e.target.value)}
+                    className="w-full p-2 bg-indigo-50/60 border border-indigo-200 rounded font-bold text-slate-900 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    {availableStorageUnits.map(unit => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.label}
+                      </option>
+                    ))}
+                  </select>
+                </FieldTooltip>
               </div>
 
               {/* Test Assay Selection */}
