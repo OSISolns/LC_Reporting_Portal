@@ -959,7 +959,7 @@ const LabHub = () => {
                                         ? 'bg-sky-50 text-sky-800 border-sky-200' 
                                         : 'bg-indigo-50 text-indigo-800 border-indigo-200'
                                     }`}>
-                                      {isFreezer ? '🧊' : '❄️'} {unit?.label ? unit.label.split('(')[0].trim() : 'Fridge A'}
+                                      <Thermometer size={11} className="text-slate-500 shrink-0" /> {unit?.label ? unit.label.split('(')[0].trim() : 'Fridge 1'}
                                     </span>
                                     <span className="text-[9px] text-slate-400 font-mono">
                                       {storageRacks[order.id] || 'Shelf 2'}

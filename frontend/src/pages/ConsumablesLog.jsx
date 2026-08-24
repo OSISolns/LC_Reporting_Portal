@@ -1299,7 +1299,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
             result.push({
               dept_stock_id: `specimen_${spec.id}`,
               item_id: String(spec.id),
-              name: `🧪 [Specimen Sample] ${spec.patient_name} (${spec.test_name || 'Lab Assay'})`,
+              name: `[Specimen] ${spec.patient_name} (${spec.test_name || 'Lab Assay'})`,
               sku: spec.accession_number || spec.specimen_barcode || 'SPECIMEN',
               category: 'Samples',
               quantity: 1,
@@ -3756,7 +3756,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
                             }`}
                           >
-                            {t === 'fridge' ? '🧊 Fridge' : '❄️ Freezer'}
+                            {t === 'fridge' ? 'Fridge' : 'Freezer'}
                           </button>
                         ))}
                       </div>
