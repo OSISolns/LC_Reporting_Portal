@@ -1037,15 +1037,7 @@ const LabHub = () => {
                   </button>
                 </div>
 
-                {/* Footer Buttons */}
-                <div className="pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => setShowReportModal(true)}
-                    className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <Printer size={14} /> Print Specimen Report
-                  </button>
-                </div>
+
               </div>
             ) : (
               <div className="bg-white border border-slate-200/80 rounded-xl p-6 text-center text-slate-400 space-y-1">
@@ -1305,86 +1297,7 @@ const LabHub = () => {
         </div>
       )}
 
-      {/* ── PRINTABLE REPORT MODAL ── */}
-      {showReportModal && selectedOrder && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl border border-slate-200 text-slate-900">
-            <div className="flex justify-between items-start border-b border-slate-200 pb-3">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">LABORATORY DIAGNOSTIC REPORT</h2>
-                <p className="text-[11px] text-slate-500 font-normal">Outpatient Pathology & LIS Verification</p>
-              </div>
-              <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-base cursor-pointer">✕</button>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
-              <div>
-                <p><strong className="text-slate-500">Patient Name:</strong> {selectedOrder.patient_name}</p>
-                <p><strong className="text-slate-500">Patient ID:</strong> {selectedOrder.patient_id}</p>
-                <p><strong className="text-slate-500">Age/Gender:</strong> {selectedOrder.patient_age || '—'} / {selectedOrder.patient_gender}</p>
-              </div>
-              <div>
-                <p><strong className="text-slate-500">Accession No:</strong> {selectedOrder.accession_number}</p>
-                <p><strong className="text-slate-500">Barcode:</strong> {selectedOrder.specimen_barcode}</p>
-                <p><strong className="text-slate-500">Ref Provider:</strong> {selectedOrder.referring_provider || 'Dr. Sarah Connor'}</p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-slate-800">Test Parameters</h4>
-              <table className="w-full text-left text-xs border-collapse border border-slate-200">
-                <thead className="bg-slate-50 text-slate-700 font-semibold uppercase text-[10px]">
-                  <tr>
-                    <th className="py-1.5 px-2.5 border border-slate-200">Parameter</th>
-                    <th className="py-1.5 px-2.5 border border-slate-200">Result</th>
-                    <th className="py-1.5 px-2.5 border border-slate-200">Ref Range</th>
-                    <th className="py-1.5 px-2.5 border border-slate-200">Unit</th>
-                    <th className="py-1.5 px-2.5 border border-slate-200">Flag</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 font-normal">
-                  {resultParams.map(r => (
-                    <tr key={r.id}>
-                      <td className="py-1.5 px-2.5 border border-slate-200 font-medium">{r.parameter_name}</td>
-                      <td className="py-1.5 px-2.5 border border-slate-200 font-mono font-semibold">{r.parameter_value || '—'}</td>
-                      <td className="py-1.5 px-2.5 border border-slate-200 font-mono text-slate-500">{r.reference_range}</td>
-                      <td className="py-1.5 px-2.5 border border-slate-200 text-slate-500">{r.unit}</td>
-                      <td className="py-1.5 px-2.5 border border-slate-200 font-semibold">
-                        {r.is_abnormal === 1 ? (
-                          <span className="text-rose-600">HIGH/LOW</span>
-                        ) : (
-                          <span className="text-emerald-600">NORMAL</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-3 border-t border-slate-200 text-xs">
-              <div>
-                <p className="font-semibold text-slate-800">Verified By: {selectedOrder.verified_by_name || 'LIS Auto-Verification Engine'}</p>
-                <p className="text-[10px] text-slate-400">Date Verified: {selectedOrder.verified_at || new Date().toLocaleString()}</p>
-              </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <button
-                  onClick={() => handleNotifyPatient(selectedOrder.id)}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs rounded transition-colors cursor-pointer"
-                >
-                  Dispatch Report
-                </button>
-                <button
-                  onClick={() => window.print()}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs rounded transition-colors cursor-pointer"
-                >
-                  Print PDF
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
