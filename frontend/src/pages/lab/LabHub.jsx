@@ -19,6 +19,101 @@ const TUBE_TYPES = [
   { id: 'Yellow Urine Cup', name: 'Sterile Urine Container (Yellow Top)', drawOrder: 8, desc: 'Urinalysis, Urine Chemistry & Microscopy' },
 ];
 
+// ── TEST ASSAYS CONFIG ───────────────────────────────────────────────────────
+const TEST_ASSAYS = [
+  {
+    id: 'Full Blood Count (FBC/CBC)',
+    name: 'Full Blood Count (FBC/CBC)',
+    category: 'Hematology',
+    defaultTube: 'Purple EDTA',
+    defaultSpecimen: 'Venous Blood',
+    focus: 'Hematological profiling of red cells, white cells, platelets, and hemoglobin.',
+    pathologies: 'Anemia, Infections, Leukemia, Thrombocytopenia.',
+    essayPoints: [
+      'Cell Count Parameters: Flow cytometry & impedance measurement of RBC, WBC differential, and PLT.',
+      'Anticoagulant Dynamics: EDTA K2/K3 prevents clotting by chelating ionized calcium while preserving cellular morphology.'
+    ]
+  },
+  {
+    id: 'Liver Function Test (LFT)',
+    name: 'Liver Function Test (LFT)',
+    category: 'Biochemistry',
+    defaultTube: 'SST Gold Gel',
+    defaultSpecimen: 'Venous Blood',
+    focus: 'Hepatic parenchyma integrity, biliary excretion, and synthetic capacity.',
+    pathologies: 'Hepatitis, Cirrhosis, Jaundice, Cholecystitis.',
+    essayPoints: [
+      'Enzymatic & Synthetic Panel: Transaminases (ALT/AST), Alkaline Phosphatase (ALP), Total/Direct Bilirubin, and Serum Albumin.',
+      'Gel Barrier Dynamics: SST gel separates serum from clot upon centrifugation to prevent hemolysis artifacts.'
+    ]
+  },
+  {
+    id: 'Renal & Electrolytes (RFT)',
+    name: 'Renal & Electrolytes (RFT)',
+    category: 'Biochemistry',
+    defaultTube: 'SST Gold Gel',
+    defaultSpecimen: 'Venous Blood',
+    focus: 'Glomerular filtration rate, electrolyte balance, and renal clearance.',
+    pathologies: 'Acute Kidney Injury (AKI), Chronic Kidney Disease (CKD), Dehydration.',
+    essayPoints: [
+      'Clearance Indicators: Serum Creatinine, Blood Urea Nitrogen (BUN), Na+, K+, Cl-, and eGFR calculations.',
+      'Pre-analytical Stability: Prompt serum separation required to prevent intracellular potassium leakage.'
+    ]
+  },
+  {
+    id: 'Cardiac Troponin I (STAT)',
+    name: 'Cardiac Troponin I (STAT)',
+    category: 'Cardiac Triage',
+    defaultTube: 'Green Heparin',
+    defaultSpecimen: 'Plasma / Whole Blood',
+    focus: 'High-sensitivity myocardial necrosis biomarker for emergency chest pain triage.',
+    pathologies: 'Acute Myocardial Infarction (AMI), Acute Coronary Syndrome (ACS).',
+    essayPoints: [
+      'STAT Processing Dynamics: Lithium Heparin plasma allows immediate centrifugation without waiting for clot formation.',
+      'Diagnostic Sensitivity: Serial troponin testing at 0h, 3h, 6h detects subtle ischemic myocardial injury.'
+    ]
+  },
+  {
+    id: 'Urine Analysis (Urinalysis)',
+    name: 'Urine Analysis (Urinalysis)',
+    category: 'Nephrology & Urology',
+    defaultTube: 'Yellow Urine Cup',
+    defaultSpecimen: 'Clean-catch Midstream Urine',
+    focus: 'Fluid biopsy of the kidney assessing physical properties, chemical composition, and microscopic sediment.',
+    pathologies: 'Urinary Tract Infections (UTIs), Nephrotic/Nephritic Syndrome, Diabetes Mellitus, and Nephrolithiasis (Kidney Stones).',
+    essayPoints: [
+      'The Three-Part Examination: Physical parameters (color, clarity, specific gravity), chemical dipstick indicators (nitrites, leukocyte esterase, glucose, protein), and microscopic sediment (casts, crystals, epithelial cells, dysmorphic RBCs).',
+      'Pre-analytical Dynamics: Clean-catch midstream collection methods essential to avoid bacterial contamination from normal skin flora.'
+    ]
+  },
+  {
+    id: 'Stool Examination (Fecal Analysis)',
+    name: 'Stool Examination (Fecal Analysis)',
+    category: 'Gastroenterology & Parasitology',
+    defaultTube: 'Yellow Urine Cup',
+    defaultSpecimen: 'Fresh Fecal Sample',
+    focus: 'Assessment of gastrointestinal function, malabsorption, occult bleeding, and colorectal health.',
+    pathologies: 'Colorectal Cancer Screening, Parasitic Infestations (e.g., Giardia, Hookworms), and Inflammatory Bowel Disease (IBD).',
+    essayPoints: [
+      'Occult Blood Mechanisms: Comparing traditional guaiac-based FOBT (gFOBT) with highly specific Fecal Immunochemical Tests (FIT) targeting human hemoglobin.',
+      'Ova & Parasites (O&P): Macroscopic inspection (consistency, mucus) coupled with raw microscopy utilizing iodine/saline wet mounts to locate motile trophozoites or static cysts.'
+    ]
+  },
+  {
+    id: 'Semen Analysis (Andrology)',
+    name: 'Semen Analysis (Andrology)',
+    category: 'Andrology & Reproductive Health',
+    defaultTube: 'Yellow Urine Cup',
+    defaultSpecimen: 'Seminal Fluid',
+    focus: 'Quantifying sperm production, structural integrity, motility, and chemical composition of seminal fluid.',
+    pathologies: 'Male-factor Infertility, Oligospermia, Asthenozoospermia, Teratozoospermia, and Post-Vasectomy Verification.',
+    essayPoints: [
+      'Strict WHO Standardization: Full laboratory compliance with WHO 6th Edition Manual Guidelines (min 4% normal morphology, progressive motility, and 15 million/mL concentration).',
+      'Time & Temperature Sensitivity: Critical post-collection window where analysis must begin within 30–60 mins after liquefaction at room/body temp to prevent false reductions in viability.'
+    ]
+  }
+];
+
 // ── LIFECYCLE STAGES CONFIG ──────────────────────────────────────────────────
 const LIFECYCLE_STAGES = [
   { id: 'Ordered', phase: 'pre-analytical', label: '1. Order Received' },
@@ -994,20 +1089,67 @@ const LabHub = () => {
                 </div>
               </div>
 
+              {/* Test Assay Selection */}
+              <div>
+                <label className="text-[10px] font-semibold text-slate-700 block mb-1">Target Test Assay *</label>
+                <FieldTooltip text="Target laboratory diagnostic panel and assay protocol">
+                  <select
+                    value={testName}
+                    onChange={e => {
+                      const selectedAssay = TEST_ASSAYS.find(a => a.name === e.target.value || a.id === e.target.value);
+                      setTestName(e.target.value);
+                      if (selectedAssay) {
+                        setTubeType(selectedAssay.defaultTube);
+                        setSpecimenType(selectedAssay.defaultSpecimen);
+                      }
+                    }}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-bold text-slate-900 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    {TEST_ASSAYS.map(a => (
+                      <option key={a.id} value={a.name}>{a.name}</option>
+                    ))}
+                  </select>
+                </FieldTooltip>
+              </div>
+
+              {/* Technical Assay Details Card */}
+              {(() => {
+                const currentAssay = TEST_ASSAYS.find(a => a.name === testName || a.id === testName);
+                if (!currentAssay) return null;
+                return (
+                  <div className="bg-slate-50/90 border border-indigo-100 rounded-xl p-3 space-y-2 text-[11px] shadow-2xs">
+                    <div className="flex items-center justify-between border-b border-indigo-100/70 pb-1.5">
+                      <span className="font-extrabold text-indigo-700 uppercase tracking-wider text-[10px]">{currentAssay.category}</span>
+                      <span className="px-2 py-0.5 rounded bg-indigo-100/80 text-indigo-800 text-[10px] font-bold">{currentAssay.defaultTube}</span>
+                    </div>
+                    <div>
+                      <p className="text-slate-800 font-bold"><strong className="text-slate-500 font-medium">Core Focus:</strong> {currentAssay.focus}</p>
+                      <p className="text-slate-700 mt-0.5"><strong className="text-slate-500 font-medium">Key Pathologies:</strong> {currentAssay.pathologies}</p>
+                    </div>
+                    {currentAssay.essayPoints && (
+                      <div className="space-y-1 pt-1.5 border-t border-slate-200/60 text-[10px] text-slate-600">
+                        {currentAssay.essayPoints.map((pt, idx) => (
+                          <div key={idx} className="flex items-start gap-1.5">
+                            <span className="text-indigo-600 font-black shrink-0">•</span>
+                            <span>{pt}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-medium text-slate-500 block mb-1">Test Assay</label>
-                  <FieldTooltip text="Target laboratory diagnostic panel">
-                    <select
-                      value={testName}
-                      onChange={e => setTestName(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
-                    >
-                      <option>Full Blood Count (FBC/CBC)</option>
-                      <option>Liver Function Test (LFT)</option>
-                      <option>Renal & Electrolytes (RFT)</option>
-                      <option>Cardiac Troponin I (STAT)</option>
-                    </select>
+                  <label className="text-[10px] font-medium text-slate-500 block mb-1">Specimen Matrix</label>
+                  <FieldTooltip text="Anatomical specimen matrix collected from patient">
+                    <input
+                      type="text"
+                      value={specimenType}
+                      onChange={e => setSpecimenType(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900 text-xs"
+                    />
                   </FieldTooltip>
                 </div>
                 <div>
@@ -1016,7 +1158,7 @@ const LabHub = () => {
                     <select
                       value={tubeType}
                       onChange={e => setTubeType(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900"
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-medium text-slate-900 text-xs"
                     >
                       {TUBE_TYPES.map(t => (
                         <option key={t.id} value={t.id}>{t.name}</option>
