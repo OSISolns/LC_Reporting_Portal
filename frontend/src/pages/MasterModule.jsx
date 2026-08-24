@@ -127,6 +127,9 @@ export default function MasterModule() {
 
   // Categories definition
   const categoriesList = [
+    { id: 'consumables', label: 'Consumables' },
+    { id: 'reagents', label: 'Reagents' },
+    { id: 'samples', label: 'Samples' },
     { id: 'medical_supplies', label: 'Medical Supplies' },
     { id: 'medications', label: 'Medications' },
     { id: 'anesthetics', label: 'Anesthetics' },
@@ -134,7 +137,6 @@ export default function MasterModule() {
     { id: 'sutures', label: 'Sutures' },
     { id: 'antidotes', label: 'Antidotes' },
     { id: 'stationery', label: 'Stationery' },
-    { id: 'consumables', label: 'Consumables' },
     { id: 'suppository', label: 'Suppository' },
     { id: 'housekeeping', label: 'Housekeeping' },
     { id: 'cafetariat', label: 'Cafetariat' }
@@ -142,6 +144,9 @@ export default function MasterModule() {
 
   const normalizeCategory = (catStr) => {
     const clean = String(catStr || '').trim().toLowerCase().replace(/\s+/g, '_');
+    if (clean.includes('reagent')) return 'reagents';
+    if (clean.includes('sample')) return 'samples';
+    if (clean.includes('consumable')) return 'consumables';
     if (clean.includes('medication')) return 'medications';
     if (clean.includes('supply') || clean.includes('supplies')) return 'medical_supplies';
     if (clean.includes('anesthetic')) return 'anesthetics';
@@ -149,7 +154,6 @@ export default function MasterModule() {
     if (clean.includes('suture')) return 'sutures';
     if (clean.includes('antidote')) return 'antidotes';
     if (clean.includes('stationery')) return 'stationery';
-    if (clean.includes('consumable')) return 'consumables';
     if (clean.includes('suppository')) return 'suppository';
     if (clean.includes('housekeeping')) return 'housekeeping';
     if (clean.includes('cafetariat') || clean.includes('cafeteria')) return 'cafetariat';
@@ -935,7 +939,13 @@ export default function MasterModule() {
   // --- Display Helpers ---
   const getCategoryStyle = (category) => {
     const cat = category?.toLowerCase() || '';
-    if (cat.includes('medication')) {
+    if (cat.includes('reagent')) {
+      return 'bg-purple-50 text-purple-700 border-purple-200/50';
+    } else if (cat.includes('sample')) {
+      return 'bg-pink-50 text-pink-700 border-pink-200/50';
+    } else if (cat.includes('consumable')) {
+      return 'bg-teal-50 text-teal-700 border-teal-200/50';
+    } else if (cat.includes('medication')) {
       return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
     } else if (cat.includes('supplies')) {
       return 'bg-indigo-50 text-indigo-700 border-indigo-200/50';
@@ -965,6 +975,115 @@ export default function MasterModule() {
       .split(' ')
       .map(w => w.charAt(0).toUpperCase() + w.slice(1))
       .join(' ');
+  };
+
+  const handleExportItemsXlsx = async () => {
+    const exportData = getFilteredData();
+    if (!exportData || exportData.length === 0) {
+      toast.error('No items to export based on current filters.');
+      return;
+    }
+
+    try {
+      toast.loading('Generating Stock Master Excel workbook...', { id: 'excel-export-toast' });
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Stock Master Inventory');
+      sheet.views = [{ showGridLines: true }];
+
+      // Column widths
+      sheet.getColumn(1).width = 34; // Item Name
+      sheet.getColumn(2).width = 16; // SKU
+      sheet.getColumn(3).width = 20; // Category
+      sheet.getColumn(4).width = 14; // Unit of Measure
+      sheet.getColumn(5).width = 14; // Available Qty
+      sheet.getColumn(6).width = 16; // Unit Price
+      sheet.getColumn(7).width = 22; // Department
+      sheet.getColumn(8).width = 16; // Storage Location
+      sheet.getColumn(9).width = 18; // Batch #
+      sheet.getColumn(10).width = 18; // Lot #
+      sheet.getColumn(11).width = 15; // Expiry Date
+      sheet.getColumn(12).width = 15; // Purchase Date
+
+      // Title Banner
+      const titleCell = sheet.getCell('A1');
+      titleCell.value = 'LEGACY CLINICS & DIAGNOSTICS — STOCK MASTER INVENTORY';
+      sheet.mergeCells('A1:L1');
+      titleCell.font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4F46E5' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(1).height = 35;
+
+      // Subtitle Banner
+      const subCell = sheet.getCell('A2');
+      subCell.value = `Exported on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} | Total Records: ${exportData.length}`;
+      sheet.mergeCells('A2:L2');
+      subCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '475569' } };
+      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+      subCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(2).height = 22;
+
+      sheet.addRow([]); // Row 3 spacer
+
+      // Table Headers
+      const headers = [
+        'Item Name', 'SKU', 'Category', 'Unit of Measure', 'Available Qty',
+        'Unit Price (RWF)', 'Department', 'Storage Unit', 'Batch #', 'Lot #',
+        'Expiry Date', 'Purchase Date'
+      ];
+      const headerRow = sheet.addRow(headers);
+      headerRow.height = 25;
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '334155' } };
+        cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 0.5 };
+      });
+
+      // Populate Data Rows
+      exportData.forEach((item) => {
+        const deptName = item.department_name ||
+          departments.find(d => String(d.id) === String(item.department_id))?.name || 'All / General';
+
+        const row = sheet.addRow([
+          item.name || '',
+          item.sku || '',
+          formatCategoryName(item.category),
+          item.unit_of_measure || 'pc',
+          Number(item.quantity || 0),
+          Number(item.price || 0),
+          deptName,
+          item.storage || '—',
+          item.batch_number || '—',
+          item.lot_number || '—',
+          item.expiry_date ? String(item.expiry_date).split('T')[0] : '—',
+          item.purchase_time ? String(item.purchase_time).split('T')[0] : '—'
+        ]);
+        row.height = 20;
+        row.eachCell((cell, colNumber) => {
+          cell.font = { name: 'Calibri', size: 10, color: { argb: '1E293B' } };
+          cell.alignment = {
+            vertical: 'middle',
+            horizontal: (colNumber === 5 || colNumber === 6) ? 'right' : 'left'
+          };
+          if (colNumber === 6) {
+            cell.numFmt = '#,##0';
+          }
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `Stock_Master_Items_${new Date().toISOString().split('T')[0]}.xlsx`;
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Stock Master Excel file downloaded successfully!', { id: 'excel-export-toast' });
+    } catch (err) {
+      console.error('Export error:', err);
+      toast.error('Failed to export Excel file: ' + err.message, { id: 'excel-export-toast' });
+    }
   };
 
   const getAddAction = () => {
@@ -1208,6 +1327,13 @@ export default function MasterModule() {
 
               {activeTab === 'items' && (
                 <>
+                  <button
+                    onClick={handleExportItemsXlsx}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                  >
+                    <Download size={15} className="stroke-[2.5]" /> Export Excel
+                  </button>
+
                   <button
                     onClick={() => { setUploadPreview([]); setIsImportModalOpen(true); }}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"

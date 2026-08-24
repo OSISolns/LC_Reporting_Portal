@@ -4,7 +4,8 @@ import {
   ClipboardList, Package, Boxes, TrendingDown, RefreshCw, Loader2,
   Plus, Search, Calendar, Building, AlertCircle, CheckCircle2, FileSpreadsheet,
   ArrowRight, X, Send, Clock, ChevronDown, ChevronUp, Layers, Activity, Hash,
-  Sparkles, Link2, AlertTriangle, BarChart3, Info
+  Sparkles, Link2, AlertTriangle, BarChart3, Info,
+  Thermometer, Settings, Trash2, Edit3, FlaskConical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
@@ -30,6 +31,7 @@ function StorageUnitGroup({
   storageAssignments, STORAGE_UNITS,
   assignPickerItemId, setAssignPickerItemId,
   assignItemToUnit, removeItemAssignment,
+  handleUnassignAllItemsFromUnit,
   setDeactModalItem, setDeactReasonInput,
   handleQuickReorderItem, getItemStatus,
   defaultExpanded = false,
@@ -51,23 +53,37 @@ function StorageUnitGroup({
   return (
     <div className="rounded-xl border border-slate-200 overflow-hidden">
       {/* Group header */}
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className={`w-full flex items-center justify-between px-4 py-2.5 border-b text-xs font-black uppercase tracking-wider transition-colors cursor-pointer ${headerBg}`}
-      >
-        <div className="flex items-center gap-2">
+      <div className={`w-full flex items-center justify-between px-4 py-2.5 border-b text-xs font-black uppercase tracking-wider transition-colors ${headerBg}`}>
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          className="flex items-center gap-2 cursor-pointer flex-1 text-left"
+        >
           <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
           {unit.label}
           <span className="font-semibold text-[10px] opacity-70 normal-case tracking-normal">
             {rows.length} item{rows.length !== 1 ? 's' : ''}
           </span>
+        </button>
+        <div className="flex items-center gap-2">
+          {unit.id && rows.length > 0 && handleUnassignAllItemsFromUnit && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUnassignAllItemsFromUnit(unit.id);
+              }}
+              className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-200 transition-all cursor-pointer normal-case"
+              title={`Unassign all ${rows.length} items from ${unit.label}`}
+            >
+              Unassign All ({rows.length})
+            </button>
+          )}
+          <button type="button" onClick={() => setOpen(v => !v)} className="cursor-pointer">
+            {open ? <ChevronUp size={14} className="opacity-60" /> : <ChevronDown size={14} className="opacity-60" />}
+          </button>
         </div>
-        {open
-          ? <ChevronUp size={14} className="opacity-60" />
-          : <ChevronDown size={14} className="opacity-60" />
-        }
-      </button>
+      </div>
 
       {open && (
         <div>
@@ -397,22 +413,145 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const [filterTo, setFilterTo] = useState('');
 
   // Tabs
-  const [activeSubTab, setActiveSubTab] = useState('history'); // 'history', 'stock', 'requisitions', 'deactivated'
+  const [activeSubTab, setActiveSubTab] = useState('history'); // 'history', 'stock', 'requisitions', 'deactivated', 'fridges'
   const [stockTab, setStockTab] = useState('local'); // 'local', 'central'
   const [stockSearchTerm, setStockSearchTerm] = useState('');
 
-  // Fridge / Freezer storage unit system
-  const STORAGE_UNITS = [
-    { id: 'fridge_1',   label: 'Fridge 1',  type: 'fridge'  },
-    { id: 'fridge_2',   label: 'Fridge 2',  type: 'fridge'  },
-    { id: 'fridge_3',   label: 'Fridge 3',  type: 'fridge'  },
-    { id: 'fridge_4',   label: 'Fridge 4',  type: 'fridge'  },
-    { id: 'fridge_5',   label: 'Fridge 5',  type: 'fridge'  },
-    { id: 'fridge_6',   label: 'Fridge 6',  type: 'fridge'  },
-    { id: 'fridge_7',   label: 'Fridge 7',  type: 'fridge'  },
-    { id: 'fridge_8',   label: 'Fridge 8',  type: 'fridge'  },
-    { id: 'freezer_1',  label: 'Freezer 1', type: 'freezer' },
+  // ── Lab Subdivisions ───────────────────────────────────────────────────────
+  const LAB_SUBDIVISIONS = [
+    { id: 'microbiology',      label: 'Microbiology',    color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+    { id: 'biochemistry',      label: 'Biochemistry',    color: 'bg-blue-100 text-blue-800 border-blue-300' },
+    { id: 'hematology',        label: 'Hematology',      color: 'bg-rose-100 text-rose-800 border-rose-300' },
+    { id: 'stock',             label: 'Stock',           color: 'bg-amber-100 text-amber-800 border-amber-300' },
+    { id: 'molecular_biology', label: 'Molecular Biology', color: 'bg-violet-100 text-violet-800 border-violet-300' },
+    { id: 'disposal',          label: 'Disposal',        color: 'bg-orange-100 text-orange-800 border-orange-300' },
   ];
+
+  // ── Storage Content Types ─────────────────────────────────────────────────
+  // Fridges can hold any of the 4 types; freezers only long-term: Samples + Reagents
+  const ALL_CONTENT_TYPES = [
+    { id: 'new_stock',    label: 'New Stock',    unitTypes: ['fridge'],           color: 'bg-teal-100 text-teal-800 border-teal-300' },
+    { id: 'stock_in_use', label: 'Stock In Use', unitTypes: ['fridge'],           color: 'bg-sky-100 text-sky-800 border-sky-300' },
+    { id: 'reagents',     label: 'Reagents',     unitTypes: ['fridge', 'freezer'], color: 'bg-purple-100 text-purple-800 border-purple-300' },
+    { id: 'samples',      label: 'Samples',      unitTypes: ['fridge', 'freezer'], color: 'bg-pink-100 text-pink-800 border-pink-300' },
+  ];
+
+  const contentTypesFor = (unitType) => ALL_CONTENT_TYPES.filter(c => c.unitTypes.includes(unitType));
+
+
+  // Each unit: { id, label, type: 'fridge'|'freezer', subdivisions: string[], contentTypes: string[] }
+  const DEFAULT_STORAGE_UNITS = [
+    { id: 'fridge_1',  label: 'Fridge 1',  type: 'fridge',  subdivisions: [], contentTypes: [] },
+    { id: 'fridge_2',  label: 'Fridge 2',  type: 'fridge',  subdivisions: [], contentTypes: [] },
+    { id: 'fridge_3',  label: 'Fridge 3',  type: 'fridge',  subdivisions: [], contentTypes: [] },
+    { id: 'fridge_4',  label: 'Fridge 4',  type: 'fridge',  subdivisions: [], contentTypes: [] },
+    { id: 'fridge_5',  label: 'Fridge 5',  type: 'fridge',  subdivisions: [], contentTypes: [] },
+    { id: 'fridge_6',  label: 'Fridge 6',  type: 'fridge',  subdivisions: [], contentTypes: [] },
+    { id: 'fridge_7',  label: 'Fridge 7',  type: 'fridge',  subdivisions: [], contentTypes: [] },
+    { id: 'fridge_8',  label: 'Fridge 8',  type: 'fridge',  subdivisions: [], contentTypes: [] },
+    { id: 'freezer_1', label: 'Freezer 1', type: 'freezer', subdivisions: [], contentTypes: [] },
+  ];
+
+  const [STORAGE_UNITS, setStorageUnits] = useState(() => {
+    try {
+      const raw = localStorage.getItem('lc_storage_units_config');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Migrate: ensure subdivisions and contentTypes fields exist on old saved units
+        return parsed.map(u => ({ ...u, subdivisions: u.subdivisions || [], contentTypes: u.contentTypes || [] }));
+      }
+    } catch {}
+    return DEFAULT_STORAGE_UNITS;
+  });
+
+  const persistStorageUnits = (next) => {
+    setStorageUnits(next);
+    try { localStorage.setItem('lc_storage_units_config', JSON.stringify(next)); } catch {}
+  };
+
+  // ── Fridge config editor state ─────────────────────────────────────────────
+  const [editingUnitId, setEditingUnitId]         = useState(null);
+  const [editingUnitLabel, setEditingUnitLabel]   = useState('');
+  const [addUnitType, setAddUnitType]             = useState('fridge');
+  const [addUnitLabel, setAddUnitLabel]           = useState('');
+  const [addUnitSubdivisions, setAddUnitSubdivisions]   = useState([]);
+  const [addUnitContentTypes, setAddUnitContentTypes]   = useState([]);
+
+  const handleSaveUnitLabel = (unitId) => {
+    const trimmed = editingUnitLabel.trim();
+    if (!trimmed) return;
+    persistStorageUnits(STORAGE_UNITS.map(u => u.id === unitId ? { ...u, label: trimmed } : u));
+    setEditingUnitId(null);
+  };
+
+  const handleToggleUnitSubdivision = (unitId, subdivId) => {
+    persistStorageUnits(STORAGE_UNITS.map(u => {
+      if (u.id !== unitId) return u;
+      const has = (u.subdivisions || []).includes(subdivId);
+      return { ...u, subdivisions: has ? u.subdivisions.filter(s => s !== subdivId) : [...(u.subdivisions || []), subdivId] };
+    }));
+  };
+
+  const handleToggleUnitContentType = (unitId, ctId) => {
+    persistStorageUnits(STORAGE_UNITS.map(u => {
+      if (u.id !== unitId) return u;
+      const has = (u.contentTypes || []).includes(ctId);
+      return { ...u, contentTypes: has ? u.contentTypes.filter(c => c !== ctId) : [...(u.contentTypes || []), ctId] };
+    }));
+  };
+
+  const handleAddUnit = () => {
+    const trimmed = addUnitLabel.trim();
+    if (!trimmed) { toast.error('Enter a name for the new unit.'); return; }
+    const newId = `${addUnitType}_${Date.now()}`;
+    persistStorageUnits([...STORAGE_UNITS, { id: newId, label: trimmed, type: addUnitType, subdivisions: addUnitSubdivisions, contentTypes: addUnitContentTypes }]);
+    setAddUnitLabel('');
+    setAddUnitSubdivisions([]);
+    setAddUnitContentTypes([]);
+    toast.success(`${addUnitType === 'fridge' ? 'Fridge' : 'Freezer'} "${trimmed}" added.`);
+  };
+
+  const handleDeleteUnit = (unitId) => {
+    const unit = STORAGE_UNITS.find(u => u.id === unitId);
+    if (!unit) return;
+    // Also remove any item assignments referencing this unit
+    const nextAssignments = { ...storageAssignments };
+    Object.keys(nextAssignments).forEach(k => { if (nextAssignments[k] === unitId) delete nextAssignments[k]; });
+    persistAssignments(nextAssignments);
+    persistStorageUnits(STORAGE_UNITS.filter(u => u.id !== unitId));
+    toast.success(`"${unit.label}" removed.`);
+  };
+
+  const handleUnassignAllItemsFromUnit = (unitId) => {
+    const unit = STORAGE_UNITS.find(u => u.id === unitId);
+    const next = { ...storageAssignments };
+    let count = 0;
+    Object.keys(next).forEach(k => {
+      if (next[k] === unitId) {
+        delete next[k];
+        count++;
+      }
+    });
+    if (count === 0) {
+      toast.error(`No items are currently assigned to ${unit?.label || 'this unit'}.`);
+      return;
+    }
+    persistAssignments(next);
+    toast.success(`Unassigned ${count} item(s) from ${unit?.label || 'this unit'}.`);
+  };
+
+  const handleClearUnitSubdivisions = (unitId) => {
+    const unit = STORAGE_UNITS.find(u => u.id === unitId);
+    persistStorageUnits(STORAGE_UNITS.map(u => u.id === unitId ? { ...u, subdivisions: [] } : u));
+    toast.success(`Unassigned all subdivisions from ${unit?.label || 'this unit'}.`);
+  };
+
+  const handleClearUnitContentTypes = (unitId) => {
+    const unit = STORAGE_UNITS.find(u => u.id === unitId);
+    persistStorageUnits(STORAGE_UNITS.map(u => u.id === unitId ? { ...u, contentTypes: [] } : u));
+    toast.success(`Unassigned all contents tags from ${unit?.label || 'this unit'}.`);
+  };
+
   // null = show all items grouped; unit id = show only that unit
   const [selectedStorageUnit, setSelectedStorageUnit] = useState(null);
   // Persisted map: { itemId: unitId | null }
@@ -694,12 +833,16 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         } else if (activeDeptName === 'DENTAL') {
           matchesDept = itemDeptName.includes('DENTAL');
         } else if (activeDeptName === 'LABORATORY' || activeDeptName === 'LAB') {
-          // Strictly exclude Nursing items from Laboratory!
+          // Strictly exclude Nursing AND Dental (Clinic + Lab) items from clinical Laboratory!
           if (isNursingItem) {
+            matchesDept = false;
+          } else if (itemDeptName.includes('DENTAL')) {
+            // Dental Lab items have 'DENTAL LAB' as their department — must be excluded
+            // BEFORE the broad LAB check below, which would otherwise match 'DENTAL LAB'.
             matchesDept = false;
           } else if (itemDeptName.includes('LAB') || isLabItem) {
             matchesDept = true;
-          } else if (itemDeptName && (itemDeptName.includes('NURSING') || itemDeptName.includes('DENTAL') || itemDeptName.includes('PHYSIO'))) {
+          } else if (itemDeptName && (itemDeptName.includes('NURSING') || itemDeptName.includes('PHYSIO'))) {
             matchesDept = false;
           } else {
             matchesDept = localDeptStockMap.has(item.id);
@@ -722,9 +865,9 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         const localQty = localDeptStockMap.get(item.id) || 0;
         if (localQty > 0) {
           if (activeDeptName === 'DENTAL CLINIC' && isLabItem) {
-            matchesDept = false; // Never show Lab items in Dental Clinic!
-          } else if ((activeDeptName === 'LABORATORY' || activeDeptName === 'LAB') && isNursingItem) {
-            matchesDept = false; // Never show Nursing items in Laboratory!
+            matchesDept = false; // Never show Dental Lab items in Dental Clinic!
+          } else if ((activeDeptName === 'LABORATORY' || activeDeptName === 'LAB') && (isNursingItem || itemDeptName.includes('DENTAL'))) {
+            matchesDept = false; // Never show Nursing or Dental items in clinical Laboratory!
           } else {
             matchesDept = true;
           }
@@ -875,10 +1018,14 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     }
     if (pickerTab === 'In Stock') {
       items = items.filter(i => i.available > 0);
-    } else if (pickerTab === 'Medications') {
-      items = items.filter(i => i.category === 'medications');
     } else if (pickerTab === 'Consumables') {
       items = items.filter(i => i.category === 'consumables');
+    } else if (pickerTab === 'Reagents') {
+      items = items.filter(i => i.category === 'reagents');
+    } else if (pickerTab === 'Samples') {
+      items = items.filter(i => i.category === 'samples');
+    } else if (pickerTab === 'Medications') {
+      items = items.filter(i => i.category === 'medications');
     } else if (pickerTab === 'Sutures') {
       items = items.filter(i => i.category === 'sutures');
     }
@@ -895,7 +1042,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       groups.push({ category: cat, items: catItems });
     }
 
-    const categoryOrder = ['medications', 'consumables', 'sutures', 'anesthetics', 'antiseptics', 'antidotes', 'housekeeping', 'cafetariat', 'stationery', 'suppository', 'medical_supplies'];
+    const categoryOrder = ['consumables', 'reagents', 'samples', 'medications', 'sutures', 'anesthetics', 'antiseptics', 'antidotes', 'housekeeping', 'cafetariat', 'stationery', 'suppository', 'medical_supplies'];
     return groups.sort((a, b) => {
       const indexA = categoryOrder.indexOf(a.category);
       const indexB = categoryOrder.indexOf(b.category);
@@ -913,10 +1060,14 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     }
     if (reqPickerTab === 'In Stock' || reqPickerTab === 'General Store') {
       items = items.filter(i => i.available > 0);
-    } else if (reqPickerTab === 'Medications') {
-      items = items.filter(i => i.category === 'medications');
     } else if (reqPickerTab === 'Consumables') {
       items = items.filter(i => i.category === 'consumables');
+    } else if (reqPickerTab === 'Reagents') {
+      items = items.filter(i => i.category === 'reagents');
+    } else if (reqPickerTab === 'Samples') {
+      items = items.filter(i => i.category === 'samples');
+    } else if (reqPickerTab === 'Medications') {
+      items = items.filter(i => i.category === 'medications');
     } else if (reqPickerTab === 'Sutures') {
       items = items.filter(i => i.category === 'sutures');
     }
@@ -933,7 +1084,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       groups.push({ category: cat, items: catItems });
     }
 
-    const categoryOrder = ['medications', 'consumables', 'sutures', 'anesthetics', 'antiseptics', 'antidotes', 'housekeeping', 'cafetariat', 'stationery', 'suppository', 'medical_supplies'];
+    const categoryOrder = ['consumables', 'reagents', 'samples', 'medications', 'sutures', 'anesthetics', 'antiseptics', 'antidotes', 'housekeeping', 'cafetariat', 'stationery', 'suppository', 'medical_supplies'];
     return groups.sort((a, b) => {
       const indexA = categoryOrder.indexOf(a.category);
       const indexB = categoryOrder.indexOf(b.category);
@@ -1816,7 +1967,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
                           {/* Tabs / Filters inside dropdown */}
                           <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider self-start max-w-full overflow-x-auto scrollbar-none">
-                            {['All', 'In Stock', 'Medications', 'Consumables', 'Sutures'].map(tab => (
+                            {['All', 'In Stock', 'Consumables', 'Reagents', 'Samples', 'Medications', 'Sutures'].map(tab => (
                               <button
                                 key={tab}
                                 type="button"
@@ -2138,7 +2289,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
             {/* Tabs switcher */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4 gap-3 flex-wrap">
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => setActiveSubTab('history')}
                   className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer ${
@@ -2184,6 +2335,25 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     </span>
                   )}
                 </button>
+                {/* Configure Fridges tab — Lab department only */}
+                {(() => {
+                  const _aD = userDept ? userDept.id : formDept;
+                  const _dObj = departments.find(d => String(d.id) === String(_aD));
+                  const _dName = (_dObj?.name || defaultDeptName || '').toUpperCase();
+                  const isLabDeptTab = _dName.includes('LABORATORY') || _dName === 'LAB';
+                  return isLabDeptTab ? (
+                    <button
+                      onClick={() => setActiveSubTab('fridges')}
+                      className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                        activeSubTab === 'fridges'
+                          ? 'bg-sky-700 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
+                      }`}
+                    >
+                      <Thermometer size={14} /> Configure Fridges
+                    </button>
+                  ) : null;
+                })()}
               </div>
 
               <div className="flex items-center gap-2">
@@ -2314,7 +2484,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     onClick={() => setStockTab('local')}
                     className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                       stockTab === 'local'
-                        ? 'bg-slate-700 text-white shadow-sm'
+                        ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
@@ -2324,7 +2494,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     onClick={() => setStockTab('central')}
                     className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                       stockTab === 'central'
-                        ? 'bg-slate-700 text-white shadow-sm'
+                        ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
@@ -2382,13 +2552,13 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                             onClick={() => setSelectedStorageUnit(null)}
                             className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                               selectedStorageUnit === null
-                                ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                             }`}
                           >
                             All Items
                             <span className={`block text-[9px] font-semibold mt-0.5 ${
-                              selectedStorageUnit === null ? 'text-slate-300' : 'text-slate-400'
+                              selectedStorageUnit === null ? 'text-blue-100' : 'text-slate-400'
                             }`}>
                               {filteredDeptStock.length} item{filteredDeptStock.length !== 1 ? 's' : ''}
                             </span>
@@ -2402,6 +2572,12 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                               storageAssignments[String(r.item_id)] === unit.id
                             ).length;
                             const isActive = selectedStorageUnit === unit.id;
+                            const unitSubdivs = (unit.subdivisions || []).map(sid =>
+                              LAB_SUBDIVISIONS.find(s => s.id === sid)
+                            ).filter(Boolean);
+                            const unitCTs = (unit.contentTypes || []).map(cid =>
+                              ALL_CONTENT_TYPES.find(c => c.id === cid)
+                            ).filter(Boolean);
                             return (
                               <button
                                 key={unit.id}
@@ -2419,6 +2595,20 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                 }`}>
                                   {count} item{count !== 1 ? 's' : ''}
                                 </span>
+                                {(unitSubdivs.length > 0 || unitCTs.length > 0) && (
+                                  <div className="flex flex-wrap gap-0.5 mt-1.5">
+                                    {unitSubdivs.map(s => (
+                                      <span key={s.id} className={`px-1 py-px rounded text-[8px] font-bold border ${
+                                        isActive ? 'bg-white/20 text-white border-white/30' : s.color
+                                      }`}>{s.label}</span>
+                                    ))}
+                                    {unitCTs.map(c => (
+                                      <span key={c.id} className={`px-1 py-px rounded text-[8px] font-bold border ${
+                                        isActive ? 'bg-white/20 text-white border-white/30' : c.color
+                                      }`}>{c.label}</span>
+                                    ))}
+                                  </div>
+                                )}
                               </button>
                             );
                           })}
@@ -2431,6 +2621,12 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                               storageAssignments[String(r.item_id)] === unit.id
                             ).length;
                             const isActive = selectedStorageUnit === unit.id;
+                            const unitSubdivs = (unit.subdivisions || []).map(sid =>
+                              LAB_SUBDIVISIONS.find(s => s.id === sid)
+                            ).filter(Boolean);
+                            const unitCTs = (unit.contentTypes || []).map(cid =>
+                              ALL_CONTENT_TYPES.find(c => c.id === cid)
+                            ).filter(Boolean);
                             return (
                               <button
                                 key={unit.id}
@@ -2448,6 +2644,20 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                 }`}>
                                   {count} item{count !== 1 ? 's' : ''}
                                 </span>
+                                {(unitSubdivs.length > 0 || unitCTs.length > 0) && (
+                                  <div className="flex flex-wrap gap-0.5 mt-1.5">
+                                    {unitSubdivs.map(s => (
+                                      <span key={s.id} className={`px-1 py-px rounded text-[8px] font-bold border ${
+                                        isActive ? 'bg-white/20 text-white border-white/30' : s.color
+                                      }`}>{s.label}</span>
+                                    ))}
+                                    {unitCTs.map(c => (
+                                      <span key={c.id} className={`px-1 py-px rounded text-[8px] font-bold border ${
+                                        isActive ? 'bg-white/20 text-white border-white/30' : c.color
+                                      }`}>{c.label}</span>
+                                    ))}
+                                  </div>
+                                )}
                               </button>
                             );
                           })}
@@ -2492,6 +2702,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                         setAssignPickerItemId={setAssignPickerItemId}
                                         assignItemToUnit={assignItemToUnit}
                                         removeItemAssignment={removeItemAssignment}
+                                        handleUnassignAllItemsFromUnit={handleUnassignAllItemsFromUnit}
                                         setDeactModalItem={setDeactModalItem}
                                         setDeactReasonInput={setDeactReasonInput}
                                         handleQuickReorderItem={handleQuickReorderItem}
@@ -2512,6 +2723,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                         setAssignPickerItemId={setAssignPickerItemId}
                                         assignItemToUnit={assignItemToUnit}
                                         removeItemAssignment={removeItemAssignment}
+                                        handleUnassignAllItemsFromUnit={handleUnassignAllItemsFromUnit}
                                         setDeactModalItem={setDeactModalItem}
                                         setDeactReasonInput={setDeactReasonInput}
                                         handleQuickReorderItem={handleQuickReorderItem}
@@ -2542,6 +2754,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                     setAssignPickerItemId={setAssignPickerItemId}
                                     assignItemToUnit={assignItemToUnit}
                                     removeItemAssignment={removeItemAssignment}
+                                    handleUnassignAllItemsFromUnit={handleUnassignAllItemsFromUnit}
                                     setDeactModalItem={setDeactModalItem}
                                     setDeactReasonInput={setDeactReasonInput}
                                     handleQuickReorderItem={handleQuickReorderItem}
@@ -2867,7 +3080,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
                               {/* Tabs inside dropdown */}
                               <div className="flex gap-1 bg-slate-100 p-0.5 rounded-md text-[8px] font-black uppercase tracking-wider self-start max-w-full overflow-x-auto scrollbar-none">
-                                {['All', 'In Stock', 'General Store', 'Medications', 'Consumables', 'Sutures'].map(tab => (
+                                {['All', 'In Stock', 'General Store', 'Consumables', 'Reagents', 'Samples', 'Medications', 'Sutures'].map(tab => (
                                   <button
                                     key={tab}
                                     type="button"
@@ -3221,6 +3434,296 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* ── Configure Fridges Tab ───────────────────────────────────────── */}
+            {activeSubTab === 'fridges' && (
+              <div className="space-y-6">
+
+                {/* Header banner */}
+                <div className="flex items-start gap-4 bg-sky-50 border border-sky-200 rounded-2xl p-4">
+                  <div className="p-2.5 bg-sky-100 text-sky-700 rounded-xl border border-sky-200 shrink-0">
+                    <Thermometer size={22} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-sky-900">Fridge & Freezer Configuration</h4>
+                    <p className="text-xs text-sky-700 font-medium mt-0.5">
+                      Name each storage unit and assign it to one or more Laboratory subdivisions.
+                      Changes are saved automatically and shared across this browser.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Existing units */}
+                <div className="space-y-3">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">
+                    Fridges ({STORAGE_UNITS.filter(u => u.type === 'fridge').length}) &amp; Freezers ({STORAGE_UNITS.filter(u => u.type === 'freezer').length})
+                  </p>
+
+                  {STORAGE_UNITS.map(unit => {
+                    const isFridge  = unit.type === 'fridge';
+                    const headerBg  = isFridge  ? 'bg-sky-50 border-sky-200'     : 'bg-indigo-50 border-indigo-200';
+                    const headerText= isFridge  ? 'text-sky-700'                 : 'text-indigo-700';
+                    const dotColor  = isFridge  ? 'bg-sky-500'                   : 'bg-indigo-500';
+                    const isEditing = editingUnitId === unit.id;
+                    const assignedItemsCount = Object.values(storageAssignments).filter(uId => uId === unit.id).length;
+
+                    return (
+                      <div key={unit.id} className={`border rounded-2xl overflow-hidden ${headerBg}`}>
+                        {/* Unit title row */}
+                        <div className={`flex items-center gap-3 px-4 py-3 border-b ${headerBg}`}>
+                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColor}`} />
+
+                          {isEditing ? (
+                            <form
+                              onSubmit={(e) => { e.preventDefault(); handleSaveUnitLabel(unit.id); }}
+                              className="flex items-center gap-2 flex-1"
+                            >
+                              <input
+                                autoFocus
+                                value={editingUnitLabel}
+                                onChange={e => setEditingUnitLabel(e.target.value)}
+                                className="flex-1 px-2.5 py-1 text-sm font-bold rounded-lg border border-sky-300 outline-none focus:ring-2 focus:ring-sky-200 bg-white"
+                              />
+                              <button type="submit" className="px-3 py-1 bg-sky-700 text-white text-xs font-bold rounded-lg cursor-pointer hover:bg-sky-800 transition-colors">Save</button>
+                              <button type="button" onClick={() => setEditingUnitId(null)} className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">Cancel</button>
+                            </form>
+                          ) : (
+                            <span className={`flex-1 text-sm font-black ${headerText}`}>{unit.label}</span>
+                          )}
+
+                          {!isEditing && (
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              {assignedItemsCount > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnassignAllItemsFromUnit(unit.id)}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-all cursor-pointer"
+                                  title={`Unassign all ${assignedItemsCount} items from ${unit.label}`}
+                                >
+                                  Unassign Items ({assignedItemsCount})
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => { setEditingUnitId(unit.id); setEditingUnitLabel(unit.label); }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/70 transition-all cursor-pointer"
+                                title="Rename"
+                              >
+                                <Edit3 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUnit(unit.id)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                                title="Delete unit"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Subdivision assignment */}
+                        <div className="px-4 py-3 bg-white border-t border-slate-100">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Subdivisions</p>
+                            {(unit.subdivisions || []).length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleClearUnitSubdivisions(unit.id)}
+                                className="text-[10px] font-bold text-rose-600 hover:text-rose-800 transition-colors cursor-pointer"
+                              >
+                                Unassign Subdivisions
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {LAB_SUBDIVISIONS.map(sub => {
+                              const active = (unit.subdivisions || []).includes(sub.id);
+                              return (
+                                <button
+                                  key={sub.id}
+                                  type="button"
+                                  onClick={() => handleToggleUnitSubdivision(unit.id, sub.id)}
+                                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
+                                    active
+                                      ? sub.color
+                                      : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  {active && <span className="mr-1">✓</span>}
+                                  {sub.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {(unit.subdivisions || []).length === 0 && (
+                            <p className="text-[10px] text-slate-400 italic mt-2">No subdivision assigned — click to assign.</p>
+                          )}
+                        </div>
+
+                        {/* Contents type assignment */}
+                        <div className="px-4 py-3 bg-slate-50/60 border-t border-slate-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Contents</p>
+                            {(unit.contentTypes || []).length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleClearUnitContentTypes(unit.id)}
+                                className="text-[10px] font-bold text-rose-600 hover:text-rose-800 transition-colors cursor-pointer"
+                              >
+                                Unassign Contents
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-[9px] text-slate-400 mb-2">
+                            {unit.type === 'fridge'
+                              ? 'What does this fridge hold?'
+                              : 'Freezers store long-term samples & reagents.'}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {contentTypesFor(unit.type).map(ct => {
+                              const active = (unit.contentTypes || []).includes(ct.id);
+                              return (
+                                <button
+                                  key={ct.id}
+                                  type="button"
+                                  onClick={() => handleToggleUnitContentType(unit.id, ct.id)}
+                                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
+                                    active ? ct.color : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  {active && <span className="mr-1">✓</span>}
+                                  {ct.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {(unit.contentTypes || []).length === 0 && (
+                            <p className="text-[10px] text-slate-400 italic mt-2">No content type set — click to tag.</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {STORAGE_UNITS.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-slate-400 text-xs italic">
+                      No storage units configured yet. Add one below.
+                    </div>
+                  )}
+                </div>
+
+                {/* Add new unit */}
+                <div className="border border-slate-200 rounded-2xl bg-slate-50 p-5 space-y-4">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                    <Plus size={13} /> Add New Storage Unit
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Type toggle */}
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Type</label>
+                      <div className="flex gap-2">
+                        {['fridge', 'freezer'].map(t => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setAddUnitType(t)}
+                            className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                              addUnitType === t
+                                ? t === 'fridge'
+                                  ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                                  : 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {t === 'fridge' ? '🧊 Fridge' : '❄️ Freezer'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Name input */}
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Microbiology Fridge, Sample Freezer…"
+                        value={addUnitLabel}
+                        onChange={e => setAddUnitLabel(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddUnit(); } }}
+                        className="w-full px-3 py-2 text-sm font-semibold bg-white border border-slate-200 rounded-xl outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 placeholder-slate-300"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Subdivisions for new unit */}
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Assign Subdivisions (optional)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {LAB_SUBDIVISIONS.map(sub => {
+                        const active = addUnitSubdivisions.includes(sub.id);
+                        return (
+                          <button
+                            key={sub.id}
+                            type="button"
+                            onClick={() => setAddUnitSubdivisions(prev =>
+                              prev.includes(sub.id) ? prev.filter(s => s !== sub.id) : [...prev, sub.id]
+                            )}
+                            className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
+                              active ? sub.color : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {active && <span className="mr-1">✓</span>}
+                            {sub.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Contents for new unit */}
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Contents (optional)</label>
+                    <p className="text-[9px] text-slate-400 mb-2">
+                      {addUnitType === 'fridge'
+                        ? 'What will this fridge hold?'
+                        : 'Freezers store long-term samples & reagents.'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {contentTypesFor(addUnitType).map(ct => {
+                        const active = addUnitContentTypes.includes(ct.id);
+                        return (
+                          <button
+                            key={ct.id}
+                            type="button"
+                            onClick={() => setAddUnitContentTypes(prev =>
+                              prev.includes(ct.id) ? prev.filter(c => c !== ct.id) : [...prev, ct.id]
+                            )}
+                            className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
+                              active ? ct.color : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {active && <span className="mr-1">✓</span>}
+                            {ct.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddUnit}
+                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Plus size={14} /> Add {addUnitType === 'fridge' ? 'Fridge' : 'Freezer'}
+                  </button>
+                </div>
+
               </div>
             )}
           </div>
