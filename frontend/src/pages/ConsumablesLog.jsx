@@ -243,8 +243,97 @@ function StorageUnitGroup({
                         </td>
                       </tr>
 
-                      {/* Batch expansion sub-row */}
-                      {isExpanded && row.batches && (
+                      {/* Specimen Details expansion drawer */}
+                      {isExpanded && (row.specimenDetails || row.category === 'Samples') && (
+                        <tr className="bg-sky-50/40 border-t border-sky-100">
+                          <td colSpan={8} className="p-3 pl-8">
+                            <div className="bg-white border border-sky-200/80 rounded-2xl p-4 space-y-3 shadow-md text-slate-900">
+                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="p-2 bg-sky-100 text-sky-800 rounded-xl font-bold">
+                                    <FlaskConical size={18} />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <h4 className="text-sm font-black text-slate-900 tracking-tight">
+                                        {row.specimenDetails?.patient_name || row.name}
+                                      </h4>
+                                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 font-mono">
+                                        PID: {row.specimenDetails?.patient_id || 'N/A'}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                                      Test Assay: <strong className="text-slate-800">{row.specimenDetails?.test_name || 'General Pathology Panel'}</strong>
+                                    </p>
+                                  </div>
+                                </div>
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                                  (row.specimenDetails?.urgency || row.expiry_date || '').includes('STAT')
+                                    ? 'bg-rose-100 text-rose-800 border-rose-200'
+                                    : (row.specimenDetails?.urgency || '').includes('Outsourced')
+                                    ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                                    : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                }`}>
+                                  Urgency: {row.specimenDetails?.urgency || row.expiry_date || 'Routine'}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 space-y-0.5">
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Accession Number</span>
+                                  <span className="font-mono font-bold text-slate-800 text-xs">
+                                    {row.specimenDetails?.accession_number || row.sku || 'ACC-001'}
+                                  </span>
+                                </div>
+
+                                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 space-y-0.5">
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Barcode ID</span>
+                                  <span className="font-mono font-bold text-indigo-600 text-xs">
+                                    {row.specimenDetails?.specimen_barcode || 'SPEC-BARCODE'}
+                                  </span>
+                                </div>
+
+                                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 space-y-0.5">
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Specimen Matrix</span>
+                                  <span className="font-bold text-slate-800 text-xs">
+                                    {row.specimenDetails?.specimen_type || 'Venous Blood'}
+                                  </span>
+                                </div>
+
+                                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 space-y-0.5">
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Tube Container</span>
+                                  <span className="font-bold text-slate-800 text-xs">
+                                    {row.specimenDetails?.tube_type || row.unit || 'Purple EDTA'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="bg-sky-50/80 border border-sky-200 p-3 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                                <div className="flex items-center gap-2.5">
+                                  <Thermometer size={16} className="text-sky-600 shrink-0" />
+                                  <div>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Assigned Storage Fridge / Freezer</span>
+                                    <span className="font-black text-slate-900 text-xs">
+                                      {STORAGE_UNITS.find(u => u.id === storageAssignments[String(row.item_id)])?.label || 'Unassigned Storage Unit'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-[11px] font-mono font-semibold text-slate-700">
+                                  <span className="bg-white px-2.5 py-1 rounded-lg border border-sky-200 shadow-2xs">
+                                    Rack: {row.specimenDetails?.rack || 'Shelf 2 (Rack B)'}
+                                  </span>
+                                  <span className="bg-white px-2.5 py-1 rounded-lg border border-sky-200 shadow-2xs">
+                                    Slot: {row.specimenDetails?.box || 'Box #12'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+
+                      {/* Batch expansion sub-row for non-specimens */}
+                      {isExpanded && !row.specimenDetails && row.category !== 'Samples' && row.batches && (
                         <tr className="bg-slate-50/60 border-t border-slate-100">
                           <td colSpan={8} className="p-3 pl-10">
                             <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-1.5">
