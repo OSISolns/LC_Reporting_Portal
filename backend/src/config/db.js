@@ -744,6 +744,120 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_reports_study ON imaging_reports(study_id)').catch(() => {});
       }).catch(() => {});
 
+      console.log('⚙️ Running lab_orders, lab_results, and lab_qc_logs table migrations...');
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_orders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          accession_number TEXT UNIQUE,
+          patient_id TEXT NOT NULL,
+          patient_name TEXT,
+          patient_age TEXT,
+          patient_gender TEXT,
+          referring_provider TEXT,
+          specimen_type TEXT,
+          specimen_barcode TEXT UNIQUE,
+          priority TEXT DEFAULT 'routine',
+          urgency TEXT DEFAULT 'Routine',
+          phase TEXT DEFAULT 'pre-analytical',
+          stage TEXT DEFAULT 'Ordered',
+          tat_deadline DATETIME,
+          tube_type TEXT DEFAULT 'Purple EDTA',
+          order_of_draw_step INTEGER DEFAULT 1,
+          volume_ml REAL DEFAULT 3.0,
+          hil_index TEXT DEFAULT 'Normal',
+          sample_integrity TEXT DEFAULT 'Good',
+          auto_verified BOOLEAN DEFAULT 0,
+          delta_check_flag BOOLEAN DEFAULT 0,
+          critical_alert BOOLEAN DEFAULT 0,
+          verified_by_name TEXT,
+          verified_at DATETIME,
+          reported_at DATETIME,
+          notified_at DATETIME,
+          notes TEXT,
+          status TEXT DEFAULT 'ordered',
+          created_by INTEGER,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          FOREIGN KEY (created_by) REFERENCES users(id)
+        )
+      `).then(async () => {
+        console.log('  ✅ Table lab_orders created/verified.');
+        const safeAddCol = async (colDef) => {
+          try { await client.execute(`ALTER TABLE lab_orders ADD COLUMN ${colDef}`); } catch (e) {}
+        };
+        await safeAddCol("urgency TEXT DEFAULT 'Routine'");
+        await safeAddCol("phase TEXT DEFAULT 'pre-analytical'");
+        await safeAddCol("stage TEXT DEFAULT 'Ordered'");
+        await safeAddCol("tat_deadline DATETIME");
+        await safeAddCol("tube_type TEXT DEFAULT 'Purple EDTA'");
+        await safeAddCol("order_of_draw_step INTEGER DEFAULT 1");
+        await safeAddCol("volume_ml REAL DEFAULT 3.0");
+        await safeAddCol("hil_index TEXT DEFAULT 'Normal'");
+        await safeAddCol("sample_integrity TEXT DEFAULT 'Good'");
+        await safeAddCol("auto_verified BOOLEAN DEFAULT 0");
+        await safeAddCol("delta_check_flag BOOLEAN DEFAULT 0");
+        await safeAddCol("critical_alert BOOLEAN DEFAULT 0");
+        await safeAddCol("verified_by_name TEXT");
+        await safeAddCol("verified_at DATETIME");
+        await safeAddCol("reported_at DATETIME");
+        await safeAddCol("notified_at DATETIME");
+        await safeAddCol("test_name TEXT");
+
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_status ON lab_orders(status)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_phase ON lab_orders(phase)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_stage ON lab_orders(stage)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_patient ON lab_orders(patient_id)').catch(() => {});
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_orders:', err.message);
+      });
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_results (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_id INTEGER NOT NULL,
+          parameter_name TEXT NOT NULL,
+          parameter_value TEXT,
+          reference_range TEXT,
+          unit TEXT,
+          is_abnormal BOOLEAN DEFAULT 0,
+          is_critical BOOLEAN DEFAULT 0,
+          delta_change TEXT,
+          remarks TEXT,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          FOREIGN KEY (order_id) REFERENCES lab_orders(id) ON DELETE CASCADE
+        )
+      `).then(async () => {
+        console.log('  ✅ Table lab_results created/verified.');
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_results_order ON lab_results(order_id)').catch(() => {});
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_results:', err.message);
+      });
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_qc_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          analyzer_id TEXT,
+          analyzer_name TEXT NOT NULL,
+          parameter_name TEXT NOT NULL,
+          control_level TEXT NOT NULL,
+          mean_target REAL NOT NULL,
+          sd_target REAL NOT NULL,
+          measured_value REAL NOT NULL,
+          z_score REAL NOT NULL,
+          westgard_rule_breach TEXT DEFAULT 'None',
+          status TEXT NOT NULL DEFAULT 'Passed',
+          corrective_action_taken TEXT,
+          run_by_name TEXT DEFAULT 'Lab Tech',
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `).then(async () => {
+        console.log('  ✅ Table lab_qc_logs created/verified.');
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_qc_logs_analyzer ON lab_qc_logs(analyzer_name)').catch(() => {});
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_qc_logs:', err.message);
+      });
+
       const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
       console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));
       
