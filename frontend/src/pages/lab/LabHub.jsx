@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FlaskConical, ClipboardList, Activity, Search, Plus, CheckCircle, 
   Save, Barcode, Play, Clock, ShieldCheck, RefreshCw, Printer, 
-  Send, Droplet, FileText, CheckCircle2, ArrowRight
+  Send, Droplet, FileText, CheckCircle2, ArrowRight, Thermometer
 } from 'lucide-react';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
