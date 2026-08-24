@@ -1200,6 +1200,33 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       }
     }
 
+    // Include registered lab specimen samples into inventory for storage unit tracking
+    try {
+      const rawSpecimens = localStorage.getItem('lc_lab_specimens_map');
+      if (rawSpecimens) {
+        const specMap = JSON.parse(rawSpecimens);
+        Object.values(specMap).forEach(spec => {
+          if (spec && spec.id) {
+            result.push({
+              dept_stock_id: `specimen_${spec.id}`,
+              item_id: String(spec.id),
+              name: `🧪 [Specimen Sample] ${spec.patient_name} (${spec.test_name || 'Lab Assay'})`,
+              sku: spec.accession_number || spec.specimen_barcode || 'SPECIMEN',
+              category: 'Samples',
+              quantity: 1,
+              expiry_date: spec.urgency || 'STAT',
+              unit: spec.tube_type || 'Yellow Urine Cup',
+              department: 'Laboratory Services',
+              batches: [{
+                batch_number: spec.specimen_barcode || 'BARCODE',
+                lot_number: spec.patient_id || 'PID'
+              }]
+            });
+          }
+        });
+      }
+    } catch {}
+
     return result;
   }, [stockTab, masterItems, deptStockItems, userDept, filterDept, formDept, defaultDeptName, departments, generalStoreDept, isAdmin, distributedStock]);
 

@@ -275,19 +275,26 @@ const LabHub = () => {
       }
     } catch {}
     return [
-      { id: 'fridge_a', label: 'Fridge A (Main Stock / STAT Rapid Storage)', type: 'fridge' },
-      { id: 'fridge_b', label: 'Fridge B (Reagents & Samples - Routine 6h)', type: 'fridge' },
-      { id: 'freezer_a', label: 'Freezer A (-20°C Sample Bank - Outsourced 7d)', type: 'freezer' },
-      { id: 'freezer_b', label: 'Freezer B (-80°C Biobank - Special 1m)', type: 'freezer' }
+      { id: 'fridge_1',  label: 'Fridge 1 (STAT / Rapid Storage)',  type: 'fridge' },
+      { id: 'fridge_2',  label: 'Fridge 2 (Routine Samples - 6h)',  type: 'fridge' },
+      { id: 'fridge_3',  label: 'Fridge 3 (Reagents & Media)',      type: 'fridge' },
+      { id: 'fridge_4',  label: 'Fridge 4 (Chemistry Stock)',       type: 'fridge' },
+      { id: 'fridge_5',  label: 'Fridge 5 (Hematology Stock)',       type: 'fridge' },
+      { id: 'fridge_6',  label: 'Fridge 6 (Microbiology)',          type: 'fridge' },
+      { id: 'fridge_7',  label: 'Fridge 7 (Molecular Storage)',     type: 'fridge' },
+      { id: 'fridge_8',  label: 'Fridge 8 (General Stock)',          type: 'fridge' },
+      { id: 'freezer_1', label: 'Freezer 1 (-20°C / -80°C Sample Bank)', type: 'freezer' }
     ];
   }, []);
 
   const [storageAssignments, setStorageAssignments] = useState(() => {
     try {
-      const raw = localStorage.getItem('lc_lab_specimen_storage');
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return {};
+      const rawGlobal = localStorage.getItem('lc_storage_assignments');
+      const rawLab = localStorage.getItem('lc_lab_specimen_storage');
+      const g = rawGlobal ? JSON.parse(rawGlobal) : {};
+      const l = rawLab ? JSON.parse(rawLab) : {};
+      return { ...g, ...l };
+    } catch { return {}; }
   });
 
   const [storageRacks, setStorageRacks] = useState(() => {
@@ -308,39 +315,111 @@ const LabHub = () => {
 
   const [selectedRegStorageUnit, setSelectedRegStorageUnit] = useState('');
 
-  const handleAssignOrderStorage = (orderId, unitId) => {
-    const next = { ...storageAssignments, [orderId]: unitId };
-    setStorageAssignments(next);
-    try { localStorage.setItem('lc_lab_specimen_storage', JSON.stringify(next)); } catch {}
-  };
-
   const getRecommendedStorageUnit = (order) => {
-    if (!order) return 'fridge_a';
+    if (!order) return 'fridge_1';
     const u = (order.urgency || '').toLowerCase();
-    if (u.includes('special') || u.includes('1 month')) return 'freezer_b';
-    if (u.includes('outsourced') || u.includes('7 day')) return 'freezer_a';
-    if (u.includes('stat') || u.includes('1h')) return 'fridge_a';
-    return 'fridge_b'; // Default In-House Routine 6h
+    if (u.includes('special') || u.includes('1 month')) return 'freezer_1';
+    if (u.includes('outsourced') || u.includes('7 day')) return 'freezer_1';
+    if (u.includes('stat') || u.includes('1h')) return 'fridge_1';
+    return 'fridge_2'; // Default In-House Routine 6h
   };
 
   const getStorageRecommendationText = (order) => {
     if (!order) return '';
     const u = (order.urgency || '').toLowerCase();
     if (u.includes('special') || u.includes('1 month')) {
-      return 'Freezer B (-80°C Biobank) — Required for 1-Month Special Outsourced Samples.';
+      return 'Freezer 1 (-80°C Biobank) — Required for 1-Month Special Outsourced Samples.';
     }
     if (u.includes('outsourced') || u.includes('7 day')) {
-      return 'Freezer A (-20°C Sample Bank) — Required for 7-Day Standard Outsourced Samples.';
+      return 'Freezer 1 (-20°C Sample Bank) — Required for 7-Day Standard Outsourced Samples.';
     }
     if (u.includes('stat') || u.includes('1h')) {
-      return 'Fridge A (STAT Rapid Storage - 4°C) — Required for 1-Hour Urgent In-House Samples.';
+      return 'Fridge 1 (STAT Rapid Storage - 4°C) — Required for 1-Hour Urgent In-House Samples.';
     }
-    return 'Fridge B (Routine Samples - 4°C) — Recommended for 6-Hour In-House Routine Samples.';
+    return 'Fridge 2 (Routine Samples - 4°C) — Recommended for 6-Hour In-House Routine Samples.';
   };
 
   const getUnitLabel = (unitId) => {
     const found = availableStorageUnits.find(u => u.id === unitId);
-    return found ? found.label : (unitId || 'Fridge A');
+    return found ? found.label : (unitId || 'Fridge 1');
+  };
+
+  const handleAssignOrderStorage = (orderId, unitId) => {
+    const orderKey = String(orderId);
+    const nextLab = { ...storageAssignments, [orderKey]: unitId };
+    setStorageAssignments(nextLab);
+    try {
+      localStorage.setItem('lc_lab_specimen_storage', JSON.stringify(nextLab));
+      const rawGlobal = localStorage.getItem('lc_storage_assignments');
+      const globalObj = rawGlobal ? JSON.parse(rawGlobal) : {};
+      globalObj[orderKey] = unitId;
+      localStorage.setItem('lc_storage_assignments', JSON.stringify(globalObj));
+
+      const rawMap = localStorage.getItem('lc_lab_specimens_map');
+      const specMap = rawMap ? JSON.parse(rawMap) : {};
+      const targetOrder = orders.find(o => String(o.id) === orderKey) || selectedOrder;
+      if (targetOrder) {
+        specMap[orderKey] = {
+          id: orderKey,
+          patient_name: targetOrder.patient_name,
+          patient_id: targetOrder.patient_id,
+          accession_number: targetOrder.accession_number,
+          specimen_barcode: targetOrder.specimen_barcode,
+          specimen_type: targetOrder.specimen_type,
+          tube_type: targetOrder.tube_type,
+          urgency: targetOrder.urgency,
+          test_name: targetOrder.test_name,
+          unitId: unitId
+        };
+        localStorage.setItem('lc_lab_specimens_map', JSON.stringify(specMap));
+      }
+    } catch (err) {
+      console.error('Error saving specimen storage:', err);
+    }
+  };
+
+  // Sync orders with localStorage storage assignment maps
+  const syncOrderStorage = (ordersList) => {
+    try {
+      const rawGlobal = localStorage.getItem('lc_storage_assignments');
+      const rawLab = localStorage.getItem('lc_lab_specimen_storage');
+      const rawMap = localStorage.getItem('lc_lab_specimens_map');
+      
+      const globalObj = rawGlobal ? JSON.parse(rawGlobal) : {};
+      const labObj = rawLab ? JSON.parse(rawLab) : {};
+      const specMap = rawMap ? JSON.parse(rawMap) : {};
+
+      ordersList.forEach(order => {
+        const orderKey = String(order.id);
+        const assignedUnit = labObj[orderKey] || globalObj[orderKey] || getRecommendedStorageUnit(order);
+        
+        labObj[orderKey] = assignedUnit;
+        globalObj[orderKey] = assignedUnit;
+        if (order.accession_number) {
+          globalObj[order.accession_number] = assignedUnit;
+        }
+
+        specMap[orderKey] = {
+          id: orderKey,
+          patient_name: order.patient_name,
+          patient_id: order.patient_id,
+          accession_number: order.accession_number,
+          specimen_barcode: order.specimen_barcode,
+          specimen_type: order.specimen_type,
+          tube_type: order.tube_type,
+          urgency: order.urgency,
+          test_name: order.test_name,
+          unitId: assignedUnit
+        };
+      });
+
+      localStorage.setItem('lc_lab_specimen_storage', JSON.stringify(labObj));
+      localStorage.setItem('lc_storage_assignments', JSON.stringify(globalObj));
+      localStorage.setItem('lc_lab_specimens_map', JSON.stringify(specMap));
+      setStorageAssignments({ ...globalObj, ...labObj });
+    } catch (err) {
+      console.error('Error syncing order storage:', err);
+    }
   };
 
   // Westgard QC Form State
@@ -402,7 +481,9 @@ const LabHub = () => {
     try {
       const res = await api.get('/lab/orders');
       if (res.data?.success) {
-        setOrders(res.data.data || []);
+        const list = res.data.data || [];
+        setOrders(list);
+        syncOrderStorage(list);
       }
     } catch (err) {
       console.error(err);
