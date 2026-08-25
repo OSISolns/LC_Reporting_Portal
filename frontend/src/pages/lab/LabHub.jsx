@@ -116,13 +116,69 @@ const TEST_ASSAYS = [
 
 // ── LIFECYCLE STAGES CONFIG ──────────────────────────────────────────────────
 const LIFECYCLE_STAGES = [
-  { id: 'Ordered', phase: 'pre-analytical', label: '1. Order Received' },
-  { id: 'Collected', phase: 'pre-analytical', label: '2. Specimen Collected' },
-  { id: 'Accessioned', phase: 'pre-analytical', label: '3. Barcode Accessioned' },
-  { id: 'Centrifuged', phase: 'analytical', label: '4. Centrifuged / Prepped' },
-  { id: 'Analyzing', phase: 'analytical', label: '5. Analyzer Testing' },
-  { id: 'Verified', phase: 'post-analytical', label: '6. LIS Verified' },
-  { id: 'Notified', phase: 'completed', label: '7. Report Dispatched' }
+  {
+    id: 'Ordered',
+    phase: 'pre-analytical',
+    label: 'Order Received',
+    description: 'Lab order placed by requesting clinician. Specimen request entered into the LIS.',
+    actionHint: 'Confirm patient identity and verify the test request form (TRF).',
+    phaseColor: '#64748b',
+    phaseBg: '#f8fafc',
+  },
+  {
+    id: 'Collected',
+    phase: 'pre-analytical',
+    label: 'Specimen Collected',
+    description: 'Phlebotomist has drawn the specimen following CLSI H3-A6 order of draw.',
+    actionHint: 'Label the tube(s) at the bedside. Record collection time and collector ID.',
+    phaseColor: '#0369a1',
+    phaseBg: '#eff6ff',
+  },
+  {
+    id: 'Accessioned',
+    phase: 'pre-analytical',
+    label: 'Barcode Accessioned',
+    description: 'Specimen received in the laboratory and barcode scanned into the LIS.',
+    actionHint: 'Verify tube integrity, volume, and sample suitability. Reject haemolysed samples.',
+    phaseColor: '#0891b2',
+    phaseBg: '#ecfeff',
+  },
+  {
+    id: 'Centrifuged',
+    phase: 'analytical',
+    label: 'Centrifuged / Pre-processed',
+    description: 'Sample centrifuged at the appropriate speed and time per SOP. Aliquots prepared.',
+    actionHint: 'Check serum/plasma for haemolysis, icterus, or lipemia. Document HIL index.',
+    phaseColor: '#7c3aed',
+    phaseBg: '#f5f3ff',
+  },
+  {
+    id: 'Analyzing',
+    phase: 'analytical',
+    label: 'Analyzer Testing',
+    description: 'Sample loaded onto the analyzer. QC must be within Westgard acceptance limits.',
+    actionHint: 'Ensure QC passed before releasing patient results. Monitor for instrument flags.',
+    phaseColor: '#b45309',
+    phaseBg: '#fffbeb',
+  },
+  {
+    id: 'Verified',
+    phase: 'post-analytical',
+    label: 'Results Verified',
+    description: 'Medical Technologist or Clinical Scientist has reviewed and verified all results.',
+    actionHint: 'Apply delta check. Flag critical values and contact the requesting clinician immediately.',
+    phaseColor: '#059669',
+    phaseBg: '#f0fdf4',
+  },
+  {
+    id: 'Notified',
+    phase: 'completed',
+    label: 'Report Dispatched',
+    description: 'Verified report released to the LIS and patient/clinician notified of results.',
+    actionHint: 'Retain sample in appropriate storage as per retention SOP before disposal.',
+    phaseColor: '#0f172a',
+    phaseBg: '#f8fafc',
+  },
 ];
 
 // ── FLOATING BUBBLE GUIDE TOOLTIP ────────────────────────────────────────────
@@ -1137,29 +1193,127 @@ const LabHub = () => {
                   <TatCounter order={selectedOrder} />
                 </div>
 
-                {/* Stage Progress */}
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Advance Lifecycle Stage</span>
-                  <div className="grid grid-cols-1 gap-1">
-                    {LIFECYCLE_STAGES.map(st => {
-                      const isCurrent = selectedOrder.stage === st.id;
-                      return (
+                {/* ── ADVANCED LIFECYCLE STEPPER ── */}
+                {(() => {
+                  const currentIdx = LIFECYCLE_STAGES.findIndex(s => s.id === selectedOrder.stage);
+                  const effectiveIdx = currentIdx === -1 ? 0 : currentIdx;
+                  const nextStage = LIFECYCLE_STAGES[effectiveIdx + 1];
+                  const isCompleted = effectiveIdx === LIFECYCLE_STAGES.length - 1;
+
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Specimen Lifecycle</span>
+                        <span className="text-[9px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                          Step {effectiveIdx + 1} / {LIFECYCLE_STAGES.length}
+                        </span>
+                      </div>
+
+                      {/* Vertical stepper */}
+                      <div className="relative pl-5 space-y-0">
+                        {/* Vertical connector line */}
+                        <div className="absolute left-[9px] top-2 bottom-2 w-px bg-slate-200" />
+
+                        {LIFECYCLE_STAGES.map((st, idx) => {
+                          const isDone = idx < effectiveIdx;
+                          const isCurrent = idx === effectiveIdx;
+                          const isNext = idx === effectiveIdx + 1;
+                          const isLocked = idx > effectiveIdx + 1;
+
+                          return (
+                            <div key={st.id} className="relative flex gap-3 pb-2 last:pb-0">
+                              {/* Node dot */}
+                              <div
+                                className="absolute -left-5 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 z-10"
+                                style={{
+                                  backgroundColor: isDone ? st.phaseColor : isCurrent ? st.phaseColor : '#e2e8f0',
+                                  borderColor: isDone ? st.phaseColor : isCurrent ? st.phaseColor : '#cbd5e1',
+                                }}
+                              >
+                                {isDone ? (
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                    <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                ) : isCurrent ? (
+                                  <div className="w-2 h-2 rounded-full bg-white" />
+                                ) : (
+                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                )}
+                              </div>
+
+                              {/* Stage card */}
+                              <div
+                                className={`w-full rounded-lg border text-[11px] transition-all ${
+                                  isCurrent
+                                    ? 'shadow-sm'
+                                    : isDone
+                                    ? 'opacity-60'
+                                    : isNext
+                                    ? 'border-dashed'
+                                    : 'opacity-30'
+                                }`}
+                                style={{
+                                  borderColor: isCurrent ? st.phaseColor : isNext ? st.phaseColor + '60' : '#e2e8f0',
+                                  backgroundColor: isCurrent ? st.phaseBg : isNext ? st.phaseBg + 'aa' : '#f8fafc',
+                                }}
+                              >
+                                <div className="p-2 space-y-1">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span
+                                      className="font-bold text-[11px]"
+                                      style={{ color: isCurrent || isDone ? st.phaseColor : '#94a3b8' }}
+                                    >
+                                      {st.label}
+                                    </span>
+                                    <span
+                                      className="text-[8px] font-mono uppercase px-1.5 py-0.5 rounded"
+                                      style={{
+                                        backgroundColor: isCurrent ? st.phaseColor + '20' : '#f1f5f9',
+                                        color: isCurrent ? st.phaseColor : '#94a3b8',
+                                      }}
+                                    >
+                                      {st.phase}
+                                    </span>
+                                  </div>
+
+                                  {(isCurrent || isNext) && (
+                                    <p className="text-[10px] text-slate-500 leading-snug">{st.description}</p>
+                                  )}
+
+                                  {isCurrent && (
+                                    <div className="mt-1.5 pt-1.5 border-t border-dashed" style={{ borderColor: st.phaseColor + '40' }}>
+                                      <p className="text-[10px] font-semibold" style={{ color: st.phaseColor }}>
+                                        Action Required:
+                                      </p>
+                                      <p className="text-[10px] text-slate-600 leading-snug mt-0.5">{st.actionHint}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Advance button */}
+                      {!isCompleted && nextStage ? (
                         <button
-                          key={st.id}
-                          onClick={() => handleUpdateStage(selectedOrder.id, st.id)}
-                          className={`p-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer border ${
-                            isCurrent 
-                              ? 'bg-slate-900 text-white border-slate-900 font-semibold' 
-                              : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200/80'
-                          }`}
+                          onClick={() => handleUpdateStage(selectedOrder.id, nextStage.id)}
+                          className="w-full mt-1 py-2.5 rounded-xl text-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:opacity-90 active:scale-[0.98]"
+                          style={{ backgroundColor: nextStage.phaseColor }}
                         >
-                          <span>{st.label}</span>
-                          <span className="text-[9px] opacity-75 uppercase font-mono">{st.phase}</span>
+                          <ArrowRight size={13} />
+                          Advance to: {nextStage.label}
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                      ) : isCompleted ? (
+                        <div className="w-full mt-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5">
+                          <CheckCircle2 size={13} className="text-emerald-600" />
+                          Lifecycle Complete
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
 
                 {/* Storage Unit Assignment Panel */}
                 <div className="space-y-3 pt-3 border-t border-slate-100">
