@@ -30,7 +30,10 @@ import {
   Edit2,
   CornerUpLeft,
   FileSpreadsheet,
-  Download
+  Download,
+  CopyCheck,
+  GitMerge,
+  CheckSquare
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
@@ -658,6 +661,146 @@ export default function CentralStoreHub() {
     if (successCount > 0) toast.success(`${successCount} batch(es) deleted successfully.`);
     if (failCount > 0) toast.error(`${failCount} batch(es) could not be deleted.`);
     loadData(true);
+  };
+
+  // ── Duplicate Finder State & Handlers ─────────────────────────────────────
+  const [duplicateFinderOpen, setDuplicateFinderOpen] = useState(false);
+  const [duplicateMatchRule, setDuplicateMatchRule] = useState('name_batch'); // 'name_batch', 'sku_batch', 'name_expiry', 'name_dept'
+  const [mergeQuantitiesOnRemove, setMergeQuantitiesOnRemove] = useState(true);
+  const [selectedDuplicateBatchIds, setSelectedDuplicateBatchIds] = useState([]);
+  const [isRemovingDuplicates, setIsRemovingDuplicates] = useState(false);
+
+  const duplicateGroups = useMemo(() => {
+    if (!stockItems || stockItems.length === 0) return [];
+    const groupsMap = {};
+
+    stockItems.forEach(item => {
+      if (!item.batch_id) return;
+      let key = '';
+      const normName = (item.name || '').trim().toLowerCase();
+      const normBatch = (item.batch_number || '').trim().toLowerCase();
+      const normSku = (item.sku || '').trim().toLowerCase();
+      const normExp = (item.expiry_date || '').trim().toLowerCase();
+      const normDept = (item.department || '').trim().toLowerCase();
+
+      if (duplicateMatchRule === 'name_batch') {
+        if (!normName) return;
+        key = `${normName}|||${normBatch || 'nobatch'}`;
+      } else if (duplicateMatchRule === 'sku_batch') {
+        if (!normSku) return;
+        key = `${normSku}|||${normBatch || 'nobatch'}`;
+      } else if (duplicateMatchRule === 'name_expiry') {
+        if (!normName) return;
+        key = `${normName}|||${normExp || 'noexp'}`;
+      } else if (duplicateMatchRule === 'name_dept') {
+        if (!normName) return;
+        key = `${normName}|||${normDept || 'nodept'}`;
+      }
+
+      if (!groupsMap[key]) groupsMap[key] = [];
+      groupsMap[key].push(item);
+    });
+
+    return Object.entries(groupsMap)
+      .filter(([_, items]) => items.length > 1)
+      .map(([key, items]) => {
+        // Sort items so primary is the one with highest quantity (or oldest created)
+        const sorted = [...items].sort((a, b) => b.quantity - a.quantity);
+        const primary = sorted[0];
+        const duplicates = sorted.slice(1);
+        return {
+          key,
+          primary,
+          duplicates,
+          all: items,
+          title: primary.name || primary.sku || 'Unnamed Item',
+          batchNumber: primary.batch_number || 'N/A'
+        };
+      });
+  }, [stockItems, duplicateMatchRule]);
+
+  // Auto-select all duplicate batch IDs whenever modal opens or duplicateGroups changes
+  useEffect(() => {
+    if (duplicateFinderOpen) {
+      const allDupIds = duplicateGroups.flatMap(g => g.duplicates.map(d => d.batch_id));
+      setSelectedDuplicateBatchIds(allDupIds);
+    }
+  }, [duplicateFinderOpen, duplicateGroups]);
+
+  const handleRemoveSelectedDuplicates = async () => {
+    if (selectedDuplicateBatchIds.length === 0) {
+      toast.error('No duplicate batches selected for removal');
+      return;
+    }
+
+    const confirmMsg = mergeQuantitiesOnRemove
+      ? `Are you sure you want to remove ${selectedDuplicateBatchIds.length} duplicate batch(es)? Stock quantities will be MERGED into primary batches before removal.`
+      : `Are you sure you want to permanently delete ${selectedDuplicateBatchIds.length} duplicate batch(es)?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsRemovingDuplicates(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      if (mergeQuantitiesOnRemove) {
+        for (const group of duplicateGroups) {
+          const selectedDupsInGroup = group.duplicates.filter(d =>
+            selectedDuplicateBatchIds.includes(d.batch_id)
+          );
+          if (selectedDupsInGroup.length > 0) {
+            const addedQty = selectedDupsInGroup.reduce((sum, d) => sum + (d.quantity || 0), 0);
+            if (addedQty > 0) {
+              const primary = group.primary;
+              const newQty = (primary.quantity || 0) + addedQty;
+              const payload = {
+                name: primary.name,
+                sku: primary.sku,
+                unit_of_measure: primary.unit_of_measure,
+                category: primary.category,
+                batch_id: primary.batch_id,
+                batch_number: primary.batch_number,
+                expiry_date: primary.expiry_date,
+                purchase_time: primary.purchase_time,
+                price: Number(primary.price),
+                dept_stock_id: primary.dept_stock_id,
+                department_id: primary.department_id,
+                quantity: newQty
+              };
+              try {
+                await api.put(`/clinical/inventory/master/${primary.id}`, payload);
+              } catch (err) {
+                console.error(`Failed to merge qty into primary batch ${primary.batch_id}`, err);
+              }
+            }
+          }
+        }
+      }
+
+      for (const batchId of selectedDuplicateBatchIds) {
+        try {
+          await api.delete(`/clinical/inventory/batches/${batchId}`);
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to delete duplicate batch ${batchId}`, err);
+          failCount++;
+        }
+      }
+
+      setSelectedDuplicateBatchIds([]);
+      if (successCount > 0) {
+        toast.success(
+          `✅ ${successCount} duplicate batch(es) removed${mergeQuantitiesOnRemove ? ' & stock merged' : ''}!`
+        );
+      }
+      if (failCount > 0) {
+        toast.error(`⚠️ ${failCount} batch(es) could not be removed.`);
+      }
+      loadData(true);
+    } finally {
+      setIsRemovingDuplicates(false);
+    }
   };
 
   // ── derived lists ─────────────────────────────────────────────────────────
@@ -1437,6 +1580,19 @@ export default function CentralStoreHub() {
                   </div>
 
                   <div className="flex flex-wrap gap-3 items-center w-full xl:w-auto">
+                    {canDeleteBatch && (
+                      <button
+                        onClick={() => setDuplicateFinderOpen(true)}
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-amber-700 bg-white border border-slate-200 hover:bg-amber-50 hover:border-amber-200 px-3 py-2 rounded-xl transition-all cursor-pointer shadow-xs relative"
+                      >
+                        <CopyCheck size={14} className="text-amber-600" /> Find & Clean Duplicates
+                        {duplicateGroups.length > 0 && (
+                          <span className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full ml-1 animate-pulse">
+                            {duplicateGroups.length}
+                          </span>
+                        )}
+                      </button>
+                    )}
                     <button
                       onClick={() => setExcelImportOpen(true)}
                       className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-indigo-700 bg-white border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 px-3 py-2 rounded-xl transition-all cursor-pointer shadow-xs"
@@ -3147,6 +3303,225 @@ export default function CentralStoreHub() {
               {uploadingExcel ? <Loader2 size={15} className="animate-spin text-white" /> : <FileSpreadsheet size={15} />}
               Confirm & Update Stock ({excelPreviewItems.length})
             </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── DUPLICATE FINDER & REMOVER MODAL ── */}
+      <Modal
+        isOpen={duplicateFinderOpen}
+        onClose={() => setDuplicateFinderOpen(false)}
+        title="Find & Remove Duplicate Stock Batches"
+        maxWidth="850px"
+      >
+        <div className="space-y-5 p-1">
+          {/* Diagnostic Header Banner */}
+          <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h4 className="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                <CopyCheck size={16} className="text-amber-600" /> Duplicate Stock Analysis
+              </h4>
+              <p className="text-[11px] text-amber-800 font-semibold mt-0.5">
+                {duplicateGroups.length === 0
+                  ? 'No duplicate stock batches detected using the current matching rule.'
+                  : `Found ${duplicateGroups.length} duplicate group(s) containing ${duplicateGroups.reduce((acc, g) => acc + g.duplicates.length, 0)} redundant batch record(s).`}
+              </p>
+            </div>
+            {duplicateGroups.length > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allDupIds = duplicateGroups.flatMap(g => g.duplicates.map(d => d.batch_id));
+                    setSelectedDuplicateBatchIds(
+                      selectedDuplicateBatchIds.length === allDupIds.length ? [] : allDupIds
+                    );
+                  }}
+                  className="px-3 py-1.5 text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl transition-all cursor-pointer"
+                >
+                  {selectedDuplicateBatchIds.length === duplicateGroups.flatMap(g => g.duplicates.map(d => d.batch_id)).length
+                    ? 'Deselect All'
+                    : 'Select All Duplicates'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Rules & Options Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 border border-slate-200/80 rounded-2xl">
+            <div>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1">
+                Duplicate Matching Criteria
+              </label>
+              <select
+                value={duplicateMatchRule}
+                onChange={e => setDuplicateMatchRule(e.target.value)}
+                className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-800 focus:outline-none cursor-pointer"
+              >
+                <option value="name_batch">Item Name + Batch Number (Default)</option>
+                <option value="sku_batch">SKU + Batch Number</option>
+                <option value="name_expiry">Item Name + Expiry Date</option>
+                <option value="name_dept">Item Name + Department</option>
+              </select>
+            </div>
+
+            <div className="flex items-center pt-4">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={mergeQuantitiesOnRemove}
+                  onChange={e => setMergeQuantitiesOnRemove(e.target.checked)}
+                  className="w-4 h-4 accent-amber-600 rounded cursor-pointer"
+                />
+                <span className="flex items-center gap-1.5">
+                  <GitMerge size={14} className="text-amber-600" />
+                  Merge quantities into primary batch before deleting
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Duplicate Groups List */}
+          {duplicateGroups.length === 0 ? (
+            <div className="py-12 text-center bg-slate-50 rounded-2xl border border-slate-200/60 space-y-2">
+              <CheckCircle size={36} className="mx-auto text-emerald-500" />
+              <p className="text-sm font-black text-slate-700">Your inventory is clean!</p>
+              <p className="text-xs text-slate-400 font-medium">No duplicate stock records found with the selected rule.</p>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1 custom-scrollbar">
+              {duplicateGroups.map((group, gIdx) => (
+                <div key={gIdx} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-2xs">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <div>
+                      <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                        <Boxes size={14} className="text-indigo-600" />
+                        {group.title}
+                        <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                          Batch: {group.batchNumber}
+                        </span>
+                      </h5>
+                    </div>
+                    <span className="text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-lg">
+                      {group.all.length} entries ({group.duplicates.length} duplicate{group.duplicates.length > 1 ? 's' : ''})
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[9px] tracking-wider">
+                        <tr>
+                          <th className="py-2 px-3">Role</th>
+                          <th className="py-2 px-3">SKU / Batch</th>
+                          <th className="py-2 px-3">Dept</th>
+                          <th className="py-2 px-3 text-right">Qty</th>
+                          <th className="py-2 px-3 text-right">Price</th>
+                          <th className="py-2 px-3">Expiry</th>
+                          <th className="py-2 px-3 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                        {/* Primary Row */}
+                        <tr className="bg-emerald-50/40">
+                          <td className="py-2 px-3">
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-200">
+                              <CheckCircle size={10} /> Keep Primary
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 font-mono text-[11px] text-slate-800 font-bold">
+                            {group.primary.sku || '—'} / {group.primary.batch_number || '—'}
+                          </td>
+                          <td className="py-2 px-3 text-slate-600 font-semibold">{group.primary.department || 'GENERAL STORE'}</td>
+                          <td className="py-2 px-3 text-right font-black text-emerald-700">{group.primary.quantity}</td>
+                          <td className="py-2 px-3 text-right font-mono">{group.primary.price} RWF</td>
+                          <td className="py-2 px-3 font-mono text-[10px] text-slate-500">{group.primary.expiry_date || '—'}</td>
+                          <td className="py-2 px-3 text-center text-slate-400 font-extrabold text-[10px]">Primary</td>
+                        </tr>
+
+                        {/* Duplicate Rows */}
+                        {group.duplicates.map((dup, dIdx) => {
+                          const isSelected = selectedDuplicateBatchIds.includes(dup.batch_id);
+                          return (
+                            <tr key={dIdx} className={isSelected ? 'bg-red-50/50' : 'hover:bg-slate-50'}>
+                              <td className="py-2 px-3">
+                                <label className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase bg-red-100 text-red-800 px-2 py-0.5 rounded-md border border-red-200 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={e => {
+                                      setSelectedDuplicateBatchIds(prev =>
+                                        e.target.checked
+                                          ? [...prev, dup.batch_id]
+                                          : prev.filter(id => id !== dup.batch_id)
+                                      );
+                                    }}
+                                    className="w-3 h-3 accent-red-600 cursor-pointer"
+                                  />
+                                  Target Duplicate
+                                </label>
+                              </td>
+                              <td className="py-2 px-3 font-mono text-[11px] text-slate-600">
+                                {dup.sku || '—'} / {dup.batch_number || '—'}
+                              </td>
+                              <td className="py-2 px-3 text-slate-500">{dup.department || 'GENERAL STORE'}</td>
+                              <td className="py-2 px-3 text-right font-bold text-red-600">+{dup.quantity}</td>
+                              <td className="py-2 px-3 text-right font-mono">{dup.price} RWF</td>
+                              <td className="py-2 px-3 font-mono text-[10px] text-slate-500">{dup.expiry_date || '—'}</td>
+                              <td className="py-2 px-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!window.confirm(`Delete duplicate batch "${dup.batch_number}" for ${dup.name}?`)) return;
+                                    try {
+                                      await api.delete(`/clinical/inventory/batches/${dup.batch_id}`);
+                                      toast.success('Duplicate batch deleted');
+                                      loadData(true);
+                                    } catch {
+                                      toast.error('Failed to delete duplicate batch');
+                                    }
+                                  }}
+                                  className="p-1 text-red-500 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete single duplicate"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Modal Footer Actions */}
+          <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500 font-bold">
+              {selectedDuplicateBatchIds.length} duplicate batch(es) targeted for removal
+            </span>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDuplicateFinderOpen(false)}
+                className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+              >
+                Close
+              </button>
+              {duplicateGroups.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleRemoveSelectedDuplicates}
+                  disabled={selectedDuplicateBatchIds.length === 0 || isRemovingDuplicates}
+                  className="px-5 py-2.5 text-xs font-extrabold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md shadow-red-600/30 hover:shadow-red-600/40 cursor-pointer flex items-center gap-2 disabled:opacity-50 active:scale-[0.98]"
+                >
+                  {isRemovingDuplicates ? <Loader2 size={15} className="animate-spin text-white" /> : <Trash2 size={15} />}
+                  Remove Selected Duplicates ({selectedDuplicateBatchIds.length})
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </Modal>
