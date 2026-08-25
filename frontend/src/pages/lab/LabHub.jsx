@@ -479,7 +479,7 @@ const LabHub = () => {
   const DEFAULT_LAB_ORDERS = useMemo(() => [
     {
       id: 'ord-101',
-      accession_number: 'SID-2026-0801',
+      accession_number: 'ACC-2026-0801',
       patient_id: 'PID-98421',
       patient_name: 'Sarah Jenkins',
       patient_age: '34',
@@ -495,7 +495,7 @@ const LabHub = () => {
     },
     {
       id: 'ord-102',
-      accession_number: 'SID-2026-0802',
+      accession_number: 'ACC-2026-0802',
       patient_id: 'PID-73019',
       patient_name: 'Robert Chen',
       patient_age: '52',
@@ -511,7 +511,7 @@ const LabHub = () => {
     },
     {
       id: 'ord-103',
-      accession_number: 'SID-2026-0803',
+      accession_number: 'ACC-2026-0803',
       patient_id: 'PID-54120',
       patient_name: 'Amanda Taylor',
       patient_age: '29',
@@ -527,7 +527,7 @@ const LabHub = () => {
     },
     {
       id: 'ord-104',
-      accession_number: 'SID-2026-0804',
+      accession_number: 'ACC-2026-0804',
       patient_id: 'PID-11930',
       patient_name: 'David Miller',
       patient_age: '61',
@@ -631,7 +631,7 @@ const LabHub = () => {
       return toast.error('Please fill in patient ID, name, and barcode.');
     }
 
-    const accessionNumber = `SID-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const accessionNumber = `ACC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     let createdOrder = null;
 
     try {
@@ -685,7 +685,7 @@ const LabHub = () => {
       handleAssignOrderStorage(createdOrder.accession_number, targetUnit);
     }
 
-    toast.success(`Specimen SID: ${createdOrder.accession_number} registered & stored in ${getUnitLabel(targetUnit)}.`);
+    toast.success(`Specimen Accession No: ${createdOrder.accession_number} registered & stored in ${getUnitLabel(targetUnit)}.`);
     setShowRegModal(false);
     setPatientId('');
     setPatientName('');
@@ -986,7 +986,7 @@ const LabHub = () => {
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search patient, SID, barcode..."
+                placeholder="Search patient, Accession No, barcode..."
                 className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200/80 rounded-lg text-xs font-normal focus:outline-none focus:border-slate-400 shadow-2xs"
               />
             </div>
@@ -996,7 +996,7 @@ const LabHub = () => {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-200/80">
                     <tr>
-                      <th className="py-2.5 px-3">Patient / SID</th>
+                      <th className="py-2.5 px-3">Patient / Accession No</th>
                       <th className="py-2.5 px-3">Specimen / Tube</th>
                       <th className="py-2.5 px-3">Target TAT</th>
                       <th className="py-2.5 px-3">TAT Counter</th>
@@ -1024,7 +1024,7 @@ const LabHub = () => {
                           >
                             <td className="py-2.5 px-3">
                               <span className="font-semibold text-slate-900 block">{order.patient_name}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">PID: {order.patient_id} • SID: {order.accession_number}</span>
+                              <span className="text-[10px] text-slate-400 font-mono">PID: {order.patient_id} • Accession No: {order.accession_number}</span>
                             </td>
 
                             <td className="py-2.5 px-3">
@@ -1120,7 +1120,7 @@ const LabHub = () => {
                     <p className="text-xs text-slate-500 font-mono mt-0.5">Barcode: {selectedOrder.specimen_barcode}</p>
                   </div>
                   <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                    SID: {selectedOrder.accession_number}
+                    Accession No: {selectedOrder.accession_number}
                   </span>
                 </div>
 
