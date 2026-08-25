@@ -110,6 +110,8 @@ export default function CentralStoreHub() {
   const [uploadingExcel, setUploadingExcel]     = useState(false);
   const [excelFileName, setExcelFileName]       = useState('');
   const [reqDetailOpen, setReqDetailOpen]       = useState(false);
+  const [excelDragOver, setExcelDragOver]       = useState(false);
+  const excelFileInputRef                       = React.useRef(null);
 
   // ── Excel Template Download & Import Handlers ────────────────────────────
   const downloadStockTemplate = () => {
@@ -331,6 +333,8 @@ export default function CentralStoreHub() {
       setExcelFileName('');
     };
     reader.readAsBinaryString(file);
+    // Reset the input value so the same file can be re-selected
+    if (excelFileInputRef.current) excelFileInputRef.current.value = '';
   };
 
   const handleConfirmExcelImport = async () => {
@@ -2847,6 +2851,8 @@ export default function CentralStoreHub() {
           setExcelImportOpen(false);
           setExcelPreviewItems([]);
           setExcelFileName('');
+          setExcelDragOver(false);
+          if (excelFileInputRef.current) excelFileInputRef.current.value = '';
         }}
         title="Batch Import & Update Stock via Excel"
         maxWidth="750px"
@@ -2872,23 +2878,44 @@ export default function CentralStoreHub() {
           </div>
 
           {/* Upload Zone */}
-          <div className="border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50/50 hover:bg-indigo-50/30 rounded-2xl p-6 text-center transition-all cursor-pointer group">
+          <div
+            className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer group ${
+              excelDragOver
+                ? 'border-indigo-500 bg-indigo-50/60 scale-[1.01]'
+                : 'border-slate-200 hover:border-indigo-400 bg-slate-50/50 hover:bg-indigo-50/30'
+            }`}
+            onClick={(e) => { e.stopPropagation(); excelFileInputRef.current?.click(); }}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setExcelDragOver(true); }}
+            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setExcelDragOver(false); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setExcelDragOver(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) handleExcelFileUpload({ target: { files: [file] } });
+            }}
+          >
             <input
               type="file"
               accept=".xlsx, .xls, .csv"
               onChange={handleExcelFileUpload}
               className="hidden"
               id="excel-file-upload-input"
+              ref={excelFileInputRef}
             />
-            <label htmlFor="excel-file-upload-input" className="cursor-pointer block">
-              <FileSpreadsheet className="mx-auto mb-2 text-indigo-500 group-hover:scale-110 transition-transform" size={36} />
-              <p className="text-xs font-black text-slate-700 uppercase tracking-wider">
-                {excelFileName ? excelFileName : "Click to select or drop your Excel file here"}
-              </p>
-              <p className="text-[11px] text-slate-400 font-semibold mt-1">
-                Supports .xlsx, .xls, and .csv formats
-              </p>
-            </label>
+            <FileSpreadsheet className={`mx-auto mb-2 transition-transform ${
+              excelDragOver ? 'text-indigo-600 scale-125' : 'text-indigo-500 group-hover:scale-110'
+            }`} size={36} />
+            <p className="text-xs font-black text-slate-700 uppercase tracking-wider">
+              {excelFileName
+                ? excelFileName
+                : excelDragOver
+                ? 'Drop your file here'
+                : 'Click to select or drag & drop your Excel file'}
+            </p>
+            <p className="text-[11px] text-slate-400 font-semibold mt-1">
+              Supports .xlsx, .xls, and .csv formats
+            </p>
           </div>
 
           {/* Matching Rules Info Note */}
