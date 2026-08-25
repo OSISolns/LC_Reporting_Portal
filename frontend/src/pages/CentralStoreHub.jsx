@@ -146,14 +146,30 @@ export default function CentralStoreHub() {
   const getRowVal = (row, possibleNames) => {
     if (!row || typeof row !== 'object') return null;
     const keys = Object.keys(row);
+
     for (const name of possibleNames) {
       const cleanTarget = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const matchedKey = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanTarget);
-      if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null) {
-        const val = String(row[matchedKey]).trim();
-        if (val !== '') return row[matchedKey];
+      // 1st pass: exact match (after stripping spaces/punctuation)
+      const exactKey = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanTarget);
+      if (exactKey && row[exactKey] !== undefined && row[exactKey] !== null) {
+        const val = String(row[exactKey]).trim();
+        if (val !== '') return row[exactKey];
       }
     }
+
+    // 2nd pass: substring / contains match — handles "Item Description", "Qty (Received)", etc.
+    for (const name of possibleNames) {
+      const cleanTarget = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const containsKey = keys.find(k => {
+        const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return cleanKey.includes(cleanTarget) || cleanTarget.includes(cleanKey);
+      });
+      if (containsKey && row[containsKey] !== undefined && row[containsKey] !== null) {
+        const val = String(row[containsKey]).trim();
+        if (val !== '') return row[containsKey];
+      }
+    }
+
     return null;
   };
 
@@ -228,7 +244,16 @@ export default function CentralStoreHub() {
 
         // 3. Scan all sheets and parse rows starting from the header row
         let allSheetRows = [];
-        const knownCols = ['itemname', 'name', 'item', 'sku', 'quantity', 'qty', 'expirydate', 'expiry', 'expdate', 'stock', 'product', 'description'];
+        let detectedHeaders = [];
+        // Broad keyword list — every word that could plausibly appear in a header row
+        const knownCols = [
+          'itemname', 'name', 'item', 'sku', 'quantity', 'qty', 'expirydate',
+          'expiry', 'expdate', 'stock', 'product', 'description', 'designation',
+          'article', 'ref', 'code', 'batch', 'lot', 'price', 'cost', 'unit',
+          'category', 'department', 'dept', 'vendor', 'supplier', 'barcode',
+          'balance', 'count', 'received', 'available', 'medicine', 'drug',
+          'generic', 'brand', 'strength', 'form', 'pack', 'uom', 'uop',
+        ];
 
         for (const sheetName of wb.SheetNames) {
           const ws = wb.Sheets[sheetName];
@@ -238,11 +263,13 @@ export default function CentralStoreHub() {
           const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
           if (!rawRows || rawRows.length === 0) continue;
 
-          // Find the header row (first row with recognisable column names)
+          // Find the header row (first row with recognisable column names) — scan up to 25 rows
           let headerIndex = -1;
-          for (let r = 0; r < Math.min(rawRows.length, 15); r++) {
+          for (let r = 0; r < Math.min(rawRows.length, 25); r++) {
             const rowArr = rawRows[r];
             if (!Array.isArray(rowArr)) continue;
+            const nonEmptyCells = rowArr.filter(c => String(c).trim() !== '');
+            if (nonEmptyCells.length < 2) continue; // skip sparse rows (titles, blank rows)
             const rowStr = rowArr.map(cell => String(cell).toLowerCase().replace(/[^a-z0-9]/g, '')).join(' ');
             if (knownCols.some(k => rowStr.includes(k))) {
               headerIndex = r;
@@ -251,6 +278,13 @@ export default function CentralStoreHub() {
           }
 
           if (headerIndex === -1) headerIndex = 0;
+
+          // Capture actual header cell values for diagnostic error messages
+          if (Array.isArray(rawRows[headerIndex])) {
+            detectedHeaders = rawRows[headerIndex]
+              .map(c => String(c).trim())
+              .filter(c => c !== '');
+          }
 
           // Parse objects starting from the header row
           const sheetObjects = XLSX.utils.sheet_to_json(ws, { range: headerIndex, defval: '' });
@@ -267,15 +301,43 @@ export default function CentralStoreHub() {
         }
 
         const mappedItems = allSheetRows.map(row => {
-          const rawName  = getRowVal(row, ['item name', 'item_name', 'name', 'item', 'description', 'product name', 'product', 'article']);
-          const rawSku   = getRowVal(row, ['sku', 'item code', 'code', 'barcode', 'sku no', 'skuno', 'ref']);
-          const rawBatch = getRowVal(row, ['batch number', 'batch_number', 'batch', 'batch #', 'batch no', 'lot number', 'lot']);
+          const rawName  = getRowVal(row, [
+            'item name', 'item_name', 'name', 'item', 'description', 'item description',
+            'product name', 'product', 'article', 'designation', 'generic name',
+            'brand name', 'medicine', 'drug', 'material', 'supply name', 'supplies',
+          ]);
+          const rawSku   = getRowVal(row, [
+            'sku', 'item code', 'item_code', 'code', 'barcode', 'sku no', 'skuno', 'ref',
+            'reference', 'product code', 'cat no', 'catalog', 'catalogue', 'id',
+          ]);
+          const rawBatch = getRowVal(row, [
+            'batch number', 'batch_number', 'batch', 'batch #', 'batch no', 'lot number', 'lot',
+            'batch/lot', 'lot no', 'lot #', 'batch num',
+          ]);
           const rawLot   = getRowVal(row, ['lot number', 'lot_number', 'lot', 'lot #', 'lot no']);
-          const rawQty   = getRowVal(row, ['quantity', 'qty', 'stock', 'qty received', 'stock qty', 'qty in hand', 'in hand', 'current stock', 'balance', 'count', 'qte']);
-          const rawExp   = getRowVal(row, ['expiry date', 'expiry_date', 'expiry', 'exp date', 'exp. date', 'expiration date', 'exp', 'peremption']);
-          const rawPrice = getRowVal(row, ['unit price', 'unit_price', 'price', 'cost', 'rate', 'purchase price', 'prix']);
-          const rawCat   = getRowVal(row, ['category', 'cat', 'type']);
-          const rawDept  = getRowVal(row, ['department', 'dept', 'service']);
+          const rawQty   = getRowVal(row, [
+            'quantity', 'qty', 'stock', 'qty received', 'stock qty', 'qty in hand',
+            'in hand', 'current stock', 'balance', 'count', 'qte', 'available qty',
+            'available', 'stock balance', 'closing stock', 'closing balance',
+            'stock on hand', 'on hand', 'units', 'packs',
+          ]);
+          const rawExp   = getRowVal(row, [
+            'expiry date', 'expiry_date', 'expiry', 'exp date', 'exp. date',
+            'expiration date', 'expiration', 'exp', 'peremption', 'use by', 'best before',
+            'date of expiry', 'expiry (mm/yyyy)', 'expiry (month/year)',
+          ]);
+          const rawPrice = getRowVal(row, [
+            'unit price', 'unit_price', 'price', 'cost', 'rate', 'purchase price',
+            'prix', 'unit cost', 'buying price', 'buy price', 'cost price', 'amount',
+          ]);
+          const rawCat   = getRowVal(row, [
+            'category', 'cat', 'type', 'item type', 'item category', 'group',
+            'class', 'classification', 'product type',
+          ]);
+          const rawDept  = getRowVal(row, [
+            'department', 'dept', 'service', 'ward', 'section', 'unit', 'location',
+            'store', 'store location',
+          ]);
 
           const skuStr = rawSku !== null ? String(rawSku).trim() : '';
           const nameStr = rawName !== null ? String(rawName).trim() : '';
@@ -296,10 +358,15 @@ export default function CentralStoreHub() {
         // 6. Validate that we got some usable rows
         const skippedRows = allSheetRows.length - mappedItems.length;
         if (mappedItems.length === 0) {
+          const headerPreview = detectedHeaders.length > 0
+            ? `\n\nDetected columns in your file: ${detectedHeaders.slice(0, 10).join(', ')}${detectedHeaders.length > 10 ? '...' : ''}`
+            : '';
           toast.error(
-            `❌ No valid items found in "${file.name}". Every row must have at least an "Item Name" or "SKU". Skipped ${skippedRows} rows.`,
-            { duration: 6000 }
+            `❌ No valid items found in "${file.name}". The parser could not match any column to "Item Name" or "SKU".${headerPreview}\n\nExpected columns: Item Name, SKU, Quantity, Expiry Date, Batch Number.`,
+            { duration: 12000 }
           );
+          console.warn('[Excel Import] Detected headers:', detectedHeaders);
+          console.warn('[Excel Import] First row sample:', allSheetRows[0]);
           setExcelFileName('');
           return;
         }
