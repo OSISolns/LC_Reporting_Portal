@@ -636,6 +636,29 @@ export default function CentralStoreHub() {
 
   const canRectify = hasPermission('inventory', 'edit');
   const canDeleteBatch = hasPermission('inventory', 'delete');
+  const [selectedBatchIds, setSelectedBatchIds] = React.useState([]);
+
+  const handleBulkDelete = async () => {
+    if (selectedBatchIds.length === 0) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete ${selectedBatchIds.length} selected batch(es)? This cannot be undone.`
+    );
+    if (!confirmed) return;
+    let successCount = 0;
+    let failCount = 0;
+    for (const batchId of selectedBatchIds) {
+      try {
+        await api.delete(`/clinical/inventory/batches/${batchId}`);
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    setSelectedBatchIds([]);
+    if (successCount > 0) toast.success(`${successCount} batch(es) deleted successfully.`);
+    if (failCount > 0) toast.error(`${failCount} batch(es) could not be deleted.`);
+    loadData(true);
+  };
 
   // ── derived lists ─────────────────────────────────────────────────────────
   const expiringItems = useMemo(() => {
@@ -1506,11 +1529,52 @@ export default function CentralStoreHub() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto relative">
+                  {/* ── Floating Bulk-Action Bar ── */}
+                  {canDeleteBatch && selectedBatchIds.length > 0 && (
+                    <div className="flex items-center justify-between gap-3 mb-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl animate-pulse-once">
+                      <span className="text-xs font-black text-red-800">
+                        {selectedBatchIds.length} item{selectedBatchIds.length > 1 ? 's' : ''} selected
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedBatchIds([])}
+                          className="text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer px-2 py-1 rounded hover:bg-slate-100 transition-colors"
+                        >
+                          Deselect All
+                        </button>
+                        <button
+                          onClick={handleBulkDelete}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[11px] font-black rounded-lg transition-colors cursor-pointer shadow-sm"
+                        >
+                          <Trash2 size={12} />
+                          Delete Selected ({selectedBatchIds.length})
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-slate-500 uppercase tracking-widest text-[9px] font-black border-b border-slate-200">
-                        <th className="py-3.5 px-4 rounded-l-xl">Item Name</th>
+                        {canDeleteBatch && (
+                          <th className="py-3.5 px-3 rounded-l-xl">
+                            <input
+                              type="checkbox"
+                              className="w-3.5 h-3.5 cursor-pointer accent-red-600 rounded"
+                              checked={
+                                filteredStock.filter(i => i.batch_id).length > 0 &&
+                                filteredStock.filter(i => i.batch_id).every(i => selectedBatchIds.includes(i.batch_id))
+                              }
+                              onChange={(e) => {
+                                const deletable = filteredStock.filter(i => i.batch_id).map(i => i.batch_id);
+                                setSelectedBatchIds(e.target.checked ? deletable : []);
+                              }}
+                              title="Select all visible batches"
+                            />
+                          </th>
+                        )}
+                        <th className={`py-3.5 px-4 ${!canDeleteBatch ? 'rounded-l-xl' : ''}`}>Item Name</th>
                         <th className="py-3.5 px-4">SKU</th>
                         <th className="py-3.5 px-4">Batch</th>
                         <th className="py-3.5 px-4">UoM</th>
@@ -1533,13 +1597,36 @@ export default function CentralStoreHub() {
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                       {filteredStock.length === 0
-                        ? <EmptyRow cols={canRectify ? 13 : 12} message="No stock items found." />
+                        ? <EmptyRow cols={canRectify ? (canDeleteBatch ? 14 : 13) : (canDeleteBatch ? 13 : 12)} message="No stock items found." />
                         : filteredStock.map((item, idx) => {
                             const expStatus = getExpiryStatus(item.expiry_date);
                             const isLow = item.quantity > 0 && item.quantity < 20;
                             const isOut = item.quantity === 0;
+                            const isSelected = selectedBatchIds.includes(item.batch_id);
                             return (
-                              <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                              <tr key={idx} className={`transition-colors ${
+                                isSelected ? 'bg-red-50/60 hover:bg-red-50' : 'hover:bg-slate-50/50'
+                              }`}>
+                                {canDeleteBatch && (
+                                  <td className="py-3 px-3">
+                                    {item.batch_id ? (
+                                      <input
+                                        type="checkbox"
+                                        className="w-3.5 h-3.5 cursor-pointer accent-red-600 rounded"
+                                        checked={isSelected}
+                                        onChange={(e) => {
+                                          setSelectedBatchIds(prev =>
+                                            e.target.checked
+                                              ? [...prev, item.batch_id]
+                                              : prev.filter(id => id !== item.batch_id)
+                                          );
+                                        }}
+                                      />
+                                    ) : (
+                                      <span className="w-3.5 h-3.5 block" />
+                                    )}
+                                  </td>
+                                )}
                                 <td className="py-3 px-4 text-slate-900 font-black text-[13px] max-w-[200px] truncate">{item.name}</td>
                                 <td className="py-3 px-4 font-mono text-slate-450 text-[11px]">{item.sku || '—'}</td>
                                 <td className="py-3 px-4 font-mono text-sky-700 text-[11px]">{item.batch_number || '—'}</td>
