@@ -324,8 +324,6 @@ const LabHub = () => {
   const [showReportModal, setShowReportModal] = useState(false);
 
   // ── STORAGE UNIT & TAT MANAGEMENT ──
-  const availableStorageUnits = useMemo(() => {
-    try {
   const [availableStorageUnits, setAvailableStorageUnits] = useState([
     { id: 'fridge_1',  label: 'Fridge 1 (STAT / Rapid Storage)',  type: 'fridge' },
     { id: 'fridge_2',  label: 'Fridge 2 (Routine Samples - 6h)',  type: 'fridge' },
