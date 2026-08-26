@@ -114,7 +114,7 @@ function App() {
             <Route path="/consumables-log" element={
               <ProtectedRoute allowedRoles={[
                 'admin', 'deputy_coo', 'chef-nurse', 'nurse',
-                'lab_team_lead', 'lab_tech', 'lab',
+                'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab',
                 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager',
                 'imaging_tech', 'imaging_manager', 'sono', 'radiologist',
                 'physiotherapist', 'physio', 'physio_manager', 'operations_staff', 'coo'
@@ -125,7 +125,7 @@ function App() {
 
             <Route path="/lab" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'lab_team_lead', 'lab_tech', 'lab'
+                'admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab'
               ]}>
                 <LabHub />
               </ProtectedRoute>
