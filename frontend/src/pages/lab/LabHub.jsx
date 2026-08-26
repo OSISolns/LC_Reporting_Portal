@@ -427,7 +427,6 @@ const LabHub = () => {
     });
     setStorageAssignments(updatedAssignments);
   };
-  };
 
   // Westgard QC Form State
   const [qcAnalyzer, setQcAnalyzer] = useState('Biochemistry Analyzer (Mindray BS-240)');
