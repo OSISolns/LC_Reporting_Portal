@@ -35,7 +35,7 @@ const ROLE_GROUPS = [
   },
   {
     name: 'Diagnostics & Labs',
-    roles: ['lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'imaging_tech', 'imaging_manager']
+    roles: ['lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'imaging_tech', 'imaging_manager']
   },
   {
     name: 'Specialized Clinics',
@@ -54,7 +54,7 @@ const ROLE_COLORS = {
   admin: '#1C69A0', it_officer: '#2563eb', coo: '#0891b2', deputy_coo: '#0284c7',
   chairman: '#d97706', sales_manager: '#059669', cashier: '#0f766e',
   principal_cashier: '#0d9488', customer_care: '#1C69A0', lab_team_lead: '#4f46e5',
-  lab_lead: '#4f46e5', lab_manager: '#4338ca', consultant: '#1C69A0',
+  lab_lead: '#4f46e5', lab_manager: '#4338ca', quality_manager: '#0d9488', qm: '#0d9488', consultant: '#1C69A0',
   operations_staff: '#b45309', operations: '#b45309', pa: '#1C69A0',
   staff: '#64748b', hsfp: '#dc2626', nurse: '#db2777', 'chef-nurse': '#1C69A0',
   chief_nurse: '#1C69A0', head_nurse: '#1C69A0', nursing_lead: '#1C69A0',

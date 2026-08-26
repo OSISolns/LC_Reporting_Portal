@@ -985,14 +985,16 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.warn('⚠️ Physiotherapy roles sync warning:', err.message);
     }
 
-    // ─── Laboratory Roles Sync: ensure all lab roles exist in the roles table ───
+    // ─── Laboratory & Quality Roles Sync: ensure lab & QM roles exist in the roles table ───
     try {
       const labRolesFull = [
-        { name: 'lab_team_lead', display_name: 'Lab Team Lead' },
-        { name: 'lab_lead',      display_name: 'Lab Lead' },
-        { name: 'lab_manager',   display_name: 'Laboratory Manager' },
-        { name: 'lab_tech',      display_name: 'Lab Technologist' },
-        { name: 'lab',           display_name: 'Laboratory Staff' },
+        { name: 'lab_team_lead',   display_name: 'Lab Team Lead' },
+        { name: 'lab_lead',        display_name: 'Lab Lead' },
+        { name: 'lab_manager',     display_name: 'Laboratory Manager' },
+        { name: 'quality_manager', display_name: 'Quality Manager' },
+        { name: 'qm',              display_name: 'Quality Manager (QM)' },
+        { name: 'lab_tech',        display_name: 'Lab Technologist' },
+        { name: 'lab',             display_name: 'Laboratory Staff' },
       ];
       for (const r of labRolesFull) {
         await client.execute({
@@ -1000,9 +1002,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           args: [r.name, r.display_name],
         });
       }
-      console.log('✅ Laboratory roles sync complete.');
+      console.log('✅ Laboratory & Quality Manager roles sync complete.');
     } catch (err) {
-      console.warn('⚠️ Laboratory roles sync warning:', err.message);
+      console.warn('⚠️ Laboratory & Quality Manager roles sync warning:', err.message);
     }
 
     // ─── Provider Specialization Migration ───────────────────────────────────────────────
