@@ -985,6 +985,26 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.warn('⚠️ Physiotherapy roles sync warning:', err.message);
     }
 
+    // ─── Laboratory Roles Sync: ensure all lab roles exist in the roles table ───
+    try {
+      const labRolesFull = [
+        { name: 'lab_team_lead', display_name: 'Lab Team Lead' },
+        { name: 'lab_lead',      display_name: 'Lab Lead' },
+        { name: 'lab_manager',   display_name: 'Laboratory Manager' },
+        { name: 'lab_tech',      display_name: 'Lab Technologist' },
+        { name: 'lab',           display_name: 'Laboratory Staff' },
+      ];
+      for (const r of labRolesFull) {
+        await client.execute({
+          sql: `INSERT INTO roles (name, display_name) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET display_name = EXCLUDED.display_name`,
+          args: [r.name, r.display_name],
+        });
+      }
+      console.log('✅ Laboratory roles sync complete.');
+    } catch (err) {
+      console.warn('⚠️ Laboratory roles sync warning:', err.message);
+    }
+
     // ─── Provider Specialization Migration ───────────────────────────────────────────────
     try {
       // Step 1: Add specialization column (safe - catches error if already exists)
