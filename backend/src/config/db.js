@@ -858,6 +858,51 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create lab_qc_logs:', err.message);
       });
 
+      // ── NCR (Non-Conformance Report) Table ──────────────────────────────────
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_ncr (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          ncr_number TEXT NOT NULL UNIQUE,
+          occurred_at TEXT NOT NULL,
+          recorded_by TEXT NOT NULL,
+          unit TEXT NOT NULL,
+          nc_category TEXT,
+          description TEXT,
+          rca_method TEXT,
+          rca_results TEXT,
+          immediate_action TEXT,
+          significance TEXT DEFAULT 'minor',
+          extent TEXT,
+          assigned_to_name TEXT,
+          assigned_to_position TEXT,
+          corrective_actions TEXT,
+          target_completion TEXT,
+          monitoring_notes TEXT,
+          status TEXT DEFAULT 'open',
+          staff_name TEXT,
+          reviewed_by_qm TEXT,
+          verified_by_lab_manager TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        )
+      `).then(async () => {
+        console.log('  ✅ Table lab_ncr created/verified.');
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_ncr_status ON lab_ncr(status)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_ncr_unit ON lab_ncr(unit)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_ncr_occurred_at ON lab_ncr(occurred_at)').catch(() => {});
+        // Add any missing columns from older schema versions
+        const ncrAlterCols = [
+          'nc_category TEXT', 'rca_method TEXT', 'rca_results TEXT', 'immediate_action TEXT',
+          'extent TEXT', 'assigned_to_position TEXT', 'monitoring_notes TEXT',
+          'staff_name TEXT', 'reviewed_by_qm TEXT', 'verified_by_lab_manager TEXT',
+        ];
+        for (const colDef of ncrAlterCols) {
+          try { await client.execute(`ALTER TABLE lab_ncr ADD COLUMN ${colDef}`); } catch (e) {}
+        }
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_ncr:', err.message);
+      });
+
       const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
       console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));
       

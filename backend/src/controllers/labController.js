@@ -503,3 +503,191 @@ exports.recordQCRun = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ─── NCR (Non-Conformance Report) Controllers ─────────────────────────────────
+
+// Auto-generate NCR number: NCR-YYYY-NNNN
+const generateNCRNumber = async () => {
+  const year = new Date().getFullYear();
+  const prefix = `NCR-${year}-`;
+  const { rows } = await db.query(
+    `SELECT ncr_number FROM lab_ncr WHERE ncr_number LIKE ? ORDER BY id DESC LIMIT 1`,
+    [`${prefix}%`]
+  );
+  if (rows.length === 0) return `${prefix}0001`;
+  const last = rows[0].ncr_number;
+  const seq = parseInt(last.split('-')[2] || '0', 10) + 1;
+  return `${prefix}${String(seq).padStart(4, '0')}`;
+};
+
+// List all NCRs + KPI metrics
+exports.listNCRs = async (req, res, next) => {
+  try {
+    const { status, unit, significance, limit = 200, offset = 0 } = req.query;
+    let sql = 'SELECT * FROM lab_ncr';
+    const params = [];
+    const conditions = [];
+
+    if (status) { conditions.push('status = ?'); params.push(status); }
+    if (unit) { conditions.push('unit = ?'); params.push(unit); }
+    if (significance) { conditions.push('significance = ?'); params.push(significance); }
+
+    if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
+    sql += ' ORDER BY occurred_at DESC LIMIT ? OFFSET ?';
+    params.push(Number(limit), Number(offset));
+
+    const { rows } = await db.query(sql, params);
+
+    // KPI computation on ALL records (unfiltered)
+    const { rows: all } = await db.query('SELECT status, occurred_at FROM lab_ncr', []);
+    const now = new Date();
+    const currentMonth = now.toISOString().slice(0, 7); // YYYY-MM
+    const thisMonth = all.filter(r => (r.occurred_at || '').startsWith(currentMonth));
+    const totalThisMonth = thisMonth.length;
+    const closedThisMonth = thisMonth.filter(r => r.status === 'closed').length;
+    const openCount = all.filter(r => r.status === 'open').length;
+    const inProgressCount = all.filter(r => r.status === 'in_progress').length;
+    const overdueCount = all.filter(r => {
+      if (r.status === 'closed') return false;
+      // If occurred more than 30 days ago and not closed = overdue
+      const occ = new Date(r.occurred_at);
+      return (now - occ) / (1000 * 60 * 60 * 24) > 30;
+    }).length;
+    const pctCompleted = totalThisMonth > 0 ? Math.round((closedThisMonth / totalThisMonth) * 100) : 0;
+
+    res.json({
+      success: true,
+      data: rows,
+      kpi: {
+        totalThisMonth,
+        closedThisMonth,
+        pctCompleted,
+        openCount,
+        inProgressCount,
+        overdueCount,
+        totalAllTime: all.length
+      }
+    });
+  } catch (err) { next(err); }
+};
+
+// Create new NCR
+exports.createNCR = async (req, res, next) => {
+  try {
+    const {
+      occurred_at, recorded_by, unit, nc_category, description,
+      rca_method, rca_results, immediate_action, significance, extent,
+      assigned_to_name, assigned_to_position, corrective_actions,
+      target_completion, monitoring_notes, staff_name,
+      reviewed_by_qm, verified_by_lab_manager
+    } = req.body;
+
+    if (!occurred_at || !recorded_by || !unit) {
+      return res.status(400).json({ success: false, message: 'occurred_at, recorded_by, and unit are required.' });
+    }
+
+    const ncr_number = await generateNCRNumber();
+
+    // Infer initial status
+    let status = 'open';
+    if (corrective_actions && corrective_actions.trim()) status = 'in_progress';
+    if (verified_by_lab_manager && verified_by_lab_manager.trim()) status = 'closed';
+
+    await db.query(
+      `INSERT INTO lab_ncr (
+        ncr_number, occurred_at, recorded_by, unit, nc_category, description,
+        rca_method, rca_results, immediate_action, significance, extent,
+        assigned_to_name, assigned_to_position, corrective_actions, target_completion,
+        monitoring_notes, status, staff_name, reviewed_by_qm, verified_by_lab_manager
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        ncr_number, occurred_at, recorded_by, unit, nc_category || null, description || null,
+        rca_method || null, rca_results || null, immediate_action || null, significance || 'minor', extent || null,
+        assigned_to_name || null, assigned_to_position || null, corrective_actions || null, target_completion || null,
+        monitoring_notes || null, status, staff_name || null, reviewed_by_qm || null, verified_by_lab_manager || null
+      ]
+    );
+
+    logAction(req, 'CREATE_NCR', `NCR created: ${ncr_number} by ${recorded_by}`);
+
+    res.status(201).json({ success: true, message: `NCR ${ncr_number} created successfully.`, ncr_number });
+  } catch (err) { next(err); }
+};
+
+// Get single NCR
+exports.getNCR = async (req, res, next) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM lab_ncr WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: 'NCR not found.' });
+    res.json({ success: true, data: rows[0] });
+  } catch (err) { next(err); }
+};
+
+// Update NCR
+exports.updateNCR = async (req, res, next) => {
+  try {
+    const {
+      occurred_at, recorded_by, unit, nc_category, description,
+      rca_method, rca_results, immediate_action, significance, extent,
+      assigned_to_name, assigned_to_position, corrective_actions,
+      target_completion, monitoring_notes, status: manualStatus,
+      staff_name, reviewed_by_qm, verified_by_lab_manager
+    } = req.body;
+
+    const { rows: existing } = await db.query('SELECT * FROM lab_ncr WHERE id = ?', [req.params.id]);
+    if (existing.length === 0) return res.status(404).json({ success: false, message: 'NCR not found.' });
+
+    // Auto-infer status if not explicitly provided
+    let status = manualStatus || existing[0].status;
+    if (!manualStatus) {
+      if (verified_by_lab_manager?.trim()) status = 'closed';
+      else if (corrective_actions?.trim()) status = 'in_progress';
+    }
+
+    await db.query(
+      `UPDATE lab_ncr SET
+        occurred_at = ?, recorded_by = ?, unit = ?, nc_category = ?, description = ?,
+        rca_method = ?, rca_results = ?, immediate_action = ?, significance = ?, extent = ?,
+        assigned_to_name = ?, assigned_to_position = ?, corrective_actions = ?,
+        target_completion = ?, monitoring_notes = ?, status = ?,
+        staff_name = ?, reviewed_by_qm = ?, verified_by_lab_manager = ?,
+        updated_at = datetime('now')
+      WHERE id = ?`,
+      [
+        occurred_at ?? existing[0].occurred_at,
+        recorded_by ?? existing[0].recorded_by,
+        unit ?? existing[0].unit,
+        nc_category ?? existing[0].nc_category,
+        description ?? existing[0].description,
+        rca_method ?? existing[0].rca_method,
+        rca_results ?? existing[0].rca_results,
+        immediate_action ?? existing[0].immediate_action,
+        significance ?? existing[0].significance,
+        extent ?? existing[0].extent,
+        assigned_to_name ?? existing[0].assigned_to_name,
+        assigned_to_position ?? existing[0].assigned_to_position,
+        corrective_actions ?? existing[0].corrective_actions,
+        target_completion ?? existing[0].target_completion,
+        monitoring_notes ?? existing[0].monitoring_notes,
+        status,
+        staff_name ?? existing[0].staff_name,
+        reviewed_by_qm ?? existing[0].reviewed_by_qm,
+        verified_by_lab_manager ?? existing[0].verified_by_lab_manager,
+        req.params.id
+      ]
+    );
+
+    logAction(req, 'UPDATE_NCR', `NCR updated: ${existing[0].ncr_number} → status: ${status}`);
+    res.json({ success: true, message: 'NCR updated successfully.' });
+  } catch (err) { next(err); }
+};
+
+// Delete NCR (admin / lab manager only)
+exports.deleteNCR = async (req, res, next) => {
+  try {
+    const { rows } = await db.query('SELECT ncr_number FROM lab_ncr WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: 'NCR not found.' });
+    await db.query('DELETE FROM lab_ncr WHERE id = ?', [req.params.id]);
+    logAction(req, 'DELETE_NCR', `NCR deleted: ${rows[0].ncr_number}`);
+    res.json({ success: true, message: 'NCR deleted.' });
+  } catch (err) { next(err); }
+};

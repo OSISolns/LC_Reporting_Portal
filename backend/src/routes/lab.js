@@ -19,4 +19,11 @@ router.post('/orders/:id/notify', labController.notifyPatient);
 router.get('/qc-logs', labController.getQCLogs);
 router.post('/qc-run', labController.recordQCRun);
 
+// Non-Conformance Report (NCR) Routes
+router.get('/ncr', labController.listNCRs);
+router.post('/ncr', labController.createNCR);
+router.get('/ncr/:id', labController.getNCR);
+router.put('/ncr/:id', labController.updateNCR);
+router.delete('/ncr/:id', labController.deleteNCR);
+
 module.exports = router;
