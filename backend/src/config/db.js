@@ -881,27 +881,190 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           status TEXT DEFAULT 'open',
           staff_name TEXT,
           reviewed_by_qm TEXT,
-          verified_by_lab_manager TEXT,
-          created_at TEXT DEFAULT (datetime('now')),
-          updated_at TEXT DEFAULT (datetime('now'))
+          verified_by_lab_manager TEXT
         )
       `).then(async () => {
         console.log('  ✅ Table lab_ncr created/verified.');
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_ncr_status ON lab_ncr(status)').catch(() => {});
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_ncr_unit ON lab_ncr(unit)').catch(() => {});
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_ncr_occurred_at ON lab_ncr(occurred_at)').catch(() => {});
-        // Add any missing columns from older schema versions
-        const ncrAlterCols = [
-          'nc_category TEXT', 'rca_method TEXT', 'rca_results TEXT', 'immediate_action TEXT',
-          'extent TEXT', 'assigned_to_position TEXT', 'monitoring_notes TEXT',
-          'staff_name TEXT', 'reviewed_by_qm TEXT', 'verified_by_lab_manager TEXT',
-        ];
-        for (const colDef of ncrAlterCols) {
-          try { await client.execute(`ALTER TABLE lab_ncr ADD COLUMN ${colDef}`); } catch (e) {}
-        }
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_ncr:', err.message);
       });
+
+      // ── Storage Units & Specimen Storage Tables ─────────────────────────────
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_storage_units (
+          id TEXT PRIMARY KEY,
+          label TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'fridge',
+          temp_range TEXT DEFAULT '2°C to 8°C',
+          status TEXT DEFAULT 'active',
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `).then(async () => {
+        console.log('  ✅ Table lab_storage_units created/verified.');
+        const initialUnits = [
+          { id: 'fridge_1',  label: 'Fridge 1 (STAT / Rapid Storage)',  type: 'fridge',  temp_range: '2°C to 8°C' },
+          { id: 'fridge_2',  label: 'Fridge 2 (Routine Samples - 6h)',  type: 'fridge',  temp_range: '2°C to 8°C' },
+          { id: 'fridge_3',  label: 'Fridge 3 (Reagents & Media)',      type: 'fridge',  temp_range: '2°C to 8°C' },
+          { id: 'fridge_4',  label: 'Fridge 4 (Chemistry Stock)',       type: 'fridge',  temp_range: '2°C to 8°C' },
+          { id: 'fridge_5',  label: 'Fridge 5 (Hematology Stock)',      type: 'fridge',  temp_range: '2°C to 8°C' },
+          { id: 'fridge_6',  label: 'Fridge 6 (Microbiology)',          type: 'fridge',  temp_range: '2°C to 8°C' },
+          { id: 'fridge_7',  label: 'Fridge 7 (Molecular Storage)',     type: 'fridge',  temp_range: '2°C to 8°C' },
+          { id: 'fridge_8',  label: 'Fridge 8 (General Stock)',         type: 'fridge',  temp_range: '2°C to 8°C' },
+          { id: 'freezer_1', label: 'Freezer 1 (-20°C / -80°C Sample Bank)', type: 'freezer', temp_range: '-20°C to -80°C' }
+        ];
+        for (const u of initialUnits) {
+          await client.execute({
+            sql: `INSERT INTO lab_storage_units (id, label, type, temp_range) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET label = EXCLUDED.label`,
+            args: [u.id, u.label, u.type, u.temp_range]
+          }).catch(() => {});
+        }
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_storage_units:', err.message);
+      });
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_specimen_storage (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_id TEXT NOT NULL UNIQUE,
+          unit_id TEXT NOT NULL,
+          rack_number TEXT DEFAULT 'Rack 1',
+          box_number TEXT DEFAULT 'Box A',
+          slot_number TEXT,
+          assigned_by TEXT DEFAULT 'Lab System',
+          assigned_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          FOREIGN KEY (unit_id) REFERENCES lab_storage_units(id)
+        )
+      `).then(() => {
+        console.log('  ✅ Table lab_specimen_storage created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_specimen_storage:', err.message);
+      });
+
+      // Add storage_unit columns to lab_orders if not present
+      const safeAddOrderCol = async (colDef) => {
+        try { await client.execute(`ALTER TABLE lab_orders ADD COLUMN ${colDef}`); } catch (e) {}
+      };
+      await safeAddOrderCol("storage_unit TEXT DEFAULT 'fridge_1'");
+      await safeAddOrderCol("storage_rack TEXT DEFAULT 'Rack 1'");
+      await safeAddOrderCol("storage_box TEXT DEFAULT 'Box A'");
+
+      // Seed initial real database lab_orders if empty
+      const { rows: existingOrders } = await client.execute("SELECT COUNT(*) as cnt FROM lab_orders").catch(() => ({ rows: [{ cnt: 0 }] }));
+      if (existingOrders[0]?.cnt === 0) {
+        console.log('🌱 Seeding initial real DB specimen lab_orders...');
+        const sampleOrders = [
+          {
+            accession_number: 'ACC-2026-0801',
+            patient_id: 'PID-98421',
+            patient_name: 'Sarah Jenkins',
+            patient_age: '34',
+            patient_gender: 'Female',
+            referring_provider: 'Dr. Eric Ndayishimiye',
+            specimen_type: 'Venous Blood',
+            specimen_barcode: 'BAR-847291',
+            tube_type: 'Purple EDTA',
+            test_name: 'Full Blood Count (FBC)',
+            urgency: 'STAT',
+            stage: 'Sample Collected',
+            phase: 'pre-analytical',
+            storage_unit: 'fridge_1',
+          },
+          {
+            accession_number: 'ACC-2026-0802',
+            patient_id: 'PID-73019',
+            patient_name: 'Robert Chen',
+            patient_age: '52',
+            patient_gender: 'Male',
+            referring_provider: 'Dr. Alice Mukamana',
+            specimen_type: 'Midstream Urine',
+            specimen_barcode: 'BAR-910248',
+            tube_type: 'Yellow Urine Cup',
+            test_name: 'Urine Analysis (Urinalysis)',
+            urgency: 'Routine',
+            stage: 'In Analysis',
+            phase: 'analytical',
+            storage_unit: 'fridge_2',
+          },
+          {
+            accession_number: 'ACC-2026-0803',
+            patient_id: 'PID-54120',
+            patient_name: 'Amanda Taylor',
+            patient_age: '29',
+            patient_gender: 'Female',
+            referring_provider: 'Dr. Paul Habimana',
+            specimen_type: 'Whole Blood',
+            specimen_barcode: 'BAR-338291',
+            tube_type: 'NIPT Tube',
+            test_name: 'NIPT Chromosomal Screen',
+            urgency: 'Outsourced Reference Lab (7 Days)',
+            stage: 'Order Placed',
+            phase: 'pre-analytical',
+            storage_unit: 'freezer_1',
+          },
+          {
+            accession_number: 'ACC-2026-0804',
+            patient_id: 'PID-11930',
+            patient_name: 'David Miller',
+            patient_age: '61',
+            patient_gender: 'Male',
+            referring_provider: 'Dr. Sarah Connor',
+            specimen_type: 'Stool Sample',
+            specimen_barcode: 'BAR-771204',
+            tube_type: 'Redtop',
+            test_name: 'Stool Examination (Fecal Analysis)',
+            urgency: 'Routine',
+            stage: 'Sample Collected',
+            phase: 'pre-analytical',
+            storage_unit: 'fridge_1',
+          },
+          {
+            accession_number: 'ACC-2026-0805',
+            patient_id: 'PID-23419',
+            patient_name: 'Jean-Pierre Habimana',
+            patient_age: '45',
+            patient_gender: 'Male',
+            referring_provider: 'Dr. Eric Ndayishimiye',
+            specimen_type: 'Serum',
+            specimen_barcode: 'BAR-552109',
+            tube_type: 'Gold Gel SST',
+            test_name: 'Liver Function Test (LFT)',
+            urgency: 'Routine',
+            stage: 'Notified',
+            phase: 'post-analytical',
+            storage_unit: 'fridge_4',
+          },
+          {
+            accession_number: 'ACC-2026-0806',
+            patient_id: 'PID-88102',
+            patient_name: 'Clarisse Uwase',
+            patient_age: '38',
+            patient_gender: 'Female',
+            referring_provider: 'Dr. Alice Mukamana',
+            specimen_type: 'Fluoride Plasma',
+            specimen_barcode: 'BAR-664019',
+            tube_type: 'Grey Fluoride',
+            test_name: 'HbA1c & Fasting Glucose',
+            urgency: 'Routine',
+            stage: 'Verified',
+            phase: 'post-analytical',
+            storage_unit: 'fridge_5',
+          }
+        ];
+
+        for (const o of sampleOrders) {
+          await client.execute({
+            sql: `INSERT INTO lab_orders (accession_number, patient_id, patient_name, patient_age, patient_gender, referring_provider, specimen_type, specimen_barcode, tube_type, test_name, urgency, stage, phase, storage_unit)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            args: [o.accession_number, o.patient_id, o.patient_name, o.patient_age, o.patient_gender, o.referring_provider, o.specimen_type, o.specimen_barcode, o.tube_type, o.test_name, o.urgency, o.stage, o.phase, o.storage_unit]
+          }).catch((err) => console.warn('Failed to seed sample order:', err.message));
+
+          await client.execute({
+            sql: `INSERT INTO lab_specimen_storage (order_id, unit_id, rack_number, box_number) VALUES (?, ?, 'Rack 1', 'Box A') ON CONFLICT(order_id) DO UPDATE SET unit_id = EXCLUDED.unit_id`,
+            args: [o.accession_number, o.storage_unit]
+          }).catch(() => {});
+        }
+        console.log('✅ Initial database lab orders seeded successfully.');
+      }
 
       const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
       console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));

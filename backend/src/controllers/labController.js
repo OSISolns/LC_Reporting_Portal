@@ -691,3 +691,73 @@ exports.deleteNCR = async (req, res, next) => {
     res.json({ success: true, message: 'NCR deleted.' });
   } catch (err) { next(err); }
 };
+
+// ── Storage Units & Specimen Storage API Controllers ───────────────────────
+
+// GET /api/lab/storage-units
+exports.getStorageUnits = async (req, res, next) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM lab_storage_units ORDER BY id ASC');
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+// POST /api/lab/storage-units
+exports.saveStorageUnit = async (req, res, next) => {
+  try {
+    const { id, label, type, temp_range } = req.body;
+    if (!id || !label) {
+      return res.status(400).json({ success: false, message: 'id and label are required.' });
+    }
+    await db.query(
+      `INSERT INTO lab_storage_units (id, label, type, temp_range) VALUES (?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET label = EXCLUDED.label, type = EXCLUDED.type, temp_range = EXCLUDED.temp_range`,
+      [id, label, type || 'fridge', temp_range || '2°C to 8°C']
+    );
+    res.json({ success: true, message: 'Storage unit saved successfully.' });
+  } catch (err) { next(err); }
+};
+
+// GET /api/lab/storage-assignments
+exports.getStorageAssignments = async (req, res, next) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM lab_specimen_storage');
+    const assignmentsMap = {};
+    rows.forEach(r => {
+      assignmentsMap[r.order_id] = r.unit_id;
+    });
+    res.json({ success: true, data: assignmentsMap, rows });
+  } catch (err) { next(err); }
+};
+
+// POST /api/lab/storage-assignments
+exports.saveStorageAssignment = async (req, res, next) => {
+  try {
+    const { order_id, unit_id, rack_number, box_number, slot_number } = req.body;
+    if (!order_id || !unit_id) {
+      return res.status(400).json({ success: false, message: 'order_id and unit_id are required.' });
+    }
+
+    await db.query(
+      `INSERT INTO lab_specimen_storage (order_id, unit_id, rack_number, box_number, slot_number, assigned_by)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(order_id) DO UPDATE SET 
+         unit_id = EXCLUDED.unit_id,
+         rack_number = EXCLUDED.rack_number,
+         box_number = EXCLUDED.box_number,
+         slot_number = EXCLUDED.slot_number,
+         assigned_at = datetime('now')`,
+      [order_id, unit_id, rack_number || 'Rack 1', box_number || 'Box A', slot_number || null, req.user?.full_name || 'Lab Staff']
+    );
+
+    // Also sync storage_unit in lab_orders table if accession/id matches
+    await db.query(
+      'UPDATE lab_orders SET storage_unit = ?, storage_rack = ?, storage_box = ? WHERE id = ? OR accession_number = ?',
+      [unit_id, rack_number || 'Rack 1', box_number || 'Box A', order_id, order_id]
+    ).catch(() => {});
+
+    logAction(req, 'ASSIGN_SPECIMEN_STORAGE', `Specimen ${order_id} stored in ${unit_id}`);
+    res.json({ success: true, message: 'Specimen storage assignment updated.' });
+  } catch (err) { next(err); }
+};
+

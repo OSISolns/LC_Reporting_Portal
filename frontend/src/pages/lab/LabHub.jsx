@@ -326,52 +326,46 @@ const LabHub = () => {
   // ── STORAGE UNIT & TAT MANAGEMENT ──
   const availableStorageUnits = useMemo(() => {
     try {
-      const raw = localStorage.getItem('lc_storage_units_config');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return [
-      { id: 'fridge_1',  label: 'Fridge 1 (STAT / Rapid Storage)',  type: 'fridge' },
-      { id: 'fridge_2',  label: 'Fridge 2 (Routine Samples - 6h)',  type: 'fridge' },
-      { id: 'fridge_3',  label: 'Fridge 3 (Reagents & Media)',      type: 'fridge' },
-      { id: 'fridge_4',  label: 'Fridge 4 (Chemistry Stock)',       type: 'fridge' },
-      { id: 'fridge_5',  label: 'Fridge 5 (Hematology Stock)',       type: 'fridge' },
-      { id: 'fridge_6',  label: 'Fridge 6 (Microbiology)',          type: 'fridge' },
-      { id: 'fridge_7',  label: 'Fridge 7 (Molecular Storage)',     type: 'fridge' },
-      { id: 'fridge_8',  label: 'Fridge 8 (General Stock)',          type: 'fridge' },
-      { id: 'freezer_1', label: 'Freezer 1 (-20°C / -80°C Sample Bank)', type: 'freezer' }
-    ];
-  }, []);
+  const [availableStorageUnits, setAvailableStorageUnits] = useState([
+    { id: 'fridge_1',  label: 'Fridge 1 (STAT / Rapid Storage)',  type: 'fridge' },
+    { id: 'fridge_2',  label: 'Fridge 2 (Routine Samples - 6h)',  type: 'fridge' },
+    { id: 'fridge_3',  label: 'Fridge 3 (Reagents & Media)',      type: 'fridge' },
+    { id: 'fridge_4',  label: 'Fridge 4 (Chemistry Stock)',       type: 'fridge' },
+    { id: 'fridge_5',  label: 'Fridge 5 (Hematology Stock)',      type: 'fridge' },
+    { id: 'fridge_6',  label: 'Fridge 6 (Microbiology)',          type: 'fridge' },
+    { id: 'fridge_7',  label: 'Fridge 7 (Molecular Storage)',     type: 'fridge' },
+    { id: 'fridge_8',  label: 'Fridge 8 (General Stock)',         type: 'fridge' },
+    { id: 'freezer_1', label: 'Freezer 1 (-20°C / -80°C Sample Bank)', type: 'freezer' }
+  ]);
 
-  const [storageAssignments, setStorageAssignments] = useState(() => {
-    try {
-      const rawGlobal = localStorage.getItem('lc_storage_assignments');
-      const rawLab = localStorage.getItem('lc_lab_specimen_storage');
-      const g = rawGlobal ? JSON.parse(rawGlobal) : {};
-      const l = rawLab ? JSON.parse(rawLab) : {};
-      return { ...g, ...l };
-    } catch { return {}; }
-  });
-
-  const [storageRacks, setStorageRacks] = useState(() => {
-    try {
-      const raw = localStorage.getItem('lc_lab_specimen_racks');
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return {};
-  });
-
-  const [storageBoxes, setStorageBoxes] = useState(() => {
-    try {
-      const raw = localStorage.getItem('lc_lab_specimen_boxes');
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return {};
-  });
-
+  const [storageAssignments, setStorageAssignments] = useState({});
+  const [storageRacks, setStorageRacks] = useState({});
+  const [storageBoxes, setStorageBoxes] = useState({});
   const [selectedRegStorageUnit, setSelectedRegStorageUnit] = useState('');
+
+  // Fetch Storage Units from DB
+  const fetchStorageUnits = async () => {
+    try {
+      const res = await api.get('/lab/storage-units');
+      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+        setAvailableStorageUnits(res.data.data);
+      }
+    } catch (err) {
+      console.warn('Storage units API fetch warning:', err);
+    }
+  };
+
+  // Fetch Storage Assignments from DB
+  const fetchStorageAssignments = async () => {
+    try {
+      const res = await api.get('/lab/storage-assignments');
+      if (res.data?.success && res.data.data) {
+        setStorageAssignments(prev => ({ ...prev, ...res.data.data }));
+      }
+    } catch (err) {
+      console.warn('Storage assignments API fetch warning:', err);
+    }
+  };
 
   const getRecommendedStorageUnit = (order) => {
     if (!order) return 'fridge_1';
@@ -402,82 +396,37 @@ const LabHub = () => {
     return found ? found.label : (unitId || 'Fridge 1');
   };
 
-  const handleAssignOrderStorage = (orderId, unitId) => {
+  const handleAssignOrderStorage = async (orderId, unitId) => {
     const orderKey = String(orderId);
     const nextLab = { ...storageAssignments, [orderKey]: unitId };
     setStorageAssignments(nextLab);
     try {
-      localStorage.setItem('lc_lab_specimen_storage', JSON.stringify(nextLab));
-      const rawGlobal = localStorage.getItem('lc_storage_assignments');
-      const globalObj = rawGlobal ? JSON.parse(rawGlobal) : {};
-      globalObj[orderKey] = unitId;
-      localStorage.setItem('lc_storage_assignments', JSON.stringify(globalObj));
-
-      const rawMap = localStorage.getItem('lc_lab_specimens_map');
-      const specMap = rawMap ? JSON.parse(rawMap) : {};
-      const targetOrder = orders.find(o => String(o.id) === orderKey) || selectedOrder;
-      if (targetOrder) {
-        specMap[orderKey] = {
-          id: orderKey,
-          patient_name: targetOrder.patient_name,
-          patient_id: targetOrder.patient_id,
-          accession_number: targetOrder.accession_number,
-          specimen_barcode: targetOrder.specimen_barcode,
-          specimen_type: targetOrder.specimen_type,
-          tube_type: targetOrder.tube_type,
-          urgency: targetOrder.urgency,
-          test_name: targetOrder.test_name,
-          unitId: unitId
-        };
-        localStorage.setItem('lc_lab_specimens_map', JSON.stringify(specMap));
-      }
+      // Save to backend database
+      await api.post('/lab/storage-assignments', {
+        order_id: orderKey,
+        unit_id: unitId,
+        rack_number: 'Rack 1',
+        box_number: 'Box A'
+      });
+      toast.success(`Specimen storage assigned to ${getUnitLabel(unitId)}`);
     } catch (err) {
-      console.error('Error saving specimen storage:', err);
+      console.warn('Backend storage assignment API error:', err);
     }
   };
 
-  // Sync orders with localStorage storage assignment maps
+  // Sync orders with storage assignment maps
   const syncOrderStorage = (ordersList) => {
-    try {
-      const rawGlobal = localStorage.getItem('lc_storage_assignments');
-      const rawLab = localStorage.getItem('lc_lab_specimen_storage');
-      const rawMap = localStorage.getItem('lc_lab_specimens_map');
-      
-      const globalObj = rawGlobal ? JSON.parse(rawGlobal) : {};
-      const labObj = rawLab ? JSON.parse(rawLab) : {};
-      const specMap = rawMap ? JSON.parse(rawMap) : {};
-
-      ordersList.forEach(order => {
-        const orderKey = String(order.id);
-        const assignedUnit = labObj[orderKey] || globalObj[orderKey] || getRecommendedStorageUnit(order);
-        
-        labObj[orderKey] = assignedUnit;
-        globalObj[orderKey] = assignedUnit;
-        if (order.accession_number) {
-          globalObj[order.accession_number] = assignedUnit;
-        }
-
-        specMap[orderKey] = {
-          id: orderKey,
-          patient_name: order.patient_name,
-          patient_id: order.patient_id,
-          accession_number: order.accession_number,
-          specimen_barcode: order.specimen_barcode,
-          specimen_type: order.specimen_type,
-          tube_type: order.tube_type,
-          urgency: order.urgency,
-          test_name: order.test_name,
-          unitId: assignedUnit
-        };
-      });
-
-      localStorage.setItem('lc_lab_specimen_storage', JSON.stringify(labObj));
-      localStorage.setItem('lc_storage_assignments', JSON.stringify(globalObj));
-      localStorage.setItem('lc_lab_specimens_map', JSON.stringify(specMap));
-      setStorageAssignments({ ...globalObj, ...labObj });
-    } catch (err) {
-      console.error('Error syncing order storage:', err);
-    }
+    const updatedAssignments = { ...storageAssignments };
+    ordersList.forEach(order => {
+      const orderKey = String(order.id);
+      const assignedUnit = order.storage_unit || updatedAssignments[orderKey] || getRecommendedStorageUnit(order);
+      updatedAssignments[orderKey] = assignedUnit;
+      if (order.accession_number) {
+        updatedAssignments[order.accession_number] = assignedUnit;
+      }
+    });
+    setStorageAssignments(updatedAssignments);
+  };
   };
 
   // Westgard QC Form State
@@ -651,6 +600,8 @@ const LabHub = () => {
   useEffect(() => {
     fetchOrders();
     fetchQCLogs();
+    fetchStorageUnits();
+    fetchStorageAssignments();
     const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
   }, []);

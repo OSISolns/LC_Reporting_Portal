@@ -26,4 +26,10 @@ router.get('/ncr/:id', labController.getNCR);
 router.put('/ncr/:id', labController.updateNCR);
 router.delete('/ncr/:id', labController.deleteNCR);
 
+// Storage Units & Specimen Storage Routes
+router.get('/storage-units', labController.getStorageUnits);
+router.post('/storage-units', labController.saveStorageUnit);
+router.get('/storage-assignments', labController.getStorageAssignments);
+router.post('/storage-assignments', labController.saveStorageAssignment);
+
 module.exports = router;
