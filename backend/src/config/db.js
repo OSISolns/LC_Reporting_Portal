@@ -881,10 +881,18 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           status TEXT DEFAULT 'open',
           staff_name TEXT,
           reviewed_by_qm TEXT,
-          verified_by_lab_manager TEXT
+          verified_by_lab_manager TEXT,
+          reviewed_by_lab_manager TEXT,
+          approved_by_qm TEXT
         )
       `).then(async () => {
         console.log('  ✅ Table lab_ncr created/verified.');
+        const ncrAlterCols = [
+          'reviewed_by_lab_manager TEXT', 'approved_by_qm TEXT'
+        ];
+        for (const colDef of ncrAlterCols) {
+          try { await client.execute(`ALTER TABLE lab_ncr ADD COLUMN ${colDef}`); } catch (e) {}
+        }
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_ncr:', err.message);
       });

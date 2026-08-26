@@ -578,7 +578,7 @@ exports.createNCR = async (req, res, next) => {
       rca_method, rca_results, immediate_action, significance, extent,
       assigned_to_name, assigned_to_position, corrective_actions,
       target_completion, monitoring_notes, staff_name,
-      reviewed_by_qm, verified_by_lab_manager
+      reviewed_by_qm, verified_by_lab_manager, reviewed_by_lab_manager, approved_by_qm
     } = req.body;
 
     if (!occurred_at || !recorded_by || !unit) {
@@ -587,23 +587,27 @@ exports.createNCR = async (req, res, next) => {
 
     const ncr_number = await generateNCRNumber();
 
+    const lmStamp = reviewed_by_lab_manager || verified_by_lab_manager || null;
+    const qmStamp = approved_by_qm || reviewed_by_qm || null;
+
     // Infer initial status
     let status = 'open';
     if (corrective_actions && corrective_actions.trim()) status = 'in_progress';
-    if (verified_by_lab_manager && verified_by_lab_manager.trim()) status = 'closed';
+    if (qmStamp && qmStamp.trim()) status = 'closed';
 
     await db.query(
       `INSERT INTO lab_ncr (
         ncr_number, occurred_at, recorded_by, unit, nc_category, description,
         rca_method, rca_results, immediate_action, significance, extent,
         assigned_to_name, assigned_to_position, corrective_actions, target_completion,
-        monitoring_notes, status, staff_name, reviewed_by_qm, verified_by_lab_manager
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        monitoring_notes, status, staff_name, reviewed_by_qm, verified_by_lab_manager,
+        reviewed_by_lab_manager, approved_by_qm
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         ncr_number, occurred_at, recorded_by, unit, nc_category || null, description || null,
         rca_method || null, rca_results || null, immediate_action || null, significance || 'minor', extent || null,
         assigned_to_name || null, assigned_to_position || null, corrective_actions || null, target_completion || null,
-        monitoring_notes || null, status, staff_name || null, reviewed_by_qm || null, verified_by_lab_manager || null
+        monitoring_notes || null, status, staff_name || null, qmStamp, lmStamp, lmStamp, qmStamp
       ]
     );
 
@@ -630,17 +634,20 @@ exports.updateNCR = async (req, res, next) => {
       rca_method, rca_results, immediate_action, significance, extent,
       assigned_to_name, assigned_to_position, corrective_actions,
       target_completion, monitoring_notes, status: manualStatus,
-      staff_name, reviewed_by_qm, verified_by_lab_manager
+      staff_name, reviewed_by_qm, verified_by_lab_manager, reviewed_by_lab_manager, approved_by_qm
     } = req.body;
 
     const { rows: existing } = await db.query('SELECT * FROM lab_ncr WHERE id = ?', [req.params.id]);
     if (existing.length === 0) return res.status(404).json({ success: false, message: 'NCR not found.' });
 
+    const lmStamp = reviewed_by_lab_manager ?? verified_by_lab_manager ?? existing[0].reviewed_by_lab_manager ?? existing[0].verified_by_lab_manager;
+    const qmStamp = approved_by_qm ?? reviewed_by_qm ?? existing[0].approved_by_qm ?? existing[0].reviewed_by_qm;
+
     // Auto-infer status if not explicitly provided
     let status = manualStatus || existing[0].status;
     if (!manualStatus) {
-      if (verified_by_lab_manager?.trim()) status = 'closed';
-      else if (corrective_actions?.trim()) status = 'in_progress';
+      if (qmStamp?.trim()) status = 'closed';
+      else if (lmStamp?.trim() || corrective_actions?.trim()) status = 'in_progress';
     }
 
     await db.query(
@@ -650,6 +657,7 @@ exports.updateNCR = async (req, res, next) => {
         assigned_to_name = ?, assigned_to_position = ?, corrective_actions = ?,
         target_completion = ?, monitoring_notes = ?, status = ?,
         staff_name = ?, reviewed_by_qm = ?, verified_by_lab_manager = ?,
+        reviewed_by_lab_manager = ?, approved_by_qm = ?,
         updated_at = datetime('now')
       WHERE id = ?`,
       [
@@ -670,8 +678,10 @@ exports.updateNCR = async (req, res, next) => {
         monitoring_notes ?? existing[0].monitoring_notes,
         status,
         staff_name ?? existing[0].staff_name,
-        reviewed_by_qm ?? existing[0].reviewed_by_qm,
-        verified_by_lab_manager ?? existing[0].verified_by_lab_manager,
+        qmStamp,
+        lmStamp,
+        lmStamp,
+        qmStamp,
         req.params.id
       ]
     );
