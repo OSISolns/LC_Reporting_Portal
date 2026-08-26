@@ -5,7 +5,7 @@ import {
   Send, Droplet, FileText, CheckCircle2, ArrowRight, Thermometer,
   AlertTriangle, XCircle, CheckCircle as CheckCircleIcon, TrendingUp,
   ChevronDown, Pencil, Trash2, X, AlertOctagon, Shield,
-  ListChecks, ChartBar, FilePlus2
+  ListChecks, BarChart2, FilePlus2
 } from 'lucide-react';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
