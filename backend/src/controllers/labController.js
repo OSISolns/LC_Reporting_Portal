@@ -885,12 +885,13 @@ exports.getManagerSummary = async (req, res, next) => {
       console.warn('Manager summary NCR query warning:', e.message);
     }
 
-    let analyzers = [
-      { name: 'Mindray BS-240 (Biochemistry)', status: 'Operational', uptime: '99.8%', last_calibrated: '2026-08-20' },
-      { name: 'Sysmex XN-550 (Hematology)', status: 'Operational', uptime: '99.5%', last_calibrated: '2026-08-22' },
-      { name: 'Roche Cobas e411 (Immunoassay)', status: 'Operational', uptime: '99.2%', last_calibrated: '2026-08-18' },
-      { name: 'Stago Sta Compact (Coagulation)', status: 'Maintenance Due', uptime: '97.4%', last_calibrated: '2026-08-01' }
-    ];
+    let analyzers = [];
+    try {
+      const { rows: analyzerRows } = await db.query('SELECT * FROM lab_analyzers ORDER BY department ASC, name ASC');
+      analyzers = analyzerRows || [];
+    } catch (e) {
+      console.warn('Manager summary analyzers query warning:', e.message);
+    }
 
     res.json({
       success: true,
@@ -908,3 +909,65 @@ exports.getManagerSummary = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ── Lab Analyzers CRUD ─────────────────────────────────────────────────────────
+
+exports.getAnalyzers = async (req, res, next) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM lab_analyzers ORDER BY department ASC, name ASC');
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+exports.createAnalyzer = async (req, res, next) => {
+  try {
+    const { name, manufacturer, model, department, serial_number, status, last_calibrated, next_calibration_due, notes } = req.body;
+    if (!name) return res.status(400).json({ success: false, message: 'Analyzer name is required.' });
+    await db.query(
+      `INSERT INTO lab_analyzers (name, manufacturer, model, department, serial_number, status, last_calibrated, next_calibration_due, notes, added_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name,
+        manufacturer || null,
+        model || null,
+        department || null,
+        serial_number || null,
+        status || 'Operational',
+        last_calibrated || null,
+        next_calibration_due || null,
+        notes || null,
+        req.user?.full_name || req.user?.username || 'Lab Manager'
+      ]
+    );
+    await logAction(req, 'CREATE_ANALYZER', 'lab_analyzers', null, { name, department });
+    res.status(201).json({ success: true, message: 'Analyzer added successfully.' });
+  } catch (err) { next(err); }
+};
+
+exports.updateAnalyzer = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, manufacturer, model, department, serial_number, status, last_calibrated, next_calibration_due, notes } = req.body;
+    const { rows } = await db.query('SELECT id FROM lab_analyzers WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: 'Analyzer not found.' });
+    await db.query(
+      `UPDATE lab_analyzers SET name = ?, manufacturer = ?, model = ?, department = ?, serial_number = ?,
+       status = ?, last_calibrated = ?, next_calibration_due = ?, notes = ?,
+       updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE id = ?`,
+      [name, manufacturer || null, model || null, department || null, serial_number || null,
+       status || 'Operational', last_calibrated || null, next_calibration_due || null, notes || null, id]
+    );
+    await logAction(req, 'UPDATE_ANALYZER', 'lab_analyzers', id, { name, status });
+    res.json({ success: true, message: 'Analyzer updated successfully.' });
+  } catch (err) { next(err); }
+};
+
+exports.deleteAnalyzer = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query('SELECT name FROM lab_analyzers WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: 'Analyzer not found.' });
+    await db.query('DELETE FROM lab_analyzers WHERE id = ?', [id]);
+    await logAction(req, 'DELETE_ANALYZER', 'lab_analyzers', id, { name: rows[0].name });
+    res.json({ success: true, message: 'Analyzer deleted.' });
+  } catch (err) { next(err); }
+};

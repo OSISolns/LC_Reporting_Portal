@@ -99,6 +99,12 @@ export default function LabManagerDashboard() {
             <AlertOctagon size={13} /> NCR Module {ncr.open != null ? `(${ncr.open})` : ''}
           </button>
           <button
+            onClick={() => navigate('/lab/analyzers')}
+            className="px-3.5 py-2 bg-blue-800 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl border border-blue-700 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Cpu size={13} /> Analyzers
+          </button>
+          <button
             onClick={() => fetchSummary(true)}
             className="p-2 text-blue-200 hover:text-white hover:bg-blue-800 rounded-xl transition-all cursor-pointer border border-blue-800"
             title="Refresh"

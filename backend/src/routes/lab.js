@@ -35,4 +35,10 @@ router.post('/storage-assignments', labController.saveStorageAssignment);
 // Lab Manager Executive Dashboard Route
 router.get('/manager-summary', labController.getManagerSummary);
 
+// Analyzer Management Routes
+router.get('/analyzers', labController.getAnalyzers);
+router.post('/analyzers', labController.createAnalyzer);
+router.put('/analyzers/:id', labController.updateAnalyzer);
+router.delete('/analyzers/:id', labController.deleteAnalyzer);
+
 module.exports = router;

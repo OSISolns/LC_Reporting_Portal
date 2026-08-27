@@ -948,6 +948,29 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create lab_specimen_storage:', err.message);
       });
 
+      // ── Lab Analyzers Table ────────────────────────────────────────────────
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_analyzers (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          manufacturer TEXT,
+          model TEXT,
+          department TEXT,
+          serial_number TEXT,
+          status TEXT DEFAULT 'Operational',
+          last_calibrated TEXT,
+          next_calibration_due TEXT,
+          notes TEXT,
+          added_by TEXT,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `).then(() => {
+        console.log('  ✅ Table lab_analyzers created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_analyzers:', err.message);
+      });
+
       // Add storage_unit columns to lab_orders if not present
       const safeAddOrderCol = async (colDef) => {
         try { await client.execute(`ALTER TABLE lab_orders ADD COLUMN ${colDef}`); } catch (e) {}
