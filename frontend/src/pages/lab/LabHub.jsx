@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 // ── TUBE TYPES CONFIG (CLSI H3-A6 Order of Draw Sequence) ────────────────────
 const TUBE_TYPES = [
@@ -296,6 +297,7 @@ const TatCounter = ({ order }) => {
 };
 
 const LabHub = () => {
+  const navigate = useNavigate();
   const [phaseFilter, setPhaseFilter] = useState('all'); // 'all', 'pre-analytical', 'analytical', 'post-analytical'
   const [orders, setOrders] = useState([]);
   const [qcLogs, setQcLogs] = useState([]);
@@ -902,6 +904,12 @@ const LabHub = () => {
         </div>
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={() => navigate('/lab-manager')}
+            className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+          >
+            <Activity size={15} /> Manager Dashboard
+          </button>
           <button
             onClick={() => { handleGenerateBarcode(); setShowRegModal(true); }}
             className="flex-1 sm:flex-none px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"

@@ -32,4 +32,7 @@ router.post('/storage-units', labController.saveStorageUnit);
 router.get('/storage-assignments', labController.getStorageAssignments);
 router.post('/storage-assignments', labController.saveStorageAssignment);
 
+// Lab Manager Executive Dashboard Route
+router.get('/manager-summary', labController.getManagerSummary);
+
 module.exports = router;
