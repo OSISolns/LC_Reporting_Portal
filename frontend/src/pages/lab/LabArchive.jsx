@@ -67,37 +67,61 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
     classification: 'Internal', document_date: '', expiry_date: '',
     version: '', reference_number: '', department: '', tags: ''
   });
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef();
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleDrop = (e) => {
-    e.preventDefault(); setDragging(false);
-    const f = e.dataTransfer.files[0];
-    if (f) { setFile(f); if (!form.title) set('title', f.name.replace(/\.[^/.]+$/, '')); }
+  const addFiles = (newFiles) => {
+    const valid = Array.from(newFiles).filter(f => f.size <= 25 * 1024 * 1024);
+    if (valid.length < newFiles.length) {
+      toast.error('Some files were ignored because they exceed 25 MB.');
+    }
+    setFiles(prev => {
+      const existingNames = new Set(prev.map(f => f.name));
+      const combined = [...prev];
+      valid.forEach(f => {
+        if (!existingNames.has(f.name)) combined.push(f);
+      });
+      return combined;
+    });
+
+    if (valid.length === 1 && files.length === 0 && !form.title) {
+      set('title', valid[0].name.replace(/\.[^/.]+$/, ''));
+    }
   };
 
-  const handleFile = (e) => {
-    const f = e.target.files[0];
-    if (f) { setFile(f); if (!form.title) set('title', f.name.replace(/\.[^/.]+$/, '')); }
+  const removeFile = (index) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault(); setDragging(false);
+    if (e.dataTransfer.files?.length) {
+      addFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleFileInput = (e) => {
+    if (e.target.files?.length) {
+      addFiles(e.target.files);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) { toast.error('Please select a file.'); return; }
-    if (!form.title.trim()) { toast.error('Title is required.'); return; }
-    if (file.size > 25 * 1024 * 1024) { toast.error('File must be under 25 MB.'); return; }
+    if (files.length === 0) { toast.error('Please select at least one file to upload.'); return; }
+    if (files.length === 1 && !form.title.trim()) { toast.error('Title is required for single document upload.'); return; }
 
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append('file', file);
+      files.forEach(f => fd.append('files', f));
       Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v); });
-      await uploadDocument(fd);
-      toast.success('Document archived successfully.');
+      const res = await uploadDocument(fd);
+      toast.success(res.data?.message || `${files.length} document(s) archived successfully.`);
       onUploaded();
       onClose();
     } catch (err) {
@@ -112,7 +136,7 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
           <h2 className="font-bold text-[#1B669E] text-base flex items-center gap-2">
-            <Upload size={16} className="text-[#1B669E]" /> Archive Document
+            <Upload size={16} className="text-[#1B669E]" /> Archive Document(s)
           </h2>
           <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg cursor-pointer transition-all"><X size={15} /></button>
         </div>
@@ -125,34 +149,47 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
             onDragLeave={() => setDragging(false)}
             onClick={() => fileRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-              dragging ? 'border-[#1B669E] bg-[#1B669E]/10' : file ? 'border-emerald-300 bg-emerald-50' : 'border-slate-300 hover:border-[#1B669E]/60 hover:bg-slate-50'
+              dragging ? 'border-[#1B669E] bg-[#1B669E]/10' : files.length > 0 ? 'border-[#1B669E]/50 bg-[#1B669E]/5' : 'border-slate-300 hover:border-[#1B669E]/60 hover:bg-slate-50'
             }`}
           >
-            <input ref={fileRef} type="file" className="hidden" onChange={handleFile}
+            <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFileInput}
               accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.png,.jpg,.jpeg" />
-            {file ? (
-              <div>
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  {getFileIcon(file.name.split('.').pop())}
-                  <span className="font-semibold text-sm text-slate-700">{file.name}</span>
-                </div>
-                <p className="text-xs text-slate-500">{formatBytes(file.size)}</p>
-                <p className="text-xs text-emerald-600 font-medium mt-1">Click to change file</p>
-              </div>
-            ) : (
-              <>
-                <Upload size={28} className="mx-auto text-slate-300 mb-2" />
-                <p className="text-sm font-semibold text-slate-500">Drop file here or click to browse</p>
-                <p className="text-xs text-slate-400 mt-1">PDF, DOCX, XLSX, TXT, CSV, PNG, JPG — max 25 MB</p>
-              </>
-            )}
+            
+            <Upload size={28} className="mx-auto text-[#1B669E] mb-2" />
+            <p className="text-sm font-semibold text-slate-700">Drop files here or click to browse</p>
+            <p className="text-xs text-slate-400 mt-1">Select single or multiple files (PDF, DOCX, XLSX, TXT, CSV, Images — max 25 MB each)</p>
           </div>
+
+          {/* Selected File List */}
+          {files.length > 0 && (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 max-h-40 overflow-y-auto">
+              <div className="flex items-center justify-between px-1 pb-1 border-b border-slate-200 text-xs font-semibold text-slate-600">
+                <span>Selected Documents ({files.length})</span>
+                <button type="button" onClick={() => setFiles([])} className="text-red-500 hover:underline cursor-pointer">Clear All</button>
+              </div>
+              {files.map((f, idx) => (
+                <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 text-xs">
+                  <div className="flex items-center gap-2 truncate pr-2">
+                    {getFileIcon(f.name.split('.').pop())}
+                    <span className="font-medium text-slate-800 truncate max-w-[260px]">{f.name}</span>
+                    <span className="text-slate-400 text-[10px]">({formatBytes(f.size)})</span>
+                  </div>
+                  <button type="button" onClick={() => removeFile(idx)} className="text-slate-400 hover:text-red-500 p-1 cursor-pointer">
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Title *</label>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
+              {files.length > 1 ? 'Batch Title Prefix (Optional)' : 'Title *'}
+            </label>
             <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E]"
-              placeholder="Document title" value={form.title} onChange={e => set('title', e.target.value)} required />
+              placeholder={files.length > 1 ? 'e.g. Q3 Laboratory SOPs (leave blank to use filenames)' : 'Document title'}
+              value={form.title} onChange={e => set('title', e.target.value)} required={files.length === 1} />
           </div>
 
           {/* Category + Classification */}

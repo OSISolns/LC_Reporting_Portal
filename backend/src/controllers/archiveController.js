@@ -181,72 +181,90 @@ exports.listDocuments = async (req, res, next) => {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
-// 2. UPLOAD document
+// 2. UPLOAD document(s) - Supports Single or Batch Upload
 // ══════════════════════════════════════════════════════════════════════════════
 exports.uploadDocument = async (req, res, next) => {
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    const rawFiles = req.files && req.files.length > 0 ? req.files : (req.file ? [req.file] : []);
+    if (rawFiles.length === 0) return res.status(400).json({ success: false, message: 'No file(s) uploaded.' });
 
     const {
       title, description, category, classification, document_date, expiry_date,
       version, reference_number, department, tags
     } = req.body;
 
-    if (!title) return res.status(400).json({ success: false, message: 'Document title is required.' });
+    const insertedDocs = [];
+    const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
-    const file = req.file;
-    const ext = (file.originalname || '').split('.').pop().toLowerCase();
-    const fileBase64 = file.buffer.toString('base64');
-    const ocrText = await extractText(file.buffer, file.mimetype, file.originalname);
+    // Get current sequence counter for auto-generated ref numbers
+    const { rows: countRows } = await db.query(
+      "SELECT COUNT(*) as cnt FROM lab_documents WHERE reference_number LIKE ?",
+      [`DOC-LAB-${todayStr}-%`]
+    );
+    let seq = (countRows[0]?.cnt || 0) + 1;
 
-    // Auto-generate Doc Reference Number if not provided
-    let finalRefNum = reference_number ? reference_number.trim() : null;
-    if (!finalRefNum) {
-      const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const { rows: countRows } = await db.query(
-        "SELECT COUNT(*) as cnt FROM lab_documents WHERE reference_number LIKE ?",
-        [`DOC-LAB-${todayStr}-%`]
+    for (let i = 0; i < rawFiles.length; i++) {
+      const file = rawFiles[i];
+      const ext = (file.originalname || '').split('.').pop().toLowerCase();
+      const fileBase64 = file.buffer.toString('base64');
+      const ocrText = await extractText(file.buffer, file.mimetype, file.originalname);
+
+      // Title determination
+      let docTitle = (title && rawFiles.length === 1)
+        ? title.trim()
+        : (title && title.trim() ? `${title.trim()} (${i + 1})` : file.originalname.replace(/\.[^/.]+$/, ''));
+      if (!docTitle) docTitle = file.originalname;
+
+      // Ref number auto-generation or sequential
+      let finalRefNum = (reference_number && rawFiles.length === 1) ? reference_number.trim() : null;
+      if (!finalRefNum) {
+        finalRefNum = `DOC-LAB-${todayStr}-${String(seq++).padStart(4, '0')}`;
+      }
+
+      await db.query(
+        `INSERT INTO lab_documents (
+          title, description, category, classification, file_name, file_type, file_extension,
+          file_size_bytes, file_base64, ocr_text, tags, document_date, expiry_date,
+          version, reference_number, department, uploaded_by, uploaded_by_name,
+          storage_provider, file_url
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          docTitle,
+          description || null,
+          category || 'Other',
+          classification || 'Internal',
+          file.originalname,
+          file.mimetype,
+          ext,
+          file.size,
+          fileBase64,
+          ocrText || null,
+          tags || '[]',
+          document_date || null,
+          expiry_date || null,
+          version || null,
+          finalRefNum,
+          department || null,
+          req.user?.id || null,
+          req.user?.full_name || req.user?.username || 'Lab Staff',
+          process.env.STORAGE_PROVIDER || 'database',
+          null
+        ]
       );
-      const seq = (countRows[0]?.cnt || 0) + 1;
-      finalRefNum = `DOC-LAB-${todayStr}-${String(seq).padStart(4, '0')}`;
+
+      const { rows } = await db.query('SELECT id FROM lab_documents ORDER BY id DESC LIMIT 1');
+      const newId = rows[0]?.id;
+      if (newId) {
+        insertedDocs.push({ id: newId, title: docTitle, reference_number: finalRefNum });
+        await logAction(req, 'ARCHIVE_UPLOAD', 'lab_documents', newId, { title: docTitle, classification, category });
+      }
     }
 
-    await db.query(
-      `INSERT INTO lab_documents (
-        title, description, category, classification, file_name, file_type, file_extension,
-        file_size_bytes, file_base64, ocr_text, tags, document_date, expiry_date,
-        version, reference_number, department, uploaded_by, uploaded_by_name,
-        storage_provider, file_url
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [
-        title.trim(),
-        description || null,
-        category || 'Other',
-        classification || 'Internal',
-        file.originalname,
-        file.mimetype,
-        ext,
-        file.size,
-        fileBase64,
-        ocrText || null,
-        tags || '[]',
-        document_date || null,
-        expiry_date || null,
-        version || null,
-        finalRefNum,
-        department || null,
-        req.user?.id || null,
-        req.user?.full_name || req.user?.username || 'Lab Staff',
-        process.env.STORAGE_PROVIDER || 'database',
-        null // file_url for future external file server URL
-      ]
-    );
+    const message = insertedDocs.length === 1
+      ? 'Document archived successfully.'
+      : `${insertedDocs.length} documents archived successfully.`;
 
-    const { rows } = await db.query('SELECT id FROM lab_documents ORDER BY id DESC LIMIT 1');
-    const newId = rows[0]?.id;
-    await logAction(req, 'ARCHIVE_UPLOAD', 'lab_documents', newId, { title, classification, category });
-
-    res.status(201).json({ success: true, message: 'Document archived successfully.', data: { id: newId } });
+    res.status(201).json({ success: true, message, data: insertedDocs });
   } catch (err) { next(err); }
 };
 

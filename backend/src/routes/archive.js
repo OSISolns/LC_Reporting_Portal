@@ -7,8 +7,8 @@ const ctrl = require('../controllers/archiveController');
 // All archive routes require authentication
 router.use(authMiddleware);
 
-// Upload a document (multipart/form-data)
-router.post('/upload', ctrl.upload.single('file'), ctrl.uploadDocument);
+// Upload document(s) (multipart/form-data, accepts single or multiple files)
+router.post('/upload', ctrl.upload.any(), ctrl.uploadDocument);
 
 // List documents (paginated, filtered, classification-gated)
 router.get('/', ctrl.listDocuments);
