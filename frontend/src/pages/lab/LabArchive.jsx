@@ -282,24 +282,51 @@ function DocumentDetailView({ docMeta, isManager, onBack, onEdit, onDelete, onDo
   const [showLog, setShowLog] = useState(false);
   const [previewing, setPreviewing] = useState(true);
   const [previewData, setPreviewData] = useState(null);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState(null);
 
   const cfg = CLASSIFICATION_CONFIG[docMeta.classification] || CLASSIFICATION_CONFIG.Internal;
 
   useEffect(() => {
     let isMounted = true;
+    let createdUrl = null;
+
     const fetchPreview = async () => {
       setPreviewing(true);
       try {
         const res = await downloadDocument(docMeta.id, { mode: 'preview' });
-        if (isMounted) setPreviewData(res.data.data);
-      } catch {
+        if (isMounted && res.data?.data) {
+          const data = res.data.data;
+          setPreviewData(data);
+
+          if (data.file_base64) {
+            try {
+              const byteStr = atob(data.file_base64);
+              const ab = new ArrayBuffer(byteStr.length);
+              const ia = new Uint8Array(ab);
+              for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+              const mimeType = data.file_type || 'application/pdf';
+              const blob = new Blob([ab], { type: mimeType });
+              createdUrl = URL.createObjectURL(blob);
+              setPreviewBlobUrl(createdUrl);
+            } catch (e) {
+              console.error('Failed to convert base64 to blob:', e);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Preview load error:', err);
         toast.error('Could not load document preview.');
       } finally {
         if (isMounted) setPreviewing(false);
       }
     };
+
     fetchPreview();
-    return () => { isMounted = false; };
+
+    return () => {
+      isMounted = false;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
   }, [docMeta.id]);
 
   const handleLoadLog = async () => {
@@ -313,8 +340,12 @@ function DocumentDetailView({ docMeta, isManager, onBack, onEdit, onDelete, onDo
     finally { setLoadingLog(false); }
   };
 
-  const ext = (docMeta.file_extension || '').toLowerCase();
-  const canPreview = ['pdf', 'png', 'jpg', 'jpeg', 'txt', 'csv', 'json'].includes(ext);
+  const ext = (docMeta.file_extension || docMeta.file_name?.split('.').pop() || '').toLowerCase();
+  const mimeType = (previewData?.file_type || '').toLowerCase();
+
+  const isPdf = ext === 'pdf' || mimeType.includes('pdf');
+  const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext) || mimeType.startsWith('image/');
+  const isText = ['txt', 'csv', 'json', 'log', 'md', 'xml'].includes(ext) || mimeType.startsWith('text/');
 
   return (
     <div className="space-y-4 animate-fadeIn">
@@ -492,21 +523,21 @@ function DocumentDetailView({ docMeta, isManager, onBack, onEdit, onDelete, onDo
                   <p className="text-xs font-semibold">Loading document canvas…</p>
                 </div>
               ) : previewData ? (
-                ext === 'pdf' ? (
+                isPdf ? (
                   <iframe
-                    src={`data:${previewData.file_type};base64,${previewData.file_base64}`}
+                    src={previewBlobUrl || `data:${previewData.file_type || 'application/pdf'};base64,${previewData.file_base64}`}
                     className="w-full h-full border-none"
                     title="Full Page PDF Preview"
                   />
-                ) : ['png', 'jpg', 'jpeg'].includes(ext) ? (
-                  <div className="w-full h-full flex items-center justify-center p-4 overflow-auto">
+                ) : isImage ? (
+                  <div className="w-full h-full flex items-center justify-center p-4 overflow-auto bg-slate-900/5">
                     <img
-                      src={`data:${previewData.file_type};base64,${previewData.file_base64}`}
+                      src={previewBlobUrl || `data:${previewData.file_type || 'image/png'};base64,${previewData.file_base64}`}
                       alt={docMeta.title}
                       className="max-w-full max-h-full object-contain rounded-lg shadow-md"
                     />
                   </div>
-                ) : ['txt', 'csv', 'json'].includes(ext) ? (
+                ) : isText ? (
                   <div className="w-full h-full p-6 bg-white overflow-auto font-mono text-xs text-slate-800 leading-relaxed">
                     <pre className="whitespace-pre-wrap">{atob(previewData.file_base64)}</pre>
                   </div>
