@@ -357,6 +357,7 @@ exports.downloadDocument = async (req, res, next) => {
   try {
     await ensureArchiveTablesExist();
     const { id } = req.params;
+    const { mode } = req.query;
     const userRole = (req.user?.role || '').toLowerCase();
 
     const { rows } = await db.query(
@@ -369,7 +370,8 @@ exports.downloadDocument = async (req, res, next) => {
       return res.status(403).json({ success: false, message: `Access denied. This document is classified as '${doc.classification}'.` });
     }
 
-    await logDocumentAccess(id, 'download', req);
+    const action = mode === 'preview' ? 'view' : 'download';
+    await logDocumentAccess(id, action, req);
     res.json({
       success: true,
       data: {

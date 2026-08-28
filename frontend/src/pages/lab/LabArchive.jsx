@@ -288,7 +288,7 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
   const handlePreview = async () => {
     setPreviewing(true);
     try {
-      const res = await downloadDocument(docMeta.id);
+      const res = await downloadDocument(docMeta.id, { mode: 'preview' });
       setPreviewData(res.data.data);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Could not load preview.');
@@ -546,16 +546,19 @@ export default function LabArchive() {
   const handleCardClick = async (doc) => {
     try {
       const res = await getDocumentMeta(doc.id);
-      setDetailData(res.data.data);
-      setSelectedDoc(doc);
+      const updatedMeta = res.data.data;
+      setDetailData(updatedMeta);
+      setSelectedDoc(updatedMeta);
+      // Immediately reflect incremented view_count in table state
+      setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, view_count: updatedMeta.view_count, last_accessed_at: updatedMeta.last_accessed_at } : d));
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Cannot open document.');
     }
   };
 
-  const handleDownload = async (docId, fileName, mimeType) => {
+  const handleDownload = async (docId) => {
     try {
-      const res = await downloadDocument(docId);
+      const res = await downloadDocument(docId, { mode: 'download' });
       const { file_base64, file_type, file_name } = res.data.data;
       const byteStr = atob(file_base64);
       const ab = new ArrayBuffer(byteStr.length);
@@ -567,6 +570,10 @@ export default function LabArchive() {
       a.href = url; a.download = file_name; a.click();
       URL.revokeObjectURL(url);
       toast.success('Download started.');
+
+      // Immediately reflect incremented download_count in table state and detail view
+      setDocs(prev => prev.map(d => d.id === docId ? { ...d, download_count: (d.download_count || 0) + 1, last_accessed_at: new Date().toISOString() } : d));
+      setDetailData(prev => prev && prev.id === docId ? { ...prev, download_count: (prev.download_count || 0) + 1, last_accessed_at: new Date().toISOString() } : prev);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Download failed.');
     }
