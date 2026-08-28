@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   FlaskConical, Activity, Clock, AlertTriangle, ShieldCheck,
   RefreshCw, AlertOctagon, BarChart2, Cpu, Layers,
-  ChevronRight, UserCheck,
+  ChevronRight, UserCheck, Archive,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -103,6 +103,12 @@ export default function LabManagerDashboard() {
             className="px-3.5 py-2 bg-blue-800 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl border border-blue-700 transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Cpu size={13} /> Analyzers
+          </button>
+          <button
+            onClick={() => navigate('/lab/archive')}
+            className="px-3.5 py-2 bg-blue-800 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl border border-blue-700 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Archive size={13} /> Archive
           </button>
           <button
             onClick={() => fetchSummary(true)}

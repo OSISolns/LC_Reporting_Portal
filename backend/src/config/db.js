@@ -258,7 +258,7 @@ const transformQuery = (sql, params) => {
     .replace(/NOW\(\)/gi, "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
     .replace(/CURRENT_TIMESTAMP/gi, "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
     .replace(/TIMESTAMPTZ/gi, 'DATETIME')
-    .replace(/SERIAL/gi, 'INTEGER PRIMARY KEY AUTOINCREMENT');
+    .replace(/\bSERIAL\b/gi, 'INTEGER PRIMARY KEY AUTOINCREMENT');
   return { sql: transformedSql, args };
 };
 
@@ -969,6 +969,57 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.log('  ✅ Table lab_analyzers created/verified.');
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_analyzers:', err.message);
+      });
+
+      // ── Lab Archive: Documents Table ───────────────────────────────────────
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_documents (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          description TEXT,
+          category TEXT DEFAULT 'Other',
+          classification TEXT DEFAULT 'Internal',
+          file_name TEXT NOT NULL,
+          file_type TEXT,
+          file_extension TEXT,
+          file_size_bytes INTEGER DEFAULT 0,
+          file_base64 TEXT NOT NULL,
+          ocr_text TEXT,
+          tags TEXT DEFAULT '[]',
+          document_date TEXT,
+          expiry_date TEXT,
+          version TEXT,
+          reference_number TEXT,
+          department TEXT,
+          uploaded_by INTEGER,
+          uploaded_by_name TEXT,
+          view_count INTEGER DEFAULT 0,
+          download_count INTEGER DEFAULT 0,
+          last_accessed_at DATETIME,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `).then(() => {
+        console.log('  ✅ Table lab_documents created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_documents:', err.message);
+      });
+
+      // ── Lab Archive: Access Logs Table ─────────────────────────────────────
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_document_access_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          document_id INTEGER NOT NULL,
+          action TEXT NOT NULL,
+          user_id INTEGER,
+          user_name TEXT,
+          accessed_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          notes TEXT
+        )
+      `).then(() => {
+        console.log('  ✅ Table lab_document_access_logs created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_document_access_logs:', err.message);
       });
 
       // Add storage_unit columns to lab_orders if not present

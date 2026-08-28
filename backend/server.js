@@ -35,6 +35,7 @@ const complianceRoutes = require('./src/routes/compliance');
 const revenueLeakageRoutes = require('./src/routes/revenueLeakage');
 const imagingRoutes = require('./src/routes/imaging');
 const labRoutes = require('./src/routes/lab');
+const archiveRoutes = require('./src/routes/archive');
 const dentalRoutes = require('./src/routes/dental');
 const rosterRoutes = require('./src/routes/roster');
 const operationsRoutes = require('./src/routes/operations');
@@ -93,7 +94,7 @@ const apiLimiter = rateLimit({
 // app.use('/api/', apiLimiter);
 
 // ── Body parsing ─────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -119,6 +120,7 @@ app.use('/api/compliance', complianceRoutes);
 app.use('/api/revenue-leakage', revenueLeakageRoutes);
 app.use('/api/imaging', imagingRoutes);
 app.use('/api/lab', labRoutes);
+app.use('/api/archive', archiveRoutes);
 app.use('/api/dental', dentalRoutes);
 app.use('/api/roster', rosterRoutes);
 app.use('/api/operations', operationsRoutes);

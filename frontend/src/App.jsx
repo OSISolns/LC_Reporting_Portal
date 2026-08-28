@@ -53,6 +53,7 @@ import LabHub from './pages/lab/LabHub';
 import NCRManagement from './pages/lab/NCRManagement';
 import LabManagerDashboard from './pages/lab/LabManagerDashboard';
 import LabAnalyzers from './pages/lab/LabAnalyzers';
+import LabArchive from './pages/lab/LabArchive';
 import DentalHub from './pages/dental/DentalHub';
 import OdontogramDetailsPage from './pages/dental/OdontogramDetailsPage';
 import PhysioHub from './pages/physio/PhysioHub';
@@ -155,6 +156,14 @@ function App() {
                 'admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm'
               ]}>
                 <LabAnalyzers />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/lab/archive" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'
+              ]}>
+                <LabArchive />
               </ProtectedRoute>
             } />
 
