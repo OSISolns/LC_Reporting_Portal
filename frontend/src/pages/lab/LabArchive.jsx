@@ -196,7 +196,7 @@ function UploadModal({ onClose, onUploaded }) {
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Ref / Doc No.</label>
               <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-                placeholder="e.g. LC-SOP-2024-003" value={form.reference_number} onChange={e => set('reference_number', e.target.value)} />
+                placeholder="Auto-generated if left blank" value={form.reference_number} onChange={e => set('reference_number', e.target.value)} />
             </div>
           </div>
 

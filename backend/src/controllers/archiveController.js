@@ -172,6 +172,18 @@ exports.uploadDocument = async (req, res, next) => {
     const fileBase64 = file.buffer.toString('base64');
     const ocrText = await extractText(file.buffer, file.mimetype, file.originalname);
 
+    // Auto-generate Doc Reference Number if not provided
+    let finalRefNum = reference_number ? reference_number.trim() : null;
+    if (!finalRefNum) {
+      const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const { rows: countRows } = await db.query(
+        "SELECT COUNT(*) as cnt FROM lab_documents WHERE reference_number LIKE ?",
+        [`DOC-LAB-${todayStr}-%`]
+      );
+      const seq = (countRows[0]?.cnt || 0) + 1;
+      finalRefNum = `DOC-LAB-${todayStr}-${String(seq).padStart(4, '0')}`;
+    }
+
     await db.query(
       `INSERT INTO lab_documents (
         title, description, category, classification, file_name, file_type, file_extension,
@@ -193,7 +205,7 @@ exports.uploadDocument = async (req, res, next) => {
         document_date || null,
         expiry_date || null,
         version || null,
-        reference_number || null,
+        finalRefNum,
         department || null,
         req.user?.id || null,
         req.user?.full_name || req.user?.username || 'Lab Staff'
