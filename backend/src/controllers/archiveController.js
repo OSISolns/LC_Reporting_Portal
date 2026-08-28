@@ -164,11 +164,13 @@ exports.listDocuments = async (req, res, next) => {
     const accessibleLevels = Object.keys(CLASSIFICATION_ROLES).filter(level =>
       canAccessClassification(userRole, level)
     );
+    const accessibleLevelsLower = accessibleLevels.map(l => l.toLowerCase());
+
     if (accessibleLevels.length === 0) {
       sql += ' AND 1=0';
     } else if (accessibleLevels.length < 4) {
-      sql += ` AND LOWER(classification) IN (${accessibleLevels.map(() => '?').join(',')})`;
-      params.push(...accessibleLevels);
+      sql += ` AND LOWER(classification) IN (${accessibleLevelsLower.map(() => '?').join(',')})`;
+      params.push(...accessibleLevelsLower);
     }
 
     if (search) {
@@ -193,8 +195,8 @@ exports.listDocuments = async (req, res, next) => {
     if (accessibleLevels.length === 0) {
       countSql += ' AND 1=0';
     } else if (accessibleLevels.length < 4) {
-      countSql += ` AND LOWER(classification) IN (${accessibleLevels.map(() => '?').join(',')})`;
-      countParams.push(...accessibleLevels);
+      countSql += ` AND LOWER(classification) IN (${accessibleLevelsLower.map(() => '?').join(',')})`;
+      countParams.push(...accessibleLevelsLower);
     }
     if (search) {
       countSql += ` AND (title LIKE ? OR description LIKE ? OR ocr_text LIKE ? OR tags LIKE ? OR reference_number LIKE ?)`;
@@ -214,8 +216,8 @@ exports.listDocuments = async (req, res, next) => {
     if (accessibleLevels.length === 0) {
       catSql += ' AND 1=0';
     } else if (accessibleLevels.length < 4) {
-      catSql += ` AND LOWER(classification) IN (${accessibleLevels.map(() => '?').join(',')})`;
-      catParams.push(...accessibleLevels);
+      catSql += ` AND LOWER(classification) IN (${accessibleLevelsLower.map(() => '?').join(',')})`;
+      catParams.push(...accessibleLevelsLower);
     }
     catSql += ` GROUP BY category`;
     const { rows: catRows } = await db.query(catSql, catParams);
