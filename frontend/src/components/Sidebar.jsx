@@ -32,79 +32,95 @@ const Sidebar = ({ onClose }) => {
   const { user, logout, hasPermission } = useAuth();
   const location = useLocation();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-
   const [sidebarConfigState, setSidebarConfigState] = useState(() => getSidebarConfig());
 
-  // Re-read sidebar config whenever admin saves it from Permissions page
   useEffect(() => {
     const handler = () => setSidebarConfigState(getSidebarConfig());
     window.addEventListener('sidebar-config-changed', handler);
     return () => window.removeEventListener('sidebar-config-changed', handler);
   }, []);
 
-  const menuItems = [
-    { configKey: 'dashboard',     name: 'Dashboard',        icon: <LayoutDashboard size={20} />, path: '/',            requiredPerm: null },
-    { configKey: 'cancellations', name: 'Cancellations',    icon: <FileText size={20} />,        path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
-    { configKey: 'refunds',       name: 'Refunds',          icon: <ReceiptText size={20} />,     path: '/refunds',      requiredPerm: { mod: 'refunds', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
-    { configKey: 'incidents',     name: 'Incident Reports', icon: <AlertTriangle size={20} />,   path: '/incidents',    requiredPerm: null, allowedRoles: ALL_ROLES },
-    { configKey: 'safety',        name: 'Safety Workspace', icon: <PenTool size={20} />,         path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm'] },
-    { configKey: 'risk',          name: 'Risk Register',    icon: <ShieldAlert size={20} />,     path: '/risk-register', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm'] },
-    { configKey: 'infection',     name: 'Infection Control',icon: <Activity size={20} />,         path: '/infection-control', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm'] },
-    { configKey: 'results',       name: 'Result Transfers', icon: <RefreshCw size={20} />,       path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
-    { configKey: 'performance',   name: 'Performance',      icon: <Award size={20} />,           path: '/performance',  requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'dental_hod', 'dental_lab_manager'] },
-    { configKey: 'nursing_hub',   name: 'Nursing Hub',      icon: <Stethoscope size={20} />,     path: '/nursing-hub',  requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'] },
-    { configKey: 'doctor_hub',    name: 'Doctor Hub',       icon: <Stethoscope size={20} />,     path: '/doctor-hub',   requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director'] },
-    { configKey: 'imaging',       name: 'Imaging Hub',      icon: <ScanLine size={20} />,        path: '/imaging',      requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director'] },
-    { configKey: 'lab_hub',       name: 'Laboratory Hub',   icon: <FlaskConical size={20} />,    path: '/lab',          requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'] },
-    { configKey: 'ncr_hub',       name: 'Non-Conformance (NCR)', icon: <AlertOctagon size={20} />, path: '/ncr',        requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'hsfp'] },
-    { configKey: 'lab_archive',   name: 'Lab Archive',      icon: <Archive size={20} />,         path: '/lab/archive',  requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'] },
-    { configKey: 'dental_hub',    name: 'Dental Hub',       icon: <Heart size={20} />,           path: '/dental',       requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'] },
-    { configKey: 'physio_hub',     name: 'Physio Hub',       icon: <Dumbbell size={20} />,        path: '/physio',       requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physiotherapist', 'physio', 'physio_manager'] },
-    { configKey: 'operations_hub',  name: 'Operations Hub',   icon: <Settings size={20} />,        path: '/operations',   requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'operations_staff', 'coo'] },
-    { configKey: 'central_store', name: 'General Store Hub', icon: <Database size={20} />,       path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'stock-manager'] },
-    { configKey: 'consumables',   name: 'Consumables Log',  icon: <ClipboardList size={20} />,   path: '/consumables-log', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'nurse', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'physiotherapist', 'physio', 'physio_manager', 'operations_staff', 'coo', 'hsfp'] },
-    { configKey: 'master',        name: 'master',            icon: <Database size={20} />,       path: '/master',       requiredPerm: null, allowedRoles: ['admin', 'stock-manager'] },
-    { configKey: 'procurement',   name: 'Procurement Hub',   icon: <Building size={20} />,       path: '/procurement',  requiredPerm: null, allowedRoles: ['admin', 'procurement-manager', 'deputy_coo'] },
-    { configKey: 'supplier',      name: 'Supplier Portal Management',   icon: <Building size={20} />,       path: '/supplier-portal-manager', requiredPerm: null, allowedRoles: ['admin', 'procurement-manager', 'deputy_coo'] },
-    { configKey: 'daily_report',  name: 'Daily Report',      icon: <Activity size={20} />,       path: '/nursing-hub/daily-report', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'] },
-    { configKey: 'daily_board',   name: 'Daily Reports Board', icon: <FileText size={20} />,     path: '/daily-reports-board', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'pa', 'medical_director'] },
-    { configKey: 'roster_generator', name: 'Roster Generator', icon: <FileText size={20} />,     path: '/roster-generator', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'pa', 'medical_director', 'doctor', 'consultant', 'chef-nurse'] },
-    { configKey: 'clinical_sheets', name: 'Clinical Sheets',  icon: <FileText size={20} />,     path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director'] },
-    { configKey: 'insights',      name: 'Insights',          icon: <Brain size={20} />,          path: '/ai-insights',  requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'medical_director'] },
-    { configKey: 'revenue',       name: 'Revenue Tracker',   icon: <TrendingDown size={20} />,   path: '/revenue-tracker', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'chairman', 'admin', 'principal_cashier', 'deputy_coo'] },
-    { configKey: 'compliance',    name: 'Compliance Portal', icon: <ShieldCheck size={20} />,    path: '/compliance',   requiredPerm: null, allowedRoles: ['admin', 'hsfp', 'quality_manager', 'qm'] },
-    { configKey: 'it_hub',        name: (user?.role === 'admin' || user?.role === 'it_officer') ? 'IT Support Hub' : 'IT Support',    icon: <Server size={20} />,         path: '/it-ticketing', requiredPerm: null, allowedRoles: ALL_ROLES },
-    { configKey: 'users',         name: 'User Management',   icon: <Users size={20} />,          path: '/users',        requiredPerm: { mod: 'user_management', act: 'view' }, allowedRoles: ['admin', 'it_officer'] },
-    { configKey: 'permissions',   name: 'Permissions',       icon: <Shield size={20} />,         path: '/permissions',  requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
-    { configKey: 'audit_logs',    name: 'Audit Logs',        icon: <History size={20} />,        path: '/audit-logs',   requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin'] },
-    // Shift Module
-    { configKey: 'shifts',        name: 'Shift Management',  icon: <Clock size={20} />,          path: '/shifts',       requiredPerm: null, allowedRoles: ['nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'cashier', 'customer_care', 'principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'pa'] },
-    { configKey: 'feedbacks',     name: 'Internal Feedback', icon: <MessageSquare size={20} />,  path: '/feedbacks',    requiredPerm: { mod: 'feedbacks', act: 'view' }, allowedRoles: ['coo', 'deputy_coo', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director'] },
+  // Categorized Sidebar Sections for ultra-clean navigation
+  const menuSections = [
+    {
+      title: null,
+      items: [
+        { configKey: 'dashboard', name: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/', requiredPerm: null },
+      ]
+    },
+    {
+      title: 'CLINICAL HUBS',
+      items: [
+        { configKey: 'nursing_hub', name: 'Nursing Hub', icon: <Stethoscope size={18} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'] },
+        { configKey: 'doctor_hub', name: 'Doctor Hub', icon: <Stethoscope size={18} />, path: '/doctor-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director'] },
+        { configKey: 'lab_hub', name: 'Laboratory Hub', icon: <FlaskConical size={18} />, path: '/lab', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'] },
+        { configKey: 'lab_archive', name: 'Lab Archive', icon: <Archive size={18} />, path: '/lab/archive', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'] },
+        { configKey: 'ncr_hub', name: 'Non-Conformance (NCR)', icon: <AlertOctagon size={18} />, path: '/ncr', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'hsfp'] },
+        { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director'] },
+        { configKey: 'dental_hub', name: 'Dental Hub', icon: <Heart size={18} />, path: '/dental', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'] },
+        { configKey: 'physio_hub', name: 'Physio Hub', icon: <Dumbbell size={18} />, path: '/physio', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physiotherapist', 'physio', 'physio_manager'] },
+      ]
+    },
+    {
+      title: 'OPERATIONS & SUPPLY',
+      items: [
+        { configKey: 'operations_hub', name: 'Operations Hub', icon: <Settings size={18} />, path: '/operations', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'operations_staff', 'coo'] },
+        { configKey: 'central_store', name: 'General Store Hub', icon: <Database size={18} />, path: '/central-store', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'stock-manager'] },
+        { configKey: 'consumables', name: 'Consumables Log', icon: <ClipboardList size={18} />, path: '/consumables-log', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'nurse', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'physiotherapist', 'physio', 'physio_manager', 'operations_staff', 'coo', 'hsfp'] },
+        { configKey: 'procurement', name: 'Procurement Hub', icon: <Building size={18} />, path: '/procurement', requiredPerm: null, allowedRoles: ['admin', 'procurement-manager', 'deputy_coo'] },
+        { configKey: 'supplier', name: 'Supplier Management', icon: <Building size={18} />, path: '/supplier-portal-manager', requiredPerm: null, allowedRoles: ['admin', 'procurement-manager', 'deputy_coo'] },
+      ]
+    },
+    {
+      title: 'PATIENTS & FINANCIALS',
+      items: [
+        { configKey: 'cancellations', name: 'Cancellations', icon: <FileText size={18} />, path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
+        { configKey: 'refunds', name: 'Refunds', icon: <ReceiptText size={18} />, path: '/refunds', requiredPerm: { mod: 'refunds', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
+        { configKey: 'results', name: 'Result Transfers', icon: <RefreshCw size={18} />, path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
+        { configKey: 'clinical_sheets', name: 'Clinical Sheets', icon: <FileText size={18} />, path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director'] },
+        { configKey: 'shifts', name: 'Shift Management', icon: <Clock size={18} />, path: '/shifts', requiredPerm: null, allowedRoles: ['nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'cashier', 'customer_care', 'principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'pa'] },
+      ]
+    },
+    {
+      title: 'REPORTS & COMPLIANCE',
+      items: [
+        { configKey: 'daily_report', name: 'Daily Report', icon: <Activity size={18} />, path: '/nursing-hub/daily-report', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'] },
+        { configKey: 'daily_board', name: 'Daily Reports Board', icon: <FileText size={18} />, path: '/daily-reports-board', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'pa', 'medical_director'] },
+        { configKey: 'roster_generator', name: 'Roster Generator', icon: <FileText size={18} />, path: '/roster-generator', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'pa', 'medical_director', 'doctor', 'consultant', 'chef-nurse'] },
+        { configKey: 'incidents', name: 'Incident Reports', icon: <AlertTriangle size={18} />, path: '/incidents', requiredPerm: null, allowedRoles: ALL_ROLES },
+        { configKey: 'safety', name: 'Safety Workspace', icon: <PenTool size={18} />, path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm'] },
+        { configKey: 'risk', name: 'Risk Register', icon: <ShieldAlert size={18} />, path: '/risk-register', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm'] },
+        { configKey: 'infection', name: 'Infection Control', icon: <Activity size={18} />, path: '/infection-control', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm'] },
+        { configKey: 'compliance', name: 'Compliance Portal', icon: <ShieldCheck size={18} />, path: '/compliance', requiredPerm: null, allowedRoles: ['admin', 'hsfp', 'quality_manager', 'qm'] },
+        { configKey: 'performance', name: 'Staff Performance', icon: <Award size={18} />, path: '/performance', requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'dental_hod', 'dental_lab_manager'] },
+        { configKey: 'insights', name: 'AI Insights', icon: <Brain size={18} />, path: '/ai-insights', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'medical_director'] },
+        { configKey: 'revenue', name: 'Revenue Tracker', icon: <TrendingDown size={18} />, path: '/revenue-tracker', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'chairman', 'admin', 'principal_cashier', 'deputy_coo'] },
+      ]
+    },
+    {
+      title: 'SYSTEM & ADMIN',
+      items: [
+        { configKey: 'it_hub', name: (user?.role === 'admin' || user?.role === 'it_officer') ? 'IT Support Hub' : 'IT Support', icon: <Server size={18} />, path: '/it-ticketing', requiredPerm: null, allowedRoles: ALL_ROLES },
+        { configKey: 'users', name: 'User Management', icon: <Users size={18} />, path: '/users', requiredPerm: { mod: 'user_management', act: 'view' }, allowedRoles: ['admin', 'it_officer'] },
+        { configKey: 'permissions', name: 'Permissions', icon: <Shield size={18} />, path: '/permissions', requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
+        { configKey: 'audit_logs', name: 'Audit Logs', icon: <History size={18} />, path: '/audit-logs', requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin'] },
+        { configKey: 'feedbacks', name: 'Internal Feedback', icon: <MessageSquare size={18} />, path: '/feedbacks', requiredPerm: { mod: 'feedbacks', act: 'view' }, allowedRoles: ['coo', 'deputy_coo', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director'] },
+      ]
+    }
   ];
 
-  const filteredMenu = menuItems.filter(item => {
-    // ── Gate 1: Role-based route access (hard gate, non-negotiable) ──────────
+  // Helper to check item permission / config visibility
+  const isItemVisible = (item) => {
     if (item.allowedRoles && !item.allowedRoles.includes(user?.role)) return false;
-
-    // ── Gate 2: Backend module permission (if this item has one) ─────────────
-    // If a permission module is specified, the user MUST have it granted.
-    // This respects whatever the admin configured in the Permissions matrix.
-    if (item.requiredPerm) {
-      if (!hasPermission(item.requiredPerm.mod, item.requiredPerm.act)) return false;
-    }
-
-    // ── Gate 3: Admin sidebar config override (localStorage) ─────────────────
-    // Admin can additionally hide items per-role via Permissions > Sidebar Config.
-    // IMPORTANT: Only suppress the item if the config EXPLICITLY sets it to false.
-    // Unknown/new keys (not yet in config) must default to visible (true).
+    if (item.requiredPerm && !hasPermission(item.requiredPerm.mod, item.requiredPerm.act)) return false;
+    
     const roleCfg = sidebarConfigState[user?.role];
     if (roleCfg && item.configKey && roleCfg[item.configKey] === false) {
       const isHsfpsCore = user?.role === 'hsfp' && ['incidents', 'safety', 'risk', 'infection', 'compliance'].includes(item.configKey);
       if (!isHsfpsCore) return false;
     }
-
     return true;
-  });
+  };
 
   const isActive = (path) => {
     if (path.includes('?tab=')) {
@@ -123,18 +139,18 @@ const Sidebar = ({ onClose }) => {
   const linkStyle = (path) => ({
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    padding: '0.75rem 1rem',
+    gap: '10px',
+    padding: '0.65rem 0.9rem',
     borderRadius: '8px',
     textDecoration: 'none',
     color: isActive(path) ? '#ffffff' : 'rgba(255,255,255,0.7)',
     backgroundColor: isActive(path) ? 'rgba(255,255,255,0.12)' : 'transparent',
     fontWeight: isActive(path) ? 700 : 500,
-    transition: 'all 0.2s',
-    borderLeft: isActive(path) ? '4px solid #ffffff' : '4px solid transparent',
+    transition: 'all 0.15s ease-in-out',
+    borderLeft: isActive(path) ? '3px solid #ffffff' : '3px solid transparent',
     marginLeft: isActive(path) ? '-1.5rem' : '0',
-    paddingLeft: isActive(path) ? 'calc(1.5rem + 1rem)' : '1rem',
-    fontSize: '0.9rem',
+    paddingLeft: isActive(path) ? 'calc(1.5rem + 0.9rem)' : '0.9rem',
+    fontSize: '0.85rem',
   });
 
   return (
@@ -152,8 +168,8 @@ const Sidebar = ({ onClose }) => {
     }}>
 
       {/* ── Logo + mobile close button ── */}
-      <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <img src="/logo.png" alt="Legacy Clinics" style={{ height: '38px', objectFit: 'contain' }} />
+      <div style={{ marginBottom: '1.5rem', display: 'flex', items: 'center', justifyContent: 'space-between' }}>
+        <img src="/logo.png" alt="Legacy Clinics" style={{ height: '36px', objectFit: 'contain' }} />
         <button
           onClick={onClose}
           className="sidebar-close-btn"
@@ -168,45 +184,66 @@ const Sidebar = ({ onClose }) => {
         </button>
       </div>
 
-      {/* ── Navigation ── */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {filteredMenu.map((item) => (
-          <Link key={item.path} to={item.path} style={linkStyle(item.path)}>
-            {item.icon}
-            <span>{item.name}</span>
-          </Link>
-        ))}
+      {/* ── Sectional Navigation ── */}
+      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {menuSections.map((section, idx) => {
+          const visibleItems = section.items.filter(isItemVisible);
+          if (visibleItems.length === 0) return null;
+
+          return (
+            <div key={section.title || idx} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {section.title && (
+                <div style={{
+                  fontSize: '0.65rem',
+                  fontWeight: 800,
+                  color: 'rgba(255,255,255,0.4)',
+                  letterSpacing: '0.08em',
+                  padding: '0 0.9rem 0.35rem 0.9rem',
+                  textTransform: 'uppercase'
+                }}>
+                  {section.title}
+                </div>
+              )}
+              {visibleItems.map((item) => (
+                <Link key={item.path} to={item.path} style={linkStyle(item.path)}>
+                  {item.icon}
+                  <span>{item.name}</span>
+                </Link>
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       {/* ── User actions ── */}
-      <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
         <a
           href="https://legacyclinics.rw/webmail"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0.75rem 1rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.9rem', textDecoration: 'none' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'none' }}
         >
-          <Mail size={20} /> Webmail
+          <Mail size={18} /> Webmail
         </a>
 
         <button
           onClick={() => setIsPasswordModalOpen(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0.75rem 1rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.9rem', textAlign: 'left' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
         >
-          <Key size={20} /> Update Password
+          <Key size={18} /> Update Password
         </button>
 
         <button
           onClick={logout}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0.75rem 1rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#ef4444', fontWeight: 500, cursor: 'pointer', fontSize: '0.9rem', textAlign: 'left' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#ef4444', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
         >
-          <LogOut size={20} /> Logout
+          <LogOut size={18} /> Logout
         </button>
       </div>
 
-      {/* ── User card ── */}
-      <div style={{ marginTop: '1rem', padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.fullName}</div>
+      {/* ── User profile card ── */}
+      <div style={{ marginTop: '0.75rem', padding: '0.85rem', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.fullName}</div>
         <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>@{user?.username}</div>
         <div style={{ marginTop: '4px', display: 'inline-block', padding: '2px 8px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '99px', fontSize: '0.68rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {user?.role?.replace(/_/g, ' ')}
