@@ -6,7 +6,6 @@ import {
   ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   listDocuments, uploadDocument, getDocumentMeta,
@@ -276,25 +275,32 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
   );
 }
 
-// ── Detail Side Panel ─────────────────────────────────────────────────────────
-function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload }) {
+// ── Full Page Document Detail & Preview Workspace ─────────────────────────────
+function DocumentDetailView({ docMeta, isManager, onBack, onEdit, onDelete, onDownload }) {
   const [log, setLog] = useState([]);
   const [loadingLog, setLoadingLog] = useState(false);
   const [showLog, setShowLog] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
+  const [previewing, setPreviewing] = useState(true);
   const [previewData, setPreviewData] = useState(null);
 
   const cfg = CLASSIFICATION_CONFIG[docMeta.classification] || CLASSIFICATION_CONFIG.Internal;
 
-  const handlePreview = async () => {
-    setPreviewing(true);
-    try {
-      const res = await downloadDocument(docMeta.id, { mode: 'preview' });
-      setPreviewData(res.data.data);
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Could not load preview.');
-    } finally { setPreviewing(false); }
-  };
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPreview = async () => {
+      setPreviewing(true);
+      try {
+        const res = await downloadDocument(docMeta.id, { mode: 'preview' });
+        if (isMounted) setPreviewData(res.data.data);
+      } catch {
+        toast.error('Could not load document preview.');
+      } finally {
+        if (isMounted) setPreviewing(false);
+      }
+    };
+    fetchPreview();
+    return () => { isMounted = false; };
+  }, [docMeta.id]);
 
   const handleLoadLog = async () => {
     if (showLog) { setShowLog(false); return; }
@@ -307,136 +313,158 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
     finally { setLoadingLog(false); }
   };
 
-  const canPreview = ['pdf', 'png', 'jpg', 'jpeg'].includes((docMeta.file_extension || '').toLowerCase());
+  const ext = (docMeta.file_extension || '').toLowerCase();
+  const canPreview = ['pdf', 'png', 'jpg', 'jpeg', 'txt', 'csv', 'json'].includes(ext);
 
   return (
-    <div className="fixed inset-0 z-40 flex">
-      <div className="flex-1 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="w-full max-w-md bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b border-slate-100 sticky top-0 bg-white z-10">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5">{getFileIcon(docMeta.file_extension)}</div>
+    <div className="space-y-4 animate-fadeIn">
+      {/* Top Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+          >
+            <ArrowLeft size={14} /> Back to Archive
+          </button>
+          <div className="h-6 w-px bg-slate-200" />
+          <div className="flex items-center gap-2.5">
+            {getFileIcon(docMeta.file_extension)}
             <div>
-              <p className="font-bold text-sm text-slate-900 leading-snug">{docMeta.title}</p>
-              <p className="text-xs text-slate-500 mt-0.5 font-mono">{docMeta.reference_number || docMeta.file_name}</p>
+              <div className="flex items-center gap-2">
+                <h1 className="font-bold text-slate-900 text-base leading-tight">{docMeta.title}</h1>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${cfg.color}`}>
+                  {cfg.icon} {docMeta.classification}
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                  {docMeta.category}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-mono mt-0.5">{docMeta.reference_number || docMeta.file_name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg cursor-pointer flex-shrink-0"><X size={14} /></button>
         </div>
 
-        <div className="p-5 space-y-5 flex-1">
-          {/* Classification + Category */}
-          <div className="flex flex-wrap gap-2">
-            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${cfg.color}`}>
-              {cfg.icon} {docMeta.classification}
-            </span>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-              {docMeta.category}
-            </span>
-            {docMeta.version && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#1B669E]/10 text-[#1B669E] border border-[#1B669E]/20">
-                {docMeta.version}
-              </span>
+        {/* Action Toolbar */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onDownload}
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#1B669E] hover:bg-[#155280] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+          >
+            <Download size={14} /> Download Document
+          </button>
+
+          {isManager && (
+            <>
+              <button
+                onClick={onEdit}
+                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+              >
+                <Pencil size={13} /> Edit
+              </button>
+              <button
+                onClick={handleLoadLog}
+                disabled={loadingLog}
+                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+              >
+                <History size={13} /> {showLog ? 'Hide Access Log' : 'Access Log'}
+              </button>
+              <button
+                onClick={onDelete}
+                className="p-2 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                title="Delete Document"
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Main Workspace Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Left Column: Metadata & Document Details */}
+        <div className="lg:col-span-4 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Document Metadata</h2>
+            
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              {[
+                { label: 'Ref / Doc No.', value: docMeta.reference_number },
+                { label: 'Department',    value: docMeta.department },
+                { label: 'Document Date', value: formatDate(docMeta.document_date) },
+                { label: 'Expiry Date',   value: formatDate(docMeta.expiry_date) },
+                { label: 'File Size',     value: formatBytes(docMeta.file_size_bytes) },
+                { label: 'File Format',   value: (docMeta.file_extension || '').toUpperCase() },
+                { label: 'Uploaded By',   value: docMeta.uploaded_by_name },
+                { label: 'Archived On',   value: formatDate(docMeta.created_at) },
+                { label: 'Live Views',    value: docMeta.view_count },
+                { label: 'Downloads',     value: docMeta.download_count },
+              ].map(({ label, value }) => value ? (
+                <div key={label} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <p className="text-slate-400 font-semibold uppercase tracking-wider text-[9px]">{label}</p>
+                  <p className="text-slate-800 font-bold mt-0.5 truncate">{value}</p>
+                </div>
+              ) : null)}
+            </div>
+
+            {docMeta.description && (
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Description</p>
+                <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200">{docMeta.description}</p>
+              </div>
+            )}
+
+            {/* Tags */}
+            {docMeta.tags && docMeta.tags !== '[]' && (() => {
+              try {
+                const tags = typeof docMeta.tags === 'string'
+                  ? (docMeta.tags.startsWith('[') ? JSON.parse(docMeta.tags) : docMeta.tags.split(',').map(t => t.trim()))
+                  : docMeta.tags;
+                return tags.length > 0 ? (
+                  <div className="pt-2 border-t border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tags</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {tags.map((tag, i) => (
+                        <span key={i} className="px-2.5 py-1 bg-[#1B669E]/10 text-[#1B669E] rounded-full text-xs font-semibold border border-[#1B669E]/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              } catch { return null; }
+            })()}
+
+            {/* OCR Extracted Text */}
+            {docMeta.ocr_text && (
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">OCR Extracted Text</p>
+                <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-36 overflow-y-auto font-mono">
+                  {docMeta.ocr_text}
+                </p>
+              </div>
             )}
           </div>
 
-          {/* Metadata grid */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            {[
-              { label: 'Document Date', value: formatDate(docMeta.document_date) },
-              { label: 'Expiry Date',   value: formatDate(docMeta.expiry_date) },
-              { label: 'Ref / Doc No.', value: docMeta.reference_number },
-              { label: 'Department',    value: docMeta.department },
-              { label: 'Size',          value: formatBytes(docMeta.file_size_bytes) },
-              { label: 'File Type',     value: (docMeta.file_extension || '').toUpperCase() },
-              { label: 'Uploaded By',   value: docMeta.uploaded_by_name },
-              { label: 'Archived On',   value: formatDate(docMeta.created_at) },
-              { label: 'Views',         value: docMeta.view_count },
-              { label: 'Downloads',     value: docMeta.download_count },
-            ].map(({ label, value }) => value ? (
-              <div key={label}>
-                <p className="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">{label}</p>
-                <p className="text-slate-700 font-medium mt-0.5">{value}</p>
-              </div>
-            ) : null)}
-          </div>
-
-          {docMeta.description && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Description</p>
-              <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-100">{docMeta.description}</p>
-            </div>
-          )}
-
-          {/* Tags */}
-          {docMeta.tags && docMeta.tags !== '[]' && (() => {
-            try {
-              const tags = typeof docMeta.tags === 'string'
-                ? (docMeta.tags.startsWith('[') ? JSON.parse(docMeta.tags) : docMeta.tags.split(',').map(t => t.trim()))
-                : docMeta.tags;
-              return tags.length > 0 ? (
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tags</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {tags.map((tag, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-[#1B669E]/10 text-[#1B669E] rounded-full text-[11px] font-medium border border-[#1B669E]/20">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null;
-            } catch { return null; }
-          })()}
-
-          {/* OCR text snippet */}
-          {docMeta.ocr_text && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">OCR Extracted Text</p>
-              <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-2.5 max-h-28 overflow-y-auto font-mono">
-                {docMeta.ocr_text.substring(0, 500)}…
-              </p>
-            </div>
-          )}
-
-          {/* Preview */}
-          {previewData && (
-            <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-              {['pdf'].includes((docMeta.file_extension || '').toLowerCase()) ? (
-                <iframe
-                  src={`data:${previewData.file_type};base64,${previewData.file_base64}`}
-                  className="w-full h-64"
-                  title="Document preview"
-                />
-              ) : ['png', 'jpg', 'jpeg'].includes((docMeta.file_extension || '').toLowerCase()) ? (
-                <img
-                  src={`data:${previewData.file_type};base64,${previewData.file_base64}`}
-                  alt={docMeta.title}
-                  className="w-full object-contain max-h-64"
-                />
-              ) : null}
-            </div>
-          )}
-
           {/* Access Log */}
           {isManager && showLog && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Access Log</p>
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Access Audit Log</h2>
               {log.length === 0 ? (
                 <p className="text-xs text-slate-400 italic">No access events recorded.</p>
               ) : (
-                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {log.map(entry => (
-                    <div key={entry.id} className="flex items-start gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100 text-xs">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
+                    <div key={entry.id} className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
                         entry.action === 'download' ? 'bg-[#1B669E]' :
                         entry.action === 'delete' ? 'bg-rose-500' :
-                        entry.action === 'update' ? 'bg-amber-500' : 'bg-slate-400'
+                        entry.action === 'update' ? 'bg-amber-500' : 'bg-emerald-500'
                       }`} />
                       <div>
-                        <p className="font-semibold text-slate-700 capitalize">{entry.action}</p>
-                        <p className="text-[10px] text-slate-500">{entry.user_name} · {formatDate(entry.accessed_at)}</p>
+                        <p className="font-bold text-slate-800 capitalize">{entry.action}</p>
+                        <p className="text-[11px] text-slate-500">{entry.user_name} · {formatDate(entry.accessed_at)}</p>
                       </div>
                     </div>
                   ))}
@@ -446,37 +474,62 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
           )}
         </div>
 
-        {/* Actions */}
-        <div className="p-4 border-t border-slate-100 space-y-2 sticky bottom-0 bg-white">
-          <div className="flex gap-2">
-            {canPreview && !previewData && (
-              <button onClick={handlePreview} disabled={previewing}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer disabled:opacity-60">
-                <Eye size={13} /> {previewing ? 'Loading…' : 'Preview'}
-              </button>
-            )}
-            <button onClick={onDownload}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#1B669E] hover:bg-[#155280] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm">
-              <Download size={13} /> Download
-            </button>
-          </div>
-          <div className="flex gap-2">
-            {isManager && (
-              <>
-                <button onClick={onEdit}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
-                  <Pencil size={13} /> Edit
-                </button>
-                <button onClick={handleLoadLog} disabled={loadingLog}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
-                  <History size={13} /> {showLog ? 'Hide Log' : 'Access Log'}
-                </button>
-                <button onClick={onDelete}
-                  className="p-2 border border-rose-200 rounded-xl text-rose-600 hover:bg-rose-50 transition-all cursor-pointer">
-                  <Trash2 size={13} />
-                </button>
-              </>
-            )}
+        {/* Right Column: Full-Screen Document Preview Viewer Canvas */}
+        <div className="lg:col-span-8">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[78vh]">
+            <div className="p-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Eye size={15} className="text-[#1B669E]" />
+                <span className="text-xs font-bold text-slate-700">Document Canvas Preview</span>
+              </div>
+              <span className="text-[11px] font-mono text-slate-500">{docMeta.file_name}</span>
+            </div>
+
+            <div className="flex-1 bg-slate-100 flex items-center justify-center relative overflow-hidden">
+              {previewing ? (
+                <div className="flex flex-col items-center gap-2 text-slate-500">
+                  <RefreshCw size={24} className="animate-spin text-[#1B669E]" />
+                  <p className="text-xs font-semibold">Loading document canvas…</p>
+                </div>
+              ) : previewData ? (
+                ext === 'pdf' ? (
+                  <iframe
+                    src={`data:${previewData.file_type};base64,${previewData.file_base64}`}
+                    className="w-full h-full border-none"
+                    title="Full Page PDF Preview"
+                  />
+                ) : ['png', 'jpg', 'jpeg'].includes(ext) ? (
+                  <div className="w-full h-full flex items-center justify-center p-4 overflow-auto">
+                    <img
+                      src={`data:${previewData.file_type};base64,${previewData.file_base64}`}
+                      alt={docMeta.title}
+                      className="max-w-full max-h-full object-contain rounded-lg shadow-md"
+                    />
+                  </div>
+                ) : ['txt', 'csv', 'json'].includes(ext) ? (
+                  <div className="w-full h-full p-6 bg-white overflow-auto font-mono text-xs text-slate-800 leading-relaxed">
+                    <pre className="whitespace-pre-wrap">{atob(previewData.file_base64)}</pre>
+                  </div>
+                ) : (
+                  <div className="text-center p-8">
+                    <FileText size={48} className="mx-auto text-slate-300 mb-3" />
+                    <p className="text-sm font-bold text-slate-700">Inline preview not available for .{ext} files</p>
+                    <p className="text-xs text-slate-500 mt-1 mb-4">Click below to download and view in your native application.</p>
+                    <button
+                      onClick={onDownload}
+                      className="px-4 py-2 bg-[#1B669E] hover:bg-[#155280] text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                    >
+                      Download {docMeta.file_name}
+                    </button>
+                  </div>
+                )
+              ) : (
+                <div className="text-center p-8">
+                  <AlertOctagon size={36} className="mx-auto text-amber-500 mb-2" />
+                  <p className="text-xs font-semibold text-slate-600">Failed to render preview canvas.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -544,13 +597,16 @@ export default function LabArchive() {
 
   useEffect(() => { load(); }, [load]);
 
-  const navigate = useNavigate();
-
-  const handleCardClick = (doc, openNewPage = true) => {
-    if (openNewPage) {
-      window.open(`/lab/archive/view/${doc.id}`, '_blank');
-    } else {
-      navigate(`/lab/archive/view/${doc.id}`);
+  const handleCardClick = async (doc) => {
+    try {
+      const res = await getDocumentMeta(doc.id);
+      const updatedMeta = res.data.data;
+      setDetailData(updatedMeta);
+      setSelectedDoc(updatedMeta);
+      // Immediately reflect incremented view_count in table state
+      setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, view_count: updatedMeta.view_count, last_accessed_at: updatedMeta.last_accessed_at } : d));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Cannot open document.');
     }
   };
 
@@ -972,38 +1028,54 @@ export default function LabArchive() {
                 <div className="flex items-center gap-3">
                   <span>
                     Showing <strong>{(page - 1) * pageSize + 1}</strong> to <strong>{Math.min(page * pageSize, total)}</strong> of <strong>{total}</strong> documents
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-400">| Per page:</span>
-                    <select
-                      className="border border-slate-200 rounded-lg px-2 py-1 bg-white text-xs text-slate-700 focus:outline-none"
-                      value={pageSize}
-                      onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
-                    >
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
-                  </div>
+
+                            <td className="py-3.5 px-4 text-slate-500 font-mono">
+                              {formatBytes(doc.file_size_bytes)}
+                            </td>
+
+                            <td className="py-3.5 px-4 text-slate-500">
+                              {formatDate(doc.created_at)}
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center font-bold text-slate-700">
+                              {doc.view_count || 0}
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center font-bold text-[#1B669E]">
+                              {doc.download_count || 0}
+                            </td>
+
+                            <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => handleCardClick(doc)}
+                                  className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-[#1B669E] rounded-lg transition-all cursor-pointer"
+                                  title="View Document Details & Preview"
+                                >
+                                  <Eye size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDownload(doc.id)}
+                                  className="p-1.5 hover:bg-[#1B669E]/10 text-slate-500 hover:text-[#1B669E] rounded-lg transition-all cursor-pointer"
+                                  title="Download File"
+                                >
+                                  <Download size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
 
-                {/* Page Buttons */}
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setPage(p => Math.max(p - 1, 1))}
-                    disabled={page === 1}
-                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <ChevronLeft size={13} /> Prev
-                  </button>
-                  <span className="px-3 py-1 font-bold text-slate-700">
-                    {page} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setPage(p => Math.min(p + 1, totalPages))}
-                    disabled={page >= totalPages}
-                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1"
-                  >
+                {/* Table Footer Pagination */}
+                <div className="bg-slate-50/80 px-4 py-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+                  <p>
+                    Showing <span className="font-bold text-slate-800">{sortedDocs.length}</span> of <span className="font-bold text-slate-800">{total}</span> documents
+                  </p>
+                  <div className="flex items-center gap-1.5">
                     Next <ChevronRight size={13} />
                   </button>
                 </div>
@@ -1020,23 +1092,6 @@ export default function LabArchive() {
           onClose={() => setShowUpload(false)}
           onUploaded={load}
           defaultCategory={activeCategory !== 'ALL' ? activeCategory : 'SOP'}
-        />
-      )}
-
-      {selectedDoc && detailData && (
-        <DetailPanel
-          docMeta={detailData}
-          isManager={isManager}
-          onClose={() => { setSelectedDoc(null); setDetailData(null); }}
-          onEdit={() => {
-            setEditTarget(detailData);
-            setSelectedDoc(null); setDetailData(null);
-          }}
-          onDelete={() => {
-            setDeleteTarget(detailData);
-            setSelectedDoc(null); setDetailData(null);
-          }}
-          onDownload={() => handleDownload(detailData.id, detailData.file_name, detailData.file_type)}
         />
       )}
 
