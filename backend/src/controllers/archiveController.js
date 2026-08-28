@@ -149,7 +149,26 @@ exports.listDocuments = async (req, res, next) => {
     if (date_to) { countSql += ' AND document_date <= ?'; countParams.push(date_to); }
     const { rows: countRows } = await db.query(countSql, countParams);
 
-    res.json({ success: true, data: rows, total: countRows[0]?.cnt || 0, page: Number(page), limit: Number(limit) });
+    // Category Breakdown Counts for Folder Navigation
+    let catSql = `SELECT category, COUNT(*) as cnt FROM lab_documents WHERE 1=1`;
+    const catParams = [];
+    if (accessibleLevels.length < 4) {
+      catSql += ` AND LOWER(classification) IN (${accessibleLevels.map(() => '?').join(',')})`;
+      catParams.push(...accessibleLevels);
+    }
+    catSql += ` GROUP BY category`;
+    const { rows: catRows } = await db.query(catSql, catParams);
+    const categoryCounts = {};
+    (catRows || []).forEach(r => { categoryCounts[r.category] = r.cnt; });
+
+    res.json({
+      success: true,
+      data: rows,
+      total: countRows[0]?.cnt || 0,
+      categoryCounts,
+      page: Number(page),
+      limit: Number(limit)
+    });
   } catch (err) { next(err); }
 };
 

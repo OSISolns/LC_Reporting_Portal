@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Archive, Upload, Search, Filter, X, Download, Eye, Pencil, Trash2,
   FileText, FileSpreadsheet, Image, File, RefreshCw, Shield, ShieldAlert,
-  ShieldCheck, Lock, ChevronDown, Clock, User, List, LayoutGrid, History
+  ShieldCheck, Lock, ChevronDown, Clock, User, History, Folder, FolderOpen,
+  ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +19,19 @@ const CATEGORIES = [
   'NCR Document', 'Other'
 ];
 
+const CATEGORY_ICONS = {
+  'SOP':                     '📁',
+  'Quality Control':         '🧪',
+  'Calibration Certificate': '⚖️',
+  'Audit Report':            '📊',
+  'Training Record':         '🎓',
+  'Regulatory':              '🏛️',
+  'Equipment Manual':        '🔧',
+  'Patient Data':            '📋',
+  'NCR Document':            '⚠️',
+  'Other':                   '📂',
+};
+
 const CLASSIFICATIONS = ['Public', 'Internal', 'Confidential', 'Restricted'];
 
 const DEPARTMENTS = [
@@ -28,24 +42,24 @@ const DEPARTMENTS = [
 const MANAGER_ROLES = ['lab_manager', 'lab_lead', 'lab_team_lead', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo'];
 
 const CLASSIFICATION_CONFIG = {
-  Public:       { color: 'bg-slate-100 text-slate-700 border-slate-300',   icon: <Shield size={11} />,      dot: 'bg-slate-400' },
-  Internal:     { color: 'bg-blue-50 text-blue-800 border-blue-200',        icon: <ShieldCheck size={11} />, dot: 'bg-blue-500' },
-  Confidential: { color: 'bg-amber-50 text-amber-800 border-amber-200',     icon: <ShieldAlert size={11} />, dot: 'bg-amber-500' },
-  Restricted:   { color: 'bg-rose-50 text-rose-800 border-rose-200',        icon: <Lock size={11} />,        dot: 'bg-rose-600' },
+  Public:       { color: 'bg-slate-100 text-slate-700 border-slate-300',   icon: <Shield size={11} /> },
+  Internal:     { color: 'bg-blue-50 text-blue-800 border-blue-200',        icon: <ShieldCheck size={11} /> },
+  Confidential: { color: 'bg-amber-50 text-amber-800 border-amber-200',     icon: <ShieldAlert size={11} /> },
+  Restricted:   { color: 'bg-rose-50 text-rose-800 border-rose-200',        icon: <Lock size={11} /> },
 };
 
 const FILE_ICONS = {
-  pdf:  <FileText size={20} className="text-rose-500" />,
-  docx: <FileText size={20} className="text-blue-500" />,
-  doc:  <FileText size={20} className="text-blue-500" />,
-  xlsx: <FileSpreadsheet size={20} className="text-emerald-500" />,
-  xls:  <FileSpreadsheet size={20} className="text-emerald-500" />,
-  csv:  <FileSpreadsheet size={20} className="text-teal-500" />,
-  png:  <Image size={20} className="text-purple-500" />,
-  jpg:  <Image size={20} className="text-purple-500" />,
-  jpeg: <Image size={20} className="text-purple-500" />,
+  pdf:  <FileText size={18} className="text-rose-500 flex-shrink-0" />,
+  docx: <FileText size={18} className="text-blue-500 flex-shrink-0" />,
+  doc:  <FileText size={18} className="text-blue-500 flex-shrink-0" />,
+  xlsx: <FileSpreadsheet size={18} className="text-emerald-500 flex-shrink-0" />,
+  xls:  <FileSpreadsheet size={18} className="text-emerald-500 flex-shrink-0" />,
+  csv:  <FileSpreadsheet size={18} className="text-teal-500 flex-shrink-0" />,
+  png:  <Image size={18} className="text-purple-500 flex-shrink-0" />,
+  jpg:  <Image size={18} className="text-purple-500 flex-shrink-0" />,
+  jpeg: <Image size={18} className="text-purple-500 flex-shrink-0" />,
 };
-const getFileIcon = (ext) => FILE_ICONS[(ext || '').toLowerCase()] || <File size={20} className="text-slate-400" />;
+const getFileIcon = (ext) => FILE_ICONS[(ext || '').toLowerCase()] || <File size={18} className="text-slate-400 flex-shrink-0" />;
 
 const formatBytes = (bytes) => {
   if (!bytes) return '—';
@@ -60,8 +74,12 @@ const formatDate = (s) => {
 };
 
 // ── Upload Modal ──────────────────────────────────────────────────────────────
-function UploadModal({ onClose, onUploaded }) {
-  const [form, setForm] = useState({ title: '', description: '', category: 'Other', classification: 'Internal', document_date: '', expiry_date: '', version: '', reference_number: '', department: '', tags: '' });
+function UploadModal({ onClose, onUploaded, defaultCategory }) {
+  const [form, setForm] = useState({
+    title: '', description: '', category: defaultCategory || 'SOP',
+    classification: 'Internal', document_date: '', expiry_date: '',
+    version: '', reference_number: '', department: '', tags: ''
+  });
   const [file, setFile] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -153,7 +171,7 @@ function UploadModal({ onClose, onUploaded }) {
           {/* Category + Classification */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Category</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Category Folder</label>
               <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white"
                 value={form.category} onChange={e => set('category', e.target.value)}>
                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -269,14 +287,14 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
   return (
     <div className="fixed inset-0 z-40 flex">
       <div className="flex-1 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="w-full max-w-sm bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full overflow-y-auto">
+      <div className="w-full max-w-md bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full overflow-y-auto">
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-slate-100 sticky top-0 bg-white z-10">
           <div className="flex items-start gap-3">
             <div className="mt-0.5">{getFileIcon(docMeta.file_extension)}</div>
             <div>
               <p className="font-bold text-sm text-slate-900 leading-snug">{docMeta.title}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{docMeta.file_name}</p>
+              <p className="text-xs text-slate-500 mt-0.5 font-mono">{docMeta.reference_number || docMeta.file_name}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg cursor-pointer flex-shrink-0"><X size={14} /></button>
@@ -322,7 +340,7 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
           {docMeta.description && (
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Description</p>
-              <p className="text-xs text-slate-600 leading-relaxed">{docMeta.description}</p>
+              <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-100">{docMeta.description}</p>
             </div>
           )}
 
@@ -350,14 +368,14 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
           {/* OCR text snippet */}
           {docMeta.ocr_text && (
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Extracted Text (preview)</p>
-              <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-2.5 max-h-24 overflow-hidden">
-                {docMeta.ocr_text.substring(0, 300)}…
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">OCR Extracted Text</p>
+              <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-2.5 max-h-28 overflow-y-auto font-mono">
+                {docMeta.ocr_text.substring(0, 500)}…
               </p>
             </div>
           )}
 
-          {/* Preview / Access log */}
+          {/* Preview */}
           {previewData && (
             <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
               {['pdf'].includes((docMeta.file_extension || '').toLowerCase()) ? (
@@ -385,14 +403,14 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
               ) : (
                 <div className="space-y-1.5 max-h-40 overflow-y-auto">
                   {log.map(entry => (
-                    <div key={entry.id} className="flex items-start gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                    <div key={entry.id} className="flex items-start gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100 text-xs">
                       <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
                         entry.action === 'download' ? 'bg-blue-500' :
                         entry.action === 'delete' ? 'bg-rose-500' :
                         entry.action === 'update' ? 'bg-amber-500' : 'bg-slate-400'
                       }`} />
                       <div>
-                        <p className="text-[11px] font-semibold text-slate-700 capitalize">{entry.action}</p>
+                        <p className="font-semibold text-slate-700 capitalize">{entry.action}</p>
                         <p className="text-[10px] text-slate-500">{entry.user_name} · {formatDate(entry.accessed_at)}</p>
                       </div>
                     </div>
@@ -441,128 +459,63 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
   );
 }
 
-// ── Document Card ─────────────────────────────────────────────────────────────
-function DocCard({ doc, onClick }) {
-  const cfg = CLASSIFICATION_CONFIG[doc.classification] || CLASSIFICATION_CONFIG.Internal;
-  const isExpiring = doc.expiry_date && (() => {
-    const d = new Date(doc.expiry_date), n = new Date();
-    return (d - n) / (1000 * 60 * 60 * 24) <= 30;
-  })();
-
-  return (
-    <div
-      onClick={onClick}
-      className="bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-md hover:border-slate-300 transition-all cursor-pointer group relative"
-    >
-      <div className="flex items-start gap-3">
-        <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 group-hover:bg-slate-100 transition-all flex-shrink-0">
-          {getFileIcon(doc.file_extension)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm text-slate-900 truncate leading-snug">{doc.title}</p>
-          <p className="text-[11px] text-slate-500 truncate mt-0.5">{doc.category}{doc.department ? ` · ${doc.department}` : ''}</p>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between mt-3">
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${cfg.color}`}>
-          {cfg.icon} {doc.classification}
-        </span>
-        <span className="text-[10px] text-slate-400">{formatBytes(doc.file_size_bytes)}</span>
-      </div>
-
-      <div className="flex items-center justify-between mt-2">
-        <span className="text-[10px] text-slate-400 flex items-center gap-1">
-          <Clock size={10} /> {formatDate(doc.document_date || doc.created_at)}
-        </span>
-        {doc.reference_number && (
-          <span className="text-[10px] text-slate-500 font-mono truncate max-w-[100px]">{doc.reference_number}</span>
-        )}
-      </div>
-
-      {isExpiring && (
-        <div className="mt-2 px-2 py-1 bg-amber-50 border border-amber-200 rounded-lg text-[10px] font-bold text-amber-700">
-          ⚠ Expires {formatDate(doc.expiry_date)}
-        </div>
-      )}
-
-      <div className="flex items-center gap-3 mt-2">
-        <span className="text-[10px] text-slate-400 flex items-center gap-1"><Eye size={10} /> {doc.view_count}</span>
-        <span className="text-[10px] text-slate-400 flex items-center gap-1"><Download size={10} /> {doc.download_count}</span>
-        {doc.uploaded_by_name && (
-          <span className="text-[10px] text-slate-400 flex items-center gap-1 ml-auto truncate"><User size={10} /> {doc.uploaded_by_name}</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Document List Row ─────────────────────────────────────────────────────────
-function DocRow({ doc, onClick }) {
-  const cfg = CLASSIFICATION_CONFIG[doc.classification] || CLASSIFICATION_CONFIG.Internal;
-  return (
-    <div onClick={onClick}
-      className="flex items-center gap-4 px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 cursor-pointer transition-all group">
-      <div className="flex-shrink-0">{getFileIcon(doc.file_extension)}</div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm text-slate-900 truncate">{doc.title}</p>
-        <p className="text-[11px] text-slate-500 truncate">{doc.reference_number ? `${doc.reference_number} · ` : ''}{doc.category}</p>
-      </div>
-      <div className="hidden sm:flex items-center gap-2">
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${cfg.color}`}>
-          {cfg.icon} {doc.classification}
-        </span>
-      </div>
-      <div className="hidden md:block text-[11px] text-slate-400 w-24 text-right">{formatDate(doc.document_date || doc.created_at)}</div>
-      <div className="hidden lg:block text-[11px] text-slate-400 w-16 text-right">{formatBytes(doc.file_size_bytes)}</div>
-      <div className="flex items-center gap-2 text-[11px] text-slate-400 ml-2">
-        <Eye size={11} />{doc.view_count}
-        <Download size={11} />{doc.download_count}
-      </div>
-    </div>
-  );
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Main Page Component ───────────────────────────────────────────────────────
 export default function LabArchive() {
   const { user } = useAuth();
   const userRole = (user?.role || '').toLowerCase();
   const isManager = MANAGER_ROLES.includes(userRole);
 
-  const [docs, setDocs]             = useState([]);
-  const [total, setTotal]           = useState(0);
-  const [loading, setLoading]       = useState(true);
-  const [search, setSearch]         = useState('');
-  const [filterCategory, setFCat]   = useState('');
-  const [filterClass, setFClass]    = useState('');
-  const [filterType, setFType]      = useState('');
-  const [dateFrom, setDateFrom]     = useState('');
-  const [dateTo, setDateTo]         = useState('');
-  const [viewMode, setViewMode]     = useState('grid'); // 'grid' | 'list'
-  const [showUpload, setShowUpload] = useState(false);
+  const [docs, setDocs]                 = useState([]);
+  const [total, setTotal]               = useState(0);
+  const [categoryCounts, setCatCounts] = useState({});
+  const [loading, setLoading]           = useState(true);
+  
+  // Navigation & Filtering
+  const [activeCategory, setActiveCategory] = useState('ALL'); // 'ALL' or category name
+  const [search, setSearch]             = useState('');
+  const [filterClass, setFClass]        = useState('');
+  const [filterType, setFType]          = useState('');
+  const [dateFrom, setDateFrom]         = useState('');
+  const [dateTo, setDateTo]             = useState('');
+  const [filterOpen, setFilterOpen]     = useState(false);
+
+  // Pagination & Sorting
+  const [page, setPage]                 = useState(1);
+  const [pageSize, setPageSize]         = useState(25);
+  const [sortField, setSortField]       = useState('created_at');
+  const [sortDir, setSortDir]           = useState('desc');
+
+  // Modals & Side Panels
+  const [showUpload, setShowUpload]     = useState(false);
   const [selectedDoc, setSelectedDoc]   = useState(null);
   const [detailData, setDetailData]     = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget]     = useState(null);
-  const [filterOpen, setFilterOpen]     = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { search, page: 1, limit: 100 };
-      if (filterCategory) params.category = filterCategory;
-      if (filterClass)    params.classification = filterClass;
-      if (filterType)     params.file_type = filterType;
-      if (dateFrom)       params.date_from = dateFrom;
-      if (dateTo)         params.date_to = dateTo;
+      const params = {
+        search,
+        page,
+        limit: pageSize
+      };
+      if (activeCategory !== 'ALL') params.category = activeCategory;
+      if (filterClass) params.classification = filterClass;
+      if (filterType)  params.file_type = filterType;
+      if (dateFrom)    params.date_from = dateFrom;
+      if (dateTo)      params.date_to = dateTo;
 
       const res = await listDocuments(params);
       setDocs(res.data?.data || []);
       setTotal(res.data?.total || 0);
+      if (res.data?.categoryCounts) {
+        setCatCounts(res.data.categoryCounts);
+      }
     } catch {
-      toast.error('Failed to load documents.');
+      toast.error('Failed to load archive.');
     } finally { setLoading(false); }
-  }, [search, filterCategory, filterClass, filterType, dateFrom, dateTo]);
+  }, [search, activeCategory, filterClass, filterType, dateFrom, dateTo, page, pageSize]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -609,91 +562,205 @@ export default function LabArchive() {
     }
   };
 
-  const activeFilters = [filterCategory, filterClass, filterType, dateFrom, dateTo].filter(Boolean).length;
+  // Sorting
+  const toggleSort = (field) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedDocs = [...docs].sort((a, b) => {
+    let valA = a[sortField] || '';
+    let valB = b[sortField] || '';
+    if (typeof valA === 'string') valA = valA.toLowerCase();
+    if (typeof valB === 'string') valB = valB.toLowerCase();
+    if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  const activeFilters = [filterClass, filterType, dateFrom, dateTo].filter(Boolean).length;
+  const totalAllDocs = Object.values(categoryCounts).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 font-sans antialiased">
+    <div className="flex flex-col h-full bg-slate-50 font-sans antialiased overflow-hidden">
 
       {/* ── Header ── */}
-      <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 px-6 py-5 border-b border-blue-800">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 px-6 py-4 border-b border-blue-800 flex-shrink-0">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-blue-800/70 rounded-xl border border-blue-700">
               <Archive size={20} className="text-blue-100" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-white">Lab Archive</h1>
-              <p className="text-xs text-blue-200/80">
-                {total} document{total !== 1 ? 's' : ''} · Secure document repository
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-white">Lab Archive</h1>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-800 text-blue-200 border border-blue-700">
+                  High Capacity Archive
+                </span>
+              </div>
+              <p className="text-xs text-blue-200/80 mt-0.5">
+                Categorized Document Repository &amp; OCR Engine · Gated Access Security
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={load} className="p-2 text-blue-200 hover:text-white hover:bg-blue-800 rounded-xl transition-all cursor-pointer border border-blue-800">
+            <button onClick={load} className="p-2 text-blue-200 hover:text-white hover:bg-blue-800 rounded-xl transition-all cursor-pointer border border-blue-800" title="Refresh">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
             <button onClick={() => setShowUpload(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-blue-950 font-bold text-xs rounded-xl hover:bg-blue-50 transition-all cursor-pointer">
-              <Upload size={13} /> Upload
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-blue-950 font-bold text-xs rounded-xl hover:bg-blue-50 transition-all cursor-pointer shadow-sm">
+              <Upload size={13} /> Archive Document
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Search + Filter Bar ── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3">
-        <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <div className="flex-1 relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              className="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-              placeholder="Search by title, reference, content, tags…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+      {/* ── Category Folder Bar (Horizontal Scroll / Grid) ── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3.5 flex-shrink-0">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+              <Folder size={13} className="text-blue-600" /> Category Folders
+            </p>
+            {activeCategory !== 'ALL' && (
+              <button
+                onClick={() => { setActiveCategory('ALL'); setPage(1); }}
+                className="text-xs font-semibold text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                Show All Categories
+              </button>
+            )}
           </div>
 
-          <button onClick={() => setFilterOpen(f => !f)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-              filterOpen || activeFilters > 0
-                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                : 'text-slate-600 border-slate-200 hover:bg-slate-50'
-            }`}>
-            <Filter size={13} /> Filters {activeFilters > 0 && <span className="bg-blue-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilters}</span>}
-            <ChevronDown size={12} className={`transition-transform ${filterOpen ? 'rotate-180' : ''}`} />
-          </button>
+          <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-thin">
+            {/* "All" Folder */}
+            <button
+              onClick={() => { setActiveCategory('ALL'); setPage(1); }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex-shrink-0 ${
+                activeCategory === 'ALL'
+                  ? 'bg-blue-950 text-white border-blue-950 shadow-sm'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <FolderOpen size={14} className={activeCategory === 'ALL' ? 'text-blue-300' : 'text-slate-400'} />
+              <span>All Documents</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${activeCategory === 'ALL' ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                {totalAllDocs}
+              </span>
+            </button>
 
-          <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden">
-            <button onClick={() => setViewMode('grid')} className={`p-2 cursor-pointer ${viewMode === 'grid' ? 'bg-blue-50 text-blue-700' : 'text-slate-400 hover:bg-slate-50'}`}><LayoutGrid size={14} /></button>
-            <button onClick={() => setViewMode('list')} className={`p-2 cursor-pointer ${viewMode === 'list' ? 'bg-blue-50 text-blue-700' : 'text-slate-400 hover:bg-slate-50'}`}><List size={14} /></button>
+            {CATEGORIES.map(cat => {
+              const count = categoryCounts[cat] || 0;
+              const isActive = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => { setActiveCategory(cat); setPage(1); }}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex-shrink-0 ${
+                    isActive
+                      ? 'bg-blue-950 text-white border-blue-950 shadow-sm'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="text-sm">{CATEGORY_ICONS[cat] || '📁'}</span>
+                  <span>{cat}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-blue-800 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Toolbar: Search & Filters ── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-2.5 flex-shrink-0">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          
+          {/* Breadcrumb / Category Status */}
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 w-full sm:w-auto">
+            <span className="text-slate-400">Viewing:</span>
+            <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-slate-900 font-bold flex items-center gap-1.5">
+              {activeCategory === 'ALL' ? 'All Archive Folders' : `${CATEGORY_ICONS[activeCategory] || '📁'} ${activeCategory}`}
+            </span>
+            <span className="text-slate-400">({total} document{total !== 1 ? 's' : ''})</span>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Search Input */}
+            <div className="relative flex-1 sm:w-72">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                className="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                placeholder="Search title, ref number, OCR content..."
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(1); }}
+              />
+            </div>
+
+            {/* Filter Toggle */}
+            <button
+              onClick={() => setFilterOpen(f => !f)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                filterOpen || activeFilters > 0
+                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  : 'text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Filter size={12} /> Filters {activeFilters > 0 && <span className="bg-blue-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilters}</span>}
+              <ChevronDown size={11} className={`transition-transform ${filterOpen ? 'rotate-180' : ''}`} />
+            </button>
           </div>
         </div>
 
-        {/* Filter Expand Panel */}
+        {/* Filter Dropdown */}
         {filterOpen && (
-          <div className="max-w-7xl mx-auto mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-            <select className="border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-              value={filterCategory} onChange={e => setFCat(e.target.value)}>
-              <option value="">All Categories</option>
-              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-            <select className="border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-              value={filterClass} onChange={e => setFClass(e.target.value)}>
+          <div className="max-w-7xl mx-auto mt-2.5 pt-2.5 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <select
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              value={filterClass}
+              onChange={e => { setFClass(e.target.value); setPage(1); }}
+            >
               <option value="">All Classifications</option>
               {CLASSIFICATIONS.map(c => <option key={c} value={c.toLowerCase()}>{c}</option>)}
             </select>
-            <select className="border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-              value={filterType} onChange={e => setFType(e.target.value)}>
-              <option value="">All File Types</option>
+
+            <select
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              value={filterType}
+              onChange={e => { setFType(e.target.value); setPage(1); }}
+            >
+              <option value="">All File Extensions</option>
               {['pdf', 'docx', 'xlsx', 'txt', 'csv', 'png', 'jpg'].map(t => <option key={t}>{t}</option>)}
             </select>
-            <input type="date" className="border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-              value={dateFrom} onChange={e => setDateFrom(e.target.value)} placeholder="From date" />
-            <input type="date" className="border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-              value={dateTo} onChange={e => setDateTo(e.target.value)} placeholder="To date" />
+
+            <input
+              type="date"
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              value={dateFrom}
+              onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+              placeholder="From Date"
+            />
+
+            <input
+              type="date"
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              value={dateTo}
+              onChange={e => { setDateTo(e.target.value); setPage(1); }}
+              placeholder="To Date"
+            />
+
             {activeFilters > 0 && (
-              <button onClick={() => { setFCat(''); setFClass(''); setFType(''); setDateFrom(''); setDateTo(''); }}
-                className="col-span-full text-xs text-rose-600 font-semibold text-left cursor-pointer hover:underline">
+              <button
+                onClick={() => { setFClass(''); setFType(''); setDateFrom(''); setDateTo(''); setPage(1); }}
+                className="col-span-full text-xs text-rose-600 font-semibold text-left cursor-pointer hover:underline"
+              >
                 Clear all filters
               </button>
             )}
@@ -701,47 +768,217 @@ export default function LabArchive() {
         )}
       </div>
 
-      {/* ── Document Body ── */}
-      <div className="flex-1 overflow-y-auto p-6">
+      {/* ── High-Performance Content Table ── */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-7xl mx-auto">
           {loading ? (
-            <div className="text-center py-16 text-slate-400 text-sm">
-              <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-slate-300" />
-              Loading archive…
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 text-sm">
+              <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-blue-600" />
+              Loading archive documents…
             </div>
-          ) : docs.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-dashed border-slate-300 py-20 text-center">
-              <Archive size={44} className="mx-auto text-slate-200 mb-3" />
-              <p className="font-bold text-slate-400 text-sm">No documents found</p>
+          ) : sortedDocs.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-dashed border-slate-300 py-16 text-center">
+              <Archive size={40} className="mx-auto text-slate-300 mb-3" />
+              <p className="font-bold text-slate-500 text-sm">No documents found in this folder</p>
               <p className="text-xs text-slate-400 mt-1 mb-4">
-                {search || activeFilters ? 'Try adjusting your search or filters' : 'Upload your first document to get started'}
+                {search || activeFilters ? 'Try clearing your search or filters' : 'Upload a document into this category'}
               </p>
-              {!search && !activeFilters && (
-                <button onClick={() => setShowUpload(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-950 text-white text-xs font-bold rounded-xl hover:bg-blue-900 transition-all cursor-pointer">
-                  <Upload size={13} /> Upload Document
-                </button>
-              )}
-            </div>
-          ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {docs.map(doc => (
-                <DocCard key={doc.id} doc={doc} onClick={() => handleCardClick(doc)} />
-              ))}
+              <button
+                onClick={() => setShowUpload(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-950 text-white text-xs font-bold rounded-xl hover:bg-blue-900 transition-all cursor-pointer"
+              >
+                <Upload size={13} /> Archive Document
+              </button>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-              <div className="flex items-center gap-4 px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                <div className="w-6" />
-                <div className="flex-1">Title</div>
-                <div className="hidden sm:block w-28">Classification</div>
-                <div className="hidden md:block w-24 text-right">Date</div>
-                <div className="hidden lg:block w-16 text-right">Size</div>
-                <div className="w-16 text-right">Activity</div>
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+              
+              {/* Data Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3 px-4 w-10 text-center">#</th>
+                      <th className="py-3 px-4 cursor-pointer hover:text-slate-900" onClick={() => toggleSort('title')}>
+                        <div className="flex items-center gap-1">
+                          Document Title &amp; File
+                          <ArrowUpDown size={11} />
+                        </div>
+                      </th>
+                      <th className="py-3 px-4 cursor-pointer hover:text-slate-900" onClick={() => toggleSort('reference_number')}>
+                        <div className="flex items-center gap-1">
+                          Ref Number
+                          <ArrowUpDown size={11} />
+                        </div>
+                      </th>
+                      {activeCategory === 'ALL' && <th className="py-3 px-4">Category</th>}
+                      <th className="py-3 px-4">Classification</th>
+                      <th className="py-3 px-4">Department</th>
+                      <th className="py-3 px-4 cursor-pointer hover:text-slate-900" onClick={() => toggleSort('document_date')}>
+                        <div className="flex items-center gap-1">
+                          Date
+                          <ArrowUpDown size={11} />
+                        </div>
+                      </th>
+                      <th className="py-3 px-4 cursor-pointer hover:text-slate-900 text-right" onClick={() => toggleSort('file_size_bytes')}>
+                        <div className="flex items-center justify-end gap-1">
+                          Size
+                          <ArrowUpDown size={11} />
+                        </div>
+                      </th>
+                      <th className="py-3 px-4 text-center">Views / Downloads</th>
+                      <th className="py-3 px-4 text-right pr-5">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700 font-medium">
+                    {sortedDocs.map((doc, idx) => {
+                      const cfg = CLASSIFICATION_CONFIG[doc.classification] || CLASSIFICATION_CONFIG.Internal;
+                      const rowIndex = (page - 1) * pageSize + idx + 1;
+                      return (
+                        <tr
+                          key={doc.id}
+                          className="hover:bg-blue-50/50 transition-colors group cursor-pointer"
+                          onClick={() => handleCardClick(doc)}
+                        >
+                          <td className="py-3 px-4 text-center text-slate-400 font-mono text-[11px]">{rowIndex}</td>
+                          
+                          {/* Title & File Name */}
+                          <td className="py-3 px-4 max-w-xs">
+                            <div className="flex items-center gap-2.5">
+                              {getFileIcon(doc.file_extension)}
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-slate-900 group-hover:text-blue-900 transition-colors truncate leading-tight">
+                                  {doc.title}
+                                </p>
+                                <p className="text-[10.5px] text-slate-400 truncate mt-0.5">
+                                  {doc.file_name} {doc.version ? `· ${doc.version}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Reference Number */}
+                          <td className="py-3 px-4 font-mono text-[11px] text-slate-600 font-semibold whitespace-nowrap">
+                            {doc.reference_number || '—'}
+                          </td>
+
+                          {/* Category (if ALL) */}
+                          {activeCategory === 'ALL' && (
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                {CATEGORY_ICONS[doc.category] || '📁'} {doc.category}
+                              </span>
+                            </td>
+                          )}
+
+                          {/* Classification */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold border ${cfg.color}`}>
+                              {cfg.icon} {doc.classification}
+                            </span>
+                          </td>
+
+                          {/* Department */}
+                          <td className="py-3 px-4 text-slate-600 whitespace-nowrap">
+                            {doc.department || 'General'}
+                          </td>
+
+                          {/* Date */}
+                          <td className="py-3 px-4 whitespace-nowrap text-slate-600">
+                            {formatDate(doc.document_date || doc.created_at)}
+                          </td>
+
+                          {/* File Size */}
+                          <td className="py-3 px-4 text-right font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                            {formatBytes(doc.file_size_bytes)}
+                          </td>
+
+                          {/* Views / Downloads */}
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            <span className="inline-flex items-center gap-2 text-[11px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                              <span title="Views" className="flex items-center gap-0.5"><Eye size={10} /> {doc.view_count}</span>
+                              <span className="text-slate-300">|</span>
+                              <span title="Downloads" className="flex items-center gap-0.5"><Download size={10} /> {doc.download_count}</span>
+                            </span>
+                          </td>
+
+                          {/* Quick Actions */}
+                          <td className="py-3 px-4 text-right pr-5 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleCardClick(doc)}
+                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/70 rounded-lg transition-all cursor-pointer"
+                                title="View Details / Preview"
+                              >
+                                <Eye size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDownload(doc.id, doc.file_name, doc.file_type)}
+                                className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-100/70 rounded-lg transition-all cursor-pointer"
+                                title="Download Document"
+                              >
+                                <Download size={14} />
+                              </button>
+                              {isManager && (
+                                <button
+                                  onClick={() => setDeleteTarget(doc)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-100/70 rounded-lg transition-all cursor-pointer"
+                                  title="Delete Document"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              {docs.map(doc => (
-                <DocRow key={doc.id} doc={doc} onClick={() => handleCardClick(doc)} />
-              ))}
+
+              {/* Table Footer / Pagination Controls */}
+              <div className="bg-slate-50 px-4 py-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+                <div className="flex items-center gap-3">
+                  <span>
+                    Showing <strong>{(page - 1) * pageSize + 1}</strong> to <strong>{Math.min(page * pageSize, total)}</strong> of <strong>{total}</strong> documents
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400">| Per page:</span>
+                    <select
+                      className="border border-slate-200 rounded-lg px-2 py-1 bg-white text-xs text-slate-700 focus:outline-none"
+                      value={pageSize}
+                      onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Page Buttons */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(p - 1, 1))}
+                    disabled={page === 1}
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <ChevronLeft size={13} /> Prev
+                  </button>
+                  <span className="px-3 py-1 font-bold text-slate-700">
+                    {page} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                    disabled={page >= totalPages}
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    Next <ChevronRight size={13} />
+                  </button>
+                </div>
+              </div>
+
             </div>
           )}
         </div>
@@ -749,7 +986,11 @@ export default function LabArchive() {
 
       {/* ── Modals ── */}
       {showUpload && (
-        <UploadModal onClose={() => setShowUpload(false)} onUploaded={load} />
+        <UploadModal
+          onClose={() => setShowUpload(false)}
+          onUploaded={load}
+          defaultCategory={activeCategory !== 'ALL' ? activeCategory : 'SOP'}
+        />
       )}
 
       {selectedDoc && detailData && (
@@ -769,7 +1010,7 @@ export default function LabArchive() {
         />
       )}
 
-      {/* Edit modal (reuse upload form structure) */}
+      {/* Edit modal */}
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -822,7 +1063,7 @@ export default function LabArchive() {
 function EditForm({ initial, onSave, onClose }) {
   const [form, setForm] = useState({
     title: initial.title || '', description: initial.description || '',
-    category: initial.category || 'Other', classification: initial.classification || 'Internal',
+    category: initial.category || 'SOP', classification: initial.classification || 'Internal',
     document_date: initial.document_date || '', expiry_date: initial.expiry_date || '',
     version: initial.version || '', reference_number: initial.reference_number || '',
     department: initial.department || '',
