@@ -301,7 +301,7 @@ exports.uploadDocument = async (req, res, next) => {
           department || null,
           req.user?.id || null,
           req.user?.full_name || req.user?.username || 'Lab Staff',
-          process.env.STORAGE_PROVIDER || 'database',
+          process.env.STORAGE_PROVIDER || (process.env.TURSO_DATABASE_URL || process.env.lcreporting_TURSO_DATABASE_URL ? 'turso' : 'database'),
           null
         ]
       );

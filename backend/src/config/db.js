@@ -33,7 +33,8 @@ const ENCRYPTED_COLUMNS = {
   users: ['full_name', 'email'],
   imaging_orders: ['patient_name', 'clinical_indication', 'indication_code_json', 'referring_provider', 'notes'],
   imaging_studies: ['patient_name', 'technical_notes', 'consent_json', 'referring_provider', 'clinical_indication', 'sid', 'patient_age', 'patient_sex'],
-  imaging_reports: ['technique', 'findings_narrative', 'findings_code_json', 'impression', 'diagnosis_code_json', 'recommendations', 'amendment_reason']
+  imaging_reports: ['technique', 'findings_narrative', 'findings_code_json', 'impression', 'diagnosis_code_json', 'recommendations', 'amendment_reason'],
+  lab_documents: ['file_base64', 'ocr_text', 'description']
 };
 
 const ALL_ENCRYPTED_COLS = new Set(Object.values(ENCRYPTED_COLUMNS).flat());
