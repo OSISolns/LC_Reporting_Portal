@@ -91,11 +91,64 @@ async function logDocumentAccess(documentId, action, req) {
   }
 }
 
+// ── Self-healing table schema verification ─────────────────────────────────
+let archiveTablesEnsured = false;
+async function ensureArchiveTablesExist() {
+  if (archiveTablesEnsured) return;
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS lab_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        category TEXT DEFAULT 'Other',
+        classification TEXT DEFAULT 'Internal',
+        file_name TEXT NOT NULL,
+        file_type TEXT,
+        file_extension TEXT,
+        file_size_bytes INTEGER DEFAULT 0,
+        file_base64 TEXT NOT NULL,
+        ocr_text TEXT,
+        tags TEXT DEFAULT '[]',
+        document_date TEXT,
+        expiry_date TEXT,
+        version TEXT,
+        reference_number TEXT,
+        department TEXT,
+        uploaded_by INTEGER,
+        uploaded_by_name TEXT,
+        storage_provider TEXT DEFAULT 'database',
+        file_url TEXT,
+        view_count INTEGER DEFAULT 0,
+        download_count INTEGER DEFAULT 0,
+        last_accessed_at DATETIME,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS lab_document_access_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        document_id INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        user_id INTEGER,
+        user_name TEXT,
+        accessed_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        notes TEXT
+      )
+    `);
+    archiveTablesEnsured = true;
+  } catch (e) {
+    console.warn('ensureArchiveTablesExist warning:', e.message);
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // 1. LIST documents (no file_base64)
 // ══════════════════════════════════════════════════════════════════════════════
 exports.listDocuments = async (req, res, next) => {
   try {
+    await ensureArchiveTablesExist();
     const { search, category, classification, file_type, date_from, date_to, page = 1, limit = 50 } = req.query;
     const userRole = (req.user?.role || '').toLowerCase();
     const offset = (Number(page) - 1) * Number(limit);
@@ -185,6 +238,7 @@ exports.listDocuments = async (req, res, next) => {
 // ══════════════════════════════════════════════════════════════════════════════
 exports.uploadDocument = async (req, res, next) => {
   try {
+    await ensureArchiveTablesExist();
     const rawFiles = req.files && req.files.length > 0 ? req.files : (req.file ? [req.file] : []);
     if (rawFiles.length === 0) return res.status(400).json({ success: false, message: 'No file(s) uploaded.' });
 
@@ -273,6 +327,7 @@ exports.uploadDocument = async (req, res, next) => {
 // ══════════════════════════════════════════════════════════════════════════════
 exports.getDocumentMeta = async (req, res, next) => {
   try {
+    await ensureArchiveTablesExist();
     const { id } = req.params;
     const userRole = (req.user?.role || '').toLowerCase();
 
@@ -300,6 +355,7 @@ exports.getDocumentMeta = async (req, res, next) => {
 // ══════════════════════════════════════════════════════════════════════════════
 exports.downloadDocument = async (req, res, next) => {
   try {
+    await ensureArchiveTablesExist();
     const { id } = req.params;
     const userRole = (req.user?.role || '').toLowerCase();
 
@@ -332,6 +388,7 @@ exports.downloadDocument = async (req, res, next) => {
 // ══════════════════════════════════════════════════════════════════════════════
 exports.updateDocumentMeta = async (req, res, next) => {
   try {
+    await ensureArchiveTablesExist();
     const { id } = req.params;
     const userRole = (req.user?.role || '').toLowerCase();
     const {
@@ -376,6 +433,7 @@ exports.updateDocumentMeta = async (req, res, next) => {
 // ══════════════════════════════════════════════════════════════════════════════
 exports.deleteDocument = async (req, res, next) => {
   try {
+    await ensureArchiveTablesExist();
     const { id } = req.params;
     const userRole = (req.user?.role || '').toLowerCase();
     const DELETE_ROLES = ['lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo'];
