@@ -1005,6 +1005,12 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create lab_documents:', err.message);
       });
 
+      const safeAddDocCol = async (colDef) => {
+        try { await client.execute(`ALTER TABLE lab_documents ADD COLUMN ${colDef}`); } catch (e) {}
+      };
+      await safeAddDocCol("storage_provider TEXT DEFAULT 'database'");
+      await safeAddDocCol("file_url TEXT");
+
       // ── Lab Archive: Access Logs Table ─────────────────────────────────────
       await client.execute(`
         CREATE TABLE IF NOT EXISTS lab_document_access_logs (

@@ -30,15 +30,15 @@ const MANAGER_ROLES = ['lab_manager', 'lab_lead', 'lab_team_lead', 'quality_mana
 
 const CLASSIFICATION_CONFIG = {
   Public:       { color: 'bg-slate-100 text-slate-700 border-slate-300',   icon: <Shield size={11} /> },
-  Internal:     { color: 'bg-blue-50 text-blue-800 border-blue-200',        icon: <ShieldCheck size={11} /> },
+  Internal:     { color: 'bg-[#1B669E]/10 text-[#1B669E] border-[#1B669E]/30', icon: <ShieldCheck size={11} /> },
   Confidential: { color: 'bg-amber-50 text-amber-800 border-amber-200',     icon: <ShieldAlert size={11} /> },
   Restricted:   { color: 'bg-rose-50 text-rose-800 border-rose-200',        icon: <Lock size={11} /> },
 };
 
 const FILE_ICONS = {
   pdf:  <FileText size={18} className="text-rose-500 flex-shrink-0" />,
-  docx: <FileText size={18} className="text-blue-500 flex-shrink-0" />,
-  doc:  <FileText size={18} className="text-blue-500 flex-shrink-0" />,
+  docx: <FileText size={18} className="text-[#1B669E] flex-shrink-0" />,
+  doc:  <FileText size={18} className="text-[#1B669E] flex-shrink-0" />,
   xlsx: <FileSpreadsheet size={18} className="text-emerald-500 flex-shrink-0" />,
   xls:  <FileSpreadsheet size={18} className="text-emerald-500 flex-shrink-0" />,
   csv:  <FileSpreadsheet size={18} className="text-teal-500 flex-shrink-0" />,
@@ -111,8 +111,8 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
-          <h2 className="font-bold text-blue-950 text-base flex items-center gap-2">
-            <Upload size={16} className="text-blue-700" /> Archive Document
+          <h2 className="font-bold text-[#1B669E] text-base flex items-center gap-2">
+            <Upload size={16} className="text-[#1B669E]" /> Archive Document
           </h2>
           <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg cursor-pointer transition-all"><X size={15} /></button>
         </div>
@@ -125,7 +125,7 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
             onDragLeave={() => setDragging(false)}
             onClick={() => fileRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-              dragging ? 'border-blue-400 bg-blue-50' : file ? 'border-emerald-300 bg-emerald-50' : 'border-slate-300 hover:border-blue-300 hover:bg-slate-50'
+              dragging ? 'border-[#1B669E] bg-[#1B669E]/10' : file ? 'border-emerald-300 bg-emerald-50' : 'border-slate-300 hover:border-[#1B669E]/60 hover:bg-slate-50'
             }`}
           >
             <input ref={fileRef} type="file" className="hidden" onChange={handleFile}
@@ -151,7 +151,7 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
           {/* Title */}
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Title *</label>
-            <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+            <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E]"
               placeholder="Document title" value={form.title} onChange={e => set('title', e.target.value)} required />
           </div>
 
@@ -159,14 +159,14 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Category Folder</label>
-              <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white"
+              <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E] bg-white"
                 value={form.category} onChange={e => set('category', e.target.value)}>
                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Classification</label>
-              <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white"
+              <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E] bg-white"
                 value={form.classification} onChange={e => set('classification', e.target.value)}>
                 {CLASSIFICATIONS.map(c => <option key={c}>{c}</option>)}
               </select>
@@ -176,7 +176,7 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
           {/* Description */}
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Description / Notes</label>
-            <textarea rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none"
+            <textarea rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E] resize-none"
               placeholder="Brief description of document content, purpose, or origin"
               value={form.description} onChange={e => set('description', e.target.value)} />
           </div>
@@ -185,22 +185,22 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Document Date</label>
-              <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E]"
                 value={form.document_date} onChange={e => set('document_date', e.target.value)} />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Expiry Date</label>
-              <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E]"
                 value={form.expiry_date} onChange={e => set('expiry_date', e.target.value)} />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Version</label>
-              <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E]"
                 placeholder="e.g. v2.1" value={form.version} onChange={e => set('version', e.target.value)} />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Ref / Doc No.</label>
-              <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E]"
                 placeholder="Auto-generated if left blank" value={form.reference_number} onChange={e => set('reference_number', e.target.value)} />
             </div>
           </div>
@@ -209,7 +209,7 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Department</label>
-              <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white"
+              <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E] bg-white"
                 value={form.department} onChange={e => set('department', e.target.value)}>
                 <option value="">Select…</option>
                 {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
@@ -217,7 +217,7 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Tags (comma-separated)</label>
-              <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E]"
                 placeholder="e.g. qc, 2024, approved" value={form.tags} onChange={e => set('tags', e.target.value)} />
             </div>
           </div>
@@ -228,7 +228,7 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
               Cancel
             </button>
             <button type="submit" disabled={uploading}
-              className="flex-1 py-2.5 bg-blue-950 hover:bg-blue-900 text-white rounded-xl text-sm font-bold transition-all cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2">
+              className="flex-1 py-2.5 bg-[#1B669E] hover:bg-[#155280] text-white rounded-xl text-sm font-bold transition-all cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm">
               {uploading ? <><RefreshCw size={13} className="animate-spin" /> Archiving…</> : <><Upload size={13} /> Archive Document</>}
             </button>
           </div>
@@ -297,7 +297,7 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
               {docMeta.category}
             </span>
             {docMeta.version && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#1B669E]/10 text-[#1B669E] border border-[#1B669E]/20">
                 {docMeta.version}
               </span>
             )}
@@ -342,7 +342,7 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tags</p>
                   <div className="flex flex-wrap gap-1.5">
                     {tags.map((tag, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-[11px] font-medium border border-blue-100">
+                      <span key={i} className="px-2 py-0.5 bg-[#1B669E]/10 text-[#1B669E] rounded-full text-[11px] font-medium border border-[#1B669E]/20">
                         {tag}
                       </span>
                     ))}
@@ -392,7 +392,7 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
                   {log.map(entry => (
                     <div key={entry.id} className="flex items-start gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100 text-xs">
                       <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
-                        entry.action === 'download' ? 'bg-blue-500' :
+                        entry.action === 'download' ? 'bg-[#1B669E]' :
                         entry.action === 'delete' ? 'bg-rose-500' :
                         entry.action === 'update' ? 'bg-amber-500' : 'bg-slate-400'
                       }`} />
@@ -418,7 +418,7 @@ function DetailPanel({ docMeta, isManager, onClose, onEdit, onDelete, onDownload
               </button>
             )}
             <button onClick={onDownload}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-950 hover:bg-blue-900 text-white rounded-xl text-xs font-bold transition-all cursor-pointer">
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#1B669E] hover:bg-[#155280] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm">
               <Download size={13} /> Download
             </button>
           </div>
@@ -576,31 +576,31 @@ export default function LabArchive() {
   return (
     <div className="flex flex-col h-full bg-slate-50 font-sans antialiased overflow-hidden">
 
-      {/* ── Header ── */}
-      <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 px-6 py-4 border-b border-blue-800 flex-shrink-0">
+      {/* ── Header (#1B669E) ── */}
+      <div className="bg-[#1B669E] px-6 py-4 border-b border-[#155280] flex-shrink-0 shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-800/70 rounded-xl border border-blue-700">
-              <Archive size={20} className="text-blue-100" />
+            <div className="p-2.5 bg-white/10 rounded-xl border border-white/20">
+              <Archive size={20} className="text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-bold text-white">Lab Archive</h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-800 text-blue-200 border border-blue-700">
-                  High Capacity Archive
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#155280] text-white border border-white/20">
+                  Document Management
                 </span>
               </div>
-              <p className="text-xs text-blue-200/80 mt-0.5">
+              <p className="text-xs text-white/80 mt-0.5">
                 Categorized Document Repository &amp; OCR Engine · Gated Access Security
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={load} className="p-2 text-blue-200 hover:text-white hover:bg-blue-800 rounded-xl transition-all cursor-pointer border border-blue-800" title="Refresh">
+            <button onClick={load} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer border border-white/20" title="Refresh">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
             <button onClick={() => setShowUpload(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-blue-950 font-bold text-xs rounded-xl hover:bg-blue-50 transition-all cursor-pointer shadow-sm">
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-[#1B669E] font-bold text-xs rounded-xl hover:bg-slate-100 transition-all cursor-pointer shadow-sm">
               <Upload size={13} /> Archive Document
             </button>
           </div>
@@ -612,12 +612,12 @@ export default function LabArchive() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-2">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-              <Folder size={13} className="text-blue-600" /> Category Folders
+              <Folder size={13} className="text-[#1B669E]" /> Category Folders
             </p>
             {activeCategory !== 'ALL' && (
               <button
                 onClick={() => { setActiveCategory('ALL'); setPage(1); }}
-                className="text-xs font-semibold text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs font-semibold text-[#1B669E] hover:underline flex items-center gap-1 cursor-pointer"
               >
                 Show All Categories
               </button>
@@ -630,13 +630,13 @@ export default function LabArchive() {
               onClick={() => { setActiveCategory('ALL'); setPage(1); }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex-shrink-0 ${
                 activeCategory === 'ALL'
-                  ? 'bg-blue-950 text-white border-blue-950 shadow-sm'
+                  ? 'bg-[#1B669E] text-white border-[#1B669E] shadow-sm'
                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
             >
-              <FolderOpen size={14} className={activeCategory === 'ALL' ? 'text-blue-300' : 'text-slate-400'} />
+              <FolderOpen size={14} className={activeCategory === 'ALL' ? 'text-white' : 'text-slate-400'} />
               <span>All Documents</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${activeCategory === 'ALL' ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-600'}`}>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${activeCategory === 'ALL' ? 'bg-[#155280] text-white' : 'bg-slate-200 text-slate-600'}`}>
                 {totalAllDocs}
               </span>
             </button>
@@ -650,13 +650,13 @@ export default function LabArchive() {
                   onClick={() => { setActiveCategory(cat); setPage(1); }}
                   className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex-shrink-0 ${
                     isActive
-                      ? 'bg-blue-950 text-white border-blue-950 shadow-sm'
-                      : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                      ? 'bg-[#1B669E] text-white border-[#1B669E] shadow-sm'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-[#1B669E]/40 hover:bg-slate-50'
                   }`}
                 >
-                  <Folder size={14} className={isActive ? 'text-blue-300' : 'text-slate-400'} />
+                  <Folder size={14} className={isActive ? 'text-white' : 'text-slate-400'} />
                   <span>{cat}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-blue-800 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-[#155280] text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                     {count}
                   </span>
                 </button>
@@ -674,7 +674,7 @@ export default function LabArchive() {
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 w-full sm:w-auto">
             <span className="text-slate-400">Viewing:</span>
             <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-slate-900 font-bold flex items-center gap-1.5">
-              <Folder size={13} className="text-slate-600" />
+              <Folder size={13} className="text-[#1B669E]" />
               {activeCategory === 'ALL' ? 'All Archive Folders' : activeCategory}
             </span>
             <span className="text-slate-400">({total} document{total !== 1 ? 's' : ''})</span>
@@ -685,7 +685,7 @@ export default function LabArchive() {
             <div className="relative flex-1 sm:w-72">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
-                className="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                className="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E]"
                 placeholder="Search title, ref number, OCR content..."
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -697,11 +697,11 @@ export default function LabArchive() {
               onClick={() => setFilterOpen(f => !f)}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                 filterOpen || activeFilters > 0
-                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  ? 'bg-[#1B669E]/10 text-[#1B669E] border-[#1B669E]/30'
                   : 'text-slate-600 border-slate-200 hover:bg-slate-50'
               }`}
             >
-              <Filter size={12} /> Filters {activeFilters > 0 && <span className="bg-blue-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilters}</span>}
+              <Filter size={12} /> Filters {activeFilters > 0 && <span className="bg-[#1B669E] text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilters}</span>}
               <ChevronDown size={11} className={`transition-transform ${filterOpen ? 'rotate-180' : ''}`} />
             </button>
           </div>
@@ -711,7 +711,7 @@ export default function LabArchive() {
         {filterOpen && (
           <div className="max-w-7xl mx-auto mt-2.5 pt-2.5 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <select
-              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
               value={filterClass}
               onChange={e => { setFClass(e.target.value); setPage(1); }}
             >
@@ -720,7 +720,7 @@ export default function LabArchive() {
             </select>
 
             <select
-              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
               value={filterType}
               onChange={e => { setFType(e.target.value); setPage(1); }}
             >
@@ -730,7 +730,7 @@ export default function LabArchive() {
 
             <input
               type="date"
-              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
               value={dateFrom}
               onChange={e => { setDateFrom(e.target.value); setPage(1); }}
               placeholder="From Date"
@@ -738,7 +738,7 @@ export default function LabArchive() {
 
             <input
               type="date"
-              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
               value={dateTo}
               onChange={e => { setDateTo(e.target.value); setPage(1); }}
               placeholder="To Date"
@@ -761,7 +761,7 @@ export default function LabArchive() {
         <div className="max-w-7xl mx-auto">
           {loading ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 text-sm">
-              <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-blue-600" />
+              <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-[#1B669E]" />
               Loading archive documents…
             </div>
           ) : sortedDocs.length === 0 ? (
@@ -773,7 +773,7 @@ export default function LabArchive() {
               </p>
               <button
                 onClick={() => setShowUpload(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-950 text-white text-xs font-bold rounded-xl hover:bg-blue-900 transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1B669E] text-white text-xs font-bold rounded-xl hover:bg-[#155280] transition-all cursor-pointer shadow-sm"
               >
                 <Upload size={13} /> Archive Document
               </button>
@@ -825,7 +825,7 @@ export default function LabArchive() {
                       return (
                         <tr
                           key={doc.id}
-                          className="hover:bg-blue-50/50 transition-colors group cursor-pointer"
+                          className="hover:bg-[#1B669E]/5 transition-colors group cursor-pointer"
                           onClick={() => handleCardClick(doc)}
                         >
                           <td className="py-3 px-4 text-center text-slate-400 font-mono text-[11px]">{rowIndex}</td>
@@ -835,7 +835,7 @@ export default function LabArchive() {
                             <div className="flex items-center gap-2.5">
                               {getFileIcon(doc.file_extension)}
                               <div className="min-w-0 flex-1">
-                                <p className="font-bold text-slate-900 group-hover:text-blue-900 transition-colors truncate leading-tight">
+                                <p className="font-bold text-slate-900 group-hover:text-[#1B669E] transition-colors truncate leading-tight">
                                   {doc.title}
                                 </p>
                                 <p className="text-[10.5px] text-slate-400 truncate mt-0.5">
@@ -895,7 +895,7 @@ export default function LabArchive() {
                             <div className="flex items-center justify-end gap-1">
                               <button
                                 onClick={() => handleCardClick(doc)}
-                                className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-100/70 rounded-lg transition-all cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-[#1B669E] hover:bg-[#1B669E]/10 rounded-lg transition-all cursor-pointer"
                                 title="View Details / Preview"
                               >
                                 <Eye size={14} />
@@ -1003,7 +1003,7 @@ export default function LabArchive() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white">
-              <h2 className="font-bold text-blue-950 text-sm flex items-center gap-2"><Pencil size={15} className="text-blue-700" /> Edit Document</h2>
+              <h2 className="font-bold text-[#1B669E] text-sm flex items-center gap-2"><Pencil size={15} className="text-[#1B669E]" /> Edit Document</h2>
               <button onClick={() => setEditTarget(null)} className="p-1.5 hover:bg-slate-100 rounded-lg cursor-pointer"><X size={14} /></button>
             </div>
             <EditForm
@@ -1079,20 +1079,20 @@ function EditForm({ initial, onSave, onClose }) {
     <form onSubmit={handleSubmit} className="p-5 space-y-4">
       <div>
         <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Title *</label>
-        <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+        <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E]"
           value={form.title} onChange={e => set('title', e.target.value)} required />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Category</label>
-          <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
             value={form.category} onChange={e => set('category', e.target.value)}>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Classification</label>
-          <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          <select className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
             value={form.classification} onChange={e => set('classification', e.target.value)}>
             {CLASSIFICATIONS.map(c => <option key={c}>{c}</option>)}
           </select>
@@ -1100,41 +1100,41 @@ function EditForm({ initial, onSave, onClose }) {
       </div>
       <div>
         <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Description</label>
-        <textarea rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+        <textarea rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
           value={form.description} onChange={e => set('description', e.target.value)} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Doc Date</label>
-          <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
             value={form.document_date} onChange={e => set('document_date', e.target.value)} />
         </div>
         <div>
           <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Expiry Date</label>
-          <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
             value={form.expiry_date} onChange={e => set('expiry_date', e.target.value)} />
         </div>
         <div>
           <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Version</label>
-          <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
             value={form.version} onChange={e => set('version', e.target.value)} />
         </div>
         <div>
           <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Ref / Doc No.</label>
-          <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
             value={form.reference_number} onChange={e => set('reference_number', e.target.value)} />
         </div>
       </div>
       <div>
         <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Tags (comma-separated)</label>
-        <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+        <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30"
           value={form.tags} onChange={e => set('tags', e.target.value)} />
       </div>
       <div className="flex gap-3 pt-1">
         <button type="button" onClick={onClose}
           className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">Cancel</button>
         <button type="submit" disabled={saving}
-          className="flex-1 py-2.5 bg-blue-950 hover:bg-blue-900 text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-60">
+          className="flex-1 py-2.5 bg-[#1B669E] hover:bg-[#155280] text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-60 shadow-sm">
           {saving ? 'Saving…' : 'Save Changes'}
         </button>
       </div>

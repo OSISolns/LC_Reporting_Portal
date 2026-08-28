@@ -207,8 +207,9 @@ exports.uploadDocument = async (req, res, next) => {
       `INSERT INTO lab_documents (
         title, description, category, classification, file_name, file_type, file_extension,
         file_size_bytes, file_base64, ocr_text, tags, document_date, expiry_date,
-        version, reference_number, department, uploaded_by, uploaded_by_name
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        version, reference_number, department, uploaded_by, uploaded_by_name,
+        storage_provider, file_url
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         title.trim(),
         description || null,
@@ -227,7 +228,9 @@ exports.uploadDocument = async (req, res, next) => {
         finalRefNum,
         department || null,
         req.user?.id || null,
-        req.user?.full_name || req.user?.username || 'Lab Staff'
+        req.user?.full_name || req.user?.username || 'Lab Staff',
+        process.env.STORAGE_PROVIDER || 'database',
+        null // file_url for future external file server URL
       ]
     );
 
@@ -275,7 +278,7 @@ exports.downloadDocument = async (req, res, next) => {
     const userRole = (req.user?.role || '').toLowerCase();
 
     const { rows } = await db.query(
-      'SELECT id, title, classification, file_name, file_type, file_base64 FROM lab_documents WHERE id = ?', [id]
+      'SELECT id, title, classification, file_name, file_type, file_base64, storage_provider, file_url FROM lab_documents WHERE id = ?', [id]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Document not found.' });
 
@@ -291,6 +294,8 @@ exports.downloadDocument = async (req, res, next) => {
         file_name: doc.file_name,
         file_type: doc.file_type,
         file_base64: doc.file_base64,
+        storage_provider: doc.storage_provider || 'database',
+        file_url: doc.file_url || null,
       }
     });
   } catch (err) { next(err); }
