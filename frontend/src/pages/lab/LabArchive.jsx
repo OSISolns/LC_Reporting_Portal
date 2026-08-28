@@ -19,19 +19,6 @@ const CATEGORIES = [
   'NCR Document', 'Other'
 ];
 
-const CATEGORY_ICONS = {
-  'SOP':                     '📁',
-  'Quality Control':         '🧪',
-  'Calibration Certificate': '⚖️',
-  'Audit Report':            '📊',
-  'Training Record':         '🎓',
-  'Regulatory':              '🏛️',
-  'Equipment Manual':        '🔧',
-  'Patient Data':            '📋',
-  'NCR Document':            '⚠️',
-  'Other':                   '📂',
-};
-
 const CLASSIFICATIONS = ['Public', 'Internal', 'Confidential', 'Restricted'];
 
 const DEPARTMENTS = [
@@ -667,7 +654,7 @@ export default function LabArchive() {
                       : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
                   }`}
                 >
-                  <span className="text-sm">{CATEGORY_ICONS[cat] || '📁'}</span>
+                  <Folder size={14} className={isActive ? 'text-blue-300' : 'text-slate-400'} />
                   <span>{cat}</span>
                   <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-blue-800 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                     {count}
@@ -687,7 +674,8 @@ export default function LabArchive() {
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 w-full sm:w-auto">
             <span className="text-slate-400">Viewing:</span>
             <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-slate-900 font-bold flex items-center gap-1.5">
-              {activeCategory === 'ALL' ? 'All Archive Folders' : `${CATEGORY_ICONS[activeCategory] || '📁'} ${activeCategory}`}
+              <Folder size={13} className="text-slate-600" />
+              {activeCategory === 'ALL' ? 'All Archive Folders' : activeCategory}
             </span>
             <span className="text-slate-400">({total} document{total !== 1 ? 's' : ''})</span>
           </div>
@@ -866,7 +854,7 @@ export default function LabArchive() {
                           {activeCategory === 'ALL' && (
                             <td className="py-3 px-4 whitespace-nowrap">
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                                {CATEGORY_ICONS[doc.category] || '📁'} {doc.category}
+                                <Folder size={11} className="text-slate-500" /> {doc.category}
                               </span>
                             </td>
                           )}
