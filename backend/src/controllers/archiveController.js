@@ -5,14 +5,16 @@ const multer = require('multer');
 
 // ── Classification role gate ────────────────────────────────────────────────
 const CLASSIFICATION_ROLES = {
-  public:       ['lab_tech', 'lab', 'lab_lead', 'lab_team_lead', 'lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo'],
-  internal:     ['lab_tech', 'lab', 'lab_lead', 'lab_team_lead', 'lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo'],
-  confidential: ['lab_lead', 'lab_team_lead', 'lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo'],
-  restricted:   ['lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo'],
+  public:       ['*'], // All authenticated staff
+  internal:     ['*'], // All authenticated staff
+  confidential: ['lab_lead', 'lab_team_lead', 'lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo', 'medical_director', 'doctor', 'consultant', 'hsfp'],
+  restricted:   ['lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo', 'medical_director'],
 };
 
 const canAccessClassification = (userRole, classification) => {
-  const allowed = CLASSIFICATION_ROLES[(classification || 'internal').toLowerCase()] || CLASSIFICATION_ROLES.internal;
+  const level = (classification || 'internal').toLowerCase();
+  const allowed = CLASSIFICATION_ROLES[level] || CLASSIFICATION_ROLES.internal;
+  if (allowed.includes('*')) return true;
   return allowed.includes((userRole || '').toLowerCase());
 };
 
@@ -109,7 +111,9 @@ exports.listDocuments = async (req, res, next) => {
     const accessibleLevels = Object.keys(CLASSIFICATION_ROLES).filter(level =>
       canAccessClassification(userRole, level)
     );
-    if (accessibleLevels.length < 4) {
+    if (accessibleLevels.length === 0) {
+      sql += ' AND 1=0';
+    } else if (accessibleLevels.length < 4) {
       sql += ` AND LOWER(classification) IN (${accessibleLevels.map(() => '?').join(',')})`;
       params.push(...accessibleLevels);
     }
@@ -133,7 +137,9 @@ exports.listDocuments = async (req, res, next) => {
     // Count
     let countSql = `SELECT COUNT(*) as cnt FROM lab_documents WHERE 1=1`;
     const countParams = [];
-    if (accessibleLevels.length < 4) {
+    if (accessibleLevels.length === 0) {
+      countSql += ' AND 1=0';
+    } else if (accessibleLevels.length < 4) {
       countSql += ` AND LOWER(classification) IN (${accessibleLevels.map(() => '?').join(',')})`;
       countParams.push(...accessibleLevels);
     }
@@ -152,7 +158,9 @@ exports.listDocuments = async (req, res, next) => {
     // Category Breakdown Counts for Folder Navigation
     let catSql = `SELECT category, COUNT(*) as cnt FROM lab_documents WHERE 1=1`;
     const catParams = [];
-    if (accessibleLevels.length < 4) {
+    if (accessibleLevels.length === 0) {
+      catSql += ' AND 1=0';
+    } else if (accessibleLevels.length < 4) {
       catSql += ` AND LOWER(classification) IN (${accessibleLevels.map(() => '?').join(',')})`;
       catParams.push(...accessibleLevels);
     }
