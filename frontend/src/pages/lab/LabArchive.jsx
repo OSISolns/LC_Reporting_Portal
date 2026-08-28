@@ -6,6 +6,7 @@ import {
   ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   listDocuments, uploadDocument, getDocumentMeta,
@@ -543,16 +544,13 @@ export default function LabArchive() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleCardClick = async (doc) => {
-    try {
-      const res = await getDocumentMeta(doc.id);
-      const updatedMeta = res.data.data;
-      setDetailData(updatedMeta);
-      setSelectedDoc(updatedMeta);
-      // Immediately reflect incremented view_count in table state
-      setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, view_count: updatedMeta.view_count, last_accessed_at: updatedMeta.last_accessed_at } : d));
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Cannot open document.');
+  const navigate = useNavigate();
+
+  const handleCardClick = (doc, openNewPage = true) => {
+    if (openNewPage) {
+      window.open(`/lab/archive/view/${doc.id}`, '_blank');
+    } else {
+      navigate(`/lab/archive/view/${doc.id}`);
     }
   };
 
