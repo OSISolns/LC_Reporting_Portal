@@ -1028,54 +1028,38 @@ export default function LabArchive() {
                 <div className="flex items-center gap-3">
                   <span>
                     Showing <strong>{(page - 1) * pageSize + 1}</strong> to <strong>{Math.min(page * pageSize, total)}</strong> of <strong>{total}</strong> documents
-
-                            <td className="py-3.5 px-4 text-slate-500 font-mono">
-                              {formatBytes(doc.file_size_bytes)}
-                            </td>
-
-                            <td className="py-3.5 px-4 text-slate-500">
-                              {formatDate(doc.created_at)}
-                            </td>
-
-                            <td className="py-3.5 px-4 text-center font-bold text-slate-700">
-                              {doc.view_count || 0}
-                            </td>
-
-                            <td className="py-3.5 px-4 text-center font-bold text-[#1B669E]">
-                              {doc.download_count || 0}
-                            </td>
-
-                            <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  onClick={() => handleCardClick(doc)}
-                                  className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-[#1B669E] rounded-lg transition-all cursor-pointer"
-                                  title="View Document Details & Preview"
-                                >
-                                  <Eye size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handleDownload(doc.id)}
-                                  className="p-1.5 hover:bg-[#1B669E]/10 text-slate-500 hover:text-[#1B669E] rounded-lg transition-all cursor-pointer"
-                                  title="Download File"
-                                >
-                                  <Download size={14} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400">| Per page:</span>
+                    <select
+                      className="border border-slate-200 rounded-lg px-2 py-1 bg-white text-xs text-slate-700 focus:outline-none"
+                      value={pageSize}
+                      onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
                 </div>
 
-                {/* Table Footer Pagination */}
-                <div className="bg-slate-50/80 px-4 py-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-                  <p>
-                    Showing <span className="font-bold text-slate-800">{sortedDocs.length}</span> of <span className="font-bold text-slate-800">{total}</span> documents
-                  </p>
-                  <div className="flex items-center gap-1.5">
+                {/* Page Buttons */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(p - 1, 1))}
+                    disabled={page === 1}
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <ChevronLeft size={13} /> Prev
+                  </button>
+                  <span className="px-3 py-1 font-bold text-slate-700">
+                    {page} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                    disabled={page >= totalPages}
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1"
+                  >
                     Next <ChevronRight size={13} />
                   </button>
                 </div>
