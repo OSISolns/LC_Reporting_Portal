@@ -3,7 +3,7 @@ import {
   Archive, Upload, Search, Filter, X, Download, Eye, Pencil, Trash2,
   FileText, FileSpreadsheet, Image, File, RefreshCw, Shield, ShieldAlert,
   ShieldCheck, Lock, ChevronDown, Clock, User, History, Folder, FolderOpen,
-  ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft
+  ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ArrowLeft
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -701,6 +701,19 @@ export default function LabArchive() {
   const totalPages = Math.ceil(total / pageSize) || 1;
   const activeFilters = [filterClass, filterType, dateFrom, dateTo].filter(Boolean).length;
   const totalAllDocs = Object.values(categoryCounts).reduce((a, b) => a + b, 0);
+
+  if (selectedDoc) {
+    return (
+      <DocumentDetailView
+        docMeta={selectedDoc}
+        isManager={isManager}
+        onBack={() => { setSelectedDoc(null); setDetailData(null); }}
+        onEdit={(doc) => setEditTarget(doc)}
+        onDelete={() => setDeleteTarget(selectedDoc)}
+        onDownload={handleDownload}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-slate-50 font-sans antialiased overflow-hidden">

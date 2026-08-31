@@ -160,9 +160,7 @@ function App() {
             } />
 
             <Route path="/lab/archive" element={
-              <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'
-              ]}>
+              <ProtectedRoute>
                 <LabArchive />
               </ProtectedRoute>
             } />

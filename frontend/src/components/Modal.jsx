@@ -16,36 +16,37 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
   const [transformOrigin, setTransformOrigin] = useState('center center');
   const cardRef = useRef(null);
 
-  // Synchronize shouldRender state with the isOpen prop
+  // Synchronize shouldRender and animation state with isOpen prop cleanly
   useEffect(() => {
+    let animFrame;
+    let closeTimer;
     if (isOpen) {
       setShouldRender(true);
+      // Double rAF guarantees element is in DOM before triggering entry animation
+      animFrame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsAnimated(true);
+        });
+      });
     } else {
       setIsAnimated(false);
-      const timer = setTimeout(() => {
+      closeTimer = setTimeout(() => {
         setShouldRender(false);
-      }, 250); // Wait for exit transition to complete
-      return () => clearTimeout(timer);
+      }, 220);
     }
+    return () => {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      if (closeTimer) clearTimeout(closeTimer);
+    };
   }, [isOpen]);
 
-  // Trigger the entry animation on the frame immediately following DOM mounting
-  useEffect(() => {
-    if (shouldRender && isOpen) {
-      const timer = setTimeout(() => {
-        setIsAnimated(true);
-      }, 25);
-      return () => clearTimeout(timer);
-    }
-  }, [shouldRender, isOpen]);
-
-  // Compute the correct transform-origin relative to the click coordinates
+  // Compute transform-origin based on last click
   useLayoutEffect(() => {
     if (shouldRender && cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
-      if (lastClickCoords) {
-        const x = lastClickCoords.x - rect.left;
-        const y = lastClickCoords.y - rect.top;
+      if (lastClickCoords && rect.width > 0) {
+        const x = Math.max(0, Math.min(rect.width, lastClickCoords.x - rect.left));
+        const y = Math.max(0, Math.min(rect.height, lastClickCoords.y - rect.top));
         setTransformOrigin(`${x}px ${y}px`);
       } else {
         setTransformOrigin('center center');
