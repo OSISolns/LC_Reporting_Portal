@@ -654,7 +654,7 @@ const ROLE_DEFAULTS = {
   dental_hod: {
     incident_reports: { view:1, create:1, edit:1, approve:1 },
     reports:          { view:1, download:1 },
-    staff_performance:{ view:1, create:1 },
+    staff_performance:{ view:0, create:0 },
     shifts:           { view:1, create:1, edit:1, review:1, delete:0 },
     inventory:        { view:1, create:1, edit:1, delete:1 },
     daily_stock:      { view:1, edit:1 },
@@ -665,7 +665,7 @@ const ROLE_DEFAULTS = {
   dental_tech: {
     incident_reports: { view:1, create:1, edit:0, approve:0 },
     reports:          { view:1, download:1 },
-    staff_performance:{ view:1, create:0 },
+    staff_performance:{ view:0, create:0 },
     shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
     inventory:        { view:1, create:1, edit:0, delete:0 },
     daily_stock:      { view:1, edit:1 },
@@ -676,7 +676,7 @@ const ROLE_DEFAULTS = {
   dental_lab_manager: {
     incident_reports: { view:1, create:1, edit:1, approve:1 },
     reports:          { view:1, download:1 },
-    staff_performance:{ view:1, create:1 },
+    staff_performance:{ view:0, create:0 },
     shifts:           { view:1, create:1, edit:1, review:1, delete:0 },
     inventory:        { view:1, create:1, edit:1, delete:1 },
     daily_stock:      { view:1, edit:1 },
