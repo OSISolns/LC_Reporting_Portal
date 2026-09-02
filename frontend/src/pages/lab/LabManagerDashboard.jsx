@@ -74,7 +74,7 @@ export default function LabManagerDashboard() {
     <div className="p-6 max-w-7xl mx-auto space-y-6 font-sans text-slate-800 antialiased bg-slate-50/50 min-h-screen">
 
       {/* ── HEADER ── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 p-6 rounded-2xl text-white shadow-md border border-blue-800">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#1B669E] p-6 rounded-2xl text-white shadow-md border border-[#155280]">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-blue-800/80 rounded-xl border border-blue-700">
             <FlaskConical className="text-blue-100" size={22} />
@@ -88,31 +88,31 @@ export default function LabManagerDashboard() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => navigate('/lab')}
-            className="px-3.5 py-2 bg-blue-800 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl border border-blue-700 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <FlaskConical size={13} /> Specimen Hub
           </button>
           <button
             onClick={() => navigate('/ncr')}
-            className="px-3.5 py-2 bg-blue-800 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl border border-blue-700 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <AlertOctagon size={13} /> NCR Module {ncr.open != null ? `(${ncr.open})` : ''}
           </button>
           <button
             onClick={() => navigate('/lab/analyzers')}
-            className="px-3.5 py-2 bg-blue-800 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl border border-blue-700 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Cpu size={13} /> Analyzers
           </button>
           <button
             onClick={() => navigate('/lab/archive')}
-            className="px-3.5 py-2 bg-blue-800 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl border border-blue-700 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Archive size={13} /> Archive
           </button>
           <button
             onClick={() => fetchSummary(true)}
-            className="p-2 text-blue-200 hover:text-white hover:bg-blue-800 rounded-xl transition-all cursor-pointer border border-blue-800"
+            className="p-2 text-white/80 hover:text-white hover:bg-[#155280] rounded-xl transition-all cursor-pointer border border-[#155280]"
             title="Refresh"
           >
             <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />

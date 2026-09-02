@@ -8,8 +8,9 @@ import { getResultTransfers } from '../api/resultTransfer';
 import LoadingSpinner from '../components/LoadingSpinner';
 import {
   Users, Activity, ShieldAlert, History,
-  Key, Database, Server, Cpu,
-  RefreshCw, ChevronRight, UserPlus, ShieldCheck
+  Key, Database, Server, Cpu, Zap,
+  RefreshCw, ChevronRight, UserPlus, ShieldCheck,
+  LifeBuoy, AlertTriangle
 } from 'lucide-react';
 
 // ── Metrics Card ─────────────────────────────────────────────────────────────
@@ -68,7 +69,8 @@ const ITDashboard = () => {
     users: [],
     logs: [],
     incidents: [],
-    transfers: []
+    transfers: [],
+    tickets: []
   });
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
@@ -76,17 +78,19 @@ const ITDashboard = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [uRes, lRes, iRes, tRes] = await Promise.all([
+      const [uRes, lRes, iRes, tRes, tkRes] = await Promise.all([
         getUsers().catch(() => ({ data: { data: [] } })),
         api.get('/audit').catch(() => ({ data: { data: [] } })),
         getIncidents().catch(() => ({ data: { data: [] } })),
-        getResultTransfers().catch(() => ({ data: { data: [] } }))
+        getResultTransfers().catch(() => ({ data: { data: [] } })),
+        api.get('/it-support/tickets').catch(() => ({ data: { tickets: [] } }))
       ]);
       setData({
         users: uRes.data.data || [],
         logs: lRes.data.data || [],
         incidents: iRes.data.data || [],
-        transfers: tRes.data.data || []
+        transfers: tRes.data.data || [],
+        tickets: tkRes.data.tickets || []
       });
     } finally {
       setLoading(false);
@@ -104,6 +108,8 @@ const ITDashboard = () => {
   const activeUsers = data.users.filter(u => u.is_active).length;
   const recentLogs = data.logs.slice(0, 8);
   const systemIncidents = data.incidents.filter(inc => inc.incident_type === 'Equipment' || inc.incident_type === 'Others');
+  const openTickets = data.tickets.filter(t => t.status === 'Open').length;
+  const inProgressTickets = data.tickets.filter(t => t.status === 'In Progress').length;
   
   const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
 
@@ -131,7 +137,7 @@ const ITDashboard = () => {
       </div>
 
       {/* ── Top Metrics ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
         <ITMetricCard 
           title="Active Staff Accounts" 
           value={activeUsers} 
@@ -153,6 +159,14 @@ const ITDashboard = () => {
           sub="Active reports"
           icon={<ShieldAlert size={24} />} 
           color="#f43f5e"
+        />
+        <ITMetricCard 
+          title="Open Support Tickets" 
+          value={openTickets} 
+          sub={inProgressTickets > 0 ? `${inProgressTickets} in progress` : 'All queued'}
+          icon={<LifeBuoy size={24} />} 
+          color={openTickets > 0 ? '#f59e0b' : '#10b981'}
+          trend={openTickets > 3 ? `⚠ ${openTickets} pending` : undefined}
         />
       </div>
 
@@ -194,7 +208,7 @@ const ITDashboard = () => {
                 <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Manage Staff</span>
               </button>
               <button 
-                onClick={() => navigate('/users')} // Ideally it opens the creation modal directly
+                onClick={() => navigate('/users')}
                 style={{ padding: '1.25rem', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
@@ -213,12 +227,17 @@ const ITDashboard = () => {
               </button>
               <button 
                 onClick={() => navigate('/it-ticketing')}
-                style={{ padding: '1.25rem', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}
+                style={{ padding: '1.25rem', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', transition: 'all 0.2s', position: 'relative' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = '#0ea5e9'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
               >
                 <div style={{ padding: '10px', backgroundColor: '#e0f2fe', color: '#0ea5e9', borderRadius: '10px' }}><Server size={20} /></div>
                 <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Asset & Tickets</span>
+                {openTickets > 0 && (
+                  <span style={{ position: 'absolute', top: '8px', right: '8px', backgroundColor: '#f43f5e', color: '#fff', fontSize: '0.6rem', fontWeight: 800, borderRadius: '99px', padding: '1px 6px', lineHeight: '1.6' }}>
+                    {openTickets}
+                  </span>
+                )}
               </button>
               <button 
                 onClick={() => navigate('/incidents')}
@@ -227,7 +246,16 @@ const ITDashboard = () => {
                 onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
               >
                 <div style={{ padding: '10px', backgroundColor: '#fff1f2', color: '#f43f5e', borderRadius: '10px' }}><ShieldAlert size={20} /></div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Issue reports</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Issue Reports</span>
+              </button>
+              <button 
+                onClick={() => navigate('/permissions')}
+                style={{ padding: '1.25rem', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf6'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
+              >
+                <div style={{ padding: '10px', backgroundColor: '#ede9fe', color: '#8b5cf6', borderRadius: '10px' }}><Key size={20} /></div>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Permissions</span>
               </button>
             </div>
           </div>
@@ -237,20 +265,22 @@ const ITDashboard = () => {
             background: '#0f172a', borderRadius: '24px', padding: '2rem', color: '#fff', 
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', border: '1px solid rgba(255,255,255,0.05)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.5rem' }}>
               <ShieldCheck size={24} style={{ color: '#10b981' }} />
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>System Health Matrix</h3>
             </div>
+            <p style={{ margin: '0 0 1.5rem', fontSize: '0.7rem', opacity: 0.4, fontWeight: 600 }}>Indicative metrics — verify via backend monitoring tools</p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {[
-                { label: 'Cloud DB Node (Turso)', status: 'Healthy', val: 98, icon: <CloudLightning size={14} /> },
+                { label: 'Cloud DB Node (Turso)', status: 'Healthy', val: 98, icon: <Database size={14} /> },
                 { label: 'Auth & JWT Gateway', status: 'Optimal', val: 100, icon: <Key size={14} /> },
                 { label: 'PDF Rendering Core', status: 'Nominal', val: 94, icon: <Cpu size={14} /> },
+                { label: 'Express API Server', status: 'Nominal', val: 97, icon: <Zap size={14} /> },
               ].map(s => (
                 <div key={s.label}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '6px' }}>
-                      <span style={{ opacity: 0.8, display: 'flex', alignItems: 'center', gap: '6px' }}>{s.label}</span>
+                      <span style={{ opacity: 0.8, display: 'flex', alignItems: 'center', gap: '6px' }}>{s.icon} {s.label}</span>
                       <span style={{ color: '#10b981', fontWeight: 700 }}>{s.status}</span>
                    </div>
                    <div style={{ height: '6px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '99px', overflow: 'hidden' }}>
@@ -267,8 +297,5 @@ const ITDashboard = () => {
     </div>
   );
 };
-
-// Help for icons not imported
-const CloudLightning = ({ size, className }) => <Database size={size} className={className} />;
 
 export default ITDashboard;

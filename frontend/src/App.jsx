@@ -32,6 +32,7 @@ import InfectionControlTracker from './pages/InfectionControlTracker';
 import RevenueLeakageTracker from './pages/RevenueLeakageTracker';
 import CompliancePortal from './pages/CompliancePortal';
 import ITAssetTicketing from './pages/ITAssetTicketing';
+import ITDashboard from './pages/ITDashboard';
 import ClinicalSheet from './pages/ClinicalSheet';
 import ClinicalSheetsList from './pages/ClinicalSheetsList';
 import ClinicalObservationList from './pages/ClinicalObservationList';
@@ -90,7 +91,8 @@ function App() {
             <Route path="/infection-control" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm']}><InfectionControlTracker /></ProtectedRoute>} />
             <Route path="/revenue-tracker" element={<ProtectedRoute allowedRoles={['sales_manager', 'chairman', 'admin', 'principal_cashier', 'deputy_coo']}><RevenueLeakageTracker /></ProtectedRoute>} />
             <Route path="/compliance" element={<ProtectedRoute allowedRoles={['admin', 'hsfp', 'quality_manager', 'qm']}><CompliancePortal /></ProtectedRoute>} />
-            <Route path="/it-ticketing" element={<ITAssetTicketing />} />
+            <Route path="/it-dashboard" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><ITDashboard /></ProtectedRoute>} />
+            <Route path="/it-ticketing" element={<ProtectedRoute allowedRoles={['admin', 'it_officer', 'doctor', 'consultant', 'pa', 'staff', 'nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'imaging_tech', 'imaging_manager', 'dentist', 'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental', 'physiotherapist', 'physio', 'physio_manager', 'operations_staff', 'operations', 'cashier', 'principal_cashier', 'customer_care', 'stock-manager', 'procurement-manager', 'hsfp', 'coo', 'deputy_coo', 'chairman', 'sales_manager', 'medical_director']}><ITAssetTicketing /></ProtectedRoute>} />
             <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'medical_director']}><AIInsights /></ProtectedRoute>} />
             
             <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><CancellationList /></ProtectedRoute>} />
@@ -160,7 +162,9 @@ function App() {
             } />
 
             <Route path="/lab/archive" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={[
+                'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab'
+              ]}>
                 <LabArchive />
               </ProtectedRoute>
             } />

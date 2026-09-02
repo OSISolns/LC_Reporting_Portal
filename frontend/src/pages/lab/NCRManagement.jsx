@@ -385,7 +385,7 @@ export default function NCRManagement() {
     <div className="p-6 max-w-7xl mx-auto space-y-6 font-sans text-slate-800 antialiased bg-slate-50/50 min-h-screen">
       
       {/* ── EXECUTIVE BLUE HEADER ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 p-6 rounded-2xl text-white shadow-xs border border-blue-800">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#1B669E] p-6 rounded-2xl text-white shadow-xs border border-[#155280]">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-blue-800/80 rounded-xl border border-blue-700">
@@ -414,21 +414,21 @@ export default function NCRManagement() {
                 setFormStep(1);
                 setNcrView('wizard');
               }}
-              className="flex-1 sm:flex-none px-4 py-2 bg-blue-800 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl border border-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs active:scale-98"
+              className="flex-1 sm:flex-none px-4 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs active:scale-98"
             >
               <FilePlus2 size={15} /> New NCR Report
             </button>
           ) : (
             <button
               onClick={() => { setNcrView('list'); setNcrSelected(null); }}
-              className="flex-1 sm:flex-none px-4 py-2 bg-blue-800 hover:bg-blue-700 text-blue-100 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer border border-blue-700"
+              className="flex-1 sm:flex-none px-4 py-2 bg-[#155280] hover:bg-[#114266] text-blue-100 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#114266]"
             >
               <ListChecks size={15} /> View Register
             </button>
           )}
           <button
             onClick={fetchNCRs}
-            className="p-2 text-blue-200 hover:text-white hover:bg-blue-800 rounded-xl transition-all cursor-pointer border border-blue-800"
+            className="p-2 text-white/80 hover:text-white hover:bg-[#155280] rounded-xl transition-all cursor-pointer border border-[#155280]"
             title="Refresh Data"
           >
             <RefreshCw size={15} className={ncrLoading ? 'animate-spin' : ''} />
@@ -792,7 +792,7 @@ export default function NCRManagement() {
         <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden max-w-3xl mx-auto space-y-0">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 p-5 text-white flex items-center justify-between">
+          <div className="bg-[#1B669E] p-5 text-white flex items-center justify-between">
             <div>
               <span className="text-[10px] font-medium text-blue-200 uppercase tracking-wider">
                 ISO 15189:2022 | Ref: LEG/PATHLAB/MSD/FM-12-VERS-004
@@ -1211,7 +1211,7 @@ export default function NCRManagement() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-3xl w-full overflow-hidden space-y-0 max-h-[90vh] flex flex-col">
             
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 p-5 text-white flex items-center justify-between">
+            <div className="bg-[#1B669E] p-5 text-white flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
                   {ncrSelected.unit}

@@ -342,7 +342,7 @@ const RefundList = () => {
       </Modal>
 
       {/* View Modal */}
-      <Modal isOpen={showViewModal} onClose={() => setShowViewModal(false)} title="Refund Request Details" maxWidth="800px">
+      <Modal isOpen={showViewModal} onClose={() => setShowViewModal(false)} title="Refund Request Details" maxWidth="1100px">
         {detailLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
         ) : (

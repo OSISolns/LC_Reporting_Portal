@@ -80,10 +80,13 @@ router.get(
   checkPermission('shifts', 'view'),
   validate([
     query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge']),
-    query('status').optional().isIn(['open', 'draft', 'closed']),
+    query('status').optional().isString(),
     query('flagged').optional().isIn(['0', '1']),
+    query('date_from').optional().isString(),
+    query('date_to').optional().isString(),
+    query('employee_name').optional().isString(),
     query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1, max: 100 }),
+    query('limit').optional().isInt({ min: 1, max: 1000 }),
   ]),
   shift.getAllShifts
 );

@@ -1,5 +1,6 @@
+import { useState as useLocalState } from 'react';
 import { INSURANCES } from '../constants';
-import { Info, Receipt, Save, Phone, Calendar } from 'lucide-react';
+import { Info, Receipt, Save, Phone, Calendar, Users, X as XIcon } from 'lucide-react';
 import PatientAutocomplete from '../../../components/PatientAutocomplete';
 
 const inputStyle = {
@@ -26,6 +27,35 @@ const fieldStyle = { display: 'flex', flexDirection: 'column', gap: '6px' };
 const labelStyle = { fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' };
 
 const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel }) => {
+  // Tag-input state for Amount Paid By
+  const [payerInput, setPayerInput] = useLocalState('');
+
+  // Parse existing tags from the comma-joined string
+  const payerTags = formData.amountPaidBy
+    ? formData.amountPaidBy.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  const commitPayerInput = (raw) => {
+    const name = raw.trim();
+    if (!name || payerTags.includes(name)) return;
+    const updated = [...payerTags, name];
+    handleChange({ target: { name: 'amountPaidBy', value: updated.join(', ') } });
+    setPayerInput('');
+  };
+
+  const removePayerTag = (tag) => {
+    const updated = payerTags.filter(t => t !== tag);
+    handleChange({ target: { name: 'amountPaidBy', value: updated.join(', ') } });
+  };
+
+  const handlePayerKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPayerInput(payerInput);
+    } else if (e.key === 'Backspace' && payerInput === '' && payerTags.length > 0) {
+      removePayerTag(payerTags[payerTags.length - 1]);
+    }
+  };
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
@@ -82,9 +112,9 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
           </div>
 
           <div style={fieldStyle}>
-            <label style={labelStyle}>SID number *</label>
-            <input type="text" name="sidNumber" required
-              value={formData.sidNumber} onChange={handleChange} style={inputStyle} />
+            <label style={labelStyle}>SID number <span style={{ fontWeight: 400, color: 'var(--text-secondary)', fontSize: '0.78rem' }}>(optional)</span></label>
+            <input type="text" name="sidNumber"
+              value={formData.sidNumber} onChange={handleChange} style={inputStyle} placeholder="Leave blank if not applicable" />
           </div>
 
           <div style={fieldStyle}>
@@ -124,7 +154,7 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
             <label style={labelStyle}>MOMO Code *</label>
             <input type="text" name="momoCode" required
               value={formData.momoCode} onChange={handleChange}
-              style={inputStyle} placeholder="Mobile Money reference" />
+              style={inputStyle} placeholder="MoMo Pay Codes" />
           </div>
 
           <div style={fieldStyle}>
@@ -147,13 +177,96 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
               style={inputStyle} placeholder="e.g. 25000" />
           </div>
 
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Amount Paid By *</label>
-            <select name="amountPaidBy" required value={formData.amountPaidBy} onChange={handleChange} style={selectStyle}>
-              <option value="">Select payer</option>
-              <option value="Patient">Patient</option>
-              <option value="Insurance">Insurance</option>
-            </select>
+          <div style={{ ...fieldStyle, gridColumn: 'span 2' }}>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Users size={15} style={{ color: 'var(--primary)' }} />
+              Amount Paid By *
+              <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-secondary)' }}>
+                — type a name and press Enter or comma to add
+              </span>
+            </label>
+
+            {/* Hidden input keeps the required constraint satisfied when ≥1 tag exists */}
+            <input
+              type="text"
+              name="amountPaidBy"
+              required
+              readOnly
+              value={formData.amountPaidBy}
+              style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+              tabIndex={-1}
+            />
+
+            {/* Tag-input container */}
+            <div
+              style={{
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px',
+                padding: '8px 12px',
+                backgroundColor: '#f8fafc',
+                border: '1.5px solid var(--border-color)',
+                borderRadius: '10px',
+                cursor: 'text',
+                minHeight: '46px',
+              }}
+              onClick={() => document.getElementById('payer-tag-input')?.focus()}
+            >
+              {/* Existing tags */}
+              {payerTags.map(tag => (
+                <span
+                  key={tag}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                    padding: '4px 10px',
+                    borderRadius: '99px',
+                    backgroundColor: 'rgba(0,123,138,0.1)',
+                    border: '1.5px solid var(--primary)',
+                    color: 'var(--primary-dark)',
+                    fontWeight: 600,
+                    fontSize: '0.8rem',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removePayerTag(tag); }}
+                    style={{
+                      background: 'none', border: 'none', padding: '0',
+                      cursor: 'pointer', color: 'var(--primary)',
+                      display: 'inline-flex', alignItems: 'center',
+                      lineHeight: 1,
+                    }}
+                    aria-label={`Remove ${tag}`}
+                  >
+                    <XIcon size={12} />
+                  </button>
+                </span>
+              ))}
+
+              {/* Free-text input */}
+              <input
+                id="payer-tag-input"
+                type="text"
+                value={payerInput}
+                onChange={e => setPayerInput(e.target.value)}
+                onKeyDown={handlePayerKeyDown}
+                onBlur={() => commitPayerInput(payerInput)}
+                placeholder={payerTags.length === 0 ? 'e.g. John Doe, Jane Smith…' : 'Add another name…'}
+                style={{
+                  border: 'none', outline: 'none',
+                  backgroundColor: 'transparent',
+                  fontSize: '0.85rem', color: 'var(--text-primary)',
+                  flex: '1 1 140px', minWidth: '120px',
+                  padding: '2px 0',
+                }}
+              />
+            </div>
+
+            {payerTags.length > 0 && (
+              <p style={{ margin: '4px 0 0', fontSize: '0.74rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                Recorded: <strong style={{ color: 'var(--primary-dark)' }}>{formData.amountPaidBy}</strong>
+              </p>
+            )}
           </div>
 
           <div style={fieldStyle}>

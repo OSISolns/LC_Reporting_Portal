@@ -376,7 +376,7 @@ const CancellationList = () => {
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
         title="Request Details"
-        maxWidth="800px"
+        maxWidth="1100px"
       >
         {detailLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>

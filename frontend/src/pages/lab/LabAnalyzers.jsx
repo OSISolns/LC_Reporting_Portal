@@ -258,7 +258,7 @@ export default function LabAnalyzers() {
     <div className="p-6 max-w-6xl mx-auto space-y-6 font-sans antialiased">
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 p-5 rounded-2xl text-white shadow-md border border-blue-800">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#1B669E] p-5 rounded-2xl text-white shadow-md border border-[#155280]">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-blue-800/80 rounded-xl border border-blue-700">
             <Cpu size={20} className="text-blue-100" />
@@ -271,7 +271,7 @@ export default function LabAnalyzers() {
         <div className="flex items-center gap-2">
           <button
             onClick={load}
-            className="p-2 text-blue-200 hover:text-white hover:bg-blue-800 rounded-xl transition-all cursor-pointer border border-blue-800"
+            className="p-2 text-white/80 hover:text-white hover:bg-[#155280] rounded-xl transition-all cursor-pointer border border-[#155280]"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>

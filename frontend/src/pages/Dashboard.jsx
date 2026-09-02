@@ -55,10 +55,10 @@ const Dashboard = () => {
   // Modern, Executive Portal Launcher for default / unmapped roles
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6 font-sans text-slate-800 antialiased">
-      <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 p-8 rounded-2xl text-white shadow-md border border-blue-800 space-y-2">
+      <div className="bg-[#1B669E] p-8 rounded-2xl text-white shadow-md border border-[#155280] space-y-2">
         <div className="flex items-center gap-2">
           <ShieldCheck className="text-blue-300" size={24} />
-          <span className="text-xs font-semibold uppercase tracking-wider bg-blue-800/80 px-2.5 py-0.5 rounded border border-blue-700 text-blue-100">
+          <span className="text-xs font-semibold uppercase tracking-wider bg-[#155280] px-2.5 py-0.5 rounded border border-[#155280] text-blue-100">
             Lumina Portal Access
           </span>
         </div>

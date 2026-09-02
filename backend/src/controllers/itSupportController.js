@@ -31,7 +31,7 @@ exports.getTickets = async (req, res) => {
 
 exports.createTicket = async (req, res) => {
   try {
-    const { title, description, reporter, category, priority, working_station } = req.body;
+    const { title, description, reporter, category, priority, working_station, assigned_to } = req.body;
 
     if (!title || !reporter || !category) {
       return res.status(400).json({ success: false, message: 'Title, reporter, and category are required' });
@@ -43,9 +43,10 @@ exports.createTicket = async (req, res) => {
     const ticketNumber = `TKT-${String(nextId).padStart(3, '0')}`;
 
     const { rows: inserted } = await db.query(
-      `INSERT INTO it_tickets (ticket_number, title, description, reporter, category, status, priority, user_id, working_station) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [ticketNumber, title, description || '', reporter, category, 'Open', priority || 'Medium', req.user.id, working_station || '']
+      `INSERT INTO it_tickets 
+        (ticket_number, title, description, reporter, category, status, priority, user_id, working_station, assigned_to) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [ticketNumber, title, description || '', reporter, category, 'Open', priority || 'Medium', req.user.id, working_station || '', assigned_to || '']
     );
 
     res.status(201).json({ success: true, ticket: inserted[0] });
@@ -58,7 +59,7 @@ exports.createTicket = async (req, res) => {
 exports.updateTicket = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, priority, title, description, reporter, category, working_station } = req.body;
+    const { status, priority, title, description, reporter, category, working_station, assigned_to, resolution_notes } = req.body;
 
     const { rows: existing } = await db.query("SELECT * FROM it_tickets WHERE id = $1", [id]);
     if (existing.length === 0) {
@@ -67,6 +68,7 @@ exports.updateTicket = async (req, res) => {
 
     const isITStaff = req.user.role === 'admin' || req.user.role === 'it_officer';
 
+    // Non-IT staff can only update status to Resolved or Closed, not reassign priority/engineer
     await db.query(
       `UPDATE it_tickets 
        SET status = COALESCE($1, status), 
@@ -76,9 +78,11 @@ exports.updateTicket = async (req, res) => {
            reporter = COALESCE($5, reporter),
            category = COALESCE($6, category),
            working_station = COALESCE($7, working_station),
-           it_intervention = CASE WHEN $8 = 1 THEN 1 ELSE it_intervention END
-       WHERE id = $9`,
-      [status, priority, title, description, reporter, category, working_station, isITStaff ? 1 : 0, id]
+           it_intervention = CASE WHEN $8 = 1 THEN 1 ELSE it_intervention END,
+           assigned_to = COALESCE($9, assigned_to),
+           resolution_notes = COALESCE($10, resolution_notes)
+       WHERE id = $11`,
+      [status, priority, title, description, reporter, category, working_station, isITStaff ? 1 : 0, assigned_to, resolution_notes, id]
     );
 
     res.json({ success: true, message: 'Ticket updated successfully' });
@@ -102,7 +106,7 @@ exports.getAssets = async (req, res) => {
 
 exports.createAsset = async (req, res) => {
   try {
-    const { name, assigned_to, department, status } = req.body;
+    const { name, assigned_to, department, status, asset_type, serial_number, purchase_date, warranty_expiry } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Asset name is required' });
@@ -114,8 +118,10 @@ exports.createAsset = async (req, res) => {
     const assetTag = `AST-EQP-${String(nextId).padStart(2, '0')}`;
 
     const { rows: inserted } = await db.query(
-      "INSERT INTO it_assets (asset_tag, name, assigned_to, department, status) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [assetTag, name, assigned_to || '', department || '', status || 'Active']
+      `INSERT INTO it_assets 
+        (asset_tag, name, assigned_to, department, status, asset_type, serial_number, purchase_date, warranty_expiry) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [assetTag, name, assigned_to || '', department || '', status || 'Active', asset_type || '', serial_number || '', purchase_date || null, warranty_expiry || null]
     );
 
     res.status(201).json({ success: true, asset: inserted[0] });
@@ -128,7 +134,7 @@ exports.createAsset = async (req, res) => {
 exports.updateAsset = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, name, assigned_to, department } = req.body;
+    const { status, name, assigned_to, department, asset_type, serial_number, purchase_date, warranty_expiry } = req.body;
 
     const { rows: existing } = await db.query("SELECT * FROM it_assets WHERE id = $1", [id]);
     if (existing.length === 0) {
@@ -140,9 +146,13 @@ exports.updateAsset = async (req, res) => {
        SET status = COALESCE($1, status), 
            name = COALESCE($2, name),
            assigned_to = COALESCE($3, assigned_to),
-           department = COALESCE($4, department)
-       WHERE id = $5`,
-      [status, name, assigned_to, department, id]
+           department = COALESCE($4, department),
+           asset_type = COALESCE($5, asset_type),
+           serial_number = COALESCE($6, serial_number),
+           purchase_date = COALESCE($7, purchase_date),
+           warranty_expiry = COALESCE($8, warranty_expiry)
+       WHERE id = $9`,
+      [status, name, assigned_to, department, asset_type, serial_number, purchase_date, warranty_expiry, id]
     );
 
     res.json({ success: true, message: 'Asset updated successfully' });
@@ -164,10 +174,18 @@ exports.deleteTicket = async (req, res) => {
     const ticket = rows[0];
 
     if (!isITStaff) {
-      if (ticket.status === 'Resolved' && ticket.it_intervention === 1) {
+      // Non-IT users cannot delete tickets that had IT intervention
+      if (ticket.it_intervention === 1) {
         return res.status(403).json({ 
           success: false, 
-          message: 'Cannot cancel a ticket that was resolved with IT intervention.' 
+          message: 'Cannot cancel a ticket that was handled with IT intervention.' 
+        });
+      }
+      // Non-IT users cannot delete tickets that are In Progress (being worked on)
+      if (ticket.status === 'In Progress') {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Cannot cancel a ticket that is currently In Progress.' 
         });
       }
     }

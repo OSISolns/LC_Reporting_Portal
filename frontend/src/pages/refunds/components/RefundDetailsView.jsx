@@ -84,7 +84,7 @@ const RefundDetailsView = ({ data, onExport, onVerify, onApprove, onReject }) =>
               {data.verifier_name || 'PENDING'}
             </div>
             <div className="medical-stamp-area">
-              {data.verified_at ? new Date(data.verified_at).toLocaleDateString() : 'Official Verification'}
+              {data.verified_at ? new Date(data.verified_at).toLocaleString() : 'Official Verification'}
             </div>
           </div>
           <div className="medical-signature-box">
@@ -93,7 +93,7 @@ const RefundDetailsView = ({ data, onExport, onVerify, onApprove, onReject }) =>
               {data.approver_name || 'PENDING'}
             </div>
             <div className="medical-stamp-area">
-              {data.approved_at ? new Date(data.approved_at).toLocaleDateString() : 'Final Authorization'}
+              {data.approved_at ? new Date(data.approved_at).toLocaleString() : 'Final Authorization'}
             </div>
           </div>
         </div>

@@ -870,7 +870,7 @@ exports.getManagerSummary = async (req, res, next) => {
     let ncrStats = { total: 0, open: 0, in_progress: 0, closed: 0, major: 0, lm_pending: 0, qm_pending: 0 };
     let recentNcrs = [];
     try {
-      const { rows: ncrs } = await db.query('SELECT * FROM lab_ncrs ORDER BY created_at DESC');
+      const { rows: ncrs } = await db.query('SELECT * FROM lab_ncr ORDER BY created_at DESC');
       if (ncrs && ncrs.length > 0) {
         ncrStats.total = ncrs.length;
         ncrStats.open = ncrs.filter(n => n.status === 'open').length;
