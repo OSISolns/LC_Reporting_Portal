@@ -33,7 +33,8 @@ import {
   Download,
   CopyCheck,
   GitMerge,
-  CheckSquare
+  CheckSquare,
+  PackageCheck
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
@@ -1435,6 +1436,12 @@ export default function CentralStoreHub() {
             className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-indigo-700 bg-white border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-xs"
           >
             <FileSpreadsheet size={14} className="text-emerald-600" /> Import Excel
+          </button>
+          <button
+            onClick={() => navigate('/master')}
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-indigo-700 bg-white border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-xs"
+          >
+            <PackageCheck size={14} className="text-indigo-600" /> Item Master
           </button>
           <button
             onClick={() => setReceiveOpen(true)}
