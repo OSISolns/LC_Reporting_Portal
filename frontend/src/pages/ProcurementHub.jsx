@@ -573,7 +573,7 @@ export default function ProcurementHub() {
       await loadData(true);
     } catch (err) {
       console.error(err);
-      toast.error('Inventory sync failed.');
+      toast.error(err.response?.data?.message || 'Inventory sync failed.');
     } finally {
       setRefreshing(false);
     }

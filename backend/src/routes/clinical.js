@@ -158,7 +158,7 @@ router.post('/inventory/unlock', checkPermission('inventory', 'edit'), clinicalC
 // -- too sensitive to expose as a general toggle.
 router.get('/inventory/stock-password', authorizeRoles(['admin']), clinicalController.getStockPassword);
 router.post('/inventory/regenerate-stock-password', authorizeRoles(['admin']), clinicalController.regenerateStockPassword);
-router.post('/inventory/sync', authorizeRoles(['admin', 'stock-manager']), clinicalController.triggerInventorySync);
+router.post('/inventory/sync', checkPermission('inventory', 'edit'), clinicalController.triggerInventorySync);
 router.get('/inventory/change-logs', checkPermission('inventory', 'view'), clinicalController.getInventoryChangeLogs);
 
 // Shared medication-name reference lookup (FDA cache) -- same reasoning as
