@@ -115,12 +115,12 @@ const SupplierPortalPublic = () => {
       sheet.getColumn(8).width = 22; // Quantity Delivered
       sheet.getColumn(9).width = 22; // Vendor Name
 
-      // Header Block (Indigo branding theme to match the Public Portal)
+      // Header Block (blue branding theme to match the Public Portal)
       const titleCell = sheet.getCell('A1');
       titleCell.value = 'LEGACY CLINICS & DIAGNOSTICS';
       sheet.mergeCells('A1:I1');
       titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
-      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '312E81' } }; // Indigo-900 (#312E81)
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E3A8A' } }; // blue-900 (#1E3A8A)
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet.getRow(1).height = 35;
 
@@ -128,7 +128,7 @@ const SupplierPortalPublic = () => {
       subCell.value = 'OFFICIAL STOCK DELIVERY SHEET';
       sheet.mergeCells('A2:I2');
       subCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
-      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4338CA' } }; // Indigo-700 (#4338CA)
+      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1D4ED8' } }; // blue-700 (#1D4ED8)
       subCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet.getRow(2).height = 25;
 
@@ -160,14 +160,14 @@ const SupplierPortalPublic = () => {
         const cell = headerRow.getCell(colIdx + 1);
         cell.value = h;
         cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '312E81' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E3A8A' } };
         cell.alignment = {
           horizontal: colIdx >= 6 && colIdx <= 7 ? 'right' : 'left',
           vertical: 'middle'
         };
         cell.border = {
-          top: { style: 'thin', color: { argb: '312E81' } },
-          bottom: { style: 'medium', color: { argb: '312E81' } }
+          top: { style: 'thin', color: { argb: '1E3A8A' } },
+          bottom: { style: 'medium', color: { argb: '1E3A8A' } }
         };
       });
 
@@ -432,7 +432,7 @@ const SupplierPortalPublic = () => {
       >
         <div className="flex flex-col items-center gap-4">
           <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
-            <RefreshCw className="w-12 h-12 text-indigo-600" />
+            <RefreshCw className="w-12 h-12 text-blue-600" />
           </motion.div>
           <p className="text-slate-600 font-semibold animate-pulse">Verifying Supplier Portal access...</p>
         </div>
@@ -447,7 +447,7 @@ const SupplierPortalPublic = () => {
       className="min-h-screen bg-slate-50 text-slate-800 p-6 md:p-10 font-sans relative overflow-hidden"
     >
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 -mr-48 -mt-48 w-[700px] h-[700px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-0 right-0 -mr-48 -mt-48 w-[700px] h-[700px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 -ml-48 -mb-48 w-[700px] h-[700px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="max-w-6xl mx-auto relative z-10">
@@ -458,8 +458,8 @@ const SupplierPortalPublic = () => {
           className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8 pb-6 border-b border-slate-200"
         >
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-sm">
-              <Building2 className="w-7 h-7 text-indigo-600" />
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shadow-sm">
+              <Building2 className="w-7 h-7 text-blue-600" />
             </div>
             <div>
               <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
@@ -478,7 +478,7 @@ const SupplierPortalPublic = () => {
                 onClick={() => setCurrentTab('tenders')}
                 className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
                   currentTab === 'tenders'
-                    ? 'bg-white text-indigo-700 shadow-sm'
+                    ? 'bg-white text-blue-700 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -488,7 +488,7 @@ const SupplierPortalPublic = () => {
                 onClick={() => setCurrentTab('delivery')}
                 className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
                   currentTab === 'delivery'
-                    ? 'bg-white text-indigo-700 shadow-sm'
+                    ? 'bg-white text-blue-700 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -503,8 +503,8 @@ const SupplierPortalPublic = () => {
           <div className="py-12 animate-none">
             <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md mx-auto shadow-md">
               <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                <div className="w-11 h-11 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6 text-indigo-600" />
+                <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
                   <h2 className="text-lg font-black text-slate-900">Supplier Authentication</h2>
@@ -521,7 +521,7 @@ const SupplierPortalPublic = () => {
                     placeholder="e.g. 12-CHAR-CODE"
                     value={tokenInput}
                     onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
-                    className="bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-sm font-bold tracking-widest text-slate-800 uppercase outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    className="bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-sm font-bold tracking-widest text-slate-800 uppercase outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     required
                   />
                 </div>
@@ -531,7 +531,7 @@ const SupplierPortalPublic = () => {
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-md"
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-md"
                 >
                   {loading ? (
                     <>
@@ -572,7 +572,7 @@ const SupplierPortalPublic = () => {
 
                 {loadingRFQs ? (
                   <div className="py-20 flex justify-center items-center">
-                    <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin" />
+                    <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
                   </div>
                 ) : openRFQs.length === 0 ? (
                   <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
@@ -593,7 +593,7 @@ const SupplierPortalPublic = () => {
                         <div className="space-y-4">
                           {/* Badge / Header */}
                           <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200/50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            <span className="text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200/50 px-2.5 py-1 rounded-full uppercase tracking-wider">
                               {rfq.reference_no}
                             </span>
                             <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200/50 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
@@ -626,7 +626,7 @@ const SupplierPortalPublic = () => {
                           <div className="pt-2 border-t border-slate-100">
                             <button
                               onClick={() => toggleRFQExpanded(rfq.id)}
-                              className="flex items-center justify-between w-full text-xs font-black text-slate-700 hover:text-indigo-600 transition-colors uppercase tracking-wider"
+                              className="flex items-center justify-between w-full text-xs font-black text-slate-700 hover:text-blue-600 transition-colors uppercase tracking-wider"
                             >
                               <span>Requested Products ({rfq.items ? rfq.items.length : 0})</span>
                               {expandedRFQs[rfq.id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -653,7 +653,7 @@ const SupplierPortalPublic = () => {
                                         {rfq.items.map((item) => (
                                           <tr key={item.id} className="border-b border-slate-200/50 text-slate-700">
                                             <td className="p-2 font-semibold">{item.item_name}</td>
-                                            <td className="p-2 text-right font-bold text-indigo-700">{item.quantity}</td>
+                                            <td className="p-2 text-right font-bold text-blue-700">{item.quantity}</td>
                                             <td className="p-2 text-center text-slate-500">{item.unit}</td>
                                           </tr>
                                         ))}
@@ -672,7 +672,7 @@ const SupplierPortalPublic = () => {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => setBidModalRFQ(rfq)}
-                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
                           >
                             <Gavel size={14} /> Submit Proposal / Quotation
                           </motion.button>
@@ -726,7 +726,7 @@ const SupplierPortalPublic = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleDownloadTemplate}
-                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
                       >
                         <Download size={14} /> Download Template
                       </motion.button>
@@ -757,8 +757,8 @@ const SupplierPortalPublic = () => {
                       {/* Upload Form */}
                       <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
                         <div className="flex items-center gap-2 mb-5 pb-3 border-b border-slate-100">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                            <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                            <FileSpreadsheet className="w-4 h-4 text-blue-600" />
                           </div>
                           <h2 className="font-bold text-slate-800 text-sm">Stock Submission</h2>
                         </div>
@@ -776,8 +776,8 @@ const SupplierPortalPublic = () => {
 
                           <div className="flex flex-col gap-1.5">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Excel File</label>
-                            <div className="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-lg p-3 transition-all cursor-pointer bg-slate-50 hover:bg-indigo-50/30 relative group">
-                              <Upload className="w-6 h-6 text-slate-400 group-hover:text-indigo-500 mx-auto mb-1 transition-colors" />
+                            <div className="border-2 border-dashed border-slate-300 hover:border-blue-400 rounded-lg p-3 transition-all cursor-pointer bg-slate-50 hover:bg-blue-50/30 relative group">
+                              <Upload className="w-6 h-6 text-slate-400 group-hover:text-blue-500 mx-auto mb-1 transition-colors" />
                               <p className="text-xs text-slate-500 text-center font-medium leading-tight">
                                 {file ? (
                                   <>
@@ -827,7 +827,7 @@ const SupplierPortalPublic = () => {
                             <h3 className="font-bold text-slate-800 text-sm">Items Preview</h3>
                           </div>
                           {parsedData.length > 0 && (
-                            <span className="text-xs font-black bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full border border-indigo-200">
+                            <span className="text-xs font-black bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200">
                               {parsedData.length} items
                             </span>
                           )}
@@ -866,7 +866,7 @@ const SupplierPortalPublic = () => {
                                     <td className="p-3 font-mono text-slate-600">{item.batch}</td>
                                     <td className="p-3 font-mono text-slate-600">{item.expiry}</td>
                                     <td className="p-3 text-right text-slate-700 font-semibold">{item.price.toLocaleString()} RWF</td>
-                                    <td className="p-3 text-right font-bold text-indigo-700">{item.qty}</td>
+                                    <td className="p-3 text-right font-bold text-blue-700">{item.qty}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -899,12 +899,12 @@ const SupplierPortalPublic = () => {
               className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6"
             >
               <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
                   <Gavel size={20} />
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900">RFQ Bid Proposal</h3>
-                  <p className="text-xs text-indigo-600 font-semibold tracking-wider uppercase mt-0.5">{bidModalRFQ.reference_no}</p>
+                  <p className="text-xs text-blue-600 font-semibold tracking-wider uppercase mt-0.5">{bidModalRFQ.reference_no}</p>
                 </div>
               </div>
 
@@ -915,16 +915,16 @@ const SupplierPortalPublic = () => {
                 
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3 font-semibold text-slate-700">
                   <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] shrink-0 font-bold">1</span>
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] shrink-0 font-bold">1</span>
                     <p>Ensure your company profile and trade licenses are valid.</p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] shrink-0 font-bold">2</span>
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] shrink-0 font-bold">2</span>
                     <p>Format your unit pricing clearly matching the requested UOMs.</p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] shrink-0 font-bold">3</span>
-                    <p>Send your PDF quotation to: <strong className="text-indigo-600 font-bold">procurement@legacyclinics.rw</strong></p>
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] shrink-0 font-bold">3</span>
+                    <p>Send your PDF quotation to: <strong className="text-blue-600 font-bold">procurement@legacyclinics.rw</strong></p>
                   </div>
                 </div>
 
@@ -943,7 +943,7 @@ const SupplierPortalPublic = () => {
                 </button>
                 <a
                   href={`mailto:procurement@legacyclinics.rw?subject=Bidding Proposal [${bidModalRFQ.reference_no}]&body=Dear Procurement Team,%0D%0A%0D%0AWe are interested in submitting our quotation for Tender Reference ${bidModalRFQ.reference_no} (${bidModalRFQ.title}). Please find our proposal attached.%0D%0A%0D%0ABest regards,%0D%0A[Supplier Name]`}
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all text-center"
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all text-center"
                 >
                   <Mail size={13} /> Email Quote
                 </a>

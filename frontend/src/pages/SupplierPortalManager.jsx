@@ -239,7 +239,7 @@ export default function SupplierPortalManager() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 p-6 md:p-10 font-sans relative overflow-hidden">
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 -mr-48 -mt-48 w-[700px] h-[700px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-0 right-0 -mr-48 -mt-48 w-[700px] h-[700px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 -ml-48 -mb-48 w-[700px] h-[700px] bg-teal-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto relative z-10">
@@ -252,7 +252,7 @@ export default function SupplierPortalManager() {
         >
           <div>
             <div className="flex items-center gap-3">
-              <span className="p-2.5 bg-indigo-50 text-indigo-700 border border-indigo-150 rounded-2xl shadow-sm">
+              <span className="p-2.5 bg-blue-50 text-blue-700 border border-blue-150 rounded-2xl shadow-sm">
                 <Building size={28} />
               </span>
               <div>
@@ -279,7 +279,7 @@ export default function SupplierPortalManager() {
 
         {loading ? (
           <div className="flex h-96 flex-col items-center justify-center gap-4">
-            <Loader2 className="h-12 w-12 animate-spin text-indigo-600" />
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
             <p className="text-slate-500 font-semibold animate-pulse">Loading Supplier Portals workspace...</p>
           </div>
         ) : (
@@ -290,10 +290,10 @@ export default function SupplierPortalManager() {
           >
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-2xl p-4 shadow-sm">
-                <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider">Active Sessions</p>
-                <p className="text-3xl font-black text-indigo-900 mt-1">{portalSessions.length}</p>
-                <p className="text-[10px] text-indigo-700 font-semibold mt-1">Suppliers connected</p>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-4 shadow-sm">
+                <p className="text-[10px] text-blue-600 font-black uppercase tracking-wider">Active Sessions</p>
+                <p className="text-3xl font-black text-blue-900 mt-1">{portalSessions.length}</p>
+                <p className="text-[10px] text-blue-700 font-semibold mt-1">Suppliers connected</p>
               </div>
               <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-2xl p-4 shadow-sm">
                 <p className="text-[10px] text-emerald-600 font-black uppercase tracking-wider">Received</p>
@@ -336,7 +336,7 @@ export default function SupplierPortalManager() {
                       </div>
 
                       <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 flex items-center gap-2">
-                        <code className="text-xs font-black text-indigo-700 tracking-widest font-mono flex-1 select-all">
+                        <code className="text-xs font-black text-blue-700 tracking-widest font-mono flex-1 select-all">
                           {showSessionTokens[session.id] ? session.token : '••••••••••••'}
                         </code>
                         <button
@@ -359,7 +359,7 @@ export default function SupplierPortalManager() {
                           <div className="flex flex-wrap gap-1.5">
                             {session.requestedItems.map((item, idx) => (
                               <span key={idx} className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-                                {item.name} <span className="text-indigo-600 font-black">×{item.quantity}</span>
+                                {item.name} <span className="text-blue-600 font-black">×{item.quantity}</span>
                               </span>
                             ))}
                           </div>
@@ -382,7 +382,7 @@ export default function SupplierPortalManager() {
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
               <div className="space-y-1 border-b border-slate-100 pb-3">
                 <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                  <Building className="text-indigo-600" size={20} />
+                  <Building className="text-blue-600" size={20} />
                   Setup & Open Supplier Portal Session
                 </h3>
                 <p className="text-slate-500 text-xs">
@@ -408,7 +408,7 @@ export default function SupplierPortalManager() {
                       }
                     }}
                     list="vendor-list-datalist"
-                    className="bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    className="bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     required
                   />
                   <datalist id="vendor-list-datalist">
@@ -449,7 +449,7 @@ export default function SupplierPortalManager() {
                         list="portal-stock-items-datalist"
                         value={tempPortalItemName}
                         onChange={(e) => setTempPortalItemName(e.target.value)}
-                        className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                        className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       />
                       <datalist id="portal-stock-items-datalist">
                         {[...new Set(masterInventory.map(item => item.name))].sort().map((name, idx) => (
@@ -493,7 +493,7 @@ export default function SupplierPortalManager() {
                           {setupRequestedItems.map((item, idx) => (
                             <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/20 text-slate-700">
                               <td className="p-2.5 font-semibold">{item.name}</td>
-                              <td className="p-2.5 font-bold text-indigo-600">{item.quantity}</td>
+                              <td className="p-2.5 font-bold text-blue-600">{item.quantity}</td>
                               <td className="p-2.5 text-right">
                                 <button
                                   type="button"
@@ -513,7 +513,7 @@ export default function SupplierPortalManager() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2"
                 >
                   Open Portal & Generate Authentication Token
                 </button>
@@ -527,7 +527,7 @@ export default function SupplierPortalManager() {
                   <ClipboardList size={18} className="text-slate-550" />
                   Incoming Stock Submissions
                   {filteredSubmissions.length > 0 && (
-                    <span className="ml-auto text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-bold">{filteredSubmissions.length} submission(s)</span>
+                    <span className="ml-auto text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-bold">{filteredSubmissions.length} submission(s)</span>
                   )}
                 </h4>
 
@@ -540,7 +540,7 @@ export default function SupplierPortalManager() {
                         placeholder="Search by ID, supplier name..."
                         value={submissionSearch}
                         onChange={(e) => setSubmissionSearch(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition-all"
+                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
                       />
                     </div>
                     <div>
@@ -548,7 +548,7 @@ export default function SupplierPortalManager() {
                       <select
                         value={submissionStatusFilter}
                         onChange={(e) => setSubmissionStatusFilter(e.target.value)}
-                        className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition-all"
+                        className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-bold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
                       >
                         <option value="all">All Statuses</option>
                         <option value="pending">Pending</option>
@@ -560,7 +560,7 @@ export default function SupplierPortalManager() {
                       <select
                         value={submissionSupplierFilter}
                         onChange={(e) => setSubmissionSupplierFilter(e.target.value)}
-                        className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition-all"
+                        className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-bold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
                       >
                         <option value="all">All Suppliers</option>
                         {[...new Set(submissions.map(s => s.supplier_name))].sort().map((name, idx) => (
@@ -605,7 +605,7 @@ export default function SupplierPortalManager() {
                             {new Date(sub.uploaded_at).toLocaleString()}
                           </td>
                           <td className="p-4 font-bold text-slate-600">{sub.total_items}</td>
-                          <td className="p-4 font-bold text-indigo-700">{sub.total_quantity}</td>
+                          <td className="p-4 font-bold text-blue-700">{sub.total_quantity}</td>
                           <td className="p-4">
                             <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
                               sub.status === 'received'
@@ -693,7 +693,7 @@ export default function SupplierPortalManager() {
                 <h4 className="font-bold text-xs text-slate-400 uppercase tracking-widest mb-2.5">Uploaded Sheet Items</h4>
                 {loadingSubItems ? (
                   <div className="flex-1 flex flex-col items-center justify-center gap-2">
-                    <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                     <span className="text-xs text-slate-500 font-medium animate-pulse">Loading submission details...</span>
                   </div>
                 ) : (
@@ -733,7 +733,7 @@ export default function SupplierPortalManager() {
                   <button 
                     onClick={() => handleReceiveStock(selectedSubmission.id)}
                     disabled={processingReceive}
-                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5 transition-all"
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5 transition-all"
                   >
                     {processingReceive ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />} Approve & Intake Stock delivery
                   </button>
