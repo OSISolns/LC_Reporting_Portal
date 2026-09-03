@@ -4855,7 +4855,7 @@ export default function ProcurementHub() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col max-h-[90vh] text-slate-800"
+              className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col max-h-[90vh] text-slate-800"
             >
               <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
                 <h3 className="text-lg font-black text-slate-900">Generate Purchase Order (PO)</h3>
