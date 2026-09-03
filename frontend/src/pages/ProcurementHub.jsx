@@ -3709,8 +3709,7 @@ export default function ProcurementHub() {
                         </div>
                         <button
                           onClick={() => setShowCreateRFQModal(true)}
-                          style={{ backgroundColor: '#1B669E' }}
-                          className="w-full md:w-auto hover:opacity-90 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                          className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                         >
                           <Plus size={16} /> New RFQ / Tender
                         </button>
@@ -3816,7 +3815,7 @@ export default function ProcurementHub() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col max-h-[90vh] text-slate-800"
+              className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col max-h-[90vh] text-slate-800"
             >
               <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
                 <h3 className="text-lg font-black text-slate-900">Launch New Tender / RFQ</h3>
@@ -4044,7 +4043,7 @@ export default function ProcurementHub() {
                   <button
                     type="submit"
                     disabled={submittingRFQ}
-                    className="bg-teal-650 hover:bg-teal-700 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-wait cursor-pointer flex items-center gap-1.5"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-wait cursor-pointer flex items-center gap-1.5"
                   >
                     {submittingRFQ ? <Loader2 size={13} className="animate-spin" /> : <Gavel size={13} />}
                     {submittingRFQ ? 'Launching…' : 'Create Tender'}
