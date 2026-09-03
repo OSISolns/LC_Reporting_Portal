@@ -6144,6 +6144,17 @@ exports.getDepartmentBudgetStatus = async (req, res) => {
   }
 };
 
+exports.deleteDepartmentBudget = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM department_budgets WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Budget deleted successfully.' });
+  } catch (error) {
+    console.error('Error in deleteDepartmentBudget:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 // ─── Procurement Catalog ──────────────────────────────────────────────────────
 
 exports.getCatalog = async (req, res) => {

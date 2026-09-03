@@ -276,6 +276,7 @@ export default function ProcurementHub() {
   const [budgets, setBudgets] = useState([]);
   const [showAddBudgetModal, setShowAddBudgetModal] = useState(false);
   const [budgetDept, setBudgetDept] = useState('NURSING');
+  const [budgetPeriodType, setBudgetPeriodType] = useState('monthly');
   const [budgetYear, setBudgetYear] = useState(String(new Date().getFullYear()));
   const [budgetMonth, setBudgetMonth] = useState(String(new Date().getMonth() + 1));
   const [budgetAmount, setBudgetAmount] = useState('');
@@ -926,9 +927,9 @@ export default function ProcurementHub() {
     try {
       const res = await api.post('/clinical/inventory/budgets', {
         department_name: budgetDept,
-        period_type: 'monthly',
+        period_type: budgetPeriodType,
         period_year: Number(budgetYear),
-        period_month: Number(budgetMonth),
+        period_month: budgetPeriodType === 'annual' ? null : Number(budgetMonth),
         budget_amount: Number(budgetAmount),
         currency: 'RWF'
       });
@@ -943,6 +944,20 @@ export default function ProcurementHub() {
       toast.error('Failed to save budget.');
     } finally {
       setSubmittingBudget(false);
+    }
+  };
+
+  const handleDeleteBudget = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this department budget?')) return;
+    try {
+      const res = await api.delete(`/clinical/inventory/budgets/${id}`);
+      if (res.data.success) {
+        toast.success('Department budget deleted.');
+        setBudgets(prev => prev.filter(b => b.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to delete budget.');
     }
   };
 
@@ -3350,7 +3365,7 @@ export default function ProcurementHub() {
                     </div>
                     <button
                       onClick={() => setShowAddBudgetModal(true)}
-                      className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md cursor-pointer"
+                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
                     >
                       <Plus size={15} /> Set Budget
                     </button>
@@ -3380,9 +3395,18 @@ export default function ProcurementHub() {
                               <h4 className="text-xs font-black text-slate-800">{b.department_name}</h4>
                               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{b.period_type} • {b.period_year}-{b.period_month || 'ALL'}</p>
                             </div>
-                            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
-                              <Banknote size={18} />
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleDeleteBudget(b.id)}
+                                title="Delete Budget Record"
+                                className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                              <span className="p-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-150">
+                                <Banknote size={18} />
+                              </span>
+                            </div>
                           </div>
 
                           <div className="space-y-2 text-xs">
@@ -4703,29 +4727,74 @@ export default function ProcurementHub() {
                     ))}
                   </select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] uppercase text-slate-450">Budget Period Type</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBudgetPeriodType('monthly')}
+                      className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        budgetPeriodType === 'monthly'
+                          ? 'bg-emerald-600 text-white shadow-xs font-black'
+                          : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      Monthly Budget
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBudgetPeriodType('annual')}
+                      className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        budgetPeriodType === 'annual'
+                          ? 'bg-emerald-600 text-white shadow-xs font-black'
+                          : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      Yearly (Annual) Budget
+                    </button>
+                  </div>
+                </div>
+
+                <div className={`grid ${budgetPeriodType === 'monthly' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] uppercase text-slate-450">Budget Year</label>
                     <select value={budgetYear} onChange={e => setBudgetYear(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none">
                       {[2024, 2025, 2026, 2027].map(y => <option key={y} value={String(y)}>{y}</option>)}
                     </select>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] uppercase text-slate-455">Budget Month</label>
-                    <select value={budgetMonth} onChange={e => setBudgetMonth(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none">
-                      {Array.from({ length: 12 }).map((_, i) => (
-                        <option key={i + 1} value={String(i + 1)}>{new Date(2026, i, 1).toLocaleString('default', { month: 'long' })}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {budgetPeriodType === 'monthly' && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] uppercase text-slate-455">Budget Month</label>
+                      <select value={budgetMonth} onChange={e => setBudgetMonth(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none">
+                        {Array.from({ length: 12 }).map((_, i) => (
+                          <option key={i + 1} value={String(i + 1)}>{new Date(2026, i, 1).toLocaleString('default', { month: 'long' })}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] uppercase text-slate-455">Budget Allocation Amount (RWF)</label>
-                  <input type="number" required placeholder="Allocated monthly funds limit..." value={budgetAmount} onChange={e => setBudgetAmount(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none" />
+                  <input
+                    type="number"
+                    required
+                    placeholder={budgetPeriodType === 'annual' ? "Allocated yearly funds limit..." : "Allocated monthly funds limit..."}
+                    value={budgetAmount}
+                    onChange={e => setBudgetAmount(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none"
+                  />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
-                  <button type="button" onClick={() => setShowAddBudgetModal(false)} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-slate-655">Cancel</button>
-                  <button type="submit" disabled={submittingBudget} className="bg-teal-650 text-white px-5 py-2 rounded-xl shadow-md">{submittingBudget ? 'Configuring...' : 'Set Budget'}</button>
+                  <button type="button" onClick={() => setShowAddBudgetModal(false)} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-slate-655 cursor-pointer font-bold">Cancel</button>
+                  <button
+                    type="submit"
+                    disabled={submittingBudget}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl shadow-md transition-all cursor-pointer font-bold flex items-center gap-1.5"
+                  >
+                    {submittingBudget && <Loader2 size={13} className="animate-spin" />}
+                    {submittingBudget ? 'Configuring...' : 'Set Budget'}
+                  </button>
                 </div>
               </form>
             </motion.div>

@@ -198,6 +198,7 @@ router.get('/inventory/invoices/:id/match', checkPermission('procurement', 'view
 // Department Budgets
 router.get('/inventory/budgets', checkPermission('procurement', 'view'), clinicalController.getDepartmentBudgets);
 router.post('/inventory/budgets', checkPermission('procurement', 'create'), clinicalController.upsertDepartmentBudget);
+router.delete('/inventory/budgets/:id', checkPermission('procurement', 'delete'), clinicalController.deleteDepartmentBudget);
 router.get('/inventory/budgets/status', checkPermission('procurement', 'view'), clinicalController.getDepartmentBudgetStatus);
 
 // Procurement Catalog
