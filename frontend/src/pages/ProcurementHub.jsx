@@ -2563,6 +2563,11 @@ export default function ProcurementHub() {
                 const totalUnits = rows.reduce((s, r) => s + Number(r.quantity || 0), 0);
                 const totalValue = rows.reduce((s, r) => s + Number(r.quantity || 0) * Number(r.price || 0), 0);
                 const expiringSoon = rows.filter(r => { const d = daysTo(r.expiry_date); return d !== null && d <= 90; }).length;
+                
+                const totalPages = Math.ceil(rows.length / 25) || 1;
+                const safePage = Math.min(centralStockPage, totalPages);
+                const paginatedRows = rows.slice((safePage - 1) * 25, safePage * 25);
+
                 return (
                   <div className="space-y-6">
                     {/* Summary chips */}
@@ -2587,10 +2592,10 @@ export default function ProcurementHub() {
                     <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row gap-3 items-center">
                       <div className="relative w-full md:max-w-md">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input value={stockSearch} onChange={e => setStockSearch(e.target.value)} placeholder="Search item, SKU, category or vendor…"
+                        <input value={stockSearch} onChange={e => { setStockSearch(e.target.value); setCentralStockPage(1); }} placeholder="Search item, SKU, category or vendor…"
                           className="w-full bg-slate-50 border border-slate-200 pl-9 pr-3 py-2 rounded-xl text-xs outline-none focus:border-teal-300 focus:bg-white" />
                       </div>
-                      <p className="text-[11px] font-bold text-slate-400 md:ml-auto">General Store stock-in-hand · batch level</p>
+                      <p className="text-[11px] font-bold text-slate-400 md:ml-auto">General Store stock-in-hand · batch level (25 per page)</p>
                     </div>
 
                     {/* Table */}
@@ -2608,7 +2613,7 @@ export default function ProcurementHub() {
                             {rows.length === 0 && (
                               <tr><td colSpan={10} className="p-10 text-center text-slate-400"><Database className="mx-auto opacity-30 mb-2" size={32} />No stock in the General Store{q ? ' matching your search' : ''}.</td></tr>
                             )}
-                            {rows.map((r, i) => {
+                            {paginatedRows.map((r, i) => {
                               const d = daysTo(r.expiry_date);
                               const expClass = d === null ? 'text-slate-400' : d <= 30 ? 'text-rose-600 font-black' : d <= 90 ? 'text-amber-600 font-black' : 'text-slate-500';
                               return (
@@ -2629,6 +2634,33 @@ export default function ProcurementHub() {
                           </tbody>
                         </table>
                       </div>
+
+                      {rows.length > 0 && (
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 font-bold">
+                          <span>
+                            Showing {Math.min((safePage - 1) * 25 + 1, rows.length)} - {Math.min(safePage * 25, rows.length)} of {rows.length} items (25 per page)
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              disabled={safePage <= 1}
+                              onClick={() => setCentralStockPage(prev => Math.max(1, prev - 1))}
+                              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all"
+                            >
+                              Previous
+                            </button>
+                            <span className="px-2 font-black text-slate-700">
+                              Page {safePage} of {totalPages}
+                            </span>
+                            <button
+                              disabled={safePage >= totalPages}
+                              onClick={() => setCentralStockPage(prev => Math.min(totalPages, prev + 1))}
+                              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

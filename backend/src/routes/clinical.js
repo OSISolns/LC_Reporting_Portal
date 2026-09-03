@@ -144,7 +144,7 @@ router.post('/shift-activities', clinicalController.logShiftActivity);
 // --- Nursing Daily Stock Checkup (module: daily_stock) ---
 router.get('/inventory', checkPermission('inventory', 'view'), clinicalController.getInventory);
 router.get('/inventory/export', checkPermission('inventory', 'view'), clinicalController.exportInventoryExcel);
-router.post('/inventory/sync-central-stock', checkPermission('inventory', 'edit'), clinicalController.syncCentralStockToNursing);
+router.post('/inventory/sync-central-stock', checkPermission(['inventory', 'procurement', 'stock_manager'], 'edit'), clinicalController.syncCentralStockToNursing);
 router.get('/inventory/nursing-store-stock', checkPermission('inventory', 'view'), clinicalController.getNursingStoreStock);
 // /inventory/items is a shared reference lookup used broadly (nursing MAR,
 // e-prescriptions autocomplete) -- left on its existing role list rather
@@ -158,7 +158,7 @@ router.post('/inventory/unlock', checkPermission('inventory', 'edit'), clinicalC
 // -- too sensitive to expose as a general toggle.
 router.get('/inventory/stock-password', authorizeRoles(['admin']), clinicalController.getStockPassword);
 router.post('/inventory/regenerate-stock-password', authorizeRoles(['admin']), clinicalController.regenerateStockPassword);
-router.post('/inventory/sync', checkPermission('inventory', 'edit'), clinicalController.triggerInventorySync);
+router.post('/inventory/sync', checkPermission(['inventory', 'procurement', 'stock_manager'], 'edit'), clinicalController.triggerInventorySync);
 router.get('/inventory/change-logs', checkPermission('inventory', 'view'), clinicalController.getInventoryChangeLogs);
 
 // Shared medication-name reference lookup (FDA cache) -- same reasoning as

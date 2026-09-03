@@ -29,6 +29,23 @@ const checkPermission = (module, action) => {
         }
       }
 
+      if (Array.isArray(module)) {
+        let hasAnyAccess = false;
+        for (const mod of module) {
+          if (await Permission.check(req.user.id, req.user.role, mod, action)) {
+            hasAnyAccess = true;
+            break;
+          }
+        }
+        if (!hasAnyAccess) {
+          return res.status(403).json({
+            success: false,
+            message: `Access denied. You do not have permission to ${action} in ${module.join(' or ')}.`
+          });
+        }
+        return next();
+      }
+
       const hasAccess = await Permission.check(req.user.id, req.user.role, module, action);
       
       if (!hasAccess) {
