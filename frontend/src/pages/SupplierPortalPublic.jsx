@@ -81,13 +81,17 @@ const SupplierPortalPublic = () => {
       });
       if (res.data.success) {
         const verifiedTokenCode = tokenInput.trim().toUpperCase();
-        setSupplierName(res.data.vendorName);
-        setRequestedItems(res.data.requestedItems);
+        const reqItems = res.data.requestedItems || [];
+        setRequestedItems(reqItems);
         setVerifiedToken(verifiedTokenCode);
         setTokenVerified(true);
         toast.success(`Welcome, ${res.data.vendorName}!`);
         // Immediately fetch the RFQs that this supplier is authorized to see
         fetchOpenRFQs(verifiedTokenCode);
+        // Default to Tenders tab if no physical delivery intake items are requested
+        if (reqItems.length === 0) {
+          setCurrentTab('tenders');
+        }
       }
     } catch (err) {
       console.error('Token verification failed:', err);

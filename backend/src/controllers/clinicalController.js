@@ -5494,7 +5494,7 @@ exports.createRFQ = async (req, res) => {
     const refNo = `RFQ-${Date.now()}`;
     const { rows } = await db.query(`
       INSERT INTO rfqs (reference_no, title, category, requisition_id, location, notes, created_by, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'Draft')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'Collecting')
       RETURNING id, reference_no
     `, [refNo, title, category || null, requisitionId ? parseInt(requisitionId, 10) : null, location || 'Kigali', notes || '', createdByUserId]);
 
@@ -5538,21 +5538,31 @@ exports.createRFQ = async (req, res) => {
       }
     }
 
-    // 5. Automatically open supplier portals for all invited vendors
-    const portalItems = items.map(item => ({
-      item_name: item.item_name,
-      quantity: item.quantity !== undefined ? parseFloat(item.quantity) : 0,
-      unit: item.unit || 'Unit'
-    }));
+    // 5. Ensure active portal token sessions for invited vendors without creating delivery intake items
     const portalSessions = [];
     for (const vendorId of validVendorIds) {
-      const session = await helperOpenSupplierPortalSession(vendorId, portalItems);
-      if (session) {
-        portalSessions.push(session);
+      const { rows: existing } = await db.query(
+        "SELECT id, vendor_id, vendor_name, token, created_at FROM supplier_portal_sessions WHERE vendor_id = $1 AND is_active = 1 LIMIT 1",
+        [vendorId]
+      );
+      if (existing.length > 0) {
+        portalSessions.push({
+          id: existing[0].id,
+          vendorId: existing[0].vendor_id,
+          vendorName: existing[0].vendor_name,
+          token: existing[0].token,
+          createdAt: existing[0].created_at,
+          isActive: true
+        });
+      } else {
+        const session = await helperOpenSupplierPortalSession(vendorId, []);
+        if (session) {
+          portalSessions.push(session);
+        }
       }
     }
 
-    res.json({ success: true, message: 'Tender / RFQ created successfully.', data: { id: rfqId, reference_no: refNo, portalSessions } });
+    res.json({ success: true, message: 'Tender / RFQ created & opened for bidding successfully.', data: { id: rfqId, reference_no: refNo, portalSessions } });
   } catch (error) {
     console.error('Error in createRFQ:', error);
     res.status(500).json({ success: false, message: error.message || 'Internal server error' });
