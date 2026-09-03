@@ -281,6 +281,7 @@ export default function ProcurementHub() {
   const [budgetMonth, setBudgetMonth] = useState(String(new Date().getMonth() + 1));
   const [budgetAmount, setBudgetAmount] = useState('');
   const [submittingBudget, setSubmittingBudget] = useState(false);
+  const [centralStockPage, setCentralStockPage] = useState(1);
 
   // Modals & Details Drawers
   const [selectedPO, setSelectedPO] = useState(null);
