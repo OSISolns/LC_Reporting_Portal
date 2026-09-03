@@ -3354,7 +3354,103 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       await client.execute(`CREATE INDEX IF NOT EXISTS idx_catalog_category ON procurement_catalog(category)`);
       await client.execute(`CREATE INDEX IF NOT EXISTS idx_catalog_active ON procurement_catalog(is_active)`);
 
-      console.log('✅ SQLite Schema Migration: created/verified Procurement Hub expansion tables (invoices, budgets, vendor docs, catalog, ratings, contracts, GRN inspection)');
+      // RFQs / Tenders Table
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS rfqs (
+          id             INTEGER PRIMARY KEY AUTOINCREMENT,
+          reference_no   TEXT UNIQUE,
+          title          TEXT NOT NULL,
+          category       TEXT,
+          requisition_id INTEGER REFERENCES requisitions(id) ON DELETE SET NULL,
+          status         TEXT NOT NULL DEFAULT 'Draft',
+          pricing_mode   TEXT NOT NULL DEFAULT 'total',
+          currency       TEXT NOT NULL DEFAULT 'RWF',
+          location       TEXT DEFAULT 'Kigali',
+          evaluated_on   TEXT,
+          created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          notes          TEXT,
+          created_at     DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at     DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_rfqs_status ON rfqs(status)`);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_rfqs_category ON rfqs(category)`);
+
+      // RFQ Suppliers
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS rfq_suppliers (
+          id           INTEGER PRIMARY KEY AUTOINCREMENT,
+          rfq_id       INTEGER NOT NULL REFERENCES rfqs(id) ON DELETE CASCADE,
+          vendor_id    INTEGER NOT NULL REFERENCES vendors(id) ON DELETE RESTRICT,
+          column_order INTEGER DEFAULT 0,
+          responded    INTEGER NOT NULL DEFAULT 0,
+          UNIQUE (rfq_id, vendor_id)
+        )
+      `);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_rfq_suppliers_rfq ON rfq_suppliers(rfq_id)`);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_rfq_suppliers_vendor ON rfq_suppliers(vendor_id)`);
+
+      // RFQ Items
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS rfq_items (
+          id             INTEGER PRIMARY KEY AUTOINCREMENT,
+          rfq_id         INTEGER NOT NULL REFERENCES rfqs(id) ON DELETE CASCADE,
+          line_no        INTEGER,
+          item_id        INTEGER REFERENCES master_inventory(id) ON DELETE SET NULL,
+          item_name      TEXT NOT NULL,
+          quantity       REAL,
+          unit           TEXT,
+          quantity_label TEXT,
+          UNIQUE (rfq_id, line_no)
+        )
+      `);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_rfq_items_rfq ON rfq_items(rfq_id)`);
+
+      // RFQ Quotes
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS rfq_quotes (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          rfq_item_id     INTEGER NOT NULL REFERENCES rfq_items(id) ON DELETE CASCADE,
+          rfq_supplier_id INTEGER NOT NULL REFERENCES rfq_suppliers(id) ON DELETE CASCADE,
+          unit_price      REAL,
+          total_price     REAL,
+          no_bid          INTEGER NOT NULL DEFAULT 0,
+          UNIQUE (rfq_item_id, rfq_supplier_id)
+        )
+      `);
+
+      // RFQ Awards
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS rfq_awards (
+          id                INTEGER PRIMARY KEY AUTOINCREMENT,
+          rfq_id            INTEGER NOT NULL REFERENCES rfqs(id) ON DELETE CASCADE,
+          rfq_item_id       INTEGER NOT NULL REFERENCES rfq_items(id) ON DELETE CASCADE,
+          vendor_id         INTEGER REFERENCES vendors(id) ON DELETE RESTRICT,
+          awarded_quote_id  INTEGER REFERENCES rfq_quotes(id) ON DELETE SET NULL,
+          awarded_price     REAL,
+          reason            TEXT NOT NULL DEFAULT 'lowest',
+          reason_note       TEXT,
+          purchase_order_id INTEGER REFERENCES purchase_orders(id) ON DELETE SET NULL,
+          created_at        DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          UNIQUE (rfq_item_id)
+        )
+      `);
+
+      // RFQ Committee
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS rfq_committee (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          rfq_id      INTEGER NOT NULL REFERENCES rfqs(id) ON DELETE CASCADE,
+          user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          member_name TEXT NOT NULL,
+          role        TEXT NOT NULL DEFAULT 'Member',
+          signed      INTEGER NOT NULL DEFAULT 0,
+          signed_at   TEXT,
+          UNIQUE (rfq_id, member_name)
+        )
+      `);
+
+      console.log('✅ SQLite Schema Migration: created/verified Procurement Hub expansion tables (rfqs, rfq_suppliers, rfq_items, rfq_quotes, rfq_awards, rfq_committee, invoices, budgets, vendor docs, catalog, ratings, contracts, GRN inspection)');
     } catch (err) {
       console.error('❌ Failed to initialize Procurement Hub expansion tables:', err.message);
     }
