@@ -1661,21 +1661,21 @@ export default function ProcurementHub() {
           </div>
         </motion.div>
 
-        {/* Procurement Links Tabs Bar */}
+        {/* Procurement Links Tabs Bar - All fit on page without scrolling */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 overflow-x-auto bg-white border border-slate-200 p-1.5 rounded-2xl shadow-xs flex items-center gap-1.5 scrollbar-none"
+          className="mb-6 bg-white border border-slate-200 p-2 rounded-2xl shadow-xs flex flex-wrap items-center gap-1.5"
         >
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'store_requisitions', label: 'Store Requests', icon: ClipboardList },
             { id: 'purchase_orders', label: 'Purchase Orders', icon: FileText },
-            { id: 'goods_receipts', label: 'Goods Receipts (GRN)', icon: PackageCheck },
+            { id: 'goods_receipts', label: 'Goods Receipts', icon: PackageCheck },
             { id: 'returns', label: 'Supplier Returns', icon: Undo2 },
-            { id: 'central_stock', label: 'General Store Stock', icon: Database },
-            { id: 'department_stocks', label: 'Department Stocks', icon: Boxes },
-            { id: 'suppliers', label: 'Suppliers & Vendors', icon: Building },
+            { id: 'central_stock', label: 'General Stock', icon: Database },
+            { id: 'department_stocks', label: 'Dept Stocks', icon: Boxes },
+            { id: 'suppliers', label: 'Suppliers', icon: Building },
             { id: 'tenders', label: 'Tenders & RFQs', icon: Gavel },
             { id: 'invoices', label: 'Invoices & AP', icon: Receipt },
             { id: 'budgets', label: 'Budgets', icon: DollarSign },
@@ -1689,13 +1689,13 @@ export default function ProcurementHub() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-teal-700 text-white shadow-sm font-black'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-teal-700 text-white shadow-xs font-black border border-teal-700'
+                    : 'text-slate-650 hover:text-slate-900 hover:bg-slate-100 bg-slate-50/70 border border-slate-150'
                 }`}
               >
-                <Icon size={14} className={isActive ? 'text-white' : 'text-slate-400'} />
+                <Icon size={13} className={isActive ? 'text-white' : 'text-slate-450'} />
                 <span>{tab.label}</span>
               </button>
             );
