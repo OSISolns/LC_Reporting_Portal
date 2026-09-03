@@ -5471,33 +5471,59 @@ exports.createRFQ = async (req, res) => {
       return res.status(400).json({ success: false, message: 'title, invitedVendorIds, and items are required.' });
     }
 
+    // 1. Sanitize & validate vendor IDs against DB to prevent Foreign Key constraint failures
+    const parsedVendorIds = [...new Set(invitedVendorIds.map(v => parseInt(v, 10)).filter(v => !isNaN(v)))];
+    const validVendorIds = [];
+    for (const vId of parsedVendorIds) {
+      const { rows: vRows } = await db.query("SELECT id FROM vendors WHERE id = $1", [vId]);
+      if (vRows.length > 0) {
+        validVendorIds.push(vId);
+      }
+    }
+    if (validVendorIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Selected suppliers could not be found in database.' });
+    }
+
+    // 2. Validate user ID
+    let createdByUserId = null;
+    if (req.user && req.user.id) {
+      const { rows: uRows } = await db.query("SELECT id FROM users WHERE id = $1", [req.user.id]);
+      if (uRows.length > 0) createdByUserId = req.user.id;
+    }
+
     const refNo = `RFQ-${Date.now()}`;
     const { rows } = await db.query(`
       INSERT INTO rfqs (reference_no, title, category, requisition_id, location, notes, created_by, status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, 'Draft')
       RETURNING id, reference_no
-    `, [refNo, title, category || null, requisitionId || null, location || 'Kigali', notes || '', req.user?.id || null]);
+    `, [refNo, title, category || null, requisitionId ? parseInt(requisitionId, 10) : null, location || 'Kigali', notes || '', createdByUserId]);
 
     const rfqId = rows[0].id;
 
-    // Insert suppliers
-    for (let i = 0; i < invitedVendorIds.length; i++) {
+    // 3. Insert valid suppliers
+    for (let i = 0; i < validVendorIds.length; i++) {
       await db.query(`
         INSERT INTO rfq_suppliers (rfq_id, vendor_id, column_order, responded)
         VALUES ($1, $2, $3, 0)
-      `, [rfqId, invitedVendorIds[i], i]);
+      `, [rfqId, validVendorIds[i], i]);
     }
 
-    // Insert items
+    // 4. Insert items line by line (validate item_id against master_inventory)
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
+      let validItemId = null;
+      if (item.item_id) {
+        const { rows: mRows } = await db.query("SELECT id FROM master_inventory WHERE id = $1", [parseInt(item.item_id, 10)]);
+        if (mRows.length > 0) validItemId = mRows[0].id;
+      }
+
       const { rows: itemRows } = await db.query(`
         INSERT INTO rfq_items (rfq_id, line_no, item_id, item_name, quantity, unit, quantity_label)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
       `, [
-        rfqId, item.line_no || (i + 1), item.item_id || null, 
-        item.item_name, item.quantity || null, item.unit || null, item.quantity_label || null
+        rfqId, item.line_no || (i + 1), validItemId, 
+        item.item_name || 'Unnamed Item', item.quantity !== undefined ? parseFloat(item.quantity) : null, item.unit || null, item.quantity_label || null
       ]);
 
       const itemId = itemRows[0].id;
@@ -5512,24 +5538,24 @@ exports.createRFQ = async (req, res) => {
       }
     }
 
-    // Automatically open supplier portals for all invited vendors
+    // 5. Automatically open supplier portals for all invited vendors
     const portalItems = items.map(item => ({
       item_name: item.item_name,
-      quantity: item.quantity || 0,
+      quantity: item.quantity !== undefined ? parseFloat(item.quantity) : 0,
       unit: item.unit || 'Unit'
     }));
     const portalSessions = [];
-    for (const vendorId of invitedVendorIds) {
+    for (const vendorId of validVendorIds) {
       const session = await helperOpenSupplierPortalSession(vendorId, portalItems);
       if (session) {
         portalSessions.push(session);
       }
     }
 
-    res.json({ success: true, data: { id: rfqId, reference_no: refNo, portalSessions } });
+    res.json({ success: true, message: 'Tender / RFQ created successfully.', data: { id: rfqId, reference_no: refNo, portalSessions } });
   } catch (error) {
     console.error('Error in createRFQ:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
   }
 };
 

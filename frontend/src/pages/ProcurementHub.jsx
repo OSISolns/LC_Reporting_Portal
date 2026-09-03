@@ -734,39 +734,8 @@ export default function ProcurementHub() {
       });
 
       if (res.data.success) {
-        const rfqId = res.data.data.id;
-
-        // Auto-open supplier portals for invited vendors
-        const itemsForPortal = rfqItems.map(item => ({
-          id: item.item_id,
-          name: item.item_name,
-          quantity: item.quantity,
-          unit: item.unit
-        }));
-
-        const portalResults = await Promise.allSettled(
-          rfqInvitedVendors.map(vendorId =>
-            api.post('/clinical/inventory/supplier-portal/toggle', {
-              active: true,
-              vendorId: parseInt(vendorId, 10),
-              requestedItems: itemsForPortal
-            })
-          )
-        );
-
-        const failedPortals = portalResults
-          .map((result, idx) => ({ result, vendorId: rfqInvitedVendors[idx] }))
-          .filter(({ result }) => result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.data.success));
-
-        if (failedPortals.length > 0) {
-          const failedVendorIds = failedPortals.map(f => f.vendorId).join(', ');
-          toast.error(`RFQ created, but portals failed for vendors: ${failedVendorIds}. Open manually from Supplier Portal Manager.`, { duration: 8000 });
-        } else {
-          toast.success('RFQ Tender created & supplier portals opened.');
-        }
-
+        toast.success('RFQ Tender created & supplier portals opened.');
         setShowCreateRFQModal(false);
-        // Clear form
         setRfqTitle('');
         setRfqNotes('');
         setRfqInvitedVendors([]);
@@ -775,8 +744,7 @@ export default function ProcurementHub() {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Failed to create RFQ: ' + (err.response?.data?.message || err.message));
-      toast.error('Failed to create RFQ.');
+      toast.error(err.response?.data?.message || 'Failed to create RFQ Tender.');
     } finally {
       setSubmittingRFQ(false);
     }
