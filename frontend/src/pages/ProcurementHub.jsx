@@ -8,7 +8,7 @@ import {
   Truck, ArrowUpRight, DollarSign, Tag, Info, ArrowRightLeft, Printer, Download,
   Copy, KeyRound, ShoppingCart, PackageCheck, Radio, Gavel, TrendingDown, CheckCircle2, Undo2,
   Receipt, BookOpen, Star, FileCheck, PieChart, Banknote, ListChecks, BadgeCheck, AlertOctagon,
-  Database, Boxes
+  Database, Boxes, LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
@@ -1661,38 +1661,46 @@ export default function ProcurementHub() {
           </div>
         </motion.div>
 
-        {/* Back to Dashboard Breadcrumb (Visible only in Sub-modules) */}
-        {activeTab !== 'overview' && (
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="mb-8 flex items-center gap-3"
-          >
-            <button
-              onClick={() => setActiveTab('overview')}
-              className="flex items-center gap-2 bg-white border border-slate-200 hover:border-teal-500 hover:text-teal-700 text-slate-600 px-4 py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all cursor-pointer"
-            >
-              <ArrowLeft size={14} /> Back to Dashboard
-            </button>
-            <span className="text-slate-350">/</span>
-            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-              {activeTab === 'store_requisitions' ? 'Store Requests' :
-                activeTab === 'purchase_orders' ? 'Purchase Orders' :
-                  activeTab === 'goods_receipts' ? 'Goods Receipts' :
-                    activeTab === 'returns' ? 'Supplier Returns' :
-                      activeTab === 'suppliers' ? 'Suppliers & Vendor Management' :
-                        activeTab === 'incidents' ? 'Quality Incidents' :
-                          activeTab === 'tenders' ? 'Tenders & RFQs' :
-                            activeTab === 'invoices' ? 'Invoicing & Accounts Payable' :
-                              activeTab === 'analytics' ? 'Analytics & Reporting' :
-                                activeTab === 'catalog' ? 'Procurement Catalog' :
-                                  activeTab === 'budgets' ? 'Department Budgets' :
-                                    activeTab === 'central_stock' ? 'General Store Stock' :
-                                      activeTab === 'department_stocks' ? 'Departmental Stocks' :
-                                        activeTab.replace(/_/g, ' ')}
-            </span>
-          </motion.div>
-        )}
+        {/* Procurement Links Tabs Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 overflow-x-auto bg-white border border-slate-200 p-1.5 rounded-2xl shadow-xs flex items-center gap-1.5 scrollbar-none"
+        >
+          {[
+            { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+            { id: 'store_requisitions', label: 'Store Requests', icon: ClipboardList },
+            { id: 'purchase_orders', label: 'Purchase Orders', icon: FileText },
+            { id: 'goods_receipts', label: 'Goods Receipts (GRN)', icon: PackageCheck },
+            { id: 'returns', label: 'Supplier Returns', icon: Undo2 },
+            { id: 'central_stock', label: 'General Store Stock', icon: Database },
+            { id: 'department_stocks', label: 'Department Stocks', icon: Boxes },
+            { id: 'suppliers', label: 'Suppliers & Vendors', icon: Building },
+            { id: 'tenders', label: 'Tenders & RFQs', icon: Gavel },
+            { id: 'invoices', label: 'Invoices & AP', icon: Receipt },
+            { id: 'budgets', label: 'Budgets', icon: DollarSign },
+            { id: 'catalog', label: 'Catalog', icon: ShoppingCart },
+            { id: 'incidents', label: 'Quality Incidents', icon: AlertTriangle },
+            { id: 'analytics', label: 'Analytics', icon: BarChart2 }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-teal-700 text-white shadow-sm font-black'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Icon size={14} className={isActive ? 'text-white' : 'text-slate-400'} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </motion.div>
 
         {loading ? (
           <div className="flex h-96 flex-col items-center justify-center gap-4">
