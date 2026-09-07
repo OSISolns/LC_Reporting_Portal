@@ -184,7 +184,9 @@ async function seed() {
       { name: 'BOUHARI Linganwa Minega', username: 'lc_minega', email: 'linganwam@legacyclinics.rw', role: 'admin', pass: passwordHash1234 },
       { name: 'UMUHOZA Nadège', username: 'lc_nadege', email: 'nadege@legacyclinics.rw', role: 'principal_cashier', pass: passwordHash1234 },
       { name: 'Mr. Chairman', username: 'lc_chairman', email: 'jeanmalic@yahoo.fr', role: 'chairman', pass: passwordHashLegacy },
-      { name: 'NURSE Joyce', username: 'lc_joyce', email: 'joyce@legacyclinics.rw', role: 'nurse', pass: passwordHash1234 }
+      { name: 'NURSE Joyce', username: 'lc_joyce', email: 'joyce@legacyclinics.rw', role: 'nurse', pass: passwordHash1234 },
+      { name: 'LOGISTICS Manager', username: 'lc_logistics', email: 'logistics@legacyclinics.rw', role: 'logistics_manager', pass: passwordHash1234 },
+      { name: 'LOGISTICS Officer', username: 'lc_logistics_officer', email: 'logistics_officer@legacyclinics.rw', role: 'logistics_officer', pass: passwordHash1234 }
     ];
 
     for (const u of users) {

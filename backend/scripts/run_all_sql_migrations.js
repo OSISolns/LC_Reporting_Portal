@@ -15,6 +15,7 @@ const migrations = [
   'feedbacks_migration.sql',
   'hsfp_migration.sql',
   'hsfp_rca_migration.sql',
+  'logistics_migration.sql',
   'notifications_migration.sql',
   'nursing_inventory_migration.sql',
   'refund_migration.sql',
