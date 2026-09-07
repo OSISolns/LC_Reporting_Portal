@@ -2,9 +2,15 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
-const { authMiddleware } = require('../middleware/auth');
+const LOGISTICS_ROLES = ['admin', 'coo', 'deputy_coo', 'logistics_manager', 'logistics_officer'];
 
 router.use(authMiddleware);
+router.use((req, res, next) => {
+  if (!req.user || !LOGISTICS_ROLES.includes(req.user.role)) {
+    return res.status(403).json({ success: false, message: 'Access restricted to Logistics personnel.' });
+  }
+  next();
+});
 
 // ── 1. LOGISTICS COMMAND DASHBOARD AGGREGATOR ────────────────────────────────
 

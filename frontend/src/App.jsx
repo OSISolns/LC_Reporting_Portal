@@ -225,12 +225,12 @@ function App() {
             } />
 
             {/* ── LOGISTICS PORTAL ROUTES ── */}
-            <Route path="/logistics" element={<LogisticsDashboard />} />
-            <Route path="/logistics/fleet" element={<FleetOperations />} />
-            <Route path="/logistics/facilities" element={<FacilitiesPower />} />
-            <Route path="/logistics/assets" element={<AssetManagement />} />
-            <Route path="/logistics/inventory" element={<MaintenanceStock />} />
-            <Route path="/logistics/admin" element={<LogisticsAdmin />} />
+            <Route path="/logistics" element={<ProtectedRoute allowedRoles={['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo']}><LogisticsDashboard /></ProtectedRoute>} />
+            <Route path="/logistics/fleet" element={<ProtectedRoute allowedRoles={['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo']}><FleetOperations /></ProtectedRoute>} />
+            <Route path="/logistics/facilities" element={<ProtectedRoute allowedRoles={['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo']}><FacilitiesPower /></ProtectedRoute>} />
+            <Route path="/logistics/assets" element={<ProtectedRoute allowedRoles={['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo']}><AssetManagement /></ProtectedRoute>} />
+            <Route path="/logistics/inventory" element={<ProtectedRoute allowedRoles={['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo']}><MaintenanceStock /></ProtectedRoute>} />
+            <Route path="/logistics/admin" element={<ProtectedRoute allowedRoles={['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo']}><LogisticsAdmin /></ProtectedRoute>} />
 
 
             <Route path="/roster-generator" element={

@@ -53,12 +53,12 @@ const Sidebar = ({ onClose }) => {
     {
       title: 'LOGISTICS PORTAL',
       items: [
-        { configKey: 'logistics_dashboard', name: 'Logistics Hub', icon: <Truck size={18} />, path: '/logistics', requiredPerm: null, allowedRoles: ALL_ROLES },
-        { configKey: 'logistics_fleet', name: 'Fleet Operations', icon: <Truck size={18} />, path: '/logistics/fleet', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo'] },
-        { configKey: 'logistics_facilities', name: 'Facilities & Power', icon: <Zap size={18} />, path: '/logistics/facilities', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo'] },
-        { configKey: 'logistics_assets', name: 'Assets & Lifecycle', icon: <Wrench size={18} />, path: '/logistics/assets', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo'] },
-        { configKey: 'logistics_inventory', name: 'Maintenance Stock', icon: <Package size={18} />, path: '/logistics/inventory', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo'] },
-        { configKey: 'logistics_admin', name: 'Operations Admin', icon: <DollarSign size={18} />, path: '/logistics/admin', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo'] },
+        { configKey: 'logistics_dashboard', name: 'Logistics Hub', icon: <Truck size={18} />, path: '/logistics', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
+        { configKey: 'logistics_fleet', name: 'Fleet Operations', icon: <Truck size={18} />, path: '/logistics/fleet', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
+        { configKey: 'logistics_facilities', name: 'Facilities & Power', icon: <Zap size={18} />, path: '/logistics/facilities', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
+        { configKey: 'logistics_assets', name: 'Assets & Lifecycle', icon: <Wrench size={18} />, path: '/logistics/assets', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
+        { configKey: 'logistics_inventory', name: 'Maintenance Stock', icon: <Package size={18} />, path: '/logistics/inventory', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
+        { configKey: 'logistics_admin', name: 'Operations Admin', icon: <DollarSign size={18} />, path: '/logistics/admin', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
       ]
     },
     {
