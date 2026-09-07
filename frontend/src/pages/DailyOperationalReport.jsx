@@ -922,10 +922,10 @@ export default function DailyOperationalReport() {
             </div>
 
             {['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0] && (
-              <div className="bg-sky-50 p-4 rounded-3xl border border-sky-200/70 shadow-sm flex items-center gap-3 text-sky-900 animate-fadeIn">
+              <div className="bg-sky-50 p-4 rounded-3xl border border-sky-200/80 shadow-sm flex items-center gap-3 text-sky-900 animate-fadeIn">
                 <AlertCircle className="text-sky-600 shrink-0" size={20} />
                 <div className="text-xs">
-                  <span className="font-extrabold block uppercase tracking-wider">Read-Only Mode</span>
+                  <span className="font-extrabold block uppercase tracking-wider text-sky-900">Read-Only Mode</span>
                   <span className="font-semibold text-sky-700/90">Nurses are only authorized to log and submit operational counts for the current day. Changes to past reports are restricted.</span>
                 </div>
               </div>
