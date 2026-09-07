@@ -98,6 +98,8 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
+const logisticsRoutes = require('./src/routes/logistics');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/cancellations', cancellationRoutes);
 app.use('/api/refunds', refundRoutes);
@@ -124,6 +126,8 @@ app.use('/api/archive', archiveRoutes);
 app.use('/api/dental', dentalRoutes);
 app.use('/api/roster', rosterRoutes);
 app.use('/api/operations', operationsRoutes);
+app.use('/api/logistics', logisticsRoutes);
+
 
 
 

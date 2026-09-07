@@ -1,5 +1,7 @@
 'use strict';
 const db = require('../config/db');
+const emailService = require('../services/emailService');
+const { decryptField } = require('../utils/crypto');
 
 class Notification {
   static async create({ userId, title, message, type = 'info', link = null }) {
@@ -9,7 +11,25 @@ class Notification {
       RETURNING *;
     `;
     const result = await db.query(sql, [userId, title, message, type, link]);
-    return result.rows[0];
+    const createdNotif = result.rows[0];
+
+    // Asynchronously dispatch email notification to concerned user if email is configured
+    if (userId) {
+      db.query('SELECT email, full_name FROM users WHERE id = $1', [userId])
+        .then(({ rows }) => {
+          if (rows && rows[0] && rows[0].email) {
+            const rawEmail = rows[0].email;
+            const userEmail = decryptField(rawEmail);
+            if (userEmail && typeof userEmail === 'string' && userEmail.includes('@')) {
+              emailService.sendNotification(userEmail.trim(), title, message, type)
+                .catch(err => console.error(`⚠️ Failed to send notification email to ${userEmail}:`, err.message));
+            }
+          }
+        })
+        .catch(err => console.error(`⚠️ Error looking up email for notification recipient user #${userId}:`, err.message));
+    }
+
+    return createdNotif;
   }
 
   static async getByUserId(userId, limit = 50) {

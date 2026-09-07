@@ -34,6 +34,7 @@ const MODULES = [
   { name: 'dental',           display: 'Dental Portal',                              actions: ['view','create','edit','delete'] },
   { name: 'physio',           display: 'Physiotherapy Portal',                       actions: ['view','create','edit','delete'] },
   { name: 'operations',       display: 'Operations Portal',                          actions: ['view','create','edit','delete'] },
+  { name: 'logistics',        display: 'Logistics Portal & Hub',                     actions: ['view','create','edit','approve','delete'] },
 ];
 
 /**
@@ -67,7 +68,30 @@ const ROLE_DEFAULTS = {
     dental:           { view:1, create:1, edit:1, delete:1 },
     physio:           { view:1, create:1, edit:1, delete:1 },
     operations:       { view:1, create:1, edit:1, delete:1 },
+    logistics:        { view:1, create:1, edit:1, approve:1, delete:1 },
   },
+  logistics_manager: {
+    incident_reports: { view:1, create:1, edit:1, approve:1 },
+    user_management: { view:0 },
+    audit_logs: { view:0 },
+    reports: { view:1, download:1 },
+    inventory:        { view:1, create:1, edit:1, delete:1 },
+    daily_stock:      { view:1, edit:1 },
+    procurement:      { view:1, create:1, edit:1 },
+    compliance:       { view:1, create:1 },
+    it_support:       { view:1, create:1 },
+    operations:       { view:1, create:1, edit:1 },
+    logistics:        { view:1, create:1, edit:1, approve:1, delete:1 },
+  },
+  logistics_officer: {
+    incident_reports: { view:1, create:1, edit:1, approve:0 },
+    inventory:        { view:1, create:1, edit:1 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    operations:       { view:1, create:1 },
+    logistics:        { view:1, create:1, edit:1, approve:0, delete:0 },
+  },
+
   it_officer: {
     cancellations:    { view:0, create:0, edit:0, approve:0, reject:0 },
     refunds: { view:0, create:0, edit:0, approve:0, reject:0 },

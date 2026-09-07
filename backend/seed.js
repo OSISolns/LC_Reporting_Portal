@@ -38,6 +38,7 @@ async function seed() {
       CREATE TABLE IF NOT EXISTS incident_reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         incident_type TEXT NOT NULL,
+        severity TEXT DEFAULT 'Low',
         department TEXT NOT NULL,
         area_of_incident TEXT NOT NULL,
         names_involved TEXT,
@@ -51,6 +52,15 @@ async function seed() {
         reviewed_by INTEGER REFERENCES users(id),
         reviewed_at DATETIME,
         review_comments TEXT,
+        approved_by INTEGER REFERENCES users(id),
+        approved_at DATETIME,
+        hsfp_comments TEXT,
+        rca_environment TEXT,
+        rca_staff TEXT,
+        rca_equipment TEXT,
+        rca_policy TEXT,
+        rca_verification_json TEXT,
+        corrective_actions_json TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
@@ -115,8 +125,11 @@ async function seed() {
       ['principal_cashier', 'Principal Cashier'],
       ['customer_care', 'Customer Care'],
       ['nurse', 'Clinical Nurse'],
-      ['medical_director', 'Medical Director']
+      ['medical_director', 'Medical Director'],
+      ['logistics_manager', 'Logistics Manager'],
+      ['logistics_officer', 'Logistics Officer']
     ];
+
 
     for (const [name, display] of roles) {
       await client.execute({

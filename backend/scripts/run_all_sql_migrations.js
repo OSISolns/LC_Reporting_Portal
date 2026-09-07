@@ -26,6 +26,7 @@ const migrations = [
 // SQLite-compatible overrides for PostgreSQL/non-standard syntax migrations
 const SQL_OVERRIDES = {
   'hsfp_migration.sql': [
+    `ALTER TABLE incident_reports ADD COLUMN severity TEXT DEFAULT 'Low'`,
     `ALTER TABLE incident_reports ADD COLUMN approved_by INTEGER REFERENCES users(id)`,
     `ALTER TABLE incident_reports ADD COLUMN approved_at DATETIME`,
     `ALTER TABLE incident_reports ADD COLUMN hsfp_comments TEXT`,
@@ -85,7 +86,7 @@ async function main() {
       if (SQL_OVERRIDES[filename]) {
         statements = SQL_OVERRIDES[filename];
       } else {
-        const filePath = path.resolve(__dirname, '../../database', filename);
+        const filePath = path.resolve(__dirname, '../database', filename);
         const sqlContent = fs.readFileSync(filePath, 'utf8');
         
         let cleanedSql = sqlContent

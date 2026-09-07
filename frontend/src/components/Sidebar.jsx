@@ -2,7 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, FileText, ReceiptText,
-  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine, ClipboardList, FlaskConical, Heart, Dumbbell, Settings, PackageCheck, AlertOctagon, Archive
+  AlertTriangle, Users, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine, ClipboardList, FlaskConical, Heart, Dumbbell, Settings, PackageCheck, AlertOctagon, Archive,
+  Truck, Zap, Wrench, Package, DollarSign
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -23,10 +24,11 @@ const ALL_ROLES = [
   'lab_tech', 'lab',
   'consultant', 'operations_staff', 'pa', 'staff', 'hsfp', 'nurse',
   'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'stock-manager', 'doctor', 'medical_director',
-  'procurement-manager', 'imaging_tech', 'imaging_manager',
+  'procurement-manager', 'imaging_tech', 'imaging_manager', 'sono', 'radiologist',
   'physiotherapist', 'physio', 'physio_manager', 'dental_hod', 'dental_tech', 'dental_lab_manager',
-  'dentist', 'dental'
+  'dentist', 'dental', 'logistics_manager', 'logistics_officer'
 ];
+
 
 const Sidebar = ({ onClose }) => {
   const { user, logout, hasPermission } = useAuth();
@@ -46,6 +48,17 @@ const Sidebar = ({ onClose }) => {
       title: null,
       items: [
         { configKey: 'dashboard', name: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/', requiredPerm: null },
+      ]
+    },
+    {
+      title: 'LOGISTICS PORTAL',
+      items: [
+        { configKey: 'logistics_dashboard', name: 'Logistics Hub', icon: <Truck size={18} />, path: '/logistics', requiredPerm: null, allowedRoles: ALL_ROLES },
+        { configKey: 'logistics_fleet', name: 'Fleet Operations', icon: <Truck size={18} />, path: '/logistics/fleet', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo'] },
+        { configKey: 'logistics_facilities', name: 'Facilities & Power', icon: <Zap size={18} />, path: '/logistics/facilities', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo'] },
+        { configKey: 'logistics_assets', name: 'Assets & Lifecycle', icon: <Wrench size={18} />, path: '/logistics/assets', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo'] },
+        { configKey: 'logistics_inventory', name: 'Maintenance Stock', icon: <Package size={18} />, path: '/logistics/inventory', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo'] },
+        { configKey: 'logistics_admin', name: 'Operations Admin', icon: <DollarSign size={18} />, path: '/logistics/admin', requiredPerm: null, allowedRoles: ['admin', 'coo', 'deputy_coo'] },
       ]
     },
     {
@@ -72,6 +85,7 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'supplier', name: 'Supplier Management', icon: <Building size={18} />, path: '/supplier-portal-manager', requiredPerm: null, allowedRoles: ['admin', 'procurement-manager', 'deputy_coo'] },
       ]
     },
+
     {
       title: 'PATIENTS & FINANCIALS',
       items: [

@@ -62,6 +62,13 @@ import PhysiotherapistDashboard from './pages/physio/PhysiotherapistDashboard';
 import PhysioManagerDashboard from './pages/physio/PhysioManagerDashboard';
 import OperationsHub from './pages/operations/OperationsHub';
 import RosterGenerator from './pages/RosterGenerator';
+import LogisticsDashboard from './pages/logistics/LogisticsDashboard';
+import FleetOperations from './pages/logistics/FleetOperations';
+import FacilitiesPower from './pages/logistics/FacilitiesPower';
+import AssetManagement from './pages/logistics/AssetManagement';
+import MaintenanceStock from './pages/logistics/MaintenanceStock';
+import LogisticsAdmin from './pages/logistics/LogisticsAdmin';
+
 
 const ShiftDashboardRedirect = () => {
   const { user } = useAuth();
@@ -99,7 +106,7 @@ function App() {
             
             <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><RefundList /></ProtectedRoute>} />
             
-            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo', 'medical_director', 'procurement-manager', 'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental_lab', 'dentist', 'dental', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'quality_manager', 'qm']}><IncidentList /></ProtectedRoute>} />
+            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo', 'medical_director', 'procurement-manager', 'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental_lab', 'dentist', 'dental', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'quality_manager', 'qm', 'imaging_tech', 'imaging_manager', 'sono', 'radiologist']}><IncidentList /></ProtectedRoute>} />
 
             
             <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><ResultTransferList /></ProtectedRoute>} />
@@ -216,6 +223,15 @@ function App() {
                 <OperationsHub />
               </ProtectedRoute>
             } />
+
+            {/* ── LOGISTICS PORTAL ROUTES ── */}
+            <Route path="/logistics" element={<LogisticsDashboard />} />
+            <Route path="/logistics/fleet" element={<FleetOperations />} />
+            <Route path="/logistics/facilities" element={<FacilitiesPower />} />
+            <Route path="/logistics/assets" element={<AssetManagement />} />
+            <Route path="/logistics/inventory" element={<MaintenanceStock />} />
+            <Route path="/logistics/admin" element={<LogisticsAdmin />} />
+
 
             <Route path="/roster-generator" element={
               <ProtectedRoute allowedRoles={[

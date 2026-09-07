@@ -44,6 +44,10 @@ const ROLE_GROUPS = [
   {
     name: 'Operations & Support',
     roles: ['operations_staff', 'operations', 'cashier', 'principal_cashier', 'customer_care', 'stock-manager', 'procurement-manager', 'it_officer', 'hsfp']
+  },
+  {
+    name: 'Logistics & Facilities',
+    roles: ['logistics_manager', 'logistics_officer']
   }
 ];
 
@@ -63,7 +67,8 @@ const ROLE_COLORS = {
   'procurement-manager': '#0d9488', imaging_tech: '#8b5cf6', imaging_manager: '#7c3aed',
   dental_hod: '#059669', dental_tech: '#10b981', dental_lab_manager: '#047857',
   dental: '#34d399', dentist: '#059669', lab_tech: '#6366f1', lab: '#818cf8',
-  physio_manager: '#ea580c', physio: '#f97316', physiotherapist: '#f97316'
+  physiotherapist: '#d97706', physio: '#d97706', physio_manager: '#b45309',
+  logistics_manager: '#0284c7', logistics_officer: '#0d9488'
 };
 
 const formatRole = (r) => r ? r.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';

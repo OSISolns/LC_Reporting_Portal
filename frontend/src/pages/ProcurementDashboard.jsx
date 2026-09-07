@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   RefreshCw, Loader2, ShoppingCart, PackageCheck, Gavel, Truck,
-  ChevronRight, Building,
+  ChevronRight, Building, AlertCircle
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
@@ -128,6 +128,22 @@ export default function ProcurementDashboard() {
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-12 w-12 animate-spin text-teal-600" />
         <p className="text-slate-500 font-semibold animate-pulse">Loading Procurement Dashboard…</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <AlertCircle className="h-12 w-12 text-rose-500" />
+        <h3 className="text-lg font-bold text-slate-800">Failed to load procurement dashboard</h3>
+        <p className="text-sm text-slate-500 max-w-md">Unable to retrieve dashboard metrics from server. Please check your backend connection and try again.</p>
+        <button
+          onClick={() => load()}
+          className="mt-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
+        >
+          Retry
+        </button>
       </div>
     );
   }

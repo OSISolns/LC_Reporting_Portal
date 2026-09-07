@@ -61,6 +61,12 @@ function StorageUnitGroup({
         >
           <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
           {unit.label}
+          {unit.temp_range && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/80 border border-slate-200/80 text-slate-700 normal-case tracking-normal">
+              <Thermometer size={10} className="text-sky-600" />
+              {unit.temp_range}
+            </span>
+          )}
           <span className="font-semibold text-[10px] opacity-70 normal-case tracking-normal">
             {rows.length} item{rows.length !== 1 ? 's' : ''}
           </span>
@@ -528,17 +534,17 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const contentTypesFor = (unitType) => ALL_CONTENT_TYPES.filter(c => c.unitTypes.includes(unitType));
 
 
-  // Each unit: { id, label, type: 'fridge'|'freezer', subdivisions: string[], contentTypes: string[] }
+  // Each unit: { id, label, type: 'fridge'|'freezer', temp_range: string, subdivisions: string[], contentTypes: string[] }
   const DEFAULT_STORAGE_UNITS = [
-    { id: 'fridge_1',  label: 'Fridge 1',  type: 'fridge',  subdivisions: [], contentTypes: [] },
-    { id: 'fridge_2',  label: 'Fridge 2',  type: 'fridge',  subdivisions: [], contentTypes: [] },
-    { id: 'fridge_3',  label: 'Fridge 3',  type: 'fridge',  subdivisions: [], contentTypes: [] },
-    { id: 'fridge_4',  label: 'Fridge 4',  type: 'fridge',  subdivisions: [], contentTypes: [] },
-    { id: 'fridge_5',  label: 'Fridge 5',  type: 'fridge',  subdivisions: [], contentTypes: [] },
-    { id: 'fridge_6',  label: 'Fridge 6',  type: 'fridge',  subdivisions: [], contentTypes: [] },
-    { id: 'fridge_7',  label: 'Fridge 7',  type: 'fridge',  subdivisions: [], contentTypes: [] },
-    { id: 'fridge_8',  label: 'Fridge 8',  type: 'fridge',  subdivisions: [], contentTypes: [] },
-    { id: 'freezer_1', label: 'Freezer 1', type: 'freezer', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_1',  label: 'Fridge 1',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_2',  label: 'Fridge 2',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_3',  label: 'Fridge 3',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_4',  label: 'Fridge 4',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_5',  label: 'Fridge 5',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_6',  label: 'Fridge 6',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_7',  label: 'Fridge 7',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_8',  label: 'Fridge 8',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'freezer_1', label: 'Freezer 1', type: 'freezer', temp_range: '-20°C to -80°C', subdivisions: [], contentTypes: [] },
   ];
 
   const [STORAGE_UNITS, setStorageUnits] = useState(() => {
@@ -546,8 +552,13 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       const raw = localStorage.getItem('lc_storage_units_config');
       if (raw) {
         const parsed = JSON.parse(raw);
-        // Migrate: ensure subdivisions and contentTypes fields exist on old saved units
-        return parsed.map(u => ({ ...u, subdivisions: u.subdivisions || [], contentTypes: u.contentTypes || [] }));
+        // Migrate: ensure temp_range, subdivisions and contentTypes fields exist on old saved units
+        return parsed.map(u => ({
+          ...u,
+          temp_range: u.temp_range || (u.type === 'freezer' ? '-20°C to -80°C' : '2°C to 8°C'),
+          subdivisions: u.subdivisions || [],
+          contentTypes: u.contentTypes || []
+        }));
       }
     } catch {}
     return DEFAULT_STORAGE_UNITS;
@@ -559,18 +570,52 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   };
 
   // ── Fridge config editor state ─────────────────────────────────────────────
-  const [editingUnitId, setEditingUnitId]         = useState(null);
-  const [editingUnitLabel, setEditingUnitLabel]   = useState('');
-  const [addUnitType, setAddUnitType]             = useState('fridge');
-  const [addUnitLabel, setAddUnitLabel]           = useState('');
+  const [editingUnitId, setEditingUnitId]               = useState(null);
+  const [editingUnitLabel, setEditingUnitLabel]         = useState('');
+  const [editingUnitTempRange, setEditingUnitTempRange] = useState('');
+  const [addUnitType, setAddUnitType]                   = useState('fridge');
+  const [addUnitLabel, setAddUnitLabel]                 = useState('');
+  const [addUnitTempRange, setAddUnitTempRange]         = useState('2°C to 8°C');
   const [addUnitSubdivisions, setAddUnitSubdivisions]   = useState([]);
   const [addUnitContentTypes, setAddUnitContentTypes]   = useState([]);
 
   const handleSaveUnitLabel = (unitId) => {
+    const unit = STORAGE_UNITS.find(u => u.id === unitId);
     const trimmed = editingUnitLabel.trim();
     if (!trimmed) return;
-    persistStorageUnits(STORAGE_UNITS.map(u => u.id === unitId ? { ...u, label: trimmed } : u));
+    const trimmedTemp = editingUnitTempRange.trim() || (unit?.type === 'freezer' ? '-20°C to -80°C' : '2°C to 8°C');
+    const updated = STORAGE_UNITS.map(u => u.id === unitId ? { ...u, label: trimmed, temp_range: trimmedTemp } : u);
+    persistStorageUnits(updated);
     setEditingUnitId(null);
+
+    // Sync to backend DB
+    if (unit) {
+      api.post('/lab/storage-units', {
+        id: unitId,
+        label: trimmed,
+        type: unit.type,
+        temp_range: trimmedTemp
+      }).catch(() => {});
+    }
+  };
+
+  const handleUpdateUnitTemperature = (unitId, newTemp) => {
+    const unit = STORAGE_UNITS.find(u => u.id === unitId);
+    if (!unit) return;
+    const trimmedTemp = newTemp.trim();
+    if (!trimmedTemp) return;
+    const updated = STORAGE_UNITS.map(u => u.id === unitId ? { ...u, temp_range: trimmedTemp } : u);
+    persistStorageUnits(updated);
+
+    // Sync to backend DB
+    api.post('/lab/storage-units', {
+      id: unitId,
+      label: unit.label,
+      type: unit.type,
+      temp_range: trimmedTemp
+    }).catch(() => {});
+
+    toast.success(`${unit.label} temperature updated to ${trimmedTemp}.`);
   };
 
   const handleToggleUnitSubdivision = (unitId, subdivId) => {
@@ -592,12 +637,31 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const handleAddUnit = () => {
     const trimmed = addUnitLabel.trim();
     if (!trimmed) { toast.error('Enter a name for the new unit.'); return; }
+    const tempRange = addUnitTempRange.trim() || (addUnitType === 'freezer' ? '-20°C to -80°C' : '2°C to 8°C');
     const newId = `${addUnitType}_${Date.now()}`;
-    persistStorageUnits([...STORAGE_UNITS, { id: newId, label: trimmed, type: addUnitType, subdivisions: addUnitSubdivisions, contentTypes: addUnitContentTypes }]);
+    const newUnit = {
+      id: newId,
+      label: trimmed,
+      type: addUnitType,
+      temp_range: tempRange,
+      subdivisions: addUnitSubdivisions,
+      contentTypes: addUnitContentTypes
+    };
+    persistStorageUnits([...STORAGE_UNITS, newUnit]);
+
+    // Sync to backend DB
+    api.post('/lab/storage-units', {
+      id: newId,
+      label: trimmed,
+      type: addUnitType,
+      temp_range: tempRange
+    }).catch(() => {});
+
     setAddUnitLabel('');
+    setAddUnitTempRange(addUnitType === 'freezer' ? '-20°C to -80°C' : '2°C to 8°C');
     setAddUnitSubdivisions([]);
     setAddUnitContentTypes([]);
-    toast.success(`${addUnitType === 'fridge' ? 'Fridge' : 'Freezer'} "${trimmed}" added.`);
+    toast.success(`${addUnitType === 'fridge' ? 'Fridge' : 'Freezer'} "${trimmed}" (${tempRange}) added.`);
   };
 
   const handleDeleteUnit = (unitId) => {
@@ -3594,19 +3658,35 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                           {isEditing ? (
                             <form
                               onSubmit={(e) => { e.preventDefault(); handleSaveUnitLabel(unit.id); }}
-                              className="flex items-center gap-2 flex-1"
+                              className="flex flex-wrap items-center gap-2 flex-1"
                             >
                               <input
                                 autoFocus
                                 value={editingUnitLabel}
                                 onChange={e => setEditingUnitLabel(e.target.value)}
-                                className="flex-1 px-2.5 py-1 text-sm font-bold rounded-lg border border-sky-300 outline-none focus:ring-2 focus:ring-sky-200 bg-white"
+                                className="flex-1 px-2.5 py-1 text-sm font-bold rounded-lg border border-sky-300 outline-none focus:ring-2 focus:ring-sky-200 bg-white min-w-[130px]"
+                                placeholder="Unit name"
                               />
+                              <div className="flex items-center gap-1 bg-white border border-sky-300 rounded-lg px-2 py-1">
+                                <Thermometer size={14} className="text-sky-600 shrink-0" />
+                                <input
+                                  value={editingUnitTempRange}
+                                  onChange={e => setEditingUnitTempRange(e.target.value)}
+                                  className="text-xs font-semibold outline-none w-28 text-slate-800"
+                                  placeholder="e.g. 2°C to 8°C"
+                                />
+                              </div>
                               <button type="submit" className="px-3 py-1 bg-sky-700 text-white text-xs font-bold rounded-lg cursor-pointer hover:bg-sky-800 transition-colors">Save</button>
                               <button type="button" onClick={() => setEditingUnitId(null)} className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">Cancel</button>
                             </form>
                           ) : (
-                            <span className={`flex-1 text-sm font-black ${headerText}`}>{unit.label}</span>
+                            <div className="flex flex-wrap items-center gap-2 flex-1">
+                              <span className={`text-sm font-black ${headerText}`}>{unit.label}</span>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-white border border-slate-200 text-slate-700 shadow-2xs">
+                                <Thermometer size={12} className={isFridge ? "text-sky-500" : "text-indigo-500"} />
+                                {unit.temp_range || (isFridge ? '2°C to 8°C' : '-20°C to -80°C')}
+                              </span>
+                            </div>
                           )}
 
                           {!isEditing && (
@@ -3623,9 +3703,13 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                               )}
                               <button
                                 type="button"
-                                onClick={() => { setEditingUnitId(unit.id); setEditingUnitLabel(unit.label); }}
+                                onClick={() => {
+                                  setEditingUnitId(unit.id);
+                                  setEditingUnitLabel(unit.label);
+                                  setEditingUnitTempRange(unit.temp_range || (isFridge ? '2°C to 8°C' : '-20°C to -80°C'));
+                                }}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/70 transition-all cursor-pointer"
-                                title="Rename"
+                                title="Edit Name & Temperature"
                               >
                                 <Edit3 size={13} />
                               </button>
@@ -3639,6 +3723,43 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                               </button>
                             </div>
                           )}
+                        </div>
+
+                        {/* Temperature configuration row */}
+                        <div className="px-4 py-2.5 bg-white border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 rounded-lg ${isFridge ? 'bg-sky-100 text-sky-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                              <Thermometer size={15} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Configured Temperature</p>
+                              <p className="text-xs font-black text-slate-800">
+                                {unit.temp_range || (isFridge ? '2°C to 8°C' : '-20°C to -80°C')}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Quick temperature presets */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-bold text-slate-400">Presets:</span>
+                            {(isFridge
+                              ? ['2°C to 8°C', '4°C', '2°C to 4°C', '15°C to 25°C']
+                              : ['-20°C', '-80°C', '-20°C to -80°C', '-40°C']
+                            ).map(preset => (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => handleUpdateUnitTemperature(unit.id, preset)}
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                                  (unit.temp_range || (isFridge ? '2°C to 8°C' : '-20°C to -80°C')) === preset
+                                    ? isFridge ? 'bg-sky-600 text-white border-sky-600 shadow-2xs font-extrabold' : 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-extrabold'
+                                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {preset}
+                              </button>
+                            ))}
+                          </div>
                         </div>
 
                         {/* Subdivision assignment */}
@@ -3738,7 +3859,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     <Plus size={13} /> Add New Storage Unit
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {/* Type toggle */}
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Type</label>
@@ -3747,7 +3868,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                           <button
                             key={t}
                             type="button"
-                            onClick={() => setAddUnitType(t)}
+                            onClick={() => {
+                              setAddUnitType(t);
+                              setAddUnitTempRange(t === 'freezer' ? '-20°C to -80°C' : '2°C to 8°C');
+                            }}
                             className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                               addUnitType === t
                                 ? t === 'fridge'
@@ -3773,6 +3897,22 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddUnit(); } }}
                         className="w-full px-3 py-2 text-sm font-semibold bg-white border border-slate-200 rounded-xl outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 placeholder-slate-300"
                       />
+                    </div>
+
+                    {/* Temp Range input */}
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Configured Temperature</label>
+                      <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2">
+                        <Thermometer size={15} className="text-sky-600 shrink-0" />
+                        <input
+                          type="text"
+                          placeholder={addUnitType === 'fridge' ? 'e.g. 2°C to 8°C' : 'e.g. -20°C or -80°C'}
+                          value={addUnitTempRange}
+                          onChange={e => setAddUnitTempRange(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddUnit(); } }}
+                          className="w-full text-xs font-semibold outline-none text-slate-800 placeholder-slate-300"
+                        />
+                      </div>
                     </div>
                   </div>
 

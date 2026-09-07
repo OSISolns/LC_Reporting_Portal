@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 
 // From address configuration
-const mailFromAddress = process.env.MAIL_FROM_ADDRESS || 'donotreply@legacyclinics.rw';
+const mailFromAddress = process.env.MAIL_FROM_ADDRESS || 'no-reply@legacyclinics.rw';
 const mailFromName = process.env.MAIL_FROM_NAME || 'Legacy Clinics';
 const mailFrom = `"${mailFromName}" <${mailFromAddress}>`;
 
@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
   port: port,
   secure: isSecure, // true for 465, false for 587 or other ports
   auth: {
-    user: process.env.SMTP_USER || 'donotreply@legacyclinics.rw',
+    user: process.env.SMTP_USER || 'no-reply@legacyclinics.rw',
     pass: process.env.SMTP_PASS || 'AMAhamba@2110',
   },
   tls: {

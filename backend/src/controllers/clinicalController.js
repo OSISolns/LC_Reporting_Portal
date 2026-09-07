@@ -4,6 +4,7 @@ const QRCode = require('qrcode');
 const ExcelJS = require('exceljs');
 const ClinicalObservation = require('../models/clinicalObservation');
 const db = require('../config/db');
+const emailService = require('../services/emailService');
 const itemClassificationTraining = require('../data/itemClassificationTraining.json');
 
 // ─── Document Authenticity ─────────────────────────────────────────────────────
@@ -4074,9 +4075,13 @@ exports.getVendors = async (req, res) => {
 
 exports.createVendor = async (req, res) => {
   try {
-    const { name, contact, contractTerms, category } = req.body;
+    const { name, contact, email, phone, contractTerms, category } = req.body;
     const finalTerms = contractTerms || req.body.terms || req.body.contract_terms || null;
-    await db.query("INSERT INTO vendors (name, contact, contract_terms, category) VALUES ($1, $2, $3, $4)", [name, contact, finalTerms, category || 'Medical']);
+    const finalPhone = phone || req.body.phone_number || req.body.tel || null;
+    await db.query(
+      "INSERT INTO vendors (name, contact, email, phone, contract_terms, category) VALUES ($1, $2, $3, $4, $5, $6)",
+      [name, contact, email || null, finalPhone, finalTerms, category || 'Medical']
+    );
     res.json({ success: true, message: 'Vendor added successfully' });
   } catch (error) {
     console.error('Error in createVendor:', error);
@@ -4087,11 +4092,12 @@ exports.createVendor = async (req, res) => {
 exports.updateVendor = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, contact, contractTerms, category } = req.body;
+    const { name, contact, email, phone, contractTerms, category } = req.body;
     const finalTerms = contractTerms || req.body.terms || req.body.contract_terms || null;
+    const finalPhone = phone || req.body.phone_number || req.body.tel || null;
     await db.query(
-      "UPDATE vendors SET name = $1, contact = $2, contract_terms = $3, category = $4 WHERE id = $5",
-      [name, contact, finalTerms, category || 'Medical', id]
+      "UPDATE vendors SET name = $1, contact = $2, email = $3, phone = $4, contract_terms = $5, category = $6 WHERE id = $7",
+      [name, contact, email || null, finalPhone, finalTerms, category || 'Medical', id]
     );
     res.json({ success: true, message: 'Vendor updated successfully' });
   } catch (error) {
@@ -4103,11 +4109,38 @@ exports.updateVendor = async (req, res) => {
 exports.deleteVendor = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Check if vendor has linked transactional records (purchase orders, stock batches, GRNs)
+    const { rows: poCheck } = await db.query("SELECT COUNT(*) as count FROM purchase_orders WHERE vendor_id = $1", [id]).catch(() => ({ rows: [{ count: 0 }] }));
+    const { rows: batchCheck } = await db.query("SELECT COUNT(*) as count FROM stock_batches WHERE vendor_id = $1", [id]).catch(() => ({ rows: [{ count: 0 }] }));
+    const { rows: grnCheck } = await db.query("SELECT COUNT(*) as count FROM goods_receipt_notes WHERE vendor_id = $1", [id]).catch(() => ({ rows: [{ count: 0 }] }));
+
+    const poCount = parseInt(poCheck[0]?.count || 0);
+    const batchCount = parseInt(batchCheck[0]?.count || 0);
+    const grnCount = parseInt(grnCheck[0]?.count || 0);
+
+    if (poCount > 0 || batchCount > 0 || grnCount > 0) {
+      // Soft-delete / deactivate vendor if transactional records exist
+      await db.query("UPDATE vendors SET is_active = 0 WHERE id = $1", [id]);
+      return res.json({
+        success: true,
+        message: 'Vendor has linked orders/stock batches. Status changed to Inactive.'
+      });
+    }
+
+    // Clean up non-transactional supplier records safely
+    await db.query("DELETE FROM supplier_portal_sessions WHERE vendor_id = $1", [id]).catch(() => {});
+    await db.query("DELETE FROM rfq_suppliers WHERE vendor_id = $1", [id]).catch(() => {});
+    await db.query("DELETE FROM vendor_documents WHERE vendor_id = $1", [id]).catch(() => {});
+    await db.query("DELETE FROM vendor_catalog WHERE vendor_id = $1", [id]).catch(() => {});
+    await db.query("DELETE FROM vendor_ratings WHERE vendor_id = $1", [id]).catch(() => {});
+    await db.query("DELETE FROM vendor_contracts WHERE vendor_id = $1", [id]).catch(() => {});
+
     await db.query("DELETE FROM vendors WHERE id = $1", [id]);
     res.json({ success: true, message: 'Vendor deleted successfully' });
   } catch (error) {
     console.error('Error in deleteVendor:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    res.status(500).json({ success: false, message: error.message || 'Failed to delete vendor' });
   }
 };
 
@@ -4462,11 +4495,12 @@ exports.getPublicOpenRFQs = async (req, res) => {
   }
 };
 
-async function helperOpenSupplierPortalSession(vendorId, items) {
-  // Fetch vendor name
-  const { rows: vendRows } = await db.query("SELECT name FROM vendors WHERE id = $1", [vendorId]);
+async function helperOpenSupplierPortalSession(vendorId, items, sendEmailNotification = true) {
+  // Fetch vendor details
+  const { rows: vendRows } = await db.query("SELECT name, email FROM vendors WHERE id = $1", [vendorId]);
   if (!vendRows[0]) return null;
   const vendorName = vendRows[0].name;
+  const vendorEmail = vendRows[0].email;
 
   // Generate unique 12-char alphanumeric token (retry on collision)
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -4504,6 +4538,50 @@ async function helperOpenSupplierPortalSession(vendorId, items) {
      VALUES ($1, $2, $3, $4, 1) RETURNING id, created_at`,
     [vendorId, vendorName, token, JSON.stringify(normalizedItems)]
   );
+
+  // Send portal access link & token to supplier via email if configured
+  if (sendEmailNotification && vendorEmail && vendorEmail.trim()) {
+    const portalUrl = process.env.SUPPLIER_PORTAL_URL || 'https://report.ops-legacyclinics.rw/supplier-portal';
+    const emailSubject = `[Supplier Portal Access] Legacy Clinics & Diagnostics - Access Token`;
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+        <div style="background-color: #1e3a8a; padding: 20px; text-align: center; color: white; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0;">Legacy Clinics & Diagnostics</h2>
+          <p style="margin: 4px 0 0 0; font-size: 13px;">Official Supplier Portal Access</p>
+        </div>
+        <div style="padding: 20px; color: #334155;">
+          <p>Dear <strong>${vendorName}</strong>,</p>
+          <p>A supplier portal session has been opened for your company by Legacy Clinics Procurement Dept.</p>
+          
+          <p style="margin-top: 16px;"><strong>Your Access Token:</strong></p>
+          <div style="background-color: #e0f2fe; border: 1px solid #93c5fd; padding: 14px; text-align: center; border-radius: 8px; font-family: monospace; font-size: 20px; font-weight: bold; letter-spacing: 3px; color: #1e40af; margin: 16px 0;">
+            ${token}
+          </div>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${portalUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+              Open Supplier Portal
+            </a>
+          </div>
+
+          <p style="font-size: 13px; color: #64748b;">
+            Direct Portal Link: <a href="${portalUrl}" style="color: #2563eb;">${portalUrl}</a>
+          </p>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+            Legacy Clinics & Diagnostics — Procurement Dept.
+          </p>
+        </div>
+      </div>
+    `;
+
+    emailService.sendEmail({
+      to: vendorEmail.trim(),
+      subject: emailSubject,
+      html: emailHtml,
+      text: `Dear ${vendorName},\n\nA supplier portal session has been opened for you.\nAccess Link: ${portalUrl}\nAccess Token: ${token}`
+    }).catch(err => console.error('Failed to send supplier portal session email:', err));
+  }
 
   return {
     id: newRows[0].id,
@@ -5538,27 +5616,87 @@ exports.createRFQ = async (req, res) => {
       }
     }
 
-    // 5. Ensure active portal token sessions for invited vendors without creating delivery intake items
+    // 5. Ensure active portal token sessions for invited vendors & send email notifications if email is present
     const portalSessions = [];
     for (const vendorId of validVendorIds) {
+      const { rows: vRows } = await db.query(
+        "SELECT name, contact, email FROM vendors WHERE id = $1",
+        [vendorId]
+      );
+      const vendorObj = vRows[0] || {};
+      let tokenCode = '';
+
       const { rows: existing } = await db.query(
         "SELECT id, vendor_id, vendor_name, token, created_at FROM supplier_portal_sessions WHERE vendor_id = $1 AND is_active = 1 LIMIT 1",
         [vendorId]
       );
       if (existing.length > 0) {
+        tokenCode = existing[0].token;
         portalSessions.push({
           id: existing[0].id,
           vendorId: existing[0].vendor_id,
           vendorName: existing[0].vendor_name,
-          token: existing[0].token,
+          token: tokenCode,
           createdAt: existing[0].created_at,
           isActive: true
         });
       } else {
-        const session = await helperOpenSupplierPortalSession(vendorId, []);
+        const session = await helperOpenSupplierPortalSession(vendorId, [], false);
         if (session) {
+          tokenCode = session.token;
           portalSessions.push(session);
         }
+      }
+
+      // Send email notification to supplier if email address is configured
+      if (vendorObj.email && vendorObj.email.trim()) {
+        const portalUrl = process.env.SUPPLIER_PORTAL_URL || 'https://report.ops-legacyclinics.rw/supplier-portal';
+        const emailSubject = `[Tender Invitation] ${title} - Ref: ${refNo}`;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+            <div style="background-color: #1e3a8a; padding: 20px; text-align: center; color: white; border-radius: 8px 8px 0 0;">
+              <h2 style="margin: 0;">Legacy Clinics & Diagnostics</h2>
+              <p style="margin: 4px 0 0 0; font-size: 13px;">Official Procurement Tender Invitation</p>
+            </div>
+            <div style="padding: 20px; color: #334155;">
+              <p>Dear <strong>${vendorObj.name}</strong>,</p>
+              <p>You have been officially invited to submit a proposal / quotation for the following tender:</p>
+              
+              <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 16px 0; border-radius: 6px;">
+                <p style="margin: 4px 0;"><strong>Tender Title:</strong> ${title}</p>
+                <p style="margin: 4px 0;"><strong>Reference No:</strong> ${refNo}</p>
+                <p style="margin: 4px 0;"><strong>Category:</strong> ${category || 'Medical Supplies'}</p>
+                ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${notes}</p>` : ''}
+              </div>
+
+              <p style="margin-top: 16px;"><strong>Your Supplier Portal Access Token:</strong></p>
+              <div style="background-color: #e0f2fe; border: 1px solid #93c5fd; padding: 12px; text-align: center; border-radius: 8px; font-family: monospace; font-size: 18px; font-weight: bold; letter-spacing: 2px; color: #1e40af; margin: 16px 0;">
+                ${tokenCode}
+              </div>
+
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${portalUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                  Access Supplier Portal
+                </a>
+              </div>
+
+              <p style="font-size: 13px; color: #64748b;">
+                Log in to the portal using your access token to view requested line items and submit your proforma pricing.
+              </p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+              <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+                Legacy Clinics & Diagnostics — Procurement Dept.
+              </p>
+            </div>
+          </div>
+        `;
+        
+        emailService.sendEmail({
+          to: vendorObj.email.trim(),
+          subject: emailSubject,
+          html: emailHtml,
+          text: `Dear ${vendorObj.name},\n\nYou are invited to tender for: ${title} (${refNo}).\nAccess Token: ${tokenCode}\nLog in at: ${portalUrl}`
+        }).catch(err => console.error('Failed to send vendor tender invitation email:', err));
       }
     }
 
@@ -5732,6 +5870,111 @@ exports.generatePOsFromRFQ = async (req, res) => {
 
     // Update RFQ status to 'Awarded'
     await db.query("UPDATE rfqs SET status = 'Awarded' WHERE id = $1", [id]);
+
+    // Asynchronously dispatch email notifications to awarded suppliers and tender sender / creator
+    (async () => {
+      try {
+        const Notification = require('../models/notification');
+        const rfq = rfqRows[0];
+        const portalUrl = process.env.SUPPLIER_PORTAL_URL || 'https://report.ops-legacyclinics.rw/supplier-portal';
+
+        // 1. Send email notification to each awarded supplier/vendor
+        for (const vendorId of Object.keys(vendorMap)) {
+          const items = vendorMap[vendorId];
+          const poObj = createdPOs.find(p => String(p.po_number).endsWith(`-${vendorId}`));
+          const poNumber = poObj ? poObj.po_number : `PO-RFQ-${vendorId}`;
+          const totalAmount = items.reduce((sum, item) => sum + (Number(item.quantity || 1) * Number(item.effective_price || 0)), 0);
+
+          const { rows: vendorRows } = await db.query('SELECT * FROM vendors WHERE id = $1', [vendorId]);
+          if (vendorRows.length > 0) {
+            const vendor = vendorRows[0];
+            const vendorEmail = vendor.email;
+
+            if (vendorEmail && vendorEmail.trim()) {
+              const itemRowsHtml = items.map(item => `
+                <tr>
+                  <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px;">${item.item_name}</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: center;">${item.quantity} ${item.unit || ''}</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: right;">${Number(item.effective_price).toLocaleString()} RWF</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: right; font-weight: bold;">${(Number(item.quantity || 1) * Number(item.effective_price || 0)).toLocaleString()} RWF</td>
+                </tr>
+              `).join('');
+
+              const emailSubject = `[Tender Awarded] Legacy Clinics - Tender Award Notification (${rfq.reference_no})`;
+              const emailHtml = `
+                <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; color: #334155;">
+                  <div style="background-color: #059669; padding: 20px; text-align: center; color: white; border-radius: 8px 8px 0 0;">
+                    <h2 style="margin: 0;">Legacy Clinics & Diagnostics</h2>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Procurement Dept. — Official Tender Award</p>
+                  </div>
+                  <div style="padding: 20px;">
+                    <p>Dear <strong>${vendor.name}</strong>,</p>
+                    <p>We are pleased to inform you that your company has been awarded Tender <strong>"${rfq.title}"</strong> (Ref: <strong>${rfq.reference_no}</strong>).</p>
+                    
+                    <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 14px; margin: 16px 0; border-radius: 4px;">
+                      <p style="margin: 2px 0;"><strong>Purchase Order Ref:</strong> ${poNumber}</p>
+                      <p style="margin: 2px 0;"><strong>Total Awarded Amount:</strong> ${totalAmount.toLocaleString()} RWF</p>
+                      <p style="margin: 2px 0;"><strong>Status:</strong> Issued / Pending Delivery</p>
+                    </div>
+
+                    <h4 style="margin-top: 20px; margin-bottom: 8px; color: #065f46;">Awarded Items Summary:</h4>
+                    <table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+                      <thead>
+                        <tr style="background-color: #f8fafc; text-align: left;">
+                          <th style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px;">Item</th>
+                          <th style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: center;">Qty</th>
+                          <th style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: right;">Unit Price</th>
+                          <th style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: right;">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${itemRowsHtml}
+                      </tbody>
+                    </table>
+
+                    <div style="text-align: center; margin: 24px 0;">
+                      <a href="${portalUrl}" style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                        Access Supplier Portal
+                      </a>
+                    </div>
+
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                    <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+                      Legacy Clinics & Diagnostics — Procurement Dept.
+                    </p>
+                  </div>
+                </div>
+              `;
+
+              emailService.sendEmail({
+                to: vendorEmail.trim(),
+                subject: emailSubject,
+                html: emailHtml,
+                text: `Dear ${vendor.name},\n\nYour quotation for Tender "${rfq.title}" (Ref: ${rfq.reference_no}) has been accepted and awarded.\nPO Number: ${poNumber}\nTotal Amount: ${totalAmount.toLocaleString()} RWF\n\nAccess portal: ${portalUrl}`
+              }).catch(err => console.error('Failed to send vendor tender award email:', err));
+            }
+          }
+        }
+
+        // 2. Send email & in-app notification to the Tender Creator / Sender
+        const userIdsToNotify = new Set();
+        if (rfq.created_by) userIdsToNotify.add(rfq.created_by);
+        if (req.user?.id) userIdsToNotify.add(req.user.id);
+
+        for (const userId of userIdsToNotify) {
+          await Notification.create({
+            userId,
+            title: `Tender Awarded: ${rfq.reference_no}`,
+            message: `Tender "${rfq.title}" (Ref: ${rfq.reference_no}) has been awarded to winning supplier(s). ${createdPOs.length} Purchase Order(s) auto-generated.`,
+            type: 'success',
+            link: '/procurement/hub'
+          }).catch(err => console.error(`Failed to create tender award notification for user #${userId}:`, err));
+        }
+
+      } catch (notifyErr) {
+        console.error('Error sending tender award email notifications:', notifyErr);
+      }
+    })();
 
     res.json({ success: true, message: 'Purchase Orders auto-generated successfully.', data: createdPOs });
   } catch (error) {
@@ -6361,7 +6604,7 @@ exports.getDepartmentUsageAnalytics = async (req, res) => {
 exports.getSupplierLeaderboard = async (req, res) => {
   try {
     const { rows } = await db.query(
-      "SELECT v.id, v.name, v.contact, COUNT(DISTINCT po.id) as total_pos, COUNT(DISTINCT grn.id) as total_grns, COALESCE(SUM(poi.quantity*poi.unit_price),0) as total_spend, COALESCE(AVG(vr.rating),0) as avg_rating, COUNT(DISTINCT vr.id) as rating_count FROM vendors v LEFT JOIN purchase_orders po ON po.vendor_id=v.id AND po.status!='Cancelled' LEFT JOIN purchase_order_items poi ON poi.po_id=po.id LEFT JOIN goods_receipt_notes grn ON grn.vendor_id=v.id LEFT JOIN vendor_ratings vr ON vr.vendor_id=v.id GROUP BY v.id, v.name, v.contact ORDER BY total_spend DESC");
+      "SELECT v.id, v.name, v.contact, v.email, v.phone, COUNT(DISTINCT po.id) as total_pos, COUNT(DISTINCT grn.id) as total_grns, COALESCE(SUM(poi.quantity*poi.unit_price),0) as total_spend, COALESCE(AVG(vr.rating),0) as avg_rating, COUNT(DISTINCT vr.id) as rating_count FROM vendors v LEFT JOIN purchase_orders po ON po.vendor_id=v.id AND po.status!='Cancelled' LEFT JOIN purchase_order_items poi ON poi.po_id=po.id LEFT JOIN goods_receipt_notes grn ON grn.vendor_id=v.id LEFT JOIN vendor_ratings vr ON vr.vendor_id=v.id GROUP BY v.id, v.name, v.contact, v.email, v.phone ORDER BY total_spend DESC");
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error in getSupplierLeaderboard:', error);

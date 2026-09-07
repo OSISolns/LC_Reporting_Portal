@@ -3,7 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Building, FileText, ClipboardList, ShieldAlert, Plus, Eye, EyeOff, Check, X,
-  Trash2, RefreshCw, BarChart2, CheckCircle, Clock, AlertTriangle,
+  Trash2, Pencil, RefreshCw, BarChart2, CheckCircle, Clock, AlertTriangle,
   TrendingUp, Search, Calendar, Loader2, ArrowRight, ArrowLeft, User, AlertCircle,
   Truck, ArrowUpRight, DollarSign, Tag, Info, ArrowRightLeft, Printer, Download,
   Copy, KeyRound, ShoppingCart, PackageCheck, Radio, Gavel, TrendingDown, CheckCircle2, Undo2,
@@ -290,6 +290,7 @@ export default function ProcurementHub() {
   const [showCreatePOModal, setShowCreatePOModal] = useState(false);
   const [showCreateGRNModal, setShowCreateGRNModal] = useState(false);
   const [showCreateVendorModal, setShowCreateVendorModal] = useState(false);
+  const [editingVendor, setEditingVendor] = useState(null);
   const [showCreateIncidentModal, setShowCreateIncidentModal] = useState(false);
   // Shown after a PO is sent and its supplier portal session auto-opens, so
   // procurement staff can copy/share the token with the vendor.
@@ -328,6 +329,8 @@ export default function ProcurementHub() {
   // Vendor Form
   const [vendorName, setVendorName] = useState('');
   const [vendorContact, setVendorContact] = useState('');
+  const [vendorEmail, setVendorEmail] = useState('');
+  const [vendorPhone, setVendorPhone] = useState('');
   const [vendorTerms, setVendorTerms] = useState('');
 
   // Incident Form
@@ -1429,6 +1432,25 @@ export default function ProcurementHub() {
 
 
   // --- Vendor Actions ---
+  const openVendorModal = (vendor = null) => {
+    if (vendor) {
+      setEditingVendor(vendor);
+      setVendorName(vendor.name || '');
+      setVendorContact(vendor.contact || '');
+      setVendorEmail(vendor.email || '');
+      setVendorPhone(vendor.phone || '');
+      setVendorTerms(vendor.contract_terms || vendor.terms || '');
+    } else {
+      setEditingVendor(null);
+      setVendorName('');
+      setVendorContact('');
+      setVendorEmail('');
+      setVendorPhone('');
+      setVendorTerms('');
+    }
+    setShowCreateVendorModal(true);
+  };
+
   const handleCreateVendorSubmit = async (e) => {
     e.preventDefault();
     if (!vendorName.trim()) {
@@ -1437,25 +1459,68 @@ export default function ProcurementHub() {
     }
     setSubmittingVendor(true);
     try {
-      const res = await api.post('/clinical/inventory/vendors', {
-        name: vendorName.trim(),
-        contact: vendorContact.trim(),
-        terms: vendorTerms.trim(),
-        is_active: 1
-      });
+      if (editingVendor) {
+        const res = await api.put(`/clinical/inventory/vendors/${editingVendor.id}`, {
+          name: vendorName.trim(),
+          contact: vendorContact.trim(),
+          email: vendorEmail.trim(),
+          phone: vendorPhone.trim(),
+          contractTerms: vendorTerms.trim(),
+          category: 'Medical'
+        });
+        if (res.data.success) {
+          toast.success(`Supplier "${vendorName}" updated successfully.`);
+          setShowCreateVendorModal(false);
+          setEditingVendor(null);
+          setVendorName('');
+          setVendorContact('');
+          setVendorEmail('');
+          setVendorPhone('');
+          setVendorTerms('');
+          await loadData(true);
+        }
+      } else {
+        const res = await api.post('/clinical/inventory/vendors', {
+          name: vendorName.trim(),
+          contact: vendorContact.trim(),
+          email: vendorEmail.trim(),
+          phone: vendorPhone.trim(),
+          terms: vendorTerms.trim(),
+          is_active: 1
+        });
+        if (res.data.success) {
+          toast.success(`Supplier "${vendorName}" added successfully.`);
+          setShowCreateVendorModal(false);
+          setEditingVendor(null);
+          setVendorName('');
+          setVendorContact('');
+          setVendorEmail('');
+          setVendorPhone('');
+          setVendorTerms('');
+          await loadData(true);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save supplier.');
+    } finally {
+      setSubmittingVendor(false);
+    }
+  };
+
+  const handleDeleteVendor = async (vendor) => {
+    if (!window.confirm(`Are you sure you want to delete supplier "${vendor.name}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      const res = await api.delete(`/clinical/inventory/vendors/${vendor.id}`);
       if (res.data.success) {
-        toast.success(`Supplier "${vendorName}" added successfully.`);
-        setShowCreateVendorModal(false);
-        setVendorName('');
-        setVendorContact('');
-        setVendorTerms('');
+        toast.success(res.data.message || `Supplier "${vendor.name}" deleted successfully.`);
         await loadData(true);
       }
     } catch (err) {
       console.error(err);
-      toast.error('Failed to register supplier.');
-    } finally {
-      setSubmittingVendor(false);
+      toast.error(err.response?.data?.message || 'Failed to delete supplier.');
     }
   };
 
@@ -2733,7 +2798,7 @@ export default function ProcurementHub() {
                       />
                     </div>
                     <button
-                      onClick={() => setShowCreateVendorModal(true)}
+                      onClick={() => openVendorModal(null)}
                       className="w-full md:w-auto px-5 py-2.5 bg-teal-700 hover:bg-teal-650 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <Plus size={16} /> Register New Supplier
@@ -2747,33 +2812,54 @@ export default function ProcurementHub() {
                           <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-150">
                             <th className="p-4">ID</th>
                             <th className="p-4">Supplier Name</th>
-                            <th className="p-4">Contact Info</th>
+                            <th className="p-4">Contact Person</th>
+                            <th className="p-4">Phone Number</th>
+                            <th className="p-4">Email Address</th>
                             <th className="p-4">Terms</th>
                             <th className="p-4">Status</th>
+                            <th className="p-4 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
                           {filteredVendors.map(vendor => (
                             <tr
                               key={vendor.id}
-                              onClick={() => { loadVendorProfile(vendor); fetchSupplierPerformance(vendor.id); }}
-                              className="hover:bg-slate-50/50 transition-all cursor-pointer group"
+                              className="hover:bg-slate-50/50 transition-all border-b border-slate-100"
                             >
                               <td className="p-4 font-bold text-slate-400">#VEN-{vendor.id}</td>
-                              <td className="p-4 font-black text-slate-800 group-hover:text-teal-700">{vendor.name}</td>
+                              <td className="p-4 font-black text-slate-800 cursor-pointer hover:text-teal-700" onClick={() => { loadVendorProfile(vendor); fetchSupplierPerformance(vendor.id); }}>{vendor.name}</td>
                               <td className="p-4 text-slate-500">{vendor.contact || '—'}</td>
+                              <td className="p-4 text-slate-600 font-mono">{vendor.phone ? <a href={`tel:${vendor.phone}`} className="text-teal-700 hover:underline">{vendor.phone}</a> : '—'}</td>
+                              <td className="p-4 text-indigo-600 font-mono">{vendor.email ? <a href={`mailto:${vendor.email}`} className="hover:underline">{vendor.email}</a> : '—'}</td>
                               <td className="p-4 text-slate-500">{vendor.contract_terms || 'Net 30'}</td>
                               <td className="p-4">
-                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${vendor.is_active ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
-                                  }`}>
+                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${vendor.is_active ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
                                   {vendor.is_active ? 'Active' : 'Inactive'}
                                 </span>
+                              </td>
+                              <td className="p-4 text-right">
+                                <div className="flex justify-end items-center gap-1.5">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); openVendorModal(vendor); }}
+                                    className="p-2 text-slate-500 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+                                    title="Edit Supplier Details"
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteVendor(vendor); }}
+                                    className="p-2 text-slate-500 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+                                    title="Delete Supplier"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
                           {filteredVendors.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="p-12 text-center text-slate-400">
+                              <td colSpan={8} className="p-12 text-center text-slate-400">
                                 <Truck className="mx-auto opacity-30 mb-2" size={36} />
                                 No suppliers registered yet.
                               </td>
@@ -3487,7 +3573,7 @@ export default function ProcurementHub() {
                               onClick={handleGeneratePOsSubmit}
                               disabled={generatingPOs}
                               title="Creates one draft Purchase Order per winning vendor from the saved awards"
-                              className="bg-teal-650 text-white hover:bg-teal-700 px-5 py-2.5 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                              className="bg-emerald-600 text-white hover:bg-emerald-700 px-5 py-2.5 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                             >
                               {generatingPOs ? <Loader2 size={14} className="animate-spin" /> : <ShoppingCart size={14} />}
                               {generatingPOs ? 'Generating POs…' : 'Auto-Generate POs'}
@@ -3706,7 +3792,7 @@ export default function ProcurementHub() {
                                     onClick={handleSaveAwardsSubmit}
                                     disabled={submittingAwards || decidedCount === 0}
                                     title={decidedCount === 0 ? 'Select a winning vendor (or "No offers") for at least one item first' : 'Record the committee decision for the selected items'}
-                                    className="bg-teal-650 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     {submittingAwards ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                                     {submittingAwards ? 'Saving Awards…' : 'Save Evaluation & Awards'}
@@ -4700,8 +4786,8 @@ export default function ProcurementHub() {
                   <input type="number" placeholder="Estimated purchase price..." value={catalogItemPrice} onChange={e => setCatalogItemPrice(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none" />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
-                  <button type="button" onClick={() => setShowAddCatalogModal(false)} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-slate-655">Cancel</button>
-                  <button type="submit" disabled={submittingCatalog} className="bg-teal-650 text-white px-5 py-2 rounded-xl shadow-md">{submittingCatalog ? 'Adding...' : 'Add to Catalog'}</button>
+                  <button type="button" onClick={() => setShowAddCatalogModal(false)} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-slate-655 cursor-pointer">Cancel</button>
+                  <button type="submit" disabled={submittingCatalog} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer disabled:opacity-60">{submittingCatalog ? 'Adding...' : 'Add to Catalog'}</button>
                 </div>
               </form>
             </motion.div>
@@ -5432,8 +5518,8 @@ export default function ProcurementHub() {
               className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col text-slate-800 animate-none"
             >
               <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
-                <h3 className="text-lg font-black text-slate-900">Register New Supplier</h3>
-                <button onClick={() => setShowCreateVendorModal(false)} className="text-slate-400 hover:text-slate-650 cursor-pointer"><X size={20} /></button>
+                <h3 className="text-lg font-black text-slate-900">{editingVendor ? 'Edit Supplier Details' : 'Register New Supplier'}</h3>
+                <button onClick={() => { setShowCreateVendorModal(false); setEditingVendor(null); }} className="text-slate-400 hover:text-slate-650 cursor-pointer"><X size={20} /></button>
               </div>
 
               <form onSubmit={handleCreateVendorSubmit} className="space-y-4">
@@ -5450,13 +5536,35 @@ export default function ProcurementHub() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-600">Contact Details</label>
+                  <label className="text-xs font-bold text-slate-600">Contact Person / Representative</label>
                   <input
                     type="text"
-                    placeholder="e.g. Email, phone, or representative..."
+                    placeholder="e.g. Jean Dupont"
                     value={vendorContact}
                     onChange={(e) => setVendorContact(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none focus:bg-white"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600">Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +250788123456"
+                    value={vendorPhone}
+                    onChange={(e) => setVendorPhone(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none focus:bg-white font-medium"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600">Supplier Email Address <span className="text-indigo-600 text-[10px] font-normal">(for Tender RFQ Invites)</span></label>
+                  <input
+                    type="email"
+                    placeholder="e.g. orders@rwandapharma.rw"
+                    value={vendorEmail}
+                    onChange={(e) => setVendorEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none focus:bg-white font-medium"
                   />
                 </div>
 
@@ -5477,7 +5585,7 @@ export default function ProcurementHub() {
                     disabled={submittingVendor}
                     className="flex-1 py-3 bg-teal-700 hover:bg-teal-650 text-white font-bold text-xs rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
                   >
-                    {submittingVendor ? <Loader2 size={14} className="animate-spin" /> : 'Register Supplier'}
+                    {submittingVendor ? <Loader2 size={14} className="animate-spin" /> : editingVendor ? 'Save Changes' : 'Register Supplier'}
                   </button>
                   <button
                     type="button"
@@ -5594,7 +5702,7 @@ export default function ProcurementHub() {
                   <button
                     type="submit"
                     disabled={submittingIncident}
-                    className="flex-1 py-3 bg-rose-650 hover:bg-rose-600 text-white font-bold text-xs rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
                   >
                     {submittingIncident ? <Loader2 size={14} className="animate-spin" /> : 'Log Quality Incident'}
                   </button>

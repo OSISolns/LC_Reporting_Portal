@@ -619,6 +619,261 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create operations_task_logs:', err.message);
       });
 
+      console.log('⚙️ Running Logistics Portal tables migration...');
+      try {
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_vehicles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plate_number TEXT UNIQUE NOT NULL,
+            model TEXT,
+            vehicle_type TEXT DEFAULT 'Ambulance',
+            insurance_exp TEXT,
+            control_exp TEXT,
+            rema_exp TEXT,
+            current_odometer INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'Available',
+            notes TEXT,
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_vehicle_trips (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vehicle_id INTEGER,
+            driver_name TEXT,
+            referring_physician TEXT,
+            destination TEXT,
+            patient_name TEXT,
+            start_km INTEGER,
+            end_km INTEGER,
+            fuel_consumed REAL DEFAULT 0,
+            start_time TEXT,
+            end_time TEXT,
+            auth_by TEXT,
+            status TEXT DEFAULT 'Completed',
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_vehicle_checklists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vehicle_id INTEGER,
+            driver_name TEXT,
+            check_date TEXT,
+            engine_oil INTEGER DEFAULT 1,
+            tyres INTEGER DEFAULT 1,
+            brakes INTEGER DEFAULT 1,
+            lights INTEGER DEFAULT 1,
+            battery INTEGER DEFAULT 1,
+            emergency_kit INTEGER DEFAULT 1,
+            status TEXT DEFAULT 'Pass',
+            notes TEXT,
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_generator_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            check_date TEXT,
+            battery_voltage REAL DEFAULT 24.0,
+            output_voltage REAL DEFAULT 230.0,
+            fuel_level_pct REAL DEFAULT 100.0,
+            fuel_liters REAL DEFAULT 200.0,
+            test_run_mins INTEGER DEFAULT 15,
+            operator_name TEXT,
+            status_flag TEXT DEFAULT 'OK',
+            notes TEXT,
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_clinic_tours (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tour_date TEXT,
+            conducted_by TEXT,
+            hvac_status TEXT DEFAULT 'OK',
+            water_status TEXT DEFAULT 'OK',
+            lighting_status TEXT DEFAULT 'OK',
+            cold_room_status TEXT DEFAULT 'OK',
+            waste_status TEXT DEFAULT 'OK',
+            issues_json TEXT,
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_assets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            asset_tag TEXT UNIQUE NOT NULL,
+            serial_number TEXT,
+            name TEXT NOT NULL,
+            category TEXT,
+            department TEXT,
+            custodian TEXT,
+            purchase_date TEXT,
+            warranty_exp TEXT,
+            expected_lifespan_years INTEGER DEFAULT 5,
+            purchase_cost REAL DEFAULT 0,
+            status TEXT DEFAULT 'Active',
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_asset_transfers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            asset_id INTEGER,
+            from_dept TEXT,
+            to_dept TEXT,
+            initiated_by TEXT,
+            approved_by TEXT,
+            accepted_by TEXT,
+            status TEXT DEFAULT 'Pending',
+            notes TEXT,
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_ppm_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            asset_id INTEGER,
+            maintenance_type TEXT,
+            scheduled_date TEXT,
+            completed_date TEXT,
+            technician TEXT,
+            findings TEXT,
+            cost REAL DEFAULT 0,
+            status TEXT DEFAULT 'Scheduled',
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_stock_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_name TEXT NOT NULL,
+            category TEXT,
+            unit TEXT DEFAULT 'Pcs',
+            quantity_on_hand INTEGER DEFAULT 0,
+            min_threshold INTEGER DEFAULT 10,
+            unit_cost REAL DEFAULT 0,
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_stock_releases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER,
+            item_name TEXT,
+            quantity INTEGER,
+            target_location TEXT,
+            requested_by TEXT,
+            approved_by TEXT,
+            release_date TEXT,
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_petty_cash (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transaction_date TEXT,
+            category TEXT,
+            description TEXT,
+            amount REAL,
+            receipt_number TEXT,
+            logged_by TEXT,
+            status TEXT DEFAULT 'Approved',
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_sample_dispatches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_code TEXT,
+            sampling_time TEXT,
+            cold_chain_ok INTEGER DEFAULT 1,
+            dhl_waybill TEXT,
+            departure_time TEXT,
+            dispatched_by TEXT,
+            status TEXT DEFAULT 'Dispatched',
+            notes TEXT,
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_print_requisitions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nursing_station TEXT,
+            item_description TEXT,
+            quantity INTEGER,
+            requested_date TEXT,
+            status TEXT DEFAULT 'Pending',
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+        await client.execute(`
+          CREATE TABLE IF NOT EXISTS logistics_purchase_requisitions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            requester TEXT,
+            department TEXT,
+            items_json TEXT,
+            estimated_cost REAL,
+            status TEXT DEFAULT 'Pending',
+            created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+          )
+        `);
+
+        // Seed initial data if tables are empty
+        const { rows: vCount } = await client.execute("SELECT COUNT(*) as cnt FROM logistics_vehicles");
+        if (!vCount || vCount[0].cnt === 0) {
+          console.log('  🌱 Seeding default logistics vehicles...');
+          await client.execute(`
+            INSERT INTO logistics_vehicles (plate_number, model, vehicle_type, insurance_exp, control_exp, rema_exp, current_odometer, status)
+            VALUES 
+            ('RAD-123A', 'Toyota HiAce Ambulance', 'Ambulance', '2026-12-15', '2026-11-20', '2026-10-10', 45200, 'Available'),
+            ('RAD-456B', 'Nissan NV300 ICU Ambulance', 'Ambulance', '2026-09-15', '2026-09-12', '2026-09-18', 31500, 'Available'),
+            ('RAE-789C', 'Toyota Hilux Utility', 'Utility Vehicle', '2026-11-01', '2026-10-30', '2026-12-01', 68400, 'In Use');
+          `);
+        }
+
+        const { rows: gCount } = await client.execute("SELECT COUNT(*) as cnt FROM logistics_generator_logs");
+        if (!gCount || gCount[0].cnt === 0) {
+          console.log('  🌱 Seeding default generator log...');
+          await client.execute(`
+            INSERT INTO logistics_generator_logs (check_date, battery_voltage, output_voltage, fuel_level_pct, fuel_liters, test_run_mins, operator_name, status_flag, notes)
+            VALUES ('2026-09-07', 25.2, 232.0, 42.0, 210.0, 15, 'Emmanuel Biregeya', 'OK', 'Standby mode operational. Fuel refill recommended before weekend.');
+          `);
+        }
+
+        const { rows: sCount } = await client.execute("SELECT COUNT(*) as cnt FROM logistics_stock_items");
+        if (!sCount || sCount[0].cnt === 0) {
+          console.log('  🌱 Seeding default maintenance stock items...');
+          await client.execute(`
+            INSERT INTO logistics_stock_items (item_name, category, unit, quantity_on_hand, min_threshold, unit_cost)
+            VALUES 
+            ('LED Tube T8 18W (Daylight)', 'Electrical', 'Pcs', 3, 10, 4500),
+            ('PVC Ball Valve 3/4"', 'Plumbing', 'Pcs', 12, 5, 3200),
+            ('Circuit Breaker 16A Single Pole', 'Electrical', 'Pcs', 8, 5, 6000),
+            ('Anti-Bacterial Wall Paint White 5L', 'Paint', 'Bucket', 4, 2, 25000),
+            ('Generator Air Filter Element', 'Generator', 'Pcs', 2, 2, 18000);
+          `);
+        }
+
+        const { rows: aCount } = await client.execute("SELECT COUNT(*) as cnt FROM logistics_assets");
+        if (!aCount || aCount[0].cnt === 0) {
+          console.log('  🌱 Seeding default biomedical & plant assets...');
+          await client.execute(`
+            INSERT INTO logistics_assets (asset_tag, serial_number, name, category, department, custodian, purchase_date, warranty_exp, expected_lifespan_years, purchase_cost, status)
+            VALUES 
+            ('AST-MED-001', 'SN-ECG-9981', 'GE MAC 2000 ECG Machine', 'Biomedical', 'CARDIOLOGY', 'Dr. Eric', '2024-01-15', '2026-01-15', 7, 3500000, 'Active'),
+            ('AST-MED-002', 'SN-USG-4412', 'Mindray DC-40 Ultrasound', 'Biomedical', 'IMAGING', 'Radiology Team', '2023-06-10', '2025-06-10', 8, 18000000, 'Active'),
+            ('AST-PLT-001', 'SN-GEN-5500', 'Caterpillar 150kVA Standby Generator', 'Facility Plant', 'LOGISTICS', 'Emmanuel Biregeya', '2022-03-01', '2024-03-01', 12, 28000000, 'Active');
+          `);
+        }
+
+        console.log('  ✅ Table logistics_ tables created/verified & seeded.');
+      } catch (err) {
+        console.warn('  ⚠️ Logistics tables migration error:', err.message);
+      }
+
       console.log('⚙️ Running imaging_studies table migration...');
       await client.execute(`
         CREATE TABLE IF NOT EXISTS imaging_orders (
@@ -1258,6 +1513,48 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     } catch (err) {
       console.warn('⚠️ Laboratory & Quality Manager roles sync warning:', err.message);
     }
+
+    // ─── Logistics Roles Sync: ensure Logistics Manager & Logistics Officer roles exist ───
+    try {
+      const logisticsRolesFull = [
+        { name: 'logistics_manager', display_name: 'Logistics Manager' },
+        { name: 'logistics_officer', display_name: 'Logistics Officer' },
+      ];
+      for (const r of logisticsRolesFull) {
+        await client.execute({
+          sql: `INSERT INTO roles (name, display_name) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET display_name = EXCLUDED.display_name`,
+          args: [r.name, r.display_name],
+        });
+      }
+      console.log('✅ Logistics Manager & Logistics Officer roles sync complete.');
+
+      // ─── Logistics Manager Account Setup ───
+      const bcrypt = require('bcryptjs');
+      const passwordHash = await bcrypt.hash('Logistics@2026', 10);
+      const { rows: roles } = await client.execute({
+        sql: 'SELECT id FROM roles WHERE name = ?',
+        args: ['logistics_manager']
+      });
+      if (roles.length > 0) {
+        await client.execute({
+          sql: `INSERT INTO users (full_name, username, email, password_hash, role_id) 
+                VALUES (?, ?, ?, ?, ?) 
+                ON CONFLICT (username) DO UPDATE SET role_id = EXCLUDED.role_id, full_name = EXCLUDED.full_name`,
+          args: ['Emmanuel Biregeya', 'lc_emmanuel', 'biregeya@legacyclinics.rw', passwordHash, roles[0].id]
+        });
+        await client.execute({
+          sql: `INSERT INTO users (full_name, username, email, password_hash, role_id) 
+                VALUES (?, ?, ?, ?, ?) 
+                ON CONFLICT (username) DO NOTHING`,
+          args: ['Emmanuel Biregeya', 'emmanuel_biregeya', 'emmanuel.biregeya@legacyclinics.rw', passwordHash, roles[0].id]
+        });
+        console.log('✅ Logistics Manager user account (Emmanuel Biregeya) created/verified.');
+      }
+    } catch (err) {
+      console.warn('⚠️ Logistics roles sync warning:', err.message);
+    }
+
+
 
     // ─── Provider Specialization Migration ───────────────────────────────────────────────
     try {
@@ -2311,14 +2608,16 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         contact TEXT,
+        email TEXT,
+        phone TEXT,
         contract_terms TEXT,
         is_active INTEGER DEFAULT 1
       )
     `);
 
-      await client.execute("ALTER TABLE vendors ADD COLUMN category TEXT DEFAULT 'Medical'").catch((err) => {
-        // ignore if already exists
-      });
+      await client.execute("ALTER TABLE vendors ADD COLUMN category TEXT DEFAULT 'Medical'").catch(() => {});
+      await client.execute("ALTER TABLE vendors ADD COLUMN email TEXT").catch(() => {});
+      await client.execute("ALTER TABLE vendors ADD COLUMN phone TEXT").catch(() => {});
 
       await client.execute(`
       CREATE TABLE IF NOT EXISTS master_inventory (
@@ -3786,6 +4085,60 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     } catch (err) {
       if (!err.message?.includes('already exists')) {
         console.error('❌ dental_appointments migration error:', err.message);
+      }
+    }
+
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS incident_reports (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          incident_type TEXT NOT NULL,
+          severity TEXT DEFAULT 'Low',
+          department TEXT NOT NULL,
+          area_of_incident TEXT NOT NULL,
+          names_involved TEXT,
+          pid_number TEXT,
+          description TEXT NOT NULL,
+          contributing_factors TEXT,
+          immediate_actions TEXT,
+          prevention_measures TEXT,
+          status TEXT DEFAULT 'pending',
+          created_by INTEGER REFERENCES users(id),
+          reviewed_by INTEGER REFERENCES users(id),
+          reviewed_at DATETIME,
+          review_comments TEXT,
+          approved_by INTEGER REFERENCES users(id),
+          approved_at DATETIME,
+          hsfp_comments TEXT,
+          rca_environment TEXT,
+          rca_staff TEXT,
+          rca_equipment TEXT,
+          rca_policy TEXT,
+          rca_verification_json TEXT,
+          corrective_actions_json TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      const incCols = [
+        "ALTER TABLE incident_reports ADD COLUMN severity TEXT DEFAULT 'Low'",
+        "ALTER TABLE incident_reports ADD COLUMN approved_by INTEGER REFERENCES users(id)",
+        "ALTER TABLE incident_reports ADD COLUMN approved_at DATETIME",
+        "ALTER TABLE incident_reports ADD COLUMN hsfp_comments TEXT",
+        "ALTER TABLE incident_reports ADD COLUMN rca_environment TEXT",
+        "ALTER TABLE incident_reports ADD COLUMN rca_staff TEXT",
+        "ALTER TABLE incident_reports ADD COLUMN rca_equipment TEXT",
+        "ALTER TABLE incident_reports ADD COLUMN rca_policy TEXT",
+        "ALTER TABLE incident_reports ADD COLUMN rca_verification_json TEXT",
+        "ALTER TABLE incident_reports ADD COLUMN corrective_actions_json TEXT"
+      ];
+      for (const colStmt of incCols) {
+        await client.execute(colStmt).catch(() => {});
+      }
+      console.log('✅ SQLite Schema Migration: incident_reports columns verified.');
+    } catch (err) {
+      if (!err.message?.includes('already exists')) {
+        console.error('❌ incident_reports migration error:', err.message);
       }
     }
 

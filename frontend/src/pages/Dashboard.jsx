@@ -16,10 +16,12 @@ import PhysiotherapistDashboard from './physio/PhysiotherapistDashboard';
 import PhysioManagerDashboard from './physio/PhysioManagerDashboard';
 import LabManagerDashboard from './lab/LabManagerDashboard';
 import LabHub from './lab/LabHub';
+import LogisticsDashboard from './logistics/LogisticsDashboard';
+import LogisticsStatsDashboard from './logistics/LogisticsStatsDashboard';
 
 import { 
   FlaskConical, AlertTriangle, Activity, Stethoscope, 
-  Server, ShieldAlert, ArrowRight, ShieldCheck
+  Server, ShieldAlert, ArrowRight, ShieldCheck, Truck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -32,6 +34,9 @@ const Dashboard = () => {
   const role = user?.role;
 
   // Dedicated role-based dashboard dispatch
+  if (['logistics_manager', 'logistics_officer', 'logistics'].includes(role)) {
+    return <LogisticsStatsDashboard />;
+  }
   if (['lab_manager', 'lab_lead', 'lab_team_lead', 'quality_manager', 'qm'].includes(role)) {
     return <LabManagerDashboard />;
   }
@@ -74,7 +79,19 @@ const Dashboard = () => {
         <h2 className="text-base font-bold text-blue-950">Quick Workspace Access</h2>
         <p className="text-xs text-slate-500">Select a portal module below to begin your workflow:</p>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2">
+
+          <div 
+            onClick={() => navigate('/logistics')}
+            className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50/50 hover:border-blue-300 transition-all cursor-pointer space-y-2 group"
+          >
+            <div className="flex items-center justify-between">
+              <Truck className="text-sky-600" size={20} />
+              <ArrowRight size={16} className="text-slate-400 group-hover:text-sky-600 transition-transform group-hover:translate-x-1" />
+            </div>
+            <h3 className="font-bold text-sm text-slate-900">Logistics Hub</h3>
+            <p className="text-xs text-slate-500">Fleet, Facilities, Assets, Inventory & Admin.</p>
+          </div>
           
           <div 
             onClick={() => navigate('/lab')}
@@ -114,6 +131,7 @@ const Dashboard = () => {
 
         </div>
       </div>
+
 
       <div className="pt-4 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-500">
         <div>Legacy Clinics • Lumina Reporting Portal</div>

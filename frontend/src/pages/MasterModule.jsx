@@ -112,7 +112,7 @@ export default function MasterModule() {
   });
   const [pendingItems, setPendingItems] = useState([]);
   const [deptForm, setDeptForm] = useState({ name: '' });
-  const [vendorForm, setVendorForm] = useState({ name: '', contact: '', contractTerms: '' });
+  const [vendorForm, setVendorForm] = useState({ name: '', contact: '', email: '', phone: '', contractTerms: '' });
   const [uomForm, setUomForm] = useState({ name: '', abbreviation: '', description: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -726,10 +726,10 @@ export default function MasterModule() {
   const openVendorModal = (vendor = null) => {
     if (vendor) {
       setEditingRecord(vendor);
-      setVendorForm({ name: vendor.name, contact: vendor.contact, contractTerms: vendor.contract_terms });
+      setVendorForm({ name: vendor.name, contact: vendor.contact || '', email: vendor.email || '', phone: vendor.phone || '', contractTerms: vendor.contract_terms || '' });
     } else {
       setEditingRecord(null);
-      setVendorForm({ name: '', contact: '', contractTerms: '' });
+      setVendorForm({ name: '', contact: '', email: '', phone: '', contractTerms: '' });
     }
     setVendorModalOpen(true);
   };
@@ -1649,7 +1649,9 @@ export default function MasterModule() {
                         <thead>
                           <tr className="bg-slate-50/50 border-b border-slate-200/60 text-slate-400 uppercase tracking-widest text-[9px] font-black">
                             <th className="py-4.5 px-6">Vendor Company</th>
-                            <th className="py-4.5 px-4">Contact Info</th>
+                            <th className="py-4.5 px-4">Contact Person</th>
+                            <th className="py-4.5 px-4">Phone Number</th>
+                            <th className="py-4.5 px-4">Email Address</th>
                             <th className="py-4.5 px-4">Contract Terms</th>
                             <th className="py-4.5 px-6 text-center">Status Badge</th>
                             <th className="py-4.5 px-6 text-right">Actions</th>
@@ -1679,6 +1681,8 @@ export default function MasterModule() {
                               >
                                 <td className="py-4.5 px-6 text-slate-900 font-black text-[13px]">{v.name}</td>
                                 <td className="py-4.5 px-4 text-slate-500 font-medium">{v.contact || <span className="text-slate-300">-</span>}</td>
+                                <td className="py-4.5 px-4 font-mono text-[11px] text-slate-700 font-semibold">{v.phone ? <a href={`tel:${v.phone}`} className="hover:underline text-indigo-600">{v.phone}</a> : <span className="text-slate-300">-</span>}</td>
+                                <td className="py-4.5 px-4 font-mono text-[11px] text-indigo-600 font-semibold">{v.email ? <a href={`mailto:${v.email}`} className="hover:underline">{v.email}</a> : <span className="text-slate-300">-</span>}</td>
                                 <td className="py-4.5 px-4 font-mono text-[11px] text-slate-600">
                                   {v.contract_terms ? (
                                     <span className="px-2 py-1 bg-slate-100 border border-slate-200 rounded-lg">
@@ -1938,8 +1942,16 @@ export default function MasterModule() {
             <input required placeholder="e.g. Rwanda Pharma Ltd" type="text" value={vendorForm.name} onChange={e => setVendorForm({ ...vendorForm, name: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div>
-            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Contact Detail (Email / Tel)</label>
-            <input placeholder="e.g. orders@rwandapharma.rw or +250..." type="text" value={vendorForm.contact} onChange={e => setVendorForm({ ...vendorForm, contact: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Contact Person / Representative</label>
+            <input placeholder="e.g. Jean Dupont" type="text" value={vendorForm.contact} onChange={e => setVendorForm({ ...vendorForm, contact: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+          </div>
+          <div>
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Phone Number</label>
+            <input placeholder="e.g. +250788123456" type="tel" value={vendorForm.phone} onChange={e => setVendorForm({ ...vendorForm, phone: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
+          </div>
+          <div>
+            <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Supplier Email Address <span className="text-indigo-600 normal-case font-bold">(for Tender RFQ Notifications)</span></label>
+            <input placeholder="e.g. orders@rwandapharma.rw" type="email" value={vendorForm.email} onChange={e => setVendorForm({ ...vendorForm, email: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:border-indigo-500/80 focus:bg-white rounded-xl text-sm transition-all focus:ring-4 focus:ring-indigo-100 focus:outline-none placeholder-slate-400 font-semibold text-slate-800 shadow-inner" />
           </div>
           <div>
             <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">Payment / Contract Terms</label>
