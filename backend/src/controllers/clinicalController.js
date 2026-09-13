@@ -7086,3 +7086,163 @@ exports.createPhysioAssessment = async (req, res) => {
 };
 
 
+// ─── Item Usage History ───────────────────────────────────────────────────────
+/**
+ * GET /clinical/inventory/items/:item_id/usage-history
+ * Returns monthly approved requisition quantities for an item over the last N months.
+ * Query params: months (default 12)
+ */
+exports.getItemUsageHistory = async (req, res, next) => {
+  try {
+    const itemId = parseInt(req.params.item_id, 10);
+    const months = Math.min(parseInt(req.query.months || 12, 10), 36);
+
+    // Build list of last N months (YYYY-MM)
+    const monthKeys = [];
+    const now = new Date();
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthKeys.push(label);
+    }
+
+    // Aggregate approved quantities from approved requisitions per month
+    const { rows: usageRows } = await db.query(
+      `SELECT
+        strftime('%Y-%m', r.created_at) AS month,
+        SUM(ri.approved_quantity)       AS total_approved,
+        SUM(ri.requested_quantity)      AS total_requested,
+        COUNT(DISTINCT r.id)            AS requisition_count
+       FROM requisition_items ri
+       JOIN requisitions r ON r.id = ri.requisition_id
+       WHERE ri.item_id = ?
+         AND r.status = 'Approved'
+         AND r.created_at >= date('now', ? || ' months')
+       GROUP BY strftime('%Y-%m', r.created_at)
+       ORDER BY month ASC`,
+      [itemId, `-${months}`]
+    );
+
+    // Aggregate usage per department for this item
+    const { rows: deptRows } = await db.query(
+      `SELECT
+        d.name                        AS department,
+        SUM(ri.approved_quantity)     AS total_consumed
+       FROM requisition_items ri
+       JOIN requisitions r  ON r.id  = ri.requisition_id
+       JOIN departments    d ON d.id  = r.department_id
+       WHERE ri.item_id = ?
+         AND r.status = 'Approved'
+         AND r.created_at >= date('now', ? || ' months')
+       GROUP BY d.id
+       ORDER BY total_consumed DESC
+       LIMIT 10`,
+      [itemId, `-${months}`]
+    );
+
+    // Fetch item meta
+    const { rows: itemRows } = await db.query(
+      `SELECT mi.id, mi.name, mi.sku, mi.category,
+              SUM(sb.quantity) AS current_stock
+       FROM master_inventory mi
+       LEFT JOIN stock_batches sb ON sb.item_id = mi.id
+       WHERE mi.id = ?
+       GROUP BY mi.id`,
+      [itemId]
+    );
+
+    if (itemRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Item not found.' });
+    }
+
+    // Map rows into a full timeline (filling zeros for months with no data)
+    const usageMap = {};
+    usageRows.forEach(r => {
+      usageMap[r.month] = {
+        total_approved: Number(r.total_approved || 0),
+        total_requested: Number(r.total_requested || 0),
+        requisition_count: Number(r.requisition_count || 0)
+      };
+    });
+
+    const timeline = monthKeys.map(month => ({
+      month,
+      label: new Date(month + '-01').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
+      ...(usageMap[month] || { total_approved: 0, total_requested: 0, requisition_count: 0 })
+    }));
+
+    const totalApproved = timeline.reduce((s, t) => s + t.total_approved, 0);
+    const avgMonthly = months > 0 ? Math.round(totalApproved / months) : 0;
+    const peakMonth = timeline.reduce((max, t) => t.total_approved > max.total_approved ? t : max, timeline[0] || { total_approved: 0 });
+
+    res.json({
+      success: true,
+      data: {
+        item: itemRows[0],
+        timeline,
+        departments: deptRows.map(d => ({ ...d, total_consumed: Number(d.total_consumed || 0) })),
+        summary: { totalApproved, avgMonthly, peakMonth: peakMonth?.label || null }
+      }
+    });
+  } catch (error) {
+    console.error('Error in getItemUsageHistory:', error);
+    next(error);
+  }
+};
+
+// ─── Expiring Soon Items ──────────────────────────────────────────────────────
+/**
+ * GET /clinical/inventory/expiring-soon
+ * Returns stock batches expiring within `days` days (default 90).
+ * Query params: days (default 90)
+ */
+exports.getExpiringSoonItems = async (req, res, next) => {
+  try {
+    const days = Math.min(parseInt(req.query.days || 90, 10), 365);
+
+    const { rows } = await db.query(
+      `SELECT
+        sb.id            AS batch_id,
+        sb.batch_number,
+        sb.expiry_date,
+        sb.quantity,
+        sb.purchase_price,
+        mi.id            AS item_id,
+        mi.name          AS item_name,
+        mi.sku,
+        mi.category,
+        v.name           AS vendor_name,
+        CASE
+          WHEN date(sb.expiry_date) < date('now') THEN 'expired'
+          WHEN date(sb.expiry_date) <= date('now', ? || ' days') THEN 'expiring_soon'
+          ELSE 'ok'
+        END AS expiry_status,
+        CAST(julianday(sb.expiry_date) - julianday('now') AS INTEGER) AS days_remaining
+       FROM stock_batches sb
+       JOIN master_inventory mi ON mi.id = sb.item_id
+       LEFT JOIN vendors v ON v.id = sb.vendor_id
+       WHERE sb.quantity > 0
+         AND sb.expiry_date IS NOT NULL
+         AND sb.expiry_date != ''
+         AND date(sb.expiry_date) <= date('now', ? || ' days')
+       ORDER BY days_remaining ASC`,
+      [days, days]
+    );
+
+    const grouped = {
+      expired:       rows.filter(r => r.expiry_status === 'expired'),
+      expiring_soon: rows.filter(r => r.expiry_status === 'expiring_soon'),
+    };
+
+    res.json({
+      success: true,
+      days_threshold: days,
+      total: rows.length,
+      data: grouped,
+      flat: rows
+    });
+  } catch (error) {
+    console.error('Error in getExpiringSoonItems:', error);
+    next(error);
+  }
+};

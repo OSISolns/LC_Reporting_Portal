@@ -5,7 +5,7 @@ import {
   Send, Droplet, FileText, CheckCircle2, ArrowRight, Thermometer,
   AlertTriangle, XCircle, CheckCircle as CheckCircleIcon, TrendingUp,
   ChevronDown, Pencil, Trash2, X, AlertOctagon, Shield,
-  ListChecks, BarChart2, FilePlus2
+  ListChecks, BarChart2, FilePlus2, Wrench, Settings, FolderArchive
 } from 'lucide-react';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -892,6 +892,40 @@ const LabHub = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 font-sans text-slate-900 antialiased">
+      {/* ── SUB-MODULE TOP NAVIGATION BAR ── */}
+      <div className="flex items-center gap-1.5 overflow-x-auto bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200 scrollbar-none">
+        <button
+          onClick={() => navigate('/lab')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer bg-white text-emerald-700 shadow-xs border border-slate-200/60"
+        >
+          <FlaskConical size={14} className="text-emerald-600" /> Specimens & Diagnostics
+        </button>
+        <button
+          onClick={() => navigate('/lab/equipment')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60"
+        >
+          <Wrench size={14} /> Equipment & PPM
+        </button>
+        <button
+          onClick={() => navigate('/lab/analyzers')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60"
+        >
+          <Settings size={14} /> Analyzers & QC
+        </button>
+        <button
+          onClick={() => navigate('/lab/archive')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60"
+        >
+          <FolderArchive size={14} /> Document Archive
+        </button>
+        <button
+          onClick={() => navigate('/lab-manager')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60 ml-auto"
+        >
+          <BarChart2 size={14} /> Manager Dashboard
+        </button>
+      </div>
+
       {/* ── MINIMALIST HEADER ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
         <div>

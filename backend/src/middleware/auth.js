@@ -19,6 +19,11 @@ function authMiddleware(req, res, next) {
     if (decoded && decoded.role === 'M.D') {
       decoded.role = 'medical_director';
     }
+    const { decryptField } = require('../utils/crypto');
+    if (decoded.full_name) decoded.full_name = decryptField(decoded.full_name);
+    if (decoded.fullName) decoded.fullName = decryptField(decoded.fullName);
+    if (decoded.email) decoded.email = decryptField(decoded.email);
+
     req.user = decoded; // Contains id, role, fullName
     next();
   } catch (error) {

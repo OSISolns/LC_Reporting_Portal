@@ -16,13 +16,13 @@ const FacilitiesPower = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const [genForm, setGenForm] = useState({
-    battery_voltage: '25.2',
-    output_voltage: '232',
-    fuel_level_pct: '85',
-    fuel_liters: '425',
-    test_run_mins: '15',
+    battery_voltage: '',
+    output_voltage: '',
+    fuel_level_pct: '',
+    fuel_liters: '',
+    test_run_mins: '',
     operator_name: user?.full_name || '',
-    notes: 'Standby generator morning test completed cleanly.'
+    notes: ''
   });
 
   const [tourForm, setTourForm] = useState({
@@ -32,7 +32,7 @@ const FacilitiesPower = () => {
     lighting_status: 'OK',
     cold_room_status: 'OK',
     waste_status: 'OK',
-    issues_notes: 'All clinic physical plant systems operational during morning tour.'
+    issues_notes: ''
   });
 
   const fetchData = async () => {
@@ -136,8 +136,8 @@ const FacilitiesPower = () => {
       </div>
 
       {/* ── GENERATOR HEADS-UP DISPLAY ── */}
-      {latestGen && (
-        <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', borderLeft: '4px solid #16a34a' }}>
+      {latestGen && activeTab === 'generator' && (
+        <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid #16a34a', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>CURRENT GENERATOR READINESS</span>
@@ -207,7 +207,7 @@ const FacilitiesPower = () => {
       </div>
 
       {activeTab === 'generator' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
@@ -242,7 +242,7 @@ const FacilitiesPower = () => {
       )}
 
       {activeTab === 'tour' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
@@ -276,7 +276,7 @@ const FacilitiesPower = () => {
 
       {/* MODAL: LOG GENERATOR CHECK */}
       {isGenModal && (
-        <Modal title="Generator Operation Check Record (#2)" onClose={() => setIsGenModal(false)}>
+        <Modal isOpen={true} title="Generator Operation Check Record (#2)" onClose={() => setIsGenModal(false)}>
           <form onSubmit={handleGenSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
@@ -352,7 +352,7 @@ const FacilitiesPower = () => {
 
       {/* MODAL: MORNING CLINIC TOUR */}
       {isTourModal && (
-        <Modal title="Daily Morning Status Report / Clinic Tour" onClose={() => setIsTourModal(false)}>
+        <Modal isOpen={true} title="Daily Morning Status Report / Clinic Tour" onClose={() => setIsTourModal(false)}>
           <form onSubmit={handleTourSubmit}>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Inspector Name</label>

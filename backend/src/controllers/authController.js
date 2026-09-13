@@ -112,7 +112,7 @@ exports.login = async (req, res, next) => {
       token,
       user: {
         id: user.id,
-        fullName: user.full_name,
+        fullName: decryptField(user.full_name || user.fullName),
         username: user.username,
         email: decryptField(user.email),
         role: user.role,
@@ -137,7 +137,7 @@ exports.getMe = async (req, res, next) => {
       success: true,
       user: {
         id: user.id,
-        fullName: user.full_name,
+        fullName: decryptField(user.full_name || user.fullName),
         username: user.username,
         email: decryptField(user.email),
         role: user.role,
@@ -182,7 +182,7 @@ exports.devLogin = async (req, res, next) => {
       token,
       user: {
         id: user.id,
-        fullName: user.full_name,
+        fullName: decryptField(user.full_name || user.fullName),
         username: user.username,
         email: decryptField(user.email),
         role: user.role,

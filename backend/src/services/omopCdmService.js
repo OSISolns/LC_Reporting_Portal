@@ -8,6 +8,36 @@ const db = require('../config/db');
 // ── Path to official OHDSI CDM v5.4 PostgreSQL DDL & Constraint Scripts ──────
 const OHDSI_PG_DIR = path.join(__dirname, '../database/omop_cdm/OHDSI_CDM_Repo/inst/ddl/5.4/postgresql');
 
+// ── PostgreSQL TLS/SSL Configuration ─────────────────────────────────────────
+// DB_SSL=true            — explicitly require an encrypted connection
+// DB_SSL_CA              — path to a custom CA certificate file (optional)
+// DB_SSL_REJECT_UNAUTHORIZED=false — allow self-signed certs (dev only)
+//
+// SSL is automatically forced to true when NODE_ENV=production so that
+// production connections are always encrypted without any manual flag.
+function buildSslConfig() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const sslEnabled = isProduction || process.env.DB_SSL === 'true';
+
+  if (!sslEnabled) return false;
+
+  const sslConfig = {
+    // Default: reject self-signed / unverifiable certs (safe default)
+    rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+  };
+
+  // Optionally load a custom CA certificate (e.g. RDS/Cloud SQL root cert)
+  if (process.env.DB_SSL_CA) {
+    try {
+      sslConfig.ca = fs.readFileSync(path.resolve(process.env.DB_SSL_CA)).toString();
+    } catch (err) {
+      console.warn(`⚠️  PostgreSQL SSL: could not read CA cert at ${process.env.DB_SSL_CA}:`, err.message);
+    }
+  }
+
+  return sslConfig;
+}
+
 // ── Standard OMOP CDM Concept Mappings for Imaging ───────────────────────────
 const MODALITY_CONCEPT_MAP = {
   CR: { procedure_concept_id: 4132049, label: 'Plain X-Ray / Digital Radiography', device_concept_id: 4132049 },
@@ -29,8 +59,10 @@ class OmopCdmService {
    * Get a PostgreSQL pool instance based on env vars, connection object, or connection string
    */
   static getPgPool(connectionInput) {
+    const ssl = buildSslConfig();
+
     if (typeof connectionInput === 'string' && connectionInput.trim()) {
-      return new Pool({ connectionString: connectionInput });
+      return new Pool({ connectionString: connectionInput, ssl: ssl || undefined });
     }
     if (typeof connectionInput === 'object' && connectionInput) {
       return new Pool({
@@ -39,6 +71,7 @@ class OmopCdmService {
         user: connectionInput.user || process.env.PGUSER || process.env.DB_USER || 'postgres',
         password: connectionInput.password !== undefined ? connectionInput.password : (process.env.PGPASSWORD || process.env.DB_PASSWORD || 'postgres'),
         database: connectionInput.database || process.env.PGDATABASE || process.env.DB_NAME || 'omop_cdm',
+        ssl: ssl || undefined,
       });
     }
     return new Pool({
@@ -47,6 +80,7 @@ class OmopCdmService {
       user: process.env.PGUSER || process.env.DB_USER || 'postgres',
       password: process.env.PGPASSWORD || process.env.DB_PASSWORD || 'postgres',
       database: process.env.PGDATABASE || process.env.DB_NAME || 'omop_cdm',
+      ssl: ssl || undefined,
     });
   }
 

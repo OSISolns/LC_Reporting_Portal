@@ -971,3 +971,103 @@ exports.deleteAnalyzer = async (req, res, next) => {
     res.json({ success: true, message: 'Analyzer deleted.' });
   } catch (err) { next(err); }
 };
+
+// ── Lab Equipment & PPM CRUD ───────────────────────────────────────────────────
+
+exports.getEquipment = async (req, res, next) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM lab_equipment ORDER BY sn ASC, id ASC');
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+exports.createEquipment = async (req, res, next) => {
+  try {
+    const {
+      name, model, serial_number, manufacturer, asset_code, criticicity_factor,
+      pm_date_1, pm_date_2, pm_date_3, pm_date_4, service_provider,
+      department, location_room, status, notes
+    } = req.body;
+
+    if (!name) return res.status(400).json({ success: false, message: 'Equipment name is required.' });
+
+    // Get max sn
+    const snRes = await db.query('SELECT MAX(sn) as max_sn FROM lab_equipment');
+    const nextSn = (snRes.rows?.[0]?.max_sn || 0) + 1;
+
+    await db.query(
+      `INSERT INTO lab_equipment 
+       (sn, name, model, serial_number, manufacturer, asset_code, criticicity_factor,
+        pm_date_1, pm_date_2, pm_date_3, pm_date_4, service_provider,
+        department, location_room, status, notes, added_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        nextSn,
+        name,
+        model || null,
+        serial_number || null,
+        manufacturer || null,
+        asset_code || `LEG/PATHLAB/EQP-${String(nextSn).padStart(2, '0')}`,
+        criticicity_factor || 'Critical',
+        pm_date_1 || 'Feb/02/2026',
+        pm_date_2 || 'May/19/2026',
+        pm_date_3 || 'Aug/19/2026',
+        pm_date_4 || 'Nov/19/2026',
+        service_provider || manufacturer || 'Vendor Serviced',
+        department || 'Laboratory',
+        location_room || 'Main Lab',
+        status || 'Operational',
+        notes || null,
+        req.user?.full_name || req.user?.username || 'Lab Manager'
+      ]
+    );
+
+    await logAction(req, 'CREATE_EQUIPMENT', 'lab_equipment', null, { name, asset_code });
+    res.status(201).json({ success: true, message: 'Equipment added successfully.' });
+  } catch (err) { next(err); }
+};
+
+exports.updateEquipment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      name, model, serial_number, manufacturer, asset_code, criticicity_factor,
+      pm_date_1, pm_date_2, pm_date_3, pm_date_4, service_provider,
+      department, location_room, status, notes
+    } = req.body;
+
+    const { rows } = await db.query('SELECT id FROM lab_equipment WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: 'Equipment not found.' });
+
+    await db.query(
+      `UPDATE lab_equipment SET
+        name = ?, model = ?, serial_number = ?, manufacturer = ?, asset_code = ?,
+        criticicity_factor = ?, pm_date_1 = ?, pm_date_2 = ?, pm_date_3 = ?, pm_date_4 = ?,
+        service_provider = ?, department = ?, location_room = ?, status = ?, notes = ?,
+        updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+       WHERE id = ?`,
+      [
+        name, model || null, serial_number || null, manufacturer || null, asset_code || null,
+        criticicity_factor || 'Critical', pm_date_1 || null, pm_date_2 || null, pm_date_3 || null, pm_date_4 || null,
+        service_provider || null, department || 'Laboratory', location_room || 'Main Lab',
+        status || 'Operational', notes || null, id
+      ]
+    );
+
+    await logAction(req, 'UPDATE_EQUIPMENT', 'lab_equipment', id, { name, status });
+    res.json({ success: true, message: 'Equipment updated successfully.' });
+  } catch (err) { next(err); }
+};
+
+exports.deleteEquipment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query('SELECT name FROM lab_equipment WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: 'Equipment not found.' });
+
+    await db.query('DELETE FROM lab_equipment WHERE id = ?', [id]);
+    await logAction(req, 'DELETE_EQUIPMENT', 'lab_equipment', id, { name: rows[0].name });
+    res.json({ success: true, message: 'Equipment deleted.' });
+  } catch (err) { next(err); }
+};
+

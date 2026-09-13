@@ -1,7 +1,32 @@
 'use strict';
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const { Pool } = require('pg');
 const { createClient } = require('@libsql/client');
+
+// ── PostgreSQL TLS/SSL Configuration ─────────────────────────────────────────
+// DB_SSL=true            — require an encrypted connection
+// DB_SSL_CA              — path to a custom CA certificate file (optional)
+// DB_SSL_REJECT_UNAUTHORIZED=false — allow self-signed certs (dev only)
+// Auto-enabled in production (NODE_ENV=production).
+function buildSslConfig() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const sslEnabled = isProduction || process.env.DB_SSL === 'true';
+  if (!sslEnabled) return false;
+
+  const sslConfig = {
+    rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+  };
+  if (process.env.DB_SSL_CA) {
+    try {
+      sslConfig.ca = fs.readFileSync(path.resolve(process.env.DB_SSL_CA)).toString();
+    } catch (err) {
+      console.warn(`⚠️  PostgreSQL SSL: could not read CA cert at ${process.env.DB_SSL_CA}:`, err.message);
+    }
+  }
+  return sslConfig;
+}
 
 // 1. Database Connections
 const pgPool = new Pool({
@@ -10,6 +35,7 @@ const pgPool = new Pool({
   database: process.env.DB_NAME || 'lc_reporting',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD, // This needs to be set in .env
+  ssl: buildSslConfig() || undefined,
 });
 
 const turso = createClient({

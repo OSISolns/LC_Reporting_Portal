@@ -100,6 +100,8 @@ router.get('/inventory/batches', checkPermission('inventory', 'view'), clinicalC
 router.post('/inventory/batches', checkPermission('inventory', 'create'), clinicalController.createBatch);
 router.post('/inventory/reconcile', checkPermission('inventory', 'edit'), clinicalController.reconcileInventory);
 router.get('/inventory/items/:item_id/central-batches', checkPermission('inventory', 'view'), clinicalController.getCentralBatchesForItem);
+router.get('/inventory/items/:item_id/usage-history', checkInventoryOrClinicalRole('view'), clinicalController.getItemUsageHistory);
+router.get('/inventory/expiring-soon', checkInventoryOrClinicalRole('view'), clinicalController.getExpiringSoonItems);
 router.get('/inventory/requisitions/:id/items', checkInventoryOrClinicalRole('view'), clinicalController.getRequisitionItems);
 router.get('/inventory/requisitions', checkInventoryOrClinicalRole('view'), clinicalController.getRequisitions);
 router.post('/inventory/requisitions', checkInventoryOrClinicalRole('create'), clinicalController.createRequisition);

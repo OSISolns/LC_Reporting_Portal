@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Wrench, ShieldCheck, Plus, ArrowRightLeft, Calendar, DollarSign, Tag, CheckCircle } from 'lucide-react';
+import { Wrench, ShieldCheck, Plus, ArrowRightLeft, Calendar, DollarSign, Tag, CheckCircle, FileText, AlertTriangle, CheckCircle2, TrendingUp, Activity, Download } from 'lucide-react';
 import Modal from '../../components/Modal';
 
 const AssetManagement = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('register'); // 'register', 'transfers', 'ppm', 'capex'
+  const [activeTab, setActiveTab] = useState('register'); // 'register', 'transfers', 'ppm', 'capex', 'report'
   const [loading, setLoading] = useState(true);
   const [assets, setAssets] = useState([]);
   const [transfers, setTransfers] = useState([]);
@@ -32,18 +32,18 @@ const AssetManagement = () => {
 
   const [transferForm, setTransferForm] = useState({
     asset_id: '',
-    from_dept: 'CLINIC',
-    to_dept: 'RADIOLOGY',
-    notes: 'Inter-departmental handover'
+    from_dept: '',
+    to_dept: '',
+    notes: ''
   });
 
   const [ppmForm, setPpmForm] = useState({
     asset_id: '',
     maintenance_type: 'Preventive Quarterly',
     scheduled_date: new Date().toISOString().split('T')[0],
-    technician: 'Biomedical Engineer',
-    findings: 'Routine calibration and filter service.',
-    cost: '50000'
+    technician: '',
+    findings: '',
+    cost: ''
   });
 
   const fetchData = async () => {
@@ -177,7 +177,7 @@ const AssetManagement = () => {
       </div>
 
       {/* TABS */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem', gap: '1rem' }}>
+      <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem', gap: '0.5rem', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('register')}
           style={{
@@ -247,13 +247,31 @@ const AssetManagement = () => {
             gap: '6px'
           }}
         >
-          <DollarSign size={16} /> 5-Year Capital Replacement Engine
+          <DollarSign size={16} /> 5-Year Capital Replacement
+        </button>
+
+        <button
+          onClick={() => setActiveTab('report')}
+          style={{
+            padding: '10px 16px',
+            border: 'none',
+            background: 'none',
+            fontWeight: 700,
+            color: activeTab === 'report' ? '#0284c7' : '#64748b',
+            borderBottom: activeTab === 'report' ? '3px solid #0284c7' : 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          <FileText size={16} /> 2026 Audit Report
         </button>
       </div>
 
       {/* MASTER REGISTER TAB */}
       {activeTab === 'register' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
@@ -296,7 +314,7 @@ const AssetManagement = () => {
 
       {/* TRANSFERS TAB */}
       {activeTab === 'transfers' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
@@ -334,7 +352,7 @@ const AssetManagement = () => {
 
       {/* PPM TAB */}
       {activeTab === 'ppm' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
@@ -374,7 +392,7 @@ const AssetManagement = () => {
               const purchaseYear = new Date(a.purchase_date || Date.now()).getFullYear();
               const replaceYear = purchaseYear + (a.expected_lifespan_years || 5);
               return (
-                <div key={a.id} className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0' }}>
+                <div key={a.id} className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0d9488' }}>{a.asset_tag}</div>
                   <h4 style={{ margin: '4px 0 8px 0', fontSize: '1rem', fontWeight: 800 }}>{a.name}</h4>
                   <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
@@ -391,9 +409,323 @@ const AssetManagement = () => {
         </div>
       )}
 
+      {/* 2026 AUDIT & REPLACEMENT REPORT TAB */}
+      {activeTab === 'report' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          {/* Header Banner */}
+          <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '2rem', border: '1px solid #cbd5e1', borderLeft: '6px solid #0284c7', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <span style={{ padding: '4px 10px', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Annual Operations Audit • 2026 Edition
+                </span>
+                <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', margin: '8px 0 4px 0' }}>
+                  Biomedical & IT Equipment Audit, PPM & Replacement Report (2026)
+                </h2>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
+                  Comprehensive cross-examination of hospital inventory profiles, planned maintenance cadence, and equipment life-cycle replacements for FY 2026.
+                </p>
+              </div>
+              <button 
+                onClick={() => window.print()} 
+                className="btn btn-secondary" 
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, backgroundColor: '#f8fafc' }}
+              >
+                <Download size={16} /> Export Audit Report
+              </button>
+            </div>
+          </div>
+
+          {/* Section 1: Executive Summary */}
+          <div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Activity size={20} color="#0284c7" /> 1. Executive Summary
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
+              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderTop: '4px solid #0284c7', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0284c7', textTransform: 'uppercase', marginBottom: '6px' }}>Active Asset Base</div>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#334155', lineHeight: 1.5 }}>
+                  The primary registry covers clinical departments, imaging/diagnostics, surgical suites, and supporting IT/biomedical infrastructure across all legacy clinic operational zones.
+                </p>
+              </div>
+
+              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderTop: '4px solid #16a34a', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', marginBottom: '6px' }}>Maintenance Strategy</div>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#334155', lineHeight: 1.5 }}>
+                  The 2026 PPM schedule establishes routine quarterly (Q1–Q4) and bi-annual inspection cycles designed to minimize unplanned downtime, meet clinical audit standards, and extend useful life.
+                </p>
+              </div>
+
+              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderTop: '4px solid #d97706', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase', marginBottom: '6px' }}>Capital Renewal & Replacement</div>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#334155', lineHeight: 1.5 }}>
+                  Prioritizes aging, high-repair-frequency, or obsolete units (legacy monitors, anesthesia/suction apparatus, lab analyzers, network switches, and workstations) posing operational bottlenecks.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Master Asset Register Breakdown */}
+          <div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Tag size={20} color="#0284c7" /> 2. Master Asset Register Breakdown
+            </h3>
+            
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '1.25rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
+                    <th style={{ padding: '14px 18px', fontWeight: 800 }}>Category / Department Tier</th>
+                    <th style={{ padding: '14px 18px', fontWeight: 800 }}>Typical Equipment Scope</th>
+                    <th style={{ padding: '14px 18px', fontWeight: 800 }}>Criticality Level</th>
+                    <th style={{ padding: '14px 18px', fontWeight: 800 }}>Maintenance Model</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Critical Care & OT</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Anesthesia machines, patient monitors, ventilators, defibrillators, surgical lights</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#fef2f2', color: '#991b1b' }}>Critical / Tier 1</span>
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Quarterly PPM + Calibration Verification</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Diagnostic & Imaging</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Ultrasound systems, digital radiography/X-ray, dental X-ray units</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#fff7ed', color: '#c2410c' }}>High / Tier 1</span>
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Semi-annual OEM vendor service + in-house PPM</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Laboratory Services</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Chemistry analyzers, hematology counters, centrifuges, incubators</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#e0f2fe', color: '#0369a1' }}>High / Tier 2</span>
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Reagent-vendor calibration + monthly/quarterly checks</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>General Wards & OPD</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Vital sign monitors, ECG machines, suction pumps, examination beds</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#f1f5f9', color: '#475569' }}>Medium / Tier 2</span>
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>In-house bi-annual electrical & performance tests</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Facility & IT Infrastructure</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>UPS units, server racks, managed switches, core workstations</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#f0fdf4', color: '#15803d' }}>Operational Backbone</span>
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Monthly physical inspection + battery load testing</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Health Observations */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ backgroundColor: '#fffbe6', padding: '1rem 1.25rem', borderRadius: '10px', border: '1px solid #ffe58f', display: 'flex', gap: '12px' }}>
+                <AlertTriangle size={22} color="#d48806" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <div style={{ fontWeight: 800, color: '#873800', fontSize: '0.9rem' }}>Age Distribution Risk</div>
+                  <div style={{ fontSize: '0.85rem', color: '#613400', marginTop: '2px' }}>
+                    A notable proportion of bedside monitoring and general ward suction units are nearing the end of their recommended 5-to-7-year clinical service lifespan.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: '#f0f9ff', padding: '1rem 1.25rem', borderRadius: '10px', border: '1px solid #bae6fd', display: 'flex', gap: '12px' }}>
+                <ShieldCheck size={22} color="#0284c7" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <div style={{ fontWeight: 800, color: '#0369a1', fontSize: '0.9rem' }}>Tag & Inventory Synchronization Needed</div>
+                  <div style={{ fontSize: '0.85rem', color: '#0c4a6e', marginTop: '2px' }}>
+                    Multiple physical units require unified tag synchronization between the primary asset tag and department serial listings to eliminate drift during audits.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: 2026 Planned Preventive Maintenance (PPM) Analysis */}
+          <div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Wrench size={20} color="#0284c7" /> 3. 2026 Planned Preventive Maintenance (PPM) Analysis
+            </h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #0284c7', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0284c7', marginBottom: '8px' }}>Q1 (Jan - Mar)</div>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <li>OT & Anesthesia Safety</li>
+                  <li>Defibrillator Energy Verification</li>
+                  <li>Critical UPS Load Testing</li>
+                </ul>
+              </div>
+
+              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #16a34a', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#16a34a', marginBottom: '8px' }}>Q2 (Apr - Jun)</div>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <li>Lab & Centrifuge Overhaul</li>
+                  <li>Ward Monitors & ECG Calibration</li>
+                  <li>Dental Unit Systems Service</li>
+                </ul>
+              </div>
+
+              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #d97706', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#d97706', marginBottom: '8px' }}>Q3 (Jul - Sep)</div>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <li>Diagnostic Imaging Inspection</li>
+                  <li>Suction & Infusion Calibration</li>
+                  <li>Network Rack Cleaning & Testing</li>
+                </ul>
+              </div>
+
+              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #9333ea', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#9333ea', marginBottom: '8px' }}>Q4 (Oct - Dec)</div>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <li>Annual Electrical Run</li>
+                  <li>Deep Battery Load Testing</li>
+                  <li>2027 Schedule & Budget Planning</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Strategic Focus Areas */}
+            <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontWeight: 800, color: '#0f172a', marginBottom: '0.75rem', fontSize: '0.95rem' }}>Strategic PPM Focus Areas</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#0284c7', fontSize: '0.85rem' }}>• Calibration & Electrical Safety</div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px' }}>Strict leakage current testing, grounding continuity checks, and energy output verification on defibrillators & ESUs.</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#0284c7', fontSize: '0.85rem' }}>• Vendor Service Contracts (AMC)</div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px' }}>High-end imaging and diagnostic analyzers remain tied to SLA vendor visits; in-house bio-med staff shadow engineers.</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#0284c7', fontSize: '0.85rem' }}>• Environmental Controls</div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px' }}>Quarterly checks on server room HVAC, clean power redundancy (UPS runtime verification), and dust filtration.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Equipment Replacement Plan (2026) */}
+          <div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <DollarSign size={20} color="#0284c7" /> 4. Equipment Replacement Plan (2026)
+            </h3>
+            
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
+                    <th style={{ padding: '14px 18px', fontWeight: 800 }}>Equipment Description</th>
+                    <th style={{ padding: '14px 18px', fontWeight: 800 }}>Department / Location</th>
+                    <th style={{ padding: '14px 18px', fontWeight: 800 }}>Failure Mode / Justification</th>
+                    <th style={{ padding: '14px 18px', fontWeight: 800 }}>Priority Tier</th>
+                    <th style={{ padding: '14px 18px', fontWeight: 800 }}>Replacement Strategy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Legacy Patient Monitors</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Wards / Emergency / OT</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>End of useful life; failing NIBP pumps; aging displays</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#fef2f2', color: '#991b1b' }}>High Priority</span>
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Phased swap to modular digital multi-parameter units</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Surgical Suction Pumps</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Operating Theaters / OPD</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Worn seals, intermittent vacuum levels, high noise floor</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#fef2f2', color: '#991b1b' }}>High Priority</span>
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Heavy-duty mobile twin-bottle clinical units</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Centrifuges & Rotors</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Central Laboratory</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Motor brush wear, vibration balance degradation</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#fff7ed', color: '#c2410c' }}>Medium Priority</span>
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Brushless digital benchtop centrifuges</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Core Network Switches / UPS</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Server Infrastructure</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Out of firmware support, depleted internal battery strings</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#fef2f2', color: '#991b1b' }}>High Priority</span>
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Managed Gigabit PoE+ switches & line-interactive UPS</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Dental Compressors / Units</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Dental Clinic</td>
+                    <td style={{ padding: '14px 18px', color: '#475569' }}>Moisture accumulation, pressure valve degradation</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#fff7ed', color: '#c2410c' }}>Medium Priority</span>
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Medical-grade oil-free silent compressors</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section 5: Strategic Recommendations */}
+          <div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <TrendingUp size={20} color="#0284c7" /> 5. Strategic Recommendations
+            </h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
+              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <CheckCircle2 size={20} color="#16a34a" />
+                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>Unify Inventory Barcoding</div>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#475569', lineHeight: 1.5 }}>
+                  Re-tag legacy equipment identified during PPM to align serial numbers across the Master Asset Register and the Replacement Plan sheets.
+                </p>
+              </div>
+
+              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <CheckCircle2 size={20} color="#16a34a" />
+                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>Phase Capital Procurement</div>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#475569', lineHeight: 1.5 }}>
+                  Divide the 2026 budget into two procurement waves: Wave 1 (Q1/Q2) for critical OT/Emergency medical devices and IT core switches; Wave 2 (Q3/Q4) for lab and OPD units.
+                </p>
+              </div>
+
+              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <CheckCircle2 size={20} color="#16a34a" />
+                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>PPM Sign-off Automation</div>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#475569', lineHeight: 1.5 }}>
+                  Shift departmental PPM checklists from paper/manual spreadsheets into a shared verification workflow so heads of department digitally acknowledge maintenance completion.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: ADD ASSET */}
       {isAssetModal && (
-        <Modal title="Register New Clinic Asset" onClose={() => setIsAssetModal(false)}>
+        <Modal isOpen={true} title="Register New Clinic Asset" onClose={() => setIsAssetModal(false)}>
           <form onSubmit={handleAssetSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
@@ -470,7 +802,7 @@ const AssetManagement = () => {
 
       {/* MODAL: TRANSFER */}
       {isTransferModal && (
-        <Modal title="Equipment Transfer Form" onClose={() => setIsTransferModal(false)}>
+        <Modal isOpen={true} title="Equipment Transfer Form" onClose={() => setIsTransferModal(false)}>
           <form onSubmit={handleTransferSubmit}>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Select Asset</label>
@@ -494,6 +826,58 @@ const AssetManagement = () => {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setIsTransferModal(false)}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={submitting}>Submit Transfer Request</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {/* MODAL: SCHEDULE PPM */}
+      {isPpmModal && (
+        <Modal isOpen={true} title="Schedule Preventive Maintenance Work Order" onClose={() => setIsPpmModal(false)}>
+          <form onSubmit={handlePpmSubmit}>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Select Asset</label>
+              <select className="input" style={{ width: '100%' }} value={ppmForm.asset_id} onChange={(e) => setPpmForm({ ...ppmForm, asset_id: e.target.value })} required>
+                <option value="">-- Select Asset --</option>
+                {assets.map(a => <option key={a.id} value={a.id}>{a.asset_tag} — {a.name}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Maintenance Type</label>
+                <select className="input" style={{ width: '100%' }} value={ppmForm.maintenance_type} onChange={(e) => setPpmForm({ ...ppmForm, maintenance_type: e.target.value })}>
+                  <option value="Preventive Quarterly">Preventive – Quarterly</option>
+                  <option value="Preventive Biannual">Preventive – Biannual</option>
+                  <option value="Preventive Annual">Preventive – Annual</option>
+                  <option value="Calibration">Calibration</option>
+                  <option value="Corrective">Corrective</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Scheduled Date</label>
+                <input type="date" className="input" style={{ width: '100%' }} value={ppmForm.scheduled_date} onChange={(e) => setPpmForm({ ...ppmForm, scheduled_date: e.target.value })} required />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Technician Name</label>
+                <input type="text" className="input" style={{ width: '100%' }} value={ppmForm.technician} onChange={(e) => setPpmForm({ ...ppmForm, technician: e.target.value })} required />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Estimated Cost (RWF)</label>
+                <input type="number" className="input" style={{ width: '100%' }} value={ppmForm.cost} onChange={(e) => setPpmForm({ ...ppmForm, cost: e.target.value })} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Findings / Work Description</label>
+              <textarea className="input" style={{ width: '100%', height: '70px' }} value={ppmForm.findings} onChange={(e) => setPpmForm({ ...ppmForm, findings: e.target.value })} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsPpmModal(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>Schedule PPM Work Order</button>
             </div>
           </form>
         </Modal>

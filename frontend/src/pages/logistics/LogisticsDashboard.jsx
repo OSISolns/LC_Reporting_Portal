@@ -53,17 +53,18 @@ const LogisticsDashboard = () => {
     destination: '',
     patient_name: '',
     start_km: '',
-    auth_by: 'Logistics Desk'
+    auth_by: 'Logistics Desk',
+    trip_type: 'Operational',
   });
 
   const [genForm, setGenForm] = useState({
-    battery_voltage: '24.5',
-    output_voltage: '230',
-    fuel_level_pct: '85',
-    fuel_liters: '425',
-    test_run_mins: '15',
+    battery_voltage: '',
+    output_voltage: '',
+    fuel_level_pct: '',
+    fuel_liters: '',
+    test_run_mins: '',
     operator_name: user?.fullName || '',
-    notes: 'Morning routine generator inspection completed.'
+    notes: ''
   });
 
   const fetchDashboardData = async () => {
@@ -153,44 +154,54 @@ const LogisticsDashboard = () => {
   return (
     <div style={{ paddingBottom: '3rem' }}>
       {/* ── HEADER TITLE BAR ── */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1.25rem',
-        flexWrap: 'wrap',
-        gap: '1rem'
-      }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              backgroundColor: '#e0f2fe',
-              color: '#0369a1',
-              padding: '4px 10px',
-              borderRadius: '6px',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              letterSpacing: '0.05em'
-            }}>
-              LUMINA LOGISTICS PORTAL
-            </span>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Calendar size={14} /> {todayStr}
-            </span>
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#1e3a8a' }}>
-            Logistics Command Hub
-          </h1>
-        </div>
+      <div style={{ background: 'var(--primary-dark)', borderRadius: '24px', padding: '2.5rem', color: '#fff', marginBottom: '2rem', position: 'relative', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,59,68,0.1)' }}>
+        <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '240px', height: '240px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)' }} />
+        <div style={{ position: 'absolute', bottom: '-20px', right: '100px', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(255,255,255,0.02)' }} />
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={fetchDashboardData}
-            className="btn btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <RefreshCw size={16} /> Refresh Feed
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', position: 'relative' }}>
+          <div>
+            <p style={{ margin: '0 0 6px', fontSize: '0.85rem', opacity: 0.7, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              {todayStr} • LUMINA LOGISTICS PORTAL
+            </p>
+            <h1 style={{ margin: 0, fontSize: '2.25rem', fontWeight: 800, color: '#fff' }}>
+              Logistics Command Hub
+            </h1>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => navigate('/incidents')}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#dc2626', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)' }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#b91c1c'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#dc2626'}
+            >
+              <AlertTriangle size={16} /> Incident Reports
+            </button>
+            <button
+              onClick={() => setActiveModal('dispatch')}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#0284c7', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)' }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#0369a1'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0284c7'}
+            >
+              <Truck size={16} /> Dispatch Vehicle
+            </button>
+            <button
+              onClick={() => setActiveModal('gencheck')}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#16a34a', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)' }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#15803d'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#16a34a'}
+            >
+              <Zap size={16} /> Log Gen Check
+            </button>
+            <button
+              onClick={fetchDashboardData}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+            >
+              <RefreshCw size={16} /> Refresh Feed
+            </button>
+          </div>
         </div>
       </div>
 
@@ -335,260 +346,6 @@ const LogisticsDashboard = () => {
       {activeTab === 'overview' && (
         <>
 
-          {/* ── OPERATIONAL KPI CARDS (LEGACY CLINICS BLUE & GREEN) ── */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-            marginBottom: '1.5rem'
-          }}>
-            {/* Fleet Status */}
-            <div className="glass card-shadow" style={{ padding: '1.25rem', backgroundColor: '#ffffff', borderRadius: '12px', borderLeft: '4px solid #0284c7' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0' }}>FLEET STATUS</p>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: '#1e3a8a' }}>
-                    {data.kpis.fleet.available} / {data.kpis.fleet.total} <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#64748b' }}>Available</span>
-                  </h3>
-                </div>
-                <div style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '10px', borderRadius: '10px' }}>
-                  <Truck size={20} />
-                </div>
-              </div>
-              <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#64748b' }}>
-                <span>{data.kpis.fleet.inUse} In Assignment</span> | <span>{data.kpis.fleet.maintenance} Maintenance</span>
-              </div>
-            </div>
-
-            {/* Primary Power */}
-            <div className="glass card-shadow" style={{ padding: '1.25rem', backgroundColor: '#ffffff', borderRadius: '12px', borderLeft: '4px solid #16a34a' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0' }}>PRIMARY POWER</p>
-                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: '#15803d' }}>
-                    {data.kpis.power.gridStatus}
-                  </h3>
-                </div>
-                <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '10px', borderRadius: '10px' }}>
-                  <Zap size={20} />
-                </div>
-              </div>
-              <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#64748b' }}>
-                <span>Gen: {data.kpis.power.genStatus}</span>
-              </div>
-            </div>
-
-            {/* Pending PPM */}
-            <div className="glass card-shadow" style={{ padding: '1.25rem', backgroundColor: '#ffffff', borderRadius: '12px', borderLeft: '4px solid #0284c7' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0' }}>PENDING PPM</p>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: '#1e3a8a' }}>
-                    {data.kpis.ppm.pending} <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#64748b' }}>Scheduled</span>
-                  </h3>
-                </div>
-                <div style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '10px', borderRadius: '10px' }}>
-                  <Calendar size={20} />
-                </div>
-              </div>
-              <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#64748b' }}>
-                <span>Biomedical & Plant Orders</span>
-              </div>
-            </div>
-
-            {/* Open Incidents */}
-            <div className="glass card-shadow" style={{ padding: '1.25rem', backgroundColor: '#ffffff', borderRadius: '12px', borderLeft: '4px solid #16a34a' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0' }}>OPEN INCIDENTS</p>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: '#1e3a8a' }}>
-                    {data.kpis.incidents.openCount} <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#64748b' }}>Active</span>
-                  </h3>
-                </div>
-                <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '10px', borderRadius: '10px' }}>
-                  <ShieldAlert size={20} />
-                </div>
-              </div>
-              <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#64748b' }}>
-                <span>{data.kpis.incidents.criticalCount} High / Critical</span>
-              </div>
-            </div>
-
-            {/* IT Tickets */}
-            <div className="glass card-shadow" style={{ padding: '1.25rem', backgroundColor: '#ffffff', borderRadius: '12px', borderLeft: '4px solid #0284c7' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0' }}>IT TICKETS</p>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: '#1e3a8a' }}>
-                    {data.kpis.it.inProgress} <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#64748b' }}>Open</span>
-                  </h3>
-                </div>
-                <div style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '10px', borderRadius: '10px' }}>
-                  <Wrench size={20} />
-                </div>
-              </div>
-              <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#64748b' }}>
-                <span>{data.kpis.it.overdue} Overdue SLAs</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ── FLEET TRACKER & DISPATCH BOARD + FACILITIES FEED ── */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-            gap: '1.5rem',
-            marginBottom: '2rem'
-          }}>
-            {/* Fleet Tracker */}
-            <div style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '12px',
-              border: '1px solid #e2e8f0',
-              padding: '1.25rem',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e3a8a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Truck size={18} style={{ color: '#0284c7' }} /> Fleet Tracker & Dispatch Board
-                </h3>
-                <button
-                  onClick={() => setTab('fleet')}
-                  className="btn"
-                  style={{
-                    backgroundColor: '#0284c7',
-                    color: '#ffffff',
-                    fontSize: '0.8rem',
-                    padding: '6px 14px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  View All Vehicles
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {data.vehicles && data.vehicles.length > 0 ? (
-                  data.vehicles.map((v) => (
-                    <div
-                      key={v.id}
-                      style={{
-                        padding: '12px',
-                        borderRadius: '8px',
-                        backgroundColor: '#f8fafc',
-                        border: '1px solid #f1f5f9',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontWeight: 700, color: '#1e3a8a', fontSize: '0.95rem' }}>{v.plate_number}</span>
-                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>({v.model})</span>
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                          Type: {v.vehicle_type} | Odometer: {v.current_odometer?.toLocaleString()} km
-                        </div>
-                      </div>
-
-                      <div>
-                        <span style={{
-                          padding: '4px 10px',
-                          borderRadius: '12px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          backgroundColor: v.status === 'Available' ? '#dcfce7' : '#e0f2fe',
-                          color: v.status === 'Available' ? '#15803d' : '#0369a1'
-                        }}>
-                          {v.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8' }}>No vehicles registered</div>
-                )}
-              </div>
-            </div>
-
-            {/* Facilities & Maintenance Feed */}
-            <div style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '12px',
-              border: '1px solid #e2e8f0',
-              padding: '1.25rem',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e3a8a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Zap size={18} style={{ color: '#16a34a' }} /> Facilities & Maintenance Feed
-                </h3>
-                <button
-                  onClick={() => setTab('facilities')}
-                  className="btn"
-                  style={{
-                    backgroundColor: '#16a34a',
-                    color: '#ffffff',
-                    fontSize: '0.8rem',
-                    padding: '6px 14px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Facilities Log
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {/* Daily Tour Item */}
-                <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', borderLeft: '4px solid #16a34a' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Activity size={14} style={{ color: '#16a34a' }} /> Daily Morning Clinic Inspection
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                    {data.latestTour ? (
-                      <span>Status: Completed ({data.latestTour.tour_date}) by {data.latestTour.conducted_by}</span>
-                    ) : (
-                      <span>Status: Pending Today's Inspection Round</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Generator Item */}
-                <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', borderLeft: '4px solid #0284c7' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Zap size={14} style={{ color: '#0284c7' }} /> Generator 01 Operational Check
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                    {data.latestGen ? (
-                      <span>Tested ({data.latestGen.check_date}) — Voltage: {data.latestGen.output_voltage}V | Fuel: {data.latestGen.fuel_level_pct}% ({data.latestGen.fuel_liters}L)</span>
-                    ) : (
-                      <span>No generator log recorded today</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Low Stock Items */}
-                {data.lowStock && data.lowStock.length > 0 && (
-                  <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#e0f2fe', borderLeft: '4px solid #0284c7' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Package size={14} style={{ color: '#0284c7' }} /> Spare Parts Reorder Warning
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: '#0369a1', marginTop: '2px' }}>
-                      {data.lowStock.map(s => `${s.item_name} (Qty: ${s.quantity_on_hand})`).join(', ')}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
           {/* ── LOGISTICS HUB DIRECTORY ── */}
           <div>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '1rem' }}>
@@ -605,14 +362,15 @@ const LogisticsDashboard = () => {
                 onClick={() => setTab('fleet')}
                 className="glass card-shadow"
                 style={{
-                  padding: '1.25rem',
+                  padding: '1.5rem',
                   backgroundColor: '#ffffff',
-                  borderRadius: '12px',
+                  borderRadius: '18px',
                   border: '1px solid #e2e8f0',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
-                  justify: 'space-between'
+                  justifyContent: 'space-between'
                 }}
               >
                 <div>
@@ -653,14 +411,15 @@ const LogisticsDashboard = () => {
                 onClick={() => setTab('facilities')}
                 className="glass card-shadow"
                 style={{
-                  padding: '1.25rem',
+                  padding: '1.5rem',
                   backgroundColor: '#ffffff',
-                  borderRadius: '12px',
+                  borderRadius: '18px',
                   border: '1px solid #e2e8f0',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
-                  justify: 'space-between'
+                  justifyContent: 'space-between'
                 }}
               >
                 <div>
@@ -701,14 +460,15 @@ const LogisticsDashboard = () => {
                 onClick={() => setTab('assets')}
                 className="glass card-shadow"
                 style={{
-                  padding: '1.25rem',
+                  padding: '1.5rem',
                   backgroundColor: '#ffffff',
-                  borderRadius: '12px',
+                  borderRadius: '18px',
                   border: '1px solid #e2e8f0',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
-                  justify: 'space-between'
+                  justifyContent: 'space-between'
                 }}
               >
                 <div>
@@ -749,14 +509,15 @@ const LogisticsDashboard = () => {
                 onClick={() => setTab('inventory')}
                 className="glass card-shadow"
                 style={{
-                  padding: '1.25rem',
+                  padding: '1.5rem',
                   backgroundColor: '#ffffff',
-                  borderRadius: '12px',
+                  borderRadius: '18px',
                   border: '1px solid #e2e8f0',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
-                  justify: 'space-between'
+                  justifyContent: 'space-between'
                 }}
               >
                 <div>
@@ -797,14 +558,15 @@ const LogisticsDashboard = () => {
                 onClick={() => setTab('admin')}
                 className="glass card-shadow"
                 style={{
-                  padding: '1.25rem',
+                  padding: '1.5rem',
                   backgroundColor: '#ffffff',
-                  borderRadius: '12px',
+                  borderRadius: '18px',
                   border: '1px solid #e2e8f0',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
-                  justify: 'space-between'
+                  justifyContent: 'space-between'
                 }}
               >
                 <div>
@@ -846,8 +608,41 @@ const LogisticsDashboard = () => {
 
       {/* ── FAST ACTION MODAL: DISPATCH TRIP ── */}
       {activeModal === 'dispatch' && (
-        <Modal title="Dispatch Vehicle Run (Item #3)" onClose={() => setActiveModal(null)}>
+        <Modal isOpen={true} title="Dispatch Vehicle Run (Item #3)" onClose={() => setActiveModal(null)}>
           <form onSubmit={handleDispatchSubmit}>
+
+            {/* Trip Type pill selector */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px' }}>Trip Type</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {[
+                  { value: 'Operational', color: '#0369a1', bg: '#e0f2fe' },
+                  { value: 'Emergency',   color: '#dc2626', bg: '#fee2e2' },
+                  { value: 'Executive',   color: '#7c3aed', bg: '#ede9fe' },
+                ].map(t => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setDispatchForm({ ...dispatchForm, trip_type: t.value })}
+                    style={{
+                      flex: 1,
+                      padding: '9px 0',
+                      borderRadius: '8px',
+                      border: dispatchForm.trip_type === t.value ? `2px solid ${t.color}` : '2px solid #e2e8f0',
+                      backgroundColor: dispatchForm.trip_type === t.value ? t.bg : '#f8fafc',
+                      color: dispatchForm.trip_type === t.value ? t.color : '#64748b',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {t.value}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Select Vehicle</label>
               <select
@@ -942,7 +737,7 @@ const LogisticsDashboard = () => {
 
       {/* ── FAST ACTION MODAL: GENERATOR CHECK ── */}
       {activeModal === 'gencheck' && (
-        <Modal title="Generator Operation Check Record (Item #2)" onClose={() => setActiveModal(null)}>
+        <Modal isOpen={true} title="Generator Operation Check Record (Item #2)" onClose={() => setActiveModal(null)}>
           <form onSubmit={handleGenSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>

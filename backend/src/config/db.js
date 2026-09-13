@@ -455,6 +455,18 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       } catch (err) {
         console.error('❌ IT Tickets column migration error:', err.message);
       }
+
+      // ─── Fleet Trip Type Column Migration ─────────────────────────────────────────
+      try {
+        await client.execute("ALTER TABLE logistics_vehicle_trips ADD COLUMN trip_type TEXT DEFAULT 'Operational'").catch((err) => {
+          if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+            console.warn('⚠️ ALTER TABLE logistics_vehicle_trips ADD COLUMN trip_type failed:', err.message);
+          }
+        });
+        console.log('✅ SQLite Schema Migration: ensured trip_type column on logistics_vehicle_trips');
+      } catch (err) {
+        console.error('❌ Fleet trip_type column migration error:', err.message);
+      }
       
       console.log('⚙️ Running custom department cleanup migration...');
       // Rename CENTRAL STORE to GENERAL STORE if it exists in the database
@@ -1139,12 +1151,16 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           reviewed_by_qm TEXT,
           verified_by_lab_manager TEXT,
           reviewed_by_lab_manager TEXT,
-          approved_by_qm TEXT
+          approved_by_qm TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
         )
       `).then(async () => {
         console.log('  ✅ Table lab_ncr created/verified.');
         const ncrAlterCols = [
-          'reviewed_by_lab_manager TEXT', 'approved_by_qm TEXT'
+          'reviewed_by_lab_manager TEXT', 'approved_by_qm TEXT',
+          "created_at TEXT DEFAULT (datetime('now'))",
+          "updated_at TEXT DEFAULT (datetime('now'))"
         ];
         for (const colDef of ncrAlterCols) {
           try { await client.execute(`ALTER TABLE lab_ncr ADD COLUMN ${colDef}`); } catch (e) {}
@@ -1225,6 +1241,85 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.log('  ✅ Table lab_analyzers created/verified.');
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_analyzers:', err.message);
+      });
+
+      // ── Lab Equipment & Planned Preventive Maintenance (PPM) Table ────────
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_equipment (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          sn INTEGER,
+          name TEXT NOT NULL,
+          model TEXT,
+          serial_number TEXT,
+          manufacturer TEXT,
+          asset_code TEXT,
+          criticicity_factor TEXT DEFAULT 'Critical',
+          pm_date_1 TEXT,
+          pm_date_2 TEXT,
+          pm_date_3 TEXT,
+          pm_date_4 TEXT,
+          service_provider TEXT,
+          department TEXT DEFAULT 'Laboratory',
+          location_room TEXT DEFAULT 'Main Lab',
+          status TEXT DEFAULT 'Operational',
+          last_maintenance_date TEXT,
+          next_maintenance_due TEXT,
+          notes TEXT,
+          added_by TEXT DEFAULT 'System PPM Import',
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `).then(async () => {
+        console.log('  ✅ Table lab_equipment created/verified.');
+
+        // Auto-seed initial 2026 PPM equipment items if empty
+        const countRes = await client.execute('SELECT COUNT(*) as count FROM lab_equipment');
+        const count = countRes.rows?.[0]?.count || 0;
+        if (Number(count) === 0) {
+          console.log('  ⚙️ Seeding 2026 Planned Preventive Maintenance Equipment Dataset...');
+          const initialItems = [
+            [1, 'WATER BATH', 'SISCO', '74093', 'YORK Scientific', 'LEG/PATHLAB/EQP-39', 'Non-Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'YORK Scientific'],
+            [2, 'Microscope', 'CH20iBIMF', '15H0132', 'OLYMPUS', 'LEG/PATHLAB/EQP-293', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'OLYMPUS'],
+            [3, 'Microscope', 'CH20iBIMF', '15H0624', 'OLYMPUS', 'LEG/PATHLAB/EQP-297', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'OLYMPUS'],
+            [4, 'Microscope', 'CH20iBIMF', '15H0158', 'OLYMPUS', 'LEG/PATHLAB/EQP-298', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'OLYMPUS'],
+            [5, 'Autoclave 1', 'YSI-403EX', '15L2608', 'YORK Scientific', 'LEG/PATHLAB/EQP-38', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'YORK Scientific'],
+            [6, 'Autoclave 2', 'YSI-402EX', '15L2611', 'YORK Scientific', 'LEG/PATHLAB/EQP-38', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'YORK Scientific'],
+            [7, 'Centrifuge 2', 'R-8CBL', 'ZBJN-29049', 'REMI', 'LEG/PATHLAB/EQP-26', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'REMI'],
+            [8, 'Centrifuge', 'R-8CBL', 'ZLKN37815', 'REMI', 'LEG/PATHLAB/EQP-27', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'REMI'],
+            [9, 'Centrifuge 3', 'R-8CBL', 'ZBJN-29048', 'REMI', 'LEG/PATHLAB/EQP-319', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'REMI'],
+            [10, 'Biochemical analyser', 'COBAS e411', '16J1-01', 'Roche HITACHI', 'LEG/PATHLAB/EQP-08', 'Critical', 'MEDISELL', 'MEDISELL', 'MEDISELL', 'MEDISELL', 'MEDISELL'],
+            [11, 'BIO RAD Reader', 'PR4100', '1509007506', 'BIO_RAD', 'LEG/PATHLAB/EQP-24', 'Non-Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'BIO_RAD'],
+            [19, 'Biochemistry Analyser', 'Cobas e311', '17H9-02', 'Roche HITACHI', 'LEG/PATHLAB/EQP-07', 'Critical', 'MEDISELL', 'MEDISELL', 'MEDISELL', 'MEDISELL', 'MEDISELL'],
+            [20, 'Reverse Osmosis (RO)', 'EVOQUA', '311091570786-05', 'Evoqua', 'LEG/PATHLAB/EQP-17', 'Non-Critical', 'MEDISELL', 'MEDISELL', 'MEDISELL', 'MEDISELL', 'MEDISELL'],
+            [21, 'Rotator', 'RS-12R', 'ZBJS-28859', 'REMI', 'LEG/PATHLAB/EQP-23', 'Non-Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'REMI'],
+            [22, 'Incubator', 'BTI-25FR', '74093', 'BIOTECHNICS', 'LEG/PATHLAB/EQP-36', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'BIOTECHNICS'],
+            [23, 'Blood Analyzer', 'XS-500i', '18477', 'Sysmex', 'LEG/PATHLAB/EQP-05', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'Sysmex'],
+            [24, 'Urine analyser', 'BC5300', '1009-03-61', 'Mindray', 'LEG/PATHLAB/EQP-319', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'Mindray'],
+            [25, 'Microscope', 'CX23LEDFS1', '7G88103', 'OLYMPUS', 'LEG/PATHLAB/EQP-296', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'OLYMPUS'],
+            [26, 'Incubator', 'BTI-25', '74094', 'BIOTECHNICS', 'LEG/PATHLAB/EQP-35', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'BIOTECHNICS'],
+            [27, 'Hot Air Oven', 'BTI-25', '74455', 'BIOTECHNICS', 'LEG/PATHLAB/EQP-32', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'BIOTECHNICS'],
+            [28, 'Electronic scale', 'Standard', '110953', 'Precision', 'LEG/PATHLAB/EQP-321', 'Non-Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'In-House'],
+            [29, 'Electronic scale', 'Standard', 'SCALE-0029', 'Precision', 'LEG/PATHLAB/EQP-322', 'Non-Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'In-House'],
+            [30, 'Centrifuge', 'R-8CBL', 'ZBJN-29041', 'REMI', 'LEG/PATHLAB/EQP-25', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'REMI'],
+            [31, 'Biosafety Cabinet', 'CLASS II A2', 'BSC-II-A2', 'Laminar Flow Systems', 'LEG/PATHLAB/EQP-34', 'Critical', 'Eng. Ronald Rudakubana', 'Eng. Ronald Rudakubana', 'Eng. Ronald Rudakubana', 'Eng. Ronald Rudakubana', 'Eng. Ronald Rudakubana'],
+            [32, 'Biosafety Cabinet', 'CLASS I', 'BSC-I-01', 'Laminar Flow Systems', 'LEG/PATHLAB/EQP-33', 'Critical', 'Eng. Ronald Rudakubana', 'Eng. Ronald Rudakubana', 'Eng. Ronald Rudakubana', 'Eng. Ronald Rudakubana', 'Eng. Ronald Rudakubana'],
+            [33, 'Blood Mixer', 'BM-200', 'BM-2026-33', 'Lab Line', 'LEG/PATHLAB/EQP-348', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'Lab Line'],
+            [34, 'Microscope', 'CX23LEDFS1', '8D86810', 'OLYMPUS', 'LEG/PATHLAB/EQP-294', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'OLYMPUS'],
+            [35, 'Microscope', 'CX23LEDFS1', '8D8679', 'OLYMPUS', 'LEG/PATHLAB/EQP-295', 'Critical', 'Feb/02/2026', 'May/19/2026', 'Aug/19/2026', 'Nov/19/2026', 'OLYMPUS'],
+          ];
+
+          for (const item of initialItems) {
+            await client.execute({
+              sql: `INSERT INTO lab_equipment 
+                (sn, name, model, serial_number, manufacturer, asset_code, criticicity_factor, pm_date_1, pm_date_2, pm_date_3, pm_date_4, service_provider)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              args: item
+            });
+          }
+          console.log('  ✅ 28 Planned Preventive Maintenance Medical Equipment items seeded successfully.');
+        }
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create/seed lab_equipment:', err.message);
       });
 
       // ── Lab Archive: Documents Table ───────────────────────────────────────

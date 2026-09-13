@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Archive, Upload, Search, Filter, X, Download, Eye, Pencil, Trash2,
   FileText, FileSpreadsheet, Image, File, RefreshCw, Shield, ShieldAlert,
   ShieldCheck, Lock, ChevronDown, Clock, User, History, Folder, FolderOpen,
-  ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ArrowLeft
+  ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ArrowLeft, AlertOctagon
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -275,6 +276,212 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
   );
 }
 
+// ── Excel Spreadsheet Inline Preview Component ─────────────────────────────────
+function ExcelPreviewCanvas({ base64Data, fileName }) {
+  const [sheets, setSheets] = useState({});
+  const [sheetNames, setSheetNames] = useState([]);
+  const [activeSheet, setActiveSheet] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!base64Data) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const workbook = XLSX.read(base64Data, { type: 'base64', cellDates: true });
+      const names = workbook.SheetNames || [];
+      const extractedSheets = {};
+
+      names.forEach((name) => {
+        const ws = workbook.Sheets[name];
+        if (ws) {
+          const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          extractedSheets[name] = data;
+        } else {
+          extractedSheets[name] = [];
+        }
+      });
+
+      setSheets(extractedSheets);
+      setSheetNames(names);
+      if (names.length > 0) {
+        setActiveSheet(names[0]);
+      }
+    } catch (err) {
+      console.error('Failed to parse Excel document:', err);
+      setError('Unable to parse Excel file contents. It may be corrupted or password-protected.');
+    } finally {
+      setLoading(false);
+    }
+  }, [base64Data]);
+
+  const currentRows = sheets[activeSheet] || [];
+
+  const filteredRows = useMemo(() => {
+    if (!searchTerm.trim()) return currentRows;
+    const term = searchTerm.toLowerCase();
+    return currentRows.filter((row) =>
+      Array.isArray(row) && row.some((cell) => String(cell ?? '').toLowerCase().includes(term))
+    );
+  }, [currentRows, searchTerm]);
+
+  const maxCols = useMemo(() => {
+    let max = 0;
+    currentRows.forEach((r) => {
+      if (Array.isArray(r) && r.length > max) max = r.length;
+    });
+    return Math.min(max, 50);
+  }, [currentRows]);
+
+  const getColLabel = (index) => {
+    let num = index;
+    let label = '';
+    while (num >= 0) {
+      label = String.fromCharCode((num % 26) + 65) + label;
+      num = Math.floor(num / 26) - 1;
+    }
+    return label;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-500">
+        <RefreshCw size={24} className="animate-spin text-emerald-600" />
+        <p className="text-xs font-semibold">Parsing Excel Spreadsheet…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+        <AlertOctagon size={40} className="text-amber-500 mb-2 mx-auto" />
+        <p className="text-sm font-bold text-slate-700">{error}</p>
+        <p className="text-xs text-slate-500 mt-1">Please download the file to open it in Microsoft Excel or Google Sheets.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-full flex flex-col bg-slate-50 overflow-hidden">
+      {/* Spreadsheet Control Bar */}
+      <div className="px-4 py-2 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs flex-shrink-0">
+        {/* Sheet Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-full scrollbar-none">
+          {sheetNames.map((name) => {
+            const isActive = name === activeSheet;
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => setActiveSheet(name)}
+                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  isActive
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                <FileSpreadsheet size={13} />
+                {name}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search & Info */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search sheet..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 pr-3 py-1 bg-slate-100 hover:bg-slate-200/70 focus:bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500 transition-all w-36 focus:w-48"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
+            {filteredRows.length} rows {maxCols > 0 ? `× ${maxCols} cols` : ''}
+          </span>
+        </div>
+      </div>
+
+      {/* Spreadsheet Grid Container */}
+      <div className="flex-1 overflow-auto relative bg-white">
+        {filteredRows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-slate-400">
+            <FileSpreadsheet size={36} className="mb-2 text-slate-300 mx-auto" />
+            <p className="text-xs font-semibold">
+              {searchTerm ? 'No matching rows found.' : 'This worksheet is empty.'}
+            </p>
+          </div>
+        ) : (
+          <table className="w-full border-collapse text-left font-mono text-[11px] text-slate-800">
+            {/* Table Header (Column letters) */}
+            <thead className="sticky top-0 z-20 bg-slate-100 border-b border-slate-300">
+              <tr>
+                <th className="w-12 px-2 py-1.5 text-center font-bold text-slate-500 bg-slate-200/80 border-r border-slate-300 select-none sticky left-0 z-30">
+                  #
+                </th>
+                {Array.from({ length: maxCols }).map((_, colIdx) => (
+                  <th
+                    key={colIdx}
+                    className="px-3 py-1.5 font-semibold text-slate-600 border-r border-slate-200 min-w-[100px] max-w-[280px] truncate bg-slate-100"
+                  >
+                    {getColLabel(colIdx)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+
+            {/* Table Body */}
+            <tbody className="divide-y divide-slate-200">
+              {filteredRows.map((row, rowIdx) => (
+                <tr key={rowIdx} className="hover:bg-emerald-50/40 transition-colors">
+                  <td className="w-12 px-2 py-1 text-center font-semibold text-slate-400 bg-slate-50 border-r border-slate-200 select-none sticky left-0 z-10">
+                    {rowIdx + 1}
+                  </td>
+                  {Array.from({ length: maxCols }).map((_, colIdx) => {
+                    const cellVal = Array.isArray(row) ? row[colIdx] : '';
+                    const displayVal = cellVal instanceof Date
+                      ? cellVal.toISOString().split('T')[0]
+                      : String(cellVal ?? '');
+
+                    return (
+                      <td
+                        key={colIdx}
+                        className="px-3 py-1 border-r border-slate-100 whitespace-nowrap overflow-hidden text-ellipsis max-w-[280px]"
+                        title={displayVal}
+                      >
+                        {displayVal}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Full Page Document Detail & Preview Workspace ─────────────────────────────
 function DocumentDetailView({ docMeta, isManager, onBack, onEdit, onDelete, onDownload }) {
   const [log, setLog] = useState([]);
@@ -345,7 +552,8 @@ function DocumentDetailView({ docMeta, isManager, onBack, onEdit, onDelete, onDo
 
   const isPdf = ext === 'pdf' || mimeType.includes('pdf');
   const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext) || mimeType.startsWith('image/');
-  const isText = ['txt', 'csv', 'json', 'log', 'md', 'xml'].includes(ext) || mimeType.startsWith('text/');
+  const isExcel = ['xlsx', 'xls', 'xlsm', 'xlsb', 'csv'].includes(ext) || mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('vnd.ms-excel') || mimeType.includes('openxmlformats-officedocument.spreadsheetml');
+  const isText = ['txt', 'json', 'log', 'md', 'xml'].includes(ext) || mimeType.startsWith('text/');
 
   return (
     <div className="space-y-4 animate-fadeIn">
@@ -537,6 +745,11 @@ function DocumentDetailView({ docMeta, isManager, onBack, onEdit, onDelete, onDo
                       className="max-w-full max-h-full object-contain rounded-lg shadow-md"
                     />
                   </div>
+                ) : isExcel ? (
+                  <ExcelPreviewCanvas
+                    base64Data={previewData.file_base64}
+                    fileName={docMeta.file_name}
+                  />
                 ) : isText ? (
                   <div className="w-full h-full p-6 bg-white overflow-auto font-mono text-xs text-slate-800 leading-relaxed">
                     <pre className="whitespace-pre-wrap">{atob(previewData.file_base64)}</pre>

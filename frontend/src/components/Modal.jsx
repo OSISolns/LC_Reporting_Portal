@@ -94,32 +94,49 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: 'var(--sidebar-bg)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.05)',
           borderRadius: '16px',
           transformOrigin,
-          transform: isAnimated ? 'scale(1)' : 'scale(0.01)',
+          transform: isAnimated ? 'scale(1)' : 'scale(0.96)',
           opacity: isAnimated ? 1 : 0,
           transition: isAnimated 
-            ? 'transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease-out'
-            : 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease-in'
+            ? 'transform 0.28s cubic-bezier(0.34, 1.3, 0.64, 1), opacity 0.22s ease-out'
+            : 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease-in'
         }}
       >
         <div style={{
-          padding: '1.25rem 1.5rem',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          padding: '1.1rem 1.5rem',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          backgroundColor: 'rgba(0,0,0,0.2)'
+          background: 'linear-gradient(135deg, #003B44 0%, #005c68 100%)',
+          color: '#ffffff',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
         }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#ffffff' }}>{title}</h2>
-          <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}>
-            <X size={24} />
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', margin: 0, fontFamily: "'Poppins', sans-serif", letterSpacing: '0.01em' }}>{title}</h2>
+          <button 
+            onClick={handleClose} 
+            style={{ 
+              background: 'rgba(255,255,255,0.1)', 
+              border: 'none', 
+              color: '#ffffff', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              transition: 'all 0.2s' 
+            }} 
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)'} 
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+          >
+            <X size={18} />
           </button>
         </div>
-        <div style={{ padding: '2rem', overflowY: 'auto', backgroundColor: '#ffffff', color: 'var(--text-primary)' }}>
+        <div style={{ padding: '1.75rem 2rem', overflowY: 'auto', backgroundColor: '#ffffff', color: '#1e293b' }}>
           {children}
         </div>
       </div>

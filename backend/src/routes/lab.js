@@ -41,4 +41,10 @@ router.post('/analyzers', labController.createAnalyzer);
 router.put('/analyzers/:id', labController.updateAnalyzer);
 router.delete('/analyzers/:id', labController.deleteAnalyzer);
 
+// Equipment & Planned Preventive Maintenance (PPM) Routes
+router.get('/equipment', labController.getEquipment);
+router.post('/equipment', labController.createEquipment);
+router.put('/equipment/:id', labController.updateEquipment);
+router.delete('/equipment/:id', labController.deleteEquipment);
+
 module.exports = router;

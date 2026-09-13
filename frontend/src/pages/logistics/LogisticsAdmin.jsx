@@ -21,24 +21,24 @@ const LogisticsAdmin = () => {
   const [cashForm, setCashForm] = useState({
     transaction_date: new Date().toISOString().split('T')[0],
     category: 'Vehicle Fuel',
-    description: 'Emergency ambulance refill cash expense',
-    amount: '15000',
-    receipt_number: 'REC-8891'
+    description: '',
+    amount: '',
+    receipt_number: ''
   });
 
   const [sampleForm, setSampleForm] = useState({
-    patient_code: 'NIPT-2026-0901',
+    patient_code: '',
     sampling_time: new Date().toISOString(),
     cold_chain_ok: true,
-    dhl_waybill: 'DHL-BE-9921004',
+    dhl_waybill: '',
     departure_time: new Date().toISOString(),
-    notes: 'Cold chain gel packs verified. Express international courier dispatch to Belgium.'
+    notes: ''
   });
 
   const [printForm, setPrintForm] = useState({
-    nursing_station: 'Consultation Wing A',
-    item_description: 'Clinical Consultation Sheets (Packs of 100)',
-    quantity: 5
+    nursing_station: '',
+    item_description: '',
+    quantity: 1
   });
 
   const fetchData = async () => {
@@ -284,7 +284,7 @@ const LogisticsAdmin = () => {
       )}
 
       {activeTab === 'nipt' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
@@ -317,6 +317,45 @@ const LogisticsAdmin = () => {
               ) : (
                 <tr>
                   <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No NIPT international shipments dispatched yet</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'printing' && (
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
+                <th style={{ padding: '12px 16px' }}>Date</th>
+                <th style={{ padding: '12px 16px' }}>Nursing Station</th>
+                <th style={{ padding: '12px 16px' }}>Item Description</th>
+                <th style={{ padding: '12px 16px' }}>Qty</th>
+                <th style={{ padding: '12px 16px' }}>Requested By</th>
+                <th style={{ padding: '12px 16px' }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printReqs.length > 0 ? (
+                printReqs.map((p) => (
+                  <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{p.request_date}</td>
+                    <td style={{ padding: '12px 16px' }}>{p.nursing_station}</td>
+                    <td style={{ padding: '12px 16px' }}>{p.item_description}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{p.quantity}</td>
+                    <td style={{ padding: '12px 16px' }}>{p.requested_by}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#fef3c7', color: '#b45309' }}>
+                        {p.status || 'Pending'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No stationery print requisitions submitted yet</td>
                 </tr>
               )}
             </tbody>
@@ -364,7 +403,7 @@ const LogisticsAdmin = () => {
 
       {/* MODAL: PETTY CASH */}
       {isCashModal && (
-        <Modal title="Log Petty Cash Expense" onClose={() => setIsCashModal(false)}>
+        <Modal isOpen={true} title="Log Petty Cash Expense" onClose={() => setIsCashModal(false)}>
           <form onSubmit={handleCashSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
@@ -398,7 +437,7 @@ const LogisticsAdmin = () => {
 
       {/* MODAL: NIPT COURIER */}
       {isSampleModal && (
-        <Modal title="NIPT Sample International Dispatch" onClose={() => setIsSampleModal(false)}>
+        <Modal isOpen={true} title="NIPT Sample International Dispatch" onClose={() => setIsSampleModal(false)}>
           <form onSubmit={handleSampleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>

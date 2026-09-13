@@ -185,18 +185,45 @@ router.get('/fleet/trips', async (req, res) => {
 
 router.post('/fleet/trips', async (req, res) => {
   try {
-    const { vehicle_id, driver_name, referring_physician, destination, patient_name, start_km, end_km, fuel_consumed, start_time, end_time, auth_by } = req.body;
+    const { vehicle_id, driver_name, referring_physician, destination, patient_name, start_km, end_km, fuel_consumed, start_time, end_time, auth_by, trip_type } = req.body;
     
     // Insert trip record
     const { rows } = await db.query(`
-      INSERT INTO logistics_vehicle_trips (vehicle_id, driver_name, referring_physician, destination, patient_name, start_km, end_km, fuel_consumed, start_time, end_time, auth_by, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'In Progress')
+      INSERT INTO logistics_vehicle_trips (vehicle_id, driver_name, referring_physician, destination, patient_name, start_km, end_km, fuel_consumed, start_time, end_time, auth_by, trip_type, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'In Progress')
       RETURNING *
-    `, [vehicle_id, driver_name, referring_physician, destination, patient_name, start_km, end_km, fuel_consumed || 0, start_time || new Date().toISOString(), end_time, auth_by]);
+    `, [vehicle_id, driver_name, referring_physician, destination, patient_name, start_km, end_km, fuel_consumed || 0, start_time || new Date().toISOString(), end_time, auth_by, trip_type || 'Operational']);
 
     // Update vehicle status
     if (vehicle_id) {
       await db.query(`UPDATE logistics_vehicles SET status = 'In Use' WHERE id = ?`, [vehicle_id]);
+    }
+
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/fleet/trips/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { end_km, vehicle_id } = req.body;
+    const end_time = new Date().toISOString();
+    
+    // Update trip record
+    const { rows } = await db.query(`
+      UPDATE logistics_vehicle_trips 
+      SET end_km = ?, end_time = ?, status = 'Completed'
+      WHERE id = ?
+      RETURNING *
+    `, [end_km, end_time, id]);
+    
+    // Update vehicle status back to Available and update odometer
+    if (vehicle_id && end_km) {
+      await db.query(`UPDATE logistics_vehicles SET status = 'Available', current_odometer = ? WHERE id = ?`, [end_km, vehicle_id]);
+    } else if (vehicle_id) {
+      await db.query(`UPDATE logistics_vehicles SET status = 'Available' WHERE id = ?`, [vehicle_id]);
     }
 
     res.json({ success: true, data: rows[0] });
@@ -232,7 +259,84 @@ router.get('/fleet/checklists', async (req, res) => {
   }
 });
 
+// ── 2.5 DRIVERS MANAGEMENT ───────────────────────────────────────────────────
+
+async function ensureDriversTable() {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS logistics_drivers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        full_name TEXT NOT NULL,
+        license_number TEXT,
+        phone TEXT,
+        status TEXT DEFAULT 'Active',
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (err) {
+    // Table may already exist
+  }
+}
+
+router.get('/fleet/drivers', async (req, res) => {
+  try {
+    await ensureDriversTable();
+    const { rows } = await db.query('SELECT * FROM logistics_drivers ORDER BY id DESC');
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/fleet/drivers', async (req, res) => {
+  try {
+    await ensureDriversTable();
+    const { full_name, license_number, phone, status, notes } = req.body;
+    if (!full_name) {
+      return res.status(400).json({ success: false, message: 'Driver full name is required.' });
+    }
+    const { rows } = await db.query(`
+      INSERT INTO logistics_drivers (full_name, license_number, phone, status, notes)
+      VALUES (?, ?, ?, ?, ?)
+      RETURNING *
+    `, [full_name, license_number || '', phone || '', status || 'Active', notes || '']);
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/fleet/drivers/:id', async (req, res) => {
+  try {
+    await ensureDriversTable();
+    const { id } = req.params;
+    const { full_name, license_number, phone, status, notes } = req.body;
+    const { rows } = await db.query(`
+      UPDATE logistics_drivers
+      SET full_name = ?, license_number = ?, phone = ?, status = ?, notes = ?
+      WHERE id = ?
+      RETURNING *
+    `, [full_name, license_number, phone, status, notes, id]);
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/fleet/drivers/:id', async (req, res) => {
+  try {
+    await ensureDriversTable();
+    const { id } = req.params;
+    await db.query('DELETE FROM logistics_drivers WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Driver deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // ── 3. FACILITIES, POWER & ENVIRONMENT ────────────────────────────────────────
+
 
 router.get('/facilities/generator', async (req, res) => {
   try {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
   Package, Database, AlertTriangle, ArrowRight, Settings, 
@@ -6,7 +6,8 @@ import {
   ArrowRightLeft, FileWarning, Calendar, Loader2, Plus,
   Eye, RefreshCw, BarChart2, ListFilter, Check, X, ClipboardList,
   AlertCircle, Filter, ArrowUpRight, FileText, Sparkles, Building, Key, XCircle,
-  ChevronDown, ChevronUp, Layers, ShieldCheck, Tag
+  ChevronDown, ChevronUp, Layers, ShieldCheck, Tag,
+  LineChart, BellRing, Flame, Zap, PackageX, AreaChart
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,7 +20,7 @@ export default function StockManagerDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Tab State: 'overview' | 'requisitions' | 'stock' | 'incidents'
+  // Tab State: 'overview' | 'requisitions' | 'stock' | 'incidents' | 'analytics'
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -29,6 +30,20 @@ export default function StockManagerDashboard() {
   const [requisitions, setRequisitions] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [incidents, setIncidents] = useState([]);
+
+  // ── Expiry Alert Banner ──
+  const [expiryAlerts, setExpiryAlerts] = useState(null); // null = not loaded
+  const [expiryBannerDismissed, setExpiryBannerDismissed] = useState(false);
+
+  // ── Analytics Tab State ──
+  const [analyticsSearch, setAnalyticsSearch] = useState('');
+  const [analyticsSelectedItem, setAnalyticsSelectedItem] = useState(null);
+  const [analyticsMonths, setAnalyticsMonths] = useState(12);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [expiryDays, setExpiryDays] = useState(90);
+  const [expiryData, setExpiryData] = useState(null);
+  const [expiryLoading, setExpiryLoading] = useState(false);
 
   // Supplier Portal states — multi-session
   const [portalSessions, setPortalSessions] = useState([]);   // array of active session objects
@@ -168,7 +183,61 @@ export default function StockManagerDashboard() {
 
   useEffect(() => {
     loadData();
+    // Load expiry alerts on mount for the persistent banner
+    fetchExpiryAlerts();
   }, []);
+
+  const fetchExpiryAlerts = useCallback(async (days = 90) => {
+    try {
+      const res = await api.get(`/clinical/inventory/expiring-soon?days=${days}`);
+      if (res.data.success) setExpiryAlerts(res.data);
+    } catch (err) {
+      console.warn('Could not fetch expiry alerts:', err);
+    }
+  }, []);
+
+  const fetchItemUsage = useCallback(async (itemId, months) => {
+    setAnalyticsLoading(true);
+    setAnalyticsData(null);
+    try {
+      const res = await api.get(`/clinical/inventory/items/${itemId}/usage-history?months=${months}`);
+      if (res.data.success) setAnalyticsData(res.data.data);
+      else toast.error(res.data.message || 'Could not load usage data.');
+    } catch (err) {
+      console.error('Usage history error:', err);
+      toast.error('Failed to load item usage statistics.');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
+
+  const fetchExpiryDetails = useCallback(async (days) => {
+    setExpiryLoading(true);
+    setExpiryData(null);
+    try {
+      const res = await api.get(`/clinical/inventory/expiring-soon?days=${days}`);
+      if (res.data.success) setExpiryData(res.data);
+    } catch (err) {
+      console.error('Expiry details error:', err);
+      toast.error('Failed to load expiry data.');
+    } finally {
+      setExpiryLoading(false);
+    }
+  }, []);
+
+  // Trigger analytics fetch when item or time range changes
+  useEffect(() => {
+    if (analyticsSelectedItem) {
+      fetchItemUsage(analyticsSelectedItem.itemId, analyticsMonths);
+    }
+  }, [analyticsSelectedItem, analyticsMonths, fetchItemUsage]);
+
+  // Load expiry data when analytics tab opens
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      fetchExpiryDetails(expiryDays);
+    }
+  }, [activeTab, expiryDays, fetchExpiryDetails]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -930,7 +999,8 @@ export default function StockManagerDashboard() {
             { id: 'requisitions', label: `Requisitions (${metrics.pendingRequisitions.length})`, icon: <ArrowRightLeft size={16} /> },
             { id: 'stock', label: 'Stock Lookup', icon: <Database size={16} /> },
             { id: 'outgoing_requests', label: 'Purchase Requests', icon: <ClipboardList size={16} /> },
-            { id: 'incidents', label: `Incidents (${metrics.incidentCount})`, icon: <FileWarning size={16} /> }
+            { id: 'incidents', label: `Incidents (${metrics.incidentCount})`, icon: <FileWarning size={16} /> },
+            { id: 'analytics', label: 'Analytics', icon: <LineChart size={16} /> },
           ].map(tab => (
             <button
               key={tab.id}
@@ -943,9 +1013,90 @@ export default function StockManagerDashboard() {
             >
               {tab.icon}
               {tab.label}
+              {tab.id === 'analytics' && expiryAlerts && expiryAlerts.total > 0 && (
+                <span className="ml-1.5 px-2 py-0.5 text-[11px] font-semibold rounded-full bg-amber-100 text-amber-800 border border-amber-200/80">
+                  {expiryAlerts.total}
+                </span>
+              )}
             </button>
           ))}
         </motion.div>
+
+        {/* ── EXPIRY ALERT BANNER ── */}
+        <AnimatePresence>
+          {!expiryBannerDismissed && expiryAlerts && expiryAlerts.total > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="mb-6 rounded-xl border border-amber-200/80 bg-amber-50/40 p-4 text-slate-800"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="p-2 bg-amber-100/80 text-amber-700 rounded-lg shrink-0 mt-0.5">
+                    <AlertTriangle size={16} />
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-slate-900 text-sm">
+                        Stock Expiry Notice
+                      </span>
+                      {expiryAlerts.data.expired?.length > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-red-100/80 text-red-800 border border-red-200/60">
+                          {expiryAlerts.data.expired.length} Expired
+                        </span>
+                      )}
+                      {expiryAlerts.data.expiring_soon?.length > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-100/80 text-amber-800 border border-amber-200/60">
+                          {expiryAlerts.data.expiring_soon.length} Expiring within 90 days
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {expiryAlerts.flat.slice(0, 5).map((item, i) => (
+                        <span
+                          key={i}
+                          className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border font-normal ${
+                            item.expiry_status === 'expired'
+                              ? 'bg-red-50 text-red-800 border-red-200/80'
+                              : 'bg-white text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          <span className="font-medium text-slate-800">{item.item_name}</span>
+                          <span className="text-slate-400">&bull;</span>
+                          <span className={item.expiry_status === 'expired' ? 'font-medium text-red-700' : 'text-amber-700'}>
+                            {item.expiry_status === 'expired'
+                              ? 'Expired'
+                              : `${item.days_remaining}d left`}
+                          </span>
+                          <span className="text-slate-400">({item.quantity} units)</span>
+                        </span>
+                      ))}
+
+                      {expiryAlerts.total > 5 && (
+                        <button
+                          onClick={() => setActiveTab('analytics')}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 cursor-pointer"
+                        >
+                          View all {expiryAlerts.total} items &rarr;
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setExpiryBannerDismissed(true)}
+                  className="shrink-0 p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-amber-100/60 transition-colors cursor-pointer"
+                  title="Dismiss notification"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {loading ? (
           <div className="flex h-96 flex-col items-center justify-center gap-4">
@@ -1852,6 +2003,276 @@ export default function StockManagerDashboard() {
                       </table>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* ── Tab: ANALYTICS ── */}
+              {activeTab === 'analytics' && (
+                <div className="space-y-8">
+
+                  {/* ── SECTION 1: ITEM USAGE STATISTICS ── */}
+                  <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-indigo-50/60 to-violet-50/40">
+                      <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2.5 bg-indigo-100 text-indigo-600 rounded-xl border border-indigo-200">
+                            <AreaChart size={18} />
+                          </span>
+                          <div>
+                            <h3 className="font-black text-slate-800 text-base">Item Usage Statistics</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">Monthly consumption from approved requisitions</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-500">Time Range:</span>
+                          {[3, 6, 12, 24].map(m => (
+                            <button
+                              key={m}
+                              onClick={() => setAnalyticsMonths(m)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer border ${
+                                analyticsMonths === m
+                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                              }`}
+                            >
+                              {m}M
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="mt-4 relative">
+                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search item by name or SKU to view usage..."
+                          value={analyticsSearch}
+                          onChange={e => setAnalyticsSearch(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
+                        />
+                        {analyticsSearch.length > 1 && (
+                          <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 max-h-52 overflow-y-auto">
+                            {stockInHand
+                              .filter(i =>
+                                i.name.toLowerCase().includes(analyticsSearch.toLowerCase()) ||
+                                (i.sku && i.sku.toLowerCase().includes(analyticsSearch.toLowerCase()))
+                              )
+                              .filter((v, idx, arr) => arr.findIndex(x => x.itemId === v.itemId) === idx)
+                              .slice(0, 12)
+                              .map((item, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => { setAnalyticsSelectedItem(item); setAnalyticsSearch(''); }}
+                                  className="w-full text-left px-4 py-3 hover:bg-indigo-50 transition-colors flex items-center gap-3 cursor-pointer border-b border-slate-100 last:border-0"
+                                >
+                                  <span className="p-1.5 bg-slate-100 rounded-lg"><Package size={13} /></span>
+                                  <div>
+                                    <p className="text-sm font-bold text-slate-800">{item.name}</p>
+                                    <p className="text-[10px] text-slate-400 font-mono">{item.sku} &bull; {item.category}</p>
+                                  </div>
+                                </button>
+                              ))}
+                            {stockInHand.filter(i =>
+                              i.name.toLowerCase().includes(analyticsSearch.toLowerCase()) ||
+                              (i.sku && i.sku.toLowerCase().includes(analyticsSearch.toLowerCase()))
+                            ).length === 0 && (
+                              <p className="text-center text-slate-400 text-sm py-6">No matching items found</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      {!analyticsSelectedItem ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                          <AreaChart size={52} className="opacity-15 mb-4" />
+                          <p className="font-bold text-slate-500">Select an item above to see its usage history</p>
+                          <p className="text-xs mt-1">Search by name or SKU to find an item</p>
+                        </div>
+                      ) : analyticsLoading ? (
+                        <div className="flex flex-col items-center justify-center py-16 gap-3">
+                          <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
+                          <p className="text-slate-500 font-semibold animate-pulse text-sm">Loading usage data...</p>
+                        </div>
+                      ) : analyticsData ? (
+                        <div className="space-y-6">
+                          <div className="flex items-center gap-4 p-4 bg-indigo-50/60 border border-indigo-100 rounded-2xl">
+                            <span className="p-3 bg-indigo-100 text-indigo-600 rounded-xl border border-indigo-200">
+                              <Package size={20} />
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-black text-slate-800 text-base">{analyticsData.item.name}</h4>
+                              <p className="text-xs text-slate-500 font-mono mt-0.5">{analyticsData.item.sku} &bull; {analyticsData.item.category}</p>
+                            </div>
+                            <button onClick={() => { setAnalyticsSelectedItem(null); setAnalyticsData(null); }} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg transition-all cursor-pointer"><X size={16} /></button>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {[
+                              { label: 'Total Dispensed', value: analyticsData.summary.totalApproved, icon: <TrendingUp size={16} />, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
+                              { label: 'Monthly Avg.', value: analyticsData.summary.avgMonthly, icon: <Activity size={16} />, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
+                              { label: 'Peak Month', value: analyticsData.summary.peakMonth || '—', icon: <Flame size={16} />, color: 'text-amber-600 bg-amber-50 border-amber-100', isText: true },
+                              { label: 'Current Stock', value: analyticsData.item.current_stock || 0, icon: <Package size={16} />, color: 'text-violet-600 bg-violet-50 border-violet-100' },
+                            ].map((kpi, i) => (
+                              <div key={i} className={`flex items-center gap-3 p-4 rounded-2xl border ${kpi.color}`}>
+                                <span className="shrink-0">{kpi.icon}</span>
+                                <div className="min-w-0">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">{kpi.label}</p>
+                                  <p className="text-lg font-black text-slate-800 truncate">{kpi.isText ? kpi.value : Number(kpi.value).toLocaleString()}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3">Monthly Approved Dispensing (Units)</p>
+                            {analyticsData.timeline.every(t => t.total_approved === 0) ? (
+                              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-8 text-center text-slate-400">
+                                <BarChart2 size={36} className="mx-auto opacity-20 mb-2" />
+                                <p className="font-bold text-sm">No approved requisitions in this period</p>
+                              </div>
+                            ) : (() => {
+                              const maxVal = Math.max(...analyticsData.timeline.map(t => t.total_approved), 1);
+                              const chartH = 160; const barW = Math.max(14, Math.floor(600 / analyticsData.timeline.length) - 6); const gap = 6;
+                              const totalW = analyticsData.timeline.length * (barW + gap);
+                              return (
+                                <div className="overflow-x-auto">
+                                  <svg viewBox={`0 0 ${totalW + 40} ${chartH + 48}`} width={Math.max(totalW + 40, 500)} height={chartH + 48} className="overflow-visible">
+                                    {[0, 0.25, 0.5, 0.75, 1].map((frac, gi) => (
+                                      <g key={gi}>
+                                        <line x1={36} y1={chartH - frac * chartH} x2={totalW + 36} y2={chartH - frac * chartH} stroke="#e2e8f0" strokeWidth={1} />
+                                        <text x={32} y={chartH - frac * chartH + 4} textAnchor="end" fontSize={8} fill="#94a3b8" fontWeight="bold">{Math.round(maxVal * frac)}</text>
+                                      </g>
+                                    ))}
+                                    {analyticsData.timeline.map((t, i) => {
+                                      const barH = Math.max((t.total_approved / maxVal) * chartH, t.total_approved > 0 ? 4 : 0);
+                                      const x = 36 + i * (barW + gap); const y = chartH - barH;
+                                      const isLatest = i === analyticsData.timeline.length - 1;
+                                      return (
+                                        <g key={i}>
+                                          <rect x={x} y={0} width={barW} height={chartH} rx={4} fill="#f8fafc" />
+                                          <rect x={x} y={y} width={barW} height={barH} rx={4} fill={isLatest ? '#4f46e5' : (t.total_approved > 0 ? '#6366f1' : '#e2e8f0')} fillOpacity={t.total_approved > 0 ? 1 : 0.5} />
+                                          {t.total_approved > 0 && <text x={x + barW / 2} y={y - 4} textAnchor="middle" fontSize={8} fontWeight="bold" fill="#4f46e5">{t.total_approved}</text>}
+                                          <text x={x + barW / 2} y={chartH + 16} textAnchor="middle" fontSize={7.5} fill="#64748b" fontWeight="bold">{t.label.split(' ')[0]}</text>
+                                          <text x={x + barW / 2} y={chartH + 26} textAnchor="middle" fontSize={7} fill="#94a3b8">{t.label.split(' ')[1]}</text>
+                                        </g>
+                                      );
+                                    })}
+                                  </svg>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          {analyticsData.departments.length > 0 && (
+                            <div>
+                              <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3">Top Consuming Departments</p>
+                              <div className="space-y-2">
+                                {(() => {
+                                  const maxDept = Math.max(...analyticsData.departments.map(d => d.total_consumed), 1);
+                                  return analyticsData.departments.map((d, i) => (
+                                    <div key={i} className="flex items-center gap-3">
+                                      <span className="text-xs font-bold text-slate-600 w-36 shrink-0 truncate">{d.department}</span>
+                                      <div className="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                        <motion.div initial={{ width: 0 }} animate={{ width: `${(d.total_consumed / maxDept) * 100}%` }} transition={{ duration: 0.5, delay: i * 0.05 }} className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full" />
+                                      </div>
+                                      <span className="text-xs font-black text-slate-700 w-10 text-right shrink-0">{d.total_consumed}</span>
+                                    </div>
+                                  ));
+                                })()}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* ── SECTION 2: EXPIRY MANAGEMENT ── */}
+                  <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-red-50/60 to-amber-50/40">
+                      <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="p-2.5 bg-red-100 text-red-600 rounded-xl border border-red-200"><Calendar size={18} /></span>
+                          <div>
+                            <h3 className="font-black text-slate-800 text-base">Expiry Management</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">Track items approaching or past expiration dates</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-slate-500">Threshold:</span>
+                          {[30, 60, 90, 180].map(d => (
+                            <button key={d} onClick={() => setExpiryDays(d)} className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer border ${expiryDays === d ? 'bg-red-600 text-white border-red-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'}`}>{d}d</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      {expiryLoading ? (
+                        <div className="flex items-center justify-center py-12 gap-3">
+                          <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+                          <p className="text-slate-400 text-sm font-semibold">Scanning inventory...</p>
+                        </div>
+                      ) : !expiryData || expiryData.total === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 gap-3">
+                          <CheckCircle size={48} className="opacity-30 text-emerald-500" />
+                          <p className="font-bold text-slate-600">No items expiring within {expiryDays} days</p>
+                          <p className="text-xs text-slate-400">All active batches are within safe date ranges</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          <div className="flex flex-wrap gap-3">
+                            <span className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-black"><PackageX size={16} />{expiryData.data.expired.length} Expired Batches</span>
+                            <span className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl text-sm font-black"><AlertTriangle size={16} />{expiryData.data.expiring_soon.length} Expiring &le; {expiryDays} Days</span>
+                          </div>
+                          {expiryData.data.expired.length > 0 && (
+                            <div>
+                              <p className="text-xs font-black text-red-600 uppercase tracking-wider mb-3 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Expired — Immediate Action Required</p>
+                              <div className="overflow-x-auto rounded-2xl border border-red-100">
+                                <table className="w-full text-sm text-left">
+                                  <thead><tr className="bg-red-50/80 text-red-700 font-black text-[10px] uppercase tracking-wider border-b border-red-100"><th className="py-3 px-4">Item</th><th className="py-3 px-4">SKU</th><th className="py-3 px-4">Batch</th><th className="py-3 px-4">Expiry Date</th><th className="py-3 px-4 text-right">Qty</th><th className="py-3 px-4">Vendor</th></tr></thead>
+                                  <tbody className="divide-y divide-red-50">
+                                    {expiryData.data.expired.map((item, i) => (
+                                      <tr key={i} className="hover:bg-red-50/40 transition-colors">
+                                        <td className="py-3 px-4 font-bold text-slate-800">{item.item_name}</td>
+                                        <td className="py-3 px-4 font-mono text-slate-500 text-xs">{item.sku || '—'}</td>
+                                        <td className="py-3 px-4 font-mono text-slate-500 text-xs">{item.batch_number || '—'}</td>
+                                        <td className="py-3 px-4"><span className="text-red-600 font-black text-xs">{item.expiry_date}</span></td>
+                                        <td className="py-3 px-4 text-right font-black text-slate-800">{item.quantity}</td>
+                                        <td className="py-3 px-4 text-slate-500 text-xs">{item.vendor_name || '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+                          {expiryData.data.expiring_soon.length > 0 && (
+                            <div>
+                              <p className="text-xs font-black text-amber-700 uppercase tracking-wider mb-3 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />Expiring Soon — Plan for Priority Use or Disposal</p>
+                              <div className="overflow-x-auto rounded-2xl border border-amber-100">
+                                <table className="w-full text-sm text-left">
+                                  <thead><tr className="bg-amber-50/80 text-amber-700 font-black text-[10px] uppercase tracking-wider border-b border-amber-100"><th className="py-3 px-4">Item</th><th className="py-3 px-4">SKU</th><th className="py-3 px-4">Batch</th><th className="py-3 px-4">Expiry Date</th><th className="py-3 px-4 text-center">Days Left</th><th className="py-3 px-4 text-right">Qty</th><th className="py-3 px-4">Vendor</th></tr></thead>
+                                  <tbody className="divide-y divide-amber-50">
+                                    {expiryData.data.expiring_soon.map((item, i) => (
+                                      <tr key={i} className="hover:bg-amber-50/40 transition-colors">
+                                        <td className="py-3 px-4 font-bold text-slate-800">{item.item_name}</td>
+                                        <td className="py-3 px-4 font-mono text-slate-500 text-xs">{item.sku || '—'}</td>
+                                        <td className="py-3 px-4 font-mono text-slate-500 text-xs">{item.batch_number || '—'}</td>
+                                        <td className="py-3 px-4 font-semibold text-slate-700">{item.expiry_date}</td>
+                                        <td className="py-3 px-4 text-center">
+                                          <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${item.days_remaining <= 14 ? 'bg-red-50 text-red-600 border-red-200' : item.days_remaining <= 30 ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{item.days_remaining}d</span>
+                                        </td>
+                                        <td className="py-3 px-4 text-right font-black text-slate-800">{item.quantity}</td>
+                                        <td className="py-3 px-4 text-slate-500 text-xs">{item.vendor_name || '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               )}
 

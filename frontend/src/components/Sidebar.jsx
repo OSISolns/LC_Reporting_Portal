@@ -54,11 +54,6 @@ const Sidebar = ({ onClose }) => {
       title: 'LOGISTICS PORTAL',
       items: [
         { configKey: 'logistics_dashboard', name: 'Logistics Hub', icon: <Truck size={18} />, path: '/logistics', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
-        { configKey: 'logistics_fleet', name: 'Fleet Operations', icon: <Truck size={18} />, path: '/logistics/fleet', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
-        { configKey: 'logistics_facilities', name: 'Facilities & Power', icon: <Zap size={18} />, path: '/logistics/facilities', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
-        { configKey: 'logistics_assets', name: 'Assets & Lifecycle', icon: <Wrench size={18} />, path: '/logistics/assets', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
-        { configKey: 'logistics_inventory', name: 'Maintenance Stock', icon: <Package size={18} />, path: '/logistics/inventory', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
-        { configKey: 'logistics_admin', name: 'Operations Admin', icon: <DollarSign size={18} />, path: '/logistics/admin', requiredPerm: null, allowedRoles: ['logistics_manager', 'logistics_officer', 'admin', 'coo', 'deputy_coo'] },
       ]
     },
     {
@@ -67,9 +62,10 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'nursing_hub', name: 'Nursing Hub', icon: <Stethoscope size={18} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'] },
         { configKey: 'doctor_hub', name: 'Doctor Hub', icon: <Stethoscope size={18} />, path: '/doctor-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director'] },
         { configKey: 'lab_hub', name: 'Laboratory Hub', icon: <FlaskConical size={18} />, path: '/lab', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'] },
+        { configKey: 'lab_equipment', name: 'Equipment & PPM', icon: <Wrench size={18} />, path: '/lab/equipment', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'] },
         { configKey: 'lab_archive', name: 'Document Archive', icon: <Archive size={18} />, path: '/lab/archive', requiredPerm: null, allowedRoles: ['lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab'] },
         { configKey: 'ncr_hub', name: 'Non-Conformance (NCR)', icon: <AlertOctagon size={18} />, path: '/ncr', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'hsfp'] },
-        { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'admin', 'coo', 'deputy_coo', 'medical_director'] },
+        { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'admin', 'coo', 'deputy_coo'] },
         { configKey: 'dental_hub', name: 'Dental Hub', icon: <Heart size={18} />, path: '/dental', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'] },
         { configKey: 'physio_hub', name: 'Physio Hub', icon: <Dumbbell size={18} />, path: '/physio', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physiotherapist', 'physio', 'physio_manager'] },
       ]

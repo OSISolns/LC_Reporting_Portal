@@ -27,7 +27,7 @@ const MaintenanceStock = () => {
   const [releaseForm, setReleaseForm] = useState({
     item_id: '',
     quantity: 1,
-    target_location: 'Dental Clinic AC Unit',
+    target_location: '',
     requested_by: user?.full_name || ''
   });
 
@@ -173,7 +173,7 @@ const MaintenanceStock = () => {
       </div>
 
       {activeTab === 'inventory' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
@@ -224,7 +224,7 @@ const MaintenanceStock = () => {
       )}
 
       {activeTab === 'releases' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
@@ -258,7 +258,7 @@ const MaintenanceStock = () => {
 
       {/* MODAL: STOCK RELEASE FORM */}
       {isReleaseModal && (
-        <Modal title="Stock Release Form" onClose={() => setIsReleaseModal(false)}>
+        <Modal isOpen={true} title="Stock Release Form" onClose={() => setIsReleaseModal(false)}>
           <form onSubmit={handleReleaseSubmit}>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Select Stock Item</label>

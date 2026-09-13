@@ -264,7 +264,8 @@ export default function DailyOperationalReport() {
 
   // Submit Daily Report
   const handleSaveReport = async () => {
-    // Check if user is a nurse and selecting a past date
+    // Allow nurses to edit past daily reports for now
+    /*
     const dateObj = new Date();
     const offset = dateObj.getTimezoneOffset() * 60000;
     const localToday = new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
@@ -272,6 +273,7 @@ export default function DailyOperationalReport() {
       toast.error('Nurses are not authorized to modify past reports.');
       return;
     }
+    */
     try {
       setSaving(true);
 
@@ -811,62 +813,52 @@ export default function DailyOperationalReport() {
 
   return (
     <div className="space-y-6 pb-12 animate-fadeIn max-w-[1600px] mx-auto px-1">
-      {/* ── Page Hero Title / Premium Header ── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-sky-950 to-slate-900 text-white p-6 md:p-8 rounded-[32px] shadow-2xl border border-sky-500/20">
-        {/* Glow Effects */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-sky-500/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-teal-500/10 rounded-full blur-[100px] pointer-events-none" />
-
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 z-10 relative">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-sky-500/20 border border-sky-400/30 rounded-full text-sky-300 text-xs font-black uppercase tracking-wider shadow-inner">
-                <ShieldCheck size={14} className="animate-pulse" />
-                🩺 Nurse-Exclusive Portal
-              </span>
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-emerald-300 text-xs font-black uppercase tracking-wider">
-                <Lock size={12} /> Secure Access Granted
-              </span>
-            </div>
-
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-sky-200 bg-clip-text text-transparent">
-              Daily Report
+      {/* ── Page Hero Title / Minimalist Header ── */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7] inline-block" />
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Daily Operational Report
             </h1>
-            <p className="text-sm text-sky-200/85 font-medium max-w-2xl leading-relaxed">
-              Exclusively authorized for the nursing department. Log and track provider patient volumes, shift coverage, procedures, and daily assistant rosters.
-            </p>
           </div>
+          <p className="text-xs text-slate-500 font-medium">
+            Nursing department provider volumes, shift coverage, and daily assistant rosters.
+          </p>
+        </div>
 
-          {/* Premium Tab Selector */}
-          <div className="flex bg-slate-950/60 p-1.5 rounded-2xl border border-white/10 backdrop-blur-md self-stretch lg:self-auto shadow-xl">
-            <button
-              onClick={() => setActiveTab('entry')}
-              className={`flex-1 lg:flex-none px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === 'entry'
-                  ? 'bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-md shadow-sky-500/20 scale-100'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-            >
-              <Plus size={15} /> Data Entry Form
-            </button>
-            <button
-              onClick={() => setActiveTab('weekly')}
-              className={`flex-1 lg:flex-none px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === 'weekly'
-                  ? 'bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-md shadow-sky-500/20 scale-100'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-            >
-              <CalendarDays size={15} /> Weekly Report
-            </button>
-            <button
-              onClick={() => setActiveTab('monthly')}
-              className={`flex-1 lg:flex-none px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === 'monthly'
-                  ? 'bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-md shadow-sky-500/20 scale-100'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-            >
-              <BarChart3 size={15} /> Monthly Matrix
-            </button>
-          </div>
+        {/* Minimalist Tab Selector */}
+        <div className="flex bg-slate-100/90 p-1 rounded-xl border border-slate-200/70 self-start lg:self-auto">
+          <button
+            onClick={() => setActiveTab('entry')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'entry'
+                ? 'bg-white text-[#0284c7] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Plus size={14} /> Data Entry Form
+          </button>
+          <button
+            onClick={() => setActiveTab('weekly')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'weekly'
+                ? 'bg-white text-[#0284c7] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <CalendarDays size={14} /> Weekly Report
+          </button>
+          <button
+            onClick={() => setActiveTab('monthly')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'monthly'
+                ? 'bg-white text-[#0284c7] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <BarChart3 size={14} /> Monthly Matrix
+          </button>
         </div>
       </div>
 
@@ -994,7 +986,7 @@ export default function DailyOperationalReport() {
                                   placeholder="0"
                                   value={entryMetrics[provider.id] !== undefined ? entryMetrics[provider.id] : ''}
                                   onChange={(e) => handleMetricChange(provider.id, e.target.value)}
-                                  disabled={['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                                  disabled={false}
                                   className="w-24 text-right font-black text-sm text-sky-850 border-2 border-sky-200/80 rounded-xl pl-2 pr-7 py-1.5 focus:border-sky-500 focus:ring-0 bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                                   title="Consultations"
                                 />
@@ -1007,7 +999,7 @@ export default function DailyOperationalReport() {
                                   placeholder="0"
                                   value={entryFollowUps[provider.id] !== undefined ? entryFollowUps[provider.id] : ''}
                                   onChange={(e) => handleFollowUpChange(provider.id, e.target.value)}
-                                  disabled={['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                                  disabled={false}
                                   className="w-24 text-right font-black text-sm text-teal-700 border-2 border-teal-200/80 rounded-xl pl-2 pr-7 py-1.5 focus:border-teal-400 focus:ring-0 bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                                   title="Follow-ups"
                                 />
@@ -1052,7 +1044,7 @@ export default function DailyOperationalReport() {
                             placeholder={isNameInput ? 'e.g. Denyse, Rachel' : '0'}
                             value={value}
                             onChange={(e) => handleLogChange(metricName, e.target.value)}
-                            disabled={['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                            disabled={false}
                             className="w-full text-xs font-bold text-slate-700 border-2 border-slate-200 rounded-xl px-4 py-3 focus:border-sky-500 focus:ring-0 bg-slate-50/20 focus:bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                           />
                         </div>
@@ -1126,7 +1118,7 @@ export default function DailyOperationalReport() {
               {/* Save Trigger Button */}
               <button
                 onClick={handleSaveReport}
-                disabled={saving || loading || (['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0])}
+                disabled={saving || loading}
                 className="w-full bg-[#0284c7] hover:bg-[#0369a1] disabled:bg-slate-200 disabled:text-slate-400 text-white py-4 px-6 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-200 shadow-md hover:shadow-lg shadow-sky-500/10 flex items-center justify-center gap-2"
               >
                 {saving ? (
