@@ -234,7 +234,7 @@ function App() {
 
             <Route path="/roster-generator" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'pa', 'medical_director', 'doctor', 'consultant', 'chef-nurse'
+                'admin', 'deputy_coo', 'coo', 'operations_staff', 'operations'
               ]}>
                 <RosterGenerator />
               </ProtectedRoute>
