@@ -36,10 +36,9 @@ exports.saveDaily = async (req, res, next) => {
     const offset = dateObj.getTimezoneOffset() * 60000;
     const localToday = new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
     
-    // Allow nurses to edit past daily reports for now
-    // if (req.user && ['nurse', 'chef-nurse'].includes(req.user.role) && report_date < localToday) {
-    //   return res.status(403).json({ success: false, message: 'Nurses are not authorized to modify past reports.' });
-    // }
+    if (req.user && ['nurse', 'chef-nurse'].includes(req.user.role) && report_date < localToday) {
+      return res.status(403).json({ success: false, message: 'Nurses are not authorized to modify past reports.' });
+    }
 
     await DailyReport.saveDaily(report_date, metrics, logs);
     await logAction(req, 'SAVE', 'daily_operational_report', null, { date: report_date, metricsCount: metrics.length, logsCount: logs.length });
