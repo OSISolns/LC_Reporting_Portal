@@ -69,21 +69,21 @@ const getWaveTemporalData = (shift) => {
   
   if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
     startStr = '7:00 AM';
-    endStr = '15:00 PM';
+    endStr = '3:00 PM';
   } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
     startStr = '8:00 AM';
-    endStr = '16:00 PM';
+    endStr = '4:00 PM';
   } else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') {
     startStr = '9:00 AM';
-    endStr = '17:00 PM';
+    endStr = '5:00 PM';
   } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
     startStr = '3:00 PM';
-    endStr = '21:00 PM';
+    endStr = '9:00 PM';
   } else {
     const hour = shift.opened_at ? new Date(shift.opened_at).getHours() : 7;
     const isMorning = hour < 14;
     startStr = isMorning ? '7:00 AM' : '3:00 PM';
-    endStr = isMorning ? '15:00 PM' : '21:00 PM';
+    endStr = isMorning ? '3:00 PM' : '9:00 PM';
   }
   
   return {

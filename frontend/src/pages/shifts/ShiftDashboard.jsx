@@ -80,13 +80,15 @@ const STATUS_META = {
 function buildSummaryStats(shifts) {
   return [
     {
+      id:    'all',
       label: 'Total Records',
       value: shifts.length,
       icon:  <FileText size={18} />,
-      color: 'text-[#1b669d]',
-      bg:    'bg-[#1b669d]/10',
+      color: 'text-[#0284c7]',
+      bg:    'bg-sky-50',
     },
     {
+      id:    'open',
       label: 'Live Sessions',
       value: shifts.filter(s => s.status === 'open').length,
       icon:  <Zap size={18} />,
@@ -94,6 +96,7 @@ function buildSummaryStats(shifts) {
       bg:    'bg-emerald-50',
     },
     {
+      id:    'flagged',
       label: 'Flagged',
       value: shifts.filter(s => s.is_flagged).length,
       icon:  <Flag size={18} />,
@@ -101,6 +104,7 @@ function buildSummaryStats(shifts) {
       bg:    'bg-rose-50',
     },
     {
+      id:    'pending',
       label: 'Pending Review',
       value: shifts.filter(s => s.status === 'closed' && !s.reviewed_at).length,
       icon:  <AlertTriangle size={18} />,
@@ -699,7 +703,16 @@ export default function ShiftDashboard() {
         className="grid grid-cols-2 lg:grid-cols-4 gap-4"
       >
         {summaryStats.map((stat, i) => (
-          <Card key={i} className="p-5 flex items-center gap-4">
+          <Card 
+            key={i} 
+            onClick={() => {
+              if (stat.id === 'all') clearFilters();
+              else if (stat.id === 'open') setFilters(p => ({ ...p, status: 'open', flagged: '' }));
+              else if (stat.id === 'flagged') setFilters(p => ({ ...p, flagged: '1' }));
+              else if (stat.id === 'pending') setFilters(p => ({ ...p, status: 'closed', flagged: '' }));
+            }}
+            className="p-5 flex items-center gap-4 cursor-pointer hover:border-[#0284c7]/40 hover:shadow-xs transition-all"
+          >
             <div className={`w-10 h-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center shrink-0`}>
               {stat.icon}
             </div>
