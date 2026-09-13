@@ -117,6 +117,7 @@ const SIDEBAR_ITEMS = [
   { key: 'compliance',      name: 'Compliance',          Icon: ShieldCheck,     path: '/compliance',               allowedRoles: ['admin','hsfp'] },
   { key: 'it_hub',          name: 'IT Support Hub',      Icon: Server,          path: '/it-ticketing',             allowedRoles: ALL_ROLES },
   { key: 'users',           name: 'User Management',     Icon: Users,           path: '/users',                    allowedRoles: ['admin','it_officer'] },
+  { key: 'providers',       name: 'Provider Management', Icon: UserCheck,       path: '/providers',                allowedRoles: ['admin','coo','deputy_coo','medical_director'] },
   { key: 'permissions',     name: 'Permissions',         Icon: Shield,          path: '/permissions',              allowedRoles: ['admin'] },
   { key: 'audit_logs',      name: 'Audit Logs',          Icon: History,         path: '/audit-logs',               allowedRoles: ['admin'] },
   { key: 'shifts',          name: 'Shifts',              Icon: Clock,           path: '/shifts',                   allowedRoles: ['cashier','customer_care','nurse','principal_cashier','sales_manager','deputy_coo','coo','admin','operations_staff','chef-nurse','pa'] },

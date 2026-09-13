@@ -100,11 +100,14 @@ app.use(express.urlencoded({ extended: true }));
 // ── Routes ────────────────────────────────────────────────────────────────────
 const logisticsRoutes = require('./src/routes/logistics');
 
+const providerRoutes = require('./src/routes/providers');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/cancellations', cancellationRoutes);
 app.use('/api/refunds', refundRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/providers', providerRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/results-transfer', resultTransferRoutes);
