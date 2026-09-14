@@ -100,7 +100,7 @@ const SIDEBAR_ITEMS = [
   { key: 'performance',     name: 'Performance',         Icon: Award,           path: '/performance',              allowedRoles: ['sales_manager','coo','chairman','admin','deputy_coo','cashier','principal_cashier','customer_care','operations_staff'] },
   { key: 'nursing_hub',     name: 'Nursing Hub',         Icon: Stethoscope,     path: '/nursing-hub',              allowedRoles: ['nurse','admin','chef-nurse'] },
   { key: 'doctor_hub',      name: 'Doctor Hub',          Icon: Stethoscope,     path: '/doctor-hub',               allowedRoles: ['doctor','consultant','admin','medical_director'] },
-  { key: 'imaging',         name: 'Imaging Hub',         Icon: ScanLine,        path: '/imaging',                  allowedRoles: ['imaging_tech','imaging_manager','admin','coo','deputy_coo','medical_director'] },
+  { key: 'imaging',         name: 'Imaging Hub',         Icon: ScanLine,        path: '/imaging',                  allowedRoles: ['imaging_tech','imaging_manager','admin','medical_director'] },
   { key: 'lab_hub',         name: 'Laboratory Hub',      Icon: FlaskConical,    path: '/lab',                      allowedRoles: ['admin','deputy_coo','lab_team_lead','lab_tech','lab'] },
   { key: 'dental_hub',      name: 'Dental Hub',          Icon: Heart,           path: '/dental',                   allowedRoles: ['admin','deputy_coo','dental','dentist','dental_tech','dental_hod','dental_lab_manager'] },
   { key: 'physio_hub',      name: 'Physio Hub',          Icon: Dumbbell,        path: '/physio',                   allowedRoles: ['admin','deputy_coo','physiotherapist','physio','physio_manager'] },
