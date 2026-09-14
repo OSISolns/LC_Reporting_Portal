@@ -304,6 +304,10 @@ export default function LabEquipment() {
   const [quarterFilter, setQuarterFilter] = useState('all'); // 'all', 'Q1', 'Q2', 'Q3', 'Q4'
   const [viewMode, setViewMode] = useState('matrix'); // 'matrix', 'table', 'analytics'
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -389,6 +393,18 @@ export default function LabEquipment() {
       return matchesQuery && matchesCriticicity && matchesStatus;
     });
   }, [equipmentList, searchQuery, criticicityFilter, statusFilter]);
+
+  // Reset page to 1 on filter/search/pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, criticicityFilter, statusFilter, pageSize]);
+
+  // Paginated equipment list
+  const totalPages = Math.max(1, Math.ceil(filteredEquipment.length / pageSize));
+  const paginatedEquipment = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredEquipment.slice(start, start + pageSize);
+  }, [filteredEquipment, currentPage, pageSize]);
 
   // Advanced Executive Statistics
   const stats = useMemo(() => {
@@ -636,40 +652,40 @@ export default function LabEquipment() {
       </div>
 
       {/* ── 2026 QUARTERLY MAINTENANCE TIMELINE STRIP ── */}
-      <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+      <div className="bg-gradient-to-r from-sky-50 via-slate-50 to-sky-50/60 rounded-2xl p-5 border border-sky-100 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-sky-200/60 pb-4">
           <div>
-            <span className="text-[11px] font-semibold text-sky-400 uppercase tracking-wider block">2026 Executive Roadmap</span>
-            <h2 className="text-base font-bold text-white flex items-center gap-2 mt-0.5">
-              <Calendar size={18} className="text-sky-400" /> Planned Maintenance Milestone Schedule
+            <span className="text-[11px] font-semibold text-sky-700 uppercase tracking-wider block">2026 Executive Roadmap</span>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 mt-0.5">
+              <Calendar size={18} className="text-sky-700" /> Planned Maintenance Milestone Schedule
             </h2>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>Active Operational Cycle 2026</span>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">1st PM (Q1)</span>
-            <span className="text-sm font-bold text-emerald-400 block mt-1">Feb 02, 2026</span>
-            <span className="text-[11px] text-slate-400 mt-1 block">Quarterly Calibration</span>
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">1st PM (Q1)</span>
+            <span className="text-sm font-bold text-emerald-700 block mt-1">Feb 02, 2026</span>
+            <span className="text-[11px] text-slate-500 mt-1 block font-medium">Quarterly Calibration</span>
           </div>
-          <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">2nd PM (Q2)</span>
-            <span className="text-sm font-bold text-sky-400 block mt-1">May 19, 2026</span>
-            <span className="text-[11px] text-slate-400 mt-1 block">Mid-Year Verification</span>
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">2nd PM (Q2)</span>
+            <span className="text-sm font-bold text-sky-700 block mt-1">May 19, 2026</span>
+            <span className="text-[11px] text-slate-500 mt-1 block font-medium">Mid-Year Verification</span>
           </div>
-          <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">3rd PM (Q3)</span>
-            <span className="text-sm font-bold text-amber-400 block mt-1">Aug 19, 2026</span>
-            <span className="text-[11px] text-slate-400 mt-1 block">Autumn Preventive Check</span>
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">3rd PM (Q3)</span>
+            <span className="text-sm font-bold text-amber-700 block mt-1">Aug 19, 2026</span>
+            <span className="text-[11px] text-slate-500 mt-1 block font-medium">Autumn Preventive Check</span>
           </div>
-          <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">4th PM (Q4)</span>
-            <span className="text-sm font-bold text-indigo-400 block mt-1">Nov 19, 2026</span>
-            <span className="text-[11px] text-slate-400 mt-1 block">Year-End Full Audit</span>
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">4th PM (Q4)</span>
+            <span className="text-sm font-bold text-indigo-700 block mt-1">Nov 19, 2026</span>
+            <span className="text-[11px] text-slate-500 mt-1 block font-medium">Year-End Full Audit</span>
           </div>
         </div>
       </div>
@@ -786,10 +802,10 @@ export default function LabEquipment() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredEquipment.map((eq, idx) => (
+                {paginatedEquipment.map((eq, idx) => (
                   <tr key={eq.id || idx} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-3 font-mono font-bold text-slate-400 text-center text-[11px]">
-                      {eq.sn || idx + 1}
+                      {eq.sn || (currentPage - 1) * pageSize + idx + 1}
                     </td>
                     <td className="py-3 px-4">
                       <span className="font-bold text-slate-900 block">{eq.name}</span>
@@ -880,10 +896,10 @@ export default function LabEquipment() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredEquipment.map((eq, idx) => (
+                {paginatedEquipment.map((eq, idx) => (
                   <tr key={eq.id || idx} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3.5 px-3 font-mono font-bold text-slate-400 text-center text-[11px]">
-                      {eq.sn || idx + 1}
+                      {eq.sn || (currentPage - 1) * pageSize + idx + 1}
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-slate-900">{eq.name}</div>
@@ -1021,6 +1037,62 @@ export default function LabEquipment() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── PAGINATION CONTROLS FOOTER ── */}
+        {viewMode !== 'analytics' && filteredEquipment.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-slate-50/90 border-t border-slate-200 text-xs text-slate-600 print:hidden">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span>Show</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>All ({filteredEquipment.length})</option>
+              </select>
+              <span>entries per page</span>
+              <span className="text-slate-400 border-l border-slate-200 pl-3 ml-1">
+                Showing <strong className="text-slate-800">{Math.min((currentPage - 1) * pageSize + 1, filteredEquipment.length)}</strong> to <strong className="text-slate-800">{Math.min(currentPage * pageSize, filteredEquipment.length)}</strong> of <strong className="text-slate-800">{filteredEquipment.length}</strong> equipment assets
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 font-medium">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Previous
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    currentPage === page
+                      ? 'bg-sky-700 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Next
+              </button>
             </div>
           </div>
         )}
