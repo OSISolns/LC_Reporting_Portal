@@ -1,40 +1,61 @@
+'use strict';
 const nodemailer = require('nodemailer');
 
 // From address configuration
 const mailFromAddress = process.env.MAIL_FROM_ADDRESS || 'no-reply@legacyclinics.rw';
-const mailFromName = process.env.MAIL_FROM_NAME || 'Legacy Clinics';
-const mailFrom = `"${mailFromName}" <${mailFromAddress}>`;
+const mailFromName    = process.env.MAIL_FROM_NAME    || 'Legacy Clinics';
+const mailFrom        = `"${mailFromName}" <${mailFromAddress}>`;
 
-const port = parseInt(process.env.SMTP_PORT || '465', 10);
-const isSecure = port === 465;
+const smtpHost = process.env.SMTP_HOST || 'mail.legacyclinics.rw';
+const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
+const smtpUser = process.env.SMTP_USER || 'no-reply@legacyclinics.rw';
+const smtpPass = process.env.SMTP_PASS || '';
+const isSecure = smtpPort === 465;
 
-// SMTP transporter configuration for mail.legacyclinics.rw (SSL Port 465 / TLS Port 587)
+// Log resolved SMTP config on startup (mask password)
+console.log(`📧 Email Service Config → host=${smtpHost} port=${smtpPort} secure=${isSecure} user=${smtpUser} pass=${smtpPass ? '***' : '(MISSING!)'}`);
+
+if (!smtpPass) {
+  console.warn('⚠️  SMTP_PASS is not set! Emails will fail to authenticate. Please set SMTP_PASS in your production environment.');
+}
+
+// SMTP transporter (created once with resolved env values)
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'mail.legacyclinics.rw',
-  port: port,
+  host: smtpHost,
+  port: smtpPort,
   secure: isSecure, // true for 465, false for 587 or other ports
   auth: {
-    user: process.env.SMTP_USER || 'no-reply@legacyclinics.rw',
-    pass: process.env.SMTP_PASS || 'AMAhamba@2110',
+    user: smtpUser,
+    pass: smtpPass,
   },
   tls: {
-    rejectUnauthorized: false // Ensures smooth SSL handshake without certificate mismatch errors
-  }
+    rejectUnauthorized: false, // Smooth SSL handshake without certificate mismatch errors
+  },
+  connectionTimeout: 15000,
+  greetingTimeout:   10000,
+  socketTimeout:     30000,
 });
 
 // Verify connection on startup gracefully
-transporter.verify((error, success) => {
+transporter.verify((error) => {
   if (error) {
-    console.warn('⚠️ SMTP Connection Warning:', error.message);
+    console.error(`❌ SMTP Connection FAILED (host=${smtpHost}:${smtpPort} user=${smtpUser}):`, error.message);
   } else {
-    console.log(`📧 SMTP Email Service Connected: mail.legacyclinics.rw (Port ${port})`);
+    console.log(`✅ SMTP Connected: ${smtpHost}:${smtpPort} (secure=${isSecure}) user=${smtpUser}`);
   }
 });
 
 /**
- * Generic email sender
+ * Generic email sender — always resolves, never throws.
+ * Returns { success, messageId?, error? }
  */
 const sendEmail = async ({ to, cc, bcc, subject, html, text, attachments }) => {
+  if (!smtpPass) {
+    const msg = 'SMTP_PASS is not configured — email not sent.';
+    console.error(`❌ ${msg} (to=${to} subject="${subject}")`);
+    return { success: false, error: msg };
+  }
+
   const mailOptions = {
     from: mailFrom,
     to,
@@ -48,10 +69,14 @@ const sendEmail = async ({ to, cc, bcc, subject, html, text, attachments }) => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log(`📧 Email sent successfully to ${to} ${cc ? `[CC: ${cc}]` : ''} [ID: ${info.messageId}]`);
+    console.log(`📧 Email sent → to=${to}${cc ? ` cc=${cc}` : ''} subject="${subject}" id=${info.messageId} accepted=${JSON.stringify(info.accepted)} rejected=${JSON.stringify(info.rejected)}`);
+    if (info.rejected && info.rejected.length > 0) {
+      console.warn(`⚠️  Some recipients were rejected by SMTP: ${info.rejected.join(', ')}`);
+    }
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error(`❌ Failed to send email to ${to}:`, error.message);
+    console.error(`❌ Email send FAILED → to=${to} subject="${subject}":`, error.message);
+    console.error(`   SMTP host=${smtpHost}:${smtpPort} user=${smtpUser} code=${error.code} response=${error.response || 'n/a'}`);
     return { success: false, error: error.message };
   }
 };
@@ -63,7 +88,7 @@ const sendUserCredentials = async (email, username, password, subject = 'Your Ac
   const html = `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
       <div style="background-color: #1e3a8a; padding: 24px; text-align: center; color: white;">
-        <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Legacy Clinics & Diagnostics</h2>
+        <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Legacy Clinics &amp; Diagnostics</h2>
         <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Lumina Portal Login Credentials</p>
       </div>
       <div style="padding: 24px; background-color: #ffffff; color: #334155;">
@@ -93,10 +118,10 @@ const sendUserCredentials = async (email, username, password, subject = 'Your Ac
  */
 const sendNotification = async (email, subject, message, type = 'info') => {
   const colorMap = {
-    info: '#2563eb',
+    info:    '#2563eb',
     success: '#16a34a',
     warning: '#d97706',
-    error: '#dc2626',
+    error:   '#dc2626',
   };
 
   const html = `
@@ -107,7 +132,7 @@ const sendNotification = async (email, subject, message, type = 'info') => {
       </div>
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
       <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-        Legacy Clinics & Diagnostics — Lumina Portal Automated Notification
+        Legacy Clinics &amp; Diagnostics — Lumina Portal Automated Notification
       </p>
     </div>
   `;
@@ -137,7 +162,7 @@ const sendPasswordReset = async (email, resetLink) => {
       </p>
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
       <p style="color: #94a3b8; font-size: 11px; text-align: center; margin: 0;">
-        Legacy Clinics & Diagnostics — Lumina Portal
+        Legacy Clinics &amp; Diagnostics — Lumina Portal
       </p>
     </div>
   `;
@@ -146,7 +171,7 @@ const sendPasswordReset = async (email, resetLink) => {
     to: email,
     subject: 'Legacy Clinics — Password Reset Request',
     html,
-    text: `Password Reset Request\n\nClick the link below to reset your password:\n${resetLink}\n\nThis link will expire in 24 hours.`
+    text: `Password Reset Request\n\nClick the link below to reset your password:\n${resetLink}\n\nThis link will expire in 24 hours.`,
   });
 };
 
