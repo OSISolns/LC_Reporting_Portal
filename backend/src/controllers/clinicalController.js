@@ -4097,7 +4097,7 @@ exports.updateVendor = async (req, res) => {
     const finalPhone = phone || req.body.phone_number || req.body.tel || null;
     await db.query(
       "UPDATE vendors SET name = $1, contact = $2, email = $3, phone = $4, contract_terms = $5, category = $6 WHERE id = $7",
-      [name, contact, email || null, finalPhone, finalTerms, category || 'Medical', id]
+      [name || '', contact || null, email || null, finalPhone, finalTerms, category || 'Medical', parseInt(id, 10)]
     );
     res.json({ success: true, message: 'Vendor updated successfully' });
   } catch (error) {
@@ -5542,23 +5542,120 @@ exports.getRFQById = async (req, res) => {
   }
 };
 
-exports.createRFQ = async (req, res) => {
-  try {
-    const { title, category, requisitionId, location, notes, invitedVendorIds, items } = req.body;
-    if (!title || !Array.isArray(invitedVendorIds) || invitedVendorIds.length === 0 || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ success: false, message: 'title, invitedVendorIds, and items are required.' });
+async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, portalSessions = []) {
+  for (const vendorId of validVendorIds) {
+    const { rows: vRows } = await db.query(
+      "SELECT name, contact, email FROM vendors WHERE id = $1",
+      [vendorId]
+    );
+    const vendorObj = vRows[0] || {};
+    let tokenCode = '';
+
+    const { rows: existing } = await db.query(
+      "SELECT id, vendor_id, vendor_name, token, created_at FROM supplier_portal_sessions WHERE vendor_id = $1 AND is_active = 1 LIMIT 1",
+      [vendorId]
+    );
+    if (existing.length > 0) {
+      tokenCode = existing[0].token;
+      portalSessions.push({
+        id: existing[0].id,
+        vendorId: existing[0].vendor_id,
+        vendorName: existing[0].vendor_name,
+        token: tokenCode,
+        createdAt: existing[0].created_at,
+        isActive: true
+      });
+    } else {
+      const session = await helperOpenSupplierPortalSession(vendorId, [], false);
+      if (session) {
+        tokenCode = session.token;
+        portalSessions.push(session);
+      }
     }
 
-    // 1. Sanitize & validate vendor IDs against DB to prevent Foreign Key constraint failures
-    const parsedVendorIds = [...new Set(invitedVendorIds.map(v => parseInt(v, 10)).filter(v => !isNaN(v)))];
+    if (vendorObj.email && vendorObj.email.trim()) {
+      const portalUrl = process.env.SUPPLIER_PORTAL_URL || 'https://report.ops-legacyclinics.rw/supplier-portal';
+      const emailSubject = `[Tender Invitation] ${rfqTitle} - Ref: ${refNo}`;
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+          <div style="background-color: #1e3a8a; padding: 20px; text-align: center; color: white; border-radius: 8px 8px 0 0;">
+            <h2 style="margin: 0;">Legacy Clinics & Diagnostics</h2>
+            <p style="margin: 4px 0 0 0; font-size: 13px;">Official Procurement Tender Invitation</p>
+          </div>
+          <div style="padding: 20px; color: #334155;">
+            <p>Dear <strong>${vendorObj.name}</strong>,</p>
+            <p>You have been officially invited to submit a proposal / quotation for the following tender:</p>
+            
+            <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 16px 0; border-radius: 6px;">
+              <p style="margin: 4px 0;"><strong>Tender Title:</strong> ${rfqTitle}</p>
+              <p style="margin: 4px 0;"><strong>Reference No:</strong> ${refNo}</p>
+              <p style="margin: 4px 0;"><strong>Category:</strong> ${category || 'Medical Supplies'}</p>
+              ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${notes}</p>` : ''}
+            </div>
+
+            <p style="margin-top: 16px;"><strong>Your Supplier Portal Access Token:</strong></p>
+            <div style="background-color: #e0f2fe; border: 1px solid #93c5fd; padding: 12px; text-align: center; border-radius: 8px; font-family: monospace; font-size: 18px; font-weight: bold; letter-spacing: 2px; color: #1e40af; margin: 16px 0;">
+              ${tokenCode}
+            </div>
+
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${portalUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                Access Supplier Portal
+              </a>
+            </div>
+
+            <p style="font-size: 13px; color: #64748b;">
+              Log in to the portal using your access token to view requested line items and submit your proforma pricing.
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+              Legacy Clinics & Diagnostics — Procurement Dept.
+            </p>
+          </div>
+        </div>
+      `;
+      
+      emailService.sendEmail({
+        to: vendorObj.email.trim(),
+        subject: emailSubject,
+        html: emailHtml,
+        text: `Dear ${vendorObj.name},\n\nYou are invited to tender for: ${rfqTitle} (${refNo}).\nAccess Token: ${tokenCode}\nLog in at: ${portalUrl}`
+      }).catch(err => console.error('Failed to send vendor tender invitation email:', err));
+    }
+  }
+}
+
+exports.createRFQ = async (req, res) => {
+  try {
+    const { title, category, requisitionId, location, notes, invitedVendorIds, items, status } = req.body;
+    const isDraft = status === 'Draft';
+    
+    // If publishing, strictly validate title, invited suppliers, and items
+    if (!isDraft) {
+      if (!title || !title.trim()) {
+        return res.status(400).json({ success: false, message: 'Tender title is required to publish.' });
+      }
+      if (!Array.isArray(invitedVendorIds) || invitedVendorIds.length === 0) {
+        return res.status(400).json({ success: false, message: 'Invite at least one supplier to publish.' });
+      }
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ success: false, message: 'Add at least one item line to publish.' });
+      }
+    }
+
+    const rfqTitle = (title && title.trim()) ? title.trim() : `Draft RFQ - ${new Date().toLocaleDateString()}`;
+
+    // 1. Sanitize & validate vendor IDs against DB
+    const parsedVendorIds = Array.isArray(invitedVendorIds)
+      ? [...new Set(invitedVendorIds.map(v => parseInt(v, 10)).filter(v => !isNaN(v)))]
+      : [];
     const validVendorIds = [];
     for (const vId of parsedVendorIds) {
       const { rows: vRows } = await db.query("SELECT id FROM vendors WHERE id = $1", [vId]);
-      if (vRows.length > 0) {
-        validVendorIds.push(vId);
-      }
+      if (vRows.length > 0) validVendorIds.push(vId);
     }
-    if (validVendorIds.length === 0) {
+
+    if (!isDraft && validVendorIds.length === 0) {
       return res.status(400).json({ success: false, message: 'Selected suppliers could not be found in database.' });
     }
 
@@ -5569,16 +5666,17 @@ exports.createRFQ = async (req, res) => {
       if (uRows.length > 0) createdByUserId = req.user.id;
     }
 
+    const initialStatus = isDraft ? 'Draft' : 'Collecting';
     const refNo = `RFQ-${Date.now()}`;
     const { rows } = await db.query(`
       INSERT INTO rfqs (reference_no, title, category, requisition_id, location, notes, created_by, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'Collecting')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING id, reference_no
-    `, [refNo, title, category || null, requisitionId ? parseInt(requisitionId, 10) : null, location || 'Kigali', notes || '', createdByUserId]);
+    `, [refNo, rfqTitle, category || null, requisitionId ? parseInt(requisitionId, 10) : null, location || 'Kigali', notes || '', createdByUserId, initialStatus]);
 
     const rfqId = rows[0].id;
 
-    // 3. Insert valid suppliers
+    // 3. Insert suppliers
     for (let i = 0; i < validVendorIds.length; i++) {
       await db.query(`
         INSERT INTO rfq_suppliers (rfq_id, vendor_id, column_order, responded)
@@ -5586,9 +5684,10 @@ exports.createRFQ = async (req, res) => {
       `, [rfqId, validVendorIds[i], i]);
     }
 
-    // 4. Insert items line by line (validate item_id against master_inventory)
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
+    // 4. Insert items line by line
+    const itemList = Array.isArray(items) ? items : [];
+    for (let i = 0; i < itemList.length; i++) {
+      const item = itemList[i];
       let validItemId = null;
       if (item.item_id) {
         const { rows: mRows } = await db.query("SELECT id FROM master_inventory WHERE id = $1", [parseInt(item.item_id, 10)]);
@@ -5601,12 +5700,12 @@ exports.createRFQ = async (req, res) => {
         RETURNING id
       `, [
         rfqId, item.line_no || (i + 1), validItemId, 
-        item.item_name || 'Unnamed Item', item.quantity !== undefined ? parseFloat(item.quantity) : null, item.unit || null, item.quantity_label || null
+        item.item_name || 'Unnamed Item', item.quantity !== undefined && item.quantity !== null && !isNaN(item.quantity) ? parseFloat(item.quantity) : null, item.unit || null, item.quantity_label || null
       ]);
 
       const itemId = itemRows[0].id;
 
-      // Populate default quotes for each supplier (so they exist in comparative matrix)
+      // Populate default quotes for each supplier
       const { rows: rfqSups } = await db.query('SELECT id FROM rfq_suppliers WHERE rfq_id = $1', [rfqId]);
       for (const sup of rfqSups) {
         await db.query(`
@@ -5616,94 +5715,126 @@ exports.createRFQ = async (req, res) => {
       }
     }
 
-    // 5. Ensure active portal token sessions for invited vendors & send email notifications if email is present
+    // 5. Open portal sessions & notify vendors ONLY if publishing
     const portalSessions = [];
-    for (const vendorId of validVendorIds) {
-      const { rows: vRows } = await db.query(
-        "SELECT name, contact, email FROM vendors WHERE id = $1",
-        [vendorId]
-      );
-      const vendorObj = vRows[0] || {};
-      let tokenCode = '';
-
-      const { rows: existing } = await db.query(
-        "SELECT id, vendor_id, vendor_name, token, created_at FROM supplier_portal_sessions WHERE vendor_id = $1 AND is_active = 1 LIMIT 1",
-        [vendorId]
-      );
-      if (existing.length > 0) {
-        tokenCode = existing[0].token;
-        portalSessions.push({
-          id: existing[0].id,
-          vendorId: existing[0].vendor_id,
-          vendorName: existing[0].vendor_name,
-          token: tokenCode,
-          createdAt: existing[0].created_at,
-          isActive: true
-        });
-      } else {
-        const session = await helperOpenSupplierPortalSession(vendorId, [], false);
-        if (session) {
-          tokenCode = session.token;
-          portalSessions.push(session);
-        }
-      }
-
-      // Send email notification to supplier if email address is configured
-      if (vendorObj.email && vendorObj.email.trim()) {
-        const portalUrl = process.env.SUPPLIER_PORTAL_URL || 'https://report.ops-legacyclinics.rw/supplier-portal';
-        const emailSubject = `[Tender Invitation] ${title} - Ref: ${refNo}`;
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
-            <div style="background-color: #1e3a8a; padding: 20px; text-align: center; color: white; border-radius: 8px 8px 0 0;">
-              <h2 style="margin: 0;">Legacy Clinics & Diagnostics</h2>
-              <p style="margin: 4px 0 0 0; font-size: 13px;">Official Procurement Tender Invitation</p>
-            </div>
-            <div style="padding: 20px; color: #334155;">
-              <p>Dear <strong>${vendorObj.name}</strong>,</p>
-              <p>You have been officially invited to submit a proposal / quotation for the following tender:</p>
-              
-              <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 16px 0; border-radius: 6px;">
-                <p style="margin: 4px 0;"><strong>Tender Title:</strong> ${title}</p>
-                <p style="margin: 4px 0;"><strong>Reference No:</strong> ${refNo}</p>
-                <p style="margin: 4px 0;"><strong>Category:</strong> ${category || 'Medical Supplies'}</p>
-                ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${notes}</p>` : ''}
-              </div>
-
-              <p style="margin-top: 16px;"><strong>Your Supplier Portal Access Token:</strong></p>
-              <div style="background-color: #e0f2fe; border: 1px solid #93c5fd; padding: 12px; text-align: center; border-radius: 8px; font-family: monospace; font-size: 18px; font-weight: bold; letter-spacing: 2px; color: #1e40af; margin: 16px 0;">
-                ${tokenCode}
-              </div>
-
-              <div style="text-align: center; margin: 24px 0;">
-                <a href="${portalUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                  Access Supplier Portal
-                </a>
-              </div>
-
-              <p style="font-size: 13px; color: #64748b;">
-                Log in to the portal using your access token to view requested line items and submit your proforma pricing.
-              </p>
-              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-              <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
-                Legacy Clinics & Diagnostics — Procurement Dept.
-              </p>
-            </div>
-          </div>
-        `;
-        
-        emailService.sendEmail({
-          to: vendorObj.email.trim(),
-          subject: emailSubject,
-          html: emailHtml,
-          text: `Dear ${vendorObj.name},\n\nYou are invited to tender for: ${title} (${refNo}).\nAccess Token: ${tokenCode}\nLog in at: ${portalUrl}`
-        }).catch(err => console.error('Failed to send vendor tender invitation email:', err));
-      }
+    if (!isDraft && validVendorIds.length > 0) {
+      await helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, portalSessions);
     }
 
-    res.json({ success: true, message: 'Tender / RFQ created & opened for bidding successfully.', data: { id: rfqId, reference_no: refNo, portalSessions } });
+    const msg = isDraft ? 'RFQ draft saved successfully.' : 'Tender / RFQ created & opened for bidding successfully.';
+    res.json({ success: true, message: msg, data: { id: rfqId, reference_no: refNo, status: initialStatus, portalSessions } });
   } catch (error) {
     console.error('Error in createRFQ:', error);
     res.status(500).json({ success: false, message: error.message || 'Internal server error' });
+  }
+};
+
+exports.updateRFQ = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, category, requisitionId, location, notes, invitedVendorIds, items, status } = req.body;
+
+    const { rows: rfqRows } = await db.query('SELECT * FROM rfqs WHERE id = $1', [id]);
+    if (rfqRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'RFQ not found.' });
+    }
+    const oldRFQ = rfqRows[0];
+    const isPublishing = status === 'Collecting';
+    const targetStatus = status || oldRFQ.status;
+
+    if (isPublishing) {
+      if (!title && !oldRFQ.title) {
+        return res.status(400).json({ success: false, message: 'Tender title is required to publish.' });
+      }
+      if (!Array.isArray(invitedVendorIds) || invitedVendorIds.length === 0) {
+        return res.status(400).json({ success: false, message: 'Invite at least one supplier to publish.' });
+      }
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ success: false, message: 'Add at least one item line to publish.' });
+      }
+    }
+
+    const rfqTitle = title !== undefined ? title.trim() : oldRFQ.title;
+    const rfqCategory = category !== undefined ? category : oldRFQ.category;
+    const rfqNotes = notes !== undefined ? notes : oldRFQ.notes;
+
+    await db.query(`
+      UPDATE rfqs 
+      SET title = $1, category = $2, notes = $3, status = $4, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+      WHERE id = $5
+    `, [rfqTitle, rfqCategory, rfqNotes, targetStatus, id]);
+
+    // Update invited vendors if provided
+    if (Array.isArray(invitedVendorIds)) {
+      const parsedVendorIds = [...new Set(invitedVendorIds.map(v => parseInt(v, 10)).filter(v => !isNaN(v)))];
+      await db.query('DELETE FROM rfq_suppliers WHERE rfq_id = $1', [id]);
+      for (let i = 0; i < parsedVendorIds.length; i++) {
+        await db.query(`
+          INSERT INTO rfq_suppliers (rfq_id, vendor_id, column_order, responded)
+          VALUES ($1, $2, $3, 0)
+        `, [id, parsedVendorIds[i], i]);
+      }
+    }
+
+    // Update items if provided
+    if (Array.isArray(items)) {
+      await db.query('DELETE FROM rfq_items WHERE rfq_id = $1', [id]);
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        let validItemId = null;
+        if (item.item_id) {
+          const { rows: mRows } = await db.query("SELECT id FROM master_inventory WHERE id = $1", [parseInt(item.item_id, 10)]);
+          if (mRows.length > 0) validItemId = mRows[0].id;
+        }
+
+        const { rows: itemRows } = await db.query(`
+          INSERT INTO rfq_items (rfq_id, line_no, item_id, item_name, quantity, unit, quantity_label)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          RETURNING id
+        `, [
+          id, item.line_no || (i + 1), validItemId,
+          item.item_name || 'Unnamed Item', item.quantity !== undefined && item.quantity !== null && !isNaN(item.quantity) ? parseFloat(item.quantity) : null, item.unit || null, item.quantity_label || null
+        ]);
+
+        const itemId = itemRows[0].id;
+        const { rows: rfqSups } = await db.query('SELECT id FROM rfq_suppliers WHERE rfq_id = $1', [id]);
+        for (const sup of rfqSups) {
+          await db.query(`
+            INSERT INTO rfq_quotes (rfq_item_id, rfq_supplier_id, unit_price, total_price, no_bid)
+            VALUES ($1, $2, NULL, NULL, 0)
+          `, [itemId, sup.id]);
+        }
+      }
+    }
+
+    const portalSessions = [];
+    if (isPublishing || (targetStatus === 'Collecting' && oldRFQ.status === 'Draft')) {
+      const { rows: sups } = await db.query('SELECT vendor_id FROM rfq_suppliers WHERE rfq_id = $1', [id]);
+      const validVendorIds = sups.map(s => s.vendor_id);
+      if (validVendorIds.length > 0) {
+        await helperNotifyAndOpenPortalsForRFQ(id, rfqTitle, oldRFQ.reference_no, rfqCategory, rfqNotes, validVendorIds, portalSessions);
+      }
+    }
+
+    res.json({ success: true, message: targetStatus === 'Collecting' ? 'Tender published & opened for bidding successfully.' : 'RFQ updated successfully.', data: { id, status: targetStatus, portalSessions } });
+  } catch (error) {
+    console.error('Error in updateRFQ:', error);
+    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
+  }
+};
+
+exports.deleteRFQ = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query('SELECT * FROM rfqs WHERE id = $1', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'RFQ not found.' });
+    }
+    await db.query('DELETE FROM rfqs WHERE id = $1', [id]);
+    res.json({ success: true, message: 'RFQ deleted successfully.' });
+  } catch (error) {
+    console.error('Error in deleteRFQ:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 

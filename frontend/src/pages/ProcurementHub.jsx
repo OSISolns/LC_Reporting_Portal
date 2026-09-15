@@ -8,9 +8,10 @@ import {
   Truck, ArrowUpRight, DollarSign, Tag, Info, ArrowRightLeft, Printer, Download,
   Copy, KeyRound, ShoppingCart, PackageCheck, Radio, Gavel, TrendingDown, CheckCircle2, Undo2,
   Receipt, BookOpen, Star, FileCheck, PieChart, Banknote, ListChecks, BadgeCheck, AlertOctagon,
-  Database, Boxes, LayoutDashboard
+  Database, Boxes, LayoutDashboard, FileSpreadsheet, Upload, Save, Edit3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import * as XLSX from 'xlsx';
 import api from '../api/axios';
 import { getIncidents, createIncident } from '../api/incidents';
 import { toast } from 'react-hot-toast';
@@ -156,8 +157,10 @@ export default function ProcurementHub() {
   const [rfqDetails, setRfqDetails] = useState(null);
   const [rfqSearch, setRfqSearch] = useState('');
   const [showCreateRFQModal, setShowCreateRFQModal] = useState(false);
+  const [editingRFQ, setEditingRFQ] = useState(null);
   const [loadingRFQDetails, setLoadingRFQDetails] = useState(false);
   const [submittingRFQ, setSubmittingRFQ] = useState(false);
+  const excelInputRef = useRef(null);
 
   // RFQ Form States
   const [rfqTitle, setRfqTitle] = useState('');
@@ -711,34 +714,184 @@ export default function ProcurementHub() {
     }
   };
 
-  const handleCreateRFQSubmit = async (e) => {
-    e.preventDefault();
-    if (!rfqTitle.trim()) {
-      toast.error('Please enter a tender title.');
-      return;
-    }
-    if (rfqInvitedVendors.length === 0) {
-      toast.error('Invite at least one supplier.');
-      return;
-    }
-    if (rfqItems.length === 0) {
-      toast.error('Add at least one item row.');
-      return;
+  const downloadRFQItemTemplate = () => {
+    const templateData = [
+      {
+        'Department/Units': 'Nursing',
+        'Item': 'Apron/single use',
+        'Unit of measurement': 'Pqt of 100',
+        'Quantity': '10 pqts'
+      },
+      {
+        'Department/Units': 'Nursing',
+        'Item': 'Calcium gluconate 10% 10ml',
+        'Unit of measurement': 'Vial',
+        'Quantity': '3 vials'
+      },
+      {
+        'Department/Units': 'Nursing',
+        'Item': 'Hydrogen peroxide 3% 20ml/10 vol',
+        'Unit of measurement': 'Bottle',
+        'Quantity': '50 Bottles'
+      },
+      {
+        'Department/Units': 'Nursing',
+        'Item': 'Normal Saline 0.9% 500ml',
+        'Unit of measurement': 'Box of 30 bottles',
+        'Quantity': '50 Carton'
+      },
+      {
+        'Department/Units': 'Nursing',
+        'Item': 'Ceftriaxone sodium inject 1g',
+        'Unit of measurement': 'Vial',
+        'Quantity': '300 vials'
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    worksheet['!cols'] = [
+      { wch: 18 },
+      { wch: 38 },
+      { wch: 25 },
+      { wch: 15 }
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'RFQ Requisition Template');
+    XLSX.writeFile(workbook, 'RFQ_Requisition_Item_Template.xlsx');
+    toast.success('Excel requisition template downloaded.');
+  };
+
+  const handleExcelItemImport = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        if (!Array.isArray(jsonData) || jsonData.length === 0) {
+          toast.error('The uploaded Excel file has no readable data.');
+          return;
+        }
+
+        let detectedDept = null;
+        const newItems = [];
+
+        jsonData.forEach((row) => {
+          const findVal = (keys) => {
+            for (const k of keys) {
+              if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') return row[k];
+            }
+            const normCandidates = keys.map(k => k.toLowerCase().replace(/[^a-z0-9]/g, ''));
+            for (const rowKey of Object.keys(row)) {
+              const normRowKey = rowKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+              if (normCandidates.includes(normRowKey)) {
+                const val = row[rowKey];
+                if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+              }
+            }
+            return undefined;
+          };
+
+          const rawDept = findVal(['Department/Units', 'Department', 'Dept', 'Units', 'Unit/Department']);
+          const rawName = findVal(['Item', 'Item Name', 'Item Description', 'Product Name', 'Name', 'Description']);
+          const rawUnit = findVal(['Unit of measurement', 'Unit of Measure', 'Unit', 'uom', 'UOM']);
+          const rawQty = findVal(['Quantity', 'Qty', 'quantity', 'qty', 'Count']);
+
+          if (rawDept && !detectedDept) {
+            detectedDept = String(rawDept).trim();
+          }
+
+          if (rawName) {
+            const itemNameStr = String(rawName).trim();
+            let qtyNum = 1;
+            if (rawQty !== undefined && rawQty !== null) {
+              const parsed = parseFloat(String(rawQty).replace(/[^0-9.]/g, ''));
+              if (!isNaN(parsed)) qtyNum = parsed;
+            }
+
+            const unitStr = rawUnit ? String(rawUnit).trim() : 'pcs';
+            const matchedMasterItem = (masterInventory || []).find(mi => mi.name && mi.name.toLowerCase() === itemNameStr.toLowerCase());
+
+            newItems.push({
+              line_no: rfqItems.length + newItems.length + 1,
+              item_id: matchedMasterItem?.id || null,
+              item_name: itemNameStr,
+              quantity: qtyNum,
+              unit: unitStr,
+              quantity_label: `${qtyNum} ${unitStr}`
+            });
+          }
+        });
+
+        if (detectedDept && !rfqDepartment) {
+          const matchedDept = (departments || []).find(d => d.name && d.name.toLowerCase().includes(detectedDept.toLowerCase()));
+          if (matchedDept) setRfqDepartment(matchedDept.name);
+          else setRfqDepartment(detectedDept);
+        }
+
+        if (newItems.length === 0) {
+          toast.error('No valid item lines found in Excel file. Please ensure columns include "Item" and "Quantity".');
+        } else {
+          setRfqItems(prev => [...prev, ...newItems].map((it, i) => ({ ...it, line_no: i + 1 })));
+          toast.success(`Successfully imported ${newItems.length} item(s) from template.`);
+        }
+      } catch (err) {
+        console.error('Error reading Excel file:', err);
+        toast.error('Failed to parse Excel file. Please ensure it is a valid .xlsx or .csv document.');
+      } finally {
+        if (e.target) e.target.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleCreateRFQSubmit = async (e, targetStatus = 'Collecting') => {
+    if (e) e.preventDefault();
+    const isDraft = targetStatus === 'Draft';
+
+    if (!isDraft) {
+      if (!rfqTitle.trim()) {
+        toast.error('Please enter a tender title.');
+        return;
+      }
+      if (rfqInvitedVendors.length === 0) {
+        toast.error('Invite at least one supplier.');
+        return;
+      }
+      if (rfqItems.length === 0) {
+        toast.error('Add at least one item line.');
+        return;
+      }
     }
 
     setSubmittingRFQ(true);
     try {
-      const res = await api.post('/clinical/inventory/rfqs', {
-        title: rfqTitle,
+      const payload = {
+        title: rfqTitle.trim() || `Draft RFQ - ${new Date().toLocaleDateString()}`,
         category: rfqCategory,
         notes: rfqNotes,
         invitedVendorIds: rfqInvitedVendors.map(vId => parseInt(vId, 10)),
-        items: rfqItems
-      });
+        items: rfqItems,
+        status: targetStatus
+      };
+
+      let res;
+      if (editingRFQ) {
+        res = await api.put(`/clinical/inventory/rfqs/${editingRFQ.id}`, payload);
+      } else {
+        res = await api.post('/clinical/inventory/rfqs', payload);
+      }
 
       if (res.data.success) {
-        toast.success('RFQ Tender created & supplier portals opened.');
+        toast.success(res.data.message || (isDraft ? 'RFQ draft saved.' : 'Tender published successfully.'));
         setShowCreateRFQModal(false);
+        setEditingRFQ(null);
         setRfqTitle('');
         setRfqNotes('');
         setRfqInvitedVendors([]);
@@ -747,9 +900,49 @@ export default function ProcurementHub() {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to create RFQ Tender.');
+      toast.error(err.response?.data?.message || 'Failed to save RFQ Tender.');
     } finally {
       setSubmittingRFQ(false);
+    }
+  };
+
+  const handleOpenEditRFQModal = (rfq) => {
+    setEditingRFQ(rfq);
+    setRfqTitle(rfq.title || '');
+    setRfqCategory(rfq.category || 'medical_supplies');
+    setRfqNotes(rfq.notes || '');
+    api.get(`/clinical/inventory/rfqs/${rfq.id}`).then(res => {
+      if (res.data.success && res.data.data) {
+        const { suppliers, items } = res.data.data;
+        if (Array.isArray(suppliers)) {
+          setRfqInvitedVendors(suppliers.map(s => String(s.vendor_id)));
+        }
+        if (Array.isArray(items)) {
+          setRfqItems(items.map((it, idx) => ({
+            line_no: it.line_no || (idx + 1),
+            item_id: it.item_id,
+            item_name: it.item_name,
+            quantity: it.quantity,
+            unit: it.unit,
+            quantity_label: it.quantity_label
+          })));
+        }
+      }
+    }).catch(err => console.error('Failed to fetch RFQ details for editing:', err));
+    setShowCreateRFQModal(true);
+  };
+
+  const handleDeleteRFQ = async (rfqId) => {
+    if (!window.confirm('Are you sure you want to delete this draft RFQ?')) return;
+    try {
+      const res = await api.delete(`/clinical/inventory/rfqs/${rfqId}`);
+      if (res.data.success) {
+        toast.success('RFQ deleted successfully.');
+        loadData(true);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to delete RFQ.');
     }
   };
 
@@ -3854,7 +4047,7 @@ export default function ProcurementHub() {
                                   <td className="p-4 text-center font-bold">{rfq.supplier_count}</td>
                                   <td className="p-4 text-center font-bold">{rfq.item_count}</td>
                                   <td className="p-4 text-center">
-                                    <span className={`px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full ${rfq.status === 'Draft' ? 'bg-slate-105 text-slate-650' :
+                                    <span className={`px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full ${rfq.status === 'Draft' ? 'bg-slate-100 text-slate-700 border border-slate-200' :
                                         rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
                                           rfq.status === 'UnderReview' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' :
                                             rfq.status === 'Awarded' ? 'bg-teal-50 text-teal-700 border border-teal-150' :
@@ -3867,7 +4060,23 @@ export default function ProcurementHub() {
                                     {new Date(rfq.created_at).toLocaleDateString()}
                                   </td>
                                   <td className="p-4 text-center">
-                                    {(() => {
+                                    {rfq.status === 'Draft' ? (
+                                      <div className="flex items-center justify-center gap-1.5">
+                                        <button
+                                          onClick={() => handleOpenEditRFQModal(rfq)}
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-xs bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 transition-all cursor-pointer shadow-xs"
+                                        >
+                                          <Edit3 size={13} /> Edit Draft
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteRFQ(rfq.id)}
+                                          title="Delete Draft"
+                                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </div>
+                                    ) : (() => {
                                       const done = rfq.status === 'Awarded' || rfq.status === 'Closed';
                                       const reviewing = rfq.status === 'UnderReview';
                                       const Icon = done ? Eye : reviewing ? Gavel : ClipboardList;
@@ -3929,10 +4138,11 @@ export default function ProcurementHub() {
               className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col max-h-[90vh] text-slate-800"
             >
               <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
-                <h3 className="text-lg font-black text-slate-900">Launch New Tender / RFQ</h3>
+                <h3 className="text-lg font-black text-slate-900">{editingRFQ ? 'Edit RFQ / Tender Draft' : 'Launch New Tender / RFQ'}</h3>
                 <button
                   onClick={() => {
                     setShowCreateRFQModal(false);
+                    setEditingRFQ(null);
                     setRfqDepartment('');
                     setRfqTitle('');
                     setRfqCategory('medical_supplies');
@@ -3949,14 +4159,13 @@ export default function ProcurementHub() {
                 </button>
               </div>
 
-              <form onSubmit={handleCreateRFQSubmit} className="flex-1 overflow-y-auto space-y-4 pr-1">
+              <form onSubmit={(e) => handleCreateRFQSubmit(e, 'Collecting')} className="flex-1 overflow-y-auto space-y-4 pr-1">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-black uppercase tracking-wider text-slate-450">Tender Title</label>
                     <input
                       type="text"
                       placeholder="e.g. Nursing Reagents, Lab consumables..."
-                      required
                       value={rfqTitle}
                       onChange={(e) => setRfqTitle(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-bold outline-none focus:border-teal-350 focus:bg-white transition-all"
@@ -4030,9 +4239,35 @@ export default function ProcurementHub() {
 
                 {/* RFQ Items lines */}
                 <div className="border-t border-slate-100 pt-4 space-y-3">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">Add Item Lines {rfqDepartment && <span className="text-teal-600">from {rfqDepartment}</span>}</h4>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">Add Item Lines {rfqDepartment && <span className="text-teal-600">from {rfqDepartment}</span>}</h4>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={downloadRFQItemTemplate}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-xs"
+                      >
+                        <FileSpreadsheet size={13} className="text-emerald-600" /> Template
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => excelInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-xs"
+                      >
+                        <Upload size={13} /> Import Excel
+                      </button>
+                      <input
+                        type="file"
+                        ref={excelInputRef}
+                        accept=".xlsx, .xls, .csv"
+                        onChange={handleExcelItemImport}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
+
                   {!rfqDepartment && (
-                    <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 p-2.5 rounded-lg">Select a department above to see available items for this tender.</p>
+                    <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 p-2.5 rounded-lg">Select a department above or search below / import Excel to add items for this tender.</p>
                   )}
                   <div className="grid grid-cols-12 gap-3 items-end">
                     <div className="col-span-6 space-y-1">
@@ -4077,7 +4312,6 @@ export default function ProcurementHub() {
                       type="button"
                       onClick={() => {
                         if (!tempRfqItemName.trim() || !tempRfqItemQty) return;
-                        // Look up item_id from masterInventory by name
                         const selectedItem = masterInventory.find(item => item.name === tempRfqItemName.trim());
                         setRfqItems(prev => [...prev, {
                           line_no: prev.length + 1,
@@ -4132,11 +4366,12 @@ export default function ProcurementHub() {
                   )}
                 </div>
 
-                <div className="border-t border-slate-100 pt-4 flex justify-end gap-2">
+                <div className="border-t border-slate-100 pt-4 flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => {
                       setShowCreateRFQModal(false);
+                      setEditingRFQ(null);
                       setRfqDepartment('');
                       setRfqTitle('');
                       setRfqCategory('medical_supplies');
@@ -4152,12 +4387,22 @@ export default function ProcurementHub() {
                     Cancel
                   </button>
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={(e) => handleCreateRFQSubmit(e, 'Draft')}
                     disabled={submittingRFQ}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-wait cursor-pointer flex items-center gap-1.5"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 py-2 rounded-xl font-bold text-xs transition-all disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
+                  >
+                    {submittingRFQ ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                    Save as Draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleCreateRFQSubmit(e, 'Collecting')}
+                    disabled={submittingRFQ}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
                   >
                     {submittingRFQ ? <Loader2 size={13} className="animate-spin" /> : <Gavel size={13} />}
-                    {submittingRFQ ? 'Launching…' : 'Create Tender'}
+                    {submittingRFQ ? 'Saving…' : (editingRFQ && editingRFQ.status === 'Draft' ? 'Publish Tender' : editingRFQ ? 'Update RFQ' : 'Create & Publish')}
                   </button>
                 </div>
               </form>

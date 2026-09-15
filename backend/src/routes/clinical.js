@@ -60,6 +60,8 @@ router.get('/inventory/returns/:id/items', checkPermission('procurement', 'view'
 router.get('/inventory/rfqs', checkPermission('procurement', 'view'), clinicalController.getRFQs);
 router.get('/inventory/rfqs/:id', checkPermission('procurement', 'view'), clinicalController.getRFQById);
 router.post('/inventory/rfqs', checkPermission('procurement', 'create'), clinicalController.createRFQ);
+router.put('/inventory/rfqs/:id', checkPermission('procurement', 'edit'), clinicalController.updateRFQ);
+router.delete('/inventory/rfqs/:id', checkPermission('procurement', 'delete'), clinicalController.deleteRFQ);
 router.post('/inventory/rfqs/:id/quotes', checkPermission('procurement', 'edit'), clinicalController.saveRFQQuotes);
 router.post('/inventory/rfqs/:id/awards', checkPermission('procurement', 'edit'), clinicalController.saveRFQAwards);
 router.post('/inventory/rfqs/:id/generate-pos', checkPermission('procurement', 'edit'), clinicalController.generatePOsFromRFQ);
