@@ -36,7 +36,6 @@ import ITAssetTicketing from './pages/ITAssetTicketing';
 import ITDashboard from './pages/ITDashboard';
 import ClinicalSheet from './pages/ClinicalSheet';
 import ClinicalSheetsList from './pages/ClinicalSheetsList';
-import ClinicalObservationList from './pages/ClinicalObservationList';
 import NursingHub from './pages/NursingHub';
 import DoctorHub from './pages/DoctorHub';
 import PatientRecords from './pages/PatientRecords';
