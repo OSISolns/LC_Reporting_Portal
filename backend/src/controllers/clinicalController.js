@@ -5655,13 +5655,17 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
         </div>
       `;
       
-      emailService.sendEmail({
-        to: vendorObj.email.trim(),
-        cc: 'procurement@legacyclinics.rw',
-        subject: emailSubject,
-        html: emailHtml,
-        text: `Dear ${vendorObj.name},\n\nYou are invited to tender for: ${rfqTitle} (${refNo}).\nAccess Token: ${tokenCode}\nLog in at: ${portalUrl}`
-      }).catch(err => console.error('Failed to send vendor tender invitation email:', err));
+      // Support multiple comma-separated emails per vendor
+      const recipientEmails = vendorObj.email.split(',').map(e => e.trim()).filter(Boolean);
+      for (const recipientEmail of recipientEmails) {
+        emailService.sendEmail({
+          to: recipientEmail,
+          cc: 'procurement@legacyclinics.rw',
+          subject: emailSubject,
+          html: emailHtml,
+          text: `Dear ${vendorObj.name},\n\nYou are invited to tender for: ${rfqTitle} (${refNo}).\nAccess Token: ${tokenCode}\nLog in at: ${portalUrl}`
+        }).catch(err => console.error(`Failed to send vendor tender invitation email to ${recipientEmail}:`, err));
+      }
     }
   }
 }

@@ -332,7 +332,8 @@ export default function ProcurementHub() {
   // Vendor Form
   const [vendorName, setVendorName] = useState('');
   const [vendorContact, setVendorContact] = useState('');
-  const [vendorEmail, setVendorEmail] = useState('');
+  const [vendorEmails, setVendorEmails] = useState([]);
+  const [vendorEmailInput, setVendorEmailInput] = useState('');
   const [vendorPhone, setVendorPhone] = useState('');
   const [vendorTerms, setVendorTerms] = useState('');
 
@@ -1630,14 +1631,20 @@ export default function ProcurementHub() {
       setEditingVendor(vendor);
       setVendorName(vendor.name || '');
       setVendorContact(vendor.contact || '');
-      setVendorEmail(vendor.email || '');
+      setVendorEmails(
+        vendor.email
+          ? vendor.email.split(',').map(e => e.trim()).filter(Boolean)
+          : []
+      );
+      setVendorEmailInput('');
       setVendorPhone(vendor.phone || '');
       setVendorTerms(vendor.contract_terms || vendor.terms || '');
     } else {
       setEditingVendor(null);
       setVendorName('');
       setVendorContact('');
-      setVendorEmail('');
+      setVendorEmails([]);
+      setVendorEmailInput('');
       setVendorPhone('');
       setVendorTerms('');
     }
@@ -1650,13 +1657,19 @@ export default function ProcurementHub() {
       toast.error('Supplier name is required.');
       return;
     }
+    // Commit any partially typed email before submitting
+    const allEmails = [...vendorEmails];
+    if (vendorEmailInput.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(vendorEmailInput.trim())) {
+      allEmails.push(vendorEmailInput.trim());
+    }
+    const emailString = allEmails.join(', ');
     setSubmittingVendor(true);
     try {
       if (editingVendor) {
         const res = await api.put(`/clinical/inventory/vendors/${editingVendor.id}`, {
           name: vendorName.trim(),
           contact: vendorContact.trim(),
-          email: vendorEmail.trim(),
+          email: emailString,
           phone: vendorPhone.trim(),
           contractTerms: vendorTerms.trim(),
           category: 'Medical'
@@ -1667,7 +1680,8 @@ export default function ProcurementHub() {
           setEditingVendor(null);
           setVendorName('');
           setVendorContact('');
-          setVendorEmail('');
+          setVendorEmails([]);
+          setVendorEmailInput('');
           setVendorPhone('');
           setVendorTerms('');
           await loadData(true);
@@ -1676,7 +1690,7 @@ export default function ProcurementHub() {
         const res = await api.post('/clinical/inventory/vendors', {
           name: vendorName.trim(),
           contact: vendorContact.trim(),
-          email: vendorEmail.trim(),
+          email: emailString,
           phone: vendorPhone.trim(),
           terms: vendorTerms.trim(),
           is_active: 1
@@ -1687,7 +1701,8 @@ export default function ProcurementHub() {
           setEditingVendor(null);
           setVendorName('');
           setVendorContact('');
-          setVendorEmail('');
+          setVendorEmails([]);
+          setVendorEmailInput('');
           setVendorPhone('');
           setVendorTerms('');
           await loadData(true);
@@ -5803,14 +5818,58 @@ export default function ProcurementHub() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-600">Supplier Email Address <span className="text-indigo-600 text-[10px] font-normal">(for Tender RFQ Invites)</span></label>
-                  <input
-                    type="email"
-                    placeholder="e.g. orders@rwandapharma.rw"
-                    value={vendorEmail}
-                    onChange={(e) => setVendorEmail(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs outline-none focus:bg-white font-medium"
-                  />
+                  <label className="text-xs font-bold text-slate-600">
+                    Supplier Email Addresses
+                    <span className="text-indigo-600 text-[10px] font-normal ml-1">(for Tender RFQ Invites — add multiple)</span>
+                  </label>
+                  {/* Email tags */}
+                  <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 flex flex-wrap gap-1.5 min-h-[42px] focus-within:bg-white focus-within:border-indigo-400 transition-colors">
+                    {vendorEmails.map((em, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 text-[11px] font-semibold px-2 py-0.5 rounded-lg"
+                      >
+                        {em}
+                        <button
+                          type="button"
+                          onClick={() => setVendorEmails(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-indigo-400 hover:text-rose-500 cursor-pointer leading-none ml-0.5"
+                          title="Remove email"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      type="email"
+                      placeholder={vendorEmails.length === 0 ? 'e.g. orders@supplier.rw — press Enter or comma to add' : 'Add another email...'}
+                      value={vendorEmailInput}
+                      onChange={(e) => setVendorEmailInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault();
+                          const val = vendorEmailInput.trim().replace(/,$/, '');
+                          if (val && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) && !vendorEmails.includes(val)) {
+                            setVendorEmails(prev => [...prev, val]);
+                          } else if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+                            toast.error('Please enter a valid email address.');
+                          }
+                          setVendorEmailInput('');
+                        } else if (e.key === 'Backspace' && !vendorEmailInput && vendorEmails.length > 0) {
+                          setVendorEmails(prev => prev.slice(0, -1));
+                        }
+                      }}
+                      onBlur={() => {
+                        const val = vendorEmailInput.trim();
+                        if (val && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) && !vendorEmails.includes(val)) {
+                          setVendorEmails(prev => [...prev, val]);
+                          setVendorEmailInput('');
+                        }
+                      }}
+                      className="flex-1 min-w-[160px] bg-transparent text-xs outline-none py-0.5 font-medium placeholder:text-slate-400"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400">Press <kbd className="bg-slate-200 px-1 rounded text-[10px]">Enter</kbd> or <kbd className="bg-slate-200 px-1 rounded text-[10px]">,</kbd> to add each email. All addresses will receive RFQ invitations.</p>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
