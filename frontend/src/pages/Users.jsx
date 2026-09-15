@@ -113,8 +113,8 @@ const Users = () => {
   const isITOfficer = currentUser?.role === 'it_officer';
 
   // Define low-level roles that can be managed by IT Officers or other limited admins
-  const LOW_LEVEL_ROLES_DISPLAY = ['Customer Care', 'Principal Cashier', 'Cashier', 'Operations Staff', 'Staff Member', 'Clinical Nurse', 'Chief Nurse Manager', 'Medical Doctor', 'Consultant', 'Medical Director', 'Procurement Manager', 'Physiotherapy Manager', 'Physiotherapist', 'Laboratory Manager', 'Lab Team Lead', 'Lab Lead', 'Lab Technologist', 'Laboratory Staff', 'Quality Manager'];
-  const LOW_LEVEL_ROLES_KEY = ['customer_care', 'principal_cashier', 'cashier', 'operations_staff', 'staff', 'nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'procurement-manager', 'physio_manager', 'physio', 'lab_manager', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'quality_manager', 'qm'];
+  const LOW_LEVEL_ROLES_DISPLAY = ['Customer Care', 'Principal Cashier', 'Cashier', 'Operations Staff', 'Staff Member', 'Clinical Nurse', 'Chief Nurse Manager', 'Medical Doctor', 'Consultant', 'Medical Director', 'Procurement Manager', 'Physiotherapy Manager', 'Physiotherapist', 'Laboratory Manager', 'Lab Team Lead', 'Lab Lead', 'Lab Technologist', 'Laboratory Staff', 'Quality Manager', 'Quality & Accreditation Officer'];
+  const LOW_LEVEL_ROLES_KEY = ['customer_care', 'principal_cashier', 'cashier', 'operations_staff', 'staff', 'nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'procurement-manager', 'physio_manager', 'physio', 'lab_manager', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'quality_manager', 'qm', 'quality_accreditation_officer'];
 
   const filteredUsers = (canEditAll
     ? users

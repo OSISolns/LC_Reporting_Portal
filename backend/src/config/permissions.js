@@ -811,6 +811,31 @@ const ROLE_DEFAULTS = {
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:0 },
   },
+
+  // ── Quality & Accreditation ──────────────────────────────────────────────────
+  // Read-only visibility into clinical, safety, compliance and audit trails.
+  // Full create/edit rights in incident reports, safety and compliance modules
+  // since this role drives HSFP/JCI/ISO accreditation reviews.
+  'quality_accreditation_officer': {
+    cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
+    refunds:          { view:0, create:0, edit:0, approve:0, reject:0 },
+    results_transfer: { view:0, create:0, edit:0, approve:0, reject:0 },
+    incident_reports: { view:1, create:1, edit:1, review:1, approve:1, delete:0 },
+    user_management:  { view:0, create:0, edit:0, delete:0 },
+    audit_logs:       { view:1 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:0 },
+    clinical_observation: { view:1, create:0, edit:0, review:0, approve:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    feedbacks:        { view:1, delete:0 },
+    safety:           { view:1, create:1, delete:1 },
+    compliance:       { view:1, create:1, edit:1, delete:1 },
+    inventory:        { view:1, create:0, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:0 },
+    ai_insights:      { view:1, download:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:0 },
+  },
 };
 
 module.exports = {

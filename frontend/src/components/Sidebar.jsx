@@ -26,7 +26,7 @@ const ALL_ROLES = [
   'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'stock-manager', 'doctor', 'medical_director',
   'procurement-manager', 'imaging_tech', 'imaging_manager', 'sono', 'radiologist',
   'physiotherapist', 'physio', 'physio_manager', 'dental_hod', 'dental_tech', 'dental_lab_manager',
-  'dentist', 'dental', 'logistics_manager', 'logistics_officer'
+  'dentist', 'dental', 'logistics_manager', 'logistics_officer', 'quality_accreditation_officer'
 ];
 
 
@@ -99,12 +99,12 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'daily_report', name: 'Daily Report', icon: <Activity size={18} />, path: '/nursing-hub/daily-report', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'] },
         { configKey: 'daily_board', name: 'Daily Reports Board', icon: <FileText size={18} />, path: '/daily-reports-board', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'pa', 'medical_director'] },
         { configKey: 'incidents', name: 'Incident Reports', icon: <AlertTriangle size={18} />, path: '/incidents', requiredPerm: null, allowedRoles: ALL_ROLES },
-        { configKey: 'safety', name: 'Safety Workspace', icon: <PenTool size={18} />, path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm'] },
-        { configKey: 'risk', name: 'Risk Register', icon: <ShieldAlert size={18} />, path: '/risk-register', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm'] },
-        { configKey: 'infection', name: 'Infection Control', icon: <Activity size={18} />, path: '/infection-control', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm'] },
-        { configKey: 'compliance', name: 'Compliance Portal', icon: <ShieldCheck size={18} />, path: '/compliance', requiredPerm: null, allowedRoles: ['admin', 'hsfp', 'quality_manager', 'qm'] },
+        { configKey: 'safety', name: 'Safety Workspace', icon: <PenTool size={18} />, path: '/safety-management', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer'] },
+        { configKey: 'risk', name: 'Risk Register', icon: <ShieldAlert size={18} />, path: '/risk-register', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer'] },
+        { configKey: 'infection', name: 'Infection Control', icon: <Activity size={18} />, path: '/infection-control', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer'] },
+        { configKey: 'compliance', name: 'Compliance Portal', icon: <ShieldCheck size={18} />, path: '/compliance', requiredPerm: null, allowedRoles: ['admin', 'hsfp', 'quality_manager', 'qm', 'quality_accreditation_officer'] },
         { configKey: 'performance', name: 'Staff Performance', icon: <Award size={18} />, path: '/performance', requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff'] },
-        { configKey: 'insights', name: 'AI Insights', icon: <Brain size={18} />, path: '/ai-insights', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'medical_director'] },
+        { configKey: 'insights', name: 'AI Insights', icon: <Brain size={18} />, path: '/ai-insights', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'medical_director', 'quality_accreditation_officer'] },
         { configKey: 'revenue', name: 'Revenue Tracker', icon: <TrendingDown size={18} />, path: '/revenue-tracker', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'chairman', 'admin', 'principal_cashier', 'deputy_coo'] },
       ]
     },

@@ -3484,6 +3484,36 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to setup medical_director role/permissions:', err);
     }
 
+    // --- Quality & Accreditation Officer Role Setup ---
+    try {
+      await client.execute({
+        sql: "INSERT OR IGNORE INTO roles (name, display_name) VALUES (?, ?)",
+        args: ['quality_accreditation_officer', 'Quality & Accreditation Officer']
+      });
+      console.log('✅ SQLite Schema Migration: registered quality_accreditation_officer role');
+
+      const { ROLE_DEFAULTS: RD_QAO } = require('./permissions');
+      const qaoPermissions = RD_QAO['quality_accreditation_officer'];
+      if (qaoPermissions) {
+        for (const [moduleName, actions] of Object.entries(qaoPermissions)) {
+          for (const [action, granted] of Object.entries(actions)) {
+            await client.execute({
+              sql: `
+                INSERT INTO role_permissions (role_name, module, action, granted, updated_by)
+                VALUES (?, ?, ?, ?, 1)
+                ON CONFLICT(role_name, module, action) DO UPDATE
+                SET granted = EXCLUDED.granted
+              `,
+              args: ['quality_accreditation_officer', moduleName, action, granted ? 1 : 0]
+            }).catch(() => {});
+          }
+        }
+        console.log('✅ SQLite Schema Migration: synced quality_accreditation_officer permissions');
+      }
+    } catch (err) {
+      console.error('❌ Failed to setup quality_accreditation_officer role/permissions:', err);
+    }
+
     // --- Procurement Hub Tables ---
     try {
       await client.execute(`

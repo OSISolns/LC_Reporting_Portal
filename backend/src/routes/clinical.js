@@ -17,7 +17,7 @@ router.use(authorizeRoles([
   'nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_coo', 'stock-manager', 
   'pa', 'medical_director', 'procurement-manager', 'lab_team_lead', 'lab_tech', 'lab', 
   'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'physiotherapist', 'physio', 'operations_staff', 
-  'imaging_tech', 'imaging_manager', 'hsfp', 'coo'
+  'imaging_tech', 'imaging_manager', 'hsfp', 'coo', 'quality_accreditation_officer'
 ]));
 
 // Helper: Allow clinical department roles to view/edit inventory transactions for their own log modules
