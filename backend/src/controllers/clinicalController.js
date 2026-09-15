@@ -4577,6 +4577,7 @@ async function helperOpenSupplierPortalSession(vendorId, items, sendEmailNotific
 
     emailService.sendEmail({
       to: vendorEmail.trim(),
+      cc: 'procurement@legacyclinics.rw',
       subject: emailSubject,
       html: emailHtml,
       text: `Dear ${vendorName},\n\nA supplier portal session has been opened for you.\nAccess Link: ${portalUrl}\nAccess Token: ${token}`
@@ -5617,6 +5618,7 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
       
       emailService.sendEmail({
         to: vendorObj.email.trim(),
+        cc: 'procurement@legacyclinics.rw',
         subject: emailSubject,
         html: emailHtml,
         text: `Dear ${vendorObj.name},\n\nYou are invited to tender for: ${rfqTitle} (${refNo}).\nAccess Token: ${tokenCode}\nLog in at: ${portalUrl}`

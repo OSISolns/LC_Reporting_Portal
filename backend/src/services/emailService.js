@@ -34,10 +34,12 @@ transporter.verify((error, success) => {
 /**
  * Generic email sender
  */
-const sendEmail = async ({ to, subject, html, text, attachments }) => {
+const sendEmail = async ({ to, cc, bcc, subject, html, text, attachments }) => {
   const mailOptions = {
     from: mailFrom,
     to,
+    cc,
+    bcc,
     subject,
     html,
     text,
@@ -46,7 +48,7 @@ const sendEmail = async ({ to, subject, html, text, attachments }) => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log(`📧 Email sent successfully to ${to} [ID: ${info.messageId}]`);
+    console.log(`📧 Email sent successfully to ${to} ${cc ? `[CC: ${cc}]` : ''} [ID: ${info.messageId}]`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error(`❌ Failed to send email to ${to}:`, error.message);
