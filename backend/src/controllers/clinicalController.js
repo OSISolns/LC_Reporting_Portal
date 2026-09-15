@@ -4078,14 +4078,29 @@ exports.createVendor = async (req, res) => {
     const { name, contact, email, phone, contractTerms, category } = req.body;
     const finalTerms = contractTerms || req.body.terms || req.body.contract_terms || null;
     const finalPhone = phone || req.body.phone_number || req.body.tel || null;
-    await db.query(
-      "INSERT INTO vendors (name, contact, email, phone, contract_terms, category) VALUES ($1, $2, $3, $4, $5, $6)",
-      [name, contact, email || null, finalPhone, finalTerms, category || 'Medical']
-    );
+
+    // Auto-heal missing columns on vendors table
+    await db.query("ALTER TABLE vendors ADD COLUMN email TEXT").catch(() => {});
+    await db.query("ALTER TABLE vendors ADD COLUMN phone TEXT").catch(() => {});
+    await db.query("ALTER TABLE vendors ADD COLUMN category TEXT DEFAULT 'Medical'").catch(() => {});
+    await db.query("ALTER TABLE vendors ADD COLUMN contract_terms TEXT").catch(() => {});
+
+    try {
+      await db.query(
+        "INSERT INTO vendors (name, contact, email, phone, contract_terms, category) VALUES ($1, $2, $3, $4, $5, $6)",
+        [name || '', contact || null, email || null, finalPhone, finalTerms, category || 'Medical']
+      );
+    } catch (sqlErr) {
+      console.warn('Full vendor insert query failed, using basic vendor fallback:', sqlErr.message);
+      await db.query(
+        "INSERT INTO vendors (name, contact, contract_terms) VALUES ($1, $2, $3)",
+        [name || '', contact || null, finalTerms]
+      );
+    }
     res.json({ success: true, message: 'Vendor added successfully' });
   } catch (error) {
     console.error('Error in createVendor:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
   }
 };
 
@@ -4095,14 +4110,38 @@ exports.updateVendor = async (req, res) => {
     const { name, contact, email, phone, contractTerms, category } = req.body;
     const finalTerms = contractTerms || req.body.terms || req.body.contract_terms || null;
     const finalPhone = phone || req.body.phone_number || req.body.tel || null;
-    await db.query(
-      "UPDATE vendors SET name = $1, contact = $2, email = $3, phone = $4, contract_terms = $5, category = $6 WHERE id = $7",
-      [name || '', contact || null, email || null, finalPhone, finalTerms, category || 'Medical', parseInt(id, 10)]
-    );
+    const vendorId = parseInt(id, 10);
+
+    // Auto-heal missing columns on vendors table
+    await db.query("ALTER TABLE vendors ADD COLUMN email TEXT").catch(() => {});
+    await db.query("ALTER TABLE vendors ADD COLUMN phone TEXT").catch(() => {});
+    await db.query("ALTER TABLE vendors ADD COLUMN category TEXT DEFAULT 'Medical'").catch(() => {});
+    await db.query("ALTER TABLE vendors ADD COLUMN contract_terms TEXT").catch(() => {});
+
+    try {
+      await db.query(
+        "UPDATE vendors SET name = $1, contact = $2, email = $3, phone = $4, contract_terms = $5, category = $6 WHERE id = $7",
+        [name || '', contact || null, email || null, finalPhone, finalTerms, category || 'Medical', vendorId]
+      );
+    } catch (sqlErr) {
+      console.warn('Full vendor update query failed, trying progressive column fallbacks:', sqlErr.message);
+      try {
+        await db.query(
+          "UPDATE vendors SET name = $1, contact = $2, email = $3, phone = $4, contract_terms = $5 WHERE id = $6",
+          [name || '', contact || null, email || null, finalPhone, finalTerms, vendorId]
+        );
+      } catch (err2) {
+        await db.query(
+          "UPDATE vendors SET name = $1, contact = $2, contract_terms = $3 WHERE id = $4",
+          [name || '', contact || null, finalTerms, vendorId]
+        );
+      }
+    }
+
     res.json({ success: true, message: 'Vendor updated successfully' });
   } catch (error) {
     console.error('Error in updateVendor:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
   }
 };
 

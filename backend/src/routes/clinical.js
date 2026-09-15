@@ -110,10 +110,10 @@ router.post('/inventory/requisitions', checkInventoryOrClinicalRole('create'), c
 router.post('/inventory/requisitions/:id/approve', checkPermission('inventory', 'edit'), clinicalController.approveRequisition);
 router.post('/inventory/requisitions/:id/reject', checkPermission('inventory', 'edit'), clinicalController.rejectRequisition);
 router.post('/inventory/requisitions/:id/receive', authorizeRoles(['admin', 'stock-manager']), clinicalController.receiveRequisition);
-router.get('/inventory/vendors', checkPermission('inventory', 'view'), clinicalController.getVendors);
-router.post('/inventory/vendors', checkPermission('inventory', 'create'), clinicalController.createVendor);
-router.put('/inventory/vendors/:id', checkPermission('inventory', 'edit'), clinicalController.updateVendor);
-router.delete('/inventory/vendors/:id', checkPermission('inventory', 'delete'), clinicalController.deleteVendor);
+router.get('/inventory/vendors', checkPermission(['inventory', 'procurement'], 'view'), clinicalController.getVendors);
+router.post('/inventory/vendors', checkPermission(['inventory', 'procurement'], 'create'), clinicalController.createVendor);
+router.put('/inventory/vendors/:id', checkPermission(['inventory', 'procurement'], 'edit'), clinicalController.updateVendor);
+router.delete('/inventory/vendors/:id', checkPermission(['inventory', 'procurement'], 'delete'), clinicalController.deleteVendor);
 
 router.get('/inventory/departments', checkInventoryOrClinicalRole('view'), clinicalController.getDepartments);
 router.post('/inventory/departments', checkPermission('inventory', 'create'), clinicalController.createDepartment);
