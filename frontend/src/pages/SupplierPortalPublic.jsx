@@ -190,14 +190,14 @@ const SupplierPortalPublic = () => {
 
       if (templateRows.length === 0) {
         templateRows.push({
-          name: 'Sample Product Name',
-          sku: 'lc-SAM-001',
-          category: 'medications',
-          uom: 'Box',
-          batch: 'BATCH123',
-          expiry: '2028-12-31',
-          price: 5000,
-          qty: 100,
+          name: '',
+          sku: '',
+          category: '',
+          uom: '',
+          batch: '',
+          expiry: '',
+          price: '',
+          qty: '',
           vendor: supplierName
         });
       }
@@ -445,114 +445,137 @@ const SupplierPortalPublic = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="min-h-screen bg-slate-50 text-slate-800 p-6 md:p-10 font-sans relative overflow-hidden"
-    >
-      {/* Background decoration */}
-      <div className="absolute top-0 right-0 -mr-48 -mt-48 w-[700px] h-[700px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 -ml-48 -mb-48 w-[700px] h-[700px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
-
-      <div className="max-w-6xl mx-auto relative z-10">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8 pb-6 border-b border-slate-200"
-        >
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col justify-between">
+      {/* Top Corporate Navigation Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shadow-sm">
-              <Building2 className="w-7 h-7 text-blue-600" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-                Legacy Clinics & Diagnostics
-              </h1>
-              <p className="text-sm text-slate-500 font-medium mt-0.5">
-                Official Supplier & Procurement Portal
-              </p>
+            <img
+              src="/legacy-logo.png"
+              alt="Legacy Clinics & Diagnostics"
+              className="h-10 md:h-12 w-auto object-contain"
+            />
+            <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
+            <div className="hidden sm:block">
+              <span className="text-xs font-bold text-[#005696] tracking-wider uppercase block">
+                Supplier & Procurement Portal
+              </span>
+              <span className="text-[11px] text-slate-500 font-medium">
+                Official Vendor Management Gateway
+              </span>
             </div>
           </div>
 
-          {/* Tab Switcher */}
-          {tokenVerified && (
-            <div className="flex bg-slate-200/80 p-1 rounded-xl border border-slate-300/40">
+          {/* Security & System Info Badges */}
+          {!tokenVerified ? (
+            <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
+              <div className="flex items-center gap-1.5 bg-emerald-50 text-[#5fa743] border border-emerald-200/80 px-3 py-1.5 rounded-lg font-bold">
+                <ShieldCheck size={14} />
+                <span>Official Vendor Gateway</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg text-slate-600">
+                <Lock size={14} className="text-[#005696]" />
+                <span>256-Bit SSL Encrypted</span>
+              </div>
+            </div>
+          ) : (
+            /* Tab Switcher for Authenticated Vendors */
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
               <button
                 onClick={() => setCurrentTab('tenders')}
-                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                  currentTab === 'tenders'
-                    ? 'bg-white text-blue-700 shadow-sm'
+                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${currentTab === 'tenders'
+                    ? 'bg-[#005696] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 <Gavel size={14} /> Open Tenders & RFQs ({openRFQs.length})
               </button>
               <button
                 onClick={() => setCurrentTab('delivery')}
-                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                  currentTab === 'delivery'
-                    ? 'bg-white text-blue-700 shadow-sm'
+                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${currentTab === 'delivery'
+                    ? 'bg-[#005696] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 <LockOpen size={14} /> Delivery Intake
               </button>
             </div>
           )}
-        </motion.div>
+        </div>
+      </header>
 
+      {/* Main Container */}
+      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col">
         {!tokenVerified ? (
-          /* SUPPLIER AUTHENTICATION GATE */
-          <div className="py-12 animate-none">
-            <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md mx-auto shadow-md">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-slate-900">Supplier Authentication</h2>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">Enter your 12-character token</p>
-                </div>
+          /* CORPORATE LIGHT MODE AUTHENTICATION CARD */
+          <div className="my-auto py-6">
+            <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-md mx-auto shadow-xl">
+              <div className="text-center mb-6 pb-6 border-b border-slate-100">
+                <img
+                  src="/legacy-logo.png"
+                  alt="Legacy Clinics & Diagnostics"
+                  className="h-12 w-auto mx-auto mb-4 object-contain"
+                />
+                <h2 className="text-xl font-bold text-slate-900">Supplier Access Portal</h2>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Enter your 12-character security access token to view requested line items or submit proposals.
+                </p>
               </div>
 
-              <form onSubmit={handleVerifyToken} className="space-y-4">
+              <form onSubmit={handleVerifyToken} className="space-y-5">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Access Token</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Lock size={13} className="text-[#005696]" /> Access Token
+                    </label>
+                    <span className="text-[10px] font-mono text-slate-400">12 Characters</span>
+                  </div>
                   <input
                     type="text"
                     maxLength={12}
-                    placeholder="e.g. 12-CHAR-CODE"
                     value={tokenInput}
                     onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
-                    className="bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-sm font-bold tracking-widest text-slate-800 uppercase outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="bg-slate-50 border border-slate-300 px-4 py-3 rounded-xl text-base font-mono font-bold tracking-widest text-center text-slate-800 placeholder:text-slate-400 uppercase outline-none focus:border-[#005696] focus:ring-2 focus:ring-[#005696]/20 transition-all shadow-inner"
                     required
                   />
                 </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-md"
+                  className="w-full py-3 bg-[#005696] hover:bg-[#004273] text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-sm"
                 >
                   {loading ? (
                     <>
-                      <RefreshCw className="w-4 h-4 animate-spin" /> Verifying...
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Verifying Token...
                     </>
                   ) : (
                     <>
-                      <LockOpen className="w-4 h-4" /> Verify & Unlock Portal
+                      <LockOpen className="w-4 h-4" /> Verify & Access Portal
                     </>
                   )}
-                </motion.button>
+                </button>
               </form>
+
+              <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-slate-600">
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                  <Gavel size={15} className="mx-auto mb-1 text-[#005696]" />
+                  <span>RFQ Tenders</span>
+                </div>
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                  <FileSpreadsheet size={15} className="mx-auto mb-1 text-[#5fa743]" />
+                  <span>Delivery Intake</span>
+                </div>
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                  <Mail size={15} className="mx-auto mb-1 text-slate-600" />
+                  <span>Quotations</span>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
-          /* AUTHENTICATED PORTAL CONTENT */
-          <>
+          /* AUTHENTICATED PORTAL CONTENT - LIGHT MODE CONTAINER */
+          <div className="bg-white text-slate-800 rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
             {/* TAB 1: OPEN TENDERS & RFQS */}
             {currentTab === 'tenders' && (
               <motion.div
@@ -627,46 +650,43 @@ const SupplierPortalPublic = () => {
                           )}
 
                           {/* Items Accordion */}
+                          {/* Items Display */}
                           <div className="pt-2 border-t border-slate-100">
-                            <button
-                              onClick={() => toggleRFQExpanded(rfq.id)}
-                              className="flex items-center justify-between w-full text-xs font-black text-slate-700 hover:text-blue-600 transition-colors uppercase tracking-wider"
-                            >
-                              <span>Requested Products ({rfq.items ? rfq.items.length : 0})</span>
-                              {expandedRFQs[rfq.id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            </button>
+                            <div className="flex items-center justify-between w-full text-xs font-black text-slate-800 uppercase tracking-wider mb-2">
+                              <span className="flex items-center gap-1.5 text-blue-700">
+                                <Package size={14} /> Requested Products ({rfq.items ? rfq.items.length : 0})
+                              </span>
+                            </div>
 
-                            <AnimatePresence>
-                              {expandedRFQs[rfq.id] && rfq.items && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  className="overflow-hidden mt-3"
-                                >
-                                  <div className="border border-slate-100 rounded-lg overflow-x-auto">
-                                    <table className="w-full text-left text-[11px] border-collapse bg-slate-50">
-                                      <thead>
-                                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold">
-                                          <th className="p-2">Item Name</th>
-                                          <th className="p-2 text-right">Quantity</th>
-                                          <th className="p-2 text-center">Unit</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {rfq.items.map((item) => (
-                                          <tr key={item.id} className="border-b border-slate-200/50 text-slate-700">
-                                            <td className="p-2 font-semibold">{item.item_name}</td>
-                                            <td className="p-2 text-right font-bold text-blue-700">{item.quantity}</td>
-                                            <td className="p-2 text-center text-slate-500">{item.unit}</td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
+                            {rfq.items && rfq.items.length > 0 ? (
+                              <div className="border border-slate-200 rounded-xl overflow-x-auto shadow-2xs">
+                                <table className="w-full text-left text-[11px] border-collapse bg-white">
+                                  <thead>
+                                    <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                                      <th className="p-2.5">Item Name</th>
+                                      <th className="p-2.5 text-right">Quantity</th>
+                                      <th className="p-2.5 text-center">Unit</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {rfq.items.map((item) => (
+                                      <tr key={item.id || item.line_no} className="border-b border-slate-100 text-slate-700 hover:bg-blue-50/30 transition-colors">
+                                        <td className="p-2.5 font-semibold text-slate-900">
+                                          {item.item_name}
+                                          {item.quantity_label && (
+                                            <span className="block text-[10px] text-slate-500 font-normal">{item.quantity_label}</span>
+                                          )}
+                                        </td>
+                                        <td className="p-2.5 text-right font-black text-blue-700">{item.quantity !== null && item.quantity !== undefined ? item.quantity : '—'}</td>
+                                        <td className="p-2.5 text-center text-slate-500 font-medium">{item.unit || 'Units'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-400 italic">No specific items detailed.</p>
+                            )}
                           </div>
                         </div>
 
@@ -883,9 +903,9 @@ const SupplierPortalPublic = () => {
                 )}
               </motion.div>
             )}
-          </>
+          </div>
         )}
-      </div>
+      </main>
 
       {/* BID SUBMISSION MODAL */}
       <AnimatePresence>
@@ -916,7 +936,37 @@ const SupplierPortalPublic = () => {
                 <p>
                   To submit a formal quotation or tender bid for <strong className="text-slate-800">{bidModalRFQ.title}</strong>, please review the requested products and follow the instructions below:
                 </p>
-                
+
+                {bidModalRFQ.items && bidModalRFQ.items.length > 0 && (
+                  <div className="border border-slate-200 rounded-2xl bg-slate-50 p-3 space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center justify-between">
+                      <span>Requested Line Items ({bidModalRFQ.items.length})</span>
+                    </p>
+                    <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl bg-white">
+                      <table className="w-full text-left text-[11px] border-collapse">
+                        <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 sticky top-0 text-[10px]">
+                          <tr>
+                            <th className="p-2">#</th>
+                            <th className="p-2">Item Name</th>
+                            <th className="p-2 text-right">Qty</th>
+                            <th className="p-2 text-center">Unit</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bidModalRFQ.items.map((item, idx) => (
+                            <tr key={item.id || idx} className="border-b border-slate-100 text-slate-700">
+                              <td className="p-2 text-slate-400">{idx + 1}</td>
+                              <td className="p-2 font-bold text-slate-900">{item.item_name}</td>
+                              <td className="p-2 text-right font-black text-blue-700">{item.quantity}</td>
+                              <td className="p-2 text-center text-slate-500">{item.unit || 'Units'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3 font-semibold text-slate-700">
                   <div className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] shrink-0 font-bold">1</span>
@@ -947,7 +997,7 @@ const SupplierPortalPublic = () => {
                 </button>
                 <a
                   href={`mailto:procurement@legacyclinics.rw?subject=Bidding Proposal [${bidModalRFQ.reference_no}]&body=Dear Procurement Team,%0D%0A%0D%0AWe are interested in submitting our quotation for Tender Reference ${bidModalRFQ.reference_no} (${bidModalRFQ.title}). Please find our proposal attached.%0D%0A%0D%0ABest regards,%0D%0A[Supplier Name]`}
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all text-center"
+                  className="flex-1 py-2.5 bg-[#005696] hover:bg-[#004273] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all text-center"
                 >
                   <Mail size={13} /> Email Quote
                 </a>
@@ -956,7 +1006,22 @@ const SupplierPortalPublic = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+
+      {/* Corporate Light Mode Footer */}
+      <footer className="bg-white border-t border-slate-200 py-5 text-center text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <img src="/legacy-logo.png" alt="Legacy Clinics" className="h-6 w-auto object-contain opacity-80" />
+            <span className="font-bold text-slate-700">Legacy Clinics & Diagnostics</span>
+            <span className="text-slate-300">•</span>
+            <span>Address: 134 KK 3 Rd, Kigali</span>
+          </div>
+          <div className="text-[11px] text-slate-500 font-medium">
+            Kigali, Rwanda • <a href="mailto:procurement@legacyclinics.rw" className="text-[#005696] font-semibold hover:underline">procurement@legacyclinics.rw</a>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 };
 

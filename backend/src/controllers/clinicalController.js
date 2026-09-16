@@ -4717,7 +4717,7 @@ exports.verifySupplierToken = async (req, res) => {
     }
 
     const { rows } = await db.query(
-      "SELECT id, vendor_name, items FROM supplier_portal_sessions WHERE UPPER(token) = $1 AND is_active = 1 LIMIT 1",
+      "SELECT id, vendor_id, vendor_name, items FROM supplier_portal_sessions WHERE UPPER(token) = $1 AND is_active = 1 LIMIT 1",
       [token]
     );
 
@@ -4726,7 +4726,29 @@ exports.verifySupplierToken = async (req, res) => {
     }
 
     const session = rows[0];
-    const requestedItems = (() => { try { return JSON.parse(session.items || '[]'); } catch { return []; } })();
+    let requestedItems = (() => { try { return JSON.parse(session.items || '[]'); } catch { return []; } })();
+
+    // If session items are empty, auto-fetch requested items from active invited RFQs for this vendor
+    if (requestedItems.length === 0 && session.vendor_id) {
+      const { rows: rfqItems } = await db.query(`
+        SELECT ri.id, ri.item_name, ri.quantity, ri.unit, ri.quantity_label, r.title as rfq_title, r.reference_no
+        FROM rfq_items ri
+        JOIN rfqs r ON ri.rfq_id = r.id
+        JOIN rfq_suppliers rs ON r.id = rs.rfq_id
+        WHERE rs.vendor_id = $1 AND r.status = 'Collecting'
+        ORDER BY r.created_at DESC, ri.line_no
+      `, [session.vendor_id]);
+
+      requestedItems = rfqItems.map(i => ({
+        name: i.item_name,
+        item_name: i.item_name,
+        quantity: i.quantity,
+        unit: i.unit || 'Units',
+        quantity_label: i.quantity_label || '',
+        rfq_title: i.rfq_title,
+        reference_no: i.reference_no
+      }));
+    }
 
     res.json({ success: true, sessionId: session.id, vendorName: session.vendor_name, requestedItems });
   } catch (error) {
@@ -5590,6 +5612,20 @@ exports.getRFQById = async (req, res) => {
 };
 
 async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, portalSessions = []) {
+  // Fetch items for this RFQ to attach to portal sessions & email notification
+  const { rows: rfqItemsRows } = await db.query(
+    "SELECT item_name, quantity, unit, quantity_label FROM rfq_items WHERE rfq_id = $1 ORDER BY line_no",
+    [rfqId]
+  );
+
+  const formattedItems = rfqItemsRows.map(i => ({
+    name: i.item_name,
+    item_name: i.item_name,
+    quantity: i.quantity,
+    unit: i.unit || 'Units',
+    quantity_label: i.quantity_label || ''
+  }));
+
   for (const vendorId of validVendorIds) {
     const { rows: vRows } = await db.query(
       "SELECT name, contact, email FROM vendors WHERE id = $1",
@@ -5604,6 +5640,10 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
     );
     if (existing.length > 0) {
       tokenCode = existing[0].token;
+      await db.query(
+        "UPDATE supplier_portal_sessions SET items = $1 WHERE id = $2",
+        [JSON.stringify(formattedItems), existing[0].id]
+      );
       portalSessions.push({
         id: existing[0].id,
         vendorId: existing[0].vendor_id,
@@ -5613,7 +5653,7 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
         isActive: true
       });
     } else {
-      const session = await helperOpenSupplierPortalSession(vendorId, [], false);
+      const session = await helperOpenSupplierPortalSession(vendorId, formattedItems, false);
       if (session) {
         tokenCode = session.token;
         portalSessions.push(session);
@@ -5623,6 +5663,39 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
     if (vendorObj.email && vendorObj.email.trim()) {
       const portalUrl = process.env.SUPPLIER_PORTAL_URL || 'https://report.ops-legacyclinics.rw/supplier-portal';
       const emailSubject = `[Tender Invitation] ${rfqTitle} - Ref: ${refNo}`;
+
+      let itemsTableHtml = '';
+      if (rfqItemsRows.length > 0) {
+        itemsTableHtml = `
+          <div style="margin: 16px 0;">
+            <p style="margin-bottom: 8px; font-weight: bold; color: #1e3a8a; font-size: 14px;">Requested Line Items (${rfqItemsRows.length}):</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
+              <thead>
+                <tr style="background-color: #f1f5f9; color: #334155; text-align: left;">
+                  <th style="padding: 10px; border-bottom: 2px solid #cbd5e1;">#</th>
+                  <th style="padding: 10px; border-bottom: 2px solid #cbd5e1;">Item Description</th>
+                  <th style="padding: 10px; border-bottom: 2px solid #cbd5e1; text-align: right;">Quantity</th>
+                  <th style="padding: 10px; border-bottom: 2px solid #cbd5e1; text-align: center;">Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rfqItemsRows.map((item, idx) => `
+                  <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 1 ? 'background-color: #f8fafc;' : ''}">
+                    <td style="padding: 8px 10px; color: #64748b;">${idx + 1}</td>
+                    <td style="padding: 8px 10px; font-weight: bold; color: #1e293b;">
+                      ${item.item_name}
+                      ${item.quantity_label ? `<br/><span style="font-size: 11px; font-weight: normal; color: #64748b;">${item.quantity_label}</span>` : ''}
+                    </td>
+                    <td style="padding: 8px 10px; text-align: right; font-weight: bold; color: #2563eb;">${item.quantity !== null && item.quantity !== undefined ? item.quantity : '—'}</td>
+                    <td style="padding: 8px 10px; text-align: center; color: #64748b;">${item.unit || 'Units'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
           <div style="background-color: #1e3a8a; padding: 20px; text-align: center; color: white; border-radius: 8px 8px 0 0;">
@@ -5639,6 +5712,8 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
               <p style="margin: 4px 0;"><strong>Category:</strong> ${category || 'Medical Supplies'}</p>
               ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${notes}</p>` : ''}
             </div>
+
+            ${itemsTableHtml}
 
             <p style="margin-top: 16px;"><strong>Your Supplier Portal Access Token:</strong></p>
             <div style="background-color: #e0f2fe; border: 1px solid #93c5fd; padding: 12px; text-align: center; border-radius: 8px; font-family: monospace; font-size: 18px; font-weight: bold; letter-spacing: 2px; color: #1e40af; margin: 16px 0;">
