@@ -4614,13 +4614,20 @@ async function helperOpenSupplierPortalSession(vendorId, items, sendEmailNotific
       </div>
     `;
 
-    emailService.sendEmail({
-      to: vendorEmail.trim(),
-      cc: 'procurement@legacyclinics.rw',
-      subject: emailSubject,
-      html: emailHtml,
-      text: `Dear ${vendorName},\n\nA supplier portal session has been opened for you.\nAccess Link: ${portalUrl}\nAccess Token: ${token}`
-    }).catch(err => console.error('Failed to send supplier portal session email:', err));
+    const recipientEmails = vendorEmail.split(',').map(e => e.trim()).filter(Boolean);
+    for (const recipientEmail of recipientEmails) {
+      try {
+        await emailService.sendEmail({
+          to: recipientEmail,
+          cc: 'procurement@legacyclinics.rw',
+          subject: emailSubject,
+          html: emailHtml,
+          text: `Dear ${vendorName},\n\nA supplier portal session has been opened for you.\nAccess Link: ${portalUrl}\nAccess Token: ${token}`
+        });
+      } catch (err) {
+        console.error(`Failed to send supplier portal session email to ${recipientEmail}:`, err);
+      }
+    }
   }
 
   return {
@@ -5658,13 +5665,17 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
       // Support multiple comma-separated emails per vendor
       const recipientEmails = vendorObj.email.split(',').map(e => e.trim()).filter(Boolean);
       for (const recipientEmail of recipientEmails) {
-        emailService.sendEmail({
-          to: recipientEmail,
-          cc: 'procurement@legacyclinics.rw',
-          subject: emailSubject,
-          html: emailHtml,
-          text: `Dear ${vendorObj.name},\n\nYou are invited to tender for: ${rfqTitle} (${refNo}).\nAccess Token: ${tokenCode}\nLog in at: ${portalUrl}`
-        }).catch(err => console.error(`Failed to send vendor tender invitation email to ${recipientEmail}:`, err));
+        try {
+          await emailService.sendEmail({
+            to: recipientEmail,
+            cc: 'procurement@legacyclinics.rw',
+            subject: emailSubject,
+            html: emailHtml,
+            text: `Dear ${vendorObj.name},\n\nYou are invited to tender for: ${rfqTitle} (${refNo}).\nAccess Token: ${tokenCode}\nLog in at: ${portalUrl}`
+          });
+        } catch (err) {
+          console.error(`Failed to send vendor tender invitation email to ${recipientEmail}:`, err);
+        }
       }
     }
   }
@@ -6122,12 +6133,20 @@ exports.generatePOsFromRFQ = async (req, res) => {
                 </div>
               `;
 
-              emailService.sendEmail({
-                to: vendorEmail.trim(),
-                subject: emailSubject,
-                html: emailHtml,
-                text: `Dear ${vendor.name},\n\nYour quotation for Tender "${rfq.title}" (Ref: ${rfq.reference_no}) has been accepted and awarded.\nPO Number: ${poNumber}\nTotal Amount: ${totalAmount.toLocaleString()} RWF\n\nAccess portal: ${portalUrl}`
-              }).catch(err => console.error('Failed to send vendor tender award email:', err));
+              const recipientEmails = vendorEmail.split(',').map(e => e.trim()).filter(Boolean);
+              for (const recipientEmail of recipientEmails) {
+                try {
+                  await emailService.sendEmail({
+                    to: recipientEmail,
+                    cc: 'procurement@legacyclinics.rw',
+                    subject: emailSubject,
+                    html: emailHtml,
+                    text: `Dear ${vendor.name},\n\nYour quotation for Tender "${rfq.title}" (Ref: ${rfq.reference_no}) has been accepted and awarded.\nPO Number: ${poNumber}\nTotal Amount: ${totalAmount.toLocaleString()} RWF\n\nAccess portal: ${portalUrl}`
+                  });
+                } catch (err) {
+                  console.error(`Failed to send vendor tender award email to ${recipientEmail}:`, err);
+                }
+              }
             }
           }
         }

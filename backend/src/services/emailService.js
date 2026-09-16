@@ -36,17 +36,35 @@ const transporter = nodemailer.createTransport({
   socketTimeout:     30000,
 });
 
-// Verify connection on startup gracefully
+// Fallback transporter (port 587 STARTTLS) in case port 465 is firewalled/blocked on production host
+const fallbackTransporter = nodemailer.createTransport({
+  host: smtpHost,
+  port: 587,
+  secure: false,
+  auth: {
+    user: smtpUser,
+    pass: smtpPass,
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+  connectionTimeout: 15000,
+  greetingTimeout:   10000,
+  socketTimeout:     30000,
+});
+
+// Verify primary connection on startup gracefully
 transporter.verify((error) => {
   if (error) {
-    console.error(`❌ SMTP Connection FAILED (host=${smtpHost}:${smtpPort} user=${smtpUser}):`, error.message);
+    console.error(`❌ Primary SMTP Connection FAILED (host=${smtpHost}:${smtpPort} user=${smtpUser}):`, error.message);
   } else {
-    console.log(`✅ SMTP Connected: ${smtpHost}:${smtpPort} (secure=${isSecure}) user=${smtpUser}`);
+    console.log(`✅ Primary SMTP Connected: ${smtpHost}:${smtpPort} (secure=${isSecure}) user=${smtpUser}`);
   }
 });
 
 /**
  * Generic email sender — always resolves, never throws.
+ * Tries primary transporter first, falls back to port 587 if network error occurs.
  * Returns { success, messageId?, error? }
  */
 const sendEmail = async ({ to, cc, bcc, subject, html, text, attachments }) => {
@@ -74,10 +92,16 @@ const sendEmail = async ({ to, cc, bcc, subject, html, text, attachments }) => {
       console.warn(`⚠️  Some recipients were rejected by SMTP: ${info.rejected.join(', ')}`);
     }
     return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error(`❌ Email send FAILED → to=${to} subject="${subject}":`, error.message);
-    console.error(`   SMTP host=${smtpHost}:${smtpPort} user=${smtpUser} code=${error.code} response=${error.response || 'n/a'}`);
-    return { success: false, error: error.message };
+  } catch (primaryError) {
+    console.warn(`⚠️ Primary SMTP send failed (host=${smtpHost}:${smtpPort}): ${primaryError.message}. Attempting fallback (port 587)...`);
+    try {
+      const info = await fallbackTransporter.sendMail(mailOptions);
+      console.log(`📧 Email sent via Fallback (port 587) → to=${to}${cc ? ` cc=${cc}` : ''} subject="${subject}" id=${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (fallbackError) {
+      console.error(`❌ Both Primary and Fallback SMTP send FAILED → to=${to} subject="${subject}":`, fallbackError.message);
+      return { success: false, error: fallbackError.message };
+    }
   }
 };
 
