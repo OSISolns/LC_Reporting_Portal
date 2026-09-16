@@ -91,6 +91,7 @@ export default function DailyOperationalReportBoard() {
   }, [stockLogs]);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
+  const [dailyMetricMode, setDailyMetricMode] = useState('both'); // 'both' | 'consultation' | 'followup'
 
   // Weekly Board State
   const [selectedWeekDate, setSelectedWeekDate] = useState(() => {
@@ -379,46 +380,443 @@ export default function DailyOperationalReportBoard() {
     try {
       toast.loading("Generating daily Excel workbook...", { id: 'excel-toast' });
       const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Legacy Clinics & Diagnostics';
+      workbook.lastModifiedBy = user?.full_name || 'System User';
+      workbook.created = new Date();
 
-      // SHEET 1: Consultations
-      const sheet1 = workbook.addWorksheet('Consultations');
-      sheet1.views = [{ showGridLines: true }];
+      const isBoth = dailyMetricMode === 'both';
+      const isFollowUpOnly = dailyMetricMode === 'followup';
+      const modeText = isBoth ? 'CONSULTATIONS & FOLLOW-UPS' : isFollowUpOnly ? 'FOLLOW-UPS' : 'CONSULTATIONS';
 
-      // Set columns widths
-      sheet1.getColumn(1).width = 28;
-      sheet1.getColumn(2).width = 20;
-      sheet1.getColumn(3).width = 24;
-      sheet1.getColumn(4).width = 18;
+      const filteredProviders = config.providers.filter(p => {
+        const specName = p.specialization_name || p.specialization || 'Other';
+        if (dailyDeptFilter !== 'ALL' && specName !== dailyDeptFilter) return false;
+        if (dailySearchQuery.trim() !== '') {
+          const query = dailySearchQuery.toLowerCase();
+          return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
+        }
+        return true;
+      });
+
+      // Calculate dynamic column widths
+      let maxNameWidth = 28;
+      let maxSpecWidth = 24;
+      filteredProviders.forEach(p => {
+        if (p.name && p.name.length > maxNameWidth) maxNameWidth = p.name.length;
+        const spec = p.specialization_name || p.specialization || 'Other';
+        if (spec.length > maxSpecWidth) maxSpecWidth = spec.length;
+      });
+
+      // SHEET 1: Institutional Daily Operational Matrix
+      const matrixSheet = workbook.addWorksheet('Daily Matrix');
+      matrixSheet.views = [{ showGridLines: true, state: 'frozen', xSplit: 2, ySplit: 4 }];
+
+      matrixSheet.getColumn(1).width = Math.min(maxNameWidth + 4, 50);
+      matrixSheet.getColumn(2).width = Math.min(maxSpecWidth + 4, 38);
+      matrixSheet.getColumn(3).width = 16; // Day Column
+      matrixSheet.getColumn(4).width = 14; // TOTAL
+
+      const mTitleCell = matrixSheet.getCell('A1');
+      mTitleCell.value = 'LEGACY CLINICS & DIAGNOSTICS';
+      matrixSheet.mergeCells('A1:D1');
+      mTitleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
+      mTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+      mTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      matrixSheet.getRow(1).height = 36;
+
+      const mSubCell = matrixSheet.getCell('A2');
+      mSubCell.value = isBoth
+        ? `INSTITUTIONAL DAILY OPERATIONAL MATRIX - Total Completed (Walk-ins and Follow-Ups) (Period: ${selectedDate})`
+        : `INSTITUTIONAL DAILY OPERATIONAL MATRIX (Period: ${selectedDate})`;
+      matrixSheet.mergeCells('A2:D2');
+      mSubCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+      mSubCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4A90E2' } };
+      mSubCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      matrixSheet.getRow(2).height = 26;
+
+      const mMetaCell = matrixSheet.getCell('A3');
+      mMetaCell.value = `Report Extracted: ${new Date().toLocaleString()} | Mode: ${modeText} | Filter: ${dailyDeptFilter}`;
+      matrixSheet.mergeCells('A3:D3');
+      mMetaCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: '475569' } };
+      mMetaCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+      mMetaCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      matrixSheet.getRow(3).height = 20;
+
+      const mHeaderRow = matrixSheet.getRow(4);
+      mHeaderRow.height = 28;
+      mHeaderRow.getCell(1).value = 'Staff Specialist';
+      mHeaderRow.getCell(2).value = 'Specialty / Department';
+      mHeaderRow.getCell(3).value = `Day 1 (${selectedDate})`;
+      mHeaderRow.getCell(4).value = 'TOTAL';
+
+      for (let c = 1; c <= 4; c++) {
+        const cell = mHeaderRow.getCell(c);
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+        cell.alignment = { horizontal: c > 2 ? 'center' : 'left', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '1B365D' } },
+          bottom: { style: 'medium', color: { argb: '1B365D' } },
+          left: { style: 'thin', color: { argb: '4F81BD' } },
+          right: { style: 'thin', color: { argb: '4F81BD' } }
+        };
+      }
+
+      let mCurrentRow = 5;
+      const mStartRowProviders = 5;
+      const consultRowIndices = [];
+      const followUpRowIndices = [];
+      const providerTotalRowIndices = [];
+
+      filteredProviders.forEach(provider => {
+        const specName = provider.specialization_name || provider.specialization || 'Other';
+        const count = dailyMetrics[provider.id] || 0;
+        const followUp = dailyFollowUps[provider.id] || 0;
+
+        if (isBoth) {
+          // Row 1: Consultations (Walk-ins)
+          const r1 = matrixSheet.getRow(mCurrentRow);
+          const r1Index = mCurrentRow;
+          consultRowIndices.push(r1Index);
+          r1.height = 21;
+          r1.getCell(1).value = provider.name;
+          r1.getCell(2).value = specName;
+          r1.getCell(3).value = count;
+          r1.getCell(4).value = { formula: `=SUM(C${r1Index}:C${r1Index})` };
+
+          for (let col = 1; col <= 4; col++) {
+            const cell = r1.getCell(col);
+            cell.font = { name: 'Calibri', size: 10 };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } };
+            cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              if (col === 4) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
+              } else if (count > 0) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
+              } else {
+                cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
+                cell.value = '-';
+              }
+            }
+          }
+          mCurrentRow++;
+
+          // Row 2: Follow-up (Smaller row beneath Consultations)
+          const r2 = matrixSheet.getRow(mCurrentRow);
+          const r2Index = mCurrentRow;
+          followUpRowIndices.push(r2Index);
+          r2.height = 17;
+          r2.getCell(1).value = '   ↳ Follow-Up';
+          r2.getCell(2).value = 'Follow-Up';
+          r2.getCell(3).value = followUp;
+          r2.getCell(4).value = { formula: `=SUM(C${r2Index}:C${r2Index})` };
+
+          for (let col = 1; col <= 4; col++) {
+            const cell = r2.getCell(col);
+            cell.font = { name: 'Calibri', size: 9, italic: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0FDFA' } };
+            cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              if (col === 4) {
+                cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0F766E' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E6FFFA' } };
+              } else if (followUp > 0) {
+                cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0D9488' } };
+              } else {
+                cell.font = { name: 'Calibri', size: 9, color: { argb: '94A3B8' } };
+                cell.value = '-';
+              }
+            }
+          }
+          mCurrentRow++;
+
+          // Row 3: Total (Summation of both for provider)
+          const r3 = matrixSheet.getRow(mCurrentRow);
+          const r3Index = mCurrentRow;
+          providerTotalRowIndices.push(r3Index);
+          r3.height = 20;
+          r3.getCell(1).value = '   Total (Walk-ins & Follow-ups)';
+          r3.getCell(2).value = 'Total';
+          r3.getCell(3).value = { formula: `=C${r1Index}+C${r2Index}` };
+          r3.getCell(4).value = { formula: `=D${r1Index}+D${r2Index}` };
+
+          for (let col = 1; col <= 4; col++) {
+            const cell = r3.getCell(col);
+            cell.font = { name: 'Calibri', size: 10, bold: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+            cell.border = { bottom: { style: 'medium', color: { argb: 'CBD5E1' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              if (col === 4) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+              }
+            }
+          }
+          mCurrentRow++;
+
+        } else {
+          // Single row per provider (consultation only OR followup only)
+          const r = matrixSheet.getRow(mCurrentRow);
+          r.height = 21;
+          r.getCell(1).value = provider.name;
+          r.getCell(2).value = specName;
+
+          const val = isFollowUpOnly ? followUp : count;
+          r.getCell(3).value = val;
+          r.getCell(4).value = { formula: `=SUM(C${mCurrentRow}:C${mCurrentRow})` };
+
+          const rowBg = mCurrentRow % 2 === 0 ? 'F9FAFB' : 'FFFFFF';
+          for (let col = 1; col <= 4; col++) {
+            const cell = r.getCell(col);
+            cell.font = { name: 'Calibri', size: 10 };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+            cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              if (col === 4) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
+              } else if (val > 0) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
+              } else {
+                cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
+                cell.value = '-';
+              }
+            }
+          }
+          mCurrentRow++;
+        }
+      });
+
+      const mEndRowProviders = Math.max(mStartRowProviders, mCurrentRow - 1);
+
+      // Section Divider
+      const mDividerRow = matrixSheet.getRow(mCurrentRow);
+      mDividerRow.height = 24;
+      mDividerRow.getCell(1).value = 'NURSING AND WARD PROCEDURES';
+      matrixSheet.mergeCells(mCurrentRow, 1, mCurrentRow, 4);
+      for (let c = 1; c <= 4; c++) {
+        const cell = mDividerRow.getCell(c);
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EBF3FD' } };
+        cell.border = { bottom: { style: 'thin', color: { argb: 'CAD9EA' } } };
+      }
+      mCurrentRow++;
+
+      const mStartRowProcedures = mCurrentRow;
+      const filteredProcedures = config.defaultProcedureMetrics.filter(metricName => {
+        if (dailyDeptFilter !== 'ALL') return false;
+        if (dailySearchQuery.trim() !== '') {
+          return metricName.toLowerCase().includes(dailySearchQuery.toLowerCase());
+        }
+        return true;
+      });
+
+      filteredProcedures.forEach(metricName => {
+        const isNameInput = metricName.toLowerCase().includes('assistant');
+        const rawVal = dailyLogs[metricName] || '0';
+        const numVal = isNameInput ? rawVal : (parseInt(rawVal, 10) || 0);
+
+        const r = matrixSheet.getRow(mCurrentRow);
+        r.height = 21;
+        r.getCell(1).value = metricName;
+        r.getCell(2).value = 'PROCEDURES';
+        r.getCell(3).value = numVal;
+
+        if (!isNameInput) {
+          r.getCell(4).value = { formula: `=SUM(C${mCurrentRow}:C${mCurrentRow})` };
+        } else {
+          r.getCell(4).value = 'N/A';
+        }
+
+        const rowBg = mCurrentRow % 2 === 0 ? 'F9FAFB' : 'FFFFFF';
+        for (let col = 1; col <= 4; col++) {
+          const cell = r.getCell(col);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            const v = cell.value;
+            if (col === 4) {
+              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '555555' } };
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F5F5F5' } };
+            } else if (isNameInput) {
+              cell.font = { name: 'Calibri', size: 9, italic: true };
+              if (v === '0' || v === '') {
+                cell.value = '-';
+                cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
+              }
+            } else if (typeof v === 'number' && v > 0) {
+              cell.font = { name: 'Calibri', size: 10, bold: true };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+            } else if (v === 0) {
+              cell.value = '-';
+              cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
+            }
+          }
+        }
+        mCurrentRow++;
+      });
+
+      // Bottom Total Summary Rows
+      if (isBoth) {
+        // Row 1: TOTAL CONSULTATIONS (WALK-INS)
+        const rowConsultSum = matrixSheet.getRow(mCurrentRow);
+        const rConsultIndex = mCurrentRow;
+        rowConsultSum.height = 24;
+        rowConsultSum.getCell(1).value = 'TOTAL CONSULTATIONS (WALK-INS)';
+        matrixSheet.mergeCells(mCurrentRow, 1, mCurrentRow, 2);
+
+        const cFormula = consultRowIndices.length > 0 ? `=SUM(${consultRowIndices.map(i => `C${i}`).join(',')})` : '=0';
+        const dFormula = consultRowIndices.length > 0 ? `=SUM(${consultRowIndices.map(i => `D${i}`).join(',')})` : '=0';
+        rowConsultSum.getCell(3).value = { formula: cFormula };
+        rowConsultSum.getCell(4).value = { formula: dFormula };
+
+        for (let col = 1; col <= 4; col++) {
+          const cell = rowConsultSum.getCell(col);
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EBF3FD' } };
+          cell.border = { top: { style: 'thin', color: { argb: 'CAD9EA' } }, bottom: { style: 'thin', color: { argb: 'CAD9EA' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+          }
+        }
+        mCurrentRow++;
+
+        // Row 2: TOTAL FOLLOW-UPS (Smaller row)
+        const rowFollowSum = matrixSheet.getRow(mCurrentRow);
+        const rFollowIndex = mCurrentRow;
+        rowFollowSum.height = 22;
+        rowFollowSum.getCell(1).value = 'TOTAL FOLLOW-UPS';
+        matrixSheet.mergeCells(mCurrentRow, 1, mCurrentRow, 2);
+
+        const cFollowFormula = followUpRowIndices.length > 0 ? `=SUM(${followUpRowIndices.map(i => `C${i}`).join(',')})` : '=0';
+        const dFollowFormula = followUpRowIndices.length > 0 ? `=SUM(${followUpRowIndices.map(i => `D${i}`).join(',')})` : '=0';
+        rowFollowSum.getCell(3).value = { formula: cFollowFormula };
+        rowFollowSum.getCell(4).value = { formula: dFollowFormula };
+
+        for (let col = 1; col <= 4; col++) {
+          const cell = rowFollowSum.getCell(col);
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '0F766E' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0FDFA' } };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+          }
+        }
+        mCurrentRow++;
+
+        // Row 3: Total Completed (Walk-ins and Follow-Ups)
+        const mTotalSumRow = matrixSheet.getRow(mCurrentRow);
+        mTotalSumRow.height = 28;
+        mTotalSumRow.getCell(1).value = 'Total Completed (Walk-ins and Follow-Ups)';
+        matrixSheet.mergeCells(mCurrentRow, 1, mCurrentRow, 2);
+
+        mTotalSumRow.getCell(3).value = { formula: `=C${rConsultIndex}+C${rFollowIndex}` };
+        mTotalSumRow.getCell(4).value = { formula: `=D${rConsultIndex}+D${rFollowIndex}` };
+
+        for (let col = 1; col <= 4; col++) {
+          const cell = mTotalSumRow.getCell(col);
+          cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+          cell.border = {
+            top: { style: 'medium', color: { argb: '1B365D' } },
+            bottom: { style: 'double', color: { argb: '1B365D' } }
+          };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+            if (col === 4) {
+              cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
+            }
+          }
+        }
+      } else {
+        const mTotalSumRow = matrixSheet.getRow(mCurrentRow);
+        mTotalSumRow.height = 28;
+        mTotalSumRow.getCell(1).value = isFollowUpOnly ? 'TOTAL FOLLOW-UPS' : 'TOTAL COMPLETED (WALK-INS)';
+        matrixSheet.mergeCells(mCurrentRow, 1, mCurrentRow, 2);
+
+        mTotalSumRow.getCell(3).value = { formula: `=SUM(C${mStartRowProviders}:C${mEndRowProviders})` };
+        mTotalSumRow.getCell(4).value = { formula: `=SUM(D${mStartRowProviders}:D${mEndRowProviders})` };
+
+        for (let col = 1; col <= 4; col++) {
+          const cell = mTotalSumRow.getCell(col);
+          cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+          cell.border = {
+            top: { style: 'medium', color: { argb: '1B365D' } },
+            bottom: { style: 'double', color: { argb: '1B365D' } }
+          };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+            if (col === 4) {
+              cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
+            }
+          }
+        }
+      }
+
+      // SHEET 2: Outpatient Summary
+      const sheet1 = workbook.addWorksheet('Outpatient Summary');
+      sheet1.views = [{ showGridLines: true, state: 'frozen', ySplit: 7 }];
+
+      sheet1.getColumn(1).width = Math.min(maxNameWidth + 4, 50);
+      sheet1.getColumn(2).width = 22;
+      sheet1.getColumn(3).width = Math.min(maxSpecWidth + 4, 38);
+      if (isBoth) {
+        sheet1.getColumn(4).width = 18;
+        sheet1.getColumn(5).width = 18;
+        sheet1.getColumn(6).width = 18;
+      } else {
+        sheet1.getColumn(4).width = 22;
+      }
+
+      const endColLetter = isBoth ? 'F' : 'D';
+      const endColIndex = isBoth ? 6 : 4;
 
       // Header Block (Corporate Navy Blue Theme)
       const titleCell = sheet1.getCell('A1');
       titleCell.value = 'LEGACY CLINICS & DIAGNOSTICS';
-      sheet1.mergeCells('A1:D1');
+      sheet1.mergeCells(`A1:${endColLetter}1`);
       titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet1.getRow(1).height = 35;
+      sheet1.getRow(1).height = 36;
 
       const subCell = sheet1.getCell('A2');
-      subCell.value = 'DAILY OUTPATIENT CONSULTATION REPORT';
-      sheet1.mergeCells('A2:D2');
+      subCell.value = `DAILY OUTPATIENT ${modeText} REPORT`;
+      sheet1.mergeCells(`A2:${endColLetter}2`);
       subCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
       subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4A90E2' } };
       subCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet1.getRow(2).height = 25;
+      sheet1.getRow(2).height = 26;
 
       const dateCell = sheet1.getCell('A3');
-      dateCell.value = `Report Date: ${selectedDate}`;
-      sheet1.mergeCells('A3:D3');
+      dateCell.value = `Report Date: ${selectedDate} | Mode: ${modeText}`;
+      sheet1.mergeCells(`A3:${endColLetter}3`);
       dateCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '555555' } };
       dateCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet1.getRow(3).height = 20;
 
-      sheet1.getRow(4).height = 15;
+      sheet1.getRow(4).height = 10;
 
       // KPI Cards Block (Row 5-6)
       sheet1.getCell('A5').value = 'Outpatients Seen';
-      sheet1.getCell('A6').value = kpis.totalPatients;
+      sheet1.getCell('A6').value = kpis.totalPatients + kpis.totalFollowUps;
 
       sheet1.getCell('B5').value = 'Top Specialty Department';
       sheet1.getCell('B6').value = `${kpis.maxDeptName} (${kpis.maxDeptCount})`;
@@ -426,48 +824,61 @@ export default function DailyOperationalReportBoard() {
       sheet1.getCell('C5').value = 'Total Clinical Logs';
       sheet1.getCell('C6').value = kpis.procedureCount;
 
-      sheet1.mergeCells('C5:D5');
-      sheet1.mergeCells('C6:D6');
+      if (isBoth) {
+        sheet1.mergeCells('C5:F5');
+        sheet1.mergeCells('C6:F6');
+      } else {
+        sheet1.mergeCells('C5:D5');
+        sheet1.mergeCells('C6:D6');
+      }
 
       ['A5', 'B5', 'C5'].forEach(cellRef => {
         const c = sheet1.getCell(cellRef);
-        c.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '555555' } };
-        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F4F8' } };
+        c.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '475569' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
         c.alignment = { horizontal: 'center', vertical: 'middle' };
       });
 
       ['A6', 'B6', 'C6'].forEach(cellRef => {
         const c = sheet1.getCell(cellRef);
         c.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '1B365D' } };
-        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F4F8' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
         c.alignment = { horizontal: 'center', vertical: 'middle' };
       });
 
       const kpiBorder = {
-        top: { style: 'thin', color: { argb: 'CCCCCC' } },
-        bottom: { style: 'thin', color: { argb: 'CCCCCC' } },
-        left: { style: 'thin', color: { argb: 'CCCCCC' } },
-        right: { style: 'thin', color: { argb: 'CCCCCC' } }
+        top: { style: 'thin', color: { argb: 'CBD5E1' } },
+        bottom: { style: 'thin', color: { argb: 'CBD5E1' } },
+        left: { style: 'thin', color: { argb: 'CBD5E1' } },
+        right: { style: 'thin', color: { argb: 'CBD5E1' } }
       };
       for (let r = 5; r <= 6; r++) {
-        for (let c = 1; c <= 4; c++) {
+        for (let c = 1; c <= endColIndex; c++) {
           sheet1.getCell(r, c).border = kpiBorder;
         }
       }
 
       // Table Header Row 8
       const headerRow = sheet1.getRow(8);
-      headerRow.height = 25;
+      headerRow.height = 26;
       headerRow.getCell(1).value = 'Staff Specialist';
       headerRow.getCell(2).value = 'Title / Role';
       headerRow.getCell(3).value = 'Specialty Department';
-      headerRow.getCell(4).value = 'Patients Consulted';
+      if (isBoth) {
+        headerRow.getCell(4).value = 'Consultations (C)';
+        headerRow.getCell(5).value = 'Follow-Ups (F)';
+        headerRow.getCell(6).value = 'Total Outpatients';
+      } else if (isFollowUpOnly) {
+        headerRow.getCell(4).value = 'Follow-Ups (F)';
+      } else {
+        headerRow.getCell(4).value = 'Consultations (C)';
+      }
 
-      for (let c = 1; c <= 4; c++) {
+      for (let c = 1; c <= endColIndex; c++) {
         const cell = headerRow.getCell(c);
-        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
-        cell.alignment = { horizontal: c === 4 ? 'right' : 'left', vertical: 'middle' };
+        cell.alignment = { horizontal: c >= 4 ? 'right' : 'left', vertical: 'middle' };
         cell.border = {
           top: { style: 'thin', color: { argb: '1B365D' } },
           bottom: { style: 'medium', color: { argb: '1B365D' } }
@@ -477,20 +888,34 @@ export default function DailyOperationalReportBoard() {
       let currentRow = 9;
       config.providers.forEach(p => {
         const count = dailyMetrics[p.id] || 0;
+        const followUp = dailyFollowUps[p.id] || 0;
         const r = sheet1.getRow(currentRow);
-        r.height = 20;
+        r.height = 21;
         r.getCell(1).value = p.name;
         r.getCell(2).value = p.title || 'Specialist';
         r.getCell(3).value = p.specialization_name || p.specialization || 'Other';
-        r.getCell(4).value = count;
+        
+        if (isBoth) {
+          r.getCell(4).value = count;
+          r.getCell(5).value = followUp;
+          r.getCell(6).value = { formula: `=SUM(D${currentRow}:E${currentRow})` };
+        } else if (isFollowUpOnly) {
+          r.getCell(4).value = followUp;
+        } else {
+          r.getCell(4).value = count;
+        }
 
-        for (let col = 1; col <= 4; col++) {
+        const rowBg = currentRow % 2 === 0 ? 'F9FAFB' : 'FFFFFF';
+        for (let col = 1; col <= endColIndex; col++) {
           const cell = r.getCell(col);
           cell.font = { name: 'Calibri', size: 10 };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
-          if (col === 4) {
+          if (col >= 4) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
-            if (count > 0) {
+            cell.numFmt = '#,##0;(#,##0);"-"';
+            const numVal = typeof cell.value === 'object' ? null : cell.value;
+            if (numVal > 0) {
               cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
             }
           }
@@ -500,31 +925,38 @@ export default function DailyOperationalReportBoard() {
 
       // Total Row with dynamic SUM formula
       const totalRow = sheet1.getRow(currentRow);
-      totalRow.height = 25;
-      totalRow.getCell(1).value = 'TOTAL OUTPATIENTS CONSULTED';
-      totalRow.getCell(4).value = { formula: `=SUM(D9:D${currentRow - 1})` };
-
+      totalRow.height = 26;
+      totalRow.getCell(1).value = `TOTAL ${modeText}`;
       sheet1.mergeCells(`A${currentRow}:C${currentRow}`);
+      
+      if (isBoth) {
+        totalRow.getCell(4).value = { formula: `=SUM(D9:D${currentRow - 1})` };
+        totalRow.getCell(5).value = { formula: `=SUM(E9:E${currentRow - 1})` };
+        totalRow.getCell(6).value = { formula: `=SUM(F9:F${currentRow - 1})` };
+      } else {
+        totalRow.getCell(4).value = { formula: `=SUM(D9:D${currentRow - 1})` };
+      }
 
-      for (let col = 1; col <= 4; col++) {
+      for (let col = 1; col <= endColIndex; col++) {
         const cell = totalRow.getCell(col);
         cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '1B365D' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'ECF2F9' } };
         cell.border = {
-          top: { style: 'thin', color: { argb: '1B365D' } },
+          top: { style: 'medium', color: { argb: '1B365D' } },
           bottom: { style: 'double', color: { argb: '1B365D' } }
         };
-        if (col === 4) {
+        if (col >= 4) {
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          cell.numFmt = '#,##0;(#,##0);"-"';
         }
       }
 
-      // SHEET 2: Procedures & Logs
+      // SHEET 3: Procedures & Logs
       const sheet2 = workbook.addWorksheet('Procedures & Logs');
-      sheet2.views = [{ showGridLines: true }];
+      sheet2.views = [{ showGridLines: true, state: 'frozen', ySplit: 4 }];
 
-      sheet2.getColumn(1).width = 45;
-      sheet2.getColumn(2).width = 35;
+      sheet2.getColumn(1).width = 48;
+      sheet2.getColumn(2).width = 36;
 
       // Title
       const titleCell2 = sheet2.getCell('A1');
@@ -533,7 +965,7 @@ export default function DailyOperationalReportBoard() {
       titleCell2.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
       titleCell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
       titleCell2.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet2.getRow(1).height = 35;
+      sheet2.getRow(1).height = 36;
 
       const subCell2 = sheet2.getCell('A2');
       subCell2.value = `DAILY OPERATIONAL PROCEDURES & LOGS (${selectedDate})`;
@@ -541,18 +973,18 @@ export default function DailyOperationalReportBoard() {
       subCell2.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
       subCell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4A90E2' } };
       subCell2.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet2.getRow(2).height = 25;
+      sheet2.getRow(2).height = 26;
 
       sheet2.getRow(3).height = 15;
 
       const headerRow2 = sheet2.getRow(4);
-      headerRow2.height = 25;
+      headerRow2.height = 26;
       headerRow2.getCell(1).value = 'Clinical Metric / Nursing Log';
       headerRow2.getCell(2).value = 'Value / Assignee';
 
       for (let c = 1; c <= 2; c++) {
         const cell = headerRow2.getCell(c);
-        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
         cell.alignment = { horizontal: 'left', vertical: 'middle' };
         cell.border = {
@@ -572,16 +1004,20 @@ export default function DailyOperationalReportBoard() {
         r.getCell(1).value = mName;
         r.getCell(2).value = numVal;
 
+        const rowBg = currentRow2 % 2 === 0 ? 'F9FAFB' : 'FFFFFF';
         const c1 = r.getCell(1);
         c1.font = { name: 'Calibri', size: 10, bold: true };
+        c1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
         c1.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
 
         const c2 = r.getCell(2);
         c2.font = { name: 'Calibri', size: 10 };
+        c2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
         c2.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
         if (!isNameInput) {
           c2.alignment = { horizontal: 'right', vertical: 'middle' };
           c2.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+          c2.numFmt = '#,##0;(#,##0);"-"';
         } else {
           c2.font = { name: 'Calibri', size: 10, italic: true };
         }
@@ -612,21 +1048,41 @@ export default function DailyOperationalReportBoard() {
 
       toast.loading("Generating weekly Excel workbook...", { id: 'excel-toast' });
       const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Legacy Clinics & Diagnostics';
+      workbook.lastModifiedBy = user?.full_name || 'System User';
+      workbook.created = new Date();
 
-      const sheet = workbook.addWorksheet('Weekly Report');
-      sheet.views = [{ showGridLines: true }];
-
-      // Configure columns
       const days = getWeeklyDaysArray();
       const totalCols = 2 + days.length + 1;
 
-      // Set Column Widths
-      sheet.getColumn(1).width = 28;
-      sheet.getColumn(2).width = 24;
+      const filteredProviders = config.providers.filter(p => {
+        const specName = p.specialization_name || p.specialization || 'Other';
+        if (weeklyDeptFilter !== 'ALL' && specName !== weeklyDeptFilter) return false;
+        if (weeklySearchQuery.trim() !== '') {
+          const query = weeklySearchQuery.toLowerCase();
+          return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
+        }
+        return true;
+      });
+
+      let maxNameWidth = 28;
+      let maxSpecWidth = 24;
+      filteredProviders.forEach(p => {
+        if (p.name && p.name.length > maxNameWidth) maxNameWidth = p.name.length;
+        const spec = p.specialization_name || p.specialization || 'Other';
+        if (spec.length > maxSpecWidth) maxSpecWidth = spec.length;
+      });
+
+      // SHEET 1: Weekly Matrix
+      const sheet = workbook.addWorksheet('Weekly Matrix');
+      sheet.views = [{ showGridLines: true, state: 'frozen', xSplit: 2, ySplit: 4 }];
+
+      sheet.getColumn(1).width = Math.min(maxNameWidth + 4, 50);
+      sheet.getColumn(2).width = Math.min(maxSpecWidth + 4, 38);
       days.forEach((day, index) => {
         sheet.getColumn(2 + index + 1).width = 14;
       });
-      sheet.getColumn(totalCols).width = 12;
+      sheet.getColumn(totalCols).width = 14;
 
       // Title Block
       const titleCell = sheet.getCell('A1');
@@ -635,18 +1091,28 @@ export default function DailyOperationalReportBoard() {
       titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet.getRow(1).height = 35;
+      sheet.getRow(1).height = 36;
 
       const subCell = sheet.getCell('A2');
       const { start, end } = getWeekRange(selectedWeekDate);
-      subCell.value = `WEEKLY OPERATIONAL REPORT (Period: ${start} to ${end})`;
+      const isBoth = weeklyMetricMode === 'both';
+      const isFollowUpOnly = weeklyMetricMode === 'followup';
+      subCell.value = isBoth
+        ? `INSTITUTIONAL WEEKLY OPERATIONAL MATRIX - Total Completed (Walk-ins and Follow-Ups) (Period: ${start} to ${end})`
+        : `INSTITUTIONAL WEEKLY OPERATIONAL MATRIX (Period: ${start} to ${end})`;
       sheet.mergeCells(2, 1, 2, totalCols);
       subCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
       subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4A90E2' } };
       subCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet.getRow(2).height = 25;
+      sheet.getRow(2).height = 26;
 
-      sheet.getRow(3).height = 15;
+      const metaCell = sheet.getCell('A3');
+      metaCell.value = `Report Extracted: ${new Date().toLocaleString()} | User: ${user?.full_name || 'System User'} | Mode: ${weeklyMetricMode} | Filter: ${weeklyDeptFilter}`;
+      sheet.mergeCells(3, 1, 3, totalCols);
+      metaCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: '475569' } };
+      metaCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+      metaCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(3).height = 20;
 
       // Table Header Row 4
       const headerRow = sheet.getRow(4);
@@ -674,60 +1140,167 @@ export default function DailyOperationalReportBoard() {
 
       let currentRow = 5;
       const startRowProviders = 5;
-
-      const filteredProviders = config.providers.filter(p => {
-        const specName = p.specialization_name || p.specialization || 'Other';
-        if (weeklyDeptFilter !== 'ALL' && specName !== weeklyDeptFilter) return false;
-        if (weeklySearchQuery.trim() !== '') {
-          const query = weeklySearchQuery.toLowerCase();
-          return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
-        }
-        return true;
-      });
+      const consultRowIndices = [];
+      const followUpRowIndices = [];
+      const providerTotalRowIndices = [];
 
       filteredProviders.forEach(provider => {
         const specName = provider.specialization_name || provider.specialization || 'Other';
-        const r = sheet.getRow(currentRow);
-        r.height = 20;
-        r.getCell(1).value = provider.name;
-        r.getCell(2).value = specName;
-
-        days.forEach((day, index) => {
-          const record = weeklyData.metrics.find(m => m.provider_id === provider.id && m.report_date === day);
-          r.getCell(2 + index + 1).value = record ? record.patient_count : 0;
-        });
-
         const startColLetter = getColumnLetter(3);
         const endColLetter = getColumnLetter(2 + days.length);
 
-        r.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${currentRow}:${endColLetter}${currentRow})` };
+        if (isBoth) {
+          // Row 1: Consultations (Walk-ins)
+          const r1 = sheet.getRow(currentRow);
+          const r1Index = currentRow;
+          consultRowIndices.push(r1Index);
+          r1.height = 21;
+          r1.getCell(1).value = provider.name;
+          r1.getCell(2).value = specName;
 
-        for (let col = 1; col <= totalCols; col++) {
-          const cell = r.getCell(col);
-          cell.font = { name: 'Calibri', size: 10 };
-          cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
-          if (col > 2) {
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            const val = cell.value;
-            if (col === totalCols) {
-              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
-              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
-            } else if (typeof val === 'number' && val > 0) {
-              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
-            } else if (val === 0) {
-              cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
-              cell.value = '-';
+          days.forEach((day, index) => {
+            const record = weeklyData.metrics.find(m => m.provider_id === provider.id && m.report_date === day);
+            r1.getCell(2 + index + 1).value = record ? (Number(record.patient_count) || 0) : 0;
+          });
+          r1.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${r1Index}:${endColLetter}${r1Index})` };
+
+          for (let col = 1; col <= totalCols; col++) {
+            const cell = r1.getCell(col);
+            cell.font = { name: 'Calibri', size: 10 };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } };
+            cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              const val = cell.value;
+              if (col === totalCols) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
+              } else if (typeof val === 'number' && val > 0) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
+              } else if (val === 0) {
+                cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
+                cell.value = '-';
+              }
             }
           }
+          currentRow++;
+
+          // Row 2: Follow-Up (Smaller row)
+          const r2 = sheet.getRow(currentRow);
+          const r2Index = currentRow;
+          followUpRowIndices.push(r2Index);
+          r2.height = 17;
+          r2.getCell(1).value = '   ↳ Follow-Up';
+          r2.getCell(2).value = 'Follow-Up';
+
+          days.forEach((day, index) => {
+            const record = weeklyData.metrics.find(m => m.provider_id === provider.id && m.report_date === day);
+            r2.getCell(2 + index + 1).value = record ? (Number(record.follow_up_count) || 0) : 0;
+          });
+          r2.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${r2Index}:${endColLetter}${r2Index})` };
+
+          for (let col = 1; col <= totalCols; col++) {
+            const cell = r2.getCell(col);
+            cell.font = { name: 'Calibri', size: 9, italic: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0FDFA' } };
+            cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              const val = cell.value;
+              if (col === totalCols) {
+                cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0F766E' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E6FFFA' } };
+              } else if (typeof val === 'number' && val > 0) {
+                cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0D9488' } };
+              } else if (val === 0) {
+                cell.font = { name: 'Calibri', size: 9, color: { argb: '94A3B8' } };
+                cell.value = '-';
+              }
+            }
+          }
+          currentRow++;
+
+          // Row 3: Total Summation of both
+          const r3 = sheet.getRow(currentRow);
+          const r3Index = currentRow;
+          providerTotalRowIndices.push(r3Index);
+          r3.height = 20;
+          r3.getCell(1).value = '   Total (Walk-ins & Follow-ups)';
+          r3.getCell(2).value = 'Total';
+
+          days.forEach((day, index) => {
+            const colLetter = getColumnLetter(2 + index + 1);
+            r3.getCell(2 + index + 1).value = { formula: `=${colLetter}${r1Index}+${colLetter}${r2Index}` };
+          });
+          const totalColLetter = getColumnLetter(totalCols);
+          r3.getCell(totalCols).value = { formula: `=${totalColLetter}${r1Index}+${totalColLetter}${r2Index}` };
+
+          for (let col = 1; col <= totalCols; col++) {
+            const cell = r3.getCell(col);
+            cell.font = { name: 'Calibri', size: 10, bold: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+            cell.border = { bottom: { style: 'medium', color: { argb: 'CBD5E1' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              if (col === totalCols) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+              }
+            }
+          }
+          currentRow++;
+
+        } else {
+          // Single row per provider
+          const r = sheet.getRow(currentRow);
+          r.height = 21;
+          r.getCell(1).value = provider.name;
+          r.getCell(2).value = specName;
+
+          days.forEach((day, index) => {
+            const record = weeklyData.metrics.find(m => m.provider_id === provider.id && m.report_date === day);
+            let val = 0;
+            if (record) {
+              val = isFollowUpOnly ? (Number(record.follow_up_count) || 0) : (Number(record.patient_count) || 0);
+            }
+            r.getCell(2 + index + 1).value = val;
+          });
+
+          r.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${currentRow}:${endColLetter}${currentRow})` };
+
+          const rowBg = currentRow % 2 === 0 ? 'F9FAFB' : 'FFFFFF';
+          for (let col = 1; col <= totalCols; col++) {
+            const cell = r.getCell(col);
+            cell.font = { name: 'Calibri', size: 10 };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+            cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              const val = cell.value;
+              if (col === totalCols) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
+              } else if (typeof val === 'number' && val > 0) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
+              } else if (val === 0) {
+                cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
+                cell.value = '-';
+              }
+            }
+          }
+          currentRow++;
         }
-        currentRow++;
       });
 
       const endRowProviders = Math.max(startRowProviders, currentRow - 1);
 
-      // Divider
+      // Section Divider
       const dividerRow = sheet.getRow(currentRow);
-      dividerRow.height = 22;
+      dividerRow.height = 24;
       dividerRow.getCell(1).value = 'NURSING AND WARD PROCEDURES';
       sheet.mergeCells(currentRow, 1, currentRow, totalCols);
       for (let c = 1; c <= totalCols; c++) {
@@ -751,7 +1324,7 @@ export default function DailyOperationalReportBoard() {
       filteredProcedures.forEach(metricName => {
         const isNameInput = metricName.toLowerCase().includes('assistant');
         const r = sheet.getRow(currentRow);
-        r.height = 20;
+        r.height = 21;
         r.getCell(1).value = metricName;
         r.getCell(2).value = 'PROCEDURES';
 
@@ -770,9 +1343,11 @@ export default function DailyOperationalReportBoard() {
           r.getCell(totalCols).value = 'N/A';
         }
 
+        const rowBg = currentRow % 2 === 0 ? 'F9FAFB' : 'FFFFFF';
         for (let col = 1; col <= totalCols; col++) {
           const cell = r.getCell(col);
           cell.font = { name: 'Calibri', size: 10 };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -784,13 +1359,14 @@ export default function DailyOperationalReportBoard() {
               cell.font = { name: 'Calibri', size: 9, italic: true };
               if (val === '0' || val === '') {
                 cell.value = '-';
-                cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
+                cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
               }
             } else if (typeof val === 'number' && val > 0) {
               cell.font = { name: 'Calibri', size: 10, bold: true };
+              cell.numFmt = '#,##0;(#,##0);"-"';
             } else if (val === 0) {
               cell.value = '-';
-              cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
+              cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
             }
           }
         }
@@ -799,33 +1375,121 @@ export default function DailyOperationalReportBoard() {
 
       const endRowProcedures = Math.max(startRowProcedures, currentRow - 1);
 
-      // Bottom Total row
-      const totalSumRow = sheet.getRow(currentRow);
-      totalSumRow.height = 26;
-      totalSumRow.getCell(1).value = 'TOTAL COMPLETED PATIENTS';
-      sheet.mergeCells(currentRow, 1, currentRow, 2);
+      // Bottom Total Rows
+      if (isBoth) {
+        // Row 1: TOTAL CONSULTATIONS (WALK-INS)
+        const rowConsultSum = sheet.getRow(currentRow);
+        const rConsultIndex = currentRow;
+        rowConsultSum.height = 24;
+        rowConsultSum.getCell(1).value = 'TOTAL CONSULTATIONS (WALK-INS)';
+        sheet.mergeCells(currentRow, 1, currentRow, 2);
 
-      for (let d = 1; d <= days.length; d++) {
-        const colIndex = 2 + d;
-        const colLetter = getColumnLetter(colIndex);
-        totalSumRow.getCell(colIndex).value = { formula: `=SUM(${colLetter}${startRowProviders}:${colLetter}${endRowProviders})` };
-      }
+        for (let d = 1; d <= days.length; d++) {
+          const colIndex = 2 + d;
+          const colLetter = getColumnLetter(colIndex);
+          const formula = consultRowIndices.length > 0 ? `=SUM(${consultRowIndices.map(i => `${colLetter}${i}`).join(',')})` : '=0';
+          rowConsultSum.getCell(colIndex).value = { formula };
+        }
+        const totalColLetter = getColumnLetter(totalCols);
+        rowConsultSum.getCell(totalCols).value = { formula: consultRowIndices.length > 0 ? `=SUM(${consultRowIndices.map(i => `${totalColLetter}${i}`).join(',')})` : '=0' };
 
-      const totalColLetter = getColumnLetter(totalCols);
-      totalSumRow.getCell(totalCols).value = { formula: `=SUM(${totalColLetter}${startRowProviders}:${totalColLetter}${endRowProviders})` };
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = rowConsultSum.getCell(col);
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EBF3FD' } };
+          cell.border = { top: { style: 'thin', color: { argb: 'CAD9EA' } }, bottom: { style: 'thin', color: { argb: 'CAD9EA' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+          }
+        }
+        currentRow++;
 
-      for (let col = 1; col <= totalCols; col++) {
-        const cell = totalSumRow.getCell(col);
-        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
-        cell.border = {
-          top: { style: 'thin', color: { argb: '1B365D' } },
-          bottom: { style: 'double', color: { argb: '1B365D' } }
-        };
-        if (col > 2) {
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          if (col === totalCols) {
-            cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
+        // Row 2: TOTAL FOLLOW-UPS (Smaller row)
+        const rowFollowSum = sheet.getRow(currentRow);
+        const rFollowIndex = currentRow;
+        rowFollowSum.height = 22;
+        rowFollowSum.getCell(1).value = 'TOTAL FOLLOW-UPS';
+        sheet.mergeCells(currentRow, 1, currentRow, 2);
+
+        for (let d = 1; d <= days.length; d++) {
+          const colIndex = 2 + d;
+          const colLetter = getColumnLetter(colIndex);
+          const formula = followUpRowIndices.length > 0 ? `=SUM(${followUpRowIndices.map(i => `${colLetter}${i}`).join(',')})` : '=0';
+          rowFollowSum.getCell(colIndex).value = { formula };
+        }
+        rowFollowSum.getCell(totalCols).value = { formula: followUpRowIndices.length > 0 ? `=SUM(${followUpRowIndices.map(i => `${totalColLetter}${i}`).join(',')})` : '=0' };
+
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = rowFollowSum.getCell(col);
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '0F766E' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0FDFA' } };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+          }
+        }
+        currentRow++;
+
+        // Row 3: Total Completed (Walk-ins and Follow-Ups)
+        const totalSumRow = sheet.getRow(currentRow);
+        totalSumRow.height = 28;
+        totalSumRow.getCell(1).value = 'Total Completed (Walk-ins and Follow-Ups)';
+        sheet.mergeCells(currentRow, 1, currentRow, 2);
+
+        for (let d = 1; d <= days.length; d++) {
+          const colIndex = 2 + d;
+          const colLetter = getColumnLetter(colIndex);
+          totalSumRow.getCell(colIndex).value = { formula: `=${colLetter}${rConsultIndex}+${colLetter}${rFollowIndex}` };
+        }
+        totalSumRow.getCell(totalCols).value = { formula: `=${totalColLetter}${rConsultIndex}+${totalColLetter}${rFollowIndex}` };
+
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = totalSumRow.getCell(col);
+          cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+          cell.border = {
+            top: { style: 'medium', color: { argb: '1B365D' } },
+            bottom: { style: 'double', color: { argb: '1B365D' } }
+          };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+            if (col === totalCols) {
+              cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
+            }
+          }
+        }
+      } else {
+        const totalSumRow = sheet.getRow(currentRow);
+        totalSumRow.height = 28;
+        totalSumRow.getCell(1).value = isFollowUpOnly ? 'TOTAL FOLLOW-UPS' : 'TOTAL COMPLETED (WALK-INS)';
+        sheet.mergeCells(currentRow, 1, currentRow, 2);
+
+        for (let d = 1; d <= days.length; d++) {
+          const colIndex = 2 + d;
+          const colLetter = getColumnLetter(colIndex);
+          totalSumRow.getCell(colIndex).value = { formula: `=SUM(${colLetter}${startRowProviders}:${colLetter}${endRowProviders})` };
+        }
+
+        const totalColLetter = getColumnLetter(totalCols);
+        totalSumRow.getCell(totalCols).value = { formula: `=SUM(${totalColLetter}${startRowProviders}:${totalColLetter}${endRowProviders})` };
+
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = totalSumRow.getCell(col);
+          cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+          cell.border = {
+            top: { style: 'medium', color: { argb: '1B365D' } },
+            bottom: { style: 'double', color: { argb: '1B365D' } }
+          };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+            if (col === totalCols) {
+              cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
+            }
           }
         }
       }
@@ -843,8 +1507,7 @@ export default function DailyOperationalReportBoard() {
     }
   };
 
-  // Helper helper to convert numeric column index to Excel column letter
-
+  // Helper to convert numeric column index to Excel column letter
   const getColumnLetter = (colIndex) => {
     let temp = colIndex;
     let letter = '';
@@ -866,21 +1529,41 @@ export default function DailyOperationalReportBoard() {
 
       toast.loading("Generating monthly Excel matrix workbook...", { id: 'excel-toast' });
       const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Legacy Clinics & Diagnostics';
+      workbook.lastModifiedBy = user?.full_name || 'System User';
+      workbook.created = new Date();
 
-      const sheet = workbook.addWorksheet('Monthly Matrix');
-      sheet.views = [{ showGridLines: true }];
-
-      // Configure dynamic columns
       const days = getDaysArray();
       const totalCols = 2 + days.length + 1;
 
-      // Set Column Widths directly to prevent header offset conflicts
-      sheet.getColumn(1).width = 28;
-      sheet.getColumn(2).width = 24;
-      days.forEach(day => {
-        sheet.getColumn(2 + day).width = 6;
+      const filteredProviders = config.providers.filter(p => {
+        const specName = p.specialization_name || p.specialization || 'Other';
+        if (monthlyDeptFilter !== 'ALL' && specName !== monthlyDeptFilter) return false;
+        if (monthlySearchQuery.trim() !== '') {
+          const query = monthlySearchQuery.toLowerCase();
+          return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
+        }
+        return true;
       });
-      sheet.getColumn(totalCols).width = 12;
+
+      let maxNameWidth = 28;
+      let maxSpecWidth = 24;
+      filteredProviders.forEach(p => {
+        if (p.name && p.name.length > maxNameWidth) maxNameWidth = p.name.length;
+        const spec = p.specialization_name || p.specialization || 'Other';
+        if (spec.length > maxSpecWidth) maxSpecWidth = spec.length;
+      });
+
+      // SHEET 1: Monthly Matrix
+      const sheet = workbook.addWorksheet('Monthly Matrix');
+      sheet.views = [{ showGridLines: true, state: 'frozen', xSplit: 2, ySplit: 4 }];
+
+      sheet.getColumn(1).width = Math.min(maxNameWidth + 4, 50);
+      sheet.getColumn(2).width = Math.min(maxSpecWidth + 4, 38);
+      days.forEach(day => {
+        sheet.getColumn(2 + day).width = 6.5;
+      });
+      sheet.getColumn(totalCols).width = 14;
 
       // Title Block
       const titleCell = sheet.getCell('A1');
@@ -889,17 +1572,27 @@ export default function DailyOperationalReportBoard() {
       titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet.getRow(1).height = 35;
+      sheet.getRow(1).height = 36;
 
       const subCell = sheet.getCell('A2');
-      subCell.value = `INSTITUTIONAL MONTHLY OPERATIONAL MATRIX (Period: ${selectedMonth}/${selectedYear})`;
+      const isBoth = monthlyMetricMode === 'both';
+      const isFollowUpOnly = monthlyMetricMode === 'followup';
+      subCell.value = isBoth
+        ? `INSTITUTIONAL MONTHLY OPERATIONAL MATRIX - Total Completed (Walk-ins and Follow-Ups) (Period: ${selectedMonth}/${selectedYear})`
+        : `INSTITUTIONAL MONTHLY OPERATIONAL MATRIX (Period: ${selectedMonth}/${selectedYear})`;
       sheet.mergeCells(2, 1, 2, totalCols);
       subCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
       subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4A90E2' } };
       subCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet.getRow(2).height = 25;
+      sheet.getRow(2).height = 26;
 
-      sheet.getRow(3).height = 15;
+      const metaCell = sheet.getCell('A3');
+      metaCell.value = `Report Extracted: ${new Date().toLocaleString()} | User: ${user?.full_name || 'System User'} | Mode: ${monthlyMetricMode} | Filter: ${monthlyDeptFilter}`;
+      sheet.mergeCells(3, 1, 3, totalCols);
+      metaCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: '475569' } };
+      metaCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+      metaCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(3).height = 20;
 
       // Table Header Row 4
       const headerRow = sheet.getRow(4);
@@ -927,63 +1620,170 @@ export default function DailyOperationalReportBoard() {
 
       let currentRow = 5;
       const startRowProviders = 5;
-
-      // Filter providers to match EXACTLY what's on the screen
-      const filteredProviders = config.providers.filter(p => {
-        const specName = p.specialization_name || p.specialization || 'Other';
-        if (monthlyDeptFilter !== 'ALL' && specName !== monthlyDeptFilter) return false;
-        if (monthlySearchQuery.trim() !== '') {
-          const query = monthlySearchQuery.toLowerCase();
-          return p.name.toLowerCase().includes(query) || specName.toLowerCase().includes(query);
-        }
-        return true;
-      });
+      const consultRowIndices = [];
+      const followUpRowIndices = [];
+      const providerTotalRowIndices = [];
 
       filteredProviders.forEach(provider => {
         const specName = provider.specialization_name || provider.specialization || 'Other';
-        const r = sheet.getRow(currentRow);
-        r.height = 20;
-        r.getCell(1).value = provider.name;
-        r.getCell(2).value = specName;
-
-        days.forEach(day => {
-          const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const record = monthlyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
-          r.getCell(2 + day).value = record ? record.patient_count : 0;
-        });
-
         const startColLetter = getColumnLetter(3);
         const endColLetter = getColumnLetter(2 + days.length);
 
-        // Dynamic Excel Formula for Row SUM
-        r.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${currentRow}:${endColLetter}${currentRow})` };
+        if (isBoth) {
+          // Row 1: Consultations (Walk-ins)
+          const r1 = sheet.getRow(currentRow);
+          const r1Index = currentRow;
+          consultRowIndices.push(r1Index);
+          r1.height = 21;
+          r1.getCell(1).value = provider.name;
+          r1.getCell(2).value = specName;
 
-        for (let col = 1; col <= totalCols; col++) {
-          const cell = r.getCell(col);
-          cell.font = { name: 'Calibri', size: 10 };
-          cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
-          if (col > 2) {
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            const val = cell.value;
-            if (col === totalCols) {
-              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
-              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
-            } else if (typeof val === 'number' && val > 0) {
-              cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
-            } else if (val === 0) {
-              cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
-              cell.value = '-';
+          days.forEach(day => {
+            const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const record = monthlyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
+            r1.getCell(2 + day).value = record ? (Number(record.patient_count) || 0) : 0;
+          });
+          r1.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${r1Index}:${endColLetter}${r1Index})` };
+
+          for (let col = 1; col <= totalCols; col++) {
+            const cell = r1.getCell(col);
+            cell.font = { name: 'Calibri', size: 10 };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } };
+            cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              const val = cell.value;
+              if (col === totalCols) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
+              } else if (typeof val === 'number' && val > 0) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
+              } else if (val === 0) {
+                cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
+                cell.value = '-';
+              }
             }
           }
+          currentRow++;
+
+          // Row 2: Follow-Up (Smaller row)
+          const r2 = sheet.getRow(currentRow);
+          const r2Index = currentRow;
+          followUpRowIndices.push(r2Index);
+          r2.height = 17;
+          r2.getCell(1).value = '   ↳ Follow-Up';
+          r2.getCell(2).value = 'Follow-Up';
+
+          days.forEach(day => {
+            const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const record = monthlyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
+            r2.getCell(2 + day).value = record ? (Number(record.follow_up_count) || 0) : 0;
+          });
+          r2.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${r2Index}:${endColLetter}${r2Index})` };
+
+          for (let col = 1; col <= totalCols; col++) {
+            const cell = r2.getCell(col);
+            cell.font = { name: 'Calibri', size: 9, italic: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0FDFA' } };
+            cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              const val = cell.value;
+              if (col === totalCols) {
+                cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0F766E' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E6FFFA' } };
+              } else if (typeof val === 'number' && val > 0) {
+                cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0D9488' } };
+              } else if (val === 0) {
+                cell.font = { name: 'Calibri', size: 9, color: { argb: '94A3B8' } };
+                cell.value = '-';
+              }
+            }
+          }
+          currentRow++;
+
+          // Row 3: Total Summation of both
+          const r3 = sheet.getRow(currentRow);
+          const r3Index = currentRow;
+          providerTotalRowIndices.push(r3Index);
+          r3.height = 20;
+          r3.getCell(1).value = '   Total (Walk-ins & Follow-ups)';
+          r3.getCell(2).value = 'Total';
+
+          days.forEach(day => {
+            const colLetter = getColumnLetter(2 + day);
+            r3.getCell(2 + day).value = { formula: `=${colLetter}${r1Index}+${colLetter}${r2Index}` };
+          });
+          const totalColLetter = getColumnLetter(totalCols);
+          r3.getCell(totalCols).value = { formula: `=${totalColLetter}${r1Index}+${totalColLetter}${r2Index}` };
+
+          for (let col = 1; col <= totalCols; col++) {
+            const cell = r3.getCell(col);
+            cell.font = { name: 'Calibri', size: 10, bold: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+            cell.border = { bottom: { style: 'medium', color: { argb: 'CBD5E1' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              if (col === totalCols) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+              }
+            }
+          }
+          currentRow++;
+
+        } else {
+          // Single row per provider
+          const r = sheet.getRow(currentRow);
+          r.height = 21;
+          r.getCell(1).value = provider.name;
+          r.getCell(2).value = specName;
+
+          days.forEach(day => {
+            const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const record = monthlyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
+            let val = 0;
+            if (record) {
+              val = isFollowUpOnly ? (Number(record.follow_up_count) || 0) : (Number(record.patient_count) || 0);
+            }
+            r.getCell(2 + day).value = val;
+          });
+
+          r.getCell(totalCols).value = { formula: `=SUM(${startColLetter}${currentRow}:${endColLetter}${currentRow})` };
+
+          const rowBg = currentRow % 2 === 0 ? 'F9FAFB' : 'FFFFFF';
+          for (let col = 1; col <= totalCols; col++) {
+            const cell = r.getCell(col);
+            cell.font = { name: 'Calibri', size: 10 };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+            cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
+            if (col > 2) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.numFmt = '#,##0;(#,##0);"-"';
+              const val = cell.value;
+              if (col === totalCols) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
+              } else if (typeof val === 'number' && val > 0) {
+                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
+              } else if (val === 0) {
+                cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
+                cell.value = '-';
+              }
+            }
+          }
+          currentRow++;
         }
-        currentRow++;
       });
 
       const endRowProviders = Math.max(startRowProviders, currentRow - 1);
 
-      // Divider
+      // Section Divider
       const dividerRow = sheet.getRow(currentRow);
-      dividerRow.height = 22;
+      dividerRow.height = 24;
       dividerRow.getCell(1).value = 'NURSING AND WARD PROCEDURES';
       sheet.mergeCells(currentRow, 1, currentRow, totalCols);
       for (let c = 1; c <= totalCols; c++) {
@@ -996,7 +1796,6 @@ export default function DailyOperationalReportBoard() {
 
       const startRowProcedures = currentRow;
 
-      // Filter procedures to match EXACTLY what's on the screen
       const filteredProcedures = config.defaultProcedureMetrics.filter(metricName => {
         if (monthlyDeptFilter !== 'ALL') return false;
         if (monthlySearchQuery.trim() !== '') {
@@ -1005,11 +1804,10 @@ export default function DailyOperationalReportBoard() {
         return true;
       });
 
-      // Procedure Rows Insertion
       filteredProcedures.forEach(metricName => {
         const isNameInput = metricName.toLowerCase().includes('assistant');
         const r = sheet.getRow(currentRow);
-        r.height = 20;
+        r.height = 21;
         r.getCell(1).value = metricName;
         r.getCell(2).value = 'PROCEDURES';
 
@@ -1029,9 +1827,11 @@ export default function DailyOperationalReportBoard() {
           r.getCell(totalCols).value = 'N/A';
         }
 
+        const rowBg = currentRow % 2 === 0 ? 'F9FAFB' : 'FFFFFF';
         for (let col = 1; col <= totalCols; col++) {
           const cell = r.getCell(col);
           cell.font = { name: 'Calibri', size: 10 };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1043,13 +1843,14 @@ export default function DailyOperationalReportBoard() {
               cell.font = { name: 'Calibri', size: 9, italic: true };
               if (val === '0' || val === '') {
                 cell.value = '-';
-                cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
+                cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
               }
             } else if (typeof val === 'number' && val > 0) {
               cell.font = { name: 'Calibri', size: 10, bold: true };
+              cell.numFmt = '#,##0;(#,##0);"-"';
             } else if (val === 0) {
               cell.value = '-';
-              cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
+              cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
             }
           }
         }
@@ -1058,33 +1859,121 @@ export default function DailyOperationalReportBoard() {
 
       const endRowProcedures = Math.max(startRowProcedures, currentRow - 1);
 
-      // Bottom Total row using SUM columns formula dynamically
-      const totalSumRow = sheet.getRow(currentRow);
-      totalSumRow.height = 26;
-      totalSumRow.getCell(1).value = 'TOTAL COMPLETED PATIENTS';
-      sheet.mergeCells(currentRow, 1, currentRow, 2);
+      // Bottom Total Rows
+      if (isBoth) {
+        // Row 1: TOTAL CONSULTATIONS (WALK-INS)
+        const rowConsultSum = sheet.getRow(currentRow);
+        const rConsultIndex = currentRow;
+        rowConsultSum.height = 24;
+        rowConsultSum.getCell(1).value = 'TOTAL CONSULTATIONS (WALK-INS)';
+        sheet.mergeCells(currentRow, 1, currentRow, 2);
 
-      for (let d = 1; d <= days.length; d++) {
-        const colIndex = 2 + d;
-        const colLetter = getColumnLetter(colIndex);
-        totalSumRow.getCell(colIndex).value = { formula: `=SUM(${colLetter}${startRowProviders}:${colLetter}${endRowProviders})` };
-      }
+        for (let d = 1; d <= days.length; d++) {
+          const colIndex = 2 + d;
+          const colLetter = getColumnLetter(colIndex);
+          const formula = consultRowIndices.length > 0 ? `=SUM(${consultRowIndices.map(i => `${colLetter}${i}`).join(',')})` : '=0';
+          rowConsultSum.getCell(colIndex).value = { formula };
+        }
+        const totalColLetter = getColumnLetter(totalCols);
+        rowConsultSum.getCell(totalCols).value = { formula: consultRowIndices.length > 0 ? `=SUM(${consultRowIndices.map(i => `${totalColLetter}${i}`).join(',')})` : '=0' };
 
-      const totalColLetter = getColumnLetter(totalCols);
-      totalSumRow.getCell(totalCols).value = { formula: `=SUM(${totalColLetter}${startRowProviders}:${totalColLetter}${endRowProviders})` };
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = rowConsultSum.getCell(col);
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EBF3FD' } };
+          cell.border = { top: { style: 'thin', color: { argb: 'CAD9EA' } }, bottom: { style: 'thin', color: { argb: 'CAD9EA' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+          }
+        }
+        currentRow++;
 
-      for (let col = 1; col <= totalCols; col++) {
-        const cell = totalSumRow.getCell(col);
-        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
-        cell.border = {
-          top: { style: 'thin', color: { argb: '1B365D' } },
-          bottom: { style: 'double', color: { argb: '1B365D' } }
-        };
-        if (col > 2) {
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          if (col === totalCols) {
-            cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
+        // Row 2: TOTAL FOLLOW-UPS (Smaller row)
+        const rowFollowSum = sheet.getRow(currentRow);
+        const rFollowIndex = currentRow;
+        rowFollowSum.height = 22;
+        rowFollowSum.getCell(1).value = 'TOTAL FOLLOW-UPS';
+        sheet.mergeCells(currentRow, 1, currentRow, 2);
+
+        for (let d = 1; d <= days.length; d++) {
+          const colIndex = 2 + d;
+          const colLetter = getColumnLetter(colIndex);
+          const formula = followUpRowIndices.length > 0 ? `=SUM(${followUpRowIndices.map(i => `${colLetter}${i}`).join(',')})` : '=0';
+          rowFollowSum.getCell(colIndex).value = { formula };
+        }
+        rowFollowSum.getCell(totalCols).value = { formula: followUpRowIndices.length > 0 ? `=SUM(${followUpRowIndices.map(i => `${totalColLetter}${i}`).join(',')})` : '=0' };
+
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = rowFollowSum.getCell(col);
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '0F766E' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0FDFA' } };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+          }
+        }
+        currentRow++;
+
+        // Row 3: Total Completed (Walk-ins and Follow-Ups)
+        const totalSumRow = sheet.getRow(currentRow);
+        totalSumRow.height = 28;
+        totalSumRow.getCell(1).value = 'Total Completed (Walk-ins and Follow-Ups)';
+        sheet.mergeCells(currentRow, 1, currentRow, 2);
+
+        for (let d = 1; d <= days.length; d++) {
+          const colIndex = 2 + d;
+          const colLetter = getColumnLetter(colIndex);
+          totalSumRow.getCell(colIndex).value = { formula: `=${colLetter}${rConsultIndex}+${colLetter}${rFollowIndex}` };
+        }
+        totalSumRow.getCell(totalCols).value = { formula: `=${totalColLetter}${rConsultIndex}+${totalColLetter}${rFollowIndex}` };
+
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = totalSumRow.getCell(col);
+          cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+          cell.border = {
+            top: { style: 'medium', color: { argb: '1B365D' } },
+            bottom: { style: 'double', color: { argb: '1B365D' } }
+          };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+            if (col === totalCols) {
+              cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
+            }
+          }
+        }
+      } else {
+        const totalSumRow = sheet.getRow(currentRow);
+        totalSumRow.height = 28;
+        totalSumRow.getCell(1).value = isFollowUpOnly ? 'TOTAL FOLLOW-UPS' : 'TOTAL COMPLETED (WALK-INS)';
+        sheet.mergeCells(currentRow, 1, currentRow, 2);
+
+        for (let d = 1; d <= days.length; d++) {
+          const colIndex = 2 + d;
+          const colLetter = getColumnLetter(colIndex);
+          totalSumRow.getCell(colIndex).value = { formula: `=SUM(${colLetter}${startRowProviders}:${colLetter}${endRowProviders})` };
+        }
+
+        const totalColLetter = getColumnLetter(totalCols);
+        totalSumRow.getCell(totalCols).value = { formula: `=SUM(${totalColLetter}${startRowProviders}:${totalColLetter}${endRowProviders})` };
+
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = totalSumRow.getCell(col);
+          cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+          cell.border = {
+            top: { style: 'medium', color: { argb: '1B365D' } },
+            bottom: { style: 'double', color: { argb: '1B365D' } }
+          };
+          if (col > 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.numFmt = '#,##0;(#,##0);"-"';
+            if (col === totalCols) {
+              cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
+            }
           }
         }
       }
@@ -1182,7 +2071,7 @@ export default function DailyOperationalReportBoard() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-250 shadow-inner w-full md:w-auto justify-between">
                 <button
                   onClick={() => adjustDate(-1)}
@@ -1204,6 +2093,26 @@ export default function DailyOperationalReportBoard() {
                 </button>
               </div>
 
+              {/* Metric Selector (Both, Consultations, Follow-Ups) */}
+              <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                {[
+                  { val: 'both', label: 'Both' },
+                  { val: 'consultation', label: 'Consultations' },
+                  { val: 'followup', label: 'Follow-Ups' }
+                ].map(({ val, label }) => (
+                  <button
+                    key={val}
+                    onClick={() => setDailyMetricMode(val)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      dailyMetricMode === val
+                        ? 'bg-[#005696] text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
 
               <button
                 onClick={handleExportDailyXlsx}

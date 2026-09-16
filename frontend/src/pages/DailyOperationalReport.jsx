@@ -418,7 +418,7 @@ export default function DailyOperationalReport() {
         
         days.forEach((day, index) => {
           const record = weeklyData.metrics.find(m => m.provider_id === provider.id && m.report_date === day);
-          r.getCell(2 + index + 1).value = record ? record.patient_count : 0;
+          r.getCell(2 + index + 1).value = record ? (Number(record.patient_count || 0) + Number(record.follow_up_count || 0)) : 0;
         });
         
         const startColLetter = getColumnLetter(3);
@@ -645,7 +645,7 @@ export default function DailyOperationalReport() {
         days.forEach(day => {
           const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const record = monthlyData.metrics.find(m => m.provider_id === provider.id && m.report_date === dateStr);
-          r.getCell(2 + day).value = record ? record.patient_count : 0;
+          r.getCell(2 + day).value = record ? (Number(record.patient_count || 0) + Number(record.follow_up_count || 0)) : 0;
         });
         
         const startColLetter = getColumnLetter(3);
