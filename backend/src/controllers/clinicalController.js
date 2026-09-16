@@ -5847,13 +5847,17 @@ exports.createRFQ = async (req, res) => {
     }
 
     // 5. Open portal sessions & notify vendors ONLY if publishing
-    const portalSessions = [];
-    if (!isDraft && validVendorIds.length > 0) {
-      await helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, portalSessions);
-    }
-
+    // NOTE: Fire-and-forget — email sending can take 30-45s per vendor via SMTP.
+    // We respond immediately after DB writes; notifications run in the background
+    // to avoid a 504 Gateway Timeout on the client.
     const msg = isDraft ? 'RFQ draft saved successfully.' : 'Tender / RFQ created & opened for bidding successfully.';
-    res.json({ success: true, message: msg, data: { id: rfqId, reference_no: refNo, status: initialStatus, portalSessions } });
+    res.json({ success: true, message: msg, data: { id: rfqId, reference_no: refNo, status: initialStatus } });
+
+    if (!isDraft && validVendorIds.length > 0) {
+      helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, []).catch(err =>
+        console.error('[createRFQ] Background portal/email notification failed:', err)
+      );
+    }
   } catch (error) {
     console.error('Error in createRFQ:', error);
     res.status(500).json({ success: false, message: error.message || 'Internal server error' });
@@ -5938,16 +5942,19 @@ exports.updateRFQ = async (req, res) => {
       }
     }
 
-    const portalSessions = [];
+    // NOTE: Fire-and-forget — respond immediately, send emails in background
+    // to avoid 504 Gateway Timeout when SMTP is slow.
+    res.json({ success: true, message: targetStatus === 'Collecting' ? 'Tender published & opened for bidding successfully.' : 'RFQ updated successfully.', data: { id, status: targetStatus } });
+
     if (isPublishing || (targetStatus === 'Collecting' && oldRFQ.status === 'Draft')) {
       const { rows: sups } = await db.query('SELECT vendor_id FROM rfq_suppliers WHERE rfq_id = $1', [id]);
       const validVendorIds = sups.map(s => s.vendor_id);
       if (validVendorIds.length > 0) {
-        await helperNotifyAndOpenPortalsForRFQ(id, rfqTitle, oldRFQ.reference_no, rfqCategory, rfqNotes, validVendorIds, portalSessions);
+        helperNotifyAndOpenPortalsForRFQ(id, rfqTitle, oldRFQ.reference_no, rfqCategory, rfqNotes, validVendorIds, []).catch(err =>
+          console.error('[updateRFQ] Background portal/email notification failed:', err)
+        );
       }
     }
-
-    res.json({ success: true, message: targetStatus === 'Collecting' ? 'Tender published & opened for bidding successfully.' : 'RFQ updated successfully.', data: { id, status: targetStatus, portalSessions } });
   } catch (error) {
     console.error('Error in updateRFQ:', error);
     res.status(500).json({ success: false, message: error.message || 'Internal server error' });
