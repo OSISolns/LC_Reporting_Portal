@@ -440,7 +440,7 @@ export default function DailyOperationalReport() {
               cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
             } else if (val === 0) {
               cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
-              cell.value = '-';
+              cell.value = 0;
             }
           }
         }
@@ -507,13 +507,13 @@ export default function DailyOperationalReport() {
             } else if (isNameInput) {
               cell.font = { name: 'Calibri', size: 9, italic: true };
               if (val === '0' || val === '') {
-                cell.value = '-';
+                cell.value = '';
                 cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
               }
             } else if (typeof val === 'number' && val > 0) {
               cell.font = { name: 'Calibri', size: 10, bold: true };
             } else if (val === 0) {
-              cell.value = '-';
+              cell.value = 0;
               cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
             }
           }
@@ -667,7 +667,7 @@ export default function DailyOperationalReport() {
               cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
             } else if (val === 0) {
               cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
-              cell.value = '-';
+              cell.value = 0;
             }
           }
         }
@@ -727,13 +727,13 @@ export default function DailyOperationalReport() {
             } else if (isNameInput) {
               cell.font = { name: 'Calibri', size: 9, italic: true };
               if (val === '0' || val === '') {
-                cell.value = '-';
+                cell.value = '';
                 cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
               }
             } else if (typeof val === 'number' && val > 0) {
               cell.font = { name: 'Calibri', size: 10, bold: true };
             } else if (val === 0) {
-              cell.value = '-';
+              cell.value = 0;
               cell.font = { name: 'Calibri', size: 10, color: { argb: 'BBBBBB' } };
             }
           }

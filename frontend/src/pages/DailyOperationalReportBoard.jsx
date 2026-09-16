@@ -491,7 +491,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               if (col === 4) {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
@@ -499,7 +499,7 @@ export default function DailyOperationalReportBoard() {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
               } else {
                 cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
-                cell.value = '-';
+                cell.value = 0;
               }
             }
           }
@@ -522,7 +522,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               if (col === 4) {
                 cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0F766E' } };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E6FFFA' } };
@@ -530,7 +530,7 @@ export default function DailyOperationalReportBoard() {
                 cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0D9488' } };
               } else {
                 cell.font = { name: 'Calibri', size: 9, color: { argb: '94A3B8' } };
-                cell.value = '-';
+                cell.value = 0;
               }
             }
           }
@@ -553,7 +553,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'medium', color: { argb: 'CBD5E1' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               if (col === 4) {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
@@ -581,7 +581,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               if (col === 4) {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F7FD' } };
@@ -589,7 +589,7 @@ export default function DailyOperationalReportBoard() {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
               } else {
                 cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
-                cell.value = '-';
+                cell.value = 0;
               }
             }
           }
@@ -653,15 +653,16 @@ export default function DailyOperationalReportBoard() {
             } else if (isNameInput) {
               cell.font = { name: 'Calibri', size: 9, italic: true };
               if (v === '0' || v === '') {
-                cell.value = '-';
+                cell.value = '';
                 cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
               }
             } else if (typeof v === 'number' && v > 0) {
               cell.font = { name: 'Calibri', size: 10, bold: true };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
             } else if (v === 0) {
-              cell.value = '-';
+              cell.value = 0;
               cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
+              cell.numFmt = '#,##0';
             }
           }
         }
@@ -689,7 +690,7 @@ export default function DailyOperationalReportBoard() {
           cell.border = { top: { style: 'thin', color: { argb: 'CAD9EA' } }, bottom: { style: 'thin', color: { argb: 'CAD9EA' } } };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
           }
         }
         mCurrentRow++;
@@ -713,7 +714,7 @@ export default function DailyOperationalReportBoard() {
           cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
           }
         }
         mCurrentRow++;
@@ -737,7 +738,7 @@ export default function DailyOperationalReportBoard() {
           };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
             if (col === 4) {
               cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
             }
@@ -762,7 +763,7 @@ export default function DailyOperationalReportBoard() {
           };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
             if (col === 4) {
               cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
             }
@@ -913,7 +914,7 @@ export default function DailyOperationalReportBoard() {
           cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
           if (col >= 4) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
             const numVal = typeof cell.value === 'object' ? null : cell.value;
             if (numVal > 0) {
               cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
@@ -947,7 +948,7 @@ export default function DailyOperationalReportBoard() {
         };
         if (col >= 4) {
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          cell.numFmt = '#,##0;(#,##0);"-"';
+          cell.numFmt = '#,##0';
         }
       }
 
@@ -1017,7 +1018,7 @@ export default function DailyOperationalReportBoard() {
         if (!isNameInput) {
           c2.alignment = { horizontal: 'right', vertical: 'middle' };
           c2.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
-          c2.numFmt = '#,##0;(#,##0);"-"';
+          c2.numFmt = '#,##0';
         } else {
           c2.font = { name: 'Calibri', size: 10, italic: true };
         }
@@ -1171,7 +1172,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               const val = cell.value;
               if (col === totalCols) {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
@@ -1180,7 +1181,7 @@ export default function DailyOperationalReportBoard() {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
               } else if (val === 0) {
                 cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
-                cell.value = '-';
+                cell.value = 0;
               }
             }
           }
@@ -1207,7 +1208,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               const val = cell.value;
               if (col === totalCols) {
                 cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0F766E' } };
@@ -1216,7 +1217,7 @@ export default function DailyOperationalReportBoard() {
                 cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0D9488' } };
               } else if (val === 0) {
                 cell.font = { name: 'Calibri', size: 9, color: { argb: '94A3B8' } };
-                cell.value = '-';
+                cell.value = 0;
               }
             }
           }
@@ -1244,7 +1245,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'medium', color: { argb: 'CBD5E1' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               if (col === totalCols) {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
@@ -1279,7 +1280,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               const val = cell.value;
               if (col === totalCols) {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
@@ -1288,7 +1289,7 @@ export default function DailyOperationalReportBoard() {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
               } else if (val === 0) {
                 cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
-                cell.value = '-';
+                cell.value = 0;
               }
             }
           }
@@ -1358,15 +1359,16 @@ export default function DailyOperationalReportBoard() {
             } else if (isNameInput) {
               cell.font = { name: 'Calibri', size: 9, italic: true };
               if (val === '0' || val === '') {
-                cell.value = '-';
+                cell.value = '';
                 cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
               }
             } else if (typeof val === 'number' && val > 0) {
               cell.font = { name: 'Calibri', size: 10, bold: true };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
             } else if (val === 0) {
-              cell.value = '-';
+              cell.value = 0;
               cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
+              cell.numFmt = '#,##0';
             }
           }
         }
@@ -1400,7 +1402,7 @@ export default function DailyOperationalReportBoard() {
           cell.border = { top: { style: 'thin', color: { argb: 'CAD9EA' } }, bottom: { style: 'thin', color: { argb: 'CAD9EA' } } };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
           }
         }
         currentRow++;
@@ -1427,7 +1429,7 @@ export default function DailyOperationalReportBoard() {
           cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
           }
         }
         currentRow++;
@@ -1455,7 +1457,7 @@ export default function DailyOperationalReportBoard() {
           };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
             if (col === totalCols) {
               cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
             }
@@ -1486,7 +1488,7 @@ export default function DailyOperationalReportBoard() {
           };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
             if (col === totalCols) {
               cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
             }
@@ -1652,7 +1654,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               const val = cell.value;
               if (col === totalCols) {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
@@ -1661,7 +1663,7 @@ export default function DailyOperationalReportBoard() {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
               } else if (val === 0) {
                 cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
-                cell.value = '-';
+                cell.value = 0;
               }
             }
           }
@@ -1689,7 +1691,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               const val = cell.value;
               if (col === totalCols) {
                 cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0F766E' } };
@@ -1698,7 +1700,7 @@ export default function DailyOperationalReportBoard() {
                 cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0D9488' } };
               } else if (val === 0) {
                 cell.font = { name: 'Calibri', size: 9, color: { argb: '94A3B8' } };
-                cell.value = '-';
+                cell.value = 0;
               }
             }
           }
@@ -1726,7 +1728,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'medium', color: { argb: 'CBD5E1' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               if (col === totalCols) {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
@@ -1762,7 +1764,7 @@ export default function DailyOperationalReportBoard() {
             cell.border = { bottom: { style: 'thin', color: { argb: 'E2E8F0' } } };
             if (col > 2) {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
               const val = cell.value;
               if (col === totalCols) {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '1B365D' } };
@@ -1771,7 +1773,7 @@ export default function DailyOperationalReportBoard() {
                 cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '107C41' } };
               } else if (val === 0) {
                 cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
-                cell.value = '-';
+                cell.value = 0;
               }
             }
           }
@@ -1842,14 +1844,14 @@ export default function DailyOperationalReportBoard() {
             } else if (isNameInput) {
               cell.font = { name: 'Calibri', size: 9, italic: true };
               if (val === '0' || val === '') {
-                cell.value = '-';
+                cell.value = 0;
                 cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
               }
             } else if (typeof val === 'number' && val > 0) {
               cell.font = { name: 'Calibri', size: 10, bold: true };
-              cell.numFmt = '#,##0;(#,##0);"-"';
+              cell.numFmt = '#,##0';
             } else if (val === 0) {
-              cell.value = '-';
+              cell.value = 0;
               cell.font = { name: 'Calibri', size: 10, color: { argb: '94A3B8' } };
             }
           }
@@ -1884,7 +1886,7 @@ export default function DailyOperationalReportBoard() {
           cell.border = { top: { style: 'thin', color: { argb: 'CAD9EA' } }, bottom: { style: 'thin', color: { argb: 'CAD9EA' } } };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
           }
         }
         currentRow++;
@@ -1911,7 +1913,7 @@ export default function DailyOperationalReportBoard() {
           cell.border = { bottom: { style: 'thin', color: { argb: 'CCFBF1' } } };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
           }
         }
         currentRow++;
@@ -1939,7 +1941,7 @@ export default function DailyOperationalReportBoard() {
           };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
             if (col === totalCols) {
               cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
             }
@@ -1970,7 +1972,7 @@ export default function DailyOperationalReportBoard() {
           };
           if (col > 2) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.numFmt = '#,##0;(#,##0);"-"';
+            cell.numFmt = '#,##0';
             if (col === totalCols) {
               cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '00FF00' } };
             }
