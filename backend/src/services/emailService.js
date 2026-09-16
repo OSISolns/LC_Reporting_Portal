@@ -9,7 +9,7 @@ const mailFrom        = `"${mailFromName}" <${mailFromAddress}>`;
 const smtpHost = process.env.SMTP_HOST || 'mail.legacyclinics.rw';
 const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
 const smtpUser = process.env.SMTP_USER || 'no-reply@legacyclinics.rw';
-const smtpPass = process.env.SMTP_PASS || '';
+const smtpPass = process.env.SMTP_PASS || 'AMAhamba@2110';
 const isSecure = smtpPort === 465;
 
 // Log resolved SMTP config on startup (mask password)
