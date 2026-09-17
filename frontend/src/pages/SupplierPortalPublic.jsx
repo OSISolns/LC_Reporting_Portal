@@ -37,7 +37,7 @@ const SupplierPortalPublic = () => {
   }, []);
 
   const fetchOpenRFQs = async (tokenVal) => {
-    const token = tokenVal || verifiedToken;
+    const token = (typeof tokenVal === 'string' && tokenVal.trim()) ? tokenVal.trim() : verifiedToken;
     if (!token) return;
     try {
       setLoadingRFQs(true);

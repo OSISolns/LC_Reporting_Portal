@@ -4509,7 +4509,7 @@ exports.getPublicOpenRFQs = async (req, res) => {
 
     const vendorId = sessionRows[0].vendor_id;
 
-    // Retrieve only RFQs where the authenticated vendor is invited
+    // Retrieve all active RFQs ('Collecting') open for bidding
     const { rows: rfqs } = await db.query(`
       SELECT r.id, r.reference_no, r.title, r.category, r.department, r.status, r.pricing_mode, r.currency, r.created_at, r.notes,
         COUNT(DISTINCT ri.id) as item_count, 
@@ -4518,10 +4518,9 @@ exports.getPublicOpenRFQs = async (req, res) => {
       LEFT JOIN rfq_items ri ON r.id = ri.rfq_id 
       LEFT JOIN rfq_suppliers rs ON r.id = rs.rfq_id 
       WHERE r.status = 'Collecting'
-        AND r.id IN (SELECT rfq_id FROM rfq_suppliers WHERE vendor_id = $1)
       GROUP BY r.id 
       ORDER BY r.created_at DESC
-    `, [vendorId]);
+    `);
     
     for (const rfq of rfqs) {
       const { rows: items } = await db.query('SELECT id, item_name, quantity, unit, quantity_label FROM rfq_items WHERE rfq_id = $1 ORDER BY line_no', [rfq.id]);
@@ -4729,16 +4728,15 @@ exports.verifySupplierToken = async (req, res) => {
     const session = rows[0];
     let requestedItems = (() => { try { return JSON.parse(session.items || '[]'); } catch { return []; } })();
 
-    // If session items are empty, auto-fetch requested items from active invited RFQs for this vendor
-    if (requestedItems.length === 0 && session.vendor_id) {
+    // If session items are empty, auto-fetch requested items from active Collecting RFQs
+    if (requestedItems.length === 0) {
       const { rows: rfqItems } = await db.query(`
         SELECT ri.id, ri.item_name, ri.quantity, ri.unit, ri.quantity_label, r.title as rfq_title, r.reference_no
         FROM rfq_items ri
         JOIN rfqs r ON ri.rfq_id = r.id
-        JOIN rfq_suppliers rs ON r.id = rs.rfq_id
-        WHERE rs.vendor_id = $1 AND r.status = 'Collecting'
+        WHERE r.status = 'Collecting'
         ORDER BY r.created_at DESC, ri.line_no
-      `, [session.vendor_id]);
+      `);
 
       requestedItems = rfqItems.map(i => ({
         name: i.item_name,
