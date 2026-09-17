@@ -3812,6 +3812,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           reference_no   TEXT UNIQUE,
           title          TEXT NOT NULL,
           category       TEXT,
+          department     TEXT,
           requisition_id INTEGER REFERENCES requisitions(id) ON DELETE SET NULL,
           status         TEXT NOT NULL DEFAULT 'Draft',
           pricing_mode   TEXT NOT NULL DEFAULT 'total',
@@ -3824,6 +3825,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           updated_at     DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         )
       `);
+      try { await client.execute(`ALTER TABLE rfqs ADD COLUMN department TEXT`); } catch (e) {}
       await client.execute(`CREATE INDEX IF NOT EXISTS idx_rfqs_status ON rfqs(status)`);
       await client.execute(`CREATE INDEX IF NOT EXISTS idx_rfqs_category ON rfqs(category)`);
 

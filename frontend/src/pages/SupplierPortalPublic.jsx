@@ -634,8 +634,13 @@ const SupplierPortalPublic = () => {
                             <h3 className="text-lg font-black text-slate-900 leading-snug">{rfq.title}</h3>
                             <div className="flex items-center gap-4 mt-2 text-slate-500 text-xs font-semibold">
                               <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px] uppercase font-bold text-slate-600">
-                                {rfq.category.replace('_', ' ')}
+                                {rfq.category ? rfq.category.replace('_', ' ') : 'General'}
                               </span>
+                              {rfq.department && (
+                                <span className="bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded text-[10px] uppercase font-bold">
+                                  Dept: {rfq.department}
+                                </span>
+                              )}
                               <span className="flex items-center gap-1">
                                 <Calendar size={12} /> {new Date(rfq.created_at).toLocaleDateString()}
                               </span>
@@ -928,7 +933,14 @@ const SupplierPortalPublic = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900">RFQ Bid Proposal</h3>
-                  <p className="text-xs text-blue-600 font-semibold tracking-wider uppercase mt-0.5">{bidModalRFQ.reference_no}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-xs text-blue-600 font-semibold tracking-wider uppercase">{bidModalRFQ.reference_no}</p>
+                    {bidModalRFQ.department && (
+                      <span className="bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                        Dept: {bidModalRFQ.department}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -970,14 +982,10 @@ const SupplierPortalPublic = () => {
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3 font-semibold text-slate-700">
                   <div className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] shrink-0 font-bold">1</span>
-                    <p>Ensure your company profile and trade licenses are valid.</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] shrink-0 font-bold">2</span>
                     <p>Format your unit pricing clearly matching the requested UOMs.</p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] shrink-0 font-bold">3</span>
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] shrink-0 font-bold">2</span>
                     <p>Send your PDF quotation to: <strong className="text-blue-600 font-bold">procurement@legacyclinics.rw</strong></p>
                   </div>
                 </div>

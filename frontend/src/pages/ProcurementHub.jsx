@@ -910,6 +910,7 @@ export default function ProcurementHub() {
       const payload = {
         title: rfqTitle.trim() || `Draft RFQ - ${new Date().toLocaleDateString()}`,
         category: rfqCategory,
+        department: rfqDepartment,
         notes: rfqNotes,
         invitedVendorIds: rfqInvitedVendors.map(vId => parseInt(vId, 10)),
         items: rfqItems,
@@ -953,6 +954,7 @@ export default function ProcurementHub() {
     setEditingRFQ(rfq);
     setRfqTitle(rfq.title || '');
     setRfqCategory(rfq.category || 'medical_supplies');
+    setRfqDepartment(rfq.department || '');
     setRfqNotes(rfq.notes || '');
     api.get(`/clinical/inventory/rfqs/${rfq.id}`).then(res => {
       if (res.data.success && res.data.data) {
@@ -3799,6 +3801,11 @@ export default function ProcurementHub() {
                             <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md bg-teal-50 text-teal-700 border border-teal-150">
                               {formatCategoryLabel(rfqDetails?.rfq.category)}
                             </span>
+                            {rfqDetails?.rfq.department && (
+                              <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md bg-indigo-50 text-indigo-700 border border-indigo-150">
+                                Dept: {rfqDetails.rfq.department}
+                              </span>
+                            )}
                             <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md ${rfqDetails?.rfq.status === 'Draft' ? 'bg-slate-100 text-slate-650' :
                                 rfqDetails?.rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
                                   rfqDetails?.rfq.status === 'UnderReview' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' :

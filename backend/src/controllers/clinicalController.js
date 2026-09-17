@@ -4511,7 +4511,7 @@ exports.getPublicOpenRFQs = async (req, res) => {
 
     // Retrieve only RFQs where the authenticated vendor is invited
     const { rows: rfqs } = await db.query(`
-      SELECT r.id, r.reference_no, r.title, r.category, r.status, r.pricing_mode, r.currency, r.created_at, r.notes,
+      SELECT r.id, r.reference_no, r.title, r.category, r.department, r.status, r.pricing_mode, r.currency, r.created_at, r.notes,
         COUNT(DISTINCT ri.id) as item_count, 
         COUNT(DISTINCT rs.vendor_id) as supplier_count 
       FROM rfqs r 
@@ -5697,6 +5697,9 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
         `;
       }
 
+      const { rows: rfqDeptRows } = await db.query("SELECT department FROM rfqs WHERE id = $1", [rfqId]);
+      const rfqDepartment = rfqDeptRows[0]?.department || '';
+
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
           <div style="background-color: #1e3a8a; padding: 20px; text-align: center; color: white; border-radius: 8px 8px 0 0;">
@@ -5711,6 +5714,7 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
               <p style="margin: 4px 0;"><strong>Tender Title:</strong> ${rfqTitle}</p>
               <p style="margin: 4px 0;"><strong>Reference No:</strong> ${refNo}</p>
               <p style="margin: 4px 0;"><strong>Category:</strong> ${category || 'Medical Supplies'}</p>
+              ${rfqDepartment ? `<p style="margin: 4px 0;"><strong>Requesting Department:</strong> ${rfqDepartment}</p>` : ''}
               ${notes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${notes}</p>` : ''}
             </div>
 
@@ -5760,7 +5764,7 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
 
 exports.createRFQ = async (req, res) => {
   try {
-    const { title, category, requisitionId, location, notes, invitedVendorIds, items, status, password, ccProcurement } = req.body;
+    const { title, category, department, requisitionId, location, notes, invitedVendorIds, items, status, password, ccProcurement } = req.body;
     const isDraft = status === 'Draft';
     
     // If publishing, strictly validate password confirmation, title, invited suppliers, and items
@@ -5817,10 +5821,10 @@ exports.createRFQ = async (req, res) => {
     const initialStatus = isDraft ? 'Draft' : 'Collecting';
     const refNo = `RFQ-${Date.now()}`;
     const { rows } = await db.query(`
-      INSERT INTO rfqs (reference_no, title, category, requisition_id, location, notes, created_by, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO rfqs (reference_no, title, category, department, requisition_id, location, notes, created_by, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id, reference_no
-    `, [refNo, rfqTitle, category || null, requisitionId ? parseInt(requisitionId, 10) : null, location || 'Kigali', notes || '', createdByUserId, initialStatus]);
+    `, [refNo, rfqTitle, category || null, department || null, requisitionId ? parseInt(requisitionId, 10) : null, location || 'Kigali', notes || '', createdByUserId, initialStatus]);
 
     const rfqId = rows[0].id;
 
@@ -5884,7 +5888,7 @@ exports.createRFQ = async (req, res) => {
 exports.updateRFQ = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, category, requisitionId, location, notes, invitedVendorIds, items, status, password, ccProcurement } = req.body;
+    const { title, category, department, requisitionId, location, notes, invitedVendorIds, items, status, password, ccProcurement } = req.body;
 
     const { rows: rfqRows } = await db.query('SELECT * FROM rfqs WHERE id = $1', [id]);
     if (rfqRows.length === 0) {
@@ -5923,13 +5927,14 @@ exports.updateRFQ = async (req, res) => {
 
     const rfqTitle = title !== undefined ? title.trim() : oldRFQ.title;
     const rfqCategory = category !== undefined ? category : oldRFQ.category;
+    const rfqDepartment = department !== undefined ? department : oldRFQ.department;
     const rfqNotes = notes !== undefined ? notes : oldRFQ.notes;
 
     await db.query(`
       UPDATE rfqs 
-      SET title = $1, category = $2, notes = $3, status = $4, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-      WHERE id = $5
-    `, [rfqTitle, rfqCategory, rfqNotes, targetStatus, id]);
+      SET title = $1, category = $2, department = $3, notes = $4, status = $5, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+      WHERE id = $6
+    `, [rfqTitle, rfqCategory, rfqDepartment, rfqNotes, targetStatus, id]);
 
     // Update invited vendors if provided
     if (Array.isArray(invitedVendorIds)) {
