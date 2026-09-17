@@ -32,6 +32,27 @@ const monthLabel = (ym) => {
   catch { return ym; }
 };
 
+const formatCategoryLabel = (cat) => {
+  if (!cat) return 'Medical Supplies';
+  const MAP = {
+    medical_supplies: 'Medical Supplies',
+    nursing_reagents: 'Nursing Consumables',
+    nursing_consumables: 'Nursing Consumables',
+    dental_clinic_consumables: 'Dental Clinic Consumables',
+    dental_lab_consumables: 'Dental Lab Consumables',
+    dental_lab_Equipments: 'Dental Lab Equipments',
+    laboratory: 'Laboratory Consumables',
+    laboratory_consumables: 'Laboratory Consumables',
+    laboratory_reagents: 'Laboratory Reagents',
+    medical_equipments: 'Medical Equipments',
+    it_consumables: 'IT Consumables',
+    it_equipments: 'IT Equipments',
+    general_logistics: 'General Logistics'
+  };
+  if (MAP[cat]) return MAP[cat];
+  return cat.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+};
+
 const STATUS_COLORS = {
   Draft: 'slate', Pending: 'amber', Sent: 'indigo', Approved: 'teal',
   Received: 'emerald', Completed: 'emerald', Rejected: 'rose', Cancelled: 'rose',
@@ -3776,7 +3797,7 @@ export default function ProcurementHub() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md bg-teal-50 text-teal-700 border border-teal-150">
-                              {rfqDetails?.rfq.category ? rfqDetails.rfq.category.replace('_', ' ') : 'Category'}
+                              {formatCategoryLabel(rfqDetails?.rfq.category)}
                             </span>
                             <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md ${rfqDetails?.rfq.status === 'Draft' ? 'bg-slate-100 text-slate-650' :
                                 rfqDetails?.rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
@@ -4077,7 +4098,7 @@ export default function ProcurementHub() {
                                   <td className="p-4 font-bold text-slate-800">{rfq.title}</td>
                                   <td className="p-4">
                                     <span className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-md bg-slate-50 text-slate-600 border border-slate-150">
-                                      {(rfq.category || 'medical_supplies').replace('_', ' ')}
+                                      {formatCategoryLabel(rfq.category)}
                                     </span>
                                   </td>
                                   <td className="p-4 text-center font-bold">{rfq.supplier_count}</td>
@@ -4235,9 +4256,15 @@ export default function ProcurementHub() {
                       className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-bold outline-none focus:border-teal-350 focus:bg-white transition-all"
                     >
                       <option value="medical_supplies">Medical Supplies</option>
-                      <option value="nursing_reagents">Nursing Reagents</option>
-                      <option value="laboratory">Laboratory Consumables</option>
-                      <option value="dental">Dental Equipment</option>
+                      <option value="nursing_consumables">Nursing Consumables</option>
+                      <option value="dental_clinics_consumables">Dental Clinics Consumables</option>
+                      <option value="dental_lab_consumables">Dental Lab Consumables</option>
+                      <option value="dental_equipment">Dental Equipment</option>
+                      <option value="laboratory_consumables">Laboratory Consumables</option>
+                      <option value="laboratory_reagents">Laboratory Reagents</option>
+                      <option value="medical_equipments">Medical Equipments</option>
+                      <option value="it_consumables">IT Consumables</option>
+                      <option value="it_equipments">IT Equipments</option>
                       <option value="general_logistics">General Logistics</option>
                     </select>
                   </div>
