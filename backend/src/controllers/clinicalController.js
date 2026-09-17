@@ -4,6 +4,7 @@ const QRCode = require('qrcode');
 const ExcelJS = require('exceljs');
 const ClinicalObservation = require('../models/clinicalObservation');
 const db = require('../config/db');
+const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const itemClassificationTraining = require('../data/itemClassificationTraining.json');
 
@@ -5611,7 +5612,7 @@ exports.getRFQById = async (req, res) => {
   }
 };
 
-async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, portalSessions = []) {
+async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, portalSessions = [], ccProcurement = true) {
   // Fetch items for this RFQ to attach to portal sessions & email notification
   const { rows: rfqItemsRows } = await db.query(
     "SELECT item_name, quantity, unit, quantity_label FROM rfq_items WHERE rfq_id = $1 ORDER BY line_no",
@@ -5738,12 +5739,13 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
       `;
       
       // Support multiple comma-separated emails per vendor
+      const ccAddress = (ccProcurement !== false && ccProcurement !== 'false') ? 'procurement@legacyclinics.rw' : undefined;
       const recipientEmails = vendorObj.email.split(',').map(e => e.trim()).filter(Boolean);
       for (const recipientEmail of recipientEmails) {
         try {
           await emailService.sendEmail({
             to: recipientEmail,
-            cc: 'procurement@legacyclinics.rw',
+            cc: ccAddress,
             subject: emailSubject,
             html: emailHtml,
             text: `Dear ${vendorObj.name},\n\nYou are invited to tender for: ${rfqTitle} (${refNo}).\nAccess Token: ${tokenCode}\nLog in at: ${portalUrl}`
@@ -5758,11 +5760,26 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
 
 exports.createRFQ = async (req, res) => {
   try {
-    const { title, category, requisitionId, location, notes, invitedVendorIds, items, status } = req.body;
+    const { title, category, requisitionId, location, notes, invitedVendorIds, items, status, password, ccProcurement } = req.body;
     const isDraft = status === 'Draft';
     
-    // If publishing, strictly validate title, invited suppliers, and items
+    // If publishing, strictly validate password confirmation, title, invited suppliers, and items
     if (!isDraft) {
+      if (!password) {
+        return res.status(400).json({ success: false, message: 'Password confirmation is required to launch/publish a Tender / RFQ.' });
+      }
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({ success: false, message: 'User authentication required.' });
+      }
+      const { rows: uCheckRows } = await db.query("SELECT password_hash FROM users WHERE id = $1", [req.user.id]);
+      if (uCheckRows.length === 0) {
+        return res.status(401).json({ success: false, message: 'User account not found.' });
+      }
+      const isPasswordMatch = await bcrypt.compare(password, uCheckRows[0].password_hash);
+      if (!isPasswordMatch) {
+        return res.status(401).json({ success: false, message: 'Invalid password confirmation. Tender launch aborted.' });
+      }
+
       if (!title || !title.trim()) {
         return res.status(400).json({ success: false, message: 'Tender title is required to publish.' });
       }
@@ -5854,7 +5871,7 @@ exports.createRFQ = async (req, res) => {
     res.json({ success: true, message: msg, data: { id: rfqId, reference_no: refNo, status: initialStatus } });
 
     if (!isDraft && validVendorIds.length > 0) {
-      helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, []).catch(err =>
+      helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, [], ccProcurement !== false).catch(err =>
         console.error('[createRFQ] Background portal/email notification failed:', err)
       );
     }
@@ -5867,7 +5884,7 @@ exports.createRFQ = async (req, res) => {
 exports.updateRFQ = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, category, requisitionId, location, notes, invitedVendorIds, items, status } = req.body;
+    const { title, category, requisitionId, location, notes, invitedVendorIds, items, status, password, ccProcurement } = req.body;
 
     const { rows: rfqRows } = await db.query('SELECT * FROM rfqs WHERE id = $1', [id]);
     if (rfqRows.length === 0) {
@@ -5878,6 +5895,21 @@ exports.updateRFQ = async (req, res) => {
     const targetStatus = status || oldRFQ.status;
 
     if (isPublishing) {
+      if (!password) {
+        return res.status(400).json({ success: false, message: 'Password confirmation is required to launch/publish a Tender / RFQ.' });
+      }
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({ success: false, message: 'User authentication required.' });
+      }
+      const { rows: uCheckRows } = await db.query("SELECT password_hash FROM users WHERE id = $1", [req.user.id]);
+      if (uCheckRows.length === 0) {
+        return res.status(401).json({ success: false, message: 'User account not found.' });
+      }
+      const isPasswordMatch = await bcrypt.compare(password, uCheckRows[0].password_hash);
+      if (!isPasswordMatch) {
+        return res.status(401).json({ success: false, message: 'Invalid password confirmation. Tender launch aborted.' });
+      }
+
       if (!title && !oldRFQ.title) {
         return res.status(400).json({ success: false, message: 'Tender title is required to publish.' });
       }
@@ -5950,7 +5982,7 @@ exports.updateRFQ = async (req, res) => {
       const { rows: sups } = await db.query('SELECT vendor_id FROM rfq_suppliers WHERE rfq_id = $1', [id]);
       const validVendorIds = sups.map(s => s.vendor_id);
       if (validVendorIds.length > 0) {
-        helperNotifyAndOpenPortalsForRFQ(id, rfqTitle, oldRFQ.reference_no, rfqCategory, rfqNotes, validVendorIds, []).catch(err =>
+        helperNotifyAndOpenPortalsForRFQ(id, rfqTitle, oldRFQ.reference_no, rfqCategory, rfqNotes, validVendorIds, [], ccProcurement !== false).catch(err =>
           console.error('[updateRFQ] Background portal/email notification failed:', err)
         );
       }

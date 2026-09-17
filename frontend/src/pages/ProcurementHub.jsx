@@ -160,6 +160,10 @@ export default function ProcurementHub() {
   const [editingRFQ, setEditingRFQ] = useState(null);
   const [loadingRFQDetails, setLoadingRFQDetails] = useState(false);
   const [submittingRFQ, setSubmittingRFQ] = useState(false);
+  const [showRFQPasswordConfirmModal, setShowRFQPasswordConfirmModal] = useState(false);
+  const [rfqConfirmPassword, setRfqConfirmPassword] = useState('');
+  const [rfqPasswordError, setRfqPasswordError] = useState('');
+  const [ccProcurement, setCcProcurement] = useState(true);
   const excelInputRef = useRef(null);
 
   // RFQ Form States
@@ -852,7 +856,7 @@ export default function ProcurementHub() {
     reader.readAsBinaryString(file);
   };
 
-  const handleCreateRFQSubmit = async (e, targetStatus = 'Collecting') => {
+  const handleCreateRFQSubmit = async (e, targetStatus = 'Collecting', passwordOverride = null) => {
     if (e) e.preventDefault();
     const isDraft = targetStatus === 'Draft';
 
@@ -869,9 +873,18 @@ export default function ProcurementHub() {
         toast.error('Add at least one item line.');
         return;
       }
+
+      // To avoid duplication when Launching New Tender / RFQ, require user password confirmation
+      if (!passwordOverride) {
+        setRfqConfirmPassword('');
+        setRfqPasswordError('');
+        setShowRFQPasswordConfirmModal(true);
+        return;
+      }
     }
 
     setSubmittingRFQ(true);
+    setRfqPasswordError('');
     try {
       const payload = {
         title: rfqTitle.trim() || `Draft RFQ - ${new Date().toLocaleDateString()}`,
@@ -879,7 +892,9 @@ export default function ProcurementHub() {
         notes: rfqNotes,
         invitedVendorIds: rfqInvitedVendors.map(vId => parseInt(vId, 10)),
         items: rfqItems,
-        status: targetStatus
+        status: targetStatus,
+        password: passwordOverride || undefined,
+        ccProcurement
       };
 
       let res;
@@ -891,17 +906,23 @@ export default function ProcurementHub() {
 
       if (res.data.success) {
         toast.success(res.data.message || (isDraft ? 'RFQ draft saved.' : 'Tender published successfully.'));
+        setShowRFQPasswordConfirmModal(false);
         setShowCreateRFQModal(false);
         setEditingRFQ(null);
         setRfqTitle('');
         setRfqNotes('');
         setRfqInvitedVendors([]);
         setRfqItems([]);
+        setRfqConfirmPassword('');
         loadData(true);
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to save RFQ Tender.');
+      const errMsg = err.response?.data?.message || 'Failed to save RFQ Tender.';
+      if (showRFQPasswordConfirmModal || passwordOverride) {
+        setRfqPasswordError(errMsg);
+      }
+      toast.error(errMsg);
     } finally {
       setSubmittingRFQ(false);
     }
@@ -4252,6 +4273,33 @@ export default function ProcurementHub() {
                   <p className="text-[10px] text-slate-450 font-bold">Selected: {rfqInvitedVendors.length} supplier(s) invited.</p>
                 </div>
 
+                {/* Email Carbon Copy (CC) Option */}
+                <div className="space-y-1">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-450">Email Carbon Copy (CC) Option</label>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="ccProcurementRadio"
+                        checked={ccProcurement === true}
+                        onChange={() => setCcProcurement(true)}
+                        className="text-teal-600 accent-teal-600 h-4 w-4"
+                      />
+                      <span>CC procurement@legacyclinics.rw on invitation emails</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="ccProcurementRadio"
+                        checked={ccProcurement === false}
+                        onChange={() => setCcProcurement(false)}
+                        className="text-teal-600 accent-teal-600 h-4 w-4"
+                      />
+                      <span>No CC (Suppliers only)</span>
+                    </label>
+                  </div>
+                </div>
+
                 {/* RFQ Items lines */}
                 <div className="border-t border-slate-100 pt-4 space-y-3">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -4421,6 +4469,142 @@ export default function ProcurementHub() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── CONFIRM TENDER LAUNCH PASSWORD MODAL ─── */}
+      <AnimatePresence>
+        {showRFQPasswordConfirmModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { if (!submittingRFQ) setShowRFQPasswordConfirmModal(false); }}
+              className="absolute inset-0 bg-slate-900/80 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col text-slate-800 z-10 border border-slate-100"
+            >
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-100 mb-4">
+                <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl border border-amber-200">
+                  <KeyRound size={22} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Confirm Tender Launch</h3>
+                  <p className="text-xs text-slate-500 font-medium">Verify your identity before launching</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { if (!submittingRFQ) setShowRFQPasswordConfirmModal(false); }}
+                  className="ml-auto text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* User Identity Banner */}
+                <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-teal-600 text-white font-black flex items-center justify-center text-sm shadow-xs shrink-0">
+                    {(user?.fullName || user?.username || 'U')[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] uppercase font-black tracking-wider text-slate-400">User Launching Tender</p>
+                    <p className="text-xs font-bold text-slate-800 truncate">{user?.fullName || user?.username}</p>
+                    <p className="text-[10px] text-slate-400 font-semibold truncate">Role: <span className="capitalize">{user?.role || 'Procurement User'}</span></p>
+                  </div>
+                </div>
+
+                {/* Carbon Copy (CC) Option in Confirmation Modal */}
+                <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-1.5">
+                  <label className="text-[10px] uppercase font-black tracking-wider text-slate-400">Carbon Copy (CC) Preference</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modalCcProcurement"
+                        checked={ccProcurement === true}
+                        onChange={() => setCcProcurement(true)}
+                        className="text-teal-600 accent-teal-600 h-4 w-4"
+                      />
+                      <span>CC procurement@legacyclinics.rw</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modalCcProcurement"
+                        checked={ccProcurement === false}
+                        onChange={() => setCcProcurement(false)}
+                        className="text-teal-600 accent-teal-600 h-4 w-4"
+                      />
+                      <span>Do not CC procurement email</span>
+                    </label>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  To prevent duplicate RFQ/Tender launches, please enter your account password to confirm launching <strong>"{rfqTitle}"</strong>.
+                </p>
+
+                {rfqPasswordError && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl flex items-center gap-2 font-bold">
+                    <AlertCircle size={15} className="shrink-0 text-rose-600" />
+                    <span>{rfqPasswordError}</span>
+                  </div>
+                )}
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!rfqConfirmPassword) {
+                      setRfqPasswordError('Please enter your password.');
+                      return;
+                    }
+                    handleCreateRFQSubmit(e, 'Collecting', rfqConfirmPassword);
+                  }}
+                  className="space-y-3"
+                >
+                  <div className="space-y-1">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-500">Your Password</label>
+                    <input
+                      type="password"
+                      autoFocus
+                      placeholder="Enter account password..."
+                      value={rfqConfirmPassword}
+                      onChange={(e) => {
+                        setRfqConfirmPassword(e.target.value);
+                        if (rfqPasswordError) setRfqPasswordError('');
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-bold outline-none focus:border-teal-500 focus:bg-white transition-all"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      disabled={submittingRFQ}
+                      onClick={() => setShowRFQPasswordConfirmModal(false)}
+                      className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2.5 rounded-xl font-bold text-xs cursor-pointer disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submittingRFQ || !rfqConfirmPassword}
+                      className="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
+                    >
+                      {submittingRFQ ? <Loader2 size={14} className="animate-spin" /> : <Gavel size={14} />}
+                      {submittingRFQ ? 'Verifying & Launching…' : 'Confirm & Launch Tender'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </motion.div>
           </div>
         )}
