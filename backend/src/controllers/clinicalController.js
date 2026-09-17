@@ -4511,14 +4511,11 @@ exports.getPublicOpenRFQs = async (req, res) => {
 
     // Retrieve all active RFQs ('Collecting') open for bidding
     const { rows: rfqs } = await db.query(`
-      SELECT r.id, r.reference_no, r.title, r.category, r.department, r.status, r.pricing_mode, r.currency, r.created_at, r.notes,
-        COUNT(DISTINCT ri.id) as item_count, 
-        COUNT(DISTINCT rs.vendor_id) as supplier_count 
+      SELECT r.*,
+        (SELECT COUNT(ri.id) FROM rfq_items ri WHERE ri.rfq_id = r.id) as item_count, 
+        (SELECT COUNT(DISTINCT rs.vendor_id) FROM rfq_suppliers rs WHERE rs.rfq_id = r.id) as supplier_count 
       FROM rfqs r 
-      LEFT JOIN rfq_items ri ON r.id = ri.rfq_id 
-      LEFT JOIN rfq_suppliers rs ON r.id = rs.rfq_id 
-      WHERE r.status = 'Collecting'
-      GROUP BY r.id 
+      WHERE LOWER(r.status) = 'collecting'
       ORDER BY r.created_at DESC
     `);
     
