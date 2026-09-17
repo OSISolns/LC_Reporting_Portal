@@ -85,6 +85,9 @@ const SupplierPortalPublic = () => {
         setRequestedItems(reqItems);
         setVerifiedToken(verifiedTokenCode);
         setTokenVerified(true);
+        if (res.data.vendorName) {
+          setSupplierName(res.data.vendorName);
+        }
         toast.success(`Welcome, ${res.data.vendorName}!`);
         // Immediately fetch the RFQs that this supplier is authorized to see
         fetchOpenRFQs(verifiedTokenCode);
@@ -479,26 +482,34 @@ const SupplierPortalPublic = () => {
               </div>
             </div>
           ) : (
-            /* Tab Switcher for Authenticated Vendors */
-            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <button
-                onClick={() => setCurrentTab('tenders')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${currentTab === 'tenders'
-                    ? 'bg-[#005696] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                <Gavel size={14} /> Open Tenders & RFQs ({openRFQs.length})
-              </button>
-              <button
-                onClick={() => setCurrentTab('delivery')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${currentTab === 'delivery'
-                    ? 'bg-[#005696] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                <LockOpen size={14} /> Delivery Intake
-              </button>
+            /* Tab Switcher & Vendor Badge for Authenticated Vendors */
+            <div className="flex flex-wrap items-center gap-3">
+              {supplierName && (
+                <div className="flex items-center gap-1.5 bg-blue-50 text-[#005696] border border-blue-200/80 px-3 py-1.5 rounded-lg text-xs font-bold shadow-2xs">
+                  <Building2 size={14} className="text-[#005696]" />
+                  <span>{supplierName}</span>
+                </div>
+              )}
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button
+                  onClick={() => setCurrentTab('tenders')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${currentTab === 'tenders'
+                      ? 'bg-[#005696] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                >
+                  <Gavel size={14} /> Open Tenders & RFQs ({openRFQs.length})
+                </button>
+                <button
+                  onClick={() => setCurrentTab('delivery')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${currentTab === 'delivery'
+                      ? 'bg-[#005696] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                >
+                  <LockOpen size={14} /> Delivery Intake
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -761,12 +772,12 @@ const SupplierPortalPublic = () => {
                       </motion.button>
                     </div>
 
-                    {/* Requested Items Summary */}
-                    {requestedItems.length > 0 && (
+                    {/* Requested Items Summary (Awarded Items) */}
+                    {requestedItems.length > 0 ? (
                       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
                         <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
                           <CheckCircle className="w-5 h-5 text-emerald-600" />
-                          Requested Items ({requestedItems.length})
+                          Awarded Items for Delivery ({requestedItems.length})
                         </h3>
                         <div className="flex flex-wrap gap-2">
                           {requestedItems.map((item, idx) => (
@@ -778,6 +789,15 @@ const SupplierPortalPublic = () => {
                             </span>
                           ))}
                         </div>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
+                        <p className="text-xs font-bold text-slate-600">
+                          No specific items have been awarded/assigned to your company for delivery intake yet.
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          If you are bidding on active tenders, please check the <strong>Open Tenders & RFQs</strong> tab above.
+                        </p>
                       </div>
                     )}
 

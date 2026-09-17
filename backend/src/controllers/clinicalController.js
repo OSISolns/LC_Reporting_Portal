@@ -4728,27 +4728,6 @@ exports.verifySupplierToken = async (req, res) => {
     const session = rows[0];
     let requestedItems = (() => { try { return JSON.parse(session.items || '[]'); } catch { return []; } })();
 
-    // If session items are empty, auto-fetch requested items from active Collecting RFQs
-    if (requestedItems.length === 0) {
-      const { rows: rfqItems } = await db.query(`
-        SELECT ri.id, ri.item_name, ri.quantity, ri.unit, ri.quantity_label, r.title as rfq_title, r.reference_no
-        FROM rfq_items ri
-        JOIN rfqs r ON ri.rfq_id = r.id
-        WHERE r.status = 'Collecting'
-        ORDER BY r.created_at DESC, ri.line_no
-      `);
-
-      requestedItems = rfqItems.map(i => ({
-        name: i.item_name,
-        item_name: i.item_name,
-        quantity: i.quantity,
-        unit: i.unit || 'Units',
-        quantity_label: i.quantity_label || '',
-        rfq_title: i.rfq_title,
-        reference_no: i.reference_no
-      }));
-    }
-
     res.json({ success: true, sessionId: session.id, vendorName: session.vendor_name, requestedItems });
   } catch (error) {
     console.error('Error in verifySupplierToken:', error);
