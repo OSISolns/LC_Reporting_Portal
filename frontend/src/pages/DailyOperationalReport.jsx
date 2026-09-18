@@ -264,14 +264,6 @@ export default function DailyOperationalReport() {
 
   // Submit Daily Report
   const handleSaveReport = async () => {
-    // Check if user is a nurse and selecting a past date
-    const dateObj = new Date();
-    const offset = dateObj.getTimezoneOffset() * 60000;
-    const localToday = new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
-    if (['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < localToday) {
-      toast.error('Nurses are not authorized to modify past reports.');
-      return;
-    }
     try {
       setSaving(true);
 
@@ -911,15 +903,7 @@ export default function DailyOperationalReport() {
               </div>
             </div>
 
-            {['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0] && (
-              <div className="bg-sky-50 p-4 rounded-3xl border border-sky-200/80 shadow-sm flex items-center gap-3 text-sky-900 animate-fadeIn">
-                <AlertCircle className="text-sky-600 shrink-0" size={20} />
-                <div className="text-xs">
-                  <span className="font-extrabold block uppercase tracking-wider text-sky-900">Read-Only Mode</span>
-                  <span className="font-semibold text-sky-700/90">Nurses are only authorized to log and submit operational counts for the current day. Changes to past reports are restricted.</span>
-                </div>
-              </div>
-            )}
+
 
             {loading ? (
               // Loading Skeleton
@@ -984,7 +968,7 @@ export default function DailyOperationalReport() {
                                   placeholder="0"
                                   value={entryMetrics[provider.id] !== undefined ? entryMetrics[provider.id] : ''}
                                   onChange={(e) => handleMetricChange(provider.id, e.target.value)}
-                                  disabled={['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                                  disabled={false}
                                   className="w-24 text-right font-black text-sm text-sky-850 border-2 border-sky-200/80 rounded-xl pl-2 pr-7 py-1.5 focus:border-sky-500 focus:ring-0 bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                                   title="Consultations"
                                 />
@@ -997,7 +981,7 @@ export default function DailyOperationalReport() {
                                   placeholder="0"
                                   value={entryFollowUps[provider.id] !== undefined ? entryFollowUps[provider.id] : ''}
                                   onChange={(e) => handleFollowUpChange(provider.id, e.target.value)}
-                                  disabled={['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                                  disabled={false}
                                   className="w-24 text-right font-black text-sm text-teal-700 border-2 border-teal-200/80 rounded-xl pl-2 pr-7 py-1.5 focus:border-teal-400 focus:ring-0 bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                                   title="Follow-ups"
                                 />
@@ -1042,7 +1026,7 @@ export default function DailyOperationalReport() {
                             placeholder={isNameInput ? 'e.g. Denyse, Rachel' : '0'}
                             value={value}
                             onChange={(e) => handleLogChange(metricName, e.target.value)}
-                            disabled={['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                            disabled={false}
                             className="w-full text-xs font-bold text-slate-700 border-2 border-slate-200 rounded-xl px-4 py-3 focus:border-sky-500 focus:ring-0 bg-slate-50/20 focus:bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                           />
                         </div>
@@ -1116,7 +1100,7 @@ export default function DailyOperationalReport() {
               {/* Save Trigger Button */}
               <button
                 onClick={handleSaveReport}
-                disabled={saving || loading || (['nurse', 'chef-nurse'].includes(user?.role) && selectedDate < new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0])}
+                disabled={saving || loading}
                 className="w-full bg-[#0284c7] hover:bg-[#0369a1] disabled:bg-slate-200 disabled:text-slate-400 text-white py-4 px-6 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-200 shadow-md hover:shadow-lg shadow-sky-500/10 flex items-center justify-center gap-2"
               >
                 {saving ? (
