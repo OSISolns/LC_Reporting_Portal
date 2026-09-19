@@ -22,12 +22,9 @@ import {
   FileSpreadsheet,
   Search,
   Filter,
-  X,
-  ToggleLeft,
-  ToggleRight,
-  Shield
+  X
 } from 'lucide-react';
-import { getReportConfig, getReportSettings, updateReportSettings, getDailyReport, saveDailyReport, getMonthlyReport, getWeeklyReport } from '../api/reports';
+import { getReportConfig, getDailyReport, saveDailyReport, getMonthlyReport, getWeeklyReport } from '../api/reports';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
@@ -68,16 +65,13 @@ export default function DailyOperationalReport() {
   const [entryFollowUps, setEntryFollowUps] = useState({}); // providerId -> followUpCount
   const [entryLogs, setEntryLogs] = useState({}); // metricName -> metricValue
   const [saving, setSaving] = useState(false);
-  const [restrictPastReports, setRestrictPastReports] = useState(true);
-  const [updatingSettings, setUpdatingSettings] = useState(false);
 
   // Authorization check for past daily reports
   const dateObj = new Date();
   const offset = dateObj.getTimezoneOffset() * 60000;
   const localToday = new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
   const isPastReport = selectedDate < localToday;
-  const isAdmin = user && user?.role === 'admin';
-  const isReadOnly = !isAdmin && isPastReport && restrictPastReports;
+  const isReadOnly = isPastReport;
 
   // Weekly Report state
   const [selectedWeekDate, setSelectedWeekDate] = useState(new Date().toISOString().split('T')[0]);
@@ -90,17 +84,14 @@ export default function DailyOperationalReport() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [monthlyData, setMonthlyData] = useState(null);
 
-  // Load config and report settings on mount
+  // Load config on mount
   useEffect(() => {
     const fetchConfig = async () => {
       try {
         setLoading(true);
-        const [configRes, settingsRes] = await Promise.allSettled([
-          getReportConfig(),
-          getReportSettings()
-        ]);
-        if (configRes.status === 'fulfilled' && configRes.value.data?.success) {
-          const sorted = [...(configRes.value.data.data.providers || [])].sort((a, b) => {
+        const res = await getReportConfig();
+        if (res.data.success) {
+          const sorted = [...(res.data.data.providers || [])].sort((a, b) => {
             const getSpecializationRank = (spec) => {
               const s = (spec || '').toLowerCase();
               if (s.includes('physio')) return 4;
@@ -118,10 +109,7 @@ export default function DailyOperationalReport() {
             // tertiary sort: provider name
             return a.name.localeCompare(b.name);
           });
-          setConfig({ ...configRes.value.data.data, providers: sorted });
-        }
-        if (settingsRes.status === 'fulfilled' && settingsRes.value.data?.success) {
-          setRestrictPastReports(Boolean(settingsRes.value.data.data?.restrict_past_daily_reports));
+          setConfig({ ...res.data.data, providers: sorted });
         }
       } catch (err) {
         console.error('Failed to load report configurations:', err);
@@ -132,28 +120,6 @@ export default function DailyOperationalReport() {
     };
     fetchConfig();
   }, []);
-
-  const handleTogglePastReportRestriction = async () => {
-    if (!isAdmin) return;
-    try {
-      setUpdatingSettings(true);
-      const nextValue = !restrictPastReports;
-      const res = await updateReportSettings({ restrict_past_daily_reports: nextValue });
-      if (res.data.success) {
-        setRestrictPastReports(nextValue);
-        toast.success(
-          nextValue
-            ? 'Past report modification restricted for standard users.'
-            : 'Restriction disabled. Standard users can now modify past reports.'
-        );
-      }
-    } catch (err) {
-      console.error('Failed to update report settings:', err);
-      toast.error('Failed to update past report restriction setting.');
-    } finally {
-      setUpdatingSettings(false);
-    }
-  };
 
   // Fetch daily report whenever selectedDate changes
   useEffect(() => {
@@ -1141,34 +1107,6 @@ export default function DailyOperationalReport() {
                   </div>
                 </div>
               </div>
-
-              {/* Admin Policy Controls Card */}
-              {isAdmin && (
-                <div className="bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 space-y-2.5 shadow-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-                      <Shield size={12} /> Admin Policy Control
-                    </span>
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${restrictPastReports ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'}`}>
-                      {restrictPastReports ? 'Restriction ON' : 'Restriction OFF'}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-300 leading-relaxed font-medium">
-                    {restrictPastReports
-                      ? 'Standard users are blocked from editing past daily reports.'
-                      : 'Restriction is disabled. Standard users can alter past daily reports.'}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleTogglePastReportRestriction}
-                    disabled={updatingSettings}
-                    className="w-full mt-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-between transition-all duration-150 border border-slate-700 disabled:opacity-50"
-                  >
-                    <span>Toggle Past Edit Restriction</span>
-                    {restrictPastReports ? <ToggleRight size={20} className="text-amber-400" /> : <ToggleLeft size={20} className="text-slate-400" />}
-                  </button>
-                </div>
-              )}
 
               {/* Past Report Restriction Notice */}
               {isReadOnly && (

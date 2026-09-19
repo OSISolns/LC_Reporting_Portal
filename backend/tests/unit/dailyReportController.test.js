@@ -26,8 +26,7 @@ describe('DailyReport Controller Unit Tests', () => {
   });
 
   describe('saveDaily', () => {
-    it('should reject non-admin user modifying past reports when restriction setting is ON', async () => {
-      DailyReport.getSetting.mockResolvedValue('true');
+    it('should reject nurse user modifying past reports', async () => {
       req.user = { id: 1, role: 'nurse' };
       req.body = {
         report_date: '2020-01-01',
@@ -45,87 +44,64 @@ describe('DailyReport Controller Unit Tests', () => {
       expect(DailyReport.saveDaily).not.toHaveBeenCalled();
     });
 
-    it('should allow non-admin user modifying past reports when restriction setting is OFF', async () => {
-      DailyReport.getSetting.mockResolvedValue('false');
-      DailyReport.saveDaily.mockResolvedValue({ success: true });
-      req.user = { id: 1, role: 'nurse' };
+    it('should reject doctor role modifying past reports', async () => {
+      req.user = { id: 2, role: 'doctor' };
       req.body = {
         report_date: '2020-01-01',
-        metrics: [{ provider_id: 1, patient_count: 5 }],
-        logs: [{ metric_name: 'Minor', metric_value: '2' }]
+        metrics: [],
+        logs: []
       };
 
       await dailyReportController.saveDaily(req, res, next);
-
-      expect(DailyReport.saveDaily).toHaveBeenCalledWith(
-        '2020-01-01',
-        req.body.metrics,
-        req.body.logs
-      );
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: true })
-      );
-    });
-
-    it('should allow admin user to modify past reports regardless of setting', async () => {
-      DailyReport.getSetting.mockResolvedValue('true');
-      req.user = { id: 99, role: 'admin' };
-      req.body = {
-        report_date: '2020-01-01',
-        metrics: [{ provider_id: 1, patient_count: 5 }],
-        logs: [{ metric_name: 'Minor', metric_value: '2' }]
-      };
-      DailyReport.saveDaily.mockResolvedValue({ success: true });
-
-      await dailyReportController.saveDaily(req, res, next);
-
-      expect(DailyReport.saveDaily).toHaveBeenCalledWith(
-        '2020-01-01',
-        req.body.metrics,
-        req.body.logs
-      );
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: true })
-      );
-    });
-  });
-
-  describe('getSettings & updateSettings', () => {
-    it('should return report settings', async () => {
-      DailyReport.getSetting.mockResolvedValue('true');
-
-      await dailyReportController.getSettings(req, res, next);
-
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        data: { restrict_past_daily_reports: true }
-      });
-    });
-
-    it('should block non-admin users from updating settings', async () => {
-      req.user = { id: 1, role: 'nurse' };
-      req.body = { restrict_past_daily_reports: false };
-
-      await dailyReportController.updateSettings(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(403);
-      expect(DailyReport.setSetting).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: 'Users are not authorized to modify past reports.'
+      });
+      expect(DailyReport.saveDaily).not.toHaveBeenCalled();
     });
 
-    it('should allow admin users to update report settings', async () => {
+    it('should reject admin user modifying past reports', async () => {
       req.user = { id: 99, role: 'admin' };
-      req.body = { restrict_past_daily_reports: false };
-      DailyReport.setSetting.mockResolvedValue({ key: 'restrict_past_daily_reports', value: 'false' });
-      DailyReport.getSetting.mockResolvedValue('false');
+      req.body = {
+        report_date: '2020-01-01',
+        metrics: [{ provider_id: 1, patient_count: 5 }],
+        logs: [{ metric_name: 'Minor', metric_value: '2' }]
+      };
 
-      await dailyReportController.updateSettings(req, res, next);
+      await dailyReportController.saveDaily(req, res, next);
 
-      expect(DailyReport.setSetting).toHaveBeenCalledWith('restrict_past_daily_reports', 'false');
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: 'Users are not authorized to modify past reports.'
+      });
+      expect(DailyReport.saveDaily).not.toHaveBeenCalled();
+    });
+
+    it('should allow user to save current/future daily reports', async () => {
+      const dateObj = new Date();
+      const offset = dateObj.getTimezoneOffset() * 60000;
+      const todayStr = new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
+
+      req.user = { id: 1, role: 'nurse' };
+      req.body = {
+        report_date: todayStr,
+        metrics: [{ provider_id: 1, patient_count: 5 }],
+        logs: [{ metric_name: 'Minor', metric_value: '2' }]
+      };
+      DailyReport.saveDaily.mockResolvedValue({ success: true });
+
+      await dailyReportController.saveDaily(req, res, next);
+
+      expect(DailyReport.saveDaily).toHaveBeenCalledWith(
+        todayStr,
+        req.body.metrics,
+        req.body.logs
+      );
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: true,
-          data: { restrict_past_daily_reports: false }
-        })
+        expect.objectContaining({ success: true })
       );
     });
   });
