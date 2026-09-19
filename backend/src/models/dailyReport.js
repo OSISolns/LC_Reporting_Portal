@@ -182,6 +182,38 @@ class DailyReport {
       defaultProcedureMetrics: config.defaultProcedureMetrics
     };
   }
+
+  /**
+   * Fetch a system setting value by key.
+   */
+  static async getSetting(key, defaultValue = 'true') {
+    try {
+      const { rows } = await db.query(
+        'SELECT value FROM system_settings WHERE key = $1',
+        [key]
+      );
+      if (rows && rows.length > 0) {
+        return rows[0].value;
+      }
+      return defaultValue;
+    } catch (err) {
+      console.error(`Error reading setting ${key}:`, err);
+      return defaultValue;
+    }
+  }
+
+  /**
+   * Upsert a system setting value by key.
+   */
+  static async setSetting(key, value) {
+    const valStr = String(value);
+    await db.query(
+      `INSERT INTO system_settings (key, value) VALUES ($1, $2)
+       ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value`,
+      [key, valStr]
+    );
+    return { key, value: valStr };
+  }
 }
 
 module.exports = DailyReport;

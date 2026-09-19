@@ -22,9 +22,12 @@ import {
   FileSpreadsheet,
   Search,
   Filter,
-  X
+  X,
+  ToggleLeft,
+  ToggleRight,
+  Shield
 } from 'lucide-react';
-import { getReportConfig, getDailyReport, saveDailyReport, getMonthlyReport, getWeeklyReport } from '../api/reports';
+import { getReportConfig, getReportSettings, updateReportSettings, getDailyReport, saveDailyReport, getMonthlyReport, getWeeklyReport } from '../api/reports';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
@@ -64,7 +67,16 @@ export default function DailyOperationalReport() {
   const [entryMetrics, setEntryMetrics] = useState({}); // providerId -> patientCount
   const [entryFollowUps, setEntryFollowUps] = useState({}); // providerId -> followUpCount
   const [entryLogs, setEntryLogs] = useState({}); // metricName -> metricValue
-  const [saving, setSaving] = useState(false);
+  const [restrictPastReports, setRestrictPastReports] = useState(true);
+  const [updatingSettings, setUpdatingSettings] = useState(false);
+
+  // Authorization check for past daily reports
+  const dateObj = new Date();
+  const offset = dateObj.getTimezoneOffset() * 60000;
+  const localToday = new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
+  const isPastReport = selectedDate < localToday;
+  const isAdmin = user && user?.role === 'admin';
+  const isReadOnly = !isAdmin && isPastReport && restrictPastReports;
 
   // Weekly Report state
   const [selectedWeekDate, setSelectedWeekDate] = useState(new Date().toISOString().split('T')[0]);
@@ -77,14 +89,17 @@ export default function DailyOperationalReport() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [monthlyData, setMonthlyData] = useState(null);
 
-  // Load config on mount
+  // Load config and report settings on mount
   useEffect(() => {
     const fetchConfig = async () => {
       try {
         setLoading(true);
-        const res = await getReportConfig();
-        if (res.data.success) {
-          const sorted = [...(res.data.data.providers || [])].sort((a, b) => {
+        const [configRes, settingsRes] = await Promise.allSettled([
+          getReportConfig(),
+          getReportSettings()
+        ]);
+        if (configRes.status === 'fulfilled' && configRes.value.data?.success) {
+          const sorted = [...(configRes.value.data.data.providers || [])].sort((a, b) => {
             const getSpecializationRank = (spec) => {
               const s = (spec || '').toLowerCase();
               if (s.includes('physio')) return 4;
@@ -102,7 +117,10 @@ export default function DailyOperationalReport() {
             // tertiary sort: provider name
             return a.name.localeCompare(b.name);
           });
-          setConfig({ ...res.data.data, providers: sorted });
+          setConfig({ ...configRes.value.data.data, providers: sorted });
+        }
+        if (settingsRes.status === 'fulfilled' && settingsRes.value.data?.success) {
+          setRestrictPastReports(Boolean(settingsRes.value.data.data?.restrict_past_daily_reports));
         }
       } catch (err) {
         console.error('Failed to load report configurations:', err);
@@ -113,6 +131,28 @@ export default function DailyOperationalReport() {
     };
     fetchConfig();
   }, []);
+
+  const handleTogglePastReportRestriction = async () => {
+    if (!isAdmin) return;
+    try {
+      setUpdatingSettings(true);
+      const nextValue = !restrictPastReports;
+      const res = await updateReportSettings({ restrict_past_daily_reports: nextValue });
+      if (res.data.success) {
+        setRestrictPastReports(nextValue);
+        toast.success(
+          nextValue
+            ? 'Past report modification restricted for standard users.'
+            : 'Restriction disabled. Standard users can now modify past reports.'
+        );
+      }
+    } catch (err) {
+      console.error('Failed to update report settings:', err);
+      toast.error('Failed to update past report restriction setting.');
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
 
   // Fetch daily report whenever selectedDate changes
   useEffect(() => {
@@ -264,6 +304,10 @@ export default function DailyOperationalReport() {
 
   // Submit Daily Report
   const handleSaveReport = async () => {
+    if (isReadOnly) {
+      toast.error('Users are not authorized to modify past reports.');
+      return;
+    }
     try {
       setSaving(true);
 
@@ -968,7 +1012,7 @@ export default function DailyOperationalReport() {
                                   placeholder="0"
                                   value={entryMetrics[provider.id] !== undefined ? entryMetrics[provider.id] : ''}
                                   onChange={(e) => handleMetricChange(provider.id, e.target.value)}
-                                  disabled={false}
+                                  disabled={isReadOnly}
                                   className="w-24 text-right font-black text-sm text-sky-850 border-2 border-sky-200/80 rounded-xl pl-2 pr-7 py-1.5 focus:border-sky-500 focus:ring-0 bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                                   title="Consultations"
                                 />
@@ -981,7 +1025,7 @@ export default function DailyOperationalReport() {
                                   placeholder="0"
                                   value={entryFollowUps[provider.id] !== undefined ? entryFollowUps[provider.id] : ''}
                                   onChange={(e) => handleFollowUpChange(provider.id, e.target.value)}
-                                  disabled={false}
+                                  disabled={isReadOnly}
                                   className="w-24 text-right font-black text-sm text-teal-700 border-2 border-teal-200/80 rounded-xl pl-2 pr-7 py-1.5 focus:border-teal-400 focus:ring-0 bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                                   title="Follow-ups"
                                 />
@@ -1026,7 +1070,7 @@ export default function DailyOperationalReport() {
                             placeholder={isNameInput ? 'e.g. Denyse, Rachel' : '0'}
                             value={value}
                             onChange={(e) => handleLogChange(metricName, e.target.value)}
-                            disabled={false}
+                            disabled={isReadOnly}
                             className="w-full text-xs font-bold text-slate-700 border-2 border-slate-200 rounded-xl px-4 py-3 focus:border-sky-500 focus:ring-0 bg-slate-50/20 focus:bg-white disabled:bg-slate-100 disabled:text-slate-400 transition-all duration-200"
                           />
                         </div>
@@ -1097,10 +1141,49 @@ export default function DailyOperationalReport() {
                 </div>
               </div>
 
+              {/* Admin Policy Controls Card */}
+              {isAdmin && (
+                <div className="bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 space-y-2.5 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                      <Shield size={12} /> Admin Policy Control
+                    </span>
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${restrictPastReports ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'}`}>
+                      {restrictPastReports ? 'Restriction ON' : 'Restriction OFF'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 leading-relaxed font-medium">
+                    {restrictPastReports
+                      ? 'Standard users are blocked from editing past daily reports.'
+                      : 'Restriction is disabled. Standard users can alter past daily reports.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleTogglePastReportRestriction}
+                    disabled={updatingSettings}
+                    className="w-full mt-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-between transition-all duration-150 border border-slate-700 disabled:opacity-50"
+                  >
+                    <span>Toggle Past Edit Restriction</span>
+                    {restrictPastReports ? <ToggleRight size={20} className="text-amber-400" /> : <ToggleLeft size={20} className="text-slate-400" />}
+                  </button>
+                </div>
+              )}
+
+              {/* Past Report Restriction Notice */}
+              {isReadOnly && (
+                <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3 text-amber-800 text-xs font-bold shadow-sm">
+                  <Lock className="text-amber-500 shrink-0 mt-0.5" size={16} />
+                  <div>
+                    <p className="font-extrabold uppercase tracking-wide text-[11px] text-amber-900">Past Daily Report Locked</p>
+                    <p className="text-[10px] text-amber-700/90 mt-0.5 leading-relaxed font-semibold">Users are not authorized to modify past reports. Editing and committing are restricted.</p>
+                  </div>
+                </div>
+              )}
+
               {/* Save Trigger Button */}
               <button
                 onClick={handleSaveReport}
-                disabled={saving || loading}
+                disabled={saving || loading || isReadOnly}
                 className="w-full bg-[#0284c7] hover:bg-[#0369a1] disabled:bg-slate-200 disabled:text-slate-400 text-white py-4 px-6 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-200 shadow-md hover:shadow-lg shadow-sky-500/10 flex items-center justify-center gap-2"
               >
                 {saving ? (

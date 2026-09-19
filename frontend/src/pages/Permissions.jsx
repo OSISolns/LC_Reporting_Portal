@@ -14,6 +14,7 @@ import {
   getModules, getRoleMatrix, updateRolePermissions,
   resetRolePermissions, getUserEffectivePermissions, setUserOverride
 } from '../api/permissions';
+import { getReportSettings, updateReportSettings } from '../api/reports';
 import api from '../api/axios';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
@@ -174,8 +175,13 @@ export default function Permissions() {
 
   // Access Evaluator Simulator state
   const [evalRole, setEvalRole]       = useState('nurse');
-  const [evalModule, setEvalModule] = useState('clinical_observation');
+  const [evalModule, setEvalModule] = useState('cancellations');
   const [evalAction, setEvalAction] = useState('view');
+
+  // System Policies state
+  const [restrictPastReports, setRestrictPastReports] = useState(true);
+  const [loadingSettings, setLoadingSettings]         = useState(false);
+  const [updatingSettings, setUpdatingSettings]       = useState(false);
 
   // Load initial permissions matrix & modules
   const loadData = useCallback(async () => {
@@ -197,7 +203,24 @@ export default function Permissions() {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  const fetchSystemSettings = useCallback(async () => {
+    try {
+      setLoadingSettings(true);
+      const res = await getReportSettings();
+      if (res.data?.success) {
+        setRestrictPastReports(Boolean(res.data.data?.restrict_past_daily_reports));
+      }
+    } catch (err) {
+      console.error('Failed to load system settings:', err);
+    } finally {
+      setLoadingSettings(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    fetchSystemSettings();
+  }, [loadData, fetchSystemSettings]);
 
   // Load user effective permissions when user selected in Overrides tab
   const loadUserPerms = useCallback(async (userId) => {
@@ -437,6 +460,7 @@ export default function Permissions() {
           { id: 'overrides', label: 'User Permission Overrides', icon: UserCheck },
           { id: 'sidebar',   label: 'Sidebar Navigation Config', icon: Menu },
           { id: 'evaluator', label: 'Access Simulator',         icon: Zap },
+          { id: 'policies',  label: 'System Policies',         icon: Sliders },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -949,6 +973,76 @@ export default function Permissions() {
                   {evalResult.reason}
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          TAB 5: SYSTEM POLICIES & GOVERNANCE
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'policies' && (
+        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm space-y-6 max-w-4xl mx-auto">
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+            <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-md">
+              <Sliders size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-slate-800">System Governance & Policy Controls</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Configure operational security restrictions and global system policies.</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {/* Policy Item: Past Daily Report Restriction */}
+            <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 flex items-start justify-between gap-6 hover:bg-slate-50 transition-colors">
+              <div className="space-y-1.5 max-w-xl">
+                <div className="flex items-center gap-2">
+                  <Lock size={16} className="text-amber-600" />
+                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                    Restrict Users to Alter Past Daily Reports
+                  </h3>
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${restrictPastReports ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                    {restrictPastReports ? 'Active Restriction' : 'Disabled'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  When enabled, non-admin users (nurses, doctors, staff) are blocked from modifying daily operational report entries for past dates. Administrators retain edit access.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    setUpdatingSettings(true);
+                    const nextVal = !restrictPastReports;
+                    const res = await updateReportSettings({ restrict_past_daily_reports: nextVal });
+                    if (res.data?.success) {
+                      setRestrictPastReports(nextVal);
+                      toast.success(
+                        nextVal
+                          ? 'Past daily report restriction enabled.'
+                          : 'Past daily report restriction disabled.'
+                      );
+                    }
+                  } catch (err) {
+                    console.error('Failed to update system policy:', err);
+                    toast.error('Failed to update policy setting.');
+                  } finally {
+                    setUpdatingSettings(false);
+                  }
+                }}
+                disabled={loadingSettings || updatingSettings}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-sm ${
+                  restrictPastReports
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20'
+                    : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                }`}
+              >
+                {restrictPastReports ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                <span>{restrictPastReports ? 'Restriction ON' : 'Restriction OFF'}</span>
+              </button>
             </div>
           </div>
         </div>

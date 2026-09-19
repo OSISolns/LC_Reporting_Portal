@@ -3017,10 +3017,14 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       )
     `);
 
-      // Seed supplier_portal_active if not present
+      // Seed supplier_portal_active and restrict_past_daily_reports if not present
       await client.execute(`
       INSERT OR IGNORE INTO system_settings (key, value)
       VALUES ('supplier_portal_active', 'false')
+    `);
+      await client.execute(`
+      INSERT OR IGNORE INTO system_settings (key, value)
+      VALUES ('restrict_past_daily_reports', 'true')
     `);
 
       // 2. supplier_submissions
