@@ -67,6 +67,7 @@ export default function DailyOperationalReport() {
   const [entryMetrics, setEntryMetrics] = useState({}); // providerId -> patientCount
   const [entryFollowUps, setEntryFollowUps] = useState({}); // providerId -> followUpCount
   const [entryLogs, setEntryLogs] = useState({}); // metricName -> metricValue
+  const [saving, setSaving] = useState(false);
   const [restrictPastReports, setRestrictPastReports] = useState(true);
   const [updatingSettings, setUpdatingSettings] = useState(false);
 
