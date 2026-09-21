@@ -2000,6 +2000,24 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       }
     }
 
+    try {
+      await client.execute("ALTER TABLE supplier_portal_sessions ADD COLUMN last_accessed_at DATETIME");
+      console.log('✅ SQLite Schema Migration: added last_accessed_at to supplier_portal_sessions');
+    } catch (err) {
+      if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+        console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+      }
+    }
+
+    try {
+      await client.execute("ALTER TABLE supplier_portal_sessions ADD COLUMN access_count INTEGER DEFAULT 0");
+      console.log('✅ SQLite Schema Migration: added access_count to supplier_portal_sessions');
+    } catch (err) {
+      if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+        console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+      }
+    }
+
     // Daily Operational Report Tables
     try {
       await client.execute(`

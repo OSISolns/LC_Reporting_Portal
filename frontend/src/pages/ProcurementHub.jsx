@@ -751,7 +751,7 @@ export default function ProcurementHub() {
 
   // ─── Tableau Comparatif Autosave Effect ─────────────────────────────────────
   useEffect(() => {
-    if (!rfqDetails || !rfqDetails.rfq || rfqDetails.rfq.status === 'Awarded' || rfqDetails.rfq.status === 'Closed') {
+    if (!rfqDetails?.rfq?.status || rfqDetails.rfq.status === 'Awarded' || rfqDetails.rfq.status === 'Closed') {
       return;
     }
 

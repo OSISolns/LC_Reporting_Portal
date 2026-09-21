@@ -4680,11 +4680,20 @@ exports.toggleSupplierPortal = async (req, res) => {
 /** Authenticated: return all currently active sessions */
 exports.getSupplierPortalSettings = async (req, res) => {
   try {
-    const { rows } = await db.query(
-      "SELECT id, vendor_id, vendor_name, token, items, created_at, last_accessed_at, access_count FROM supplier_portal_sessions WHERE is_active = 1 ORDER BY created_at DESC"
-    );
+    let rows;
+    try {
+      const resQuery = await db.query(
+        "SELECT id, vendor_id, vendor_name, token, items, created_at, last_accessed_at, access_count FROM supplier_portal_sessions WHERE is_active = 1 ORDER BY created_at DESC"
+      );
+      rows = resQuery.rows;
+    } catch (colErr) {
+      const resQuery = await db.query(
+        "SELECT id, vendor_id, vendor_name, token, items, created_at FROM supplier_portal_sessions WHERE is_active = 1 ORDER BY created_at DESC"
+      );
+      rows = resQuery.rows;
+    }
 
-    const sessions = rows.map(r => ({
+    const sessions = (rows || []).map(r => ({
       id: r.id,
       vendorId: r.vendor_id,
       vendorName: r.vendor_name,
@@ -5558,15 +5567,28 @@ exports.getRFQById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'RFQ not found.' });
     }
 
-    const { rows: suppliers } = await db.query(`
-      SELECT rs.*, v.name as vendor_name, v.contact as vendor_contact,
-             (SELECT MAX(last_accessed_at) FROM supplier_portal_sessions sps WHERE sps.vendor_id = v.id) as portal_last_accessed_at,
-             (SELECT SUM(COALESCE(access_count, 0)) FROM supplier_portal_sessions sps WHERE sps.vendor_id = v.id) as portal_access_count
-      FROM rfq_suppliers rs
-      JOIN vendors v ON rs.vendor_id = v.id
-      WHERE rs.rfq_id = $1
-      ORDER BY rs.column_order
-    `, [id]);
+    let suppliers;
+    try {
+      const { rows } = await db.query(`
+        SELECT rs.*, v.name as vendor_name, v.contact as vendor_contact,
+               (SELECT MAX(last_accessed_at) FROM supplier_portal_sessions sps WHERE sps.vendor_id = v.id) as portal_last_accessed_at,
+               (SELECT SUM(COALESCE(access_count, 0)) FROM supplier_portal_sessions sps WHERE sps.vendor_id = v.id) as portal_access_count
+        FROM rfq_suppliers rs
+        JOIN vendors v ON rs.vendor_id = v.id
+        WHERE rs.rfq_id = $1
+        ORDER BY rs.column_order
+      `, [id]);
+      suppliers = rows;
+    } catch (colErr) {
+      const { rows } = await db.query(`
+        SELECT rs.*, v.name as vendor_name, v.contact as vendor_contact
+        FROM rfq_suppliers rs
+        JOIN vendors v ON rs.vendor_id = v.id
+        WHERE rs.rfq_id = $1
+        ORDER BY rs.column_order
+      `, [id]);
+      suppliers = rows;
+    }
 
     const { rows: items } = await db.query('SELECT * FROM rfq_items WHERE rfq_id = $1 ORDER BY line_no', [id]);
     
