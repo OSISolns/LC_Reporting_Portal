@@ -507,10 +507,39 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
 
+  const activeDeptName = useMemo(() => {
+    const activeD = userDept ? userDept.id : (filterDept || formDept);
+    const activeDeptObj = departments.find(d => String(d.id) === String(activeD));
+    return (activeDeptObj?.name || defaultDeptName || '').toUpperCase();
+  }, [userDept, filterDept, formDept, departments, defaultDeptName]);
+
   // Tabs
   const [activeSubTab, setActiveSubTab] = useState('history'); // 'history', 'stock', 'requisitions', 'deactivated', 'fridges'
   const [stockTab, setStockTab] = useState('local'); // 'local', 'central'
   const [stockSearchTerm, setStockSearchTerm] = useState('');
+
+  // ── Lumina AI Available Items Auditor state & handler ─────────────────
+  const [auditingCatalog, setAuditingCatalog] = useState(false);
+  const [aiAuditResults, setAiAuditResults] = useState(null);
+  const [aiIssueFilter, setAiIssueFilter] = useState('all'); // 'all', 'typo', 'duplicate', 'anomaly', 'specimen'
+
+  const handleAuditAvailableItems = async () => {
+    try {
+      setAuditingCatalog(true);
+      const res = await api.post('/ai/consumables/audit-available-items', {
+        items: filteredDeptStock,
+        department: activeDeptName
+      });
+      if (res.data?.success) {
+        setAiAuditResults(res.data.data);
+        toast.success(`Catalog check complete — ${res.data.data.total_issues} issue(s) found.`);
+      }
+    } catch (err) {
+      toast.error('Catalog check failed. Please try again.');
+    } finally {
+      setAuditingCatalog(false);
+    }
+  };
 
   // ── Lab Subdivisions ───────────────────────────────────────────────────────
   const LAB_SUBDIVISIONS = [
@@ -1249,6 +1278,8 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
   // Consumption history paging — reset to page 1 whenever the data changes.
   useEffect(() => { setHistoryPage(1); }, [entries]);
+  // Clear quality-check results whenever the user switches between Local / General Store tabs
+  useEffect(() => { setAiAuditResults(null); setAiIssueFilter('all'); }, [stockTab]);
   const totalHistoryPages = Math.max(1, Math.ceil(entries.length / HISTORY_PAGE_SIZE));
   const pagedEntries = entries.slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE);
 
@@ -1353,35 +1384,27 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       }
     }
 
-    // Include registered lab specimen samples into inventory for storage unit tracking
-    try {
-      const rawSpecimens = localStorage.getItem('lc_lab_specimens_map');
-      if (rawSpecimens) {
-        const specMap = JSON.parse(rawSpecimens);
-        Object.values(specMap).forEach(spec => {
-          if (spec && spec.id) {
-            result.push({
-              dept_stock_id: `specimen_${spec.id}`,
-              item_id: String(spec.id),
-              name: `[Specimen] ${spec.patient_name} (${spec.test_name || 'Lab Assay'})`,
-              sku: spec.accession_number || spec.specimen_barcode || 'SPECIMEN',
-              category: 'Samples',
-              quantity: 1,
-              expiry_date: spec.urgency || 'STAT',
-              unit: spec.tube_type || 'Yellow Urine Cup',
-              department: 'Laboratory Services',
-              batches: [{
-                batch_number: spec.specimen_barcode || 'BARCODE',
-                lot_number: spec.patient_id || 'PID'
-              }]
-            });
-          }
-        });
-      }
-    } catch {}
+    // Ensure specimens and sample entries are strictly excluded from available items
+    return result.filter(item => {
+      const cat = String(item.category || '').toLowerCase();
+      const name = String(item.name || '').toLowerCase();
+      const dept = String(item.department || activeDeptName || '').toUpperCase();
+      
+      // Never mix specimens/samples into available items
+      if (cat === 'samples' || cat === 'specimens' || cat === 'specimen') return false;
+      if (name.includes('[specimen]') || name.includes('specimen sample') || name.startsWith('specimen')) return false;
+      if (item.is_specimen || (item.dept_stock_id && String(item.dept_stock_id).startsWith('specimen_'))) return false;
 
-    return result;
-  }, [stockTab, masterItems, deptStockItems, userDept, filterDept, formDept, defaultDeptName, departments, generalStoreDept, isAdmin, distributedStock]);
+      // Extra safety for Nursing available items: never show sample or specimen items
+      if (dept.includes('NURSING')) {
+        if (cat.includes('sample') || cat.includes('specimen') || name.includes('sample') || name.includes('specimen')) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [stockTab, masterItems, deptStockItems, userDept, filterDept, formDept, defaultDeptName, departments, generalStoreDept, isAdmin, distributedStock, activeDeptName]);
 
   const filteredDeptStock = useMemo(() => {
     let list = currentDeptStock;
@@ -2658,6 +2681,116 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
             {/* Available Items Tab */}
             {activeSubTab === 'stock' && (
               <>
+                {/* Catalog Quality Check — applies to whichever stock tab is active */}
+                <div className="mb-4 bg-white border border-slate-200 rounded-xl p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <CheckCircle2 size={16} className="text-teal-600 shrink-0" />
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-700">
+                          {stockTab === 'central' ? 'General Store — Catalog Quality Check' : 'Departmental Stock — Catalog Quality Check'}
+                        </h4>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {stockTab === 'central'
+                            ? 'Review general store items for naming issues, duplicates, and data inconsistencies.'
+                            : 'Review departmental items for naming issues, duplicates, and data inconsistencies.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAuditAvailableItems}
+                      disabled={auditingCatalog}
+                      className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+                    >
+                      {auditingCatalog ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin" />
+                          <span>Checking...</span>
+                        </>
+                      ) : (
+                        <span>{stockTab === 'central' ? 'Check General Store' : 'Check Departmental Stock'}</span>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Results Panel */}
+                  {aiAuditResults && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs text-slate-600 font-medium">{aiAuditResults.executive_summary}</p>
+                        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+                          {[
+                            { key: 'all',      label: 'All' },
+                            { key: 'typo',     label: 'Naming' },
+                            { key: 'duplicate',label: 'Duplicates' },
+                            { key: 'anomaly',  label: 'Data Issues' },
+                            { key: 'specimen', label: 'Misplaced' },
+                          ].map(({ key: f, label }) => (
+                            <button
+                              key={f}
+                              type="button"
+                              onClick={() => setAiIssueFilter(f)}
+                              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
+                                aiIssueFilter === f
+                                  ? 'bg-white text-teal-700 shadow-sm border border-slate-200'
+                                  : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                            >
+                              {label} ({
+                                f === 'all' ? aiAuditResults.issues?.length || 0
+                                  : (aiAuditResults.issues || []).filter(i => i.type === f).length
+                              })
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Issue Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                        {(aiAuditResults.issues || [])
+                          .filter(issue => aiIssueFilter === 'all' || issue.type === aiIssueFilter)
+                          .map((issue, idx) => (
+                            <div
+                              key={idx}
+                              className={`p-3 rounded-lg border text-xs flex items-start justify-between gap-2 ${
+                                issue.severity === 'high'   ? 'bg-rose-50 border-rose-200 text-rose-800' :
+                                issue.severity === 'medium' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                                                              'bg-slate-50 border-slate-200 text-slate-700'
+                              }`}
+                            >
+                              <div className="space-y-0.5 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold truncate max-w-[180px]">{issue.name}</span>
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                                    issue.type === 'duplicate' ? 'bg-purple-100 text-purple-700' :
+                                    issue.type === 'typo'      ? 'bg-sky-100 text-sky-700' :
+                                    issue.type === 'specimen'  ? 'bg-rose-100 text-rose-700' :
+                                                                 'bg-amber-100 text-amber-700'
+                                  }`}>
+                                    {issue.type === 'typo' ? 'Naming' : issue.type === 'anomaly' ? 'Data Issue' : issue.type === 'specimen' ? 'Misplaced' : issue.type}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] opacity-80 leading-relaxed">{issue.issue}</p>
+                                <p className="text-[10px] text-teal-700 font-semibold">→ {issue.suggestion}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setStockSearchTerm(issue.name)}
+                                className="px-2 py-1 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1"
+                                title="Filter table for this item"
+                              >
+                                <Search size={10} />
+                                Find
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+
                 {/* Sub-tab switcher: Local / General Store */}
                 <div className="flex gap-2 mb-4">
                   <button

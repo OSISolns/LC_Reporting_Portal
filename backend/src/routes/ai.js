@@ -40,13 +40,15 @@ router.get('/clinical/icd11/all',    authorizeRoles(CLINICAL_ROLES), clinicalAIC
 router.get('/clinical/icd11/lookup', authorizeRoles(CLINICAL_ROLES), clinicalAIController.lookupICD11);
 
 // ── Lumina AI Consumables Intelligence ──────────────────────────────────────
-// Dental HoD, Lab Manager, Stock Manager, and Admins only.
 const LUMINA_ROLES = [
-  'admin', 'dental_hod', 'dental_lab_manager', 'lab_manager',
+  'admin', 'nurse', 'chef-nurse', 'doctor', 'medical_director',
+  'dental_hod', 'dental_lab_manager', 'lab_manager',
   'stock_manager', 'procurement', 'deputy_coo', 'coo',
   'dental', 'dentist', 'dental_tech', 'physio',
 ];
 router.post('/dental/consumables-report', authorizeRoles(LUMINA_ROLES), clinicalAIController.generateConsumablesReport);
+router.post('/consumables/audit-available-items', authorizeRoles(LUMINA_ROLES), clinicalAIController.auditAvailableItems);
 
 module.exports = router;
+
 

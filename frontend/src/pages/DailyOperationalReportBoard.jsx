@@ -17,7 +17,11 @@ import {
   CalendarDays,
   FileSpreadsheet,
   Database,
-  X
+  X,
+  ChevronDown,
+  ChevronUp,
+  PieChart,
+  Layers
 } from 'lucide-react';
 import { getReportConfig, getDailyReport, getMonthlyReport, getWeeklyReport } from '../api/reports';
 import api from '../api/axios';

@@ -298,3 +298,192 @@ exports.generateConsumablesReport = async (req, res, next) => {
     });
   } catch (err) { next(err); }
 };
+
+/**
+ * POST /api/ai/consumables/audit-available-items
+ * Lumina AI audit of catalog & available items:
+ * - Typos & double spacing / unit formatting (500mg vs 500 mg, etc.)
+ * - Duplicate / near-duplicate item name detection
+ * - Inventory anomalies (negative stock, missing storage location, expired batches)
+ * - Specimen/Sample items mistakenly categorized or present in stock views
+ */
+exports.auditAvailableItems = async (req, res, next) => {
+  try {
+    const { items = [], department = '' } = req.body;
+
+    const typos = [];
+    const duplicates = [];
+    const anomalies = [];
+    const specimenMisplacements = [];
+
+    // Helper dictionary of known common medical terms & typos
+    const commonTypos = [
+      { pattern: /\bparacetamoll?\b/i, correct: 'Paracetamol' },
+      { pattern: /\bcathetar\b/i, correct: 'Catheter' },
+      { pattern: /\bsringe\b/i, correct: 'Syringe' },
+      { pattern: /\bcanula\b/i, correct: 'Cannula' },
+      { pattern: /\bguaze\b/i, correct: 'Gauze' },
+      { pattern: /\bsaleen\b/i, correct: 'Saline' },
+      { pattern: /\bgolves\b/i, correct: 'Gloves' },
+      { pattern: /\bspeceimen\b/i, correct: 'Specimen' },
+      { pattern: /\bamoxicilin\b/i, correct: 'Amoxicillin' },
+      { pattern: /\bibuprophen\b/i, correct: 'Ibuprofen' }
+    ];
+
+    const normalizedMap = new Map();
+
+    items.forEach((item) => {
+      const rawName = item.name || '';
+      const trimName = rawName.trim();
+      const cat = (item.category || '').trim();
+      const qty = Number(item.quantity || item.available || 0);
+
+      // 1. Check for Specimen/Sample misplacement
+      const isSpecimen = cat.toLowerCase() === 'samples' || 
+                         cat.toLowerCase() === 'specimens' || 
+                         rawName.toLowerCase().includes('specimen') || 
+                         rawName.includes('[Specimen]') ||
+                         (item.dept_stock_id && String(item.dept_stock_id).startsWith('specimen_'));
+
+      if (isSpecimen) {
+        specimenMisplacements.push({
+          type: 'specimen',
+          item_id: item.item_id || item.dept_stock_id,
+          name: rawName,
+          category: cat,
+          issue: 'Specimen or sample specimen detected in consumable inventory list',
+          suggestion: 'Remove specimen from consumable inventory. Specimens belong strictly to Laboratory Specimen Tracking.',
+          severity: 'high'
+        });
+      }
+
+      // 2. Check Typos & Formatting
+      if (rawName !== trimName) {
+        typos.push({
+          type: 'typo',
+          item_id: item.item_id || item.dept_stock_id,
+          name: rawName,
+          issue: 'Leading or trailing whitespace in item name',
+          suggestion: `Rename to "${trimName}"`,
+          severity: 'low'
+        });
+      } else if (/\s{2,}/.test(rawName)) {
+        typos.push({
+          type: 'typo',
+          item_id: item.item_id || item.dept_stock_id,
+          name: rawName,
+          issue: 'Multiple consecutive spaces detected',
+          suggestion: `Rename to "${rawName.replace(/\s+/g, ' ')}"`,
+          severity: 'low'
+        });
+      }
+
+      // Check unit spacing (e.g. 500mg -> 500 mg, 10ml -> 10 ml)
+      const unitSpaceMatch = rawName.match(/\b(\d+)(mg|ml|g|mcg|iu|l)\b/i);
+      if (unitSpaceMatch) {
+        const suggested = rawName.replace(/\b(\d+)(mg|ml|g|mcg|iu|l)\b/gi, '$1 $2');
+        typos.push({
+          type: 'typo',
+          item_id: item.item_id || item.dept_stock_id,
+          name: rawName,
+          issue: `Missing space between number and unit (${unitSpaceMatch[0]})`,
+          suggestion: `Format dosage as "${suggested}"`,
+          severity: 'medium'
+        });
+      }
+
+      // Common medical term spelling check
+      for (const t of commonTypos) {
+        if (t.pattern.test(rawName) && !rawName.toLowerCase().includes(t.correct.toLowerCase())) {
+          typos.push({
+            type: 'typo',
+            item_id: item.item_id || item.dept_stock_id,
+            name: rawName,
+            issue: `Possible misspelling in medical term`,
+            suggestion: `Consider spelling as "${t.correct}"`,
+            severity: 'medium'
+          });
+          break;
+        }
+      }
+
+      // 3. Duplicates & Near-Duplicates
+      const normKey = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (normKey.length > 2) {
+        if (normalizedMap.has(normKey)) {
+          const existing = normalizedMap.get(normKey);
+          duplicates.push({
+            type: 'duplicate',
+            item_id: item.item_id || item.dept_stock_id,
+            name: rawName,
+            existing_name: existing.name,
+            issue: `Near-duplicate item name matches existing item "${existing.name}"`,
+            suggestion: 'Merge batch quantities or consolidate catalog entry to avoid duplicate ordering',
+            severity: 'high'
+          });
+        } else {
+          normalizedMap.set(normKey, { name: rawName, id: item.item_id || item.dept_stock_id });
+        }
+      }
+
+      // 4. Inventory Quality Anomalies
+      if (qty < 0) {
+        anomalies.push({
+          type: 'anomaly',
+          item_id: item.item_id || item.dept_stock_id,
+          name: rawName,
+          issue: `Negative quantity detected (${qty})`,
+          suggestion: 'Perform stock count adjustment to correct negative balance',
+          severity: 'high'
+        });
+      }
+      if (!item.storage && department?.toUpperCase().includes('LAB')) {
+        anomalies.push({
+          type: 'anomaly',
+          item_id: item.item_id || item.dept_stock_id,
+          name: rawName,
+          issue: 'Storage location unassigned in Laboratory inventory',
+          suggestion: 'Assign a Cold-Chain fridge/freezer or Ambient shelf location',
+          severity: 'medium'
+        });
+      }
+      if (item.expiry_date && new Date(item.expiry_date) < new Date()) {
+        anomalies.push({
+          type: 'anomaly',
+          item_id: item.item_id || item.dept_stock_id,
+          name: rawName,
+          issue: `Expired batch in active stock (Expiry: ${item.expiry_date})`,
+          suggestion: 'Move item batch to Deactivated / Expired quarantine log immediately',
+          severity: 'high'
+        });
+      }
+    });
+
+    const totalIssues = typos.length + duplicates.length + anomalies.length + specimenMisplacements.length;
+
+    let executiveSummary = '';
+    if (totalIssues === 0) {
+      executiveSummary = 'Lumina AI completed catalog audit. All available items are cleanly formatted, correctly categorized, with zero duplicate or stock metadata anomalies.';
+    } else {
+      executiveSummary = `Lumina AI identified ${totalIssues} issue(s) across catalog items: ${typos.length} typo/formatting recommendation(s), ${duplicates.length} near-duplicate item(s), ${anomalies.length} inventory quality anomaly(ies), and ${specimenMisplacements.length} misplaced specimen(s).`;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        total_items_audited: items.length,
+        total_issues: totalIssues,
+        executive_summary: executiveSummary,
+        issues: [
+          ...specimenMisplacements,
+          ...duplicates,
+          ...anomalies,
+          ...typos
+        ]
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
