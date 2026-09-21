@@ -61,6 +61,14 @@ router.post(
   authController.changePassword
 );
 
+router.post(
+  '/forgot-password',
+  validate([
+    body('username').notEmpty().withMessage('Username is required'),
+  ]),
+  authController.forgotPassword
+);
+
 router.get('/me', authMiddleware, authController.getMe);
 
 module.exports = router;

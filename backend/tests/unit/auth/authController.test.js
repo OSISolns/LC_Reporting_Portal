@@ -91,6 +91,30 @@ describe('authController Unit Tests', () => {
       );
     });
 
+    it('should return showForgotPassword true when attempts exceed 2', async () => {
+      req.body = { username: 'testuser', password: 'wrongpassword' };
+      User.findByUsername.mockResolvedValue({
+        id: 10,
+        username: 'testuser',
+        is_active: 1,
+        password_hash: 'hashedpassword',
+        failed_attempts: 2
+      });
+      bcrypt.compare.mockResolvedValue(false);
+      User.incrementFailedAttempts.mockResolvedValue(3);
+
+      await authController.login(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          showForgotPassword: true,
+          attempts: 3
+        })
+      );
+    });
+
     it('should return 200 and token on valid credentials', async () => {
       req.body = { username: 'admin', password: 'validpassword' };
       User.findByUsername.mockResolvedValue({
@@ -114,6 +138,56 @@ describe('authController Unit Tests', () => {
           token: expect.any(String),
           user: expect.objectContaining({ username: 'admin', role: 'admin' })
         })
+      );
+    });
+  });
+
+  describe('forgotPassword endpoint logic', () => {
+    it('should return 400 if username is missing', async () => {
+      req.body = {};
+      await authController.forgotPassword(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: 'Please provide username.' })
+      );
+    });
+
+    it('should return 404 if user is not found', async () => {
+      req.body = { username: 'nonexistent' };
+      User.findByUsername.mockResolvedValue(null);
+
+      await authController.forgotPassword(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: 'User account not found or inactive.' })
+      );
+    });
+
+    it('should reset password and send temporary password email on valid username', async () => {
+      req.body = { username: 'john_doe' };
+      User.findByUsername.mockResolvedValue({
+        id: 5,
+        username: 'john_doe',
+        email: 'john@legacyclinics.rw',
+        is_active: 1
+      });
+      User.resetPassword.mockResolvedValue();
+
+      const emailService = require('../../../src/services/emailService');
+      jest.spyOn(emailService, 'sendTemporaryPassword').mockResolvedValue({ success: true, messageId: 'msg-123' });
+
+      await authController.forgotPassword(req, res, next);
+
+      expect(User.resetPassword).toHaveBeenCalledWith(5, expect.stringMatching(/^Tmp!/));
+      expect(emailService.sendTemporaryPassword).toHaveBeenCalledWith(
+        'john@legacyclinics.rw',
+        'john_doe',
+        expect.any(String)
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, message: expect.stringContaining('temporary password has been sent') })
       );
     });
   });
@@ -149,3 +223,4 @@ describe('authController Unit Tests', () => {
     });
   });
 });
+

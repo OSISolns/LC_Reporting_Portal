@@ -332,7 +332,19 @@ export default function SupplierPortalManager() {
                             <p className="text-[10px] text-slate-400 font-mono">Session #{session.id}</p>
                           </div>
                         </div>
-                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Active</span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Active</span>
+                          {session.accessCount > 0 ? (
+                            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1" title={session.lastAccessedAt ? `Last accessed: ${new Date(session.lastAccessedAt).toLocaleString()}` : ''}>
+                              <CheckCircle size={10} className="text-emerald-600" />
+                              Accessed ({session.accessCount}x)
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                              Not accessed yet
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 flex items-center gap-2">

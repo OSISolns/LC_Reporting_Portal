@@ -92,7 +92,8 @@ exports.login = async (req, res, next) => {
         }
       }
       
-      return res.status(401).json({ success: false, message });
+      const showForgotPassword = attempts > 2;
+      return res.status(401).json({ success: false, message, showForgotPassword, attempts });
     }
 
     // Success - reset attempts
@@ -235,3 +236,57 @@ exports.changePassword = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { username } = req.body;
+    const emailService = require('../services/emailService');
+    const crypto = require('crypto');
+
+    if (!username) {
+      return res.status(400).json({ success: false, message: 'Please provide username.' });
+    }
+
+    const user = await User.findByUsername(username);
+    if (!user || !user.is_active) {
+      return res.status(404).json({ success: false, message: 'User account not found or inactive.' });
+    }
+
+    const rawEmail = decryptField(user.email);
+    if (!rawEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'No registered email address found for this user account. Please contact your system administrator.'
+      });
+    }
+
+    // Generate random 10-char temporary password
+    const randomChars = crypto.randomBytes(4).toString('hex');
+    const tempPassword = `Tmp!${randomChars}`;
+
+    // Reset password in DB (sets hash, must_change_password=1, failed_attempts=0, lockout_until=NULL)
+    await User.resetPassword(user.id, tempPassword);
+
+    // Send email with temporary password
+    const emailResult = await emailService.sendTemporaryPassword(rawEmail, user.username, tempPassword);
+
+    if (!emailResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: `Failed to send email to ${rawEmail}: ${emailResult.error || 'SMTP error'}`
+      });
+    }
+
+    try {
+      await logAction(req, 'FORGOT_PASSWORD_TEMP_SENT', 'user', user.id, { username, email: rawEmail });
+    } catch (e) {}
+
+    res.json({
+      success: true,
+      message: `A temporary password has been sent to your registered email (${rawEmail.replace(/(.{2})(.*)(?=@)/, '$1***')}). Please check your inbox and log in.`
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

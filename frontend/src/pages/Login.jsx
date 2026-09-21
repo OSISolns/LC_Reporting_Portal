@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Lock, User, AlertCircle, Eye, EyeOff, MessageSquare } from 'lucide-react';
+import { Lock, User, AlertCircle, Eye, EyeOff, MessageSquare, KeyRound } from 'lucide-react';
 import FeedbackModal from '../components/FeedbackModal';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 
 const Login = () => {
@@ -11,6 +12,9 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [showForgotPasswordLink, setShowForgotPasswordLink] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   const { login, devLogin } = useAuth();
   const navigate = useNavigate();
@@ -24,8 +28,14 @@ const Login = () => {
 
     try {
       await login(username, password);
+      setFailedAttempts(0);
       navigate('/');
     } catch (err) {
+      const attemptsCount = failedAttempts + 1;
+      setFailedAttempts(attemptsCount);
+      if (err.response?.data?.showForgotPassword || attemptsCount > 2) {
+        setShowForgotPasswordLink(true);
+      }
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
@@ -184,6 +194,31 @@ const Login = () => {
                 </button>
               </div>
             </div>
+
+            {showForgotPasswordLink && (
+              <div style={{ textAlign: 'right', marginTop: '-0.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPasswordModal(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#1c69a0',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '2px 0',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  <KeyRound size={14} />
+                  Forgot Password? Reset via Email
+                </button>
+              </div>
+            )}
           </div>
 
           <button
@@ -272,6 +307,11 @@ const Login = () => {
       </div>
 
       <FeedbackModal isOpen={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} />
+      <ForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        initialUsername={username}
+      />
 
 
       {/* Subtle Protected Signature */}

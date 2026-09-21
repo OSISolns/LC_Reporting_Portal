@@ -3063,15 +3063,19 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     try {
       await client.execute(`
       CREATE TABLE IF NOT EXISTS supplier_portal_sessions (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        vendor_id   INTEGER NOT NULL,
-        vendor_name TEXT    NOT NULL,
-        token       TEXT    NOT NULL UNIQUE,
-        items       TEXT    DEFAULT '[]',
-        created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-        is_active   INTEGER DEFAULT 1
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        vendor_id        INTEGER NOT NULL,
+        vendor_name      TEXT    NOT NULL,
+        token            TEXT    NOT NULL UNIQUE,
+        items            TEXT    DEFAULT '[]',
+        created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_active        INTEGER DEFAULT 1,
+        last_accessed_at DATETIME,
+        access_count     INTEGER DEFAULT 0
       )
     `);
+      await client.execute("ALTER TABLE supplier_portal_sessions ADD COLUMN last_accessed_at DATETIME").catch(() => {});
+      await client.execute("ALTER TABLE supplier_portal_sessions ADD COLUMN access_count INTEGER DEFAULT 0").catch(() => {});
       console.log('✅ SQLite Schema Migration: created/verified supplier_portal_sessions table');
     } catch (err) {
       console.error('❌ Failed to initialize supplier_portal_sessions table:', err);

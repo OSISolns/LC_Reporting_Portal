@@ -200,6 +200,43 @@ const sendPasswordReset = async (email, resetLink) => {
 };
 
 /**
+ * Send temporary password email
+ */
+const sendTemporaryPassword = async (email, username, tempPassword) => {
+  const html = `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+      <div style="background-color: #003b44; padding: 24px; text-align: center; color: white;">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Legacy Clinics &amp; Diagnostics</h2>
+        <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Lumina Portal Temporary Password</p>
+      </div>
+      <div style="padding: 24px; background-color: #ffffff; color: #334155;">
+        <p style="margin-top: 0;">Dear User,</p>
+        <p>We received a request to reset your password following multiple failed login attempts on the Lumina Portal. Below is your temporary password:</p>
+        <div style="background-color: #f8fafc; border-left: 4px solid #1c69a0; padding: 16px; border-radius: 6px; margin: 20px 0;">
+          <p style="margin: 4px 0;"><strong>Username:</strong> ${username}</p>
+          <p style="margin: 4px 0;"><strong>Temporary Password:</strong> <code style="font-size: 16px; font-weight: bold; background: #e2e8f0; padding: 4px 8px; border-radius: 4px; color: #003b44;">${tempPassword}</code></p>
+        </div>
+        <p style="color: #64748b; font-size: 13px;">
+          <strong>Security Note:</strong> Please log in using this temporary password. You will be prompted to set a new password upon logging in.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+        <p style="color: #94a3b8; font-size: 11px; text-align: center; margin: 0;">
+          This is an automated message from Legacy Clinics — Lumina Portal. Please do not reply directly to this email.
+        </p>
+      </div>
+    </div>
+  `;
+  const text = `Legacy Clinics Lumina Portal\n\nTemporary Password Request:\nUsername: ${username}\nTemporary Password: ${tempPassword}\n\nPlease log in and update your password immediately.`;
+
+  return sendEmail({
+    to: email,
+    subject: 'Legacy Clinics — Temporary Password Reset',
+    html,
+    text,
+  });
+};
+
+/**
  * Batch send email to multiple recipients
  */
 const sendBatch = async (recipients, subject, html, text) => {
@@ -217,5 +254,7 @@ module.exports = {
   sendUserCredentials,
   sendNotification,
   sendPasswordReset,
+  sendTemporaryPassword,
   sendBatch,
 };
+

@@ -4681,7 +4681,7 @@ exports.toggleSupplierPortal = async (req, res) => {
 exports.getSupplierPortalSettings = async (req, res) => {
   try {
     const { rows } = await db.query(
-      "SELECT id, vendor_id, vendor_name, token, items, created_at FROM supplier_portal_sessions WHERE is_active = 1 ORDER BY created_at DESC"
+      "SELECT id, vendor_id, vendor_name, token, items, created_at, last_accessed_at, access_count FROM supplier_portal_sessions WHERE is_active = 1 ORDER BY created_at DESC"
     );
 
     const sessions = rows.map(r => ({
@@ -4691,6 +4691,8 @@ exports.getSupplierPortalSettings = async (req, res) => {
       token: r.token,
       requestedItems: (() => { try { return JSON.parse(r.items || '[]'); } catch { return []; } })(),
       createdAt: r.created_at,
+      lastAccessedAt: r.last_accessed_at || null,
+      accessCount: r.access_count || 0,
       isActive: true
     }));
 
@@ -4723,6 +4725,13 @@ exports.verifySupplierToken = async (req, res) => {
     }
 
     const session = rows[0];
+
+    // Log supplier portal access
+    await db.query(
+      "UPDATE supplier_portal_sessions SET last_accessed_at = CURRENT_TIMESTAMP, access_count = COALESCE(access_count, 0) + 1 WHERE id = $1",
+      [session.id]
+    ).catch(() => {});
+
     let requestedItems = (() => { try { return JSON.parse(session.items || '[]'); } catch { return []; } })();
 
     res.json({ success: true, sessionId: session.id, vendorName: session.vendor_name, requestedItems });
@@ -5550,7 +5559,9 @@ exports.getRFQById = async (req, res) => {
     }
 
     const { rows: suppliers } = await db.query(`
-      SELECT rs.*, v.name as vendor_name, v.contact as vendor_contact
+      SELECT rs.*, v.name as vendor_name, v.contact as vendor_contact,
+             (SELECT MAX(last_accessed_at) FROM supplier_portal_sessions sps WHERE sps.vendor_id = v.id) as portal_last_accessed_at,
+             (SELECT SUM(COALESCE(access_count, 0)) FROM supplier_portal_sessions sps WHERE sps.vendor_id = v.id) as portal_access_count
       FROM rfq_suppliers rs
       JOIN vendors v ON rs.vendor_id = v.id
       WHERE rs.rfq_id = $1

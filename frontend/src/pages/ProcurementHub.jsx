@@ -202,6 +202,8 @@ export default function ProcurementHub() {
   const [quoteInputs, setQuoteInputs] = useState({}); // { [item_id_supplier_id]: price }
   const [noBidInputs, setNoBidInputs] = useState({}); // { [item_id_supplier_id]: boolean }
   const [submittingQuotes, setSubmittingQuotes] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState('idle'); // 'idle' | 'pending' | 'saving' | 'saved' | 'error'
+  const lastSavedStateRef = useRef({ quoteInputs: {}, noBidInputs: {}, awardSelections: {} });
 
   // Award Selection States
   const [awardSelections, setAwardSelections] = useState({}); // { [item_id]: { vendor_id, reason, reason_note } }
@@ -731,6 +733,13 @@ export default function ProcurementHub() {
           };
         });
         setAwardSelections(awards);
+
+        lastSavedStateRef.current = {
+          quoteInputs: JSON.parse(JSON.stringify(inputs)),
+          noBidInputs: JSON.parse(JSON.stringify(noBids)),
+          awardSelections: JSON.parse(JSON.stringify(awards))
+        };
+        setAutosaveStatus('idle');
       }
     } catch (err) {
       console.error(err);
@@ -739,6 +748,106 @@ export default function ProcurementHub() {
       setLoadingRFQDetails(false);
     }
   };
+
+  // ─── Tableau Comparatif Autosave Effect ─────────────────────────────────────
+  useEffect(() => {
+    if (!rfqDetails || !rfqDetails.rfq || rfqDetails.rfq.status === 'Awarded' || rfqDetails.rfq.status === 'Closed') {
+      return;
+    }
+
+    const currentQuotesStr = JSON.stringify(quoteInputs);
+    const lastQuotesStr = JSON.stringify(lastSavedStateRef.current.quoteInputs || {});
+    const currentNoBidsStr = JSON.stringify(noBidInputs);
+    const lastNoBidsStr = JSON.stringify(lastSavedStateRef.current.noBidInputs || {});
+    const currentAwardsStr = JSON.stringify(awardSelections);
+    const lastAwardsStr = JSON.stringify(lastSavedStateRef.current.awardSelections || {});
+
+    const quotesChanged = currentQuotesStr !== lastQuotesStr || currentNoBidsStr !== lastNoBidsStr;
+    const awardsChanged = currentAwardsStr !== lastAwardsStr;
+
+    if (!quotesChanged && !awardsChanged) {
+      return;
+    }
+
+    setAutosaveStatus('pending');
+
+    const timer = setTimeout(async () => {
+      setAutosaveStatus('saving');
+      const rfqId = rfqDetails.rfq.id;
+
+      try {
+        // Save quotes per supplier if quotes changed
+        if (quotesChanged) {
+          for (const sup of rfqDetails.suppliers) {
+            const supplierQuotes = rfqDetails.items.map(item => {
+              const key = `${item.id}_${sup.id}`;
+              const price = quoteInputs[key];
+              const noBid = noBidInputs[key] || false;
+              return {
+                rfq_item_id: item.id,
+                unit_price: noBid ? null : (price !== '' && price !== undefined ? parseFloat(price) : null),
+                total_price: noBid ? null : (price !== '' && price !== undefined ? parseFloat(price) * (item.quantity || 1) : null),
+                no_bid: noBid
+              };
+            });
+
+            await api.post(`/clinical/inventory/rfqs/${rfqId}/quotes`, {
+              quotes: supplierQuotes,
+              supplierId: sup.vendor_id
+            });
+          }
+        }
+
+        // Save awards if awards changed
+        if (awardsChanged) {
+          const awardsPayload = Object.keys(awardSelections)
+            .filter(itemId => awardSelections[itemId]?.vendor_id)
+            .map(itemId => {
+              const selection = awardSelections[itemId];
+              const isNoOffers = selection.vendor_id === 'no_offers';
+              let awardedQuoteId = null;
+              let awardedPrice = null;
+              if (!isNoOffers) {
+                const sup = rfqDetails.suppliers.find(s => Number(s.vendor_id) === Number(selection.vendor_id));
+                if (sup) {
+                  const q = rfqDetails.quotes?.find(quote => Number(quote.rfq_item_id) === Number(itemId) && Number(quote.rfq_supplier_id) === Number(sup.id));
+                  if (q) {
+                    awardedQuoteId = q.id;
+                    awardedPrice = q.unit_price;
+                  }
+                }
+              }
+              return {
+                rfq_item_id: parseInt(itemId, 10),
+                vendor_id: isNoOffers ? null : parseInt(selection.vendor_id, 10),
+                awarded_quote_id: awardedQuoteId,
+                awarded_price: awardedPrice,
+                reason: isNoOffers ? 'no_offers' : (selection.reason || 'lowest'),
+                reason_note: selection.reason_note || ''
+              };
+            });
+
+          if (awardsPayload.length > 0) {
+            await api.post(`/clinical/inventory/rfqs/${rfqId}/awards`, {
+              awards: awardsPayload
+            });
+          }
+        }
+
+        lastSavedStateRef.current = {
+          quoteInputs: JSON.parse(JSON.stringify(quoteInputs)),
+          noBidInputs: JSON.parse(JSON.stringify(noBidInputs)),
+          awardSelections: JSON.parse(JSON.stringify(awardSelections))
+        };
+        setAutosaveStatus('saved');
+      } catch (err) {
+        console.error('Autosave failed:', err);
+        setAutosaveStatus('error');
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [quoteInputs, noBidInputs, awardSelections, rfqDetails]);
 
   const downloadRFQItemTemplate = () => {
     const templateData = [
@@ -3863,8 +3972,32 @@ export default function ProcurementHub() {
                         <div className="space-y-8 animate-none">
                           {/* Comparative Pricing Table (Tableau Comparatif) */}
                           <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Comparative Matrix (Tableau Comparatif des Prix)</h3>
+                            <div className="flex justify-between items-center flex-wrap gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Comparative Matrix (Tableau Comparatif des Prix)</h3>
+
+                                {/* Autosave Status Indicator */}
+                                {autosaveStatus === 'saving' && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                                    <Loader2 size={11} className="animate-spin" /> Autosaving...
+                                  </span>
+                                )}
+                                {autosaveStatus === 'pending' && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                    Unsaved changes...
+                                  </span>
+                                )}
+                                {autosaveStatus === 'saved' && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <CheckCircle2 size={11} className="text-emerald-600" /> Autosaved
+                                  </span>
+                                )}
+                                {autosaveStatus === 'error' && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                    <AlertCircle size={11} className="text-rose-600" /> Autosave failed (retrying)
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-[11px] font-bold text-teal-600">Lowest quoted prices are highlighted</span>
                             </div>
                             <div className="overflow-x-auto border border-slate-100 rounded-2xl">
@@ -3881,6 +4014,16 @@ export default function ProcurementHub() {
                                       <th key={sup.id} className="p-4 text-center border-l border-slate-150 bg-slate-50/50 min-w-[160px]">
                                         <div className="font-black text-slate-850 truncate max-w-[180px]" title={sup.vendor_name}>{sup.vendor_name}</div>
                                         <div className="text-[9px] text-slate-400 font-bold lowercase truncate max-w-[180px]">{sup.vendor_contact || 'no contact'}</div>
+                                        {sup.portal_access_count > 0 ? (
+                                          <div className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full" title={sup.portal_last_accessed_at ? `Portal last accessed: ${new Date(sup.portal_last_accessed_at).toLocaleString()}` : ''}>
+                                            <CheckCircle2 size={10} className="text-emerald-600" />
+                                            Portal Accessed ({sup.portal_access_count}x)
+                                          </div>
+                                        ) : (
+                                          <div className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                                            Portal Pending
+                                          </div>
+                                        )}
                                         {rfqDetails.rfq.status !== 'Awarded' && rfqDetails.rfq.status !== 'Closed' && (
                                           <button
                                             onClick={() => handleSaveQuotesSubmit(sup.vendor_id)}
