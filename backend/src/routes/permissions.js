@@ -46,6 +46,12 @@ router.post('/user/:userId/override', permissionController.setUserOverride);
 router.post('/role/:roleName/reset', permissionController.resetRolePermissions);
 
 /**
+ * @route POST /api/permissions/roles
+ * @desc Create a brand new custom role with initial permissions
+ */
+router.post('/roles', permissionController.createRole);
+
+/**
  * @route GET /api/permissions/unlock-logs
  * @desc Get logs of who has unlocked the stock and when
  */

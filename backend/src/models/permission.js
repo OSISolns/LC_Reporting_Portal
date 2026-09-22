@@ -239,6 +239,44 @@ class Permission {
     );
     return rows;
   }
+
+  /**
+   * Create a new custom role with initial permissions.
+   */
+  static async createRole(roleName, displayName, permissions = {}, updatedBy = 1) {
+    const cleanRoleName = String(roleName || '').trim().toLowerCase().replace(/\s+/g, '_');
+    if (!cleanRoleName || !/^[a-z0-9_-]+$/.test(cleanRoleName)) {
+      throw new Error('Role key must contain only lowercase letters, numbers, underscores, or hyphens.');
+    }
+    if (!displayName || !String(displayName).trim()) {
+      throw new Error('Role display name is required.');
+    }
+
+    // 1. Register role in roles table
+    await db.query(
+      `INSERT INTO roles (name, display_name) VALUES (?, ?)
+       ON CONFLICT(name) DO UPDATE SET display_name = EXCLUDED.display_name`,
+      [cleanRoleName, String(displayName).trim()]
+    );
+
+    // 2. Insert permissions into role_permissions
+    for (const [modName, actions] of Object.entries(permissions || {})) {
+      for (const [action, granted] of Object.entries(actions || {})) {
+        if (granted) {
+          await db.query(
+            `INSERT INTO role_permissions (role_name, module, action, granted, updated_by, updated_at)
+             VALUES (?, ?, ?, 1, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(role_name, module, action) DO UPDATE 
+             SET granted = 1, updated_by = EXCLUDED.updated_by, updated_at = CURRENT_TIMESTAMP`,
+            [cleanRoleName, modName, action, updatedBy]
+          );
+        }
+      }
+    }
+
+    this.clearCache();
+    return { roleName: cleanRoleName, displayName: String(displayName).trim() };
+  }
 }
 
 module.exports = Permission;

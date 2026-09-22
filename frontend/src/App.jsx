@@ -97,7 +97,23 @@ function App() {
             <Route path="/compliance" element={<ProtectedRoute allowedRoles={['admin', 'hsfp', 'quality_manager', 'qm', 'quality_accreditation_officer', 'coo', 'deputy_coo']}><CompliancePortal /></ProtectedRoute>} />
             <Route path="/it-dashboard" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><ITDashboard /></ProtectedRoute>} />
             <Route path="/it-ticketing" element={<ProtectedRoute allowedRoles={['admin', 'it_officer', 'doctor', 'consultant', 'pa', 'staff', 'nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'imaging_tech', 'imaging_manager', 'dentist', 'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental', 'physiotherapist', 'physio', 'physio_manager', 'operations_staff', 'operations', 'cashier', 'principal_cashier', 'customer_care', 'stock-manager', 'procurement-manager', 'hsfp', 'coo', 'deputy_coo', 'chairman', 'sales_manager', 'medical_director', 'quality_accreditation_officer']}><ITAssetTicketing /></ProtectedRoute>} />
-            <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'medical_director', 'quality_accreditation_officer']}><AIInsights /></ProtectedRoute>} />
+            <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={[
+              // Executives & Administration
+              'admin', 'chairman', 'coo', 'deputy_coo', 'medical_director', 'pa',
+              // Financial/Operations oversight
+              'sales_manager', 'principal_cashier', 'consultant',
+              // Quality & Accreditation
+              'quality_accreditation_officer', 'quality_manager', 'qm', 'hsfp',
+              // Department Managers
+              'chef-nurse',
+              'lab_manager', 'lab_team_lead', 'lab_lead',
+              'imaging_manager',
+              'dental_hod', 'dental_lab_manager',
+              'physio_manager',
+              'logistics_manager', 'logistics_officer',
+              'it_officer',
+            ]}><AIInsights /></ProtectedRoute>} />
+
             
             <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><CancellationList /></ProtectedRoute>} />
             

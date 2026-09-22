@@ -26,6 +26,14 @@ export const updateRolePermissions = async (roleName, permissions) => {
 };
 
 /**
+ * Create a new custom role with initial permissions.
+ */
+export const createRole = async (roleData) => {
+  const response = await api.post('/permissions/roles', roleData);
+  return response.data;
+};
+
+/**
  * Get effective permissions for a specific user (including overrides).
  */
 export const getUserEffectivePermissions = async (userId) => {

@@ -132,3 +132,26 @@ exports.getUnlockLogs = async (req, res, next) => {
     next(err);
   }
 };
+
+/**
+ * Create a new custom role with initial permissions.
+ */
+exports.createRole = async (req, res, next) => {
+  try {
+    const { roleName, displayName, permissions } = req.body;
+    if (!roleName || !displayName) {
+      return res.status(400).json({ success: false, message: 'Role key (roleName) and display title (displayName) are required.' });
+    }
+
+    const result = await Permission.createRole(roleName, displayName, permissions || {}, req.user.id);
+    await logAction(req, 'CREATE', 'roles', result.roleName, { roleName: result.roleName, displayName: result.displayName, permissions });
+
+    res.status(201).json({
+      success: true,
+      message: `Role '${result.displayName}' (${result.roleName}) created successfully with configured module permissions.`,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};

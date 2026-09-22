@@ -17,9 +17,14 @@ const CLINICAL_ROLES = ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 
 
 // The AI Insights page (management analytics): view = stats/classify,
 // download = executive briefing
-router.get('/stats',            checkPermission('ai_insights', 'view'),     aiController.getModuleStats);
-router.get('/classify/:module', checkPermission('ai_insights', 'view'),     aiController.classifyReasons);
-router.get('/executive',        checkPermission('ai_insights', 'download'), aiController.getExecutiveReport);
+router.get('/stats',                checkPermission('ai_insights', 'view'),     aiController.getModuleStats);
+router.get('/classify/:module',     checkPermission('ai_insights', 'view'),     aiController.classifyReasons);
+router.get('/executive',            checkPermission('ai_insights', 'download'), aiController.getExecutiveReport);
+
+// Lumina AI Insight — per-department intelligence & export
+router.get('/dept-stats/:dept',     checkPermission('ai_insights', 'view'),     aiController.getDeptStats);
+router.post('/lumina-report',       checkPermission('ai_insights', 'download'), aiController.compileLuminaReport);
+
 
 // ── Legacy medication suggest (kept for backward compat) ─────────────────────
 router.post('/medications/suggest', authorizeRoles(CLINICAL_ROLES), aiController.suggestMedicationRoutes);

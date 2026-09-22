@@ -295,6 +295,227 @@ exports.getExecutiveReport = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ── Lumina AI Insight: Per-department statistics ──────────────────────────────
+const DEPT_QUERIES = {
+  operations: async () => {
+    const [reports, shifts, perf] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM daily_report_metrics`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM shift_sessions GROUP BY status`),
+      queryRows(`SELECT COUNT(*) AS cnt FROM shift_sessions WHERE is_flagged=1`),
+    ]);
+    const shiftMap = {}; shifts.forEach(r => { shiftMap[r.status] = Number(r.cnt); });
+    return {
+      daily_reports: Number(reports[0]?.total || 0),
+      shifts_open: (shiftMap['open'] || 0) + (shiftMap['draft'] || 0),
+      shifts_closed: shiftMap['closed'] || 0,
+      shifts_flagged: Number(perf[0]?.cnt || 0),
+      shifts_total: Object.values(shiftMap).reduce((a, b) => a + b, 0),
+    };
+  },
+  it: async () => {
+    const [tickets, byPriority, byStatus] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM it_support_tickets`),
+      queryRows(`SELECT priority, COUNT(*) AS cnt FROM it_support_tickets GROUP BY priority`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM it_support_tickets GROUP BY status`),
+    ]);
+    const pri = {}, sta = {};
+    byPriority.forEach(r => { pri[r.priority] = Number(r.cnt); });
+    byStatus.forEach(r => { sta[r.status] = Number(r.cnt); });
+    return {
+      total: Number(tickets[0]?.total || 0),
+      open: (sta['open'] || 0) + (sta['in_progress'] || 0),
+      resolved: sta['resolved'] || 0,
+      critical: pri['critical'] || 0,
+      high: pri['high'] || 0,
+    };
+  },
+  dental: async () => {
+    const [cases, byStatus, consumables] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM dental_cases`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM dental_cases GROUP BY status`),
+      queryRows(`SELECT COUNT(*) AS total FROM consumables_log WHERE department='dental'`),
+    ]);
+    const sta = {}; byStatus.forEach(r => { sta[r.status] = Number(r.cnt); });
+    return {
+      total: Number(cases[0]?.total || 0),
+      active: sta['active'] || 0,
+      completed: sta['completed'] || 0,
+      pending: sta['pending'] || 0,
+      consumables: Number(consumables[0]?.total || 0),
+    };
+  },
+  nursing: async () => {
+    const [sheets, stock, incidents, reports] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM clinical_sheets`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM nursing_monthly_stock GROUP BY status`),
+      queryRows(`SELECT COUNT(*) AS total FROM incident_reports WHERE department='nursing' OR department IS NULL`),
+      queryRows(`SELECT COUNT(*) AS total FROM daily_report_metrics`),
+    ]);
+    const sta = {}; stock.forEach(r => { sta[r.status] = Number(r.cnt); });
+    return {
+      clinical_sheets: Number(sheets[0]?.total || 0),
+      stock_ok: sta['ok'] || 0,
+      stock_low: sta['low'] || 0,
+      stock_critical: sta['critical'] || 0,
+      incidents: Number(incidents[0]?.total || 0),
+      daily_reports: Number(reports[0]?.total || 0),
+    };
+  },
+  laboratory: async () => {
+    const [sessions, ncrs, analyzers] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM lab_sessions`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM ncr_records GROUP BY status`),
+      queryRows(`SELECT COUNT(*) AS total FROM lab_analyzers`),
+    ]);
+    const sta = {}; ncrs.forEach(r => { sta[r.status] = Number(r.cnt); });
+    return {
+      sessions: Number(sessions[0]?.total || 0),
+      ncrs_open: (sta['open'] || 0) + (sta['in_progress'] || 0),
+      ncrs_closed: sta['closed'] || 0,
+      ncrs_total: Object.values(sta).reduce((a, b) => a + b, 0),
+      analyzers: Number(analyzers[0]?.total || 0),
+    };
+  },
+  imaging: async () => {
+    const [studies, byModality] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM imaging_studies`),
+      queryRows(`SELECT modality, COUNT(*) AS cnt FROM imaging_studies GROUP BY modality`),
+    ]);
+    const mod = {}; byModality.forEach(r => { mod[r.modality] = Number(r.cnt); });
+    return {
+      total: Number(studies[0]?.total || 0),
+      modalities: mod,
+    };
+  },
+  stock: async () => {
+    const [checks, consumables] = await Promise.all([
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM nursing_monthly_stock GROUP BY status`),
+      queryRows(`SELECT COUNT(*) AS total FROM consumables_log`),
+    ]);
+    const sta = {}; checks.forEach(r => { sta[r.status] = Number(r.cnt); });
+    return {
+      total: Object.values(sta).reduce((a, b) => a + b, 0),
+      ok: sta['ok'] || 0,
+      low: sta['low'] || 0,
+      critical: sta['critical'] || 0,
+      consumables_logged: Number(consumables[0]?.total || 0),
+    };
+  },
+  procurement: async () => {
+    const [requests, byStatus] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM purchase_requests`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM purchase_requests GROUP BY status`),
+    ]);
+    const sta = {}; byStatus.forEach(r => { sta[r.status] = Number(r.cnt); });
+    return {
+      total: Number(requests[0]?.total || 0),
+      pending: sta['pending'] || 0,
+      approved: sta['approved'] || 0,
+      rejected: sta['rejected'] || 0,
+    };
+  },
+  logistics: async () => {
+    const [requests, byStatus] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM logistics_requests`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM logistics_requests GROUP BY status`),
+    ]);
+    const sta = {}; byStatus.forEach(r => { sta[r.status] = Number(r.cnt); });
+    return {
+      total: Number(requests[0]?.total || 0),
+      pending: sta['pending'] || 0,
+      in_transit: sta['in_transit'] || 0,
+      completed: sta['completed'] || 0,
+    };
+  },
+  physio: async () => {
+    const [sessions, byOutcome] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM physio_sessions`),
+      queryRows(`SELECT outcome, COUNT(*) AS cnt FROM physio_sessions GROUP BY outcome`),
+    ]);
+    const out = {}; byOutcome.forEach(r => { out[r.outcome] = Number(r.cnt); });
+    return {
+      total: Number(sessions[0]?.total || 0),
+      completed: out['completed'] || 0,
+      ongoing: out['ongoing'] || 0,
+      discontinued: out['discontinued'] || 0,
+    };
+  },
+  customer_care: async () => {
+    const [cancels, refunds, feedbacks] = await Promise.all([
+      queryRows(`SELECT status, COUNT(*) AS cnt, COALESCE(SUM(total_amount_cancelled),0) AS total_val FROM cancellation_requests GROUP BY status`),
+      queryRows(`SELECT status, COUNT(*) AS cnt, COALESCE(SUM(amount_to_be_refunded),0) AS total_val FROM refund_requests GROUP BY status`),
+      queryRows(`SELECT COUNT(*) AS total FROM internal_feedbacks`),
+    ]);
+    const cs = {}, rs = {};
+    cancels.forEach(r => { cs[r.status] = { cnt: Number(r.cnt), val: Number(r.total_val) }; });
+    refunds.forEach(r => { rs[r.status] = { cnt: Number(r.cnt), val: Number(r.total_val) }; });
+    return {
+      cancellations_total: Object.values(cs).reduce((a, b) => a + b.cnt, 0),
+      cancellations_approved: cs['approved']?.cnt || 0,
+      cancellations_pending: cs['pending']?.cnt || 0,
+      cancellations_value: cs['approved']?.val || 0,
+      refunds_total: Object.values(rs).reduce((a, b) => a + b.cnt, 0),
+      refunds_approved: rs['approved']?.cnt || 0,
+      refunds_pending: rs['pending']?.cnt || 0,
+      refunds_value: rs['approved']?.val || 0,
+      feedbacks: Number(feedbacks[0]?.total || 0),
+    };
+  },
+};
+
+exports.getDeptStats = async (req, res, next) => {
+  try {
+    const { dept } = req.params;
+    if (!DEPT_QUERIES[dept]) {
+      return res.status(400).json({ success: false, message: `Unknown department: ${dept}` });
+    }
+    const CACHE_KEY = `ai:dept:${dept}`;
+    const cached = cache.get(CACHE_KEY);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
+    let data;
+    try {
+      data = await DEPT_QUERIES[dept]();
+    } catch (dbErr) {
+      // Gracefully handle missing tables — return zeroed stats
+      data = { _error: 'Data unavailable for this department', _detail: dbErr.message };
+    }
+    cache.set(CACHE_KEY, data, 30_000);
+    res.json({ success: true, data, cached: false });
+  } catch (err) { next(err); }
+};
+
+exports.compileLuminaReport = async (req, res, next) => {
+  try {
+    const { dept } = req.body;
+    if (!dept) return res.status(400).json({ success: false, message: 'dept is required' });
+
+    let stats = {};
+    if (DEPT_QUERIES[dept]) {
+      try { stats = await DEPT_QUERIES[dept](); } catch { stats = {}; }
+    }
+
+    const label = {
+      operations: 'Operations', it: 'Information Technology', dental: 'Dental',
+      nursing: 'Nursing', laboratory: 'Laboratory', imaging: 'Imaging',
+      stock: 'Stock Management', procurement: 'Procurement', logistics: 'Logistics',
+      physio: 'Physiotherapy', customer_care: 'Customer Care',
+    }[dept] || dept;
+
+    const narrativeParts = [`Lumina AI Insight — ${label} Department Report. Generated: ${new Date().toUTCString()}.`];
+    const entries = Object.entries(stats).filter(([k]) => !k.startsWith('_'));
+    if (entries.length) {
+      narrativeParts.push('Current KPIs: ' + entries.map(([k, v]) => {
+        if (typeof v === 'object') return `${k}: ${JSON.stringify(v)}`;
+        return `${k.replace(/_/g, ' ')}: ${v}`;
+      }).join(', ') + '.');
+    }
+    narrativeParts.push('All figures represent live data extracted at time of report generation. No manual inputs were applied.');
+
+    res.json({ success: true, data: { dept, label, stats, narrative: narrativeParts.join(' '), generatedAt: new Date().toISOString() } });
+  } catch (err) { next(err); }
+};
+
 // ── Local AI: Medication Route & Dose Suggestions ──────────────────────────────
 exports.suggestMedicationRoutes = async (req, res, next) => {
   try {
