@@ -2545,6 +2545,53 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to migrate/seed icd11_cache table:', err);
     }
 
+    // ICD-10 Cache Table Migration & Seeding
+    try {
+      await client.execute(`
+      CREATE TABLE IF NOT EXISTS icd10_cache (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        keyword TEXT UNIQUE NOT NULL,
+        results TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+      console.log('✅ SQLite Schema Migration: created icd10_cache table');
+
+      const { rows: cacheCount } = await client.execute("SELECT COUNT(*) as count FROM icd10_cache");
+      if (cacheCount[0].count === 0) {
+        console.log('🌱 Seeding initial ICD-10 cache for common medical conditions...');
+        const seedData10 = [
+          { keyword: "malaria", results: [{ code: "B54", desc: "Unspecified malaria", system: "ICD-10" }, { code: "B50.9", desc: "Plasmodium falciparum malaria, unspecified", system: "ICD-10" }, { code: "B51.9", desc: "Plasmodium vivax malaria without complication", system: "ICD-10" }, { code: "B53.0", desc: "Plasmodium ovale malaria", system: "ICD-10" }] },
+          { keyword: "cholera", results: [{ code: "A00.9", desc: "Cholera, unspecified", system: "ICD-10" }, { code: "A00.0", desc: "Cholera due to Vibrio cholerae 01, biovar cholerae", system: "ICD-10" }] },
+          { keyword: "typhoid", results: [{ code: "A01.00", desc: "Typhoid fever, unspecified", system: "ICD-10" }, { code: "A01.09", desc: "Typhoid fever with other complications", system: "ICD-10" }] },
+          { keyword: "hypertension", results: [{ code: "I10", desc: "Essential (primary) hypertension", system: "ICD-10" }, { code: "H40.059", desc: "Ocular hypertension, unspecified eye", system: "ICD-10" }, { code: "I27.20", desc: "Pulmonary hypertension, unspecified", system: "ICD-10" }] },
+          { keyword: "diabetes", results: [{ code: "E11.9", desc: "Type 2 diabetes mellitus without complications", system: "ICD-10" }, { code: "E10.9", desc: "Type 1 diabetes mellitus without complications", system: "ICD-10" }, { code: "O24.419", desc: "Gestational diabetes mellitus in pregnancy, unspecified control", system: "ICD-10" }] },
+          { keyword: "influenza", results: [{ code: "J11.1", desc: "Influenza due to unidentified influenza virus with other respiratory manifestations", system: "ICD-10" }, { code: "J10.1", desc: "Influenza due to other identified influenza virus with other respiratory manifestations", system: "ICD-10" }] },
+          { keyword: "bronchitis", results: [{ code: "J40", desc: "Bronchitis, not specified as acute or chronic", system: "ICD-10" }, { code: "J20.9", desc: "Acute bronchitis, unspecified", system: "ICD-10" }, { code: "J42", desc: "Unspecified chronic bronchitis", system: "ICD-10" }] },
+          { keyword: "gastroenteritis", results: [{ code: "A09", desc: "Infectious gastroenteritis and colitis, unspecified", system: "ICD-10" }, { code: "K52.9", desc: "Noninfective gastroenteritis and colitis, unspecified", system: "ICD-10" }] },
+          { keyword: "appendicitis", results: [{ code: "K37", desc: "Unspecified appendicitis", system: "ICD-10" }, { code: "K35.80", desc: "Unspecified acute appendicitis", system: "ICD-10" }] },
+          { keyword: "anemia", results: [{ code: "D64.9", desc: "Anemia, unspecified", system: "ICD-10" }, { code: "D50.9", desc: "Iron deficiency anemia, unspecified", system: "ICD-10" }] },
+          { keyword: "pneumonia", results: [{ code: "J18.9", desc: "Pneumonia, unspecified organism", system: "ICD-10" }, { code: "J15.9", desc: "Unspecified bacterial pneumonia", system: "ICD-10" }] },
+          { keyword: "asthma", results: [{ code: "J45.909", desc: "Unspecified asthma, uncomplicated", system: "ICD-10" }, { code: "J45.901", desc: "Unspecified asthma with (acute) exacerbation", system: "ICD-10" }] },
+          { keyword: "migraine", results: [{ code: "G43.909", desc: "Migraine, unspecified, not intractable, without status migrainosus", system: "ICD-10" }] },
+          { keyword: "tonsillitis", results: [{ code: "J03.90", desc: "Acute tonsillitis, unspecified", system: "ICD-10" }] },
+          { keyword: "dengue", results: [{ code: "A90", desc: "Dengue fever [classical dengue]", system: "ICD-10" }, { code: "A91", desc: "Dengue hemorrhagic fever", system: "ICD-10" }] },
+          { keyword: "covid", results: [{ code: "U07.1", desc: "COVID-19", system: "ICD-10" }] },
+          { keyword: "uti", results: [{ code: "N39.0", desc: "Urinary tract infection, site not specified", system: "ICD-10" }] },
+          { keyword: "tuberculosis", results: [{ code: "A15.0", desc: "Tuberculosis of lung", system: "ICD-10" }, { code: "A19.9", desc: "Miliary tuberculosis, unspecified", system: "ICD-10" }] }
+        ];
+        for (const item of seedData10) {
+          await client.execute({
+            sql: "INSERT OR IGNORE INTO icd10_cache (keyword, results) VALUES (?, ?)",
+            args: [item.keyword, JSON.stringify(item.results)]
+          });
+        }
+        console.log('✨ Seeded common ICD-10 cache records successfully!');
+      }
+    } catch (err) {
+      console.error('❌ Failed to migrate/seed icd10_cache table:', err);
+    }
+
     // FDA Generic Medications Cache Table Migration (populated separately via
     // scripts/import_fda_medications.js from the Rwanda FDA register export)
     try {

@@ -105,7 +105,7 @@ function App() {
               // Quality & Accreditation
               'quality_accreditation_officer', 'quality_manager', 'qm', 'hsfp',
               // Department Managers
-              'chef-nurse',
+              'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
               'lab_manager', 'lab_team_lead', 'lab_lead',
               'imaging_manager',
               'dental_hod', 'dental_lab_manager',
@@ -119,7 +119,7 @@ function App() {
             
             <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><RefundList /></ProtectedRoute>} />
             
-            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo', 'medical_director', 'procurement-manager', 'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental_lab', 'dentist', 'dental', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'quality_manager', 'qm', 'imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'logistics_manager', 'logistics_officer', 'logistics', 'facilities_manager', 'fleet_officer', 'quality_accreditation_officer']}><IncidentList /></ProtectedRoute>} />
+            <Route path="/incidents" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'chef-nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo', 'medical_director', 'procurement-manager', 'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental_lab', 'dentist', 'dental', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'quality_manager', 'qm', 'imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'logistics_manager', 'logistics_officer', 'logistics', 'facilities_manager', 'fleet_officer', 'quality_accreditation_officer', 'physiotherapist', 'physio', 'physio_manager']}><IncidentList /></ProtectedRoute>} />
 
             
             <Route path="/results-transfer" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><ResultTransferList /></ProtectedRoute>} />

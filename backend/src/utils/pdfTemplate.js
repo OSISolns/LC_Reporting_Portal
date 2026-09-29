@@ -393,214 +393,254 @@ const getMedicalReportHTML = (type, data) => {
       </div>
     `;
   } else if (type === 'CLINICAL_SHEET') {
-    const iden = data.identification || {};
-    const triage = data.triage || {};
-    const notes = data.progress_notes || [];
-    const mar = data.medication_mar || {};
-    const sbar = data.sbar || {};
+    const observations = Array.isArray(data.observations) && data.observations.length > 0
+      ? data.observations
+      : [data];
+
+    const firstObs = observations[0] || {};
+    const iden = data.identification || firstObs.identification || {};
+    const patientName = data.patient_name || `${iden.last_name || ''} ${iden.first_name || ''}`.trim() || 'Patient';
+    const dob = data.dob || iden.dob || 'N/A';
+    const gender = data.gender || iden.gender || 'N/A';
+    const nationalId = data.national_id || iden.national_id || 'N/A';
+    const insurance = data.insurance || iden.insurance || 'N/A';
+    const dateRangeLabel = data.date_range_label || 'Continuous Patient Record';
+
+    const attendedDoctors = data.attended_doctors || [];
+    const attendedRNs = data.attended_rns || [];
+
+    const attendingDoctor = data.attending_doctor || iden.attending_doctor || iden.doctor_name || (attendedDoctors.length > 0 ? attendedDoctors[0] : 'Dr. Not Specified');
 
     content = `
-      <div class="medical-form-modern" style="border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; font-size: 7.5pt;">
+      <div class="medical-form-modern" style="border: 1.5px solid #0f172a; border-radius: 4px; overflow: hidden; font-size: 7.5pt;">
         
         <!-- Header -->
-        <div style="background-color: #f1f5f9; padding: 10px 15px; border-bottom: 2px solid ${primaryDark}; display: flex; justify-content: space-between; align-items: center;">
+        <div style="padding: 12px 15px; background: #ffffff; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #0f172a;">
           <div>
-            <h2 style="margin: 0; font-size: 13pt; color: ${primaryDark}; text-transform: uppercase; letter-spacing: 0.5px;">Patient Observation Records</h2>
-            <div style="font-size: 7pt; color: #64748b; font-weight: 600; margin-top: 2px;">Legacy Clinics & Diagnostics • Nursing Department</div>
+            <h2 style="margin: 0; font-size: 12pt; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">CONTINUOUS NURSING PROCESS & CLINICAL DOCUMENTATION</h2>
+            <div style="font-size: 7pt; color: #475569; font-weight: 600; margin-top: 3px;">Legacy Clinics & Diagnostics • Nursing & Clinical Services</div>
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 10pt; font-family: monospace; font-weight: 800; color: ${primaryTeal}; border: 1px solid #cbd5e1; padding: 3px 8px; border-radius: 4px; background: white;">PID: ${iden.pid || 'N/A'}</div>
+            <div style="font-size: 9.5pt; font-family: monospace; font-weight: 800; color: #0f172a; border: 1.5px solid #0f172a; padding: 2px 8px; border-radius: 4px; background: #f8fafc; display: inline-block;">PID: ${data.patient_id || iden.pid || 'N/A'}</div>
+            <div style="font-size: 6.5pt; color: #475569; margin-top: 3px; font-weight: 600;">Timeframe: <span style="color: #0f172a; font-weight: 700;">${dateRangeLabel}</span></div>
           </div>
         </div>
 
-        <!-- I. Identification -->
-        <div style="padding: 10px 15px;">
-          <div style="font-size: 8.5pt; font-weight: 800; color: ${primaryDark}; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 8px;">I. Patient Identification</div>
+        <!-- I. Patient Identification -->
+        <div style="padding: 10px 15px; background: #ffffff; border-bottom: 1px solid #cbd5e1;">
+          <div style="font-size: 8.5pt; font-weight: 800; color: #0f172a; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 8px;">I. Patient Identification</div>
           <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt;">
             <tr>
-              <td style="width: 15%; color: #64748b; padding: 3px 0;">Patient Name:</td>
-              <td style="width: 35%; font-weight: 700; border-bottom: 1px dashed #cbd5e1; padding: 3px 0;">${iden.last_name || ''} ${iden.first_name || ''}</td>
-              <td style="width: 15%; color: #64748b; padding: 3px 0; padding-left: 10px;">Date of Birth:</td>
-              <td style="width: 35%; font-weight: 700; border-bottom: 1px dashed #cbd5e1; padding: 3px 0;">${iden.dob || ''} (${iden.gender || ''})</td>
+              <td style="width: 15%; color: #475569; padding: 2px 0;">Patient Name:</td>
+              <td style="width: 35%; font-weight: 700; color: #0f172a; border-bottom: 1px dashed #cbd5e1;">${patientName}</td>
+              <td style="width: 15%; color: #475569; padding: 2px 0; padding-left: 10px;">DoB & Gender:</td>
+              <td style="width: 35%; font-weight: 700; color: #0f172a; border-bottom: 1px dashed #cbd5e1;">${dob} (${gender})</td>
             </tr>
             <tr>
-              <td style="color: #64748b; padding: 3px 0;">ID / Passport:</td>
-              <td style="font-weight: 700; border-bottom: 1px dashed #cbd5e1; padding: 3px 0;">${iden.national_id || ''}</td>
-              <td style="color: #64748b; padding: 3px 0; padding-left: 10px;">Insurance:</td>
-              <td style="font-weight: 700; border-bottom: 1px dashed #cbd5e1; padding: 3px 0;">${iden.insurance || ''}</td>
+              <td style="color: #475569; padding: 2px 0;">National ID / Passport:</td>
+              <td style="font-weight: 700; color: #0f172a; border-bottom: 1px dashed #cbd5e1;">${nationalId}</td>
+              <td style="color: #475569; padding: 2px 0; padding-left: 10px;">Health Insurance:</td>
+              <td style="font-weight: 700; color: #0f172a; border-bottom: 1px dashed #cbd5e1;">${insurance}</td>
             </tr>
             <tr>
-              <td style="color: #64748b; padding: 3px 0;">Appt Date/No:</td>
-              <td style="font-weight: 700; border-bottom: 1px dashed #cbd5e1; padding: 3px 0;">${iden.appt_date_no || ''}</td>
-              <td style="color: #64748b; padding: 3px 0; padding-left: 10px;">Attending RN:</td>
-              <td style="font-weight: 700; border-bottom: 1px dashed #cbd5e1; padding: 3px 0;">${iden.rn || ''} (Time: ${iden.time || ''})</td>
+              <td style="color: #475569; padding: 2px 0;">Assigned Doctor:</td>
+              <td colspan="3" style="font-weight: 700; color: #1b669e; border-bottom: 1px dashed #cbd5e1;">${attendingDoctor}</td>
             </tr>
-            ${iden.diagnosis ? `
-            <tr>
-              <td style="color: #64748b; padding: 3px 0;">Clinical Diagnosis:</td>
-              <td colspan="3" style="font-weight: 700; color: #1b669e; border-bottom: 1px dashed #cbd5e1; padding: 3px 0;">${iden.diagnosis}</td>
-            </tr>` : ''}
-            ${iden.medical_note ? `
-            <tr>
-              <td style="color: #64748b; padding: 3px 0;">Medical Note:</td>
-              <td colspan="3" style="font-weight: 600; color: #334155; border-bottom: 1px dashed #cbd5e1; padding: 3px 0;">${iden.medical_note}</td>
-            </tr>` : ''}
           </table>
         </div>
 
-        <!-- II. Triage & Vitals -->
-        <div style="background-color: #f8fafc; padding: 10px 15px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
-          <div style="font-size: 8.5pt; font-weight: 800; color: ${primaryDark}; text-transform: uppercase; margin-bottom: 8px;">II. Triage & Initial Assessment</div>
-          
-          <div style="display: flex; gap: 15px; margin-bottom: 10px;">
-            <div style="flex: 1; border: 1px solid #cbd5e1; background: white; border-radius: 4px; padding: 6px;">
-              <div style="font-size: 6.5pt; color: #64748b; text-transform: uppercase; font-weight: 700; margin-bottom: 3px;">Prev. Illness (Med/Surg)</div>
-              <div style="font-weight: 600;">Med: ${triage.prev_illness_med || 'None'} | Surg: ${triage.prev_illness_surg || 'None'}</div>
-            </div>
-            <div style="flex: 1; border: 1px solid #fca5a5; background: #fef2f2; border-radius: 4px; padding: 6px;">
-              <div style="font-size: 6.5pt; color: #b91c1c; text-transform: uppercase; font-weight: 700; margin-bottom: 3px;">Known Allergies</div>
-              <div style="font-weight: 700; color: #7f1d1d;">1. ${triage.allergy_1 || 'None'} <span style="margin: 0 5px;">|</span> 2. ${triage.allergy_2 || 'None'}</div>
-            </div>
-          </div>
-
-          <table style="width: 100%; border-collapse: collapse; text-align: center; border: 1px solid #cbd5e1; background: white;">
-            <tr style="background: #e2e8f0; font-size: 7pt; color: #334155;">
-              <th style="padding: 4px; border: 1px solid #cbd5e1;">Temp (°C)</th>
-              <th style="padding: 4px; border: 1px solid #cbd5e1;">Pulse (bpm)</th>
-              <th style="padding: 4px; border: 1px solid #cbd5e1;">Resp (bpm)</th>
-              <th style="padding: 4px; border: 1px solid #cbd5e1;">BP (mmHg)</th>
-              <th style="padding: 4px; border: 1px solid #cbd5e1;">Weight (kg)</th>
-              <th style="padding: 4px; border: 1px solid #cbd5e1;">SpO2 (%)</th>
-            </tr>
-            <tr style="font-weight: 700; font-size: 8.5pt;">
-              <td style="padding: 5px; border: 1px solid #cbd5e1;">${triage.temp || '-'}</td>
-              <td style="padding: 5px; border: 1px solid #cbd5e1;">${triage.pulse || '-'}</td>
-              <td style="padding: 5px; border: 1px solid #cbd5e1;">${triage.rr || '-'}</td>
-              <td style="padding: 5px; border: 1px solid #cbd5e1;">${triage.bp || '-'}</td>
-              <td style="padding: 5px; border: 1px solid #cbd5e1;">${triage.weight || '-'}</td>
-              <td style="padding: 5px; border: 1px solid #cbd5e1;">${triage.spo2 || '-'}</td>
+        <!-- II. Attended Medical Personnel Roster -->
+        <div style="padding: 8px 15px; background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+          <div style="font-size: 8pt; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 4px;">II. Attended Medical Personnel Roster (Selected Timeframe)</div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt;">
+            <tr>
+              <td style="width: 50%; vertical-align: top; padding-right: 10px;">
+                <strong style="color: #334155;">Attended Doctors / Prescribers:</strong>
+                <div style="color: #0f172a; font-weight: 700; margin-top: 2px;">
+                  ${attendedDoctors.length > 0 ? attendedDoctors.join(', ') : 'None documented in range'}
+                </div>
+              </td>
+              <td style="width: 50%; vertical-align: top; border-left: 1px solid #cbd5e1; padding-left: 10px;">
+                <strong style="color: #334155;">Registered Nurses (RNs):</strong>
+                <div style="color: #0f172a; font-weight: 700; margin-top: 2px;">
+                  ${attendedRNs.length > 0 ? attendedRNs.join(', ') : 'None documented in range'}
+                </div>
+              </td>
             </tr>
           </table>
-          ${triage.general_comments ? `
-            <div style="margin-top: 8px; font-size: 7.5pt;">
-              <strong style="color: #475569;">Triage Notes:</strong> <span style="font-style: italic;">${triage.general_comments}</span>
-            </div>
-          ` : ''}
         </div>
 
-        <!-- III. Progress Notes -->
+        <!-- III. Continuous Observations & 5-Step Nursing Process Flowsheet -->
         <div style="padding: 10px 15px;">
-          <div style="font-size: 8.5pt; font-weight: 800; color: ${primaryDark}; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 8px;">III. Clinical Progress Notes</div>
-          <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 7.5pt;">
-            <tr style="background: #f1f5f9; color: #475569;">
-              <th style="padding: 5px 8px; border: 1px solid #cbd5e1; width: 15%; text-align: left;">Date/Time</th>
-              <th style="padding: 5px 8px; border: 1px solid #cbd5e1; width: 65%; text-align: left;">Observation / Intervention Note</th>
-              <th style="padding: 5px 8px; border: 1px solid #cbd5e1; width: 20%; text-align: left;">Signature</th>
-            </tr>
-            ${notes.length > 0 ? notes.map(n => `
-              <tr>
-                <td style="padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: 600; vertical-align: top;">${n.datetime || ''}</td>
-                <td style="padding: 5px 8px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.4;">${n.note || ''}</td>
-                <td style="padding: 5px 8px; border: 1px solid #cbd5e1; font-style: italic; vertical-align: top; color: #64748b;">${n.signature || ''}</td>
-              </tr>
-            `).join('') : `
-              <tr><td colspan="3" style="padding: 12px; text-align: center; color: #94a3b8; font-style: italic;">No clinical progress notes recorded.</td></tr>
-            `}
-          </table>
-        </div>
-
-        <!-- IV. MAR -->
-        <div style="background-color: #f8fafc; padding: 10px 15px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
-            <div style="font-size: 8.5pt; font-weight: 800; color: ${primaryDark}; text-transform: uppercase;">IV. Medication Administration Record (MAR)</div>
-            <div style="font-size: 7pt; color: #475569;">Prescriber: <strong>${mar.prescriber || '___________________'}</strong></div>
-          </div>
+          <div style="font-size: 8.5pt; font-weight: 800; color: #0f172a; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 3px; margin-bottom: 10px;">III. Continuous Observations & 5-Step Nursing Process Flowsheet</div>
           
-          <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 7pt; background: white; text-align: center;">
-            <tr style="background: #e2e8f0; color: #334155;">
-              <th style="padding: 4px; border: 1px solid #cbd5e1; width: 16%;">Intervention</th>
-              <th style="padding: 4px; border: 1px solid #cbd5e1; width: 21%;">Medication 1</th>
-              <th style="padding: 4px; border: 1px solid #cbd5e1; width: 21%;">Medication 2</th>
-              <th style="padding: 4px; border: 1px solid #cbd5e1; width: 21%;">Medication 3</th>
-              <th style="padding: 4px; border: 1px solid #cbd5e1; width: 21%;">Medication 4</th>
-            </tr>
-            ${[
-        { label: 'Name / Drug', key: 'name' },
-        { label: 'Dose', key: 'dose' },
-        { label: 'Route', key: 'route' },
-        { label: 'Frequency', key: 'frequency' },
-        { label: 'Time (Start - End)', key: 'time' }
-      ].map(field => `
-              <tr>
-                <td style="padding: 4px; border: 1px solid #cbd5e1; font-weight: 700; text-align: left; background: #f8fafc;">${field.label}</td>
-                ${[0, 1, 2, 3].map(i => {
-        const item = mar.interventions && mar.interventions[i] ? mar.interventions[i] : {};
-        const val = field.key === 'time'
-          ? (item.start_time || item.end_time ? `${item.start_time || ''} - ${item.end_time || ''}` : '')
-          : (item[field.key] || '');
-        return `<td style="padding: 4px; border: 1px solid #cbd5e1; ${field.key === 'name' ? 'font-weight:700;' : ''}">${val}</td>`;
-      }).join('')}
-              </tr>
-            `).join('')}
-          </table>
+          ${observations.map((obs, idx) => {
+            const obsIden = obs.identification || {};
+            const obsTriage = obs.triage || {};
+            const obsMar = obs.medication_mar || {};
+            const obsNotes = obs.progress_notes || [];
+            const np = obsTriage.nursing_process || obs.nursing_process || {};
+            const step1 = np.step1_assessment || {};
+            const step2 = np.step2_diagnosis || {};
+            const step3 = np.step3_planning || {};
+            const step4 = np.step4_implementation || {};
+            const step5 = np.step5_evaluation || {};
 
-          <div style="margin-top: 10px; display: flex; gap: 15px;">
-            <table style="width: 40%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 7pt; background: white; text-align: center;">
-              <tr style="background: #e2e8f0;">
-                <th style="padding: 3px; border: 1px solid #cbd5e1;">Given Time</th>
-                <th style="padding: 3px; border: 1px solid #cbd5e1;">Initials</th>
-              </tr>
-              ${Array(4).fill(0).map((_, i) => `
-                <tr>
-                  <td style="padding: 3px; border: 1px solid #cbd5e1; height: 14px;">${(mar.admin_logs && mar.admin_logs[i] && mar.admin_logs[i].time) || ''}</td>
-                  <td style="padding: 3px; border: 1px solid #cbd5e1; height: 14px; font-style: italic;">${(mar.admin_logs && mar.admin_logs[i] && mar.admin_logs[i].initials) || ''}</td>
-                </tr>
-              `).join('')}
-            </table>
-            <div style="flex: 1; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-size: 7.5pt;">
-              <div style="color: #64748b; font-weight: 700; margin-bottom: 4px; text-transform: uppercase;">Administering Nurses</div>
-              <div style="margin-bottom: 6px;"><strong>Initials List:</strong> ${mar.admin_initials || '__________________'}</div>
-              <div><strong>Full Names:</strong> ${mar.admin_names || '________________________________________________'}</div>
-            </div>
-          </div>
+            const rnName = (obsIden.rn && obsIden.rn !== 'N/A' && obsIden.rn.trim() !== '') ? obsIden.rn : (obs.created_by_name || obs.created_by_username || 'Duty RN Staff');
+
+            return `
+              <div style="border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 12px; background: white; page-break-inside: avoid;">
+                
+                <!-- Flowsheet Row Header -->
+                <div style="background: #f1f5f9; padding: 6px 10px; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; font-weight: 700;">
+                  <span style="color: #0f172a; font-size: 8pt;">Entry #${observations.length - idx} &bull; ${obsIden.date || ''} ${obsIden.time || ''} (Queue #${obs.queue_id || 'N/A'})</span>
+                  <span style="font-size: 7pt; color: #334155; background: #e2e8f0; padding: 2px 6px; border-radius: 3px; border: 1px solid #cbd5e1;">Attending RN: <strong>${rnName}</strong> &bull; Status: <strong>${obs.status || 'Draft'}</strong></span>
+                </div>
+
+                <!-- 1. Assessment -->
+                <div style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0;">
+                  <div style="font-size: 7.5pt; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 3px;">1. Assessment (Subjective, Physical Exam & Objective Vitals)</div>
+                  <div style="font-size: 7.5pt; color: #1e293b; margin-bottom: 5px;">
+                    <strong>Subjective Symptoms:</strong> ${step1.subjective?.symptoms || obsIden.medical_note || 'Patient assessed by nursing staff.'}
+                    ${step1.subjective?.pain_description ? ` &bull; <em>Pain Details:</em> ${step1.subjective.pain_description} (Score: ${step1.subjective.pain_score || '-'}/10)` : ''}
+                  </div>
+                  <!-- Vitals Grid -->
+                  <table style="width: 100%; border-collapse: collapse; text-align: center; border: 1px solid #cbd5e1; background: #ffffff; font-size: 7pt;">
+                    <tr style="background: #f1f5f9; color: #0f172a; font-weight: 700;">
+                      <th style="padding: 3px; border: 1px solid #cbd5e1;">Temp (°C)</th>
+                      <th style="padding: 3px; border: 1px solid #cbd5e1;">Pulse (bpm)</th>
+                      <th style="padding: 3px; border: 1px solid #cbd5e1;">Resp (bpm)</th>
+                      <th style="padding: 3px; border: 1px solid #cbd5e1;">BP (mmHg)</th>
+                      <th style="padding: 3px; border: 1px solid #cbd5e1;">Weight (kg)</th>
+                      <th style="padding: 3px; border: 1px solid #cbd5e1;">SpO2 (%)</th>
+                    </tr>
+                    <tr style="font-weight: 800; font-size: 8pt; color: #0f172a;">
+                      <td style="padding: 3px; border: 1px solid #cbd5e1;">${obsTriage.temp || '-'}</td>
+                      <td style="padding: 3px; border: 1px solid #cbd5e1;">${obsTriage.pulse || '-'}</td>
+                      <td style="padding: 3px; border: 1px solid #cbd5e1;">${obsTriage.rr || '-'}</td>
+                      <td style="padding: 3px; border: 1px solid #cbd5e1;">${obsTriage.bp || '-'}</td>
+                      <td style="padding: 3px; border: 1px solid #cbd5e1;">${obsTriage.weight || '-'}</td>
+                      <td style="padding: 3px; border: 1px solid #cbd5e1;">${obsTriage.spo2 || '-'}</td>
+                    </tr>
+                  </table>
+                  ${obsTriage.allergy_1 || obsTriage.allergy_2 ? `<div style="margin-top: 4px; color: #0f172a; font-weight: 700; font-size: 7pt;">Allergies: 1. ${obsTriage.allergy_1 || 'None'} | 2. ${obsTriage.allergy_2 || 'None'}</div>` : ''}
+
+                  ${step1.physical_exam ? `
+                    <div style="margin-top: 6px; padding: 4px 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 7pt;">
+                      <strong style="color: #0f172a; text-transform: uppercase;">Head-to-Toe Physical Exam (Inspection, Auscultation, Percussion, Palpation):</strong>
+                      <div style="margin-top: 2px; color: #1e293b;">
+                        ${step1.physical_exam.head_neck ? `&bull; <strong>Head/Neck/HEENT:</strong> ${step1.physical_exam.head_neck} ` : ''}
+                        ${step1.physical_exam.neurological ? `&bull; <strong>Neurological:</strong> ${step1.physical_exam.neurological} ` : ''}
+                        ${step1.physical_exam.cardiovascular ? `&bull; <strong>Cardiovascular:</strong> ${step1.physical_exam.cardiovascular} ` : ''}
+                        ${step1.physical_exam.respiratory ? `&bull; <strong>Respiratory/Lungs:</strong> ${step1.physical_exam.respiratory} ` : ''}
+                        ${step1.physical_exam.chest_lungs && !step1.physical_exam.respiratory ? `&bull; <strong>Chest/Lungs:</strong> ${step1.physical_exam.chest_lungs} ` : ''}
+                        ${step1.physical_exam.abdomen ? `&bull; <strong>Abdomen/GI:</strong> ${step1.physical_exam.abdomen} ` : ''}
+                        ${step1.physical_exam.genitourinary ? `&bull; <strong>Genitourinary/Renal:</strong> ${step1.physical_exam.genitourinary} ` : ''}
+                        ${step1.physical_exam.skin_integumentary ? `&bull; <strong>Skin/Integumentary:</strong> ${step1.physical_exam.skin_integumentary} ` : ''}
+                        ${step1.physical_exam.extremities ? `&bull; <strong>Musculoskeletal/Extremities:</strong> ${step1.physical_exam.extremities}` : ''}
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+
+                <!-- 2. Diagnosis -->
+                <div style="padding: 8px 10px; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
+                  <div style="font-size: 7.5pt; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 3px;">2. Nursing Diagnosis & 12 Activities of Living</div>
+                  <div style="font-size: 7.5pt; color: #1e293b; margin-bottom: 3px;">
+                    <strong>Diagnosis:</strong> <span style="font-weight: 800; color: #0f172a;">${step2.nursing_diagnosis_statement || obsIden.diagnosis || 'Standard Observation Care'}</span>
+                  </div>
+                  ${step2.activities_of_living && step2.activities_of_living.length > 0 ? `
+                    <div style="font-size: 7pt; color: #334155;">
+                      <strong>Activities of Living Impacted:</strong> ${step2.activities_of_living.join(' &bull; ')}
+                    </div>
+                  ` : ''}
+                </div>
+
+                <!-- 3. Planning -->
+                <div style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0;">
+                  <div style="font-size: 7.5pt; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 3px;">3. Planning & SMART Care Goals</div>
+                  <div style="font-size: 7.5pt; color: #1e293b;">
+                    <strong>SMART Goal:</strong> ${step3.smart_goals?.specific || 'Maintain vital stability and patient comfort.'}
+                    ${step3.smart_goals?.measurable ? ` <span style="color: #334155;">(Measurable Target: ${step3.smart_goals.measurable})</span>` : ''}
+                  </div>
+                  <div style="font-size: 7.5pt; color: #1e293b; margin-top: 2px;">
+                    <strong>Intervention Course:</strong> ${step3.care_plan_interventions || 'Regular vitals monitoring & prescribed treatment.'}
+                  </div>
+                </div>
+
+                <!-- 4. Implementation -->
+                <div style="padding: 8px 10px; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
+                  <div style="font-size: 7.5pt; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 3px;">4. Implementation & Medication MAR</div>
+                  <div style="font-size: 7.5pt; color: #1e293b; margin-bottom: 4px;">
+                    <strong>Care Executed:</strong> ${step4.care_plan_executed || 'Care plan interventions carried out as planned.'}
+                  </div>
+                  ${obsMar.interventions && obsMar.interventions.some(i => i.name) ? `
+                    <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 7pt; background: white;">
+                      <tr style="background: #f1f5f9; color: #0f172a; font-weight: 700;">
+                        <th style="padding: 2px 4px; border: 1px solid #cbd5e1; text-align: left;">Medication / Drug</th>
+                        <th style="padding: 2px 4px; border: 1px solid #cbd5e1;">Dose</th>
+                        <th style="padding: 2px 4px; border: 1px solid #cbd5e1;">Route</th>
+                        <th style="padding: 2px 4px; border: 1px solid #cbd5e1;">Freq</th>
+                      </tr>
+                      ${obsMar.interventions.filter(i => i.name).map(i => `
+                        <tr>
+                          <td style="padding: 2px 4px; border: 1px solid #cbd5e1; font-weight: 700;">${i.name}</td>
+                          <td style="padding: 2px 4px; border: 1px solid #cbd5e1; text-align: center;">${i.dose || '-'}</td>
+                          <td style="padding: 2px 4px; border: 1px solid #cbd5e1; text-align: center;">${i.route || '-'}</td>
+                          <td style="padding: 2px 4px; border: 1px solid #cbd5e1; text-align: center;">${i.frequency || '-'}</td>
+                        </tr>
+                      `).join('')}
+                    </table>
+                    <div style="font-size: 6.5pt; color: #334155; margin-top: 3px;">
+                      Prescriber: <strong>${obsMar.prescriber || 'N/A'}</strong> &bull; Administering RN(s): <strong>${obsMar.admin_names || obsMar.admin_initials || 'N/A'}</strong>
+                    </div>
+                  ` : ''}
+                </div>
+
+                <!-- 5. Evaluation -->
+                <div style="padding: 8px 10px;">
+                  <div style="font-size: 7.5pt; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 3px;">5. Evaluation & Re-Assessment</div>
+                  <div style="font-size: 7.5pt; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                    <strong>Goal Status:</strong>
+                    <span style="font-weight: 800; background: #f1f5f9; color: #0f172a; padding: 1px 6px; border-radius: 3px; border: 1px solid #cbd5e1;">${step5.goal_achievement_status || 'Ongoing'}</span>
+                  </div>
+                  <div style="font-size: 7.5pt; color: #1e293b; margin-top: 3px;">
+                    <strong>Physical & Vital Trend:</strong> ${step5.vital_physical_trend || obsTriage.general_comments || 'Patient condition monitored.'}
+                  </div>
+                </div>
+
+                <!-- Progress Notes if present -->
+                ${obsNotes && obsNotes.some(n => n.note) ? `
+                  <div style="padding: 6px 10px; background: #f8fafc; border-top: 1px dashed #cbd5e1; font-size: 7.5pt;">
+                    <strong style="color: #0f172a;">Progress Notes:</strong>
+                    ${obsNotes.filter(n => n.note).map(n => `
+                      <div style="margin-top: 2px; color: #1e293b;">
+                        <span style="color: #475569; font-weight: 600;">[${n.datetime || ''}]</span> ${n.note} <em style="color: #475569;">— ${n.signature || 'Staff'}</em>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+
+              </div>
+            `;
+          }).join('')}
         </div>
 
-        <!-- V. SBAR -->
-        <div style="padding: 10px 15px;">
-          <div style="font-size: 8.5pt; font-weight: 800; color: ${primaryDark}; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 8px;">V. SBAR Hand-Over Summary</div>
-          <div style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; font-size: 7.5pt; min-height: 40px; margin-bottom: 8px; line-height: 1.5;">
-            ${sbar.content || '<span style="color:#94a3b8; font-style:italic;">No SBAR report documented.</span>'}
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 7pt; border-top: 1px solid #e2e8f0; padding-top: 8px;">
-            <div>
-              <div style="margin-bottom: 3px;"><strong>Reported by:</strong> <span style="border-bottom: 1px dashed #cbd5e1; padding: 0 20px 0 5px;">${sbar.reported_by || ''}</span></div>
-              <div><strong>Sign / Time:</strong> <span style="border-bottom: 1px dashed #cbd5e1; padding: 0 20px 0 5px;">${sbar.reported_sign_time || ''}</span></div>
-            </div>
-            <div>
-              <div style="margin-bottom: 3px;"><strong>Received by:</strong> <span style="border-bottom: 1px dashed #cbd5e1; padding: 0 20px 0 5px;">${sbar.received_by || ''}</span></div>
-              <div><strong>Sign / Time:</strong> <span style="border-bottom: 1px dashed #cbd5e1; padding: 0 20px 0 5px;">${sbar.received_sign_time || ''}</span></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── Document Authenticity Footer ── -->
-        <div style="border-top: 1.5px solid #e2e8f0; margin: 0 15px; padding: 8px 0; display: flex; align-items: center; gap: 12px;">
+        <!-- Document Authenticity Footer -->
+        <div style="border-top: 1.5px solid #e2e8f0; margin: 0 15px; padding: 8px 0; display: flex; align-items: center; gap: 12px; background: white;">
           ${data._qrCodeDataUrl ? `
-            <img src="${data._qrCodeDataUrl}" alt="Verification QR" style="width: 64px; height: 64px; border: 1px solid #e2e8f0; border-radius: 4px; flex-shrink: 0;" />
+            <img src="${data._qrCodeDataUrl}" alt="Verification QR" style="width: 56px; height: 56px; border: 1px solid #e2e8f0; border-radius: 4px; flex-shrink: 0;" />
           ` : `
-            <div style="width: 64px; height: 64px; border: 1px solid #e2e8f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: #f8fafc; flex-shrink: 0;">
+            <div style="width: 56px; height: 56px; border: 1px solid #e2e8f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: #f8fafc; flex-shrink: 0;">
               <span style="font-size: 6pt; color: #94a3b8; text-align: center;">QR<br>N/A</span>
             </div>
           `}
           <div style="flex: 1;">
-            <div style="font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px;">Document Authenticity</div>
-            <div style="font-size: 7.5pt; font-family: monospace; font-weight: 700; color: #1b669e; letter-spacing: 0.04em; margin-bottom: 2px;">${data._docRef || 'LC-CLN-?????'}</div>
-            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
-              <span style="font-size: 6pt; color: #64748b; font-weight: 600;">SHA-256 CHECKSUM:</span>
-              <span style="font-size: 7pt; font-family: monospace; font-weight: 800; color: #0f172a; letter-spacing: 0.1em; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; border: 1px solid #e2e8f0;">${data._checksum || '????????????????'}</span>
-            </div>
-            <div style="font-size: 5.5pt; color: #94a3b8; line-height: 1.4;">
-             
+            <div style="font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px;">Document Authenticity & Verification</div>
+            <div style="font-size: 7.5pt; font-family: monospace; font-weight: 700; color: #1b669e; letter-spacing: 0.04em; margin-bottom: 2px;">${data._docRef || 'LC-CLN-ONLINE'}</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 6pt; color: #64748b; font-weight: 600;">CHECKSUM:</span>
+              <span style="font-size: 7pt; font-family: monospace; font-weight: 800; color: #0f172a; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; border: 1px solid #e2e8f0;">${data._checksum || 'N/A'}</span>
             </div>
           </div>
           <div style="text-align: right; flex-shrink: 0;">

@@ -117,9 +117,9 @@ const ITDashboard = () => {
     <div style={{ paddingBottom: '3rem' }}>
       {/* ── IT Command Center Hero ── */}
       <div style={{ 
-        background: 'linear-gradient(135deg, #001f24 0%, #003b44 100%)', 
-        borderRadius: '24px', padding: '2.5rem', color: '#fff', marginBottom: '2.5rem', position: 'relative', overflow: 'hidden',
-        boxShadow: '0 20px 40px rgba(0,59,68,0.15)'
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', 
+        borderRadius: '24px', padding: '2.5rem', color: '#ffffff', marginBottom: '2.5rem', position: 'relative', overflow: 'hidden',
+        boxShadow: '0 20px 40px rgba(3,105,161,0.15)'
       }}>
         <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '40%', background: 'radial-gradient(circle at top right, rgba(0,255,255,0.05), transparent 70%)' }} />
         <div style={{ position: 'relative' }}>

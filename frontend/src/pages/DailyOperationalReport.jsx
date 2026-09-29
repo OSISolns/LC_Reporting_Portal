@@ -24,7 +24,7 @@ import {
   Filter,
   X
 } from 'lucide-react';
-import { getReportConfig, getDailyReport, saveDailyReport, getMonthlyReport, getWeeklyReport } from '../api/reports';
+import { getReportConfig, getReportSettings, getDailyReport, saveDailyReport, getMonthlyReport, getWeeklyReport } from '../api/reports';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
@@ -65,13 +65,14 @@ export default function DailyOperationalReport() {
   const [entryFollowUps, setEntryFollowUps] = useState({}); // providerId -> followUpCount
   const [entryLogs, setEntryLogs] = useState({}); // metricName -> metricValue
   const [saving, setSaving] = useState(false);
+  const [restrictPast, setRestrictPast] = useState(true);
 
-  // Authorization check for past daily reports
+  // Authorization check for non-today daily reports (past & future)
   const dateObj = new Date();
   const offset = dateObj.getTimezoneOffset() * 60000;
   const localToday = new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
-  const isPastReport = selectedDate < localToday;
-  const isReadOnly = isPastReport;
+  const isNotToday = selectedDate !== localToday;
+  const isReadOnly = isNotToday && restrictPast;
 
   // Weekly Report state
   const [selectedWeekDate, setSelectedWeekDate] = useState(new Date().toISOString().split('T')[0]);
@@ -84,7 +85,7 @@ export default function DailyOperationalReport() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [monthlyData, setMonthlyData] = useState(null);
 
-  // Load config on mount
+  // Load config and settings on mount
   useEffect(() => {
     const fetchConfig = async () => {
       try {
@@ -118,7 +119,20 @@ export default function DailyOperationalReport() {
         setLoading(false);
       }
     };
+
+    const fetchSettings = async () => {
+      try {
+        const res = await getReportSettings();
+        if (res.data?.success) {
+          setRestrictPast(Boolean(res.data.data?.restrict_past_daily_reports));
+        }
+      } catch (err) {
+        console.error('Failed to load report settings:', err);
+      }
+    };
+
     fetchConfig();
+    fetchSettings();
   }, []);
 
   // Fetch daily report whenever selectedDate changes
@@ -272,7 +286,7 @@ export default function DailyOperationalReport() {
   // Submit Daily Report
   const handleSaveReport = async () => {
     if (isReadOnly) {
-      toast.error('Users are not authorized to modify past reports.');
+      toast.error('Past and future daily report entries are deactivated unless activated by an administrator.');
       return;
     }
     try {
@@ -1108,13 +1122,17 @@ export default function DailyOperationalReport() {
                 </div>
               </div>
 
-              {/* Past Report Restriction Notice */}
+              {/* Past/Future Report Restriction Notice */}
               {isReadOnly && (
                 <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3 text-amber-800 text-xs font-bold shadow-sm">
                   <Lock className="text-amber-500 shrink-0 mt-0.5" size={16} />
                   <div>
-                    <p className="font-extrabold uppercase tracking-wide text-[11px] text-amber-900">Past Daily Report Locked</p>
-                    <p className="text-[10px] text-amber-700/90 mt-0.5 leading-relaxed font-semibold">Users are not authorized to modify past reports. Editing and committing are restricted.</p>
+                    <p className="font-extrabold uppercase tracking-wide text-[11px] text-amber-900">
+                      {selectedDate < localToday ? 'Past Daily Report Locked' : 'Future Daily Report Locked'}
+                    </p>
+                    <p className="text-[10px] text-amber-700/90 mt-0.5 leading-relaxed font-semibold">
+                      Inputs for non-today dates are deactivated unless activated by an administrator in System Policies.
+                    </p>
                   </div>
                 </div>
               )}

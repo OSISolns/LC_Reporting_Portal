@@ -149,6 +149,63 @@ class User {
       [passwordHash, id]
     );
   }
+
+  static async verifyAdminPassword(password, currentUserId) {
+    if (!password) {
+      return { isValid: false, status: 400, message: 'Administrative password required to confirm authorization.' };
+    }
+
+    const currentUser = await this.findById(currentUserId);
+    if (!currentUser) {
+      return { isValid: false, status: 401, message: 'Unauthorized request.' };
+    }
+
+    // 1. If currentUser is admin, check if password matches currentUser
+    if (currentUser.role === 'admin') {
+      const isMatch = await bcrypt.compare(password, currentUser.password_hash);
+      if (isMatch) {
+        return { isValid: true };
+      }
+    }
+
+    // 2. Query all active users with role to check if password belongs to non-admin vs admin
+    const { rows: users } = await db.query(
+      `SELECT u.id, u.password_hash, r.name as role 
+       FROM users u 
+       JOIN roles r ON u.role_id = r.id 
+       WHERE u.is_active = 1`
+    );
+
+    let matchesNonAdmin = false;
+    let matchesAdmin = false;
+
+    for (const u of users) {
+      if (!u.password_hash) continue;
+      const isMatch = await bcrypt.compare(password, u.password_hash);
+      if (isMatch) {
+        if (u.role === 'admin') {
+          matchesAdmin = true;
+          break;
+        } else {
+          matchesNonAdmin = true;
+        }
+      }
+    }
+
+    if (matchesAdmin) {
+      return { isValid: true };
+    }
+
+    if (matchesNonAdmin) {
+      return {
+        isValid: false,
+        status: 403,
+        message: 'The password entered belongs to a non-admin account. An administrator password is required.'
+      };
+    }
+
+    return { isValid: false, status: 401, message: 'Invalid administrative password. Action aborted.' };
+  }
 }
 
 module.exports = User;

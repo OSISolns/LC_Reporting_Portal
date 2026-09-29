@@ -99,16 +99,9 @@ exports.resetRolePermissions = async (req, res, next) => {
     const { roleName } = req.params;
     const { adminPassword } = req.body;
 
-    if (!adminPassword) {
-      return res.status(400).json({ success: false, message: 'Administrative password required for protocol reset.' });
-    }
-
-    // Verify current user's password (must be the one performing the reset)
-    const user = await User.findById(req.user.id);
-    const isMatch = await bcrypt.compare(adminPassword, user.password_hash);
-
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid administrative password. Reset aborted.' });
+    const authCheck = await User.verifyAdminPassword(adminPassword, req.user.id);
+    if (!authCheck.isValid) {
+      return res.status(authCheck.status || 401).json({ success: false, message: authCheck.message });
     }
 
     await Permission.resetRolePermissions(roleName, req.user.id);

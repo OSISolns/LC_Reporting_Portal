@@ -199,19 +199,19 @@ export default function CentralStoreHub() {
         return `${m}/${d.getUTCFullYear()}`;
       }
     }
-    const isoFull = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    const isoFull = str.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
     if (isoFull) {
       return `${isoFull[2].padStart(2, '0')}/${isoFull[1]}`;
     }
-    const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    const dmy = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
     if (dmy) {
       return `${dmy[2].padStart(2, '0')}/${dmy[3]}`;
     }
-    const my = str.match(/^(\d{1,2})[\/\-](\d{4})/);
+    const my = str.match(/^(\d{1,2})[/-](\d{4})/);
     if (my) {
       return `${my[1].padStart(2, '0')}/${my[2]}`;
     }
-    const myShort = str.match(/^(\d{1,2})[\/\-](\d{2})$/);
+    const myShort = str.match(/^(\d{1,2})[/-](\d{2})$/);
     if (myShort) {
       const m = myShort[1].padStart(2, '0');
       const yr = Number(myShort[2]) > 50 ? `19${myShort[2]}` : `20${myShort[2]}`;

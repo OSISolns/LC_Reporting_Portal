@@ -90,7 +90,7 @@ const DEPARTMENTS = [
   {
     id: 'nursing', label: 'Nursing', icon: <HeartPulse size={16} />, color: '#e11d48',
     description: 'Clinical sheets, ward reports, stock levels & incident tracking.',
-    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'hsfp'],
+    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'hsfp'],
     kpiMap: [
       { key: 'clinical_sheets', label: 'Clinical Sheets',    color: '#e11d48', icon: <FileText size={15} /> },
       { key: 'daily_reports',   label: 'Daily Ward Reports', color: '#1C69A0', icon: <ClipboardList size={15} /> },
@@ -123,7 +123,7 @@ const DEPARTMENTS = [
   {
     id: 'stock', label: 'Stock', icon: <Package size={16} />, color: '#ea580c',
     description: 'Central store stock levels, replenishment alerts & consumables log.',
-    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'stock-manager'],
+    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'stock-manager'],
     kpiMap: [
       { key: 'total',              label: 'Total Stock Records',  color: '#ea580c', icon: <Package size={15} /> },
       { key: 'ok',                 label: 'Adequate Stock',       color: '#22c55e', icon: <CheckCircle size={15} /> },
@@ -549,7 +549,7 @@ const AIInsights = () => {
   // Set first visible tab on mount
   useEffect(() => {
     if (visibleDepts.length && !activeTab) setActiveTab(visibleDepts[0].id);
-  }, [visibleDepts.length]); // eslint-disable-line
+  }, [visibleDepts.length]);
 
   // Load global stats (for customer care donuts)
   useEffect(() => {

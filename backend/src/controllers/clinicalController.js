@@ -361,8 +361,8 @@ exports.saveObservation = async (req, res) => {
 
     const existing = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id);
 
-    // Enforce that only doctors and medical directors can set or update the diagnosis field
-    const isDoctorOrMD = ['doctor', 'consultant', 'medical_director'].includes(req.user.role);
+    // Enforce that doctors, consultants, PAs, and medical directors can set or update diagnosis & medical notes
+    const isDoctorOrMD = ['doctor', 'consultant', 'medical_director', 'admin', 'pa'].includes(req.user.role);
     if (!isDoctorOrMD) {
       if (req.body.identification) {
         const existingDiagnosis = existing && existing.identification ? existing.identification.diagnosis : '';
@@ -370,23 +370,30 @@ exports.saveObservation = async (req, res) => {
       }
     }
 
-    // SBAR receiver sign-off must be set server-side whenever a sheet
-    // transitions to Verified, regardless of which authorized role performs
-    // the verification. The frontend only auto-populates this for chef-nurse
-    // (its "Verify Sheet" button path) -- relying on that alone means any
-    // other authorized verifier (doctor/consultant/medical_director) could
-    // set status: 'Verified' with no received_by/received_sign_time, and
-    // since a Verified sheet becomes permanently immutable for every role
-    // (see the check below), that gap would be unrecoverable.
+    // Attach author info to new or edited progress notes by the current user
+    if (req.body.progress_notes && Array.isArray(req.body.progress_notes)) {
+      req.body.progress_notes = req.body.progress_notes.map((n) => {
+        if (n.note && n.note.trim() && !n.author_id) {
+          return {
+            ...n,
+            author_id: req.user.id,
+            author_username: req.user.username,
+            author_name: req.user.full_name || req.user.fullName || req.user.name || ''
+          };
+        }
+        return n;
+      });
+    }
+
     const applyVerificationSignOff = (statusToSave) => {
-      if (statusToSave !== 'Verified') return;
+      if (!['Completed', 'Verified'].includes(statusToSave)) return;
       if (!req.body.sbar) req.body.sbar = {};
       if (!req.body.sbar.received_by || !req.body.sbar.received_sign_time) {
         const nowStr = new Date().toLocaleString('en-US', {
           year: 'numeric', month: '2-digit', day: '2-digit',
           hour: '2-digit', minute: '2-digit', second: '2-digit'
         });
-        const verifierName = req.user.full_name || req.user.fullName || req.user.username || 'Verifier';
+        const verifierName = req.user.full_name || req.user.fullName || req.user.username || 'Nurse';
         req.body.sbar.received_by = `${verifierName} (${nowStr})`;
         req.body.sbar.received_sign_time = nowStr;
       }
@@ -394,9 +401,30 @@ exports.saveObservation = async (req, res) => {
 
     let result;
     if (existing) {
-      // When a clinical sheet is complete (Verified), nothing can be edited by any role
-      if (existing.status === 'Verified') {
-        return res.status(403).json({ success: false, message: 'This clinical sheet is already verified/completed and locked for edits.' });
+      // When a clinical sheet is complete/verified, nothing can be edited
+      if (['Completed', 'Verified'].includes(existing.status)) {
+        return res.status(403).json({ success: false, message: 'This clinical sheet is already completed and locked for edits.' });
+      }
+
+      // Preserve non-authors' progress notes from being altered/overwritten
+      if (existing.progress_notes_json) {
+        try {
+          const existingNotes = typeof existing.progress_notes_json === 'string'
+            ? JSON.parse(existing.progress_notes_json)
+            : existing.progress_notes_json;
+
+          if (Array.isArray(existingNotes) && req.body.progress_notes && Array.isArray(req.body.progress_notes)) {
+            req.body.progress_notes = req.body.progress_notes.map((incomingNote, idx) => {
+              const oldNote = existingNotes[idx];
+              if (oldNote && oldNote.author_id && String(oldNote.author_id) !== String(req.user.id)) {
+                return oldNote;
+              }
+              return incomingNote;
+            });
+          }
+        } catch (e) {
+          // ignore parse error
+        }
       }
 
       // Enforce backend-level immutability for SBAR reported/received details once set
@@ -418,9 +446,9 @@ exports.saveObservation = async (req, res) => {
 
       const statusToSave = req.body.status || existing.status || 'Draft';
 
-      // Only Chef Nurses can verify or keep a clinical sheet in verified status
-      if (statusToSave === 'Verified' && !['chef-nurse', 'doctor', 'consultant', 'medical_director'].includes(req.user.role)) {
-        return res.status(403).json({ success: false, message: 'Only authorized personnel can verify clinical sheets.' });
+      const allowedCompleters = ['nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'admin'];
+      if (['Completed', 'Verified'].includes(statusToSave) && !allowedCompleters.includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Only authorized clinical staff can declare clinical sheets completed.' });
       }
       applyVerificationSignOff(statusToSave);
 
@@ -435,9 +463,9 @@ exports.saveObservation = async (req, res) => {
     } else {
       const statusToSave = req.body.status || 'Draft';
 
-      // Only Chef Nurses, Doctors, and Consultants can create or verify clinical sheets with Verified status
-      if (statusToSave === 'Verified' && !['chef-nurse', 'doctor', 'consultant', 'medical_director'].includes(req.user.role)) {
-        return res.status(403).json({ success: false, message: 'Only authorized personnel can verify clinical sheets.' });
+      const allowedCompleters = ['nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'admin'];
+      if (['Completed', 'Verified'].includes(statusToSave) && !allowedCompleters.includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Only authorized clinical staff can declare clinical sheets completed.' });
       }
       applyVerificationSignOff(statusToSave);
 
@@ -452,6 +480,47 @@ exports.saveObservation = async (req, res) => {
 
     // Sync medicines & consumables to daily stock in background (non-blocking)
     syncClinicalUsagesToInventory();
+
+    // Real-time Notification dispatch to Assigned Doctor & Clinical Team
+    try {
+      const Notification = require('../models/notification');
+      const patientName = req.body.patient_name || req.body.identification?.last_name || 'Patient';
+      const docName = req.body.identification?.attending_doctor || req.body.identification?.doctor_name;
+      const statusSaved = req.body.status || 'Draft';
+
+      let doctorUsers = [];
+      if (docName && typeof docName === 'string' && docName.trim()) {
+        const queryTerm = `%${docName.replace(/^Dr\.\s*/i, '').trim()}%`;
+        const docRes = await db.query(
+          `SELECT id FROM users WHERE role IN ('doctor', 'consultant', 'medical_director') AND (full_name ILIKE $1 OR username ILIKE $1)`,
+          [queryTerm]
+        );
+        doctorUsers = docRes.rows;
+      }
+
+      if (doctorUsers.length === 0) {
+        const allDocsRes = await db.query(`SELECT id FROM users WHERE role IN ('doctor', 'consultant', 'medical_director') LIMIT 5`);
+        doctorUsers = allDocsRes.rows;
+      }
+
+      const notifMsg = ['Completed', 'Verified'].includes(statusSaved)
+        ? `Clinical Process Documentation for ${patientName} (PID: ${patientId}) has been finalized and verified.`
+        : `Clinical Observation record for ${patientName} (PID: ${patientId}) was updated by ${req.user.full_name || req.user.username || 'RN'}.`;
+
+      for (const docUser of doctorUsers) {
+        if (String(docUser.id) !== String(req.user.id)) {
+          Notification.create({
+            userId: docUser.id,
+            title: `Clinical Document Update: ${patientName}`,
+            message: notifMsg,
+            type: 'info',
+            link: `/patients/${patientId}/clinical-sheet?queue_id=${queue_id || ''}`
+          }).catch(err => console.error('Notification dispatch error:', err));
+        }
+      }
+    } catch (notifErr) {
+      console.error('Failed to dispatch doctor notification:', notifErr.message);
+    }
 
     res.json({ success: true, data: result });
   } catch (error) {
@@ -671,35 +740,261 @@ exports.getAllObservations = async (req, res) => {
   }
 };
 
+// ─── Clinical Observation: Get dates with observation records for a patient ──
+exports.getObservationDates = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const observations = await ClinicalObservation.getAllByPatient(patientId);
+
+    const dateMap = new Map();
+
+    observations.forEach(obs => {
+      // Primary date from identification or created_at
+      const primaryDate = obs.identification?.date || (obs.created_at ? new Date(obs.created_at).toISOString().split('T')[0] : null);
+      if (primaryDate) {
+        if (!dateMap.has(primaryDate)) {
+          dateMap.set(primaryDate, { date: primaryDate, count: 0, queueIds: new Set(), statuses: new Set() });
+        }
+        const item = dateMap.get(primaryDate);
+        item.count += 1;
+        if (obs.queue_id) item.queueIds.add(obs.queue_id);
+        if (obs.status) item.statuses.add(obs.status);
+      }
+
+      // Check dates in progress notes
+      if (Array.isArray(obs.progress_notes)) {
+        obs.progress_notes.forEach(n => {
+          const noteDate = n.date || (n.datetime ? n.datetime.split('T')[0].split(' ')[0] : null);
+          if (noteDate && noteDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            if (!dateMap.has(noteDate)) {
+              dateMap.set(noteDate, { date: noteDate, count: 0, queueIds: new Set(), statuses: new Set() });
+            }
+            dateMap.get(noteDate).count += 1;
+          }
+        });
+      }
+    });
+
+    const datesList = Array.from(dateMap.values())
+      .map(item => ({
+        date: item.date,
+        formatted: new Date(item.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }),
+        recordCount: item.count,
+        queueIds: Array.from(item.queueIds),
+        statuses: Array.from(item.statuses),
+        hasRecords: true
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    res.json({ success: true, data: datesList });
+  } catch (error) {
+    console.error('Error fetching observation dates:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 // ─── PDF Generation ───────────────────────────────────────────────────────────
 exports.getPDF = async (req, res) => {
   try {
     const { patientId } = req.params;
-    const { queue_id } = req.query;
+    const { queue_id, from_date, to_date, from_time, to_time } = req.query;
 
-    const observation = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id);
-    if (!observation) {
-      return res.status(404).json({ success: false, message: 'Observation records not found' });
+    let observations = await ClinicalObservation.getAllByPatient(patientId);
+
+    if (queue_id && !from_date && !to_date) {
+      const specificObs = observations.filter(o => String(o.queue_id) === String(queue_id));
+      if (specificObs.length > 0) {
+        observations = specificObs;
+      }
     }
 
-    if (observation.status !== 'Verified') {
-      return res.status(403).json({ success: false, message: 'PDF can only be downloaded after it is verified by the Chef Nurse.' });
+    if (from_date || to_date) {
+      observations = observations.filter(obs => {
+        const obsDateStr = obs.identification?.date || (obs.created_at ? new Date(obs.created_at).toISOString().split('T')[0] : '');
+        const obsTimeStr = obs.identification?.time || '00:00';
+        if (!obsDateStr) return true;
+        const obsDateTime = new Date(`${obsDateStr}T${obsTimeStr.length === 5 ? obsTimeStr : '00:00'}`);
+
+        let keep = true;
+        if (from_date) {
+          const start = new Date(`${from_date}T${from_time || '00:00'}`);
+          if (obsDateTime < start) keep = false;
+        }
+        if (to_date) {
+          const end = new Date(`${to_date}T${to_time || '23:59'}`);
+          if (obsDateTime > end) keep = false;
+        }
+        return keep;
+      });
     }
 
-    // Generate QR code + checksum for document authenticity
-    const { dataUrl: qrCodeDataUrl, checksum, docRef } = await generateDocQRCode(observation);
+    if (!observations || observations.length === 0) {
+      return res.status(404).json({ success: false, message: 'No observation records found for the specified criteria.' });
+    }
 
+    // Aggregate Attended Doctors and Registered Nurses
+    const doctors = new Set();
+    const nurses = new Set();
+
+    observations.forEach(obs => {
+      const iden = obs.identification || {};
+      const mar = obs.medication_mar || {};
+      const notes = obs.progress_notes || [];
+      const sbar = obs.sbar || {};
+
+      const rnName = (iden.rn && iden.rn !== 'N/A' && iden.rn.trim() !== '') ? iden.rn : (obs.created_by_name || obs.created_by_username || null);
+      if (rnName) nurses.add(rnName);
+      if (mar.prescriber) doctors.add(mar.prescriber);
+      if (mar.admin_names) {
+        mar.admin_names.split(',').forEach(n => {
+          const trimmed = n.trim();
+          if (trimmed) nurses.add(trimmed);
+        });
+      }
+      if (sbar.reported_by) {
+        const cleanName = sbar.reported_by.split('(')[0].trim();
+        if (cleanName) nurses.add(cleanName);
+      }
+      if (sbar.received_by) {
+        const cleanName = sbar.received_by.split('(')[0].trim();
+        if (cleanName) nurses.add(cleanName);
+      }
+
+      notes.forEach(n => {
+        const sig = (n.signature || '').trim();
+        if (sig) {
+          if (sig.toLowerCase().includes('dr.') || sig.toLowerCase().includes('doctor') || sig.toLowerCase().includes('m.d.')) {
+            doctors.add(sig);
+          } else {
+            nurses.add(sig);
+          }
+        }
+      });
+    });
+
+    const patientRes = await db.query(
+      `SELECT pid, full_name, first_name, last_name, dob, gender, national_id, insurance, referrer_name FROM sukraa_patients WHERE pid = $1 OR pid = CAST($1 AS TEXT)`,
+      [patientId]
+    ).catch(() => ({ rows: [] }));
+
+    const patientInfo = patientRes.rows[0] || {};
+    const firstObs = observations[0] || {};
+    const iden = firstObs.identification || {};
+
+    const dateRangeLabel = from_date
+      ? `${from_date} ${from_time || '00:00'} to ${to_date || 'Today'} ${to_time || '23:59'}`
+      : (queue_id ? `Visit / Queue ID #${queue_id}` : 'Entire Continuous Patient Record');
+
+    const pdfData = {
+      patient_id: patientId,
+      patient_name: `${iden.last_name || patientInfo.last_name || ''} ${iden.first_name || patientInfo.first_name || patientInfo.full_name || ''}`.trim() || 'Patient',
+      dob: iden.dob || patientInfo.dob || 'N/A',
+      gender: iden.gender || patientInfo.gender || 'N/A',
+      national_id: iden.national_id || patientInfo.national_id || 'N/A',
+      insurance: iden.insurance || patientInfo.referrer_name || patientInfo.insurance || 'N/A',
+      date_range_label: dateRangeLabel,
+      attended_doctors: Array.from(doctors),
+      attended_rns: Array.from(nurses),
+      observations: observations,
+      identification: iden,
+      triage: firstObs.triage || {},
+      progress_notes: firstObs.progress_notes || [],
+      medication_mar: firstObs.medication_mar || {},
+      sbar: firstObs.sbar || {}
+    };
+
+    const { dataUrl: qrCodeDataUrl, checksum, docRef } = await generateDocQRCode(firstObs);
     const { generateClinicalSheetPDF } = require('../utils/pdf');
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="ClinicalSheet_${patientId}.pdf"`);
-    // Expose checksum in header so callers can read it without parsing the PDF
+    res.setHeader('Content-Disposition', `attachment; filename="Continuous_ClinicalSheet_${patientId}.pdf"`);
     res.setHeader('X-Doc-Checksum', checksum);
     res.setHeader('X-Doc-Ref', docRef);
 
-    await generateClinicalSheetPDF({ ...observation, _qrCodeDataUrl: qrCodeDataUrl, _checksum: checksum, _docRef: docRef }, res);
+    await generateClinicalSheetPDF({ ...pdfData, _qrCodeDataUrl: qrCodeDataUrl, _checksum: checksum, _docRef: docRef }, res);
   } catch (error) {
     console.error('Error generating PDF:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── Attended Personnel Lookup ───────────────────────────────────────────────
+exports.getAttendedPersonnel = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { from_date, to_date, from_time, to_time } = req.query;
+
+    let observations = await ClinicalObservation.getAllByPatient(patientId);
+
+    if (from_date || to_date) {
+      observations = observations.filter(obs => {
+        const obsDateStr = obs.identification?.date || (obs.created_at ? new Date(obs.created_at).toISOString().split('T')[0] : '');
+        const obsTimeStr = obs.identification?.time || '00:00';
+        if (!obsDateStr) return true;
+        const obsDateTime = new Date(`${obsDateStr}T${obsTimeStr.length === 5 ? obsTimeStr : '00:00'}`);
+
+        let keep = true;
+        if (from_date) {
+          const start = new Date(`${from_date}T${from_time || '00:00'}`);
+          if (obsDateTime < start) keep = false;
+        }
+        if (to_date) {
+          const end = new Date(`${to_date}T${to_time || '23:59'}`);
+          if (obsDateTime > end) keep = false;
+        }
+        return keep;
+      });
+    }
+
+    const doctors = new Set();
+    const nurses = new Set();
+
+    observations.forEach(obs => {
+      const iden = obs.identification || {};
+      const mar = obs.medication_mar || {};
+      const notes = obs.progress_notes || [];
+      const sbar = obs.sbar || {};
+
+      if (iden.rn) nurses.add(iden.rn);
+      if (mar.prescriber) doctors.add(mar.prescriber);
+      if (mar.admin_names) {
+        mar.admin_names.split(',').forEach(n => {
+          const trimmed = n.trim();
+          if (trimmed) nurses.add(trimmed);
+        });
+      }
+      if (sbar.reported_by) {
+        const cleanName = sbar.reported_by.split('(')[0].trim();
+        if (cleanName) nurses.add(cleanName);
+      }
+      if (sbar.received_by) {
+        const cleanName = sbar.received_by.split('(')[0].trim();
+        if (cleanName) nurses.add(cleanName);
+      }
+
+      notes.forEach(n => {
+        const sig = (n.signature || '').trim();
+        if (sig) {
+          if (sig.toLowerCase().includes('dr.') || sig.toLowerCase().includes('doctor') || sig.toLowerCase().includes('m.d.')) {
+            doctors.add(sig);
+          } else {
+            nurses.add(sig);
+          }
+        }
+      });
+    });
+
+    res.json({
+      success: true,
+      data: {
+        doctors: Array.from(doctors),
+        nurses: Array.from(nurses),
+        total_records: observations.length,
+        date_range_label: from_date ? `${from_date} ${from_time || '00:00'} to ${to_date || 'Today'} ${to_time || '23:59'}` : 'Entire Continuous Patient Record'
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching attended personnel:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -721,14 +1016,14 @@ exports.verifyDocument = async (req, res) => {
 
     const docRef = `LC-CLN-${String(observation.id).padStart(5, '0')}`;
 
-    // A document that is not yet verified/received cannot be authenticated
-    if (observation.status !== 'Verified') {
+    // A document that is not yet completed cannot be authenticated
+    if (!['Completed', 'Verified'].includes(observation.status)) {
       return res.status(400).json({
         success: true,
         verified: false,
         docRef,
         status: observation.status,
-        message: '❌ Document cannot be authenticated because it is not yet verified by the Chef Nurse.'
+        message: '❌ Document cannot be authenticated because it is not yet completed.'
       });
     }
 
@@ -766,11 +1061,11 @@ exports.getDocChecksum = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Observation not found' });
     }
 
-    // A document that is not yet verified/received cannot be authenticated
-    if (observation.status !== 'Verified') {
+    // A document that is not yet completed cannot be authenticated
+    if (!['Completed', 'Verified'].includes(observation.status)) {
       return res.status(400).json({
         success: false,
-        message: 'This document cannot be authenticated because it is not yet verified/received by the Chef Nurse.'
+        message: 'This document cannot be authenticated because it is not yet declared completed.'
       });
     }
 

@@ -190,7 +190,7 @@ const exportRosterToExcel = async (dayName, dateStr, unitsList, filenamePrefix =
     const link = document.createElement('a');
     link.href = url;
 
-    const sanitizedDate = (dateStr || 'Schedule').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const sanitizedDate = (dateStr || 'Schedule').replace(/[^a-zA-Z0-9_-]/g, '_');
     link.download = `${filenamePrefix}_${sanitizedDate}.xlsx`;
     document.body.appendChild(link);
     link.click();
@@ -2771,7 +2771,7 @@ export default function RosterGenerator() {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '16px 24px',
-              background: 'linear-gradient(135deg, #002b32 0%, #004d57 100%)',
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
               color: '#fff',
               borderBottom: '1px solid rgba(255,255,255,0.1)',
             }}>

@@ -11,6 +11,7 @@ import {
   getPhysioSessions,
   getPhysioAssessments
 } from '../../api/physioApi';
+import { getPhysiotherapists } from '../../api/providers';
 import api from '../../api/axios';
 
 const PHYSIO_THERAPISTS = [
@@ -31,21 +32,32 @@ const PhysioManagerDashboard = () => {
   const [sessions, setSessions] = useState([]);
   const [assessments, setAssessments] = useState([]);
   const [consumables, setConsumables] = useState([]);
+  const [physioStaff, setPhysioStaff] = useState(PHYSIO_THERAPISTS);
   const [selectedTherapist, setSelectedTherapist] = useState('All');
   const [timeframe, setTimeframe] = useState('Today');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [sessRes, assRes, consRes] = await Promise.all([
-        getPhysioSessions(),
-        getPhysioAssessments(),
-        api.get('/consumables/items', { params: { department: 'Physiotherapy' } }).catch(() => ({ data: { data: [] } }))
+      const [sessRes, assRes, consRes, provRes] = await Promise.all([
+        getPhysioSessions().catch(() => ({ success: false, data: [] })),
+        getPhysioAssessments().catch(() => ({ success: false, data: [] })),
+        api.get('/clinical/inventory/consumables', { params: { department: 'Physiotherapy' } }).catch(() => ({ data: { data: [] } })),
+        getPhysiotherapists().catch(() => null)
       ]);
 
       if (sessRes?.success) setSessions(sessRes.data || []);
       if (assRes?.success) setAssessments(assRes.data || []);
       if (consRes?.data?.data) setConsumables(consRes.data.data || []);
+
+      const provList = provRes?.data || provRes || [];
+      if (Array.isArray(provList) && provList.length > 0) {
+        setPhysioStaff(provList.map(p => ({
+          name: p.name,
+          title: p.title || 'Physical Therapist',
+          specialty: p.specialization || 'Physiotherapy'
+        })));
+      }
     } catch (err) {
       console.error('Failed to load manager dashboard:', err);
       toast.error('Failed to load department metrics.');
@@ -83,7 +95,7 @@ const PhysioManagerDashboard = () => {
 
   // Therapist Workload Breakdown Calculation
   const therapistWorkload = useMemo(() => {
-    return PHYSIO_THERAPISTS.map(th => {
+    return physioStaff.map(th => {
       const thSessions = sessions.filter(s => s.therapist_name === th.name);
       const completedCount = thSessions.filter(s => s.status === 'Completed').length;
       const scheduledCount = thSessions.filter(s => s.status === 'Scheduled').length;
@@ -101,51 +113,45 @@ const PhysioManagerDashboard = () => {
         completionRate: rate
       };
     });
-  }, [sessions, assessments]);
+  }, [physioStaff, sessions, assessments]);
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto min-h-screen bg-slate-50/50">
+    <div className="space-y-6 max-w-[1600px] mx-auto bg-slate-50/50">
       {/* Top Department Manager Executive Banner */}
-      <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-teal-950 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
-          <ShieldAlert size={280} />
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 text-amber-600">
+            <ShieldAlert size={28} />
+          </div>
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-bold tracking-tight text-slate-800">
+                Physiotherapy Manager Hub
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                Department Oversight
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium max-w-2xl">
+              Welcome, <span className="font-semibold text-slate-700">{user?.full_name || 'Department Manager'}</span>. Staff allocation, patient completion rates, range-of-motion metrics, and inventory requisitions.
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-amber-500/20 backdrop-blur-md rounded-2xl border border-amber-400/30 text-amber-300 shadow-inner">
-              <ShieldAlert size={36} />
-            </div>
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl lg:text-3xl font-black tracking-tight flex items-center gap-2">
-                  <span className="text-amber-400">PHYSIO HOD</span> Manager Dashboard
-                </h1>
-                <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-xs">
-                  Executive Oversight
-                </span>
-              </div>
-              <p className="text-sm text-amber-100/90 mt-1 font-medium max-w-2xl">
-                Welcome, <span className="font-black text-white">{user?.full_name || 'Department Manager'}</span>. Oversee physical therapy staff allocation, patient completion rates, ROM clinical metrics, and inventory requisitions.
-              </p>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          <button
+            onClick={() => navigate('/physio')}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+          >
+            <Dumbbell size={16} /> Open Clinical Worklist <ChevronRight size={14} />
+          </button>
 
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <button
-              onClick={() => navigate('/physio')}
-              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
-            >
-              <Dumbbell size={16} /> Open Clinical Worklist <ChevronRight size={14} />
-            </button>
-
-            <button
-              onClick={() => navigate('/consumables-log')}
-              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 backdrop-blur-md transition-all cursor-pointer"
-            >
-              <Box size={16} /> Stock Requisitions Log
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/consumables-log')}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <Box size={16} /> Stock Requisitions Log
+          </button>
         </div>
       </div>
 

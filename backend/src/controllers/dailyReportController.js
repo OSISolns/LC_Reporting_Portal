@@ -31,7 +31,7 @@ exports.saveDaily = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid payload. Date, metrics, and logs arrays are required.' });
     }
 
-    // Past daily report modification restriction
+    // Past & future daily report modification restriction (no exceptions)
     const restrictPast = await DailyReport.getSetting('restrict_past_daily_reports', 'true');
     const isRestricted = restrictPast !== 'false' && restrictPast !== false && restrictPast !== '0';
 
@@ -40,8 +40,8 @@ exports.saveDaily = async (req, res, next) => {
       const offset = dateObj.getTimezoneOffset() * 60000;
       const localToday = new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
       
-      if (report_date < localToday) {
-        return res.status(403).json({ success: false, message: 'Users are not authorized to modify past reports.' });
+      if (report_date !== localToday) {
+        return res.status(403).json({ success: false, message: 'Editing past or future reports is deactivated unless activated by an administrator.' });
       }
     }
 

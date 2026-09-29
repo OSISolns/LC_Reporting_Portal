@@ -81,18 +81,9 @@ exports.deleteProvider = async (req, res, next) => {
     const { id } = req.params;
     const { adminPassword } = req.body;
 
-    if (!adminPassword) {
-      return res.status(400).json({ success: false, message: 'Administrative password required to confirm deletion.' });
-    }
-
-    const currentUser = await User.findById(req.user.id);
-    if (!currentUser) {
-      return res.status(401).json({ success: false, message: 'Unauthorized request.' });
-    }
-
-    const isMatch = await bcrypt.compare(adminPassword, currentUser.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid administrative password. Deletion aborted.' });
+    const authCheck = await User.verifyAdminPassword(adminPassword, req.user.id);
+    if (!authCheck.isValid) {
+      return res.status(authCheck.status || 401).json({ success: false, message: authCheck.message });
     }
 
     const deletedProvider = await Provider.delete(id);
@@ -106,6 +97,15 @@ exports.deleteProvider = async (req, res, next) => {
       success: true,
       message: 'Provider deleted successfully.'
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getPhysiotherapists = async (req, res, next) => {
+  try {
+    const physiotherapists = await Provider.getPhysiotherapists();
+    res.json({ success: true, data: physiotherapists });
   } catch (err) {
     next(err);
   }

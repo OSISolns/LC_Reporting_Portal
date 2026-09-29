@@ -16,7 +16,7 @@ router.use(authenticateToken);
 router.use(authorizeRoles([
   'nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_coo', 'stock-manager', 
   'pa', 'medical_director', 'procurement-manager', 'lab_team_lead', 'lab_tech', 'lab', 
-  'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'physiotherapist', 'physio', 'operations_staff', 
+  'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'physiotherapist', 'physio', 'physio_manager', 'manager', 'operations_staff', 
   'imaging_tech', 'imaging_manager', 'hsfp', 'coo', 'quality_accreditation_officer'
 ]));
 
@@ -27,7 +27,7 @@ const checkInventoryOrClinicalRole = (action) => {
     const CLINICAL_ROLES = [
       'nurse', 'chef-nurse', 'lab_team_lead', 'lab_tech', 'lab', 
       'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'imaging_tech', 'imaging_manager', 
-      'physiotherapist', 'physio', 'operations_staff', 'hsfp',
+      'physiotherapist', 'physio', 'physio_manager', 'manager', 'operations_staff', 'hsfp',
       'coo', 'deputy_coo', 'stock-manager', 'procurement-manager'
     ];
     if (CLINICAL_ROLES.includes(req.user?.role)) {
@@ -136,8 +136,10 @@ router.get('/observations',             checkPermission('clinical_observation', 
 router.get('/prescriptions/completed',  checkPermission('clinical_observation', 'view'), clinicalController.getCompletedPrescriptions);
 router.get('/observations/recent',      checkPermission('clinical_observation', 'view'), clinicalController.getRecentObservations);
 router.get('/observations/:patientId/all', checkPermission('clinical_observation', 'view'), clinicalController.getAllObservations);
+router.get('/observations/:patientId/dates', checkPermission('clinical_observation', 'view'), clinicalController.getObservationDates);
 router.get('/observations/:patientId/checksum', checkPermission('clinical_observation', 'view'), clinicalController.getDocChecksum);
 router.get('/observations/:patientId/verify',   checkPermission('clinical_observation', 'view'), clinicalController.verifyDocument);
+router.get('/observations/:patientId/attended-personnel', checkPermission('clinical_observation', 'view'), clinicalController.getAttendedPersonnel);
 router.get('/observations/:patientId/pdf',      checkPermission('clinical_observation', 'view'), clinicalController.getPDF);
 router.get('/observations/:patientId',          checkPermission('clinical_observation', 'view'), clinicalController.getObservation);
 

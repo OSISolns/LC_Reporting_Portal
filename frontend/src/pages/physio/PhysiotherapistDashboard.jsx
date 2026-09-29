@@ -2,13 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dumbbell, Activity, Calendar, Clock, CheckCircle2, User,
-  Plus, Search, ArrowRight, ShieldAlert, Layers, Flame,
+  Plus, Search, ArrowRight, ShieldAlert, Layers,
   FileText, TrendingUp, AlertTriangle, RefreshCw, ChevronRight,
-  Sparkles, Award, BarChart3, HeartPulse, Sliders, Box
+  BarChart3, HeartPulse, Sliders, Box, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PatientAutocomplete from '../../components/PatientAutocomplete';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
+import { getPhysiotherapists } from '../../api/providers';
 import {
   getPhysioSessions,
   createPhysioSession,
@@ -27,12 +29,16 @@ const PHYSIO_THERAPISTS = [
 ];
 
 const BODY_REGIONS = [
-  { id: 'Knee', label: 'Knee Joint', color: 'from-emerald-500 to-teal-600', icon: '🦵' },
-  { id: 'Shoulder', label: 'Shoulder Girdle', color: 'from-blue-500 to-cyan-600', icon: '🦾' },
-  { id: 'Hip', label: 'Hip & Pelvis', color: 'from-purple-500 to-indigo-600', icon: '🦴' },
-  { id: 'Spine', label: 'Lumbar & Cervical Spine', color: 'from-amber-500 to-orange-600', icon: '🧘' },
-  { id: 'Ankle', label: 'Ankle & Foot', color: 'from-rose-500 to-pink-600', icon: '🦶' },
-  { id: 'Elbow', label: 'Elbow & Forearm', color: 'from-teal-500 to-emerald-600', icon: '💪' }
+  { id: 'Knee',          label: 'Knee',             code: 'KNE' },
+  { id: 'Glenohumeral',  label: 'Shoulder',          code: 'SHL' },
+  { id: 'Hip',           label: 'Hip',               code: 'HIP' },
+  { id: 'Lumbar',        label: 'Lumbar Spine',      code: 'LMB' },
+  { id: 'Talocrural',    label: 'Ankle & Foot',      code: 'ANK' },
+  { id: 'Humeroulnar',   label: 'Elbow & Forearm',   code: 'ELB' },
+  { id: 'Cervical',      label: 'Cervical Spine',    code: 'CER' },
+  { id: 'Radiocarpal',   label: 'Wrist & Hand',      code: 'WST' },
+  { id: 'Tibiofemoral',  label: 'Knee (Tibio.)',     code: 'TIB' },
+  { id: 'SI',            label: 'Sacroiliac (SI)',   code: 'SAC' },
 ];
 
 const POPULAR_EXERCISES = [
@@ -46,11 +52,6 @@ const POPULAR_EXERCISES = [
 const PhysiotherapistDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  
-  // Active View Role: 'therapist' or 'manager'
-  const [viewRole, setViewRole] = useState(
-    user?.role === 'physio_manager' ? 'manager' : 'therapist'
-  );
 
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]);
@@ -59,12 +60,14 @@ const PhysiotherapistDashboard = () => {
   const [selectedTherapist, setSelectedTherapist] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [physioStaff, setPhysioStaff] = useState([]);
+
   // Quick Schedule Modal State
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [newSession, setNewSession] = useState({
     patient_id: '',
     patient_name: '',
-    therapist_name: user?.full_name || PHYSIO_THERAPISTS[0],
+    therapist_name: user?.full_name || '',
     session_date: new Date().toISOString().split('T')[0],
     treatment_area: 'Knee',
     progress_notes: ''
@@ -73,15 +76,21 @@ const PhysiotherapistDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [sessRes, assRes, consRes] = await Promise.all([
-        getPhysioSessions(),
-        getPhysioAssessments(),
-        api.get('/consumables/items', { params: { department: 'Physiotherapy' } }).catch(() => ({ data: { data: [] } }))
+      const [sessRes, assRes, consRes, provRes] = await Promise.all([
+        getPhysioSessions().catch(() => ({ success: false, data: [] })),
+        getPhysioAssessments().catch(() => ({ success: false, data: [] })),
+        api.get('/clinical/inventory/consumables', { params: { department: 'Physiotherapy' } }).catch(() => ({ data: { data: [] } })),
+        getPhysiotherapists().catch(() => null)
       ]);
 
       if (sessRes?.success) setSessions(sessRes.data || []);
       if (assRes?.success) setAssessments(assRes.data || []);
       if (consRes?.data?.data) setConsumables(consRes.data.data || []);
+
+      const provList = provRes?.data || provRes || [];
+      if (Array.isArray(provList) && provList.length > 0) {
+        setPhysioStaff(provList.map(p => p.name).filter(Boolean));
+      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
       toast.error('Failed to load physiotherapy metrics.');
@@ -185,117 +194,46 @@ const PhysiotherapistDashboard = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto min-h-screen bg-slate-50/50">
+    <div className="space-y-6 max-w-[1600px] mx-auto bg-slate-50/50">
       {/* Top Welcome & Role Switcher Banner */}
-      <div className="bg-gradient-to-r from-teal-900 via-emerald-800 to-slate-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
-          <Dumbbell size={280} />
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-600">
+            <HeartPulse size={28} />
+          </div>
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-bold tracking-tight text-slate-800">
+                Physiotherapy Dashboard
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Therapist Workspace
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium max-w-2xl">
+              Welcome back, <span className="font-semibold text-slate-700">{user?.full_name || 'Therapist'}</span>. Daily patient sessions, range-of-motion assessments, and department inventory.
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-emerald-500/20 backdrop-blur-md rounded-2xl border border-emerald-400/30 text-emerald-300 shadow-inner">
-              <HeartPulse size={36} />
-            </div>
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl lg:text-3xl font-black tracking-tight flex items-center gap-2">
-                  <span className="text-emerald-400">KINETIC</span> Physiotherapy Dashboard
-                </h1>
-                <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border shadow-xs ${
-                  viewRole === 'manager'
-                    ? 'bg-amber-400/20 text-amber-300 border-amber-400/40'
-                    : 'bg-emerald-400/20 text-emerald-300 border-emerald-400/40'
-                }`}>
-                  {viewRole === 'manager' ? 'Manager View' : 'Therapist View'}
-                </span>
-              </div>
-              <p className="text-sm text-emerald-100/90 mt-1 font-medium max-w-2xl">
-                Welcome back, <span className="font-black text-white">{user?.full_name || 'Therapist'}</span>. Monitor physical rehabilitation schedules, Range of Motion recovery metrics, and department throughput.
-              </p>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          <button
+            onClick={() => setShowScheduleModal(true)}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+          >
+            <Plus size={16} /> Schedule Patient Session
+          </button>
 
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            {/* Role Toggle Selector */}
-            <div className="bg-slate-950/80 border border-emerald-500/30 p-1.5 rounded-2xl flex items-center gap-1.5 shadow-inner">
-              <button
-                onClick={() => setViewRole('therapist')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  viewRole === 'therapist'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md'
-                    : 'text-emerald-200/80 hover:text-white'
-                }`}
-              >
-                Therapist View
-              </button>
-              <button
-                onClick={() => setViewRole('manager')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  viewRole === 'manager'
-                    ? 'bg-amber-400 text-slate-950 shadow-md'
-                    : 'text-emerald-200/80 hover:text-white'
-                }`}
-              >
-                Manager View
-              </button>
-            </div>
-
-            <button
-              onClick={() => setShowScheduleModal(true)}
-              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
-            >
-              <Plus size={16} /> Schedule Patient Session
-            </button>
-
-            <button
-              onClick={() => navigate('/physio')}
-              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 backdrop-blur-md transition-all cursor-pointer"
-            >
-              <Layers size={16} /> Open Full Physio Hub <ChevronRight size={14} />
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/physio')}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <Layers size={16} /> Open Full Physio Hub <ChevronRight size={14} />
+          </button>
         </div>
       </div>
 
-      {/* Manager Oversight Bar (When Manager Mode Active) */}
-      {viewRole === 'manager' && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/20 text-amber-700 rounded-xl font-black">
-              <ShieldAlert size={22} />
-            </div>
-            <div>
-              <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">Physiotherapy Department Head Oversight</h4>
-              <p className="text-xs text-amber-800 font-medium">Filter staff workloads, review rehabilitation completion rates, and manage equipment stock levels.</p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-amber-200 shadow-2xs">
-              <User size={14} className="text-amber-600" />
-              <span className="text-[10px] font-black uppercase text-slate-400">Therapist Filter:</span>
-              <select
-                value={selectedTherapist}
-                onChange={e => setSelectedTherapist(e.target.value)}
-                className="text-xs font-bold text-slate-800 outline-none bg-transparent"
-              >
-                <option value="All">All Staff Therapists ({PHYSIO_THERAPISTS.length})</option>
-                {PHYSIO_THERAPISTS.map(th => (
-                  <option key={th} value={th}>{th}</option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              onClick={() => navigate('/consumables-log')}
-              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-            >
-              <Box size={14} /> Review Stock Requisitions
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* KPI Cards Overview Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -502,15 +440,15 @@ const PhysiotherapistDashboard = () => {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {BODY_REGIONS.map(reg => (
-                <div key={reg.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60 hover:bg-white hover:shadow-xs transition-all">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xl">{reg.icon}</span>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{reg.id}</span>
+                <div key={reg.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 hover:bg-white hover:border-slate-300 transition-all">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">{reg.code}</span>
+                    <span className="text-[10px] font-medium text-slate-400">{reg.id}</span>
                   </div>
-                  <h4 className="text-xs font-black text-slate-800">{reg.label}</h4>
+                  <h4 className="text-xs font-semibold text-slate-800">{reg.label}</h4>
                   <div className="mt-2 text-[11px] text-slate-500 space-y-0.5 font-medium">
-                    <div>Flexion Target: <span className="font-bold text-slate-700">120° - 180°</span></div>
-                    <div>Extension Target: <span className="font-bold text-slate-700">0° - 60°</span></div>
+                    <div>Flexion: <span className="font-semibold text-slate-700">120° – 180°</span></div>
+                    <div>Extension: <span className="font-semibold text-slate-700">0° – 60°</span></div>
                   </div>
                 </div>
               ))}
@@ -592,65 +530,82 @@ const PhysiotherapistDashboard = () => {
 
       {/* Quick Schedule Session Modal */}
       {showScheduleModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-slate-100">
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowScheduleModal(false); }}
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+        >
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-slate-200/80">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                <Calendar size={20} className="text-emerald-600" /> Schedule Rehab Session
-              </h3>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Calendar size={18} className="text-emerald-600" /> Schedule Rehabilitation Session
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">Select a patient from the register and assign session goals.</p>
+              </div>
               <button
                 onClick={() => setShowScheduleModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleCreateSession} className="space-y-4 text-xs font-medium">
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Patient ID / Code *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. PAT-2026-904"
-                  value={newSession.patient_id}
-                  onChange={e => setNewSession({ ...newSession, patient_id: e.target.value })}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Patient Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Marie Claire Mukamana"
+                <label className="block text-slate-700 font-semibold mb-1">Patient Search (SUKRAA Register) *</label>
+                <PatientAutocomplete
                   value={newSession.patient_name}
-                  onChange={e => setNewSession({ ...newSession, patient_name: e.target.value })}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  onChange={(val) => {
+                    setNewSession(prev => (
+                      prev.patient_id && val !== prev.patient_name
+                        ? { ...prev, patient_name: val, patient_id: '' }
+                        : { ...prev, patient_name: val }
+                    ));
+                  }}
+                  onPatientSelect={(p) => setNewSession(prev => ({
+                    ...prev,
+                    patient_id: p.pid || '',
+                    patient_name: p.full_name || ''
+                  }))}
+                  placeholder="Search by patient name, PID or phone..."
+                  inputStyle={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '9px 12px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    outline: 'none'
+                  }}
                 />
+                {newSession.patient_id && (
+                  <div className="mt-1.5 text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Linked to Patient ID {newSession.patient_id}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Assigned Therapist</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Assigned Therapist</label>
                   <select
                     value={newSession.therapist_name}
                     onChange={e => setNewSession({ ...newSession, therapist_name: e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium"
                   >
-                    {PHYSIO_THERAPISTS.map(t => (
+                    {(physioStaff.length > 0 ? physioStaff : PHYSIO_THERAPISTS).map(t => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Anatomical Region</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Anatomical Region</label>
                   <select
                     value={newSession.treatment_area}
                     onChange={e => setNewSession({ ...newSession, treatment_area: e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium"
                   >
                     {BODY_REGIONS.map(b => (
                       <option key={b.id} value={b.id}>{b.label}</option>
@@ -660,27 +615,37 @@ const PhysiotherapistDashboard = () => {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Progress & Clinical Notes</label>
+                <label className="block text-slate-700 font-semibold mb-1">Session Date</label>
+                <input
+                  type="date"
+                  value={newSession.session_date}
+                  onChange={e => setNewSession({ ...newSession, session_date: e.target.value })}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Progress & Clinical Notes</label>
                 <textarea
                   rows={3}
-                  placeholder="Enter session objectives, ROM goals or exercise instructions..."
+                  placeholder="Enter session objectives, ROM targets or clinical instructions..."
                   value={newSession.progress_notes}
                   onChange={e => setNewSession({ ...newSession, progress_notes: e.target.value })}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 resize-none transition-all"
                 />
               </div>
 
               <div className="flex gap-3 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
                 >
                   Schedule Session
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowScheduleModal(false)}
-                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>

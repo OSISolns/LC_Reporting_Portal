@@ -79,7 +79,6 @@ const ProstheticsOdontogramWorkspace = () => {
       setPatient(null);
       setPatientError(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCaseId]);
 
   // Close case picker on outside click

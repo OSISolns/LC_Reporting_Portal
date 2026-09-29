@@ -29,6 +29,7 @@ const Users = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [adminPasswordForDelete, setAdminPasswordForDelete] = useState('');
+  const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
   // User permission overrides state
@@ -179,12 +180,19 @@ const Users = () => {
     }
     setUserToDelete({ id: userId, name: userName });
     setAdminPasswordForDelete('');
+    setDeleteError('');
     setIsDeleteModalOpen(true);
   };
 
   const handleConfirmDelete = async (e) => {
     e.preventDefault();
-    if (!adminPasswordForDelete) return;
+    setDeleteError('');
+    if (!adminPasswordForDelete) {
+      const msg = 'Please enter your administrative password.';
+      setDeleteError(msg);
+      showToast(msg, 'error');
+      return;
+    }
     
     setIsDeleting(true);
     try {
@@ -192,11 +200,14 @@ const Users = () => {
       setIsDeleteModalOpen(false);
       setUserToDelete(null);
       setAdminPasswordForDelete('');
+      setDeleteError('');
       fetchData();
       showToast(`Staff account "${userToDelete.name}" has been permanently deleted.`, 'success');
     } catch (err) {
       console.error('Delete error:', err);
-      showToast(err.response?.data?.message || 'Failed to delete user.', 'error');
+      const msg = err.response?.data?.message || 'Failed to delete user.';
+      setDeleteError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -664,6 +675,13 @@ const Users = () => {
               </div>
             </div>
 
+            {deleteError && (
+              <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', color: '#991b1b', fontSize: '0.85rem', fontWeight: 600 }}>
+                <AlertCircle size={18} color="#dc2626" style={{ flexShrink: 0 }} />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Confirm with Administrative Password</label>
               <div style={{ position: 'relative' }}>
@@ -673,9 +691,12 @@ const Users = () => {
                   required
                   autoFocus
                   value={adminPasswordForDelete}
-                  onChange={(e) => setAdminPasswordForDelete(e.target.value)}
+                  onChange={(e) => {
+                    setAdminPasswordForDelete(e.target.value);
+                    if (deleteError) setDeleteError('');
+                  }}
                   placeholder="Enter your password to authorize"
-                  style={{ width: '100%', padding: '12px 12px 12px 40px', backgroundColor: '#f8fafc', color: 'var(--text-primary)', border: '1.5px solid var(--border-color)', borderRadius: '10px', outline: 'none' }}
+                  style={{ width: '100%', padding: '12px 12px 12px 40px', backgroundColor: '#f8fafc', color: 'var(--text-primary)', border: deleteError ? '1.5px solid #ef4444' : '1.5px solid var(--border-color)', borderRadius: '10px', outline: 'none' }}
                 />
               </div>
             </div>

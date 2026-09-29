@@ -26,9 +26,12 @@ export default defineConfig(({ command }) => {
     ].filter(Boolean),
     server: {
       port: 5173,
+      host: true,
       hmr: {
-        host: 'localhost',
         protocol: 'ws',
+        host: 'localhost',
+        port: 5173,
+        clientPort: 5173
       },
       proxy: {
         '/api': {

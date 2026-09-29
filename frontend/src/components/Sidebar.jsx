@@ -1,13 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  LayoutDashboard, FileText, ReceiptText,
+  ChevronLeft, ChevronRight, LayoutDashboard, FileText, ReceiptText,
   AlertTriangle, Users, UserCheck, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine, ClipboardList, FlaskConical, Heart, Dumbbell, Settings, PackageCheck, AlertOctagon, Archive,
-  Truck, Zap, Wrench, Package, DollarSign
+  Truck, Zap, Wrench, Package, DollarSign, BarChart3
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, cloneElement } from 'react';
 
 // Read sidebar visibility config written by the Permissions module
 const getSidebarConfig = () => {
@@ -35,6 +35,8 @@ const Sidebar = ({ onClose }) => {
   const location = useLocation();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [sidebarConfigState, setSidebarConfigState] = useState(() => getSidebarConfig());
+  const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true');
+  useEffect(() => { localStorage.setItem('sidebar_collapsed', isCollapsed); }, [isCollapsed]);
 
   useEffect(() => {
     const handler = () => setSidebarConfigState(getSidebarConfig());
@@ -60,6 +62,7 @@ const Sidebar = ({ onClose }) => {
       title: 'CLINICAL HUBS',
       items: [
         { configKey: 'nursing_hub', name: 'Nursing Hub', icon: <Stethoscope size={18} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'coo', 'deputy_coo'] },
+        { configKey: 'clinical_sheets_nav', name: 'Clinical Sheets', icon: <FileText size={18} />, path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director', 'coo', 'deputy_coo'] },
         { configKey: 'doctor_hub', name: 'Doctor Hub', icon: <Stethoscope size={18} />, path: '/doctor-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director', 'coo', 'deputy_coo'] },
         { configKey: 'lab_hub', name: 'Laboratory Hub', icon: <FlaskConical size={18} />, path: '/lab', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'] },
         { configKey: 'lab_equipment', name: 'Equipment & PPM', icon: <Wrench size={18} />, path: '/lab/equipment', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'] },
@@ -67,7 +70,8 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'ncr_hub', name: 'Non-Conformance (NCR)', icon: <AlertOctagon size={18} />, path: '/ncr', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'hsfp'] },
         { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'admin', 'coo', 'deputy_coo'] },
         { configKey: 'dental_hub', name: 'Dental Hub', icon: <Heart size={18} />, path: '/dental', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'] },
-        { configKey: 'physio_hub', name: 'Physio Hub', icon: <Dumbbell size={18} />, path: '/physio', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'physiotherapist', 'physio', 'physio_manager'] },
+        { configKey: 'physio_hub', name: 'Physio Workspace', icon: <Dumbbell size={18} />, path: '/physio', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'physiotherapist', 'physio'] },
+        { configKey: 'physio_manager', name: 'Physio Manager Hub', icon: <BarChart3 size={18} />, path: '/physio/manager-dashboard', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'physio_manager'] },
       ]
     },
     {
@@ -89,7 +93,6 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'cancellations', name: 'Cancellations', icon: <FileText size={18} />, path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
         { configKey: 'refunds', name: 'Refunds', icon: <ReceiptText size={18} />, path: '/refunds', requiredPerm: { mod: 'refunds', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
         { configKey: 'results', name: 'Result Transfers', icon: <RefreshCw size={18} />, path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
-        { configKey: 'clinical_sheets', name: 'Clinical Sheets', icon: <FileText size={18} />, path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director', 'coo', 'deputy_coo'] },
         { configKey: 'shifts', name: 'Shift Management', icon: <Clock size={18} />, path: '/shifts', requiredPerm: null, allowedRoles: ['nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'cashier', 'customer_care', 'principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'pa'] },
       ]
     },
@@ -104,7 +107,7 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'infection', name: 'Infection Control', icon: <Activity size={18} />, path: '/infection-control', requiredPerm: { mod: 'incident_reports', act: 'approve' }, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer'] },
         { configKey: 'compliance', name: 'Compliance Portal', icon: <ShieldCheck size={18} />, path: '/compliance', requiredPerm: null, allowedRoles: ['admin', 'hsfp', 'quality_manager', 'qm', 'quality_accreditation_officer', 'coo', 'deputy_coo'] },
         { configKey: 'performance', name: 'Staff Performance', icon: <Award size={18} />, path: '/performance', requiredPerm: { mod: 'staff_performance', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'operations_staff'] },
-        { configKey: 'insights', name: 'AI Insights', icon: <Brain size={18} />, path: '/ai-insights', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'medical_director', 'quality_accreditation_officer'] },
+        { configKey: 'insights', name: 'AI Insights', icon: <Brain size={18} />, path: '/ai-insights', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'medical_director', 'quality_accreditation_officer', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager'] },
         { configKey: 'revenue', name: 'Revenue Tracker', icon: <TrendingDown size={18} />, path: '/revenue-tracker', requiredPerm: { mod: 'reports', act: 'view' }, allowedRoles: ['sales_manager', 'chairman', 'admin', 'principal_cashier', 'deputy_coo'] },
       ]
     },
@@ -154,8 +157,9 @@ const Sidebar = ({ onClose }) => {
   const linkStyle = (path) => ({
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    padding: '0.65rem 0.9rem',
+    justifyContent: isCollapsed ? 'center' : 'flex-start',
+    gap: isCollapsed ? '0' : '10px',
+    padding: isCollapsed ? '0.65rem 0' : '0.65rem 0.9rem',
     borderRadius: '8px',
     textDecoration: 'none',
     color: isActive(path) ? '#ffffff' : 'rgba(255,255,255,0.7)',
@@ -163,28 +167,70 @@ const Sidebar = ({ onClose }) => {
     fontWeight: isActive(path) ? 700 : 500,
     transition: 'all 0.15s ease-in-out',
     borderLeft: isActive(path) ? '3px solid #ffffff' : '3px solid transparent',
-    marginLeft: isActive(path) ? '-1.5rem' : '0',
-    paddingLeft: isActive(path) ? 'calc(1.5rem + 0.9rem)' : '0.9rem',
+    marginLeft: isActive(path) ? (isCollapsed ? '-0.75rem' : '-1.5rem') : '0',
+    paddingLeft: isActive(path) ? (isCollapsed ? 'calc(0.75rem - 1.5px)' : 'calc(1.5rem + 0.9rem)') : (isCollapsed ? '0' : '0.9rem'),
+    marginRight: isActive(path) && isCollapsed ? '-0.75rem' : '0',
     fontSize: '0.85rem',
   });
 
   return (
     <aside style={{
-      width: '260px',
-      minWidth: '260px',
+      width: isCollapsed ? '76px' : '260px',
+      minWidth: isCollapsed ? '76px' : '260px',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       backgroundColor: 'var(--sidebar-bg)',
       borderRight: '1px solid rgba(255,255,255,0.08)',
       display: 'flex',
       flexDirection: 'column',
-      padding: '1.25rem 1.5rem',
       height: '100vh',
-      overflowY: 'auto',
       position: 'relative',
+      zIndex: 120,
     }}>
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="hidden md:flex"
+        style={{
+          position: 'absolute',
+          right: '-12px',
+          top: '1.25rem',
+          zIndex: 130,
+          width: '24px',
+          height: '24px',
+          backgroundColor: 'var(--primary-dark)',
+          border: '1px solid rgba(255,255,255,0.25)',
+          color: '#ffffff',
+          cursor: 'pointer',
+          borderRadius: '50%',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.2s ease',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+        }}
+        title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+      </button>
+
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: isCollapsed ? '1.25rem 0.75rem' : '1.25rem 1.5rem',
+      }}>
 
       {/* ── Logo + mobile close button ── */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', items: 'center', justifyContent: 'space-between' }}>
-        <img src="/logo.png" alt="Legacy Clinics" style={{ height: '36px', objectFit: 'contain' }} />
+      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {!isCollapsed ? (
+            <img src="/logo.png" alt="Legacy Clinics" style={{ height: '36px', objectFit: 'contain' }} />
+          ) : (
+            <div style={{ width: '36px', height: '36px', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
+              <img src="/logo.png" alt="Legacy Clinics" style={{ height: '36px', minWidth: '150px', objectFit: 'cover', objectPosition: 'left' }} />
+            </div>
+          )}
+        </div>
         <button
           onClick={onClose}
           className="sidebar-close-btn"
@@ -213,16 +259,20 @@ const Sidebar = ({ onClose }) => {
                   fontWeight: 800,
                   color: 'rgba(255,255,255,0.4)',
                   letterSpacing: '0.08em',
-                  padding: '0 0.9rem 0.35rem 0.9rem',
-                  textTransform: 'uppercase'
+                  padding: isCollapsed ? '0 0 0.35rem 0' : '0 0.9rem 0.35rem 0.9rem',
+                  textTransform: 'uppercase',
+                  textAlign: isCollapsed ? 'center' : 'left',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}>
-                  {section.title}
+                  {isCollapsed ? '•••' : section.title}
                 </div>
               )}
               {visibleItems.map((item) => (
-                <Link key={item.path} to={item.path} style={linkStyle(item.path)}>
-                  {item.icon}
-                  <span>{item.name}</span>
+                <Link key={item.path} to={item.path} style={linkStyle(item.path)} title={isCollapsed ? item.name : ''}>
+                  {cloneElement(item.icon, { size: isCollapsed ? 22 : 18 })}
+                  {!isCollapsed && <span>{item.name}</span>}
                 </Link>
               ))}
             </div>
@@ -231,38 +281,37 @@ const Sidebar = ({ onClose }) => {
       </nav>
 
       {/* ── User actions ── */}
-      <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        <a
-          href="https://legacyclinics.rw/webmail"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'none' }}
-        >
-          <Mail size={18} /> Webmail
+      <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <a href="https://legacyclinics.rw/webmail" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '10px', padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'none' }} title="Webmail">
+          <Mail size={isCollapsed ? 22 : 18} /> {!isCollapsed && "Webmail"}
         </a>
 
-        <button
-          onClick={() => setIsPasswordModalOpen(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
-        >
-          <Key size={18} /> Update Password
+        <button onClick={() => setIsPasswordModalOpen(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '10px', padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }} title="Update Password">
+          <Key size={isCollapsed ? 22 : 18} /> {!isCollapsed && "Update Password"}
         </button>
 
-        <button
-          onClick={logout}
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#ef4444', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
-        >
-          <LogOut size={18} /> Logout
+        <button onClick={logout} style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '10px', padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#ef4444', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }} title="Logout">
+          <LogOut size={isCollapsed ? 22 : 18} /> {!isCollapsed && "Logout"}
         </button>
       </div>
 
       {/* ── User profile card ── */}
-      <div style={{ marginTop: '0.75rem', padding: '0.85rem', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.fullName}</div>
-        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>@{user?.username}</div>
-        <div style={{ marginTop: '4px', display: 'inline-block', padding: '2px 8px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '99px', fontSize: '0.68rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {user?.role?.replace(/_/g, ' ')}
-        </div>
+      <div style={{ marginTop: '0.75rem', padding: isCollapsed ? '0.75rem 0.25rem' : '0.85rem', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: isCollapsed ? 'center' : 'flex-start', textAlign: isCollapsed ? 'center' : 'left' }}>
+        {!isCollapsed ? (
+          <>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{user?.fullName}</div>
+            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>@{user?.username}</div>
+            <div style={{ marginTop: '4px', display: 'inline-block', padding: '2px 8px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '99px', fontSize: '0.68rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {user?.role?.replace(/_/g, ' ')}
+            </div>
+          </>
+        ) : (
+          <div title={`${user?.fullName} (@${user?.username})
+${user?.role}`} style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '14px' }}>
+            {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+          </div>
+        )}
+      </div>
       </div>
 
       <Modal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} title="Account Security" maxWidth="500px">

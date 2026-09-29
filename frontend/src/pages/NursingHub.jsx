@@ -99,7 +99,8 @@ export default function NursingHub() {
     }
 
     if (submodule === 'Clinical Sheet') {
-      setActiveClinicalTab('open');
+      const qId = sessionQueueId || `Q-${Date.now()}`;
+      navigate(`/patients/${selectedPatient.pid}/clinical-sheet?queue_id=${qId}`);
     } else if (submodule === 'Patient History & Archive') {
       navigate(`/patients/${selectedPatient.pid}/records`);
     } else if (submodule === 'Take Vitals / Triage') {
@@ -113,30 +114,30 @@ export default function NursingHub() {
     <div style={{ paddingBottom: '4rem', fontFamily: 'inherit' }} className="space-y-8 animate-fadeIn">
       {/* ── Header Welcome Hero ── */}
       <div style={{ 
-        background: 'linear-gradient(135deg, #075985 0%, #0369a1 100%)', 
-        borderRadius: '28px', 
-        padding: '2.5rem', 
-        color: '#fff', 
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', 
+        borderRadius: '24px', 
+        padding: '2rem 2.5rem', 
+        color: '#ffffff', 
         position: 'relative', 
         overflow: 'hidden',
-        boxShadow: '0 20px 40px rgba(3,105,161,0.15)'
+        boxShadow: '0 10px 25px -5px rgba(3, 105, 161, 0.25)',
+        border: '1px solid rgba(255, 255, 255, 0.1)'
       }}>
-        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '35%', background: 'radial-gradient(circle at top right, rgba(255,255,255,0.08), transparent 70%)' }} />
         <div style={{ position: 'relative', zIndex: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-            <div style={{ padding: '8px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '10px', backdropFilter: 'blur(8px)' }}>
-              <Stethoscope size={20} className="text-sky-200" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.75rem' }}>
+            <div style={{ padding: '6px 10px', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: '8px', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Stethoscope size={18} className="text-white" />
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#ffffff' }}>
+                {['doctor', 'consultant'].includes(user?.role) ? 'Integrated Doctors Node' : 'Integrated Nursing Node'}
+              </span>
             </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#e0f2fe' }}>
-              {['doctor', 'consultant'].includes(user?.role) ? 'Integrated Doctors Node' : 'Integrated Nursing Node'}
-            </span>
           </div>
           
-          <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, tracking: '-0.025em' }}>
-            {greeting.text}, {['doctor', 'consultant'].includes(user?.role) ? 'Dr.' : user?.role === 'chef-nurse' ? 'Chief Nurse' : 'Nurse'} {user?.fullName?.split(' ')[0] || 'Officer'} ⚕️
+          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 800, tracking: '-0.025em', color: '#ffffff' }}>
+            {greeting.text}, {['doctor', 'consultant'].includes(user?.role) ? 'Dr.' : user?.role === 'chef-nurse' ? 'Chief Nurse' : 'Nurse'} {user?.fullName?.split(' ')[0] || 'Officer'}
           </h1>
-          <p style={{ marginTop: '0.5rem', fontSize: '1rem', color: '#bae6fd', fontWeight: 500, maxWidth: '640px' }}>
-            Welcome to the Clinical Command Center. {greeting.sub}. Reconcile and submit assessments, triage records, and patient MAR forms.
+          <p style={{ marginTop: '0.4rem', fontSize: '0.9rem', color: '#ffffff', opacity: 0.9, fontWeight: 500, maxWidth: '640px' }}>
+            {greeting.sub} • Clinical assessment, triage, and patient MAR documentation.
           </p>
         </div>
       </div>
@@ -249,10 +250,13 @@ export default function NursingHub() {
 
                 <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }} className="flex-col sm:flex-row">
                   <Button 
-                    onClick={() => setActiveClinicalTab('all')}
+                    onClick={() => {
+                      const qId = sessionQueueId || `Q-${Date.now()}`;
+                      navigate(`/patients/${selectedPatient.pid}/clinical-sheet?queue_id=${qId}`);
+                    }}
                     className="flex-1 py-3.5 rounded-xl bg-[#0369a1] hover:bg-[#0284c7] text-white font-black text-xs uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2"
                   >
-                    <FileText size={14} /> Open Clinical Sheet
+                    <FileText size={14} /> Open Clinical Sheet (Full Page)
                   </Button>
                   <Button 
                     variant="outline"
@@ -532,29 +536,6 @@ export default function NursingHub() {
         isOpen={isIcd11BrowserOpen}
         onClose={() => setIsIcd11BrowserOpen(false)}
       />
-      <Modal 
-        isOpen={activeClinicalTab !== null} 
-        onClose={() => setActiveClinicalTab(null)} 
-        title={`${selectedPatient?.full_name || 'Active Patient'} — Patient Observation Records Sheet`}
-        maxWidth="950px"
-      >
-        {activeClinicalTab !== null && sessionQueueId && (
-          <ClinicalSheet 
-            embeddedPatientId={selectedPatient?.pid} 
-            embeddedQueueId={sessionQueueId} 
-            isEmbedded={true} 
-            embeddedTab="all"
-            onSaveSuccess={() => {
-              // Refresh recent consultations list after saving
-              api.get('/clinical/observations/recent').then(res => {
-                if (res.data.success && res.data.data) {
-                  setRecentPatients(res.data.data.slice(0, 5));
-                }
-              }).catch(() => {});
-            }}
-          />
-        )}
-      </Modal>
     </div>
   );
 }

@@ -310,8 +310,123 @@ async function suggestICD11(query) {
   return [];
 }
 
-// Legacy alias — controllers still import suggestICD10 by name
-const suggestICD10 = suggestICD11;
+/**
+ * Search NLM ICD-10-CM release via public API:
+ * https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?terms={query}&sf=code,name&maxList=15
+ */
+async function suggestICD10_NLM(query) {
+  if (!query || query.length < 2) return [];
+  const needle = query.toLowerCase().trim();
+
+  // 1. Check local cache
+  try {
+    const cachedRow = await db.query('SELECT results FROM icd10_cache WHERE keyword = $1', [needle]);
+    if (cachedRow && cachedRow.rows.length > 0) {
+      return JSON.parse(cachedRow.rows[0].results).map(r => ({ ...r, system: 'ICD-10', version: 'ICD-10' }));
+    }
+  } catch (err) { /* ignore */ }
+
+  // 2. Query live NLM API
+  let results = [];
+  let apiSuccess = false;
+  try {
+    const url = `https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?terms=${encodeURIComponent(query)}&sf=code,name&maxList=15`;
+    const res = await axios.get(url, { timeout: 5000 });
+    const items = res.data?.[3] || [];
+    if (items.length > 0) {
+      results = items.map(([code, desc]) => ({
+        code,
+        desc,
+        system: 'ICD-10',
+        version: 'ICD-10'
+      }));
+      apiSuccess = true;
+    }
+  } catch (err) {
+    console.warn(`⚠️ NLM ICD-10 API call notice: ${err.message}`);
+  }
+
+  // 3. Cache results
+  if (apiSuccess && results.length > 0) {
+    try {
+      await db.query(
+        'INSERT OR REPLACE INTO icd10_cache (keyword, results) VALUES ($1, $2)',
+        [needle, JSON.stringify(results)]
+      );
+    } catch (_) {}
+    return results;
+  }
+
+  // 4. Fallback: partial search on icd10_cache
+  try {
+    const partialRows = await db.query(
+      'SELECT results FROM icd10_cache WHERE keyword LIKE $1 OR results LIKE $2 LIMIT 10',
+      [`%${needle}%`, `%${needle}%`]
+    );
+    if (partialRows && partialRows.rows.length > 0) {
+      const merged = new Map();
+      for (const row of partialRows.rows) {
+        try {
+          const list = JSON.parse(row.results);
+          for (const item of list) {
+            if (item.code && item.desc) merged.set(item.code, { code: item.code, desc: item.desc, system: 'ICD-10', version: 'ICD-10' });
+          }
+        } catch (_) {}
+      }
+      return Array.from(merged.values()).slice(0, 10);
+    }
+  } catch (_) {}
+
+  return [];
+}
+
+/**
+ * Combined ICD-10 and ICD-11 diagnostic search engine.
+ * Queries WHO ICD-11 and NLM ICD-10-CM concurrently.
+ */
+async function suggestCombinedDiagnosis(query) {
+  if (!query || query.length < 2) return [];
+
+  const [icd11Res, icd10Res] = await Promise.allSettled([
+    suggestICD11(query),
+    suggestICD10_NLM(query)
+  ]);
+
+  const list11 = (icd11Res.status === 'fulfilled' ? icd11Res.value : []).map(r => ({
+    code: r.code,
+    desc: r.desc,
+    system: 'ICD-11',
+    version: 'ICD-11'
+  }));
+
+  const list10 = (icd10Res.status === 'fulfilled' ? icd10Res.value : []).map(r => ({
+    code: r.code,
+    desc: r.desc,
+    system: 'ICD-10',
+    version: 'ICD-10'
+  }));
+
+  const combined = [];
+  const maxLen = Math.max(list11.length, list10.length);
+  const seen = new Set();
+
+  for (let i = 0; i < maxLen; i++) {
+    if (i < list11.length && !seen.has(list11[i].code)) {
+      seen.add(list11[i].code);
+      combined.push(list11[i]);
+    }
+    if (i < list10.length && !seen.has(list10[i].code)) {
+      seen.add(list10[i].code);
+      combined.push(list10[i]);
+    }
+  }
+
+  return combined;
+}
+
+// Aliases for unified ICD-10 + ICD-11 lookup
+const suggestICD10 = suggestCombinedDiagnosis;
+
 
 // ── Medication Lookup ─────────────────────────────────────────────────────────
 function lookupMedication(medName) {
@@ -640,33 +755,62 @@ const ICD11_DETAILS_DB = {
 /**
  * Retrieve all unique cached/seeded ICD-11 codes.
  */
+/**
+ * Retrieve all unique cached/seeded ICD-11 and ICD-10 codes.
+ */
 async function getAllCachedICD11() {
   try {
-    const res = await db.query('SELECT results FROM icd11_cache');
     const codesMap = new Map();
-    if (res && res.rows) {
-      for (const row of res.rows) {
-        try {
-          const list = JSON.parse(row.results);
-          for (const item of list) {
-            if (item.code && item.desc) {
-              codesMap.set(item.code.toUpperCase().trim(), item.desc.trim());
+
+    // 1. Fetch ICD-11 codes
+    try {
+      const res11 = await db.query('SELECT results FROM icd11_cache');
+      if (res11 && res11.rows) {
+        for (const row of res11.rows) {
+          try {
+            const list = JSON.parse(row.results);
+            for (const item of list) {
+              if (item.code && item.desc) {
+                const key = item.code.toUpperCase().trim();
+                codesMap.set(key, { code: key, desc: item.desc.trim(), system: 'ICD-11', version: 'ICD-11' });
+              }
             }
-          }
-        } catch (_) {}
+          } catch (_) {}
+        }
       }
-    }
-    const list = Array.from(codesMap.entries()).map(([code, desc]) => ({ code, desc }));
+    } catch (_) {}
+
+    // 2. Fetch ICD-10 codes
+    try {
+      const res10 = await db.query('SELECT results FROM icd10_cache');
+      if (res10 && res10.rows) {
+        for (const row of res10.rows) {
+          try {
+            const list = JSON.parse(row.results);
+            for (const item of list) {
+              if (item.code && item.desc) {
+                const key = item.code.toUpperCase().trim();
+                if (!codesMap.has(key)) {
+                  codesMap.set(key, { code: key, desc: item.desc.trim(), system: 'ICD-10', version: 'ICD-10' });
+                }
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    const list = Array.from(codesMap.values());
     list.sort((a, b) => a.code.localeCompare(b.code));
     return list;
   } catch (err) {
-    console.error('Failed to fetch cached ICD11 codes:', err);
+    console.error('Failed to fetch cached diagnosis codes:', err);
     return [];
   }
 }
 
 /**
- * Resolve details of a specific ICD-11 code.
+ * Resolve details of a specific ICD-10 or ICD-11 code.
  */
 async function lookupICD11CodeDetails(code) {
   if (!code) return null;
@@ -683,17 +827,37 @@ async function lookupICD11CodeDetails(code) {
   let desc = 'Unknown Diagnosis';
   let definition = null;
   let source = 'Local System';
+  let system = cleanCode.match(/^[A-Z]\d/) ? 'ICD-10' : 'ICD-11';
 
   try {
-    const res = await db.query('SELECT results FROM icd11_cache WHERE results LIKE $1', [`%${cleanCode}%`]);
-    if (res && res.rows.length > 0) {
-      for (const row of res.rows) {
+    // Check icd11_cache
+    const res11 = await db.query('SELECT results FROM icd11_cache WHERE results LIKE $1', [`%${cleanCode}%`]);
+    if (res11 && res11.rows.length > 0) {
+      for (const row of res11.rows) {
         const parsed = JSON.parse(row.results);
         const match = parsed.find(item => item.code.toUpperCase() === cleanCode);
         if (match) {
           desc = match.desc;
-          source = 'Local Cache';
+          source = 'ICD-11 Cache';
+          system = 'ICD-11';
           break;
+        }
+      }
+    }
+
+    // Check icd10_cache if not found in icd11_cache
+    if (desc === 'Unknown Diagnosis') {
+      const res10 = await db.query('SELECT results FROM icd10_cache WHERE results LIKE $1', [`%${cleanCode}%`]);
+      if (res10 && res10.rows.length > 0) {
+        for (const row of res10.rows) {
+          const parsed = JSON.parse(row.results);
+          const match = parsed.find(item => item.code.toUpperCase() === cleanCode);
+          if (match) {
+            desc = match.desc;
+            source = 'ICD-10 Cache';
+            system = 'ICD-10';
+            break;
+          }
         }
       }
     }
@@ -701,55 +865,73 @@ async function lookupICD11CodeDetails(code) {
     console.error('Error searching local cache by code:', err.message);
   }
 
-  // Try live WHO API if it is configured
-  try {
-    const token = await getICD11Token();
-    const liveDetails = await new Promise((resolve, reject) => {
-      const options = {
-        hostname: 'id.who.int',
-        path:     `/icd/release/11/2024-01/mms/codeinfo/${cleanCode}`,
-        method:   'GET',
-        headers:  {
-          Authorization:          `Bearer ${token}`,
-          Accept:                 'application/json',
-          'Accept-Language':      'en',
-          'API-Version':          'v2',
-        },
-        timeout: 5000,
-      };
+  // If still unknown and looks like ICD-10, query NLM live search
+  if (desc === 'Unknown Diagnosis' && cleanCode.match(/^[A-Z]\d/)) {
+    try {
+      const nlmUrl = `https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?terms=${encodeURIComponent(cleanCode)}&sf=code,name&maxList=5`;
+      const res = await axios.get(nlmUrl, { timeout: 4000 });
+      const items = res.data?.[3] || [];
+      const match = items.find(([c]) => c.toUpperCase() === cleanCode);
+      if (match) {
+        desc = match[1];
+        system = 'ICD-10';
+        source = 'NLM Live API';
+      }
+    } catch (_) {}
+  }
 
-      const req = https.request(options, (res) => {
-        let raw = '';
-        res.on('data', (chunk) => { raw += chunk; });
-        res.on('end', () => {
-          try {
-            if (res.statusCode !== 200) {
-              return reject(new Error(`WHO API returned status ${res.statusCode}`));
+  // Try live WHO API if it is configured
+  if (desc === 'Unknown Diagnosis') {
+    try {
+      const token = await getICD11Token();
+      const liveDetails = await new Promise((resolve, reject) => {
+        const options = {
+          hostname: 'id.who.int',
+          path:     `/icd/release/11/2024-01/mms/codeinfo/${cleanCode}`,
+          method:   'GET',
+          headers:  {
+            Authorization:          `Bearer ${token}`,
+            Accept:                 'application/json',
+            'Accept-Language':      'en',
+            'API-Version':          'v2',
+          },
+          timeout: 5000,
+        };
+
+        const req = https.request(options, (res) => {
+          let raw = '';
+          res.on('data', (chunk) => { raw += chunk; });
+          res.on('end', () => {
+            try {
+              if (res.statusCode !== 200) {
+                return reject(new Error(`WHO API returned status ${res.statusCode}`));
+              }
+              const json = JSON.parse(raw);
+              resolve({
+                desc: json.title?.['@value'] || json.title || desc,
+                definition: json.definition?.['@value'] || null,
+                source: 'WHO Live API'
+              });
+            } catch (e) {
+              reject(e);
             }
-            const json = JSON.parse(raw);
-            resolve({
-              desc: json.title?.['@value'] || json.title || desc,
-              definition: json.definition?.['@value'] || null,
-              source: 'WHO Live API'
-            });
-          } catch (e) {
-            reject(e);
-          }
+          });
         });
+
+        req.on('timeout', () => { req.destroy(); reject(new Error('WHO API timeout')); });
+        req.on('error', reject);
+        req.end();
       });
 
-      req.on('timeout', () => { req.destroy(); reject(new Error('WHO API timeout')); });
-      req.on('error', reject);
-      req.end();
-    });
-
-    if (liveDetails) {
-      desc = liveDetails.desc;
-      definition = liveDetails.definition;
-      source = liveDetails.source;
+      if (liveDetails) {
+        desc = liveDetails.desc;
+        definition = liveDetails.definition;
+        source = liveDetails.source;
+        system = 'ICD-11';
+      }
+    } catch (err) {
+      // Ignore and use local/cache details
     }
-  } catch (err) {
-    // Ignore and use local/cache details
   }
 
   const details = matchedDetails || {
@@ -762,6 +944,7 @@ async function lookupICD11CodeDetails(code) {
     code: cleanCode,
     desc,
     definition,
+    system,
     category: details.category,
     symptoms: details.symptoms,
     guidelines: details.guidelines,

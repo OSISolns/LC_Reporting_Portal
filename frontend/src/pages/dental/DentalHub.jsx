@@ -92,7 +92,6 @@ const DentalHub = () => {
       next.set('tab', currentTab);
       return next;
     }, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSection.key, currentTab]);
 
   return (

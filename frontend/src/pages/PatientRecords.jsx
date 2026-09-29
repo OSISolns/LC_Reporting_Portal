@@ -126,8 +126,11 @@ export default function PatientRecords() {
   const [medsLoading, setMedsLoading] = useState(false);
   const [selectedMed, setSelectedMed] = useState(null); // modal
 
-  // Clinical Sheet Modal state
-  const [isClinicalModalOpen, setIsClinicalModalOpen] = useState(false);
+  // Clinical Sheet navigation helper
+  const openClinicalSheetPage = (qId) => {
+    const targetQueueId = qId || `Q-${Date.now()}`;
+    navigate(`/patients/${patientId}/clinical-sheet?queue_id=${targetQueueId}`);
+  };
   const [isQuickSheetModalOpen, setIsQuickSheetModalOpen] = useState(false);
   const [clinicalModalQueueId, setClinicalModalQueueId] = useState('');
 
@@ -628,8 +631,7 @@ export default function PatientRecords() {
                   <Button
                     className="bg-[#009ee3] hover:bg-[#008bc7] text-white text-xs font-bold flex items-center gap-2"
                     onClick={() => {
-                      setClinicalModalQueueId(`Q-${Date.now()}`);
-                      setIsClinicalModalOpen(true);
+                      openClinicalSheetPage();
                     }}
                   >
                     <Plus size={14} /> Prescribe
@@ -648,8 +650,7 @@ export default function PatientRecords() {
                     <p className="text-sm font-bold">No prescriptions found for this patient.</p>
                     <button
                       onClick={() => {
-                        setClinicalModalQueueId(`Q-${Date.now()}`);
-                        setIsClinicalModalOpen(true);
+                        openClinicalSheetPage();
                       }}
                       className="text-xs font-bold text-[#009ee3] border border-[#009ee3]/30 px-4 py-2 rounded-lg hover:bg-sky-50 transition-all mt-1"
                     >
@@ -794,8 +795,7 @@ export default function PatientRecords() {
                       <button
                         onClick={() => {
                           setSelectedMed(null);
-                          setClinicalModalQueueId(selectedMed.queue_id);
-                          setIsClinicalModalOpen(true);
+                          openClinicalSheetPage(selectedMed.queue_id);
                         }}
                         style={{ flex: 1, padding: '12px', background: '#009ee3', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}
                       >
@@ -874,8 +874,7 @@ export default function PatientRecords() {
                       <Button
                         className="bg-[#009ee3] hover:bg-[#008bc7] text-white text-xs font-bold flex items-center gap-2"
                         onClick={() => {
-                          setClinicalModalQueueId(`Q-${Date.now()}`);
-                          setIsClinicalModalOpen(true);
+                          openClinicalSheetPage();
                         }}
                       >
                         <Plus size={14} /> Full Sheet
@@ -895,8 +894,7 @@ export default function PatientRecords() {
                       <p className="text-sm font-bold">No clinical sheets found for this patient.</p>
                       <button
                         onClick={() => {
-                          setClinicalModalQueueId(`Q-${Date.now()}`);
-                          setIsClinicalModalOpen(true);
+                          openClinicalSheetPage();
                         }}
                         className="text-xs font-bold text-[#0369a1] border border-[#0369a1]/30 px-4 py-2 rounded-lg hover:bg-sky-50 transition-all mt-1"
                       >
@@ -956,8 +954,7 @@ export default function PatientRecords() {
                             <div className="flex items-center gap-2 shrink-0 ml-4">
                               <button
                                 onClick={() => {
-                                  setClinicalModalQueueId(doc.queue_id);
-                                  setIsClinicalModalOpen(true);
+                                  openClinicalSheetPage(doc.queue_id);
                                 }}
                                 className="flex items-center gap-1.5 text-xs font-bold text-[#0369a1] bg-sky-50 hover:bg-sky-100 border border-sky-200 px-3 py-1.5 rounded-lg transition-all"
                               >
@@ -1026,8 +1023,7 @@ export default function PatientRecords() {
                     <p className="text-sm font-bold">No used consumables found for this patient.</p>
                     <button
                       onClick={() => {
-                        setClinicalModalQueueId(`Q-${Date.now()}`);
-                        setIsClinicalModalOpen(true);
+                        openClinicalSheetPage();
                       }}
                       className="text-xs font-bold text-[#009ee3] border border-[#009ee3]/30 px-4 py-2 rounded-lg hover:bg-sky-50 transition-all mt-1"
                     >
@@ -1085,8 +1081,7 @@ export default function PatientRecords() {
                               <td className="p-4 text-right">
                                 <button
                                   onClick={() => {
-                                    setClinicalModalQueueId(med.queue_id);
-                                    setIsClinicalModalOpen(true);
+                                    openClinicalSheetPage(med.queue_id);
                                   }}
                                   className="inline-flex items-center gap-1.5 text-xs font-black text-[#0369a1] bg-sky-50 hover:bg-sky-100 border border-sky-200 px-3 py-1.5 rounded-lg transition-all"
                                 >
@@ -1152,25 +1147,7 @@ export default function PatientRecords() {
         }}
       />
 
-      {isClinicalModalOpen && (
-        <Modal
-          isOpen={isClinicalModalOpen}
-          onClose={() => setIsClinicalModalOpen(false)}
-          title="Fill / Edit Clinical Observation Sheet"
-          maxWidth="980px"
-        >
-          <ClinicalSheet 
-            embeddedPatientId={selectedPatient.id}
-            embeddedQueueId={clinicalModalQueueId}
-            isEmbedded={true}
-            onSaveSuccess={() => {
-              setIsClinicalModalOpen(false);
-              fetchClinicalDocs();
-              fetchMedications();
-            }}
-          />
-        </Modal>
-      )}
+
 
       <QuickClinicalSheetModal
         isOpen={isQuickSheetModalOpen}

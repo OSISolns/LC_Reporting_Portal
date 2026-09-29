@@ -7,8 +7,10 @@ const checkPermission = require('../middleware/permission');
 
 router.use(authMiddleware);
 
-router.get('/', checkPermission('user_management', 'view'), providerController.getAllProviders);
-router.get('/specializations', checkPermission('user_management', 'view'), providerController.getSpecializations);
+router.get('/physiotherapists', providerController.getPhysiotherapists);
+router.get('/active', (req, res, next) => { req.query.activeOnly = 'true'; providerController.getAllProviders(req, res, next); });
+router.get('/', providerController.getAllProviders);
+router.get('/specializations', providerController.getSpecializations);
 router.post('/', checkPermission('user_management', 'edit'), providerController.createProvider);
 router.patch('/:id', checkPermission('user_management', 'edit'), providerController.updateProvider);
 router.delete('/:id', checkPermission('user_management', 'edit'), providerController.deleteProvider);

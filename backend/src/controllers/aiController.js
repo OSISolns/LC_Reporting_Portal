@@ -189,11 +189,11 @@ exports.classifyReasons = async (req, res, next) => {
     } else if (module === 'daily_reports') {
       rows = await queryRows(
         `SELECT m.id,
-                d.name AS reason,
+                COALESCE(s.name, p.specialization, p.name, 'Clinical Report') AS reason,
                 'verified' AS status,
-                p.name AS cashier
+                COALESCE(p.name, 'Provider') AS cashier
          FROM   daily_report_metrics m
-         LEFT JOIN departments d ON m.department_id = d.id
+         LEFT JOIN specializations s ON m.specialization_id = s.id
          LEFT JOIN providers p ON m.provider_id = p.id
          ORDER  BY m.report_date DESC LIMIT 500`
       );

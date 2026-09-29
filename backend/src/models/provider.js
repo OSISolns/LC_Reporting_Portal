@@ -53,6 +53,20 @@ class Provider {
   }
 
   /**
+   * Fetch all active physiotherapists from providers table
+   */
+  static async getPhysiotherapists() {
+    const { rows } = await db.query(`
+      SELECT id, name, title, specialization, is_active
+      FROM providers
+      WHERE is_active = 1
+        AND (specialization = 'PHYSIO' OR LOWER(specialization) LIKE '%physio%' OR LOWER(title) LIKE '%physio%')
+      ORDER BY name ASC
+    `);
+    return rows;
+  }
+
+  /**
    * Fetch all specializations for selection dropdowns
    */
   static async getSpecializations() {

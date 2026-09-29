@@ -6,7 +6,7 @@ import { searchTerminology } from '../api/imaging';
  * Multi-select coded-term picker backed by a live terminology system.
  *
  * Props:
- *   system   'loinc' | 'snomed' | 'icd11'
+ *   system   'loinc' | 'snomed' | 'icd10' | 'icd11' | 'diagnosis'
  *   value    array of { code, display, system }
  *   onChange (nextValue) => void
  *   multiple default true; when false, selecting replaces the value
@@ -15,10 +15,12 @@ import { searchTerminology } from '../api/imaging';
 const SYSTEM_COLOR = {
   loinc: '#0369a1',
   snomed: '#0f766e',
+  icd10: '#0891b2',
   icd11: '#7c3aed',
+  diagnosis: '#7c3aed',
 };
 
-const TerminologyPicker = ({ system, value = [], onChange, multiple = true, label, placeholder }) => {
+const TerminologyPicker = ({ system = 'icd11', value = [], onChange, multiple = true, label, placeholder }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
@@ -31,7 +33,8 @@ const TerminologyPicker = ({ system, value = [], onChange, multiple = true, labe
     const t = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await searchTerminology(system, query.trim());
+        const sysParam = system === 'diagnosis' ? 'icd11' : system;
+        const res = await searchTerminology(sysParam, query.trim());
         setResults(res.data.data || []);
         setOpen(true);
       } catch { setResults([]); }
@@ -47,7 +50,7 @@ const TerminologyPicker = ({ system, value = [], onChange, multiple = true, labe
   }, []);
 
   const add = (item) => {
-    const entry = { code: item.code, display: item.display, system: item.system };
+    const entry = { code: item.code, display: item.display || item.desc, system: item.system || item.version || 'ICD' };
     if (multiple) {
       if (!value.some((v) => v.code === entry.code)) onChange([...value, entry]);
     } else {
@@ -59,6 +62,14 @@ const TerminologyPicker = ({ system, value = [], onChange, multiple = true, labe
   };
   const remove = (code) => onChange(value.filter((v) => v.code !== code));
 
+  const getItemColor = (itemSys) => {
+    if (!itemSys) return color;
+    const sysLower = String(itemSys).toLowerCase();
+    if (sysLower.includes('icd-10') || sysLower.includes('icd10')) return '#0891b2';
+    if (sysLower.includes('icd-11') || sysLower.includes('icd11')) return '#7c3aed';
+    return SYSTEM_COLOR[sysLower] || color;
+  };
+
   return (
     <div ref={boxRef} className="relative">
       {label && <label className="block text-xs font-semibold text-slate-500 mb-1">{label}</label>}
@@ -66,13 +77,16 @@ const TerminologyPicker = ({ system, value = [], onChange, multiple = true, labe
       {/* selected chips */}
       {value.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-1.5">
-          {value.map((v) => (
-            <span key={v.code} className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold"
-              style={{ background: `${color}15`, color, border: `1px solid ${color}40` }}>
-              {v.display} <span className="font-mono opacity-70">[{v.code}]</span>
-              <button type="button" onClick={() => remove(v.code)} className="hover:opacity-70"><X size={12} /></button>
-            </span>
-          ))}
+          {value.map((v) => {
+            const chipColor = getItemColor(v.system);
+            return (
+              <span key={v.code} className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold"
+                style={{ background: `${chipColor}15`, color: chipColor, border: `1px solid ${chipColor}40` }}>
+                {v.display} <span className="font-mono opacity-70">[{v.code}]</span>
+                <button type="button" onClick={() => remove(v.code)} className="hover:opacity-70"><X size={12} /></button>
+              </span>
+            );
+          })}
         </div>
       )}
 
@@ -81,7 +95,7 @@ const TerminologyPicker = ({ system, value = [], onChange, multiple = true, labe
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length && setOpen(true)}
-          placeholder={placeholder || `Search ${system.toUpperCase()}…`}
+          placeholder={placeholder || `Search Diagnosis (ICD-10 / ICD-11)…`}
           className="w-full border border-slate-300 rounded-lg pl-8 pr-3 py-2 text-sm"
         />
         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
@@ -91,22 +105,31 @@ const TerminologyPicker = ({ system, value = [], onChange, multiple = true, labe
 
       {open && results.length > 0 && (
         <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-          {results.map((r) => (
-            <button
-              key={`${r.system}-${r.code}`}
-              type="button"
-              onClick={() => add(r)}
-              className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-0"
-            >
-              <div className="text-sm text-slate-800">{r.display}</div>
-              <div className="text-xs text-slate-400 font-mono">{r.system} · {r.code}</div>
-            </button>
-          ))}
+          {results.map((r) => {
+            const itemColor = getItemColor(r.system);
+            return (
+              <button
+                key={`${r.system}-${r.code}`}
+                type="button"
+                onClick={() => add(r)}
+                className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex items-center justify-between"
+              >
+                <div>
+                  <div className="text-sm text-slate-800 font-medium">{r.display || r.desc}</div>
+                  <div className="text-xs text-slate-400 font-mono">{r.code}</div>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                  style={{ backgroundColor: `${itemColor}15`, color: itemColor, border: `1px solid ${itemColor}30` }}>
+                  {r.system || 'ICD'}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
       {open && !loading && query.trim().length >= 2 && results.length === 0 && (
         <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs text-slate-400 italic">
-          No matches (terminology server may be offline).
+          No matching ICD-10 / ICD-11 codes found.
         </div>
       )}
     </div>
@@ -114,3 +137,4 @@ const TerminologyPicker = ({ system, value = [], onChange, multiple = true, labe
 };
 
 export default TerminologyPicker;
+

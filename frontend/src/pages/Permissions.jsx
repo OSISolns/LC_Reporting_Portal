@@ -36,8 +36,8 @@ const ACTION_META = {
 };
 const ACTION_ORDER = ['view','create','edit','review','approve','reject','delete','download','acquire','report','verify'];
 
-// ─── Role Groups — Matches ACTUAL DB roles exactly ──────────────────────────
-const ROLE_GROUPS = [
+// ─── Base Role Groups ────────────────────────────────────────────────────────
+const BASE_ROLE_GROUPS = [
   {
     name: 'Executive & Management',
     color: '#1C69A0',
@@ -51,7 +51,7 @@ const ROLE_GROUPS = [
   {
     name: 'Nursing Department',
     color: '#db2777',
-    roles: ['nurse', 'chef-nurse'],
+    roles: ['nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager'],
   },
   {
     name: 'Diagnostics & Labs',
@@ -80,7 +80,7 @@ const ROLE_GROUPS = [
   },
 ];
 
-const ALL_ROLES = ROLE_GROUPS.flatMap(g => g.roles);
+const BASE_ALL_ROLES = BASE_ROLE_GROUPS.flatMap(g => g.roles);
 
 // ─── Role Colors ─────────────────────────────────────────────────────────────
 const ROLE_COLORS = {
@@ -111,7 +111,7 @@ const MODULE_GROUPS = {
 
 // ─── Sidebar Items ────────────────────────────────────────────────────────────
 const SIDEBAR_ITEMS = [
-  { key: 'dashboard',         name: 'Dashboard',            Icon: LayoutDashboard, allowedRoles: ALL_ROLES },
+  { key: 'dashboard',         name: 'Dashboard',            Icon: LayoutDashboard, allowedRoles: BASE_ALL_ROLES },
   { key: 'cancellations',     name: 'Cancellations',        Icon: FileText,        allowedRoles: ['cashier','principal_cashier','customer_care','operations_staff','sales_manager','coo','chairman','admin','deputy_coo','consultant'] },
   { key: 'refunds',           name: 'Refunds',              Icon: ReceiptText,     allowedRoles: ['cashier','principal_cashier','customer_care','operations_staff','sales_manager','coo','chairman','admin','deputy_coo','consultant'] },
   { key: 'incidents',         name: 'Incident Reports',     Icon: AlertTriangle,   allowedRoles: ['nurse','admin','doctor','consultant','hsfp','operations_staff','customer_care','it_officer','chef-nurse','pa','stock-manager','coo','deputy_coo','medical_director','procurement-manager'] },
@@ -134,11 +134,11 @@ const SIDEBAR_ITEMS = [
   { key: 'logistics_hub',     name: 'Logistics Hub',        Icon: Truck,           allowedRoles: ['admin','logistics_manager','logistics_officer','deputy_coo','coo'] },
   { key: 'daily_report',      name: 'Daily Op. Report',     Icon: Activity,        allowedRoles: ['nurse','chef-nurse','admin','coo','deputy_coo'] },
   { key: 'daily_board',       name: 'Reports Board',        Icon: FileText,        allowedRoles: ['sales_manager','coo','chairman','admin','deputy_coo','principal_cashier','consultant','chef-nurse','pa','medical_director'] },
-  { key: 'clinical_sheets',   name: 'Clinical Sheets',      Icon: FileText,        allowedRoles: ['nurse','admin','doctor','consultant','chef-nurse','medical_director','coo','deputy_coo'] },
-  { key: 'insights',          name: 'AI Insights',          Icon: Brain,           allowedRoles: ['sales_manager','coo','chairman','admin','deputy_coo','principal_cashier','consultant','medical_director','quality_accreditation_officer'] },
+  { key: 'clinical_sheets_nav',   name: 'Clinical Sheets',      Icon: FileText,        allowedRoles: ['nurse','admin','doctor','consultant','chef-nurse','medical_director','coo','deputy_coo'] },
+  { key: 'insights',          name: 'AI Insights',          Icon: Brain,           allowedRoles: ['sales_manager','coo','chairman','admin','deputy_coo','principal_cashier','consultant','medical_director','quality_accreditation_officer','chef-nurse','deputy_chef_nurse','deputy-chef-nurse','deputy_chief_nurse','chef_nurse','chief_nurse','chief-nurse'] },
   { key: 'revenue',           name: 'Revenue Tracker',      Icon: TrendingDown,    allowedRoles: ['sales_manager','chairman','admin','principal_cashier','deputy_coo'] },
   { key: 'compliance',        name: 'Compliance Portal',    Icon: ShieldCheck,     allowedRoles: ['admin','hsfp','quality_accreditation_officer','coo','deputy_coo'] },
-  { key: 'it_hub',            name: 'IT Support',           Icon: Server,          allowedRoles: ALL_ROLES },
+  { key: 'it_hub',            name: 'IT Support',           Icon: Server,          allowedRoles: BASE_ALL_ROLES },
   { key: 'users',             name: 'User Management',      Icon: Users,           allowedRoles: ['admin','it_officer'] },
   { key: 'providers',         name: 'Provider Management',  Icon: UserCheck,       allowedRoles: ['admin','coo','deputy_coo','medical_director'] },
   { key: 'permissions',       name: 'Permissions',          Icon: Shield,          allowedRoles: ['admin'] },
@@ -223,7 +223,7 @@ export default function Permissions() {
   // Sidebar Config
   const [sidebarCfg,     setSidebarCfg]     = useState(() => loadSidebarConfig());
   const [sidebarChanged, setSidebarChanged] = useState(false);
-  const [sidebarGroup,   setSidebarGroup]   = useState(ROLE_GROUPS[0].name);
+  const [sidebarGroup,   setSidebarGroup]   = useState(BASE_ROLE_GROUPS[0].name);
 
   // User Overrides
   const [usersList,         setUsersList]         = useState([]);
@@ -246,11 +246,47 @@ export default function Permissions() {
   // Role Studio / Custom Role Builder State
   const [newRoleTitle,     setNewRoleTitle]     = useState('');
   const [newRoleKey,       setNewRoleKey]       = useState('');
-  const [newRoleGroup,     setNewRoleGroup]     = useState(ROLE_GROUPS[0].name);
+  const [newRoleGroup,     setNewRoleGroup]     = useState(BASE_ROLE_GROUPS[0].name);
   const [newRoleDesc,      setNewRoleDesc]      = useState('');
   const [newRoleColor,     setNewRoleColor]     = useState('#4f46e5');
   const [newRolePerms,     setNewRolePerms]     = useState({});
   const [creatingRole,     setCreatingRole]     = useState(false);
+
+  // Dynamic role groups calculation
+  const computedRoleGroups = useMemo(() => {
+    const knownRoles = new Set();
+    const groupsMap = new Map();
+
+    BASE_ROLE_GROUPS.forEach(g => {
+      const rolesList = [...g.roles];
+      rolesList.forEach(r => knownRoles.add(r));
+      groupsMap.set(g.name, { ...g, roles: rolesList });
+    });
+
+    const customRoles = [];
+    const matrixRoles = Object.keys(roleMatrix || {});
+
+    matrixRoles.forEach(rKey => {
+      if (!knownRoles.has(rKey)) {
+        customRoles.push(rKey);
+        knownRoles.add(rKey);
+      }
+    });
+
+    const result = Array.from(groupsMap.values());
+    if (customRoles.length > 0) {
+      result.push({
+        name: 'Custom & Dynamic Roles',
+        color: '#0d9488',
+        roles: customRoles,
+      });
+    }
+
+    return result;
+  }, [roleMatrix]);
+
+  const computedAllRoles = useMemo(() => computedRoleGroups.flatMap(g => g.roles), [computedRoleGroups]);
+  const ALL_ROLES = computedAllRoles;
 
   const handleTitleChange = (val) => {
     setNewRoleTitle(val);
@@ -559,7 +595,7 @@ export default function Permissions() {
       modules.forEach(m => m.actions.forEach(a => { tot++; if (rp[m.name]?.[a]) grt++; }));
       return [r, { granted: grt, total: tot, pct: tot > 0 ? Math.round((grt / tot) * 100) : 0 }];
     }));
-  }, [modules, roleMatrix]);
+  }, [modules, roleMatrix, ALL_ROLES]);
 
   const selCov = allCoverage[selectedRole] || { granted: 0, total: 0, pct: 0 };
 
@@ -588,7 +624,7 @@ export default function Permissions() {
     };
   }, [evalRole, evalModule, evalAction, roleMatrix]);
 
-  const sidebarGroupRoles = useMemo(() => ROLE_GROUPS.find(g => g.name === sidebarGroup)?.roles || [], [sidebarGroup]);
+  const sidebarGroupRoles = useMemo(() => computedRoleGroups.find(g => g.name === sidebarGroup)?.roles || [], [computedRoleGroups, sidebarGroup]);
 
   // ── Loading state ─────────────────────────────────────────────────────────
   if (loading) return (
@@ -706,7 +742,7 @@ export default function Permissions() {
             {/* Window Inset Viewport Container */}
             <div className="p-2 flex-1 flex flex-col bg-slate-100/50">
               <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1 max-h-[64vh] bg-white border border-slate-200/90 rounded-xl shadow-inner divide-y divide-slate-100">
-                {ROLE_GROUPS.map((group) => {
+                {computedRoleGroups.map((group) => {
                   const gRoles = group.roles.filter(r => !roleSearch || fmt(r).toLowerCase().includes(roleSearch.toLowerCase()) || r.toLowerCase().includes(roleSearch.toLowerCase()));
                   if (!gRoles.length) return null;
                   return (
@@ -1043,7 +1079,7 @@ export default function Permissions() {
 
           {/* Role group filter tabs */}
           <div className="bg-white border border-slate-100 rounded-2xl p-2 shadow-sm flex items-center gap-1 overflow-x-auto">
-            {ROLE_GROUPS.map(g => (
+            {computedRoleGroups.map(g => (
               <button key={g.name} onClick={() => setSidebarGroup(g.name)}
                 className={`inline-flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all ${sidebarGroup === g.name ? 'text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}
                 style={sidebarGroup === g.name ? { backgroundColor: g.color } : {}}
@@ -1118,7 +1154,7 @@ export default function Permissions() {
                 <select value={evalRole} onChange={e => setEvalRole(e.target.value)}
                   className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400"
                 >
-                  {ROLE_GROUPS.map(g => (
+                  {computedRoleGroups.map(g => (
                     <optgroup key={g.name} label={g.name}>
                       {g.roles.map(r => <option key={r} value={r}>{fmt(r)}</option>)}
                     </optgroup>
@@ -1224,13 +1260,13 @@ export default function Permissions() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Lock size={14} className={restrictPast ? 'text-amber-600' : 'text-slate-400'} />
-                      <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide">Past Daily Report Lock</h3>
+                      <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide">Past & Future Daily Report Lock</h3>
                       <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${restrictPast ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-500'}`}>
                         {restrictPast ? '🔒 Active' : 'Disabled'}
                       </span>
                     </div>
                     <p className="text-xs text-slate-600 leading-relaxed max-w-lg">
-                      When <strong>enabled</strong>, non-admin users are blocked from modifying daily operational report entries for past dates. Admins retain full edit access at all times. Prevents retroactive data manipulation.
+                      When <strong>enabled</strong>, all users are blocked from modifying daily operational report entries for past or future dates (no exceptions). Must be turned OFF by an administrator to activate entry for non-today dates.
                     </p>
                   </div>
                   <button type="button"
@@ -1370,7 +1406,7 @@ export default function Permissions() {
                     onChange={e => setNewRoleGroup(e.target.value)}
                     className="w-full text-xs font-semibold px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:outline-none transition-all"
                   >
-                    {ROLE_GROUPS.map(g => (
+                    {BASE_ROLE_GROUPS.map(g => (
                       <option key={g.name} value={g.name}>{g.name}</option>
                     ))}
                   </select>
@@ -1537,7 +1573,7 @@ export default function Permissions() {
               className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400"
             >
               <option value="">-- Select Source Role --</option>
-              {ROLE_GROUPS.map(g => (
+              {computedRoleGroups.map(g => (
                 <optgroup key={g.name} label={g.name}>
                   {g.roles.filter(r => r !== selectedRole).map(r => <option key={r} value={r}>{fmt(r)}</option>)}
                 </optgroup>

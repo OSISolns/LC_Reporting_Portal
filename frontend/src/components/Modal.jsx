@@ -12,7 +12,7 @@ if (typeof window !== 'undefined') {
 
 const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
-  const [isAnimated, setIsAnimated] = useState(false);
+  const [isAnimated, setIsAnimated] = useState(isOpen);
   const [transformOrigin, setTransformOrigin] = useState('center center');
   const cardRef = useRef(null);
 
@@ -22,17 +22,14 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
     let closeTimer;
     if (isOpen) {
       setShouldRender(true);
-      // Double rAF guarantees element is in DOM before triggering entry animation
       animFrame = requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setIsAnimated(true);
-        });
+        setIsAnimated(true);
       });
     } else {
       setIsAnimated(false);
       closeTimer = setTimeout(() => {
         setShouldRender(false);
-      }, 220);
+      }, 180);
     }
     return () => {
       if (animFrame) cancelAnimationFrame(animFrame);
@@ -60,7 +57,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
     setIsAnimated(false);
     setTimeout(() => {
       onClose();
-    }, 220); // trigger the parent's onClose after exit animation
+    }, 180);
   };
 
   const modalContent = (
@@ -72,20 +69,20 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.65)',
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 9999,
-        padding: '2rem',
-        backdropFilter: isAnimated ? 'blur(8px)' : 'blur(0px)',
+        zIndex: 999999,
+        padding: '1.5rem',
+        backdropFilter: 'blur(3px)',
+        WebkitBackdropFilter: 'blur(3px)',
         opacity: isAnimated ? 1 : 0,
-        transition: 'opacity 0.25s ease, backdrop-filter 0.25s ease',
+        transition: 'opacity 0.2s ease-out',
       }}
     >
       <div 
         ref={cardRef}
-        className="glass" 
         onClick={(e) => e.stopPropagation()} // Prevent clicking within modal from closing it
         style={{
           width: '100%',
@@ -95,14 +92,14 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: '#ffffff',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.08)',
           borderRadius: '16px',
           transformOrigin,
-          transform: isAnimated ? 'scale(1)' : 'scale(0.96)',
+          transform: isAnimated ? 'scale(1)' : 'scale(0.97)',
           opacity: isAnimated ? 1 : 0,
-          transition: isAnimated 
-            ? 'transform 0.28s cubic-bezier(0.34, 1.3, 0.64, 1), opacity 0.22s ease-out'
-            : 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease-in'
+          transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease-out',
+          position: 'relative',
+          zIndex: 1000000
         }}
       >
         <div style={{
@@ -110,7 +107,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'linear-gradient(135deg, #003B44 0%, #005c68 100%)',
+          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
           color: '#ffffff',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
         }}>

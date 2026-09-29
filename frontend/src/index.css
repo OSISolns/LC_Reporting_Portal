@@ -410,7 +410,7 @@ button:active {
 /* ── Sidebar drawer ─────────────────────────────────────────── */
 .sidebar-wrapper {
   position: relative;
-  z-index: 50;
+  z-index: 120;
   flex-shrink: 0;
 }
 

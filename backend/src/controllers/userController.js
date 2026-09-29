@@ -67,17 +67,9 @@ exports.updateUser = async (req, res, next) => {
 exports.deleteUser = async (req, res, next) => {
   try {
     const { adminPassword } = req.body;
-    if (!adminPassword) {
-      return res.status(400).json({ success: false, message: 'Administrative password required to confirm deletion.' });
-    }
-
-    // Verify password of the current user performing the delete
-    const bcrypt = require('bcryptjs');
-    const currentUser = await User.findById(req.user.id);
-    const isMatch = await bcrypt.compare(adminPassword, currentUser.password_hash);
-
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid administrative password. Deletion aborted.' });
+    const authCheck = await User.verifyAdminPassword(adminPassword, req.user.id);
+    if (!authCheck.isValid) {
+      return res.status(authCheck.status || 401).json({ success: false, message: authCheck.message });
     }
 
     const userToDelete = await User.findById(req.params.id);

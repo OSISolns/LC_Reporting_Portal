@@ -4,7 +4,7 @@ import {
   ClipboardList, Package, Boxes, TrendingDown, RefreshCw, Loader2,
   Plus, Search, Calendar, Building, AlertCircle, CheckCircle2, FileSpreadsheet,
   ArrowRight, X, Send, Clock, ChevronDown, ChevronUp, Layers, Activity, Hash,
-  Sparkles, Link2, AlertTriangle, BarChart3, Info,
+  Sparkles, Link2, AlertTriangle, BarChart3, Info, PieChart, Filter,
   Thermometer, Settings, Trash2, Edit3, FlaskConical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,13 +42,13 @@ function StorageUnitGroup({
 
   const headerBg =
     unit.type === 'freezer' ? 'bg-indigo-50 border-indigo-200 text-indigo-800' :
-    unit.type === 'fridge'  ? 'bg-sky-50 border-sky-200 text-sky-800' :
-    'bg-slate-50 border-slate-200 text-slate-700';
+      unit.type === 'fridge' ? 'bg-sky-50 border-sky-200 text-sky-800' :
+        'bg-slate-50 border-slate-200 text-slate-700';
 
   const dotColor =
     unit.type === 'freezer' ? 'bg-indigo-500' :
-    unit.type === 'fridge'  ? 'bg-sky-500' :
-    'bg-slate-400';
+      unit.type === 'fridge' ? 'bg-sky-500' :
+        'bg-slate-400';
 
   return (
     <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -161,9 +161,8 @@ function StorageUnitGroup({
                           </span>
                         </td>
                         <td className="px-3 py-2.5 text-center">
-                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            batchCount > 1 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600'
-                          }`}>
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${batchCount > 1 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600'
+                            }`}>
                             <Layers size={9} />{batchCount}
                           </span>
                         </td>
@@ -199,11 +198,10 @@ function StorageUnitGroup({
                                         key={u.id}
                                         type="button"
                                         onClick={() => assignItemToUnit(row.item_id, u.id)}
-                                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                          storageAssignments[String(row.item_id)] === u.id
+                                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${storageAssignments[String(row.item_id)] === u.id
                                             ? 'bg-slate-800 text-white'
                                             : 'hover:bg-slate-50 text-slate-700'
-                                        }`}
+                                          }`}
                                       >
                                         {u.label}
                                       </button>
@@ -237,11 +235,10 @@ function StorageUnitGroup({
                             <button
                               type="button"
                               onClick={() => handleQuickReorderItem(row)}
-                              className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                row.quantity <= 5
+                              className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${row.quantity <= 5
                                   ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse'
                                   : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200'
-                              }`}
+                                }`}
                             >
                               + Reorder
                             </button>
@@ -273,13 +270,12 @@ function StorageUnitGroup({
                                     </p>
                                   </div>
                                 </div>
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                                  (row.specimenDetails?.urgency || row.expiry_date || '').includes('STAT')
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${(row.specimenDetails?.urgency || row.expiry_date || '').includes('STAT')
                                     ? 'bg-rose-100 text-rose-800 border-rose-200'
                                     : (row.specimenDetails?.urgency || '').includes('Outsourced')
-                                    ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
-                                    : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                                }`}>
+                                      ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                                      : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                  }`}>
                                   Urgency: {row.specimenDetails?.urgency || row.expiry_date || 'Routine'}
                                 </span>
                               </div>
@@ -404,9 +400,666 @@ function StorageUnitGroup({
   );
 }
 
+// ─── Comprehensive Statistics & Analytics Tab Component ────────────────────
+function ConsumablesStatsTab({ entries = [], distributedStock = [], departments = [], summary = null, userDept = null, isAdmin = false }) {
+  const isDeptRestricted = Boolean(userDept && userDept.id && !isAdmin);
+  const [timeRange, setTimeRange] = useState('30'); // '7', '30', '90', 'all'
+  const [selectedDeptId, setSelectedDeptId] = useState(userDept ? String(userDept.id) : 'ALL');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [hoveredBar, setHoveredBar] = useState(null);
+
+  const targetDeptId = isDeptRestricted ? String(userDept.id) : selectedDeptId;
+
+  useEffect(() => {
+    if (isDeptRestricted && userDept && userDept.id) {
+      setSelectedDeptId(String(userDept.id));
+    }
+  }, [isDeptRestricted, userDept]);
+
+  const categories = useMemo(() => {
+    const cats = new Set(['ALL']);
+    entries.forEach(e => {
+      const c = e.category || e.item_type || e.type;
+      if (c) cats.add(c);
+    });
+    distributedStock.forEach(s => {
+      const c = s.category || s.item_type || s.type;
+      if (c) cats.add(c);
+    });
+    return Array.from(cats);
+  }, [entries, distributedStock]);
+
+  const filteredEntries = useMemo(() => {
+    const now = new Date();
+    let cutoff = null;
+    if (timeRange === '7') cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    else if (timeRange === '30') cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    else if (timeRange === '90') cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    return entries.filter(e => {
+      if (cutoff) {
+        const eDate = new Date(e.created_at || e.log_date || e.date);
+        if (isNaN(eDate.getTime()) || eDate < cutoff) return false;
+      }
+      if (targetDeptId !== 'ALL' && String(e.department_id) !== String(targetDeptId)) {
+        return false;
+      }
+      if (selectedCategory !== 'ALL' && (e.category || e.item_type || 'Consumables') !== selectedCategory) {
+        return false;
+      }
+      return true;
+    });
+  }, [entries, timeRange, targetDeptId, selectedCategory]);
+
+  const filteredStock = useMemo(() => {
+    return distributedStock.filter(s => {
+      if (targetDeptId !== 'ALL' && String(s.department_id) !== String(targetDeptId)) {
+        return false;
+      }
+      if (selectedCategory !== 'ALL' && (s.category || s.item_type || 'Consumables') !== selectedCategory) {
+        return false;
+      }
+      return true;
+    });
+  }, [distributedStock, targetDeptId, selectedCategory]);
+
+  const stats = useMemo(() => {
+    const totalUnits = filteredEntries.reduce((acc, curr) => acc + (Number(curr.quantity || curr.units || 0)), 0);
+    const totalLogs = filteredEntries.length;
+    const uniqueItemsSet = new Set(filteredEntries.map(e => e.item_name).filter(Boolean));
+    const activeItemsCount = uniqueItemsSet.size;
+
+    const deptUsage = {};
+    filteredEntries.forEach(e => {
+      const dName = e.department_name || 'General Store';
+      const qty = Number(e.quantity || e.units || 0);
+      deptUsage[dName] = (deptUsage[dName] || 0) + qty;
+    });
+
+    let topDeptName = 'N/A';
+    let topDeptUnits = 0;
+    Object.entries(deptUsage).forEach(([d, qty]) => {
+      if (qty > topDeptUnits) {
+        topDeptUnits = qty;
+        topDeptName = d;
+      }
+    });
+
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+    let optimalCount = 0;
+    let expiredCount = 0;
+
+    filteredStock.forEach(item => {
+      const avail = Number(item.available ?? item.quantity ?? 0);
+      const reorder = Number(item.reorder_level || 5);
+      const statusText = (item.status || getItemStatus(item.expiry_date)?.text || '').toLowerCase();
+
+      if (statusText.includes('expired')) {
+        expiredCount++;
+      } else if (avail === 0) {
+        outOfStockCount++;
+      } else if (avail <= reorder) {
+        lowStockCount++;
+      } else {
+        optimalCount++;
+      }
+    });
+
+    return {
+      totalUnits,
+      totalLogs,
+      activeItemsCount,
+      topDeptName,
+      topDeptUnits,
+      lowStockCount,
+      outOfStockCount,
+      optimalCount,
+      expiredCount,
+      deptUsage,
+    };
+  }, [filteredEntries, filteredStock]);
+
+  const trendData = useMemo(() => {
+    const map = {};
+    const now = new Date();
+    const daysCount = timeRange === '7' ? 7 : timeRange === '90' ? 90 : 30;
+
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const dateKey = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      map[dateKey] = { dateKey, label, totalUnits: 0, count: 0 };
+    }
+
+    filteredEntries.forEach(e => {
+      const rawDate = e.created_at || e.log_date || e.date;
+      if (!rawDate) return;
+      const key = String(rawDate).slice(0, 10);
+      if (map[key]) {
+        map[key].totalUnits += Number(e.quantity || e.units || 0);
+        map[key].count += 1;
+      }
+    });
+
+    const list = Object.values(map);
+    const maxUnits = Math.max(...list.map(d => d.totalUnits), 1);
+    return { list, maxUnits };
+  }, [filteredEntries, timeRange]);
+
+  const deptDistribution = useMemo(() => {
+    return Object.entries(stats.deptUsage).map(([name, units]) => ({
+      name,
+      units,
+      pct: stats.totalUnits > 0 ? Math.round((units / stats.totalUnits) * 100) : 0,
+    })).sort((a, b) => b.units - a.units);
+  }, [stats]);
+
+  const topConsumedItems = useMemo(() => {
+    const itemMap = {};
+    filteredEntries.forEach(e => {
+      const name = e.item_name || 'Unknown Consumable';
+      if (!itemMap[name]) {
+        itemMap[name] = {
+          name,
+          dept: e.department_name || 'General',
+          units: 0,
+          logsCount: 0,
+          category: e.category || e.item_type || 'Consumables',
+        };
+      }
+      itemMap[name].units += Number(e.quantity || e.units || 0);
+      itemMap[name].logsCount += 1;
+    });
+
+    const list = Object.values(itemMap).sort((a, b) => b.units - a.units);
+    const maxUnits = Math.max(...list.map(i => i.units), 1);
+    return { list: list.slice(0, 10), maxUnits, fullList: list };
+  }, [filteredEntries]);
+
+  const tableData = useMemo(() => {
+    let list = topConsumedItems.fullList;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(i => i.name.toLowerCase().includes(q) || i.dept.toLowerCase().includes(q) || i.category.toLowerCase().includes(q));
+    }
+    return list;
+  }, [topConsumedItems.fullList, searchQuery]);
+
+  const handleExportStatsXlsx = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Consumables Statistics');
+
+      sheet.addRow(['CONSUMABLES LOG — STATISTICS & CONSUMPTION ANALYTICS']);
+      sheet.addRow([`Generated: ${new Date().toLocaleString()}`, `Period: ${timeRange} Days`]);
+      sheet.addRow([]);
+
+      sheet.addRow(['Item Name', 'Department', 'Category', 'Units Consumed', 'Log Count']);
+      sheet.getRow(4).font = { bold: true };
+
+      tableData.forEach(item => {
+        sheet.addRow([item.name, item.dept, item.category, item.units, item.logsCount]);
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Consumables_Statistics_${today()}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Exported Statistics Excel spreadsheet successfully!');
+    } catch (err) {
+      console.error('Failed to export stats Excel:', err);
+      toast.error('Failed to export statistics.');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* ── Control & Filter Bar ── */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            {[
+              { id: '7', label: '7 Days' },
+              { id: '30', label: '30 Days' },
+              { id: '90', label: '90 Days' },
+              { id: 'all', label: 'All Time' },
+            ].map(range => (
+              <button
+                key={range.id}
+                type="button"
+                onClick={() => setTimeRange(range.id)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${timeRange === range.id
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+
+          {isDeptRestricted ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-800">
+              <Building size={14} className="text-slate-500" />
+              <span>{userDept?.name || 'My Department'}</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-200 text-slate-600 font-extrabold ml-1 uppercase">
+                Department Scope
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <Building size={14} className="text-slate-400" />
+              <select
+                value={selectedDeptId}
+                onChange={e => setSelectedDeptId(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-xl text-xs px-3 py-1.5 outline-none font-semibold text-slate-700 focus:border-slate-400 focus:bg-white cursor-pointer"
+              >
+                <option value="ALL">All Departments</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {categories.length > 1 && (
+            <div className="flex items-center gap-1.5">
+              <Layers size={14} className="text-slate-400" />
+              <select
+                value={selectedCategory}
+                onChange={e => setSelectedCategory(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-xl text-xs px-3 py-1.5 outline-none font-semibold text-slate-700 focus:border-slate-400 focus:bg-white"
+              >
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat === 'ALL' ? 'All Categories' : cat}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={handleExportStatsXlsx}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+        >
+          <FileSpreadsheet size={14} />
+          Export Stats Report
+        </button>
+      </div>
+
+      {/* ── KPI Summary Cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Volume Logged</span>
+            <div className="p-1.5 bg-teal-50 text-teal-700 rounded-lg border border-teal-200/60">
+              <Hash size={14} />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-slate-900 mt-2">{stats.totalUnits.toLocaleString()}</p>
+          <p className="text-[11px] font-semibold text-slate-500 mt-1">
+            Across {stats.totalLogs} log action{stats.totalLogs !== 1 ? 's' : ''}
+          </p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Unique Consumables</span>
+            <div className="p-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200/60">
+              <Package size={14} />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-slate-900 mt-2">{stats.activeItemsCount}</p>
+          <p className="text-[11px] font-semibold text-slate-500 mt-1">Distinct items consumed</p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Top Consuming Dept</span>
+            <div className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-200/60">
+              <Building size={14} />
+            </div>
+          </div>
+          <p className="text-lg font-black text-slate-900 mt-2 truncate">{stats.topDeptName}</p>
+          <p className="text-[11px] font-semibold text-slate-500 mt-1">{stats.topDeptUnits.toLocaleString()} units consumed</p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Stock Reorder Alerts</span>
+            <div className="p-1.5 bg-amber-50 text-amber-700 rounded-lg border border-amber-200/60">
+              <AlertTriangle size={14} />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-slate-900 mt-2">{stats.lowStockCount + stats.outOfStockCount}</p>
+          <p className="text-[11px] font-semibold text-slate-500 mt-1">
+            {stats.outOfStockCount} out of stock · {stats.lowStockCount} low stock
+          </p>
+        </div>
+      </div>
+
+      {/* ── Main Charts Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        {/* Trend Velocity Bar Chart */}
+        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <BarChart3 size={16} className="text-teal-700" />
+                  Consumption Trend Velocity
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                  Daily aggregated units logged in selected timeframe ({trendData.list.length} data points)
+                </p>
+              </div>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-md">
+                Max: {trendData.maxUnits} units/day
+              </span>
+            </div>
+
+            <div className="mt-6 relative h-56 w-full flex items-end justify-between gap-1 pt-6 pb-6 px-2 bg-slate-50/50 border border-slate-100 rounded-xl">
+              <div className="absolute inset-x-0 top-3 border-b border-slate-200/60 border-dashed pointer-events-none" />
+              <div className="absolute inset-x-0 top-1/2 border-b border-slate-200/60 border-dashed pointer-events-none" />
+
+              {trendData.list.map((item, idx) => {
+                const heightPct = Math.max((item.totalUnits / trendData.maxUnits) * 100, 3);
+                const isHovered = hoveredBar === idx;
+
+                return (
+                  <div
+                    key={item.dateKey}
+                    onMouseEnter={() => setHoveredBar(idx)}
+                    onMouseLeave={() => setHoveredBar(null)}
+                    className="flex-1 flex flex-col items-center h-full justify-end relative group cursor-pointer"
+                  >
+                    {isHovered && (
+                      <div className="absolute -top-10 z-20 bg-slate-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-md whitespace-nowrap pointer-events-none">
+                        {item.label}: {item.totalUnits} units ({item.count} logs)
+                      </div>
+                    )}
+
+                    <div
+                      style={{ height: `${heightPct}%` }}
+                      className={`w-full max-w-[28px] rounded-t-md transition-all duration-150 ${isHovered
+                          ? 'bg-slate-900'
+                          : item.totalUnits > 0
+                            ? 'bg-teal-700'
+                            : 'bg-slate-200'
+                        }`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-between items-center text-[10px] font-semibold text-slate-400 px-2 mt-2">
+              <span>{trendData.list[0]?.label || ''}</span>
+              <span>{trendData.list[Math.floor(trendData.list.length / 2)]?.label || ''}</span>
+              <span>{trendData.list[trendData.list.length - 1]?.label || ''}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Stock Health Donut */}
+        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="pb-3 border-b border-slate-100">
+              <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Activity size={16} className="text-indigo-600" />
+                Stock Health Status
+              </h4>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                Current inventory levels & condition breakdown
+              </p>
+            </div>
+
+            <div className="py-6 flex justify-center items-center relative">
+              <svg className="w-36 h-36 transform -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f1f5f9" strokeWidth="3.8" />
+                {(() => {
+                  const total = (stats.optimalCount + stats.lowStockCount + stats.outOfStockCount + stats.expiredCount) || 1;
+                  const optPct = (stats.optimalCount / total) * 100;
+                  const lowPct = (stats.lowStockCount / total) * 100;
+                  const outPct = (stats.outOfStockCount / total) * 100;
+                  const expPct = (stats.expiredCount / total) * 100;
+
+                  let strokeOffset = 0;
+
+                  return (
+                    <>
+                      {optPct > 0 && (
+                        <circle
+                          cx="18" cy="18" r="15.915" fill="none" stroke="#059669" strokeWidth="3.8"
+                          strokeDasharray={`${optPct} ${100 - optPct}`}
+                          strokeDashoffset={strokeOffset}
+                        />
+                      )}
+                      {lowPct > 0 && (
+                        <circle
+                          cx="18" cy="18" r="15.915" fill="none" stroke="#d97706" strokeWidth="3.8"
+                          strokeDasharray={`${lowPct} ${100 - lowPct}`}
+                          strokeDashoffset={(strokeOffset -= optPct)}
+                        />
+                      )}
+                      {outPct > 0 && (
+                        <circle
+                          cx="18" cy="18" r="15.915" fill="none" stroke="#e11d48" strokeWidth="3.8"
+                          strokeDasharray={`${outPct} ${100 - outPct}`}
+                          strokeDashoffset={(strokeOffset -= lowPct)}
+                        />
+                      )}
+                      {expPct > 0 && (
+                        <circle
+                          cx="18" cy="18" r="15.915" fill="none" stroke="#7c3aed" strokeWidth="3.8"
+                          strokeDasharray={`${expPct} ${100 - expPct}`}
+                          strokeDashoffset={(strokeOffset -= outPct)}
+                        />
+                      )}
+                    </>
+                  );
+                })()}
+              </svg>
+              <div className="absolute text-center">
+                <span className="text-xl font-black text-slate-900 block leading-none">{filteredStock.length}</span>
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mt-1">Total Items</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t border-slate-100 pt-3 text-xs">
+              <div className="flex items-center justify-between font-bold text-slate-700">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" /> Optimal Stock
+                </span>
+                <span>{stats.optimalCount} items</span>
+              </div>
+              <div className="flex items-center justify-between font-bold text-slate-700">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-600" /> Low Stock Warning
+                </span>
+                <span>{stats.lowStockCount} items</span>
+              </div>
+              <div className="flex items-center justify-between font-bold text-slate-700">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-600" /> Out of Stock
+                </span>
+                <span>{stats.outOfStockCount} items</span>
+              </div>
+              {stats.expiredCount > 0 && (
+                <div className="flex items-center justify-between font-bold text-slate-700">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-600" /> Expired / Write-off
+                  </span>
+                  <span>{stats.expiredCount} items</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── Secondary Grid: Department Breakdown & Top Items ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Building size={16} className="text-blue-600" />
+                Departmental Consumption Distribution
+              </h4>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                Proportion of total inventory consumed per clinical department
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3.5 pt-1">
+            {deptDistribution.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-4 text-center">No departmental records found for this filter.</p>
+            ) : (
+              deptDistribution.map(dept => (
+                <div key={dept.name} className="space-y-1">
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-800">
+                    <span className="truncate max-w-[200px]">{dept.name}</span>
+                    <span className="font-mono text-slate-600">{dept.units.toLocaleString()} units ({dept.pct}%)</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      style={{ width: `${dept.pct}%` }}
+                      className="bg-blue-600 h-full rounded-full transition-all duration-300"
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <TrendingDown size={16} className="text-emerald-600" />
+                Top 10 High-Velocity Consumables
+              </h4>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                Most heavily consumed inventory SKUs by total quantity
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3.5 pt-1">
+            {topConsumedItems.list.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-4 text-center">No consumable items logged for this period.</p>
+            ) : (
+              topConsumedItems.list.map((item, idx) => {
+                const widthPct = Math.max((item.units / topConsumedItems.maxUnits) * 100, 4);
+                return (
+                  <div key={item.name} className="space-y-1">
+                    <div className="flex justify-between items-center text-xs font-bold text-slate-800">
+                      <span className="truncate max-w-[220px]">
+                        <span className="text-slate-400 font-mono text-[11px] mr-2">#{idx + 1}</span>
+                        {item.name}
+                      </span>
+                      <span className="font-mono text-slate-700">{item.units.toLocaleString()} units</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                      <div
+                        style={{ width: `${widthPct}%` }}
+                        className="bg-teal-700 h-full rounded-full transition-all duration-300"
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── Comprehensive Statistics Data Table ── */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-100">
+          <div>
+            <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <ClipboardList size={16} className="text-slate-700" />
+              Consumables Statistics Matrix
+            </h4>
+            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+              Comprehensive item-by-item consumption volume and log activity
+            </p>
+          </div>
+
+          <div className="relative w-64">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search consumable item..."
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-slate-400 focus:bg-white font-medium"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs divide-y divide-slate-100">
+            <thead>
+              <tr className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-50/60">
+                <th className="py-2.5 px-3 rounded-l-xl">Consumable Item</th>
+                <th className="py-2.5 px-3">Department</th>
+                <th className="py-2.5 px-3">Category</th>
+                <th className="py-2.5 px-3 text-right">Units Consumed</th>
+                <th className="py-2.5 px-3 text-right rounded-r-xl">Log Frequency</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+              {tableData.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-400 italic">
+                    No consumable items match your active search and filter parameters.
+                  </td>
+                </tr>
+              ) : (
+                tableData.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-3 font-bold text-slate-900">{item.name}</td>
+                    <td className="py-3 px-3">{item.dept}</td>
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-700 rounded-md">
+                        {item.category}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">{item.units.toLocaleString()}</td>
+                    <td className="py-3 px-3 text-right font-mono text-slate-600">{item.logsCount} entries</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ConsumablesLog({ defaultDeptName = null }) {
   const { user } = useAuth();
-  
+
   // Shared inventory (synced with Stock Manager portal)
   const [departments, setDepartments] = useState([]);
   const [expandedItemIds, setExpandedItemIds] = useState({});
@@ -414,7 +1067,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const toggleExpandItem = (itemId) => {
     setExpandedItemIds(prev => ({ ...prev, [itemId]: !prev[itemId] }));
   };
-  
+
   const userDept = useMemo(() => {
     if (defaultDeptName && departments.length > 0) {
       let found = departments.find(d => d.name.toUpperCase() === defaultDeptName.toUpperCase());
@@ -491,14 +1144,14 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
   // ── Lumina AI Report panel ────────────────────────────────────────────
   const [luminaOpen, setLuminaOpen] = useState(false);
-  const [luminaFrom, setLuminaFrom] = useState(() => new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0,10));
-  const [luminaTo,   setLuminaTo]   = useState(() => new Date().toISOString().slice(0,10));
+  const [luminaFrom, setLuminaFrom] = useState(() => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+  const [luminaTo, setLuminaTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [luminaReport, setLuminaReport] = useState(null);
   const [luminaLoading, setLuminaLoading] = useState(false);
 
   const isHodOrStock = useMemo(() => {
     const r = String(user?.role || '').toLowerCase();
-    return ['admin','dental_hod','dental_lab_manager','stock_manager','procurement','deputy_coo','coo'].some(k => r.includes(k));
+    return ['admin', 'dental_hod', 'dental_lab_manager', 'stock_manager', 'procurement', 'deputy_coo', 'coo'].some(k => r.includes(k));
   }, [user]);
 
 
@@ -543,21 +1196,21 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
   // ── Lab Subdivisions ───────────────────────────────────────────────────────
   const LAB_SUBDIVISIONS = [
-    { id: 'microbiology',      label: 'Microbiology',    color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-    { id: 'biochemistry',      label: 'Biochemistry',    color: 'bg-blue-100 text-blue-800 border-blue-300' },
-    { id: 'hematology',        label: 'Hematology',      color: 'bg-rose-100 text-rose-800 border-rose-300' },
-    { id: 'stock',             label: 'Stock',           color: 'bg-amber-100 text-amber-800 border-amber-300' },
+    { id: 'microbiology', label: 'Microbiology', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+    { id: 'biochemistry', label: 'Biochemistry', color: 'bg-blue-100 text-blue-800 border-blue-300' },
+    { id: 'hematology', label: 'Hematology', color: 'bg-rose-100 text-rose-800 border-rose-300' },
+    { id: 'stock', label: 'Stock', color: 'bg-amber-100 text-amber-800 border-amber-300' },
     { id: 'molecular_biology', label: 'Molecular Biology', color: 'bg-violet-100 text-violet-800 border-violet-300' },
-    { id: 'disposal',          label: 'Disposal',        color: 'bg-orange-100 text-orange-800 border-orange-300' },
+    { id: 'disposal', label: 'Disposal', color: 'bg-orange-100 text-orange-800 border-orange-300' },
   ];
 
   // ── Storage Content Types ─────────────────────────────────────────────────
   // Fridges can hold any of the 4 types; freezers only long-term: Samples + Reagents
   const ALL_CONTENT_TYPES = [
-    { id: 'new_stock',    label: 'New Stock',    unitTypes: ['fridge'],           color: 'bg-teal-100 text-teal-800 border-teal-300' },
-    { id: 'stock_in_use', label: 'Stock In Use', unitTypes: ['fridge'],           color: 'bg-sky-100 text-sky-800 border-sky-300' },
-    { id: 'reagents',     label: 'Reagents',     unitTypes: ['fridge', 'freezer'], color: 'bg-purple-100 text-purple-800 border-purple-300' },
-    { id: 'samples',      label: 'Samples',      unitTypes: ['fridge', 'freezer'], color: 'bg-pink-100 text-pink-800 border-pink-300' },
+    { id: 'new_stock', label: 'New Stock', unitTypes: ['fridge'], color: 'bg-teal-100 text-teal-800 border-teal-300' },
+    { id: 'stock_in_use', label: 'Stock In Use', unitTypes: ['fridge'], color: 'bg-sky-100 text-sky-800 border-sky-300' },
+    { id: 'reagents', label: 'Reagents', unitTypes: ['fridge', 'freezer'], color: 'bg-purple-100 text-purple-800 border-purple-300' },
+    { id: 'samples', label: 'Samples', unitTypes: ['fridge', 'freezer'], color: 'bg-pink-100 text-pink-800 border-pink-300' },
   ];
 
   const contentTypesFor = (unitType) => ALL_CONTENT_TYPES.filter(c => c.unitTypes.includes(unitType));
@@ -565,14 +1218,14 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
   // Each unit: { id, label, type: 'fridge'|'freezer', temp_range: string, subdivisions: string[], contentTypes: string[] }
   const DEFAULT_STORAGE_UNITS = [
-    { id: 'fridge_1',  label: 'Fridge 1',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_2',  label: 'Fridge 2',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_3',  label: 'Fridge 3',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_4',  label: 'Fridge 4',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_5',  label: 'Fridge 5',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_6',  label: 'Fridge 6',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_7',  label: 'Fridge 7',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_8',  label: 'Fridge 8',  type: 'fridge',  temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_1', label: 'Fridge 1', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_2', label: 'Fridge 2', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_3', label: 'Fridge 3', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_4', label: 'Fridge 4', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_5', label: 'Fridge 5', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_6', label: 'Fridge 6', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_7', label: 'Fridge 7', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_8', label: 'Fridge 8', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
     { id: 'freezer_1', label: 'Freezer 1', type: 'freezer', temp_range: '-20°C to -80°C', subdivisions: [], contentTypes: [] },
   ];
 
@@ -589,24 +1242,24 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
           contentTypes: u.contentTypes || []
         }));
       }
-    } catch {}
+    } catch { }
     return DEFAULT_STORAGE_UNITS;
   });
 
   const persistStorageUnits = (next) => {
     setStorageUnits(next);
-    try { localStorage.setItem('lc_storage_units_config', JSON.stringify(next)); } catch {}
+    try { localStorage.setItem('lc_storage_units_config', JSON.stringify(next)); } catch { }
   };
 
   // ── Fridge config editor state ─────────────────────────────────────────────
-  const [editingUnitId, setEditingUnitId]               = useState(null);
-  const [editingUnitLabel, setEditingUnitLabel]         = useState('');
+  const [editingUnitId, setEditingUnitId] = useState(null);
+  const [editingUnitLabel, setEditingUnitLabel] = useState('');
   const [editingUnitTempRange, setEditingUnitTempRange] = useState('');
-  const [addUnitType, setAddUnitType]                   = useState('fridge');
-  const [addUnitLabel, setAddUnitLabel]                 = useState('');
-  const [addUnitTempRange, setAddUnitTempRange]         = useState('2°C to 8°C');
-  const [addUnitSubdivisions, setAddUnitSubdivisions]   = useState([]);
-  const [addUnitContentTypes, setAddUnitContentTypes]   = useState([]);
+  const [addUnitType, setAddUnitType] = useState('fridge');
+  const [addUnitLabel, setAddUnitLabel] = useState('');
+  const [addUnitTempRange, setAddUnitTempRange] = useState('2°C to 8°C');
+  const [addUnitSubdivisions, setAddUnitSubdivisions] = useState([]);
+  const [addUnitContentTypes, setAddUnitContentTypes] = useState([]);
 
   const handleSaveUnitLabel = (unitId) => {
     const unit = STORAGE_UNITS.find(u => u.id === unitId);
@@ -624,7 +1277,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         label: trimmed,
         type: unit.type,
         temp_range: trimmedTemp
-      }).catch(() => {});
+      }).catch(() => { });
     }
   };
 
@@ -642,7 +1295,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       label: unit.label,
       type: unit.type,
       temp_range: trimmedTemp
-    }).catch(() => {});
+    }).catch(() => { });
 
     toast.success(`${unit.label} temperature updated to ${trimmedTemp}.`);
   };
@@ -684,7 +1337,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       label: trimmed,
       type: addUnitType,
       temp_range: tempRange
-    }).catch(() => {});
+    }).catch(() => { });
 
     setAddUnitLabel('');
     setAddUnitTempRange(addUnitType === 'freezer' ? '-20°C to -80°C' : '2°C to 8°C');
@@ -748,7 +1401,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
   const persistAssignments = (next) => {
     setStorageAssignments(next);
-    try { localStorage.setItem('lc_storage_assignments', JSON.stringify(next)); } catch {}
+    try { localStorage.setItem('lc_storage_assignments', JSON.stringify(next)); } catch { }
   };
 
   const assignItemToUnit = (itemId, unitId) => {
@@ -842,7 +1495,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       const res = await api.post('/ai/dental/consumables-report', {
         department_name: userDept?.name || defaultDeptName || undefined,
         from_date: luminaFrom,
-        to_date:   luminaTo,
+        to_date: luminaTo,
       });
       if (res.data?.success) setLuminaReport(res.data.data);
     } catch (err) {
@@ -1184,7 +1837,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
   const groupedAndFilteredItems = useMemo(() => {
     let items = deptStockItems;
-    
+
     // Filter out items that do not belong to the local department
     // (unless the active department is General Store).
     const activeD = userDept ? userDept.id : formDept;
@@ -1389,7 +2042,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       const cat = String(item.category || '').toLowerCase();
       const name = String(item.name || '').toLowerCase();
       const dept = String(item.department || activeDeptName || '').toUpperCase();
-      
+
       // Never mix specimens/samples into available items
       if (cat === 'samples' || cat === 'specimens' || cat === 'specimen') return false;
       if (name.includes('[specimen]') || name.includes('specimen sample') || name.startsWith('specimen')) return false;
@@ -1527,8 +2180,8 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
         ward: isNursingActive ? formWard : undefined,
         session: isNursingActive ? formSession : undefined,
         // ── Lumina AI case-linking ──────────────────────────────
-        case_id:   selectedCase?.id       || undefined,
-        case_ref:  selectedCase?.case_ref  || undefined,
+        case_id: selectedCase?.id || undefined,
+        case_ref: selectedCase?.case_ref || undefined,
         case_type: selectedCase?.case_type || undefined,
       });
       if (res.data.success) {
@@ -1650,7 +2303,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
   const handleReorderPastRequisition = (req) => {
     let items = [];
-    try { items = typeof req.items === 'string' ? JSON.parse(req.items) : (req.items || []); } catch(e){}
+    try { items = typeof req.items === 'string' ? JSON.parse(req.items) : (req.items || []); } catch (e) { }
     if (!items || items.length === 0) return toast.error('No items found in this requisition.');
 
     let addedCount = 0;
@@ -2069,25 +2722,23 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                   </label>
                   <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl">
                     {[
-                      { id: 'units',    Icon: Hash,         label: 'Log Units',     sub: 'Enter a quantity',            act: 'text-teal-700 border-teal-200 bg-white' },
-                      { id: 'in_use',   Icon: Activity,     label: 'Mark In Use',   sub: 'No stock deducted',           act: 'text-amber-700 border-amber-200 bg-white' },
-                      { id: 'finished', Icon: CheckCircle2, label: 'Mark Finished', sub: 'Deducts all remaining stock',  act: 'text-emerald-700 border-emerald-200 bg-white' },
+                      { id: 'units', Icon: Hash, label: 'Log Units', sub: 'Enter a quantity', act: 'text-teal-700 border-teal-200 bg-white' },
+                      { id: 'in_use', Icon: Activity, label: 'Mark In Use', sub: 'No stock deducted', act: 'text-amber-700 border-amber-200 bg-white' },
+                      { id: 'finished', Icon: CheckCircle2, label: 'Mark Finished', sub: 'Deducts all remaining stock', act: 'text-emerald-700 border-emerald-200 bg-white' },
                     ].map(({ id, Icon, label, sub, act }) => (
                       <button
                         key={id}
                         type="button"
                         onClick={() => { setLogMode(id); setFormQty(''); setFormNotes(''); }}
-                        className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                          logMode === id
+                        className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer border ${logMode === id
                             ? `shadow-sm ${act}`
                             : 'text-slate-500 border-transparent hover:bg-white/60 hover:text-slate-700'
-                        }`}
+                          }`}
                       >
                         <Icon size={14} />
                         <span>{label}</span>
-                        <span className={`text-[9px] font-semibold leading-tight text-center transition-opacity ${
-                          logMode === id ? 'opacity-60' : 'opacity-0 h-0'
-                        }`}>{sub}</span>
+                        <span className={`text-[9px] font-semibold leading-tight text-center transition-opacity ${logMode === id ? 'opacity-60' : 'opacity-0 h-0'
+                          }`}>{sub}</span>
                       </button>
                     ))}
                   </div>
@@ -2175,11 +2826,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                 key={tab}
                                 type="button"
                                 onClick={() => setPickerTab(tab)}
-                                className={`px-2 py-1 rounded-md transition-all cursor-pointer whitespace-nowrap ${
-                                  pickerTab === tab
+                                className={`px-2 py-1 rounded-md transition-all cursor-pointer whitespace-nowrap ${pickerTab === tab
                                     ? 'bg-white text-teal-700 shadow-2xs'
                                     : 'text-slate-500 hover:text-slate-700'
-                                }`}
+                                  }`}
                               >
                                 {tab}
                               </button>
@@ -2205,11 +2855,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                           setFormItemId(item.item_id);
                                           setDropdownOpen(false);
                                         }}
-                                        className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex justify-between items-center ${
-                                          String(formItemId) === String(item.item_id)
+                                        className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex justify-between items-center ${String(formItemId) === String(item.item_id)
                                             ? 'bg-slate-800 text-white'
                                             : 'text-slate-700 hover:bg-slate-50'
-                                        }`}
+                                          }`}
                                       >
                                         <span className="truncate pr-4">{item.name}</span>
                                         <div className="flex items-center gap-1.5 shrink-0 text-[10px]">
@@ -2274,11 +2923,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     <input type="number" min="1" max={selectedItem?.available || undefined} value={formQty}
                       disabled={!selectedItem || selectedItem.available <= 0}
                       onChange={(e) => setFormQty(e.target.value)} placeholder={!selectedItem ? "0" : selectedItem.available <= 0 ? "Unavailable" : "0"}
-                      className={`w-full mt-1 bg-slate-50 border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:bg-white disabled:opacity-55 disabled:cursor-not-allowed ${
-                        selectedItem && parseInt(formQty, 10) > selectedItem.available
+                      className={`w-full mt-1 bg-slate-50 border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:bg-white disabled:opacity-55 disabled:cursor-not-allowed ${selectedItem && parseInt(formQty, 10) > selectedItem.available
                           ? 'border-rose-300 text-rose-600 focus:border-rose-400 focus:ring-1 focus:ring-rose-400'
                           : 'border-slate-200 focus:border-teal-400'
-                      }`} />
+                        }`} />
                     {selectedItem && parseInt(formQty, 10) > selectedItem.available && (
                       <p className="text-[10px] text-rose-600 font-extrabold mt-1">
                         Cannot exceed available stock ({selectedItem.available} {selectedItem.unit || 'unit(s)'}).
@@ -2495,41 +3143,37 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => setActiveSubTab('history')}
-                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer ${
-                    activeSubTab === 'history'
+                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer ${activeSubTab === 'history'
                       ? 'bg-teal-700 text-white shadow-sm'
                       : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   Consumption History
                 </button>
                 <button
                   onClick={() => setActiveSubTab('stock')}
-                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer ${
-                    activeSubTab === 'stock'
+                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer ${activeSubTab === 'stock'
                       ? 'bg-teal-700 text-white shadow-sm'
                       : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   Available Items
                 </button>
                 <button
                   onClick={() => setActiveSubTab('requisitions')}
-                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeSubTab === 'requisitions'
+                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'requisitions'
                       ? 'bg-teal-700 text-white shadow-sm'
                       : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   <ArrowRight size={14} /> Requisitions
                 </button>
                 <button
                   onClick={() => setActiveSubTab('deactivated')}
-                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeSubTab === 'deactivated'
+                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'deactivated'
                       ? 'bg-teal-700 text-white shadow-sm'
                       : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   <AlertTriangle size={14} /> Deactivated & Expired
                   {deactivatedItems.length > 0 && (
@@ -2537,6 +3181,15 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                       {deactivatedItems.length}
                     </span>
                   )}
+                </button>
+                <button
+                  onClick={() => setActiveSubTab('stats')}
+                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'stats'
+                      ? 'bg-teal-700 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
+                    }`}
+                >
+                  <BarChart3 size={14} /> Statistics & Analytics
                 </button>
                 {/* Configure Fridges tab — Lab department only */}
                 {(() => {
@@ -2547,11 +3200,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                   return isLabDeptTab ? (
                     <button
                       onClick={() => setActiveSubTab('fridges')}
-                      className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-                        activeSubTab === 'fridges'
+                      className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'fridges'
                           ? 'bg-sky-700 text-white shadow-sm'
                           : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
-                      }`}
+                        }`}
                     >
                       <Thermometer size={14} /> Configure Fridges
                     </button>
@@ -2616,9 +3268,9 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                     <tbody>
                       {pagedEntries.map((e) => (
                         <tr key={e.id} className="border-t border-slate-100 hover:bg-slate-50/60">
-                           <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
-                             {new Date(e.logged_at || e.consumed_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                           </td>
+                          <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
+                            {new Date(e.logged_at || e.consumed_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </td>
                           <td className="px-3 py-2.5 font-semibold text-slate-700">{e.department_name || '—'}</td>
                           <td className="px-3 py-2.5 text-slate-800">
                             {e.item_name}
@@ -2721,21 +3373,20 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                         <p className="text-xs text-slate-600 font-medium">{aiAuditResults.executive_summary}</p>
                         <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
                           {[
-                            { key: 'all',      label: 'All' },
-                            { key: 'typo',     label: 'Naming' },
-                            { key: 'duplicate',label: 'Duplicates' },
-                            { key: 'anomaly',  label: 'Data Issues' },
+                            { key: 'all', label: 'All' },
+                            { key: 'typo', label: 'Naming' },
+                            { key: 'duplicate', label: 'Duplicates' },
+                            { key: 'anomaly', label: 'Data Issues' },
                             { key: 'specimen', label: 'Misplaced' },
                           ].map(({ key: f, label }) => (
                             <button
                               key={f}
                               type="button"
                               onClick={() => setAiIssueFilter(f)}
-                              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                                aiIssueFilter === f
+                              className={`px-2 py-1 rounded transition-colors cursor-pointer ${aiIssueFilter === f
                                   ? 'bg-white text-teal-700 shadow-sm border border-slate-200'
                                   : 'text-slate-500 hover:text-slate-700'
-                              }`}
+                                }`}
                             >
                               {label} ({
                                 f === 'all' ? aiAuditResults.issues?.length || 0
@@ -2753,21 +3404,19 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                           .map((issue, idx) => (
                             <div
                               key={idx}
-                              className={`p-3 rounded-lg border text-xs flex items-start justify-between gap-2 ${
-                                issue.severity === 'high'   ? 'bg-rose-50 border-rose-200 text-rose-800' :
-                                issue.severity === 'medium' ? 'bg-amber-50 border-amber-200 text-amber-800' :
-                                                              'bg-slate-50 border-slate-200 text-slate-700'
-                              }`}
+                              className={`p-3 rounded-lg border text-xs flex items-start justify-between gap-2 ${issue.severity === 'high' ? 'bg-rose-50 border-rose-200 text-rose-800' :
+                                  issue.severity === 'medium' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                                    'bg-slate-50 border-slate-200 text-slate-700'
+                                }`}
                             >
                               <div className="space-y-0.5 min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-bold truncate max-w-[180px]">{issue.name}</span>
-                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                                    issue.type === 'duplicate' ? 'bg-purple-100 text-purple-700' :
-                                    issue.type === 'typo'      ? 'bg-sky-100 text-sky-700' :
-                                    issue.type === 'specimen'  ? 'bg-rose-100 text-rose-700' :
-                                                                 'bg-amber-100 text-amber-700'
-                                  }`}>
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${issue.type === 'duplicate' ? 'bg-purple-100 text-purple-700' :
+                                      issue.type === 'typo' ? 'bg-sky-100 text-sky-700' :
+                                        issue.type === 'specimen' ? 'bg-rose-100 text-rose-700' :
+                                          'bg-amber-100 text-amber-700'
+                                    }`}>
                                     {issue.type === 'typo' ? 'Naming' : issue.type === 'anomaly' ? 'Data Issue' : issue.type === 'specimen' ? 'Misplaced' : issue.type}
                                   </span>
                                 </div>
@@ -2795,21 +3444,19 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 <div className="flex gap-2 mb-4">
                   <button
                     onClick={() => setStockTab('local')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      stockTab === 'local'
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${stockTab === 'local'
                         ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
+                      }`}
                   >
                     Local Items
                   </button>
                   <button
                     onClick={() => setStockTab('central')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      stockTab === 'central'
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${stockTab === 'central'
                         ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
+                      }`}
                   >
                     General Store Items
                   </button>
@@ -2863,16 +3510,14 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                           <button
                             type="button"
                             onClick={() => setSelectedStorageUnit(null)}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                              selectedStorageUnit === null
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${selectedStorageUnit === null
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                            }`}
+                              }`}
                           >
                             All Items
-                            <span className={`block text-[9px] font-semibold mt-0.5 ${
-                              selectedStorageUnit === null ? 'text-blue-100' : 'text-slate-400'
-                            }`}>
+                            <span className={`block text-[9px] font-semibold mt-0.5 ${selectedStorageUnit === null ? 'text-blue-100' : 'text-slate-400'
+                              }`}>
                               {filteredDeptStock.length} item{filteredDeptStock.length !== 1 ? 's' : ''}
                             </span>
                           </button>
@@ -2896,29 +3541,25 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                 key={unit.id}
                                 type="button"
                                 onClick={() => setSelectedStorageUnit(isActive ? null : unit.id)}
-                                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                                  isActive
+                                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${isActive
                                     ? 'bg-sky-700 text-white border-sky-700 shadow-sm'
                                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                                }`}
+                                  }`}
                               >
                                 {unit.label}
-                                <span className={`block text-[9px] font-semibold mt-0.5 ${
-                                  isActive ? 'text-sky-200' : 'text-slate-400'
-                                }`}>
+                                <span className={`block text-[9px] font-semibold mt-0.5 ${isActive ? 'text-sky-200' : 'text-slate-400'
+                                  }`}>
                                   {count} item{count !== 1 ? 's' : ''}
                                 </span>
                                 {(unitSubdivs.length > 0 || unitCTs.length > 0) && (
                                   <div className="flex flex-wrap gap-0.5 mt-1.5">
                                     {unitSubdivs.map(s => (
-                                      <span key={s.id} className={`px-1 py-px rounded text-[8px] font-bold border ${
-                                        isActive ? 'bg-white/20 text-white border-white/30' : s.color
-                                      }`}>{s.label}</span>
+                                      <span key={s.id} className={`px-1 py-px rounded text-[8px] font-bold border ${isActive ? 'bg-white/20 text-white border-white/30' : s.color
+                                        }`}>{s.label}</span>
                                     ))}
                                     {unitCTs.map(c => (
-                                      <span key={c.id} className={`px-1 py-px rounded text-[8px] font-bold border ${
-                                        isActive ? 'bg-white/20 text-white border-white/30' : c.color
-                                      }`}>{c.label}</span>
+                                      <span key={c.id} className={`px-1 py-px rounded text-[8px] font-bold border ${isActive ? 'bg-white/20 text-white border-white/30' : c.color
+                                        }`}>{c.label}</span>
                                     ))}
                                   </div>
                                 )}
@@ -2945,29 +3586,25 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                 key={unit.id}
                                 type="button"
                                 onClick={() => setSelectedStorageUnit(isActive ? null : unit.id)}
-                                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                                  isActive
+                                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${isActive
                                     ? 'bg-indigo-700 text-white border-indigo-700 shadow-sm'
                                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                                }`}
+                                  }`}
                               >
                                 {unit.label}
-                                <span className={`block text-[9px] font-semibold mt-0.5 ${
-                                  isActive ? 'text-indigo-200' : 'text-slate-400'
-                                }`}>
+                                <span className={`block text-[9px] font-semibold mt-0.5 ${isActive ? 'text-indigo-200' : 'text-slate-400'
+                                  }`}>
                                   {count} item{count !== 1 ? 's' : ''}
                                 </span>
                                 {(unitSubdivs.length > 0 || unitCTs.length > 0) && (
                                   <div className="flex flex-wrap gap-0.5 mt-1.5">
                                     {unitSubdivs.map(s => (
-                                      <span key={s.id} className={`px-1 py-px rounded text-[8px] font-bold border ${
-                                        isActive ? 'bg-white/20 text-white border-white/30' : s.color
-                                      }`}>{s.label}</span>
+                                      <span key={s.id} className={`px-1 py-px rounded text-[8px] font-bold border ${isActive ? 'bg-white/20 text-white border-white/30' : s.color
+                                        }`}>{s.label}</span>
                                     ))}
                                     {unitCTs.map(c => (
-                                      <span key={c.id} className={`px-1 py-px rounded text-[8px] font-bold border ${
-                                        isActive ? 'bg-white/20 text-white border-white/30' : c.color
-                                      }`}>{c.label}</span>
+                                      <span key={c.id} className={`px-1 py-px rounded text-[8px] font-bold border ${isActive ? 'bg-white/20 text-white border-white/30' : c.color
+                                        }`}>{c.label}</span>
                                     ))}
                                   </div>
                                 )}
@@ -3143,9 +3780,8 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                     </span>
                                   </td>
                                   <td className="px-3 py-2.5 text-center">
-                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                      batchCount > 1 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600'
-                                    }`}>
+                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${batchCount > 1 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600'
+                                      }`}>
                                       <Layers size={10} />
                                       {batchCount} {batchCount === 1 ? 'batch' : 'batches'}
                                     </span>
@@ -3167,11 +3803,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                       <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); handleQuickReorderItem(row); }}
-                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs ${
-                                          row.quantity <= 5
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs ${row.quantity <= 5
                                             ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200 animate-pulse'
                                             : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200'
-                                        }`}
+                                          }`}
                                       >
                                         + Reorder
                                       </button>
@@ -3398,11 +4033,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                     key={tab}
                                     type="button"
                                     onClick={() => setReqPickerTab(tab)}
-                                    className={`px-1.5 py-0.5 rounded transition-all cursor-pointer whitespace-nowrap ${
-                                      reqPickerTab === tab
+                                    className={`px-1.5 py-0.5 rounded transition-all cursor-pointer whitespace-nowrap ${reqPickerTab === tab
                                         ? 'bg-white text-teal-700 shadow-2xs'
                                         : 'text-slate-500 hover:text-slate-700'
-                                    }`}
+                                      }`}
                                   >
                                     {tab}
                                   </button>
@@ -3428,11 +4062,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                               setReqItemId(item.item_id);
                                               setReqDropdownOpen(false);
                                             }}
-                                            className={`w-full text-left px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer flex justify-between items-center ${
-                                              String(reqItemId) === String(item.item_id)
+                                            className={`w-full text-left px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer flex justify-between items-center ${String(reqItemId) === String(item.item_id)
                                                 ? 'bg-slate-800 text-white'
                                                 : 'text-slate-700 hover:bg-slate-50'
-                                            }`}
+                                              }`}
                                           >
                                             <div className="flex items-center gap-1.5 truncate pr-2">
                                               <span className="truncate">{item.name}</span>
@@ -3570,7 +4203,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                         <tbody>
                           {deptRequisitions.map(req => {
                             let items = [];
-                            try { items = typeof req.items === 'string' ? JSON.parse(req.items) : (req.items || []); } catch(e){}
+                            try { items = typeof req.items === 'string' ? JSON.parse(req.items) : (req.items || []); } catch (e) { }
                             return (
                               <tr key={req.id} className="border-t border-slate-100 hover:bg-slate-50/60">
                                 <td className="px-4 py-3 text-slate-600 font-medium whitespace-nowrap">
@@ -3604,8 +4237,8 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                   <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
                                     ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
                                       req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
-                                      req.status === 'Completed' ? 'bg-blue-100 text-blue-700' :
-                                      req.status === 'Rejected' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                                        req.status === 'Completed' ? 'bg-blue-100 text-blue-700' :
+                                          req.status === 'Rejected' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
                                     {req.status || 'Pending'}
                                   </span>
                                 </td>
@@ -3775,10 +4408,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                   </p>
 
                   {STORAGE_UNITS.map(unit => {
-                    const isFridge  = unit.type === 'fridge';
-                    const headerBg  = isFridge  ? 'bg-sky-50 border-sky-200'     : 'bg-indigo-50 border-indigo-200';
-                    const headerText= isFridge  ? 'text-sky-700'                 : 'text-indigo-700';
-                    const dotColor  = isFridge  ? 'bg-sky-500'                   : 'bg-indigo-500';
+                    const isFridge = unit.type === 'fridge';
+                    const headerBg = isFridge ? 'bg-sky-50 border-sky-200' : 'bg-indigo-50 border-indigo-200';
+                    const headerText = isFridge ? 'text-sky-700' : 'text-indigo-700';
+                    const dotColor = isFridge ? 'bg-sky-500' : 'bg-indigo-500';
                     const isEditing = editingUnitId === unit.id;
                     const assignedItemsCount = Object.values(storageAssignments).filter(uId => uId === unit.id).length;
 
@@ -3883,11 +4516,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                 key={preset}
                                 type="button"
                                 onClick={() => handleUpdateUnitTemperature(unit.id, preset)}
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
-                                  (unit.temp_range || (isFridge ? '2°C to 8°C' : '-20°C to -80°C')) === preset
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${(unit.temp_range || (isFridge ? '2°C to 8°C' : '-20°C to -80°C')) === preset
                                     ? isFridge ? 'bg-sky-600 text-white border-sky-600 shadow-2xs font-extrabold' : 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-extrabold'
                                     : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                                }`}
+                                  }`}
                               >
                                 {preset}
                               </button>
@@ -3917,11 +4549,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                   key={sub.id}
                                   type="button"
                                   onClick={() => handleToggleUnitSubdivision(unit.id, sub.id)}
-                                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
-                                    active
+                                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${active
                                       ? sub.color
                                       : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
-                                  }`}
+                                    }`}
                                 >
                                   {active && <span className="mr-1">✓</span>}
                                   {sub.label}
@@ -3961,9 +4592,8 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                   key={ct.id}
                                   type="button"
                                   onClick={() => handleToggleUnitContentType(unit.id, ct.id)}
-                                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
-                                    active ? ct.color : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'
-                                  }`}
+                                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${active ? ct.color : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'
+                                    }`}
                                 >
                                   {active && <span className="mr-1">✓</span>}
                                   {ct.label}
@@ -4005,13 +4635,12 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                               setAddUnitType(t);
                               setAddUnitTempRange(t === 'freezer' ? '-20°C to -80°C' : '2°C to 8°C');
                             }}
-                            className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                              addUnitType === t
+                            className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${addUnitType === t
                                 ? t === 'fridge'
                                   ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
                                   : 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                            }`}
+                              }`}
                           >
                             {t === 'fridge' ? 'Fridge' : 'Freezer'}
                           </button>
@@ -4062,9 +4691,8 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                             onClick={() => setAddUnitSubdivisions(prev =>
                               prev.includes(sub.id) ? prev.filter(s => s !== sub.id) : [...prev, sub.id]
                             )}
-                            className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
-                              active ? sub.color : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'
-                            }`}
+                            className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${active ? sub.color : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'
+                              }`}
                           >
                             {active && <span className="mr-1">✓</span>}
                             {sub.label}
@@ -4092,9 +4720,8 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                             onClick={() => setAddUnitContentTypes(prev =>
                               prev.includes(ct.id) ? prev.filter(c => c !== ct.id) : [...prev, ct.id]
                             )}
-                            className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
-                              active ? ct.color : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'
-                            }`}
+                            className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${active ? ct.color : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'
+                              }`}
                           >
                             {active && <span className="mr-1">✓</span>}
                             {ct.label}
@@ -4114,6 +4741,18 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 </div>
 
               </div>
+            )}
+
+            {/* ── Statistics & Analytics Tab ───────────────────────────────── */}
+            {activeSubTab === 'stats' && (
+              <ConsumablesStatsTab
+                entries={entries}
+                distributedStock={distributedStock}
+                departments={departments}
+                summary={summary}
+                userDept={userDept}
+                isAdmin={isAdmin}
+              />
             )}
           </div>
         </div>

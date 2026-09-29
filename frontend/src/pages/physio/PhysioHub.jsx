@@ -3,11 +3,15 @@ import {
   Dumbbell, Activity, ClipboardList, Plus, Search, Calendar,
   User, CheckCircle2, Clock, Play, RotateCcw, Award, Flame,
   FileText, Sparkles, ChevronRight, Sliders, AlertCircle, ShieldAlert,
-  Send, Layers, RefreshCw, X, Printer
+  Send, Layers, RefreshCw, X, Printer, BarChart3, Users, TrendingUp,
+  Package, ShieldCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConsumablesLog from '../ConsumablesLog';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
+import { useAuth } from '../../context/AuthContext';
+import { getPhysiotherapists } from '../../api/providers';
+import { getUsers } from '../../api/users';
 import {
   getPhysioSessions,
   createPhysioSession,
@@ -16,26 +20,232 @@ import {
   createPhysioAssessment
 } from '../../api/physioApi';
 
-// Physio Therapists list from DB configuration
-const PHYSIO_THERAPISTS = [
-  'Mr NAZE Thierry',
-  'Miss FRANCINE M.',
-  'Mr KARIMWABO Jean Claude',
-  'Mr NSENGIMANA Emmanuel',
-  'Miss LEAH MUTESI',
-  'Miss UWAMAHORO Sarah',
-  'Mr Ingabire J. Paul'
+const PHYSIO_ROLES = ['physiotherapist', 'physio', 'physio_manager'];
+
+// Full Anatomical Joint Dataset — grouped by region
+const JOINT_REGIONS = [
+  {
+    region: 'Head & Neck',
+    joints: [
+      { id: 'TMJ', label: 'Temporomandibular Joint (TMJ)', movements: ['Elevation', 'Depression', 'Protrusion', 'Retrusion', 'Lateral Excursion'] },
+      { id: 'C0-C1', label: 'Atlanto-occipital (C0–C1)', movements: ['Flexion', 'Extension', 'Lateral Flexion'] },
+      { id: 'C1-C2', label: 'Atlanto-axial (C1–C2)', movements: ['Rotation'] },
+      { id: 'Cervical', label: 'Cervical Spine (C2–C7)', movements: ['Flexion', 'Extension', 'Lateral Flexion', 'Rotation'] },
+    ]
+  },
+  {
+    region: 'Shoulder Complex',
+    joints: [
+      { id: 'SC', label: 'Sternoclavicular Joint (SC)', movements: ['Elevation', 'Depression', 'Protraction', 'Retraction', 'Clavicular Rotation'] },
+      { id: 'AC', label: 'Acromioclavicular Joint (AC)', movements: ['Elevation', 'Depression', 'Protraction', 'Retraction', 'Scapular Rotation'] },
+      { id: 'Scapulothoracic', label: 'Scapulothoracic Articulation', movements: ['Elevation', 'Depression', 'Protraction', 'Retraction', 'Upward Rotation', 'Downward Rotation'] },
+      { id: 'Glenohumeral', label: 'Glenohumeral (Shoulder) Joint', movements: ['Flexion', 'Extension', 'Abduction', 'Adduction', 'Internal Rotation', 'External Rotation', 'Horizontal Abduction', 'Horizontal Adduction', 'Circumduction'] },
+    ]
+  },
+  {
+    region: 'Elbow & Forearm',
+    joints: [
+      { id: 'Humeroulnar', label: 'Humeroulnar Joint', movements: ['Flexion', 'Extension'] },
+      { id: 'Humeroradial', label: 'Humeroradial Joint', movements: ['Flexion', 'Extension', 'Pronation', 'Supination'] },
+      { id: 'ProxRadioulnar', label: 'Proximal Radioulnar Joint', movements: ['Pronation', 'Supination'] },
+      { id: 'DistRadioulnar', label: 'Distal Radioulnar Joint', movements: ['Pronation', 'Supination'] },
+    ]
+  },
+  {
+    region: 'Wrist & Hand',
+    joints: [
+      { id: 'Radiocarpal', label: 'Radiocarpal (Wrist) Joint', movements: ['Flexion', 'Extension', 'Radial Deviation', 'Ulnar Deviation', 'Circumduction'] },
+      { id: 'Midcarpal', label: 'Midcarpal Joints', movements: ['Flexion', 'Extension', 'Radial Deviation', 'Ulnar Deviation'] },
+      { id: 'CMC_2-5', label: 'Carpometacarpal (CMC) Joints 2–5', movements: ['Flexion', 'Extension', 'Gliding'] },
+      { id: 'CMC_Thumb', label: '1st CMC – Thumb', movements: ['Flexion', 'Extension', 'Abduction', 'Adduction', 'Opposition', 'Reposition', 'Circumduction'] },
+      { id: 'MCP', label: 'Metacarpophalangeal (MCP) Joints', movements: ['Flexion', 'Extension', 'Abduction', 'Adduction', 'Circumduction'] },
+      { id: 'IP_Fingers', label: 'Interphalangeal (IP) Joints – Fingers', movements: ['Flexion', 'Extension'] },
+      { id: 'IP_Thumb', label: 'Interphalangeal (IP) Joint – Thumb', movements: ['Flexion', 'Extension'] },
+    ]
+  },
+  {
+    region: 'Spine',
+    joints: [
+      { id: 'Thoracic', label: 'Thoracic Spine', movements: ['Flexion', 'Extension', 'Lateral Flexion', 'Rotation'] },
+      { id: 'Lumbar', label: 'Lumbar Spine', movements: ['Flexion', 'Extension', 'Lateral Flexion', 'Limited Rotation'] },
+      { id: 'Sacral', label: 'Sacral Region', movements: ['Nutation', 'Counternutation'] },
+      { id: 'Intervertebral', label: 'Intervertebral Joints', movements: ['Flexion', 'Extension', 'Lateral Flexion', 'Rotation'] },
+    ]
+  },
+  {
+    region: 'Pelvis',
+    joints: [
+      { id: 'SI', label: 'Sacroiliac (SI) Joint', movements: ['Nutation', 'Counternutation', 'Translational Movements'] },
+      { id: 'PubicSymphysis', label: 'Pubic Symphysis', movements: ['Gliding', 'Separation', 'Rotation'] },
+    ]
+  },
+  {
+    region: 'Hip',
+    joints: [
+      { id: 'Hip', label: 'Hip (Acetabulofemoral) Joint', movements: ['Flexion', 'Extension', 'Abduction', 'Adduction', 'Internal Rotation', 'External Rotation', 'Circumduction'] },
+    ]
+  },
+  {
+    region: 'Knee',
+    joints: [
+      { id: 'Tibiofemoral', label: 'Tibiofemoral Joint', movements: ['Flexion', 'Extension', 'Medial Rotation', 'Lateral Rotation'] },
+      { id: 'Patellofemoral', label: 'Patellofemoral Joint', movements: ['Superior Glide', 'Inferior Glide', 'Medial Glide', 'Lateral Glide', 'Tilt', 'Rotation'] },
+    ]
+  },
+  {
+    region: 'Ankle & Foot',
+    joints: [
+      { id: 'Talocrural', label: 'Talocrural (Ankle) Joint', movements: ['Dorsiflexion', 'Plantarflexion'] },
+      { id: 'Subtalar', label: 'Subtalar Joint', movements: ['Inversion', 'Eversion'] },
+      { id: 'Talonavicular', label: 'Talonavicular Joint', movements: ['Inversion', 'Eversion', 'Pronation', 'Supination'] },
+      { id: 'Calcaneocuboid', label: 'Calcaneocuboid Joint', movements: ['Pronation', 'Supination', 'Gliding', 'Rotation'] },
+      { id: 'Midtarsal', label: 'Midtarsal / Transverse Tarsal Joints', movements: ['Pronation', 'Supination'] },
+      { id: 'TMT', label: 'Tarsometatarsal (TMT) Joints', movements: ['Gliding'] },
+      { id: 'MTP', label: 'Metatarsophalangeal (MTP) Joints', movements: ['Flexion', 'Extension', 'Abduction', 'Adduction'] },
+      { id: 'IP_Toes', label: 'Interphalangeal Joints – Toes', movements: ['Flexion', 'Extension'] },
+    ]
+  },
+  {
+    region: 'Combined Foot Movements',
+    joints: [
+      { id: 'Inversion_Complex', label: 'Inversion (Combined)', movements: ['Plantarflexion', 'Adduction', 'Internal Rotation'] },
+      { id: 'Eversion_Complex', label: 'Eversion (Combined)', movements: ['Dorsiflexion', 'Abduction', 'External Rotation'] },
+      { id: 'Pronation_Complex', label: 'Pronation (Combined)', movements: ['Eversion', 'Abduction', 'Dorsiflexion'] },
+      { id: 'Supination_Complex', label: 'Supination (Combined)', movements: ['Inversion', 'Adduction', 'Plantarflexion'] },
+    ]
+  },
 ];
 
-// Anatomical Body Regions & Normal ROM benchmarks
-const BODY_REGIONS = [
-  { id: 'Knee', label: 'Knee Joint', normalFlexion: 135, normalExtension: 0 },
-  { id: 'Shoulder', label: 'Shoulder Joint', normalFlexion: 180, normalExtension: 60, normalAbduction: 180 },
-  { id: 'Hip', label: 'Hip Joint', normalFlexion: 120, normalExtension: 30, normalAbduction: 45 },
-  { id: 'Spine', label: 'Lumbar / Cervical Spine', normalFlexion: 60, normalExtension: 25 },
-  { id: 'Ankle', label: 'Ankle & Foot', normalFlexion: 50, normalExtension: 20 },
-  { id: 'Elbow', label: 'Elbow & Forearm', normalFlexion: 150, normalExtension: 0 }
+// Flat list for backward-compat (e.g. treatment_area selects)
+const BODY_REGIONS = JOINT_REGIONS.flatMap(r => r.joints.map(j => ({ id: j.id, label: j.label })));
+
+// Clinical ROM Ranges: { movementName: { min, max, unit, normal } }
+// 'normal' = typical healthy adult range end
+const ROM_RANGES = {
+  // ── Generic movements (shared across many joints) ──
+  'Flexion':              { min: 0, max: 180, unit: '°', normal: 120 },
+  'Extension':            { min: 0, max: 90,  unit: '°', normal: 30  },
+  'Lateral Flexion':      { min: 0, max: 50,  unit: '°', normal: 45  },
+  'Rotation':             { min: 0, max: 90,  unit: '°', normal: 80  },
+  'Abduction':            { min: 0, max: 180, unit: '°', normal: 180 },
+  'Adduction':            { min: 0, max: 50,  unit: '°', normal: 30  },
+  'Internal Rotation':    { min: 0, max: 90,  unit: '°', normal: 70  },
+  'External Rotation':    { min: 0, max: 90,  unit: '°', normal: 90  },
+  'Circumduction':        { min: 0, max: 360, unit: '°', normal: 360 },
+  'Pronation':            { min: 0, max: 90,  unit: '°', normal: 80  },
+  'Supination':           { min: 0, max: 90,  unit: '°', normal: 80  },
+  'Inversion':            { min: 0, max: 40,  unit: '°', normal: 35  },
+  'Eversion':             { min: 0, max: 20,  unit: '°', normal: 15  },
+  'Dorsiflexion':         { min: 0, max: 30,  unit: '°', normal: 20  },
+  'Plantarflexion':       { min: 0, max: 60,  unit: '°', normal: 50  },
+  'Nutation':             { min: 0, max: 10,  unit: '°', normal: 4   },
+  'Counternutation':      { min: 0, max: 10,  unit: '°', normal: 4   },
+  'Gliding':              { min: 0, max: 10,  unit: 'mm', normal: 5  },
+  'Opposition':           { min: 0, max: 90,  unit: '°', normal: 90  },
+  'Reposition':           { min: 0, max: 90,  unit: '°', normal: 90  },
+  'Radial Deviation':     { min: 0, max: 25,  unit: '°', normal: 20  },
+  'Ulnar Deviation':      { min: 0, max: 40,  unit: '°', normal: 30  },
+  'Elevation':            { min: 0, max: 60,  unit: '°', normal: 60  },
+  'Depression':           { min: 0, max: 10,  unit: '°', normal: 5   },
+  'Protraction':          { min: 0, max: 20,  unit: '°', normal: 15  },
+  'Retraction':           { min: 0, max: 20,  unit: '°', normal: 15  },
+  'Upward Rotation':      { min: 0, max: 60,  unit: '°', normal: 60  },
+  'Downward Rotation':    { min: 0, max: 60,  unit: '°', normal: 45  },
+  'Clavicular Rotation':  { min: 0, max: 50,  unit: '°', normal: 40  },
+  'Scapular Rotation':    { min: 0, max: 60,  unit: '°', normal: 60  },
+  'Horizontal Abduction': { min: 0, max: 90,  unit: '°', normal: 90  },
+  'Horizontal Adduction': { min: 0, max: 135, unit: '°', normal: 135 },
+  'Medial Rotation':      { min: 0, max: 40,  unit: '°', normal: 30  },
+  'Lateral Rotation':     { min: 0, max: 50,  unit: '°', normal: 40  },
+  'Limited Rotation':     { min: 0, max: 10,  unit: '°', normal: 5   },
+  'Superior Glide':       { min: 0, max: 15,  unit: 'mm', normal: 10 },
+  'Inferior Glide':       { min: 0, max: 15,  unit: 'mm', normal: 10 },
+  'Medial Glide':         { min: 0, max: 10,  unit: 'mm', normal: 5  },
+  'Lateral Glide':        { min: 0, max: 10,  unit: 'mm', normal: 5  },
+  'Tilt':                 { min: 0, max: 20,  unit: '°', normal: 10  },
+  'Separation':           { min: 0, max: 5,   unit: 'mm', normal: 2  },
+  'Translational Movements': { min: 0, max: 4, unit: 'mm', normal: 2 },
+};
+
+
+// ─── Outcome Measures Library ──────────────────────────────────────────────
+const OUTCOME_MEASURES = [
+  { category: 'Pain',                    color: 'rose',   measures: ['VAS', 'NPRS (0–10)', 'Verbal Rating Scale (VRS)', 'McGill Pain Questionnaire (MPQ)', 'Brief Pain Inventory (BPI)', 'Pain Catastrophizing Scale (PCS)', 'Central Sensitization Inventory (CSI)', 'DN4', 'PainDETECT', 'LANSS'] },
+  { category: 'Neck',                    color: 'sky',    measures: ['Neck Disability Index (NDI)', 'PSFS', 'Northwick Park Neck Pain Questionnaire', 'Copenhagen Neck Functional Disability Scale', 'Neck Bournemouth Questionnaire'] },
+  { category: 'Low Back',                color: 'amber',  measures: ['Oswestry Disability Index (ODI)', 'Roland-Morris Disability Questionnaire (RMDQ)', 'Quebec Back Pain Disability Scale', 'Low Back Outcome Score', 'Fear-Avoidance Beliefs Questionnaire (FABQ)', 'STarT Back Screening Tool', 'PSFS'] },
+  { category: 'Shoulder',                color: 'blue',   measures: ['DASH', 'Quick DASH', 'SPADI', 'ASES Shoulder Score', 'Constant–Murley Score', 'Oxford Shoulder Score (OSS)', 'Simple Shoulder Test (SST)', 'Shoulder Disability Questionnaire (SDQ)'] },
+  { category: 'Elbow',                   color: 'violet', measures: ['Patient-Rated Tennis Elbow Evaluation (PRTEE)', 'Oxford Elbow Score (OES)', 'Mayo Elbow Performance Score (MEPS)', 'DASH / Quick DASH'] },
+  { category: 'Wrist & Hand',            color: 'purple', measures: ['DASH / Quick DASH', 'Patient-Rated Wrist Evaluation (PRWE)', 'Patient-Rated Hand Evaluation (PRHE)', 'Michigan Hand Outcomes Questionnaire (MHQ)', 'Boston Carpal Tunnel Questionnaire (BCTQ)', 'Mayo Wrist Score'] },
+  { category: 'Hip',                     color: 'orange', measures: ['Harris Hip Score (HHS)', 'Oxford Hip Score (OHS)', 'HOOS', 'HOOS Jr.', 'LEFS', 'WOMAC'] },
+  { category: 'Knee',                    color: 'emerald',measures: ['KOOS', 'KOOS Jr.', 'WOMAC', 'Oxford Knee Score (OKS)', 'Lysholm Knee Scoring Scale', 'IKDC', 'Kujala / Anterior Knee Pain Scale', 'Tegner Activity Scale', 'LEFS'] },
+  { category: 'Ankle & Foot',            color: 'teal',   measures: ['FAAM', 'FAOS', 'AOFAS Ankle-Hindfoot Score', 'LEFS', 'Foot Function Index (FFI)', 'Manchester-Oxford Foot Questionnaire (MOXFQ)', 'CAIT – Cumberland Ankle Instability Tool'] },
+  { category: 'Neurological – Stroke',   color: 'indigo', measures: ['Fugl-Meyer Assessment (FMA)', 'Berg Balance Scale (BBS)', 'Modified Rankin Scale (mRS)', 'Barthel Index', 'FIM', 'NIH Stroke Scale (NIHSS)', 'Modified Ashworth Scale (MAS)', 'Modified Tardieu Scale (MTS)', 'Action Research Arm Test (ARAT)', 'Box and Block Test', 'Nine-Hole Peg Test', '10-Meter Walk Test', '6-Minute Walk Test', 'Timed Up and Go (TUG)', 'FAC'] },
+  { category: "Neurological \u2013 Parkinson\u2019s", color: 'indigo', measures: ['MDS-UPDRS', 'Hoehn and Yahr Scale', 'Berg Balance Scale', 'TUG', '10-Meter Walk Test', '6-Minute Walk Test', 'Freezing of Gait Questionnaire (FOG-Q)', 'PDQ-39'] },
+
+  { category: 'Multiple Sclerosis',      color: 'indigo', measures: ['EDSS', 'MSIS-29', 'MSWS-12', 'Timed 25-Foot Walk', '6-Minute Walk Test', '9-Hole Peg Test'] },
+  { category: 'Spinal Cord Injury',      color: 'indigo', measures: ['ASIA / ISNCSCI', 'SCIM', 'WISCI II', 'Berg Balance Scale', '10-Meter Walk Test', '6-Minute Walk Test'] },
+  { category: 'Balance & Fall Risk',     color: 'yellow', measures: ['Berg Balance Scale (BBS)', 'Timed Up and Go (TUG)', 'Functional Reach Test', 'Four Square Step Test (FSST)', 'Tinetti POMA', 'Dynamic Gait Index (DGI)', 'Functional Gait Assessment (FGA)', 'Mini-BESTest', 'BESTest', 'ABC Scale', 'Falls Efficacy Scale-International (FES-I)'] },
+  { category: 'Gait & Mobility',         color: 'green',  measures: ['10-Meter Walk Test (10MWT)', '6-Minute Walk Test (6MWT)', '2-Minute Walk Test', 'Timed Up and Go (TUG)', '5 Times Sit-to-Stand (5xSTS)', '30-Second Sit-to-Stand', 'FAC', 'Rivermead Mobility Index', 'Dynamic Gait Index', 'Functional Gait Assessment'] },
+  { category: 'Muscle Strength',         color: 'lime',   measures: ['Manual Muscle Testing (MMT)', 'MRC Scale', 'Hand-held Dynamometry', '1RM', 'Grip Strength (Dynamometer)', '30-Sec Sit-to-Stand', '5xSTS'] },
+  { category: 'Cardiopulmonary',         color: 'cyan',   measures: ['6-Minute Walk Test (6MWT)', '2-Minute Walk Test', 'Incremental Shuttle Walk Test (ISWT)', 'Endurance Shuttle Walk Test (ESWT)', 'Borg RPE', 'Modified Borg Dyspnea Scale', 'mMRC Dyspnea Scale', 'COPD Assessment Test (CAT)', 'St George Respiratory Questionnaire (SGRQ)', 'NYHA Functional Classification'] },
+  { category: 'Pediatric',               color: 'pink',   measures: ['GMFM-66', 'GMFM-88', 'PDMS-2', 'PEDI', 'PEDI-CAT', 'GMFCS', 'MACS', 'CFCS', 'Mini-MACS', 'FMS', 'Alberta Infant Motor Scale (AIMS)', 'Pediatric Balance Scale', 'HINE'] },
+  { category: 'Osteoarthritis',          color: 'orange', measures: ['WOMAC', 'KOOS', 'HOOS', 'Oxford Knee Score', 'Oxford Hip Score', 'LEFS', 'AUSCAN', 'PSFS'] },
+  { category: 'Rheumatology',            color: 'red',    measures: ['HAQ-DI', 'RAPID3', 'DAS28', 'BASDAI', 'BASFI', 'ASQoL', 'FIQ'] },
+  { category: "Women's Health & Pelvic", color: 'fuchsia',measures: ['PFDI-20', 'PFIQ-7', 'ICIQ', 'ICIQ-UI SF', 'POPDI', 'Female Sexual Function Index (FSFI)', 'Pelvic Girdle Questionnaire (PGQ)', 'ODI'] },
+  { category: 'Quality of Life',         color: 'slate',  measures: ['SF-36', 'SF-12', 'EQ-5D-5L', 'WHOQOL-BREF', 'PROMIS', 'Global Rating of Change (GROC)', 'PSFS'] },
+  { category: 'ADL / Functional Independence', color:'slate', measures: ['Barthel Index', 'Modified Barthel Index', 'FIM', 'Katz Index', 'Lawton-Brody IADL Scale', 'Rivermead Mobility Index', 'FAM'] },
+  { category: 'Spasticity',              color: 'violet', measures: ['Modified Ashworth Scale (MAS)', 'Modified Tardieu Scale (MTS)', 'Tardieu Scale', 'Penn Spasm Frequency Scale', 'SCATS'] },
+  { category: 'Sports',                  color: 'emerald',measures: ['IKDC', 'KOOS', 'LEFS', 'FAAM', 'FAOS', 'Lysholm Knee Score', 'Tegner Activity Scale', 'ACL-RSI', 'Tampa Scale (TSK)', 'QuickDASH', 'DASH'] },
+  { category: 'Lymphedema / Edema',      color: 'teal',   measures: ['Circumferential Measurement', 'Perometry', 'Water Displacement', 'L-Dex / Bioimpedance (BIS)', 'LLIS', 'Lymph-ICF', 'DASH / QuickDASH', 'LEFS'] },
+  { category: 'Burns / Scar',            color: 'amber',  measures: ['Vancouver Scar Scale (VSS)', 'POSAS', 'Burn-Specific Health Scale-Brief (BSHS-B)', 'DASH', 'LEFS'] },
+  { category: 'Vestibular / Dizziness',  color: 'sky',    measures: ['Dizziness Handicap Inventory (DHI)', 'ABC Scale', 'Dynamic Gait Index', 'Functional Gait Assessment', 'Berg Balance Scale', 'Modified CTSIB', 'Dynamic Visual Acuity Test', 'TUG'] },
+  { category: 'Geriatric',               color: 'slate',  measures: ['Berg Balance Scale', 'TUG', '30-Sec Sit-to-Stand', '5xSTS', 'SPPB', '6-Minute Walk Test', '4-Meter Gait Speed', 'Tinetti POMA', 'Functional Reach Test', 'FES-I', 'ABC Scale', 'Barthel Index', 'Lawton IADL', 'Geriatric Depression Scale (GDS)'] },
+  { category: 'Amputee Rehabilitation',  color: 'orange', measures: ['AMP / AMPnoPRO', 'Houghton Scale', 'Prosthesis Evaluation Questionnaire (PEQ)', 'PLUS-M', 'Locomotor Capabilities Index (LCI)', 'TUG', '6-Minute Walk Test', '2-Minute Walk Test'] },
 ];
+
+// Map joint IDs → relevant outcome measure categories
+const JOINT_OUTCOME_MAP = {
+  'TMJ':              ['Pain'],
+  'C0-C1':            ['Pain', 'Neck'],
+  'C1-C2':            ['Pain', 'Neck'],
+  'Cervical':         ['Pain', 'Neck', 'Quality of Life'],
+  'SC':               ['Pain', 'Shoulder'],
+  'AC':               ['Pain', 'Shoulder'],
+  'Scapulothoracic':  ['Pain', 'Shoulder'],
+  'Glenohumeral':     ['Pain', 'Shoulder', 'Quality of Life'],
+  'Humeroulnar':      ['Pain', 'Elbow', 'Quality of Life'],
+  'Humeroradial':     ['Pain', 'Elbow'],
+  'ProxRadioulnar':   ['Pain', 'Elbow', 'Wrist & Hand'],
+  'DistRadioulnar':   ['Pain', 'Wrist & Hand'],
+  'Radiocarpal':      ['Pain', 'Wrist & Hand', 'Quality of Life'],
+  'Midcarpal':        ['Pain', 'Wrist & Hand'],
+  'CMC_2-5':          ['Pain', 'Wrist & Hand'],
+  'CMC_Thumb':        ['Pain', 'Wrist & Hand'],
+  'MCP':              ['Pain', 'Wrist & Hand'],
+  'IP_Fingers':       ['Pain', 'Wrist & Hand'],
+  'IP_Thumb':         ['Pain', 'Wrist & Hand'],
+  'Thoracic':         ['Pain', 'Low Back', 'Quality of Life'],
+  'Lumbar':           ['Pain', 'Low Back', 'Quality of Life'],
+  'Sacral':           ['Pain', 'Low Back'],
+  'Intervertebral':   ['Pain', 'Low Back'],
+  'SI':               ['Pain', 'Low Back', "Women's Health & Pelvic"],
+  'PubicSymphysis':   ['Pain', "Women's Health & Pelvic"],
+  'Hip':              ['Pain', 'Hip', 'Osteoarthritis', 'Balance & Fall Risk', 'Gait & Mobility', 'Quality of Life'],
+  'Tibiofemoral':     ['Pain', 'Knee', 'Osteoarthritis', 'Balance & Fall Risk', 'Gait & Mobility', 'Sports', 'Quality of Life'],
+  'Patellofemoral':   ['Pain', 'Knee', 'Balance & Fall Risk', 'Sports'],
+  'Talocrural':       ['Pain', 'Ankle & Foot', 'Balance & Fall Risk', 'Gait & Mobility', 'Sports'],
+  'Subtalar':         ['Pain', 'Ankle & Foot', 'Balance & Fall Risk'],
+  'Talonavicular':    ['Pain', 'Ankle & Foot'],
+  'Calcaneocuboid':   ['Pain', 'Ankle & Foot'],
+  'Midtarsal':        ['Pain', 'Ankle & Foot'],
+  'TMT':              ['Pain', 'Ankle & Foot'],
+  'MTP':              ['Pain', 'Ankle & Foot'],
+  'IP_Toes':          ['Pain', 'Ankle & Foot'],
+  'Inversion_Complex':['Pain', 'Ankle & Foot', 'Balance & Fall Risk'],
+  'Eversion_Complex': ['Pain', 'Ankle & Foot', 'Balance & Fall Risk'],
+  'Pronation_Complex':['Pain', 'Ankle & Foot'],
+  'Supination_Complex':['Pain', 'Ankle & Foot'],
+};
 
 // Preset Exercise Library
 const PRESET_EXERCISES = [
@@ -49,10 +259,17 @@ const PRESET_EXERCISES = [
   { id: 'ex-8', name: 'Cervical Retraction (Chin Tucks)', category: 'Spine', defaultSets: 3, defaultReps: 10, defaultHold: 5 }
 ];
 
+
 const PhysioHub = () => {
-  const [activeTab, setActiveTab] = useState('rehab');
+  const { user } = useAuth();
+  const isManagerUser = user?.role === 'admin' || user?.role === 'physio_manager' || user?.role === 'manager' || user?.permissions?.includes?.('user_management');
+
+  const [userRole, setUserRole] = useState(isManagerUser ? 'manager' : 'therapist');
+  const [activeTab, setActiveTab] = useState(isManagerUser ? 'manager_overview' : 'rehab');
   const [loading, setLoading] = useState(false);
-  const [userRole, setUserRole] = useState('therapist'); // 'therapist' | 'manager'
+
+  // Live physio staff from DB
+  const [physioStaff, setPhysioStaff] = useState([]);
 
   // Sessions state
   const [sessions, setSessions] = useState([]);
@@ -65,7 +282,7 @@ const PhysioHub = () => {
   const [newSession, setNewSession] = useState({
     patient_id: '',
     patient_name: '',
-    therapist_name: PHYSIO_THERAPISTS[0],
+    therapist_name: '',
     session_date: new Date().toISOString().split('T')[0],
     treatment_area: 'Knee',
     progress_notes: ''
@@ -81,11 +298,11 @@ const PhysioHub = () => {
   const [newAssessment, setNewAssessment] = useState({
     patient_id: '',
     patient_name: '',
-    therapist_name: PHYSIO_THERAPISTS[0],
-    body_part: 'Knee',
+    therapist_name: '',
+    body_part: 'Tibiofemoral',
     chief_complaint: '',
-    flexion: 90,
-    extension: 0,
+    rom_measurements: {},
+    outcome_measures: [],
     pain_score: 5,
     muscle_grade: 'Grade 4 (Good)',
     functional_goals: '',
@@ -96,13 +313,31 @@ const PhysioHub = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [sessRes, assRes] = await Promise.all([
-        getPhysioSessions(),
-        getPhysioAssessments()
+      const [sessRes, assRes, provRes] = await Promise.all([
+        getPhysioSessions().catch(() => ({ success: false, data: [] })),
+        getPhysioAssessments().catch(() => ({ success: false, data: [] })),
+        getPhysiotherapists().catch(() => null)
       ]);
 
-      if (sessRes?.success) setSessions(sessRes.data || []);
-      if (assRes?.success) setAssessments(assRes.data || []);
+      const loadedSessions = sessRes?.success ? (sessRes.data || []) : [];
+      const loadedAssessments = assRes?.success ? (assRes.data || []) : [];
+
+      setSessions(loadedSessions);
+      setAssessments(loadedAssessments);
+
+      // Extract physiotherapists from providers DB table
+      const provList = provRes?.data || provRes || [];
+      let staff = Array.isArray(provList) ? provList.map(p => p.name).filter(Boolean) : [];
+
+      // Fallback: extract unique therapist names from sessions and assessments if providers table query empty
+      if (staff.length === 0) {
+        const staffSet = new Set();
+        loadedSessions.forEach(s => { if (s.therapist_name) staffSet.add(s.therapist_name); });
+        loadedAssessments.forEach(a => { if (a.therapist_name) staffSet.add(a.therapist_name); });
+        staff = Array.from(staffSet);
+      }
+
+      setPhysioStaff(staff);
     } catch (err) {
       console.error('Failed to fetch physio data:', err);
       toast.error('Failed to load physio records.');
@@ -111,9 +346,28 @@ const PhysioHub = () => {
     }
   };
 
+  useEffect(() => { fetchData(); }, []);
+
+  // Helper: get movements list for selected joint
+  const getJointMovements = (jointId) => {
+    for (const region of JOINT_REGIONS) {
+      const joint = region.joints.find(j => j.id === jointId);
+      if (joint) return joint.movements;
+    }
+    return [];
+  };
+
+  // Reset ROM measurements when body_part changes
   useEffect(() => {
-    fetchData();
-  }, []);
+    const movements = getJointMovements(newAssessment.body_part);
+    const fresh = {};
+    movements.forEach(m => {
+      const range = ROM_RANGES[m];
+      fresh[m] = range ? Math.round(range.normal * 0.7) : 0; // default to ~70% normal
+    });
+    setNewAssessment(prev => ({ ...prev, rom_measurements: fresh }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newAssessment.body_part]);
 
   // Filtered Sessions
   const filteredSessions = useMemo(() => {
@@ -139,6 +393,23 @@ const PhysioHub = () => {
     const completed = sessions.filter(s => s.status === 'Completed').length;
     return { total: sessions.length, scheduled, inSession, completed };
   }, [sessions]);
+
+  // Therapist Workload Breakdown for Manager View
+  const therapistWorkload = useMemo(() => {
+    const staffSet = new Set(physioStaff);
+    sessions.forEach(s => { if (s.therapist_name) staffSet.add(s.therapist_name); });
+
+    return Array.from(staffSet).map(name => {
+      const thSessions = sessions.filter(s => s.therapist_name === name);
+      const scheduled = thSessions.filter(s => s.status === 'Scheduled').length;
+      const inSession = thSessions.filter(s => s.status === 'In Session').length;
+      const completed = thSessions.filter(s => s.status === 'Completed').length;
+      const total = thSessions.length;
+      const share = sessions.length ? Math.round((total / sessions.length) * 100) : 0;
+
+      return { name, total, scheduled, inSession, completed, share };
+    }).sort((a, b) => b.total - a.total);
+  }, [physioStaff, sessions]);
 
   // Handlers for Session status change
   const handleUpdateSessionStatus = async (id, newStatus) => {
@@ -172,7 +443,7 @@ const PhysioHub = () => {
         setNewSession({
           patient_id: '',
           patient_name: '',
-          therapist_name: PHYSIO_THERAPISTS[0],
+          therapist_name: physioStaff[0] || '',
           session_date: new Date().toISOString().split('T')[0],
           treatment_area: 'Knee',
           progress_notes: ''
@@ -194,16 +465,17 @@ const PhysioHub = () => {
 
     try {
       const payload = {
-        patient_id: newAssessment.patient_id,
-        patient_name: newAssessment.patient_name,
-        therapist_name: newAssessment.therapist_name,
-        body_part: newAssessment.body_part,
-        chief_complaint: newAssessment.chief_complaint,
-        rom_data: { flexion: newAssessment.flexion, extension: newAssessment.extension },
-        pain_score: newAssessment.pain_score,
-        muscle_grade: newAssessment.muscle_grade,
+        patient_id:       newAssessment.patient_id,
+        patient_name:     newAssessment.patient_name,
+        therapist_name:   newAssessment.therapist_name,
+        body_part:        newAssessment.body_part,
+        chief_complaint:  newAssessment.chief_complaint,
+        rom_data:         newAssessment.rom_measurements,
+        outcome_measures: newAssessment.outcome_measures,
+        pain_score:       newAssessment.pain_score,
+        muscle_grade:     newAssessment.muscle_grade,
         functional_goals: newAssessment.functional_goals,
-        treatment_plan: newAssessment.treatment_plan
+        treatment_plan:   newAssessment.treatment_plan
       };
 
       const res = await createPhysioAssessment(payload);
@@ -211,13 +483,12 @@ const PhysioHub = () => {
         toast.success('Physio assessment saved!');
         setShowNewAssessmentModal(false);
         setNewAssessment({
-          patient_id: '',
-          patient_name: '',
-          therapist_name: PHYSIO_THERAPISTS[0],
-          body_part: 'Knee',
+          patient_id: '', patient_name: '',
+          therapist_name: physioStaff[0] || '',
+          body_part: 'Tibiofemoral',
           chief_complaint: '',
-          flexion: 90,
-          extension: 0,
+          rom_measurements: {},
+          outcome_measures: [],
           pain_score: 5,
           muscle_grade: 'Grade 4 (Good)',
           functional_goals: '',
@@ -231,69 +502,41 @@ const PhysioHub = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto min-h-screen">
+    <div className="space-y-6 max-w-[1600px] mx-auto">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-emerald-500/20 backdrop-blur-md rounded-2xl border border-emerald-400/30 text-emerald-300">
-              <Dumbbell size={28} />
+            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-600">
+              <Dumbbell size={26} />
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-                  <span className="text-emerald-400">KINETIC</span> Physiotherapy Portal
+                <h1 className="text-xl font-bold tracking-tight text-slate-800">
+                  Physiotherapy Workspace
                 </h1>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                  userRole === 'manager'
-                    ? 'bg-amber-400/20 text-amber-300 border-amber-400/40'
-                    : 'bg-emerald-400/20 text-emerald-300 border-emerald-400/40'
-                }`}>
-                  {userRole === 'manager' ? 'Manager Mode' : 'Therapist Mode'}
+                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Therapist Workspace
                 </span>
               </div>
-              <p className="text-xs text-emerald-100/80 mt-0.5 font-medium">
-                Physical rehabilitation, joint range-of-motion assessments, exercise programs & supply logs.
+              <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                Physical rehabilitation, joint range-of-motion assessments, exercise programs &amp; supply logs.
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          {/* Active Role Selector Switcher */}
-          <div className="bg-slate-900/80 border border-emerald-400/30 p-1 rounded-2xl flex items-center gap-1 shadow-inner">
-            <button
-              onClick={() => setUserRole('therapist')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                userRole === 'therapist'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md'
-                  : 'text-emerald-200/80 hover:text-white'
-              }`}
-            >
-              Therapist
-            </button>
-            <button
-              onClick={() => setUserRole('manager')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                userRole === 'manager'
-                  ? 'bg-amber-400 text-slate-950 shadow-md'
-                  : 'text-emerald-200/80 hover:text-white'
-              }`}
-            >
-              Manager
-            </button>
-          </div>
-
           <button
             onClick={() => setShowNewAssessmentModal(true)}
-            className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
+            className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
           >
             <Plus size={16} /> New Assessment
           </button>
 
           <button
             onClick={() => setShowNewSessionModal(true)}
-            className="flex-1 md:flex-none px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 backdrop-blur-md transition-all cursor-pointer"
+            className="flex-1 md:flex-none px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <Calendar size={16} /> Schedule Session
           </button>
@@ -304,7 +547,7 @@ const PhysioHub = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Active Sessions</span>
+            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Active Patient Sessions</span>
             <h3 className="text-xl font-black text-slate-800 mt-0.5">{stats.total}</h3>
           </div>
           <div className="p-2.5 bg-slate-50 text-slate-600 rounded-xl">
@@ -334,7 +577,7 @@ const PhysioHub = () => {
 
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">Completed Sessions</span>
+            <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">Completed Treatments</span>
             <h3 className="text-xl font-black text-emerald-700 mt-0.5">{stats.completed}</h3>
           </div>
           <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
@@ -343,46 +586,7 @@ const PhysioHub = () => {
         </div>
       </div>
 
-      {/* Manager Oversight Panel (Visible when Manager mode is active) */}
-      {userRole === 'manager' && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/20 text-amber-700 rounded-xl font-black">
-              <ShieldAlert size={22} />
-            </div>
-            <div>
-              <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">Physiotherapy Manager Control Panel</h4>
-              <p className="text-xs text-amber-800 font-medium">Department oversight, staff workload allocation & inventory requisitions.</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-amber-200 shadow-2xs">
-              <User size={14} className="text-amber-600" />
-              <span className="text-[10px] font-black uppercase text-slate-400">Therapist:</span>
-              <select
-                value={selectedTherapistFilter}
-                onChange={e => setSelectedTherapistFilter(e.target.value)}
-                className="text-xs font-bold text-slate-800 outline-none bg-transparent"
-              >
-                <option value="All">All Staff Therapists ({PHYSIO_THERAPISTS.length})</option>
-                {PHYSIO_THERAPISTS.map(th => (
-                  <option key={th} value={th}>{th}</option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              onClick={() => setActiveTab('consumables')}
-              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-            >
-              <ClipboardList size={14} /> Review Stock Requisitions
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs Navigation */}
+      {/* Therapist Tabs Navigation */}
       <div className="flex items-center gap-2 border-b border-slate-200">
         <button
           onClick={() => setActiveTab('rehab')}
@@ -623,7 +827,23 @@ const PhysioHub = () => {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center font-mono text-xs font-bold text-slate-800">
-                          Flexion: {rom.flexion || 0}° · Ext: {rom.extension || 0}°
+                          {(() => {
+                            const entries = Object.entries(rom);
+                            if (!entries.length) return <span className="text-slate-400">—</span>;
+                            // Show up to 3 key movements inline
+                            return (
+                              <div className="flex flex-col gap-0.5">
+                                {entries.slice(0, 3).map(([mov, val]) => {
+                                  const range = ROM_RANGES[mov];
+                                  const unit = range?.unit || '°';
+                                  return <span key={mov} className="text-[10px]">{mov}: <strong>{val}{unit}</strong></span>;
+                                })}
+                                {entries.length > 3 && (
+                                  <span className="text-[9px] text-slate-400">+{entries.length - 3} more</span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-black ${
@@ -758,24 +978,32 @@ const PhysioHub = () => {
 
       {/* Modal: New Rehab Session */}
       {showNewSessionModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowNewSessionModal(false); }}
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
+        >
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-5">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
-                <Calendar size={18} className="text-emerald-600" /> Schedule Rehabilitation Session
-              </h3>
-              <button onClick={() => setShowNewSessionModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X size={18} />
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Calendar size={18} className="text-emerald-600" /> Schedule Rehabilitation Session
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">Link patient from registry and set treatment objectives.</p>
+              </div>
+              <button
+                onClick={() => setShowNewSessionModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateSession} className="space-y-3">
+            <form onSubmit={handleCreateSession} className="space-y-4 text-xs font-medium">
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400">Patient (SUKRAA Register)</label>
+                <label className="block text-slate-700 font-semibold mb-1">Patient Search (SUKRAA Register) *</label>
                 <PatientAutocomplete
                   value={newSession.patient_name}
                   onChange={(val) => {
-                    // Clear the resolved patient when the user re-types
                     setNewSession(prev => (
                       prev.patient_id && val !== prev.patient_name
                         ? { ...prev, patient_name: val, patient_id: '' }
@@ -787,234 +1015,427 @@ const PhysioHub = () => {
                     patient_id: p.pid || '',
                     patient_name: p.full_name || ''
                   }))}
-                  placeholder="Search name, PID or phone..."
+                  placeholder="Search by name, PID or phone number..."
                   inputStyle={{
                     width: '100%',
-                    marginTop: '4px',
                     background: '#f8fafc',
                     border: '1px solid #e2e8f0',
                     borderRadius: '12px',
-                    padding: '8px 12px',
+                    padding: '9px 12px',
                     fontSize: '0.75rem',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     outline: 'none'
                   }}
                 />
                 {newSession.patient_id && (
-                  <div className="mt-1.5 text-[10px] font-bold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 size={12} /> Linked to PID {newSession.patient_id}
+                  <div className="mt-1.5 text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Linked to Patient ID {newSession.patient_id}
                   </div>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400">Therapist</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Therapist</label>
                   <select
                     value={newSession.therapist_name}
                     onChange={e => setNewSession({ ...newSession, therapist_name: e.target.value })}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-emerald-500"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   >
-                    {PHYSIO_THERAPISTS.map(th => <option key={th} value={th}>{th}</option>)}
+                    {physioStaff.map(th => <option key={th} value={th}>{th}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400">Session Date</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Session Date</label>
                   <input
                     type="date"
                     value={newSession.session_date}
                     onChange={e => setNewSession({ ...newSession, session_date: e.target.value })}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-emerald-500"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400">Treatment Area</label>
+                <label className="block text-slate-700 font-semibold mb-1">Treatment Area</label>
                 <input
                   type="text"
-                  placeholder="e.g. Right Knee - Post ACL Surgery"
+                  placeholder="e.g. Right Knee – Post ACL Reconstruction"
                   value={newSession.treatment_area}
                   onChange={e => setNewSession({ ...newSession, treatment_area: e.target.value })}
-                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-emerald-500"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400">Progress Notes</label>
+                <label className="block text-slate-700 font-semibold mb-1">Progress & Clinical Notes</label>
                 <textarea
-                  rows={2}
-                  placeholder="Session notes..."
+                  rows={3}
+                  placeholder="Clinical goals, session objectives, or exercise notes..."
                   value={newSession.progress_notes}
                   onChange={e => setNewSession({ ...newSession, progress_notes: e.target.value })}
-                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-500"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none"
                 />
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-sm transition-all cursor-pointer"
-              >
-                Schedule Rehabilitation Session
-              </button>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+                >
+                  Schedule Session
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewSessionModal(false)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Modal: New Assessment */}
+      {/* Modal: New Assessment (Landscape Layout) */}
       {showNewAssessmentModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-150">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
-                <Activity size={18} className="text-emerald-600" /> Log ROM & Pain Assessment
-              </h3>
-              <button onClick={() => setShowNewAssessmentModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowNewAssessmentModal(false); }}
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fadeIn"
+        >
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 w-full max-w-6xl shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
+            {/* Header Bar */}
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4 sticky top-0 bg-white z-10">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-600">
+                  <Activity size={22} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Log Range of Motion & Pain Assessment
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    Record patient goniometer joint degrees, outcome measures, and Oxford muscle strength grades.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowNewAssessmentModal(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateAssessment} className="space-y-3">
-              <div>
-                <label className="text-[10px] font-black uppercase text-slate-400">Patient (SUKRAA Register)</label>
-                <PatientAutocomplete
-                  value={newAssessment.patient_name}
-                  onChange={(val) => {
-                    // Clear the resolved patient when the user re-types
-                    setNewAssessment(prev => (
-                      prev.patient_id && val !== prev.patient_name
-                        ? { ...prev, patient_name: val, patient_id: '' }
-                        : { ...prev, patient_name: val }
-                    ));
-                  }}
-                  onPatientSelect={(p) => setNewAssessment(prev => ({
-                    ...prev,
-                    patient_id: p.pid || '',
-                    patient_name: p.full_name || ''
-                  }))}
-                  placeholder="Search name, PID or phone..."
-                  inputStyle={{
-                    width: '100%',
-                    marginTop: '4px',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '12px',
-                    padding: '8px 12px',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    outline: 'none'
-                  }}
-                />
-                {newAssessment.patient_id && (
-                  <div className="mt-1.5 text-[10px] font-bold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 size={12} /> Linked to PID {newAssessment.patient_id}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            {/* Form in Landscape Grid */}
+            <form onSubmit={handleCreateAssessment} className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-xs font-medium">
+              {/* Left Column: Patient & Joint Goniometer Measurements */}
+              <div className="lg:col-span-6 space-y-4">
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400">Therapist</label>
-                  <select
-                    value={newAssessment.therapist_name}
-                    onChange={e => setNewAssessment({ ...newAssessment, therapist_name: e.target.value })}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-emerald-500"
-                  >
-                    {PHYSIO_THERAPISTS.map(th => <option key={th} value={th}>{th}</option>)}
-                  </select>
+                  <label className="block text-slate-700 font-semibold mb-1">Patient Search (SUKRAA Register) *</label>
+                  <PatientAutocomplete
+                    value={newAssessment.patient_name}
+                    onChange={(val) => {
+                      setNewAssessment(prev => (
+                        prev.patient_id && val !== prev.patient_name
+                          ? { ...prev, patient_name: val, patient_id: '' }
+                          : { ...prev, patient_name: val }
+                      ));
+                    }}
+                    onPatientSelect={(p) => setNewAssessment(prev => ({
+                      ...prev,
+                      patient_id: p.pid || '',
+                      patient_name: p.full_name || ''
+                    }))}
+                    placeholder="Search patient by name, PID or phone..."
+                    inputStyle={{
+                      width: '100%',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      padding: '9px 12px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      outline: 'none'
+                    }}
+                  />
+                  {newAssessment.patient_id && (
+                    <div className="mt-1.5 text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                      <CheckCircle2 size={13} /> Linked to Patient ID {newAssessment.patient_id}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400">Body Part / Joint</label>
-                  <select
-                    value={newAssessment.body_part}
-                    onChange={e => setNewAssessment({ ...newAssessment, body_part: e.target.value })}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-emerald-500"
-                  >
-                    {BODY_REGIONS.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black uppercase text-slate-400">Chief Complaint</label>
-                <input
-                  type="text"
-                  placeholder="Primary complaint..."
-                  value={newAssessment.chief_complaint}
-                  onChange={e => setNewAssessment({ ...newAssessment, chief_complaint: e.target.value })}
-                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              {/* Goniometer ROM Controls */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider block">Joint Range of Motion (Goniometer)</span>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-600">Flexion Angle: {newAssessment.flexion}°</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="180"
-                      value={newAssessment.flexion}
-                      onChange={e => setNewAssessment({ ...newAssessment, flexion: parseInt(e.target.value, 10) })}
-                      className="w-full accent-emerald-600 cursor-pointer"
-                    />
+                    <label className="block text-slate-700 font-semibold mb-1">Therapist</label>
+                    <select
+                      value={newAssessment.therapist_name}
+                      onChange={e => setNewAssessment({ ...newAssessment, therapist_name: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    >
+                      {physioStaff.map(th => <option key={th} value={th}>{th}</option>)}
+                    </select>
                   </div>
-
                   <div>
-                    <label className="text-[10px] font-bold text-slate-600">Extension Angle: {newAssessment.extension}°</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="60"
-                      value={newAssessment.extension}
-                      onChange={e => setNewAssessment({ ...newAssessment, extension: parseInt(e.target.value, 10) })}
-                      className="w-full accent-emerald-600 cursor-pointer"
-                    />
+                    <label className="block text-slate-700 font-semibold mb-1">Body Part / Joint</label>
+                    <select
+                      value={newAssessment.body_part}
+                      onChange={e => setNewAssessment({ ...newAssessment, body_part: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    >
+                      {JOINT_REGIONS.map(r => (
+                        <optgroup key={r.region} label={r.region}>
+                          {r.joints.map(j => (
+                            <option key={j.id} value={j.id}>{j.label}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              </div>
 
-              {/* Pain & Muscle Grade */}
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400">Pain Score (NPRS 0-10): {newAssessment.pain_score}</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Chief Complaint</label>
                   <input
-                    type="range"
-                    min="0"
-                    max="10"
-                    value={newAssessment.pain_score}
-                    onChange={e => setNewAssessment({ ...newAssessment, pain_score: parseInt(e.target.value, 10) })}
-                    className="w-full accent-rose-600 cursor-pointer mt-2"
+                    type="text"
+                    placeholder="Primary clinical complaint or presentation..."
+                    value={newAssessment.chief_complaint}
+                    onChange={e => setNewAssessment({ ...newAssessment, chief_complaint: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   />
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400">Muscle Strength (Oxford)</label>
-                  <select
-                    value={newAssessment.muscle_grade}
-                    onChange={e => setNewAssessment({ ...newAssessment, muscle_grade: e.target.value })}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-emerald-500"
-                  >
-                    <option value="Grade 0 (Zero)">Grade 0 (Zero)</option>
-                    <option value="Grade 1 (Trace)">Grade 1 (Trace)</option>
-                    <option value="Grade 2 (Poor)">Grade 2 (Poor)</option>
-                    <option value="Grade 3 (Fair)">Grade 3 (Fair)</option>
-                    <option value="Grade 4 (Good)">Grade 4 (Good)</option>
-                    <option value="Grade 5 (Normal)">Grade 5 (Normal)</option>
-                  </select>
-                </div>
+                {/* Dynamic Goniometer ROM Controls */}
+                {(() => {
+                  const movements = getJointMovements(newAssessment.body_part);
+                  if (!movements.length) return null;
+                  return (
+                    <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                        <span className="text-xs font-bold text-slate-800">
+                          Joint Range of Motion (Goniometer Measurements)
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {movements.length} movement{movements.length > 1 ? 's' : ''} for {newAssessment.body_part}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5 pt-1">
+                        {movements.map(movement => {
+                          const range = ROM_RANGES[movement] || { min: 0, max: 90, unit: '°', normal: 60 };
+                          const current = newAssessment.rom_measurements[movement] ?? Math.round(range.normal * 0.7);
+                          const pct = range.max > 0 ? Math.round((current / range.normal) * 100) : 0;
+                          const isBelow = pct < 75;
+                          const isNormal = pct >= 100;
+                          return (
+                            <div key={movement} className="bg-white p-2.5 rounded-lg border border-slate-200/60 shadow-2xs">
+                              <div className="flex justify-between items-center mb-1">
+                                <label className="text-[11px] font-semibold text-slate-800">{movement}</label>
+                                <span className={`text-[11px] font-bold ${
+                                  isNormal ? 'text-emerald-600' : isBelow ? 'text-rose-600' : 'text-amber-600'
+                                }`}>
+                                  {current}{range.unit}
+                                  <span className="text-slate-400 font-normal ml-1">({range.normal}{range.unit})</span>
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min={range.min}
+                                max={range.max}
+                                value={current}
+                                onChange={e => setNewAssessment(prev => ({
+                                  ...prev,
+                                  rom_measurements: { ...prev.rom_measurements, [movement]: parseInt(e.target.value, 10) }
+                                }))}
+                                className={`w-full cursor-pointer h-1.5 rounded-lg bg-slate-200 ${
+                                  isNormal ? 'accent-emerald-600' : isBelow ? 'accent-rose-500' : 'accent-amber-500'
+                                }`}
+                              />
+                              <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                                <span>{range.min}{range.unit}</span>
+                                <span className="font-semibold text-slate-600">{pct}% of normal</span>
+                                <span>{range.max}{range.unit}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-sm transition-all cursor-pointer"
-              >
-                Save Physio Assessment
-              </button>
+              {/* Right Column: Outcome Measures, Pain Score & Muscle Grade */}
+              <div className="lg:col-span-6 flex flex-col justify-between space-y-4">
+                <div className="space-y-4">
+                  {/* Outcome Measures Picker */}
+                  {(() => {
+                    const relevantCategories = JOINT_OUTCOME_MAP[newAssessment.body_part] || ['Pain', 'Quality of Life'];
+                    const suggested = OUTCOME_MEASURES.filter(g => relevantCategories.includes(g.category));
+                    const toggleMeasure = (measure) => {
+                      setNewAssessment(prev => {
+                        const exists = prev.outcome_measures.includes(measure);
+                        return {
+                          ...prev,
+                          outcome_measures: exists
+                            ? prev.outcome_measures.filter(m => m !== measure)
+                            : [...prev.outcome_measures, measure]
+                        };
+                      });
+                    };
+                    const colorMap = {
+                      rose: 'bg-rose-50 border-rose-200 text-rose-700',
+                      sky: 'bg-sky-50 border-sky-200 text-sky-700',
+                      amber: 'bg-amber-50 border-amber-200 text-amber-700',
+                      blue: 'bg-blue-50 border-blue-200 text-blue-700',
+                      violet: 'bg-violet-50 border-violet-200 text-violet-700',
+                      purple: 'bg-purple-50 border-purple-200 text-purple-700',
+                      orange: 'bg-orange-50 border-orange-200 text-orange-700',
+                      emerald: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                      teal: 'bg-teal-50 border-teal-200 text-teal-700',
+                      indigo: 'bg-indigo-50 border-indigo-200 text-indigo-700',
+                      yellow: 'bg-yellow-50 border-yellow-200 text-yellow-700',
+                      green: 'bg-green-50 border-green-200 text-green-700',
+                      lime: 'bg-lime-50 border-lime-200 text-lime-700',
+                      cyan: 'bg-cyan-50 border-cyan-200 text-cyan-700',
+                      pink: 'bg-pink-50 border-pink-200 text-pink-700',
+                      red: 'bg-red-50 border-red-200 text-red-700',
+                      fuchsia: 'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-700',
+                      slate: 'bg-slate-50 border-slate-300 text-slate-700',
+                    };
+                    return (
+                      <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                          <span className="text-xs font-bold text-slate-800">
+                            Clinical Outcome Measures
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {newAssessment.outcome_measures.length > 0 && (
+                              <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                {newAssessment.outcome_measures.length} selected
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {suggested.length} category suggestions
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Selected measures summary */}
+                        {newAssessment.outcome_measures.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pb-2.5 border-b border-slate-200/60">
+                            {newAssessment.outcome_measures.map(m => (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => toggleMeasure(m)}
+                                className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-semibold rounded-full cursor-pointer hover:bg-rose-600 transition-colors"
+                                title="Click to remove"
+                              >
+                                {m} ×
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Suggested categories for this joint */}
+                        <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                          {suggested.map(group => {
+                            const chipBase = colorMap[group.color] || colorMap.slate;
+                            return (
+                              <div key={group.category}>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                                  {group.category}
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {group.measures.map(m => {
+                                    const isSelected = newAssessment.outcome_measures.includes(m);
+                                    return (
+                                      <button
+                                        key={m}
+                                        type="button"
+                                        onClick={() => toggleMeasure(m)}
+                                        className={`px-2.5 py-0.5 text-[10px] font-medium rounded-full border transition-all cursor-pointer ${
+                                          isSelected
+                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                            : `${chipBase} hover:bg-slate-100`
+                                        }`}
+                                      >
+                                        {m}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Pain & Muscle Grade Card */}
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50/70 border border-slate-200 rounded-xl">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-xs font-semibold text-slate-800">NPRS Pain Score</label>
+                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md ${
+                          newAssessment.pain_score >= 7 ? 'bg-rose-100 text-rose-700' : newAssessment.pain_score >= 4 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                        }`}>
+                          {newAssessment.pain_score} / 10
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        value={newAssessment.pain_score}
+                        onChange={e => setNewAssessment({ ...newAssessment, pain_score: parseInt(e.target.value, 10) })}
+                        className="w-full accent-rose-600 cursor-pointer h-1.5 rounded-lg bg-slate-200 mt-2"
+                      />
+                      <div className="flex justify-between text-[9px] text-slate-400 mt-1.5 font-medium">
+                        <span>0 (No Pain)</span>
+                        <span>5 (Moderate)</span>
+                        <span>10 (Severe)</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-800 mb-1">Oxford Muscle Grade</label>
+                      <select
+                        value={newAssessment.muscle_grade}
+                        onChange={e => setNewAssessment({ ...newAssessment, muscle_grade: e.target.value })}
+                        className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      >
+                        <option value="Grade 0 (Zero)">Grade 0 (Zero)</option>
+                        <option value="Grade 1 (Trace)">Grade 1 (Trace)</option>
+                        <option value="Grade 2 (Poor)">Grade 2 (Poor)</option>
+                        <option value="Grade 3 (Fair)">Grade 3 (Fair)</option>
+                        <option value="Grade 4 (Good)">Grade 4 (Good)</option>
+                        <option value="Grade 5 (Normal)">Grade 5 (Normal)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal Footer Actions */}
+                <div className="flex gap-3 pt-3 border-t border-slate-100">
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+                  >
+                    Save Assessment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewAssessmentModal(false)}
+                    className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </form>
           </div>
         </div>

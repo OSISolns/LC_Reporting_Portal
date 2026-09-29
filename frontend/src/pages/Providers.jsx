@@ -49,6 +49,7 @@ const Providers = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [providerToDelete, setProviderToDelete] = useState(null);
   const [adminPassword, setAdminPassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchInitialData = async () => {
@@ -142,13 +143,17 @@ const Providers = () => {
   const handleOpenDeleteModal = (provider) => {
     setProviderToDelete(provider);
     setAdminPassword('');
+    setDeleteError('');
     setIsDeleteModalOpen(true);
   };
 
   const handleDeleteProvider = async (e) => {
     e.preventDefault();
+    setDeleteError('');
     if (!adminPassword) {
-      toast.error('Please enter your admin password.');
+      const msg = 'Please enter your admin password.';
+      setDeleteError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -160,7 +165,9 @@ const Providers = () => {
       setProviders(prev => prev.filter(p => p.id !== providerToDelete.id));
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Deletion failed. Check administrative password.');
+      const msg = err.response?.data?.message || 'Deletion failed. Check administrative password.';
+      setDeleteError(msg);
+      toast.error(msg);
     } finally {
       setIsDeleting(false);
     }
@@ -540,6 +547,13 @@ const Providers = () => {
               </div>
             </div>
 
+            {deleteError && (
+              <div className="p-3 bg-red-100 border border-red-300 rounded-lg flex items-center gap-2.5 text-red-800 text-xs font-semibold">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Admin Password
@@ -548,9 +562,14 @@ const Providers = () => {
                 type="password"
                 required
                 value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
+                onChange={(e) => {
+                  setAdminPassword(e.target.value);
+                  if (deleteError) setDeleteError('');
+                }}
                 placeholder="Enter your password to verify"
-                className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800"
+                className={`w-full px-3.5 py-2 text-sm bg-slate-50 border ${
+                  deleteError ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-rose-500'
+                } rounded-lg focus:outline-none focus:ring-2 text-slate-800`}
               />
             </div>
 

@@ -104,10 +104,11 @@ class ClinicalObservation {
   }
   static async getAllByPatient(patient_id) {
     const { rows } = await db.query(
-      `SELECT *
-       FROM clinical_observations
-       WHERE patient_id = $1
-       ORDER BY updated_at DESC`,
+      `SELECT co.*, u.name as created_by_name, u.username as created_by_username
+       FROM clinical_observations co
+       LEFT JOIN users u ON co.created_by = u.id
+       WHERE co.patient_id = $1
+       ORDER BY co.updated_at DESC`,
       [patient_id]
     );
     return rows.map(row => ({

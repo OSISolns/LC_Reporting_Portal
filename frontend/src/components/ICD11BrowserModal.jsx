@@ -32,7 +32,7 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
             setFilteredCodes(res.data.data);
           }
         } catch (err) {
-          console.error('Failed to load ICD-11 codes:', err);
+          console.error('Failed to load ICD codes:', err);
           toast.error('Failed to load standard diagnostic directory.');
         } finally {
           setLoadingAll(false);
@@ -56,10 +56,10 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
     setFilteredCodes(filtered);
   }, [searchTerm, allCodes]);
 
-  // Handle live search against WHO API via backend suggest endpoint
+  // Handle live search against WHO ICD-11 & NLM ICD-10 API via backend suggest endpoint
   const handleLiveSearch = async () => {
     if (!searchTerm.trim() || searchTerm.length < 2) {
-      toast.error('Please enter at least 2 characters to search WHO database.');
+      toast.error('Please enter at least 2 characters to search WHO & NLM databases.');
       return;
     }
 
@@ -69,7 +69,7 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
       if (res.data?.success && res.data.data) {
         const results = res.data.data;
         if (results.length === 0) {
-          toast.error('No matching records found in WHO database.');
+          toast.error('No matching records found in WHO or NLM database.');
           return;
         }
 
@@ -83,11 +83,11 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
           return merged;
         });
 
-        toast.success(`Fetched ${results.length} results from WHO Live API!`);
+        toast.success(`Fetched ${results.length} results from WHO & NLM Live APIs!`);
       }
     } catch (err) {
-      console.error('WHO Live search failed:', err);
-      toast.error('Failed to query WHO Live API.');
+      console.error('Live search failed:', err);
+      toast.error('Failed to query WHO / NLM Live API.');
     } finally {
       setSearchingLive(false);
     }
@@ -109,9 +109,10 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
         code: codeValue,
         desc: 'Unknown Code',
         definition: 'Could not resolve diagnosis definition from the system.',
+        system: codeValue.match(/^[A-Z]\d/) ? 'ICD-10' : 'ICD-11',
         category: 'Unclassified',
         symptoms: 'Not specified.',
-        guidelines: 'Verify code values against the WHO ICD-11 reference manual.'
+        guidelines: 'Verify code values against the WHO ICD-11 / NLM ICD-10 reference manual.'
       });
     } finally {
       setLoadingDetails(false);
@@ -138,7 +139,7 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
-    toast.success('ICD-11 Code copied to clipboard!');
+    toast.success('Diagnosis Code copied to clipboard!');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -146,7 +147,7 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="ICD-11 Diagnostic Classification Browser"
+      title="ICD-10 & ICD-11 Diagnostic Classification Browser"
       maxWidth="950px"
     >
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.6fr', gap: '2rem' }} className="grid-cols-1 lg:grid-cols-2">
@@ -157,14 +158,14 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
           {/* Quick Paste Resolve Card */}
           <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '16px', backgroundColor: '#f8fafc' }}>
             <h4 style={{ margin: '0 0 8px 0', fontSize: '0.85rem', fontWeight: 900, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Paste ICD-11 Code
+              Paste ICD-10 or ICD-11 Code
             </h4>
             <form onSubmit={handlePasteResolve} style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="text"
                 value={pasteCode}
                 onChange={(e) => setPasteCode(e.target.value)}
-                placeholder="e.g. 1F45, BA00.Z, 1A00"
+                placeholder="e.g. B54 (ICD-10), 1F45 (ICD-11), E11.9"
                 style={{
                   flex: 1,
                   padding: '8px 12px',
@@ -224,7 +225,7 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
               <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-                {filteredCodes.length} matching code{filteredCodes.length !== 1 ? 's' : ''} locally
+                {filteredCodes.length} matching code{filteredCodes.length !== 1 ? 's' : ''}
               </span>
               {searchTerm.trim().length >= 2 && (
                 <button
@@ -248,7 +249,7 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
                   className="hover:bg-indigo-200"
                 >
                   {searchingLive ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                  Live WHO Search
+                  Live WHO & NLM Search
                 </button>
               )}
             </div>
@@ -272,57 +273,81 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
               </div>
             ) : filteredCodes.length > 0 ? (
               <div style={{ padding: '6px' }}>
-                {filteredCodes.map((item) => (
-                  <div
-                    key={item.code}
-                    onClick={() => fetchCodeDetails(item.code)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '12px',
-                      padding: '10px 12px',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      backgroundColor: selectedCode === item.code ? '#e0f2fe' : 'transparent',
-                      border: selectedCode === item.code ? '1px solid #bae6fd' : '1px solid transparent',
-                      transition: 'all 0.2s'
-                    }}
-                    className="hover:bg-slate-50 group"
-                  >
-                    <span
+                {filteredCodes.map((item) => {
+                  const isIcd10 = item.system === 'ICD-10' || (item.code && item.code.match(/^[A-Z]\d/));
+                  const badgeBg = isIcd10 ? '#e0f2fe' : '#f3e8ff';
+                  const badgeColor = isIcd10 ? '#0369a1' : '#6b21a8';
+                  const activeBg = isIcd10 ? '#0284c7' : '#7c3aed';
+
+                  return (
+                    <div
+                      key={`${item.system || 'sys'}-${item.code}`}
+                      onClick={() => fetchCodeDetails(item.code)}
                       style={{
-                        padding: '4px 8px',
-                        backgroundColor: selectedCode === item.code ? '#0284c7' : '#f1f5f9',
-                        color: selectedCode === item.code ? '#ffffff' : '#0369a1',
-                        borderRadius: '8px',
-                        fontSize: '0.72rem',
-                        fontWeight: 800,
-                        fontFamily: 'monospace',
-                        minWidth: '60px',
-                        textAlign: 'center'
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        backgroundColor: selectedCode === item.code ? (isIcd10 ? '#e0f2fe' : '#f3e8ff') : 'transparent',
+                        border: selectedCode === item.code ? `1px solid ${isIcd10 ? '#bae6fd' : '#e9d5ff'}` : '1px solid transparent',
+                        transition: 'all 0.2s'
                       }}
+                      className="hover:bg-slate-50 group"
                     >
-                      {item.code}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '0.82rem',
-                        fontWeight: 600,
-                        color: selectedCode === item.code ? '#0369a1' : '#334155',
-                        lineHeight: '1.3'
-                      }}
-                    >
-                      {item.desc}
-                    </span>
-                  </div>
-                ))}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: selectedCode === item.code ? activeBg : badgeBg,
+                            color: selectedCode === item.code ? '#ffffff' : badgeColor,
+                            borderRadius: '8px',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            fontFamily: 'monospace',
+                            minWidth: '60px',
+                            textAlign: 'center'
+                          }}
+                        >
+                          {item.code}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            color: selectedCode === item.code ? activeBg : '#334155',
+                            lineHeight: '1.3'
+                          }}
+                        >
+                          {item.desc}
+                        </span>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          backgroundColor: badgeBg,
+                          color: badgeColor,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em'
+                        }}
+                      >
+                        {isIcd10 ? 'ICD-10' : 'ICD-11'}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem', color: '#94a3b8', textAlign: 'center' }}>
                 <HelpCircle size={32} style={{ opacity: 0.4, marginBottom: '8px' }} />
                 <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700 }}>No matching codes found</p>
                 <p style={{ margin: '4px 0 0', fontSize: '0.75rem', maxWidth: '200px' }}>
-                  Try entering a broader term or run a <strong>Live WHO Search</strong> above.
+                  Try entering a broader term or run a <strong>Live WHO & NLM Search</strong> above.
                 </p>
               </div>
             )}
@@ -359,8 +384,8 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
                     style={{
                       display: 'inline-block',
                       padding: '4px 10px',
-                      backgroundColor: '#bae6fd',
-                      color: '#0369a1',
+                      backgroundColor: details.system === 'ICD-10' ? '#e0f2fe' : '#f3e8ff',
+                      color: details.system === 'ICD-10' ? '#0369a1' : '#6b21a8',
                       borderRadius: '8px',
                       fontSize: '0.8rem',
                       fontWeight: 900,
@@ -368,7 +393,7 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
                       marginBottom: '8px'
                     }}
                   >
-                    ICD-11: {details.code}
+                    {details.system || 'ICD'}: {details.code}
                   </span>
                   <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#0f172a', lineHeight: '1.25' }}>
                     {details.desc}
@@ -398,10 +423,10 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
               {/* Classification Category */}
               <div>
                 <span style={{ display: 'block', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '4px' }}>
-                  Clinical Category
+                  Clinical Category & Standard
                 </span>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
-                  {details.category}
+                  {details.category} ({details.system || 'ICD'})
                 </span>
               </div>
 
@@ -448,7 +473,7 @@ export default function ICD11BrowserModal({ isOpen, onClose }) {
               <BookOpen size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
               <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: '#64748b' }}>No Diagnosis Selected</p>
               <p style={{ margin: '4px 0 0', fontSize: '0.78rem', maxWidth: '240px', color: '#94a3b8' }}>
-                Select a code from the directory list or paste an ICD-11 code directly to view details and care guidelines.
+                Select a code from the directory list or paste an ICD-10 or ICD-11 code directly to view details and care guidelines.
               </p>
             </div>
           )}

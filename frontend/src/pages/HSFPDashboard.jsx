@@ -154,7 +154,7 @@ const HSFPDashboard = () => {
   return (
     <div style={{ paddingBottom: '2rem' }}>
       {/* ── Header ── */}
-      <div style={{ background: 'linear-gradient(135deg, #003b44 0%, #005a66 100%)', borderRadius: '24px', padding: '2.5rem', marginBottom: '2rem', color: '#fff', position: 'relative', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,59,68,0.15)' }}>
+      <div style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', borderRadius: '24px', padding: '2.5rem', marginBottom: '2rem', color: '#ffffff', position: 'relative', overflow: 'hidden', boxShadow: '0 10px 30px rgba(3,105,161,0.15)' }}>
         <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '240px', height: '240px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)' }} />
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', position: 'relative' }}>

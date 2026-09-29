@@ -42,10 +42,14 @@ class Permission {
    * Returns: { roleName: { module: { action: granted } } }
    */
   static async getRolePermissions() {
+    const { rows: roleRows } = await db.query('SELECT name FROM roles ORDER BY name').catch(() => ({ rows: [] }));
     const { rows } = await db.query(
       'SELECT role_name, module, action, granted FROM role_permissions ORDER BY role_name, module'
     );
     const matrix = {};
+    for (const r of roleRows) {
+      if (r.name) matrix[r.name] = {};
+    }
     for (const row of rows) {
       if (!matrix[row.role_name]) matrix[row.role_name] = {};
       if (!matrix[row.role_name][row.module]) matrix[row.role_name][row.module] = {};
