@@ -32,11 +32,14 @@ import {
   CornerUpLeft,
   FileSpreadsheet,
   Download,
+  Upload,
+  FileUp,
   CopyCheck,
   GitMerge,
   CheckSquare,
   PackageCheck
 } from 'lucide-react';
+
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 import { Card, Badge } from '../components/ui/index.jsx';
@@ -1391,6 +1394,204 @@ export default function CentralStoreHub() {
     }
   };
 
+  // ── Download Editable Update Template ────────────────────────────────────────
+  const handleDownloadDistStockTemplate = async () => {
+    if (filteredDistributedStock.length === 0) {
+      toast.error('No distributed stock data to export as template.');
+      return;
+    }
+    try {
+      toast.loading('Generating update template...', { id: 'dist-tmpl-toast' });
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Stock Update');
+
+      // Column widths
+      sheet.getColumn(1).width = 14;  // A: dept_stock_id (key)
+      sheet.getColumn(2).width = 8;   // B: is_central
+      sheet.getColumn(3).width = 34;  // C: Item Name
+      sheet.getColumn(4).width = 22;  // D: Department
+      sheet.getColumn(5).width = 18;  // E: Batch Number
+      sheet.getColumn(6).width = 12;  // F: SKU
+      sheet.getColumn(7).width = 10;  // G: Unit
+      sheet.getColumn(8).width = 15;  // H: Current Qty (read-only)
+      sheet.getColumn(9).width = 18;  // I: New Quantity ← EDIT THIS
+
+      // Title
+      const titleCell = sheet.getCell('A1');
+      titleCell.value = 'DISTRIBUTED STOCK — BULK UPDATE TEMPLATE';
+      sheet.mergeCells('A1:I1');
+      titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(1).height = 32;
+
+      // Instructions
+      const instrCell = sheet.getCell('A2');
+      instrCell.value = '⚠ INSTRUCTIONS: Edit only the "New Quantity" column (column I, yellow). Do NOT change columns A–H. Save, then re-upload this file.';
+      sheet.mergeCells('A2:I2');
+      instrCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '7A4800' } };
+      instrCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3CD' } };
+      instrCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      sheet.getRow(2).height = 28;
+
+      // Export date
+      const dateCell = sheet.getCell('A3');
+      dateCell.value = `Generated: ${new Date().toLocaleString()} | Items: ${filteredDistributedStock.length}`;
+      sheet.mergeCells('A3:I3');
+      dateCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: '888888' } };
+      dateCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(3).height = 18;
+
+      sheet.getRow(4).height = 10; // spacer
+
+      // Headers (row 5)
+      const headerRow = sheet.getRow(5);
+      headerRow.height = 22;
+      const headers = [
+        { label: 'ID (do not edit)', locked: true },
+        { label: 'Central (do not edit)', locked: true },
+        { label: 'Item Name (read-only)', locked: true },
+        { label: 'Department (read-only)', locked: true },
+        { label: 'Batch Number (read-only)', locked: true },
+        { label: 'SKU (read-only)', locked: true },
+        { label: 'Unit (read-only)', locked: true },
+        { label: 'Current Qty (read-only)', locked: true },
+        { label: '✏ New Quantity  ← EDIT', locked: false },
+      ];
+      headers.forEach(({ label, locked }, i) => {
+        const cell = headerRow.getCell(i + 1);
+        cell.value = label;
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: locked ? '374151' : 'D97706' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { bottom: { style: 'medium', color: { argb: locked ? '374151' : 'B45309' } } };
+      });
+
+      // Data rows starting at row 6
+      filteredDistributedStock.forEach((item, rowIdx) => {
+        const r = sheet.getRow(6 + rowIdx);
+        r.height = 18;
+
+        r.getCell(1).value = item.dept_stock_id;
+        r.getCell(2).value = item.is_central ? 'YES' : 'NO';
+        r.getCell(3).value = item.name;
+        r.getCell(4).value = item.department;
+        r.getCell(5).value = item.batch_number || '—';
+        r.getCell(6).value = item.sku || '—';
+        r.getCell(7).value = item.unit_of_measure || '—';
+        r.getCell(8).value = Number(item.quantity);
+        r.getCell(9).value = Number(item.quantity); // pre-fill with current qty
+
+        // Style
+        for (let col = 1; col <= 9; col++) {
+          const cell = r.getCell(col);
+          cell.font = { name: 'Calibri', size: 10, color: { argb: col < 9 ? '4B5563' : '000000' } };
+          cell.border = { bottom: { style: 'thin', color: { argb: 'E5E7EB' } } };
+          if (col === 9) {
+            // Highlight the editable column in yellow
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFBEB' } };
+            cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '92400E' } };
+            cell.numFmt = '#,##0';
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else if (col === 8) {
+            cell.numFmt = '#,##0';
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+            cell.font = { name: 'Calibri', size: 10, color: { argb: '6B7280' } };
+          } else if (col <= 2) {
+            cell.font = { name: 'Calibri', size: 9, color: { argb: '9CA3AF' } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          }
+        }
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Dist_Stock_UpdateTemplate_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
+      toast.success('Update template downloaded!', { id: 'dist-tmpl-toast' });
+    } catch (err) {
+      console.error('Template generation failed:', err);
+      toast.error('Failed to generate template.', { id: 'dist-tmpl-toast' });
+    }
+  };
+
+  // ── Upload & Preview Distributed Stock Excel ─────────────────────────────────
+  const [distUploadModal, setDistUploadModal] = useState({
+    open: false, rows: [], submitting: false, fileName: ''
+  });
+  const distUploadRef = React.useRef(null);
+
+  const handleDistExcelUpload = async (file) => {
+    if (!file) return;
+    if (!file.name.match(/\.xlsx?$/i)) {
+      toast.error('Please upload a valid .xlsx file.');
+      return;
+    }
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // Find header row (row 5 in 1-indexed = index 4 in 0-indexed)
+      // Columns: A=ID, B=is_central, C=name, D=dept, E=batch, F=sku, G=unit, H=current_qty, I=new_qty
+      const dataRows = raw.slice(5).filter(r => r[0] && String(r[0]).trim() !== ''); // skip header rows (0-4)
+
+      const parsed = dataRows.map(r => ({
+        id: String(r[0]).trim(),
+        is_central: String(r[1]).toUpperCase() === 'YES',
+        name: String(r[2] || ''),
+        department: String(r[3] || ''),
+        batch_number: String(r[4] || ''),
+        current_qty: Number(r[7]) || 0,
+        new_qty: Number(r[8]) || 0,
+      })).filter(r => r.id && !isNaN(r.new_qty));
+
+      // Only show rows where quantity actually changed
+      const changed = parsed.filter(r => r.new_qty !== r.current_qty);
+
+      if (changed.length === 0) {
+        toast('No quantity changes detected in the uploaded file.', { icon: 'ℹ️' });
+        return;
+      }
+
+      setDistUploadModal({ open: true, rows: changed, submitting: false, fileName: file.name });
+    } catch (err) {
+      console.error('Failed to parse Excel:', err);
+      toast.error('Failed to parse the uploaded Excel file.');
+    }
+  };
+
+  const handleDistBulkSubmit = async () => {
+    setDistUploadModal(m => ({ ...m, submitting: true }));
+    try {
+      const updates = distUploadModal.rows.map(r => ({
+        id: r.id,
+        quantity: r.new_qty,
+        is_central: r.is_central
+      }));
+      const res = await api.post('/clinical/inventory/distributed-stock/bulk-update', { updates });
+      if (res.data.success) {
+        const { updated, errors } = res.data;
+        if (errors && errors.length > 0) {
+          toast.success(`Updated ${updated} items. ${errors.length} failed.`);
+        } else {
+          toast.success(`✅ Successfully updated ${updated} item${updated !== 1 ? 's' : ''}!`);
+        }
+        setDistUploadModal({ open: false, rows: [], submitting: false, fileName: '' });
+        await fetchDistributedStock();
+      } else {
+        toast.error(res.data.message || 'Bulk update failed.');
+        setDistUploadModal(m => ({ ...m, submitting: false }));
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Bulk update failed.');
+      setDistUploadModal(m => ({ ...m, submitting: false }));
+    }
+  };
+
   const handleCreateRequisition = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -2045,13 +2246,46 @@ export default function CentralStoreHub() {
                       <option value="Out of Stock">Out of Stock</option>
                     </select>
 
-                    {/* Export Excel Button */}
-                    <button
-                      onClick={handleExportDistributedStockXlsx}
-                      className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-black text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition-all cursor-pointer shadow-sm shadow-emerald-100"
-                    >
-                      <FileSpreadsheet size={13} /> Export Excel
-                    </button>
+                    {/* Excel Actions Group */}
+                    <div className="flex items-center gap-2">
+                      {/* Export Report */}
+                      <button
+                        onClick={handleExportDistributedStockXlsx}
+                        className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-black text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition-all cursor-pointer shadow-sm shadow-emerald-100"
+                      >
+                        <FileSpreadsheet size={13} /> Export Report
+                      </button>
+
+                      {/* Download Editable Template */}
+                      <button
+                        onClick={handleDownloadDistStockTemplate}
+                        title="Download an editable Excel template — update quantities in column I, then re-upload"
+                        className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-black text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-all cursor-pointer shadow-sm shadow-amber-100"
+                      >
+                        <Download size={13} /> Get Template
+                      </button>
+
+                      {/* Upload & Update */}
+                      <button
+                        onClick={() => distUploadRef.current?.click()}
+                        title="Upload your edited Excel template to bulk-update quantities"
+                        className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-black text-white bg-sky-700 hover:bg-sky-800 rounded-xl transition-all cursor-pointer shadow-sm shadow-sky-100"
+                      >
+                        <FileUp size={13} /> Upload & Update
+                      </button>
+                      <input
+                        ref={distUploadRef}
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          if (f) handleDistExcelUpload(f);
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+
 
                     {/* Department filter pills */}
                     <div className="flex flex-col gap-2 items-end">
@@ -3454,6 +3688,86 @@ export default function CentralStoreHub() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* ══ MODAL: Distributed Stock Excel Bulk Update Preview ══ */}
+      <Modal
+        isOpen={distUploadModal.open}
+        onClose={() => !distUploadModal.submitting && setDistUploadModal(m => ({ ...m, open: false }))}
+        title="Bulk Update — Confirm Quantity Changes"
+      >
+        <div className="space-y-4">
+          {/* File badge */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-sky-50 border border-sky-100 rounded-xl text-xs text-sky-800">
+            <FileUp size={14} className="text-sky-600 shrink-0" />
+            <span className="font-bold truncate">{distUploadModal.fileName}</span>
+            <span className="ml-auto shrink-0 font-black text-sky-700 bg-sky-100 px-2 py-0.5 rounded-lg">
+              {distUploadModal.rows.length} change{distUploadModal.rows.length !== 1 ? 's' : ''} detected
+            </span>
+          </div>
+
+          {/* Warning */}
+          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+            <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+            <span>Review the changes below carefully. Only rows where the quantity differs from the current value are shown. This action is logged for audit purposes.</span>
+          </div>
+
+          {/* Changes preview table */}
+          <div className="overflow-x-auto max-h-72 overflow-y-auto rounded-xl border border-slate-200">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 text-slate-500 text-[9px] uppercase font-bold sticky top-0">
+                <tr>
+                  <th className="px-3 py-2">Item</th>
+                  <th className="px-3 py-2">Department</th>
+                  <th className="px-3 py-2">Batch</th>
+                  <th className="px-3 py-2 text-right">Current Qty</th>
+                  <th className="px-3 py-2 text-right">New Qty</th>
+                  <th className="px-3 py-2 text-right">Δ Change</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {distUploadModal.rows.map((r, i) => {
+                  const delta = r.new_qty - r.current_qty;
+                  return (
+                    <tr key={i} className="hover:bg-slate-50">
+                      <td className="px-3 py-1.5 font-bold text-slate-800 max-w-[160px] truncate">{r.name}</td>
+                      <td className="px-3 py-1.5 text-slate-500">{r.department}</td>
+                      <td className="px-3 py-1.5 font-mono text-sky-700 text-[10px]">{r.batch_number !== '—' ? r.batch_number : '—'}</td>
+                      <td className="px-3 py-1.5 text-right text-slate-500">{fmtNum(r.current_qty)}</td>
+                      <td className="px-3 py-1.5 text-right font-black text-slate-900">{fmtNum(r.new_qty)}</td>
+                      <td className={`px-3 py-1.5 text-right font-black ${delta > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {delta > 0 ? '+' : ''}{fmtNum(delta)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setDistUploadModal(m => ({ ...m, open: false }))}
+              disabled={distUploadModal.submitting}
+              className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDistBulkSubmit}
+              disabled={distUploadModal.submitting}
+              className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-sky-700 hover:bg-sky-800 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md shadow-sky-100 border-0"
+            >
+              {distUploadModal.submitting
+                ? <><Loader2 size={14} className="animate-spin" /> Updating...</>
+                : <><Upload size={14} /> Apply {distUploadModal.rows.length} Updates</>
+              }
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* ══ MODAL: Return to Supplier ══ */}

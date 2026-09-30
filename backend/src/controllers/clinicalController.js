@@ -3510,6 +3510,82 @@ exports.updateDistributedStockQuantity = async (req, res) => {
   }
 };
 
+// ── Bulk Update Distributed Stock Quantities (Excel upload) ───────────────────
+exports.bulkUpdateDistributedStock = async (req, res) => {
+  try {
+    const { updates } = req.body; // [{ id, quantity, is_central }]
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ success: false, message: 'No updates provided' });
+    }
+
+    const userName = req.user?.fullName || req.user?.name || req.user?.username || 'Stock Manager';
+    let updatedCount = 0;
+    const errors = [];
+
+    for (const update of updates) {
+      const { id, quantity, is_central } = update;
+      const newQty = parseInt(quantity, 10);
+
+      if (!id || isNaN(newQty) || newQty < 0) {
+        errors.push({ id, reason: 'Invalid id or quantity' });
+        continue;
+      }
+
+      try {
+        let updated = null;
+
+        if (is_central) {
+          const { rows } = await db.query(
+            'UPDATE stock_batches SET quantity = $1 WHERE id = $2 RETURNING id',
+            [newQty, id]
+          );
+          updated = rows[0];
+        } else {
+          const { rows } = await db.query(
+            'UPDATE department_stock SET quantity = $1 WHERE id = $2 RETURNING id',
+            [newQty, id]
+          );
+          if (!rows || rows.length === 0) {
+            const { rows: sbRows } = await db.query(
+              'UPDATE stock_batches SET quantity = $1 WHERE id = $2 RETURNING id',
+              [newQty, id]
+            );
+            updated = sbRows[0];
+          } else {
+            updated = rows[0];
+          }
+        }
+
+        if (updated) {
+          updatedCount++;
+          // Audit log — fire and forget
+          db.query(
+            `INSERT INTO audit_logs (user_id, user_name, action, details, created_at)
+             VALUES ($1, $2, 'BULK_UPDATE_DISTRIBUTED_STOCK', $3, NOW())`,
+            [req.user?.id || null, userName, `Bulk updated distributed stock #${id} quantity to ${newQty} (Excel upload)`]
+          ).catch(() => {});
+        } else {
+          errors.push({ id, reason: 'Record not found' });
+        }
+      } catch (rowErr) {
+        errors.push({ id, reason: rowErr.message || 'DB error' });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Updated ${updatedCount} of ${updates.length} records.`,
+      updated: updatedCount,
+      errors
+    });
+  } catch (error) {
+    console.error('Error bulk updating distributed stock:', error);
+    res.status(500).json({ success: false, message: 'Failed to bulk update distributed stock' });
+  }
+};
+
+
+
 // ── Deactivate Expired Consumable Item Batch ──────────────────────────────────
 exports.deactivateConsumable = async (req, res) => {
   try {

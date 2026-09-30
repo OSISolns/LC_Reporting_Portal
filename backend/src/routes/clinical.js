@@ -82,6 +82,8 @@ router.post('/inventory/supplier-portal/submissions/:id/receive', checkPermissio
 router.get('/inventory/master', checkInventoryOrClinicalRole('view'), clinicalController.getmasterInventory);
 router.get('/inventory/distributed-stock', checkInventoryOrClinicalRole('view'), clinicalController.getDistributedStock);
 router.put('/inventory/distributed-stock/:id', checkInventoryOrClinicalRole('edit'), clinicalController.updateDistributedStockQuantity);
+router.post('/inventory/distributed-stock/bulk-update', checkInventoryOrClinicalRole('edit'), clinicalController.bulkUpdateDistributedStock);
+
 
 // Consumables consumption log (syncs with Stock Manager via department_stock)
 router.get('/inventory/consumables', checkInventoryOrClinicalRole('view'), clinicalController.getConsumablesLog);
