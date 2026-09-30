@@ -1416,9 +1416,10 @@ export default function CentralStoreHub() {
       sheet.getColumn(8).width = 15;  // H: Current Qty (read-only)
       sheet.getColumn(9).width = 18;  // I: New Quantity ← EDIT THIS
 
-      // Title
+      // Title — include active department
+      const deptLabel = activeDept === 'All Departments' ? 'ALL DEPARTMENTS' : activeDept.toUpperCase();
       const titleCell = sheet.getCell('A1');
-      titleCell.value = 'DISTRIBUTED STOCK — BULK UPDATE TEMPLATE';
+      titleCell.value = `DISTRIBUTED STOCK — BULK UPDATE TEMPLATE · ${deptLabel}`;
       sheet.mergeCells('A1:I1');
       titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFF' } };
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B365D' } };
@@ -1434,9 +1435,11 @@ export default function CentralStoreHub() {
       instrCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
       sheet.getRow(2).height = 28;
 
-      // Export date
+      // Export date + active department info
       const dateCell = sheet.getCell('A3');
-      dateCell.value = `Generated: ${new Date().toLocaleString()} | Items: ${filteredDistributedStock.length}`;
+      const catInfo = stockCategoryFilter !== 'All' ? ` | Category: ${stockCategoryFilter}` : '';
+      const statusInfo = stockStatusFilter !== 'All' ? ` | Status: ${stockStatusFilter}` : '';
+      dateCell.value = `Department: ${deptLabel}${catInfo}${statusInfo} | Generated: ${new Date().toLocaleString()} | ${filteredDistributedStock.length} items`;
       sheet.mergeCells('A3:I3');
       dateCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: '888888' } };
       dateCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1508,9 +1511,10 @@ export default function CentralStoreHub() {
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `Dist_Stock_UpdateTemplate_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const deptSlug = deptLabel.replace(/[^a-zA-Z0-9]/g, '_');
+      link.download = `Dist_Stock_Template_${deptSlug}_${new Date().toISOString().split('T')[0]}.xlsx`;
       link.click();
-      toast.success('Update template downloaded!', { id: 'dist-tmpl-toast' });
+      toast.success(`Template for ${deptLabel} downloaded!`, { id: 'dist-tmpl-toast' });
     } catch (err) {
       console.error('Template generation failed:', err);
       toast.error('Failed to generate template.', { id: 'dist-tmpl-toast' });
@@ -2256,13 +2260,14 @@ export default function CentralStoreHub() {
                         <FileSpreadsheet size={13} /> Export Report
                       </button>
 
-                      {/* Download Editable Template */}
+                      {/* Download Editable Template — scoped to active department */}
                       <button
                         onClick={handleDownloadDistStockTemplate}
-                        title="Download an editable Excel template — update quantities in column I, then re-upload"
+                        title={`Download editable template for: ${activeDept === 'All Departments' ? 'All Departments' : activeDept} — edit New Quantity column, then re-upload`}
                         className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-black text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-all cursor-pointer shadow-sm shadow-amber-100"
                       >
-                        <Download size={13} /> Get Template
+                        <Download size={13} />
+                        {activeDept === 'All Departments' ? 'Get Template' : `Template: ${activeDept}`}
                       </button>
 
                       {/* Upload & Update */}
