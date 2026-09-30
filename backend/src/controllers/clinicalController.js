@@ -3451,6 +3451,65 @@ exports.getDistributedStock = async (req, res) => {
   }
 };
 
+// ── Update Distributed Stock Quantity ──────────────────────────────────────────
+exports.updateDistributedStockQuantity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quantity, is_central, reason } = req.body;
+    const newQty = parseInt(quantity, 10);
+    if (isNaN(newQty) || newQty < 0) {
+      return res.status(400).json({ success: false, message: 'Quantity must be a non-negative number' });
+    }
+
+    const userName = req.user?.fullName || req.user?.name || req.user?.username || 'Stock Manager';
+
+    let updated = null;
+    if (is_central) {
+      const { rows } = await db.query(
+        'UPDATE stock_batches SET quantity = $1 WHERE id = $2 RETURNING *',
+        [newQty, id]
+      );
+      updated = rows[0];
+    } else {
+      const { rows } = await db.query(
+        'UPDATE department_stock SET quantity = $1 WHERE id = $2 RETURNING *',
+        [newQty, id]
+      );
+      if (!rows || rows.length === 0) {
+        const { rows: sbRows } = await db.query(
+          'UPDATE stock_batches SET quantity = $1 WHERE id = $2 RETURNING *',
+          [newQty, id]
+        );
+        updated = sbRows[0];
+      } else {
+        updated = rows[0];
+      }
+    }
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Distributed stock record not found' });
+    }
+
+    // Log stock change in audit log if available
+    try {
+      await db.query(
+        `INSERT INTO audit_logs (user_id, user_name, action, details, created_at)
+         VALUES ($1, $2, 'UPDATE_DISTRIBUTED_STOCK', $3, NOW())`,
+        [req.user?.id || null, userName, `Updated distributed stock #${id} quantity to ${newQty}. Reason: ${reason || 'Manual stock adjustment'}`]
+      );
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      message: 'Distributed stock quantity updated successfully',
+      data: updated
+    });
+  } catch (error) {
+    console.error('Error updating distributed stock quantity:', error);
+    res.status(500).json({ success: false, message: 'Failed to update distributed stock quantity' });
+  }
+};
+
 // ── Deactivate Expired Consumable Item Batch ──────────────────────────────────
 exports.deactivateConsumable = async (req, res) => {
   try {

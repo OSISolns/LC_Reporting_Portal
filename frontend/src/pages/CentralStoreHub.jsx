@@ -28,6 +28,7 @@ import {
   Layers,
   Boxes,
   Edit2,
+  Edit3,
   CornerUpLeft,
   FileSpreadsheet,
   Download,
@@ -108,6 +109,20 @@ export default function CentralStoreHub() {
   const toggleExpandDistributedItem = (key) => {
     setExpandedDistributedItems(prev => ({ ...prev, [key]: !prev[key] }));
   };
+
+  // Edit Distributed Stock modal state
+  const [editDistModal, setEditDistModal] = useState({
+    open: false,
+    id: null,
+    is_central: false,
+    name: '',
+    department: '',
+    batch_number: '',
+    currentQty: 0,
+    newQty: '',
+    reason: '',
+    saving: false
+  });
 
   const [receiveOpen, setReceiveOpen]           = useState(false);
   const [excelImportOpen, setExcelImportOpen]   = useState(false);
@@ -516,6 +531,16 @@ export default function CentralStoreHub() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  // Lightweight refresh of distributed stock only (after an edit)
+  const fetchDistributedStock = async () => {
+    try {
+      const res = await api.get('/clinical/inventory/distributed-stock');
+      if (res.data.success) setDistributedStock(res.data.data);
+    } catch (err) {
+      console.error('Failed to refresh distributed stock:', err);
     }
   };
 
@@ -1900,7 +1925,7 @@ export default function CentralStoreHub() {
                   <div>
                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5"><ArrowRightLeft size={16} className="text-sky-700" /> Distributed Stock Per Department</h3>
                     <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">
-                      Showing {filteredDistributedStock.length} of {distributedStock.length} items · read-only echo of approved requisitions
+                      Showing {filteredDistributedStock.length} of {distributedStock.length} items · Stock Managers can edit quantities
                     </p>
                   </div>
 
@@ -2010,7 +2035,8 @@ export default function CentralStoreHub() {
                         <th className="py-3.5 px-4 text-center">Batches / Details</th>
                         <th className="py-3.5 px-4 text-center">Total Qty</th>
                         <th className="py-3.5 px-4 text-right">Unit Price</th>
-                        <th className="py-3.5 px-4 text-right rounded-r-xl">Tot Price</th>
+                        <th className="py-3.5 px-4 text-right">Tot Price</th>
+                        <th className="py-3.5 px-4 text-center rounded-r-xl">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
@@ -2071,6 +2097,35 @@ export default function CentralStoreHub() {
                                   </td>
                                   <td className="py-3 px-4 text-right font-mono text-slate-550 font-bold">{fmtNum(item.price)} RWF</td>
                                   <td className="py-3 px-4 text-right font-mono text-slate-800 font-black">{fmtNum(item.total_value)} RWF</td>
+                                  <td className="py-3 px-4 text-center" onClick={e => e.stopPropagation()}>
+                                    {item.batches && item.batches.length === 1 ? (
+                                      <button
+                                        type="button"
+                                        title="Edit quantity"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const b = item.batches[0];
+                                          setEditDistModal({
+                                            open: true,
+                                            id: b.dept_stock_id,
+                                            is_central: !!b.is_central,
+                                            name: item.name,
+                                            department: item.department,
+                                            batch_number: b.batch_number || '',
+                                            currentQty: Number(b.quantity || 0),
+                                            newQty: String(b.quantity || 0),
+                                            reason: '',
+                                            saving: false
+                                          });
+                                        }}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-black text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition-all cursor-pointer"
+                                      >
+                                        <Edit3 size={11} /> Edit Qty
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 font-bold">Expand rows</span>
+                                    )}
+                                  </td>
                                 </tr>
 
                                 {/* Sub-row with batch breakdown */}
@@ -2093,6 +2148,7 @@ export default function CentralStoreHub() {
                                                 <th className="px-2.5 py-1.5 text-right">Quantity</th>
                                                 <th className="px-2.5 py-1.5 text-right">Unit Price</th>
                                                 <th className="px-2.5 py-1.5 text-right">Batch Value</th>
+                                                <th className="px-2.5 py-1.5 text-center">Edit</th>
                                               </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 font-medium">
@@ -2125,6 +2181,30 @@ export default function CentralStoreHub() {
                                                     </td>
                                                     <td className="px-2.5 py-1.5 text-right font-mono font-bold text-slate-800">
                                                       {fmtNum(b.quantity * b.price)} RWF
+                                                    </td>
+                                                    <td className="px-2.5 py-1.5 text-center">
+                                                      <button
+                                                        type="button"
+                                                        title="Edit this batch quantity"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          setEditDistModal({
+                                                            open: true,
+                                                            id: b.dept_stock_id,
+                                                            is_central: !!b.is_central,
+                                                            name: item.name,
+                                                            department: item.department,
+                                                            batch_number: b.batch_number || '',
+                                                            currentQty: Number(b.quantity || 0),
+                                                            newQty: String(b.quantity || 0),
+                                                            reason: '',
+                                                            saving: false
+                                                          });
+                                                        }}
+                                                        className="inline-flex items-center gap-1 px-2 py-1 text-[9px] font-black text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-md transition-all cursor-pointer"
+                                                      >
+                                                        <Edit3 size={10} />
+                                                      </button>
                                                     </td>
                                                   </tr>
                                                 );
@@ -3138,6 +3218,120 @@ export default function CentralStoreHub() {
             >
               {isSubmitting && <Loader2 size={14} className="animate-spin" />}
               Save Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ══ MODAL: Edit Distributed Stock Quantity ══ */}
+      <Modal
+        isOpen={editDistModal.open}
+        onClose={() => setEditDistModal(m => ({ ...m, open: false }))}
+        title="Edit Distributed Stock Quantity"
+      >
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const qty = parseInt(editDistModal.newQty, 10);
+            if (isNaN(qty) || qty < 0) {
+              toast.error('Please enter a valid non-negative quantity.');
+              return;
+            }
+            setEditDistModal(m => ({ ...m, saving: true }));
+            try {
+              const res = await api.put(`/clinical/inventory/distributed-stock/${editDistModal.id}`, {
+                quantity: qty,
+                is_central: editDistModal.is_central,
+                reason: editDistModal.reason || 'Manual stock adjustment'
+              });
+              if (res.data.success) {
+                toast.success('Distributed stock quantity updated successfully!');
+                setEditDistModal(m => ({ ...m, open: false }));
+                await fetchDistributedStock();
+              } else {
+                toast.error(res.data.message || 'Failed to update quantity.');
+              }
+            } catch (err) {
+              toast.error(err?.response?.data?.message || 'Failed to update quantity.');
+            } finally {
+              setEditDistModal(m => ({ ...m, saving: false }));
+            }
+          }}
+          className="space-y-4"
+        >
+          {/* Item info banner */}
+          <div className="bg-sky-50 border border-sky-100 p-4 rounded-xl space-y-1 text-xs text-sky-850">
+            <div><strong className="text-sky-950">Item:</strong> {editDistModal.name}</div>
+            <div><strong className="text-sky-950">Department:</strong> {editDistModal.department}</div>
+            {editDistModal.batch_number && (
+              <div><strong className="text-sky-950">Batch:</strong> {editDistModal.batch_number}</div>
+            )}
+            <div><strong className="text-sky-950">Current Quantity:</strong>{' '}
+              <span className="font-black text-sky-800">{fmtNum(editDistModal.currentQty)}</span>
+            </div>
+          </div>
+
+          {/* New Qty input */}
+          <div>
+            <label className="block text-xs font-black text-slate-600 mb-1.5 uppercase tracking-wider">
+              New Quantity <span className="text-red-500">*</span>
+            </label>
+            <input
+              required
+              type="number"
+              min="0"
+              value={editDistModal.newQty}
+              onChange={e => setEditDistModal(m => ({ ...m, newQty: e.target.value }))}
+              className="w-full px-3.5 py-2.5 text-sm font-bold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all bg-white"
+              placeholder="Enter new quantity..."
+              autoFocus
+            />
+            {editDistModal.newQty !== '' && !isNaN(parseInt(editDistModal.newQty, 10)) && (
+              <p className={`mt-1 text-[10px] font-bold ${
+                parseInt(editDistModal.newQty, 10) < editDistModal.currentQty
+                  ? 'text-amber-600'
+                  : parseInt(editDistModal.newQty, 10) > editDistModal.currentQty
+                    ? 'text-emerald-600'
+                    : 'text-slate-400'
+              }`}>
+                {parseInt(editDistModal.newQty, 10) < editDistModal.currentQty
+                  ? `↓ Decrease by ${fmtNum(editDistModal.currentQty - parseInt(editDistModal.newQty, 10))} units`
+                  : parseInt(editDistModal.newQty, 10) > editDistModal.currentQty
+                    ? `↑ Increase by ${fmtNum(parseInt(editDistModal.newQty, 10) - editDistModal.currentQty)} units`
+                    : 'No change'}
+              </p>
+            )}
+          </div>
+
+          {/* Reason */}
+          <div>
+            <label className="block text-xs font-black text-slate-600 mb-1.5 uppercase tracking-wider">
+              Reason / Note
+            </label>
+            <input
+              type="text"
+              value={editDistModal.reason}
+              onChange={e => setEditDistModal(m => ({ ...m, reason: e.target.value }))}
+              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all bg-white"
+              placeholder="e.g. Physical count correction, returned units..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
+            <button
+              type="button"
+              onClick={() => setEditDistModal(m => ({ ...m, open: false }))}
+              className="px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border-0"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={editDistModal.saving}
+              className="px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-sky-700 hover:bg-sky-800 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md shadow-sky-100 border-0"
+            >
+              {editDistModal.saving && <Loader2 size={14} className="animate-spin" />}
+              Save Quantity
             </button>
           </div>
         </form>
