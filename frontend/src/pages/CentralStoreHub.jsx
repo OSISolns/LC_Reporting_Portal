@@ -544,6 +544,39 @@ export default function CentralStoreHub() {
     }
   };
 
+  // ── Inline Edit Distributed Stock ─────────────────────────────────────────
+  const [inlineEditDist, setInlineEditDist] = useState({
+    id: null, isCentral: false, name: '', dept: '', batch: '', value: '', saving: false
+  });
+
+  const saveInlineDistQty = async () => {
+    const qty = parseInt(inlineEditDist.value, 10);
+    if (isNaN(qty) || qty < 0) {
+      toast.error('Please enter a valid non-negative quantity.');
+      return;
+    }
+    setInlineEditDist(s => ({ ...s, saving: true }));
+    try {
+      const res = await api.put(`/clinical/inventory/distributed-stock/${inlineEditDist.id}`, {
+        quantity: qty,
+        is_central: inlineEditDist.isCentral,
+        reason: 'Inline stock adjustment'
+      });
+      if (res.data.success) {
+        toast.success('Quantity updated!');
+        setInlineEditDist({ id: null, isCentral: false, name: '', dept: '', batch: '', value: '', saving: false });
+        await fetchDistributedStock();
+      } else {
+        toast.error(res.data.message || 'Update failed.');
+        setInlineEditDist(s => ({ ...s, saving: false }));
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Update failed.');
+      setInlineEditDist(s => ({ ...s, saving: false }));
+    }
+  };
+
+
   useEffect(() => { loadData(); }, []);
 
   // ── rectify handlers ──────────────────────────────────────────────────────
@@ -1838,12 +1871,65 @@ export default function CentralStoreHub() {
                                       {item.department || 'GENERAL STORE'}
                                     </span>
                                   </td>
-                                  <td className="py-3 px-4 text-center">
-                                    <span className={`text-[13px] font-black px-2 py-0.5 rounded-lg ${
-                                      isOut ? 'bg-red-50 text-red-655 border border-red-100' :
-                                      isLow ? 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse' :
-                                      'text-slate-900'
-                                    }`}>{fmtNum(item.quantity)}</span>
+                                  <td className="py-3 px-4 text-center" onClick={e => e.stopPropagation()}>
+                                    {item.batches && item.batches.length === 1 ? (() => {
+                                      const b = item.batches[0];
+                                      const inlineKey = b.dept_stock_id;
+                                      const isEditing = inlineEditDist.id === inlineKey;
+                                      return isEditing ? (
+                                        <div className="flex items-center gap-1 justify-center">
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            value={inlineEditDist.value}
+                                            onChange={e => setInlineEditDist(s => ({ ...s, value: e.target.value }))}
+                                            onKeyDown={e => {
+                                              if (e.key === 'Enter') saveInlineDistQty();
+                                              if (e.key === 'Escape') setInlineEditDist({ id: null, value: '', saving: false });
+                                            }}
+                                            autoFocus
+                                            className="w-20 px-2 py-1 text-xs font-black text-center border-2 border-sky-400 rounded-lg focus:outline-none bg-white shadow-sm"
+                                          />
+                                          <button
+                                            type="button"
+                                            title="Save"
+                                            onClick={saveInlineDistQty}
+                                            disabled={inlineEditDist.saving}
+                                            className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md transition-all cursor-pointer disabled:opacity-50"
+                                          >
+                                            {inlineEditDist.saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            title="Cancel"
+                                            onClick={() => setInlineEditDist({ id: null, value: '', saving: false })}
+                                            className="p-1 text-slate-400 hover:bg-slate-100 rounded-md transition-all cursor-pointer"
+                                          >
+                                            <X size={13} />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          title="Click to edit quantity"
+                                          onClick={() => setInlineEditDist({ id: inlineKey, isCentral: !!b.is_central, name: item.name, dept: item.department, batch: b.batch_number || '', value: String(b.quantity || 0), saving: false })}
+                                          className={`text-[13px] font-black px-2 py-0.5 rounded-lg border cursor-pointer transition-all hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 group ${
+                                            isOut ? 'bg-red-50 text-red-600 border-red-100' :
+                                            isLow ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                            'border-transparent text-slate-900 hover:border-sky-200'
+                                          }`}
+                                        >
+                                          {fmtNum(item.quantity)}
+                                          <Edit3 size={9} className="inline ml-1 opacity-0 group-hover:opacity-60 transition-opacity" />
+                                        </button>
+                                      );
+                                    })() : (
+                                      <span className={`text-[13px] font-black px-2 py-0.5 rounded-lg ${
+                                        isOut ? 'bg-red-50 text-red-655 border border-red-100' :
+                                        isLow ? 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse' :
+                                        'text-slate-900'
+                                      }`}>{fmtNum(item.quantity)}</span>
+                                    )}
                                   </td>
                                   <td className="py-3 px-4 text-right font-mono text-slate-550 font-bold">{fmtNum(item.price)} RWF</td>
                                   <td className="py-3 px-4 text-right font-mono text-slate-800 font-black">{fmtNum(item.quantity * item.price)} RWF</td>
@@ -2174,7 +2260,40 @@ export default function CentralStoreHub() {
                                                       )}
                                                     </td>
                                                     <td className="px-2.5 py-1.5 text-right font-black text-slate-800">
-                                                      {fmtNum(b.quantity)} {b.unit_of_measure || ''}
+                                                      {inlineEditDist.id === b.dept_stock_id ? (
+                                                        <div className="flex items-center gap-1 justify-end">
+                                                          <input
+                                                            type="number"
+                                                            min="0"
+                                                            value={inlineEditDist.value}
+                                                            onChange={e => setInlineEditDist(s => ({ ...s, value: e.target.value }))}
+                                                            onKeyDown={e => {
+                                                              if (e.key === 'Enter') saveInlineDistQty();
+                                                              if (e.key === 'Escape') setInlineEditDist({ id: null, value: '', saving: false });
+                                                            }}
+                                                            autoFocus
+                                                            className="w-20 px-2 py-0.5 text-xs font-black text-center border-2 border-sky-400 rounded-lg focus:outline-none bg-white shadow-sm"
+                                                          />
+                                                          <button type="button" title="Save" onClick={saveInlineDistQty} disabled={inlineEditDist.saving}
+                                                            className="p-0.5 text-emerald-600 hover:bg-emerald-50 rounded cursor-pointer disabled:opacity-50">
+                                                            {inlineEditDist.saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                                                          </button>
+                                                          <button type="button" title="Cancel" onClick={() => setInlineEditDist({ id: null, value: '', saving: false })}
+                                                            className="p-0.5 text-slate-400 hover:bg-slate-100 rounded cursor-pointer">
+                                                            <X size={12} />
+                                                          </button>
+                                                        </div>
+                                                      ) : (
+                                                        <button
+                                                          type="button"
+                                                          title="Click to edit quantity"
+                                                          onClick={() => setInlineEditDist({ id: b.dept_stock_id, isCentral: !!b.is_central, name: item.name, dept: item.department, batch: b.batch_number || '', value: String(b.quantity || 0), saving: false })}
+                                                          className="font-black text-slate-800 cursor-pointer hover:text-sky-700 transition-colors group"
+                                                        >
+                                                          {fmtNum(b.quantity)} {b.unit_of_measure || ''}
+                                                          <Edit3 size={9} className="inline ml-1 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                                        </button>
+                                                      )}
                                                     </td>
                                                     <td className="px-2.5 py-1.5 text-right font-mono text-slate-600">
                                                       {fmtNum(b.price)} RWF
