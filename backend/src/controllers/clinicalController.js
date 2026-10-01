@@ -6317,8 +6317,19 @@ exports.createRFQ = async (req, res) => {
       );
     }
   } catch (error) {
-    console.error('Error in createRFQ:', error);
-    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
+    console.error('━━━━━━━━━━━━━━ [createRFQ] 500 ERROR ━━━━━━━━━━━━━━');
+    console.error('Message :', error.message);
+    console.error('Code    :', error.code);
+    console.error('Stack   :', error.stack);
+    console.error('Body    :', JSON.stringify(req.body, null, 2));
+    console.error('User    :', req.user?.id, req.user?.role);
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    const isDev = process.env.NODE_ENV !== 'production';
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error',
+      ...(isDev && { detail: error.stack })
+    });
   }
 };
 
