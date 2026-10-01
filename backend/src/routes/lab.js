@@ -45,6 +45,10 @@ router.delete('/analyzers/:id', labController.deleteAnalyzer);
 router.get('/equipment', labController.getEquipment);
 router.post('/equipment', labController.createEquipment);
 router.put('/equipment/:id', labController.updateEquipment);
-router.delete('/equipment/:id', labController.deleteEquipment);
+// In-Hand Reagent Inventory Routes (Room Temp & Cold Storage)
+router.get('/inhand-inventory', labController.getInhandInventory);
+router.post('/inhand-inventory', labController.saveInhandInventory);
+router.put('/inhand-inventory/:id', labController.updateInhandInventory);
+router.delete('/inhand-inventory/:id', labController.deleteInhandInventory);
 
 module.exports = router;

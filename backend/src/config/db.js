@@ -1182,6 +1182,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       `).then(async () => {
         console.log('  ✅ Table lab_storage_units created/verified.');
         const initialUnits = [
+          { id: 'room_temp_1', label: 'Room Temp Unit 1 - Biochemistry Shelf (20°C to 25°C)', type: 'room_temp', temp_range: '20°C to 25°C' },
+          { id: 'room_temp_2', label: 'Room Temp Unit 2 - Hematology & Micro Cabinet (20°C to 25°C)', type: 'room_temp', temp_range: '20°C to 25°C' },
+          { id: 'room_temp_3', label: 'Room Temp Unit 3 - General Reagents Rack (20°C to 25°C)', type: 'room_temp', temp_range: '20°C to 25°C' },
           { id: 'fridge_1',  label: 'Fridge 1 (STAT / Rapid Storage)',  type: 'fridge',  temp_range: '2°C to 8°C' },
           { id: 'fridge_2',  label: 'Fridge 2 (Routine Samples - 6h)',  type: 'fridge',  temp_range: '2°C to 8°C' },
           { id: 'fridge_3',  label: 'Fridge 3 (Reagents & Media)',      type: 'fridge',  temp_range: '2°C to 8°C' },
@@ -1194,7 +1197,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         ];
         for (const u of initialUnits) {
           await client.execute({
-            sql: `INSERT INTO lab_storage_units (id, label, type, temp_range) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET label = EXCLUDED.label`,
+            sql: `INSERT INTO lab_storage_units (id, label, type, temp_range) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET label = EXCLUDED.label, temp_range = EXCLUDED.temp_range`,
             args: [u.id, u.label, u.type, u.temp_range]
           }).catch(() => {});
         }
@@ -1218,6 +1221,135 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.log('  ✅ Table lab_specimen_storage created/verified.');
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_specimen_storage:', err.message);
+      });
+
+      // ── Lab In-Hand Inventory Table (Room Temp & Cold Chain Reagents) ────────
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_inhand_inventory (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          item_name TEXT NOT NULL,
+          category TEXT NOT NULL DEFAULT 'Reagents',
+          equipment_group TEXT DEFAULT 'General',
+          department TEXT DEFAULT 'Biochemistry',
+          storage_temp TEXT NOT NULL DEFAULT 'room_temp',
+          storage_unit_id TEXT DEFAULT 'room_temp_1',
+          quantity_in_hand INTEGER DEFAULT 0,
+          unit_of_measure TEXT DEFAULT 'pack',
+          min_threshold INTEGER DEFAULT 5,
+          expiry_date TEXT,
+          lot_number TEXT,
+          last_updated_by TEXT DEFAULT 'Lab Manager',
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `).then(async () => {
+        console.log('  ✅ Table lab_inhand_inventory created/verified.');
+        const countRes = await client.execute('SELECT COUNT(*) as cnt FROM lab_inhand_inventory').catch(() => null);
+        const count = countRes?.rows?.[0]?.cnt || countRes?.rows?.[0]?.[0] || 0;
+
+        if (Number(count) === 0) {
+          console.log('  🌱 Seeding lab_inhand_inventory from Room Temp and Refrigerator Reagent sheets...');
+          const roomTempItems = [
+            { name: 'Assay Buf Elecsys Pro-Cell', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 15, uom: 'pcs' },
+            { name: 'Clean-Sol Elecsys Clean-Cell', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 12, uom: 'pcs' },
+            { name: 'Assay tip Elecsys 2010 *IM', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 25, uom: 'box' },
+            { name: 'Assay cup Elecsys 2010 *IM', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 30, uom: 'box' },
+            { name: 'Sample cup', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 50, uom: 'pack' },
+            { name: 'Cell wash solution II Acid wash Solution 2x1.8 L', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'bot' },
+            { name: 'C311 Sample Cleaner 2, 68 ML', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'bot' },
+            { name: 'Cartridge CL', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'pcs' },
+            { name: 'Cartridge K', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'pcs' },
+            { name: 'Cartridge NA', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'pcs' },
+            { name: 'Cobas Integra ALB Gen 2, 300 Tests (Blood)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'kit' },
+            { name: 'Cobas Integra TP Gen.2, 300 tests', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'kit' },
+            { name: 'CREAJ Gen.2, 700Test, cobas c, Integra', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 5, uom: 'kit' },
+            { name: 'Ecotergent (HITERGENT) C311, 60ml (ECO-D)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'bot' },
+            { name: 'Halogen lamp', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 3, uom: 'pcs' },
+            { name: 'ISE Diluent int.stand Gen.2, cobas c, Hitachi, 5x300ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'box' },
+            { name: 'ISE Internal Stand. Gen.2, cobas c, Hitachi, 5x600ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'box' },
+            { name: 'ISE Reference Electrolyte 5x300ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'box' },
+            { name: 'ISE Standard high 10x3 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'box' },
+            { name: 'ISE Standard low 10x3 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'box' },
+            { name: 'MG Gen II, 250 tests, Cobas 6000', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 3, uom: 'kit' },
+            { name: 'Multiclean, cobas c (Sample cleaner 1), 12x59 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 5, uom: 'box' },
+            { name: 'NaOH-D, cobas c, 66 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'bot' },
+            { name: 'Cell wash NaOH-D - Basic Wash 2x1.8 L', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'bot' },
+            { name: 'Reaction cell sets (Pack of 3x6 pcs)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 15, uom: 'pack' },
+            { name: 'Reference Electrode', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 2, uom: 'pcs' },
+            { name: 'SMS, cobas c, 50 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'bot' },
+            { name: 'BROXO 6-15 VACUUMSALT (1KG)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'kg' },
+            { name: 'DAYLIFF 10 " BLUE BODY', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 5, uom: 'pcs' },
+            { name: 'PRETREATMENT MODULE AMB', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'pcs' },
+            { name: 'RO MEMBRAN (OLD 2083)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 2, uom: 'pcs' },
+            { name: 'CONDITIONING MODULE', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 3, uom: 'pcs' },
+            { name: 'UV Replacement Lamp for 60 l Tank', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 2, uom: 'pcs' },
+            { name: 'DAYLIFF 20 "1 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'pcs' },
+            { name: 'DAYLIFF 20 "5 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'pcs' },
+            { name: 'DAYLIFF 20 "10 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'pcs' },
+            { name: 'DAYLIFF 20 "20 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'pcs' },
+            { name: 'AMH Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'kit' },
+            { name: 'D-DIMER Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 15, uom: 'kit' },
+            { name: 'FERRITIN Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 12, uom: 'kit' },
+            { name: 'TROPONIN I Rapid Test', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 20, uom: 'kit' },
+            { name: 'B HCG Rapid Cassette', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 30, uom: 'kit' },
+            { name: 'CRP Rapid Quant', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 15, uom: 'kit' },
+            { name: 'AFP Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'kit' },
+            { name: 'HBA1C Rapid Cartridge', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 18, uom: 'kit' },
+            { name: 'NT-PROBNP Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'kit' },
+            { name: 'T PSA Quantitative Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 12, uom: 'kit' },
+            { name: 'VITAMIN D Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 14, uom: 'kit' },
+            { name: 'FREE PSA Quantitative Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'kit' },
+            { name: 'TSH Quantitative Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 15, uom: 'kit' },
+            { name: 'Prolactin Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'kit' },
+            { name: 'TOXO IgG/IgM Rapid Test', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 25, uom: 'kit' },
+            { name: 'Progesteron Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'kit' },
+            { name: 'Probe Clean (Mispa i3)', group: 'Mispa i3 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'bot' },
+            { name: 'Washing Solution (Mispa i3)', group: 'Mispa i3 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'bot' },
+            { name: 'Deionized water (Mispa i3)', group: 'Mispa i3 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 20, uom: 'bot' },
+            { name: 'CD8 Reagent (Mindray BS-430)', group: 'Mindray BS-430 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 5, uom: 'bot' },
+            { name: 'DS-DILUENT (BC-780)', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 8, uom: 'box' },
+            { name: 'M-6 LD LYSE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 10, uom: 'bot' },
+            { name: 'M-6 LH LYSE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 10, uom: 'bot' },
+            { name: 'M-6 DR DILUENT', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 6, uom: 'box' },
+            { name: 'M-6 FD DYE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 5, uom: 'bot' },
+            { name: 'M-6 FR DYE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 5, uom: 'bot' },
+            { name: 'ESR SOLUTION', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 12, uom: 'bot' },
+            { name: 'PROBE CLEANSER', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 15, uom: 'bot' },
+            { name: 'SALINE SOLUTION (Microbiology)', group: 'VITEK 2 Compact Reagents', dept: 'Microbiology', unit: 'room_temp_2', qty: 25, uom: 'bot' },
+            { name: 'UNSENSITIZED TUBES', group: 'VITEK 2 Compact Reagents', dept: 'Microbiology', unit: 'room_temp_2', qty: 50, uom: 'pack' }
+          ];
+
+          for (const item of roomTempItems) {
+            await client.execute({
+              sql: `INSERT INTO lab_inhand_inventory (item_name, category, equipment_group, department, storage_temp, storage_unit_id, quantity_in_hand, unit_of_measure, min_threshold, expiry_date, lot_number)
+                    VALUES (?, 'Reagents', ?, ?, 'room_temp', ?, ?, ?, 5, '2027-12-31', 'LOT-2026-RT')`,
+              args: [item.name, item.group, item.dept, item.unit, item.qty, item.uom]
+            }).catch(() => {});
+          }
+
+          const fridgeItems = [
+            { name: 'Elecsys Anti-HBs Gen 2', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'fridge_3', qty: 4, uom: 'kit' },
+            { name: 'Elecsys Anti-HCV II Gen 2 100', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'fridge_3', qty: 5, uom: 'kit' },
+            { name: 'Elecsys Anti-HIV', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'fridge_3', qty: 6, uom: 'kit' },
+            { name: 'Elecsys TSH 200 Tests', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'fridge_3', qty: 8, uom: 'kit' },
+            { name: 'Elecsys FT4', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'fridge_3', qty: 8, uom: 'kit' },
+            { name: 'ASOT Latex Kit', group: 'Manual Reagents', dept: 'Biochemistry', unit: 'fridge_3', qty: 10, uom: 'kit' },
+            { name: 'CRP Latex Kit', group: 'Manual Reagents', dept: 'Biochemistry', unit: 'fridge_3', qty: 12, uom: 'kit' },
+            { name: 'AST-N222 VITEK 2 Card', group: 'VITEK 2 Compact Cards', dept: 'Microbiology', unit: 'fridge_6', qty: 15, uom: 'box' },
+            { name: 'GP CARDS VITEK 2', group: 'VITEK 2 Compact Cards', dept: 'Microbiology', unit: 'fridge_6', qty: 15, uom: 'box' }
+          ];
+
+          for (const item of fridgeItems) {
+            await client.execute({
+              sql: `INSERT INTO lab_inhand_inventory (item_name, category, equipment_group, department, storage_temp, storage_unit_id, quantity_in_hand, unit_of_measure, min_threshold, expiry_date, lot_number)
+                    VALUES (?, 'Reagents', ?, ?, 'refrigerator', ?, ?, ?, 5, '2027-06-30', 'LOT-2026-RF')`,
+              args: [item.name, item.group, item.dept, item.unit, item.qty, item.uom]
+            }).catch(() => {});
+          }
+
+          console.log('  ✅ Seeding of lab_inhand_inventory complete.');
+        }
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_inhand_inventory:', err.message);
       });
 
       // ── Lab Analyzers Table ────────────────────────────────────────────────

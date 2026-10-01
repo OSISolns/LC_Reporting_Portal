@@ -1071,3 +1071,138 @@ exports.deleteEquipment = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ── In-Hand Reagent Inventory API Controllers ─────────────────────────────
+
+// GET /api/lab/inhand-inventory
+exports.getInhandInventory = async (req, res, next) => {
+  try {
+    const { storage_temp, equipment_group, department, search } = req.query;
+    let sql = `
+      SELECT i.*, u.label AS storage_unit_label, u.temp_range AS storage_unit_temp
+      FROM lab_inhand_inventory i
+      LEFT JOIN lab_storage_units u ON i.storage_unit_id = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (storage_temp && storage_temp !== 'all') {
+      sql += ' AND i.storage_temp = ?';
+      params.push(storage_temp);
+    }
+    if (equipment_group && equipment_group !== 'all') {
+      sql += ' AND i.equipment_group = ?';
+      params.push(equipment_group);
+    }
+    if (department && department !== 'all') {
+      sql += ' AND i.department = ?';
+      params.push(department);
+    }
+    if (search && search.trim()) {
+      sql += ' AND (i.item_name LIKE ? OR i.equipment_group LIKE ? OR i.lot_number LIKE ?)';
+      const term = `%${search.trim()}%`;
+      params.push(term, term, term);
+    }
+
+    sql += ' ORDER BY i.storage_temp ASC, i.equipment_group ASC, i.item_name ASC';
+    const { rows } = await db.query(sql, params);
+
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+// POST /api/lab/inhand-inventory
+exports.saveInhandInventory = async (req, res, next) => {
+  try {
+    const {
+      item_name, category, equipment_group, department, storage_temp,
+      storage_unit_id, quantity_in_hand, unit_of_measure, min_threshold,
+      expiry_date, lot_number
+    } = req.body;
+
+    if (!item_name) {
+      return res.status(400).json({ success: false, message: 'Item name is required.' });
+    }
+
+    const result = await db.query(
+      `INSERT INTO lab_inhand_inventory (
+        item_name, category, equipment_group, department, storage_temp,
+        storage_unit_id, quantity_in_hand, unit_of_measure, min_threshold,
+        expiry_date, lot_number, last_updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        item_name,
+        category || 'Reagents',
+        equipment_group || 'General',
+        department || 'Biochemistry',
+        storage_temp || 'room_temp',
+        storage_unit_id || 'room_temp_1',
+        Number(quantity_in_hand) || 0,
+        unit_of_measure || 'pack',
+        Number(min_threshold) || 5,
+        expiry_date || null,
+        lot_number || null,
+        req.user?.full_name || req.user?.username || 'Lab Staff'
+      ]
+    );
+
+    logAction(req, 'ADD_INHAND_REAGENT', `Added in-hand reagent: ${item_name}`);
+    res.status(201).json({ success: true, message: 'In-hand reagent added successfully.', id: result.insertId });
+  } catch (err) { next(err); }
+};
+
+// PUT /api/lab/inhand-inventory/:id
+exports.updateInhandInventory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      item_name, category, equipment_group, department, storage_temp,
+      storage_unit_id, quantity_in_hand, unit_of_measure, min_threshold,
+      expiry_date, lot_number
+    } = req.body;
+
+    const { rows } = await db.query('SELECT id FROM lab_inhand_inventory WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: 'Item not found.' });
+
+    await db.query(
+      `UPDATE lab_inhand_inventory SET
+        item_name = ?, category = ?, equipment_group = ?, department = ?,
+        storage_temp = ?, storage_unit_id = ?, quantity_in_hand = ?,
+        unit_of_measure = ?, min_threshold = ?, expiry_date = ?, lot_number = ?,
+        last_updated_by = ?, updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+       WHERE id = ?`,
+      [
+        item_name,
+        category || 'Reagents',
+        equipment_group || 'General',
+        department || 'Biochemistry',
+        storage_temp || 'room_temp',
+        storage_unit_id || 'room_temp_1',
+        Number(quantity_in_hand) || 0,
+        unit_of_measure || 'pack',
+        Number(min_threshold) || 5,
+        expiry_date || null,
+        lot_number || null,
+        req.user?.full_name || req.user?.username || 'Lab Staff',
+        id
+      ]
+    );
+
+    logAction(req, 'UPDATE_INHAND_REAGENT', `Updated in-hand reagent ID ${id}: ${item_name} (Qty: ${quantity_in_hand})`);
+    res.json({ success: true, message: 'In-hand reagent updated.' });
+  } catch (err) { next(err); }
+};
+
+// DELETE /api/lab/inhand-inventory/:id
+exports.deleteInhandInventory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query('SELECT item_name FROM lab_inhand_inventory WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: 'Item not found.' });
+
+    await db.query('DELETE FROM lab_inhand_inventory WHERE id = ?', [id]);
+    logAction(req, 'DELETE_INHAND_REAGENT', `Deleted in-hand reagent ID ${id}: ${rows[0].item_name}`);
+    res.json({ success: true, message: 'Item deleted.' });
+  } catch (err) { next(err); }
+};
+
+
