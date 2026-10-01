@@ -244,10 +244,13 @@ const Users = () => {
       });
       setIsModalOpen(false);
       fetchData();
-      showToast('User record updated successfully.', 'success');
+      showToast(`User record for "${editingUser.full_name}" updated successfully.`, 'success');
+      alert(`User record for "${editingUser.full_name}" updated successfully.`);
     } catch (err) {
       console.error('Update error:', err);
-      showToast(err.response?.data?.message || 'Failed to update user', 'error');
+      const errMsg = err.response?.data?.message || 'Failed to update user';
+      showToast(errMsg, 'error');
+      alert(errMsg);
     }
   };
 
@@ -260,11 +263,16 @@ const Users = () => {
     try {
       await createUser(newUser);
       setIsCreateModalOpen(false);
+      const createdName = newUser.fullName;
       setNewUser({ fullName: '', username: '', email: '', password: '', roleId: filteredRoles[0]?.id || roles[0]?.id });
       fetchData();
+      showToast(`Staff account "${createdName}" created successfully.`, 'success');
+      alert(`Staff account "${createdName}" created successfully.`);
     } catch (err) {
       console.error('Create error:', err);
-      alert(err.response?.data?.message || 'Failed to create user');
+      const errMsg = err.response?.data?.message || 'Failed to create user';
+      showToast(errMsg, 'error');
+      alert(errMsg);
     }
   };
 
