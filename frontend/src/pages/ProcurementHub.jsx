@@ -4000,18 +4000,18 @@ export default function ProcurementHub() {
                               </div>
                               <span className="text-[11px] font-bold text-teal-600">Lowest quoted prices are highlighted</span>
                             </div>
-                            <div className="overflow-x-auto border border-slate-100 rounded-2xl">
-                              <table className="min-w-full text-xs text-left divide-y divide-slate-150">
-                                <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-450 tracking-wider">
+                            <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-xs max-h-[75vh]">
+                              <table className="min-w-full text-xs text-left border-separate border-spacing-0">
+                                <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-450 tracking-wider sticky top-0 z-30">
                                   <tr>
-                                    <th className="p-4 w-12 text-center">N°</th>
-                                    <th className="p-4 min-w-[200px]">Item Description</th>
-                                    <th className="p-4 text-center w-20">Qty</th>
-                                    <th className="p-4 text-center w-20">Unit</th>
+                                    <th className="p-4 w-[50px] min-w-[50px] max-w-[50px] text-center sticky left-0 z-40 bg-slate-100 border-b border-r border-slate-200">N°</th>
+                                    <th className="p-4 min-w-[220px] w-[220px] max-w-[220px] sticky left-[50px] z-40 bg-slate-100 border-b border-r border-slate-200">Item Description</th>
+                                    <th className="p-4 text-center w-[75px] min-w-[75px] max-w-[75px] sticky left-[270px] z-40 bg-slate-100 border-b border-r border-slate-200">Qty</th>
+                                    <th className="p-4 text-center w-[75px] min-w-[75px] max-w-[75px] sticky left-[345px] z-40 bg-slate-100 border-b border-r-2 border-slate-300 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.1)]">Unit</th>
 
                                     {/* Invited Suppliers Columns */}
                                     {rfqDetails?.suppliers.map(sup => (
-                                      <th key={sup.id} className="p-4 text-center border-l border-slate-150 bg-slate-50/50 min-w-[160px]">
+                                      <th key={sup.id} className="p-4 text-center border-b border-r border-slate-200 bg-slate-50/90 min-w-[160px]">
                                         <div className="font-black text-slate-850 truncate max-w-[180px]" title={sup.vendor_name}>{sup.vendor_name}</div>
                                         <div className="text-[9px] text-slate-400 font-bold lowercase truncate max-w-[180px]">{sup.vendor_contact || 'no contact'}</div>
                                         {sup.portal_access_count > 0 ? (
@@ -4038,12 +4038,12 @@ export default function ProcurementHub() {
                                       </th>
                                     ))}
 
-                                    <th className="p-4 text-center border-l border-slate-200 bg-teal-50/30 min-w-[220px]">
+                                    <th className="p-4 text-center border-b border-r border-slate-200 bg-teal-50/40 min-w-[220px]">
                                       Award Selection (Decision)
                                     </th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                                <tbody className="font-medium text-slate-700">
                                   {rfqDetails?.items.map((item, idx) => {
                                     // Find lowest price for highlight
                                     let lowestPrice = Infinity;
@@ -4059,11 +4059,11 @@ export default function ProcurementHub() {
                                     });
 
                                     return (
-                                      <tr key={item.id} className="hover:bg-slate-50/40">
-                                        <td className="p-4 text-center font-bold text-slate-400">{item.line_no || (idx + 1)}</td>
-                                        <td className="p-4 font-bold text-slate-850">{item.item_name}</td>
-                                        <td className="p-4 text-center font-black">{item.quantity || '—'}</td>
-                                        <td className="p-4 text-center font-bold text-slate-400">{item.unit || 'pcs'}</td>
+                                      <tr key={item.id} className="group hover:bg-slate-50/60">
+                                        <td className="p-4 text-center font-bold text-slate-400 sticky left-0 z-20 bg-white group-hover:bg-slate-100/90 border-b border-r border-slate-150 w-[50px] min-w-[50px] max-w-[50px]">{item.line_no || (idx + 1)}</td>
+                                        <td className="p-4 font-bold text-slate-850 sticky left-[50px] z-20 bg-white group-hover:bg-slate-100/90 border-b border-r border-slate-150 min-w-[220px] w-[220px] max-w-[220px]">{item.item_name}</td>
+                                        <td className="p-4 text-center font-black sticky left-[270px] z-20 bg-white group-hover:bg-slate-100/90 border-b border-r border-slate-150 w-[75px] min-w-[75px] max-w-[75px]">{item.quantity || '—'}</td>
+                                        <td className="p-4 text-center font-bold text-slate-400 sticky left-[345px] z-20 bg-white group-hover:bg-slate-100/90 border-b border-r-2 border-slate-300 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.1)] w-[75px] min-w-[75px] max-w-[75px]">{item.unit || 'pcs'}</td>
 
                                         {/* Invited Suppliers Quote cells */}
                                         {rfqDetails.suppliers.map(sup => {
@@ -4073,7 +4073,7 @@ export default function ProcurementHub() {
                                           const isLowest = !noBid && parseFloat(price) === lowestPrice && lowestPrice !== Infinity;
 
                                           return (
-                                            <td key={sup.id} className={`p-4 border-l border-slate-105 text-center ${isLowest ? 'bg-emerald-50/50' : ''}`}>
+                                            <td key={sup.id} className={`p-4 border-b border-r border-slate-200 text-center ${isLowest ? 'bg-emerald-50/50' : ''}`}>
                                               <div className="flex flex-col gap-1 items-center justify-center">
                                                 {rfqDetails.rfq.status === 'Awarded' || rfqDetails.rfq.status === 'Closed' ? (
                                                   noBid ? (
@@ -4111,7 +4111,7 @@ export default function ProcurementHub() {
                                         })}
 
                                         {/* Award Decision Cell */}
-                                        <td className="p-4 border-l border-slate-200 bg-teal-50/10">
+                                        <td className="p-4 border-b border-r border-slate-200 bg-teal-50/10">
                                           <div className="flex flex-col gap-1.5 w-full">
                                             {rfqDetails.rfq.status === 'Awarded' || rfqDetails.rfq.status === 'Closed' ? (
                                               (() => {
