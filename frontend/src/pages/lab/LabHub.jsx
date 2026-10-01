@@ -5,7 +5,8 @@ import {
   Send, Droplet, FileText, CheckCircle2, ArrowRight, Thermometer,
   AlertTriangle, XCircle, CheckCircle as CheckCircleIcon, TrendingUp,
   ChevronDown, Pencil, Trash2, X, AlertOctagon, Shield,
-  ListChecks, BarChart2, FilePlus2, Wrench, Settings, FolderArchive
+  ListChecks, BarChart2, FilePlus2, Wrench, Settings, FolderArchive,
+  Package, Sun, Snowflake, Box, Layers, Filter, Edit3
 } from 'lucide-react';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -298,11 +299,28 @@ const TatCounter = ({ order }) => {
 
 const LabHub = () => {
   const navigate = useNavigate();
-  const [phaseFilter, setPhaseFilter] = useState('all'); // 'all', 'pre-analytical', 'analytical', 'post-analytical'
+  const [mainView, setMainView] = useState('worklist'); // 'worklist' | 'inhand_inventory'
+  const [phaseFilter, setPhaseFilter] = useState('all');
   const [orders, setOrders] = useState([]);
   const [qcLogs, setQcLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // ── IN-HAND INVENTORY STATE ──
+  const [inhandItems, setInhandItems] = useState([]);
+  const [inhandLoading, setInhandLoading] = useState(false);
+  const [inhandStorageFilter, setInhandStorageFilter] = useState('all'); // 'all' | 'room_temp' | 'refrigerator'
+  const [inhandDeptFilter, setInhandDeptFilter] = useState('all');
+  const [inhandGroupFilter, setInhandGroupFilter] = useState('all');
+  const [inhandSearch, setInhandSearch] = useState('');
+  const [showAddInhandModal, setShowAddInhandModal] = useState(false);
+  const [editInhandItem, setEditInhandItem] = useState(null);
+  const [inhandForm, setInhandForm] = useState({
+    item_name: '', category: 'Reagents', equipment_group: '', department: 'Biochemistry',
+    storage_temp: 'room_temp', storage_unit_id: 'room_temp_1',
+    quantity_in_hand: '', unit_of_measure: 'pack', min_threshold: '5',
+    expiry_date: '', lot_number: ''
+  });
   
   // Registration Form State
   const [showRegModal, setShowRegModal] = useState(false);
@@ -327,6 +345,9 @@ const LabHub = () => {
 
   // ── STORAGE UNIT & TAT MANAGEMENT ──
   const [availableStorageUnits, setAvailableStorageUnits] = useState([
+    { id: 'room_temp_1', label: 'Room Temp Unit 1 - Biochemistry Shelf (20°C to 25°C)', type: 'room_temp' },
+    { id: 'room_temp_2', label: 'Room Temp Unit 2 - Hematology & Micro Cabinet (20°C to 25°C)', type: 'room_temp' },
+    { id: 'room_temp_3', label: 'Room Temp Unit 3 - General Reagents Rack (20°C to 25°C)', type: 'room_temp' },
     { id: 'fridge_1',  label: 'Fridge 1 (STAT / Rapid Storage)',  type: 'fridge' },
     { id: 'fridge_2',  label: 'Fridge 2 (Routine Samples - 6h)',  type: 'fridge' },
     { id: 'fridge_3',  label: 'Fridge 3 (Reagents & Media)',      type: 'fridge' },
@@ -596,14 +617,91 @@ const LabHub = () => {
     }
   };
 
+  // Fetch In-Hand Inventory
+  const fetchInhandInventory = async () => {
+    setInhandLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (inhandStorageFilter !== 'all') params.append('storage_temp', inhandStorageFilter);
+      if (inhandDeptFilter !== 'all') params.append('department', inhandDeptFilter);
+      if (inhandGroupFilter !== 'all') params.append('equipment_group', inhandGroupFilter);
+      if (inhandSearch.trim()) params.append('search', inhandSearch.trim());
+
+      const res = await api.get(`/lab/inhand-inventory?${params.toString()}`);
+      if (res.data?.success) {
+        setInhandItems(res.data.data || []);
+      }
+    } catch (err) {
+      console.warn('In-hand inventory fetch failed:', err);
+    } finally {
+      setInhandLoading(false);
+    }
+  };
+
+  const handleSaveInhandItem = async (e) => {
+    e.preventDefault();
+    try {
+      if (editInhandItem) {
+        await api.put(`/lab/inhand-inventory/${editInhandItem.id}`, inhandForm);
+        toast.success('Item updated successfully.');
+      } else {
+        await api.post('/lab/inhand-inventory', inhandForm);
+        toast.success('Item added successfully.');
+      }
+      setShowAddInhandModal(false);
+      setEditInhandItem(null);
+      setInhandForm({ item_name: '', category: 'Reagents', equipment_group: '', department: 'Biochemistry', storage_temp: 'room_temp', storage_unit_id: 'room_temp_1', quantity_in_hand: '', unit_of_measure: 'pack', min_threshold: '5', expiry_date: '', lot_number: '' });
+      fetchInhandInventory();
+    } catch (err) {
+      toast.error('Failed to save item.');
+    }
+  };
+
+  const handleDeleteInhandItem = async (id) => {
+    if (!window.confirm('Delete this inventory item?')) return;
+    try {
+      await api.delete(`/lab/inhand-inventory/${id}`);
+      toast.success('Item deleted.');
+      fetchInhandInventory();
+    } catch (err) {
+      toast.error('Failed to delete item.');
+    }
+  };
+
+  const openEditInhandModal = (item) => {
+    setEditInhandItem(item);
+    setInhandForm({
+      item_name: item.item_name || '',
+      category: item.category || 'Reagents',
+      equipment_group: item.equipment_group || '',
+      department: item.department || 'Biochemistry',
+      storage_temp: item.storage_temp || 'room_temp',
+      storage_unit_id: item.storage_unit_id || 'room_temp_1',
+      quantity_in_hand: String(item.quantity_in_hand ?? ''),
+      unit_of_measure: item.unit_of_measure || 'pack',
+      min_threshold: String(item.min_threshold ?? '5'),
+      expiry_date: item.expiry_date || '',
+      lot_number: item.lot_number || ''
+    });
+    setShowAddInhandModal(true);
+  };
+
   useEffect(() => {
     fetchOrders();
     fetchQCLogs();
     fetchStorageUnits();
     fetchStorageAssignments();
+    fetchInhandInventory();
     const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Refetch inventory when filters change
+  useEffect(() => {
+    if (mainView === 'inhand_inventory') fetchInhandInventory();
+  }, [inhandStorageFilter, inhandDeptFilter, inhandGroupFilter, inhandSearch, mainView]);
+
+
 
   // Fetch Details for Selected Order
   const handleSelectOrder = async (order) => {
@@ -917,6 +1015,14 @@ const LabHub = () => {
           className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60"
         >
           <FolderArchive size={14} /> Document Archive
+        </button>
+        <button
+          onClick={() => { setMainView(mainView === 'inhand_inventory' ? 'worklist' : 'inhand_inventory'); }}
+          className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+            mainView === 'inhand_inventory' ? 'bg-amber-500 text-white shadow-sm' : 'text-amber-700 hover:bg-amber-50'
+          }`}
+        >
+          <Package size={14} /> In-Hand Inventory
         </button>
         <button
           onClick={() => navigate('/lab-manager')}
@@ -1653,6 +1759,288 @@ const LabHub = () => {
         </div>
       )}
 
+
+      {/* ── IN-HAND INVENTORY PANEL ── */}
+      {mainView === 'inhand_inventory' && (() => {
+        const allGroups = [...new Set(inhandItems.map(i => i.equipment_group).filter(Boolean))].sort();
+        const allDepts  = [...new Set(inhandItems.map(i => i.department).filter(Boolean))].sort();
+        const roomTempCount = inhandItems.filter(i => i.storage_temp === 'room_temp').length;
+        const fridgeCount   = inhandItems.filter(i => i.storage_temp === 'refrigerator').length;
+        const lowStockCount = inhandItems.filter(i => Number(i.quantity_in_hand) <= Number(i.min_threshold)).length;
+
+        // Group items by equipment_group for display
+        const grouped = inhandItems.reduce((acc, item) => {
+          const g = item.equipment_group || 'General';
+          if (!acc[g]) acc[g] = [];
+          acc[g].push(item);
+          return acc;
+        }, {});
+
+        return (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5">
+              <div>
+                <h2 className="text-base font-bold text-amber-900 flex items-center gap-2">
+                  <Package size={18} className="text-amber-600" /> Local In-Hand Inventory
+                </h2>
+                <p className="text-xs text-amber-700 mt-0.5">Laboratory reagents stored at Room Temperature (20°C–25°C) &amp; Cold Chain (2°C–8°C)</p>
+              </div>
+              <button
+                onClick={() => { setEditInhandItem(null); setInhandForm({ item_name: '', category: 'Reagents', equipment_group: '', department: 'Biochemistry', storage_temp: 'room_temp', storage_unit_id: 'room_temp_1', quantity_in_hand: '', unit_of_measure: 'pack', min_threshold: '5', expiry_date: '', lot_number: '' }); setShowAddInhandModal(true); }}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm"
+              >
+                <Plus size={14} /> Add New Item
+              </button>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-white border border-amber-200 rounded-xl p-4 space-y-1">
+                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Total Items</span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-bold text-slate-900">{inhandItems.length}</span>
+                  <Layers size={18} className="text-amber-300" />
+                </div>
+              </div>
+              <div className="bg-white border border-orange-200 rounded-xl p-4 space-y-1">
+                <span className="text-[10px] font-bold text-orange-500 uppercase tracking-wider block">Room Temp</span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-bold text-orange-600">{roomTempCount}</span>
+                  <Sun size={18} className="text-orange-200" />
+                </div>
+              </div>
+              <div className="bg-white border border-blue-200 rounded-xl p-4 space-y-1">
+                <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider block">Refrigerated</span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-bold text-blue-600">{fridgeCount}</span>
+                  <Snowflake size={18} className="text-blue-200" />
+                </div>
+              </div>
+              <div className="bg-white border border-rose-200 rounded-xl p-4 space-y-1">
+                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wider block">Low Stock ⚠️</span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-bold text-rose-600">{lowStockCount}</span>
+                  <AlertTriangle size={18} className="text-rose-200" />
+                </div>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2 items-center bg-white border border-slate-200 rounded-xl px-4 py-3">
+              <Filter size={13} className="text-slate-400" />
+              <span className="text-[11px] font-semibold text-slate-500 mr-1">Filter:</span>
+              {['all','room_temp','refrigerator'].map(f => (
+                <button key={f} onClick={() => setInhandStorageFilter(f)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer ${
+                    inhandStorageFilter === f ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}>
+                  {f === 'all' ? 'All Storage' : f === 'room_temp' ? '🌡 Room Temp' : '❄️ Refrigerator'}
+                </button>
+              ))}
+              <span className="text-slate-200">|</span>
+              <select value={inhandDeptFilter} onChange={e => setInhandDeptFilter(e.target.value)}
+                className="px-2 py-1 rounded-lg border border-slate-200 text-[11px] bg-white focus:outline-none">
+                <option value="all">All Departments</option>
+                {allDepts.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <select value={inhandGroupFilter} onChange={e => setInhandGroupFilter(e.target.value)}
+                className="px-2 py-1 rounded-lg border border-slate-200 text-[11px] bg-white focus:outline-none">
+                <option value="all">All Equipment Groups</option>
+                {allGroups.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+              <div className="relative ml-auto">
+                <Search size={12} className="absolute left-2 top-1.5 text-slate-400" />
+                <input type="text" value={inhandSearch} onChange={e => setInhandSearch(e.target.value)}
+                  placeholder="Search items..."
+                  className="pl-7 pr-3 py-1 border border-slate-200 rounded-lg text-[11px] focus:outline-none focus:border-amber-400 w-48" />
+              </div>
+              <button onClick={fetchInhandInventory}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer border border-slate-200">
+                <RefreshCw size={13} className={inhandLoading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+
+            {/* Grouped Table */}
+            {inhandLoading ? (
+              <div className="text-center py-10 text-slate-400 text-sm">Loading inventory...</div>
+            ) : inhandItems.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-sm">No items found. Add items or adjust filters.</div>
+            ) : (
+              <div className="space-y-4">
+                {Object.entries(grouped).map(([group, items]) => (
+                  <div key={group} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-800 to-slate-700">
+                      <Box size={13} className="text-amber-400" />
+                      <span className="text-xs font-bold text-white tracking-wide">{group}</span>
+                      <span className="ml-auto text-[10px] text-slate-400 font-mono">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider border-b border-slate-200">
+                          <tr>
+                            <th className="py-2 px-3">No.</th>
+                            <th className="py-2 px-3">Item Name</th>
+                            <th className="py-2 px-3">Dept</th>
+                            <th className="py-2 px-3">Storage</th>
+                            <th className="py-2 px-3">Location</th>
+                            <th className="py-2 px-3">Qty</th>
+                            <th className="py-2 px-3">UOM</th>
+                            <th className="py-2 px-3">Expiry</th>
+                            <th className="py-2 px-3">Lot #</th>
+                            <th className="py-2 px-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {items.map((item, idx) => {
+                            const isLow = Number(item.quantity_in_hand) <= Number(item.min_threshold);
+                            const isRoomTemp = item.storage_temp === 'room_temp';
+                            return (
+                              <tr key={item.id} className={`transition-colors hover:bg-slate-50/80 ${isLow ? 'bg-rose-50/30' : ''}`}>
+                                <td className="py-2 px-3 text-slate-400 font-mono">{idx + 1}</td>
+                                <td className="py-2 px-3 font-medium text-slate-800">
+                                  {item.item_name}
+                                  {isLow && <span className="ml-1.5 text-[9px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-semibold">LOW</span>}
+                                </td>
+                                <td className="py-2 px-3 text-slate-500">{item.department}</td>
+                                <td className="py-2 px-3">
+                                  <span className={`flex items-center gap-1 text-[10px] font-semibold ${isRoomTemp ? 'text-orange-600' : 'text-blue-600'}`}>
+                                    {isRoomTemp ? <Sun size={10} /> : <Snowflake size={10} />}
+                                    {isRoomTemp ? '20°C–25°C' : '2°C–8°C'}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3 text-slate-500 text-[10px] max-w-[130px] truncate" title={item.storage_unit_label || item.storage_unit_id}>
+                                  {item.storage_unit_label || item.storage_unit_id}
+                                </td>
+                                <td className="py-2 px-3">
+                                  <span className={`font-bold ${isLow ? 'text-rose-600' : 'text-slate-900'}`}>{item.quantity_in_hand}</span>
+                                  <span className="text-[9px] text-slate-400 ml-0.5">/ {item.min_threshold} min</span>
+                                </td>
+                                <td className="py-2 px-3 text-slate-500">{item.unit_of_measure}</td>
+                                <td className="py-2 px-3 text-slate-500 font-mono text-[10px]">{item.expiry_date || '—'}</td>
+                                <td className="py-2 px-3 text-slate-400 font-mono text-[10px]">{item.lot_number || '—'}</td>
+                                <td className="py-2 px-3 text-right">
+                                  <div className="flex items-center gap-1 justify-end">
+                                    <button onClick={() => openEditInhandModal(item)}
+                                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer" title="Edit">
+                                      <Edit3 size={12} />
+                                    </button>
+                                    <button onClick={() => handleDeleteInhandItem(item.id)}
+                                      className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md cursor-pointer" title="Delete">
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ── IN-HAND INVENTORY ADD/EDIT MODAL ── */}
+      {showAddInhandModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50">
+              <h2 className="font-bold text-sm text-amber-900 flex items-center gap-2">
+                <Package size={16} className="text-amber-600" />
+                {editInhandItem ? 'Edit Inventory Item' : 'Add New Inventory Item'}
+              </h2>
+              <button onClick={() => { setShowAddInhandModal(false); setEditInhandItem(null); }}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"><X size={18} /></button>
+            </div>
+            <form onSubmit={handleSaveInhandItem} className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Item Name *</label>
+                  <input required value={inhandForm.item_name} onChange={e => setInhandForm(f => ({...f, item_name: e.target.value}))}
+                    placeholder="e.g. Assay tip Elecsys 2010"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Equipment Group</label>
+                  <input value={inhandForm.equipment_group} onChange={e => setInhandForm(f => ({...f, equipment_group: e.target.value}))}
+                    placeholder="e.g. Cobas C311 Reagents"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Department</label>
+                  <select value={inhandForm.department} onChange={e => setInhandForm(f => ({...f, department: e.target.value}))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none">
+                    {['Biochemistry','Hematology','Microbiology','Molecular','General'].map(d => <option key={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Storage Temperature</label>
+                  <select value={inhandForm.storage_temp} onChange={e => {
+                    const val = e.target.value;
+                    setInhandForm(f => ({...f, storage_temp: val, storage_unit_id: val === 'room_temp' ? 'room_temp_1' : val === 'refrigerator' ? 'fridge_1' : 'freezer_1'}));
+                  }} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none">
+                    <option value="room_temp">🌡 Room Temp (20°C–25°C)</option>
+                    <option value="refrigerator">❄️ Refrigerator (2°C–8°C)</option>
+                    <option value="freezer">🧒 Freezer (-20°C / -80°C)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Storage Unit</label>
+                  <select value={inhandForm.storage_unit_id} onChange={e => setInhandForm(f => ({...f, storage_unit_id: e.target.value}))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none">
+                    {availableStorageUnits
+                      .filter(u => inhandForm.storage_temp === 'room_temp' ? u.type === 'room_temp' : inhandForm.storage_temp === 'refrigerator' ? u.type === 'fridge' : u.type === 'freezer')
+                      .map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Quantity In Hand *</label>
+                  <input required type="number" min="0" value={inhandForm.quantity_in_hand} onChange={e => setInhandForm(f => ({...f, quantity_in_hand: e.target.value}))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Unit of Measure</label>
+                  <select value={inhandForm.unit_of_measure} onChange={e => setInhandForm(f => ({...f, unit_of_measure: e.target.value}))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none">
+                    {['pack','pcs','box','kit','bot','kg','ml','L'].map(u => <option key={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Min Threshold</label>
+                  <input type="number" min="0" value={inhandForm.min_threshold} onChange={e => setInhandForm(f => ({...f, min_threshold: e.target.value}))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Expiry Date</label>
+                  <input type="date" value={inhandForm.expiry_date} onChange={e => setInhandForm(f => ({...f, expiry_date: e.target.value}))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Lot / Batch Number</label>
+                  <input value={inhandForm.lot_number} onChange={e => setInhandForm(f => ({...f, lot_number: e.target.value}))}
+                    placeholder="e.g. LOT-2026-ABC"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onClick={() => { setShowAddInhandModal(false); setEditInhandItem(null); }}
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg cursor-pointer">
+                  Cancel
+                </button>
+                <button type="submit"
+                  className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg cursor-pointer">
+                  {editInhandItem ? 'Save Changes' : 'Add Item'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

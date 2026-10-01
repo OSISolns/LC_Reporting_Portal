@@ -50,6 +50,7 @@ const LUMINA_ROLES = [
   'dental_hod', 'dental_lab_manager', 'lab_manager',
   'stock_manager', 'procurement', 'deputy_coo', 'coo',
   'dental', 'dentist', 'dental_tech', 'physio',
+  'lab_tech', 'lab_team_lead', 'lab',
 ];
 router.post('/dental/consumables-report', authorizeRoles(LUMINA_ROLES), clinicalAIController.generateConsumablesReport);
 router.post('/consumables/audit-available-items', authorizeRoles(LUMINA_ROLES), clinicalAIController.auditAvailableItems);
