@@ -26,12 +26,12 @@ export default defineConfig(({ command }) => {
     ].filter(Boolean),
     server: {
       port: 5173,
-      host: true,
+      host: '0.0.0.0',       // listen on all interfaces (LAN + localhost)
       hmr: {
         protocol: 'ws',
-        host: 'localhost',
-        port: 5173,
-        clientPort: 5173
+        // No hardcoded host — Vite will mirror whatever hostname the browser
+        // used to load the page (localhost OR 192.168.0.110), so HMR works
+        // from both local and network clients automatically.
       },
       proxy: {
         '/api': {
