@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS rfqs (
   reference_no   TEXT UNIQUE,                              -- optional tender no.
   title          TEXT NOT NULL,                            -- e.g. "NURSING", "REACTIF LABO"
   category       TEXT,                                     -- NURSING | LABO | DENTAL | LOGISTICS | ...
+  department     TEXT,
   requisition_id INTEGER REFERENCES requisitions(id) ON DELETE SET NULL,
   status         TEXT NOT NULL DEFAULT 'Draft'
                    CHECK (status IN ('Draft','Collecting','UnderReview','Awarded','Closed','Cancelled')),
