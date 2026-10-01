@@ -113,9 +113,11 @@ const Users = () => {
   const canEditAll = currentUser?.role === 'admin';
   const isITOfficer = currentUser?.role === 'it_officer';
 
-  // Define low-level roles that can be managed by IT Officers or other limited admins
-  const LOW_LEVEL_ROLES_DISPLAY = ['Customer Care', 'Principal Cashier', 'Cashier', 'Operations Staff', 'Staff Member', 'Clinical Nurse', 'Chief Nurse Manager', 'Medical Doctor', 'Consultant', 'Medical Director', 'Procurement Manager', 'Physiotherapy Manager', 'Physiotherapist', 'Laboratory Manager', 'Lab Team Lead', 'Lab Lead', 'Lab Technologist', 'Laboratory Staff', 'Quality Manager', 'Quality & Accreditation Officer'];
-  const LOW_LEVEL_ROLES_KEY = ['customer_care', 'principal_cashier', 'cashier', 'operations_staff', 'staff', 'nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'procurement-manager', 'physio_manager', 'physio', 'lab_manager', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'quality_manager', 'qm', 'quality_accreditation_officer'];
+  const IT_OFFICER_ROLES_DISPLAY = ['Customer Care', 'Operations Staff', 'Cashier', 'Principal Cashier', 'Sales Manager'];
+  const IT_OFFICER_ROLES_KEY = ['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'];
+
+  const LOW_LEVEL_ROLES_DISPLAY = isITOfficer ? IT_OFFICER_ROLES_DISPLAY : ['Customer Care', 'Principal Cashier', 'Cashier', 'Operations Staff', 'Staff Member', 'Clinical Nurse', 'Chief Nurse Manager', 'Medical Doctor', 'Consultant', 'Medical Director', 'Procurement Manager', 'Physiotherapy Manager', 'Physiotherapist', 'Laboratory Manager', 'Lab Team Lead', 'Lab Lead', 'Lab Technologist', 'Laboratory Staff', 'Quality Manager', 'Quality & Accreditation Officer'];
+  const LOW_LEVEL_ROLES_KEY = isITOfficer ? IT_OFFICER_ROLES_KEY : ['customer_care', 'principal_cashier', 'cashier', 'operations_staff', 'staff', 'nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'procurement-manager', 'physio_manager', 'physio', 'lab_manager', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'quality_manager', 'qm', 'quality_accreditation_officer'];
 
   const filteredUsers = (canEditAll
     ? users
@@ -242,7 +244,8 @@ const Users = () => {
       setIsModalOpen(false);
       fetchData();
     } catch (err) {
-      alert('Failed to update user');
+      console.error('Update error:', err);
+      showToast(err.response?.data?.message || 'Failed to update user', 'error');
     }
   };
 
@@ -536,7 +539,6 @@ const Users = () => {
               required
               value={newUser.fullName}
               onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
-              placeholder="Enter full name"
               style={{ padding: '12px', backgroundColor: '#f8fafc', color: 'var(--text-primary)', border: '1.5px solid var(--border-color)', borderRadius: '10px', outline: 'none' }}
             />
           </div>
@@ -547,7 +549,6 @@ const Users = () => {
               required
               value={newUser.username}
               onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-              placeholder="e.g. lc_patience"
               style={{ padding: '12px', backgroundColor: '#f8fafc', color: 'var(--text-primary)', border: '1.5px solid var(--border-color)', borderRadius: '10px', outline: 'none' }}
             />
           </div>
@@ -560,7 +561,6 @@ const Users = () => {
                 required
                 value={newUser.email}
                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                placeholder="email@legacyclinics.rw"
                 style={{ width: '100%', padding: '12px 12px 12px 40px', backgroundColor: '#f8fafc', color: 'var(--text-primary)', border: '1.5px solid var(--border-color)', borderRadius: '10px', outline: 'none' }}
               />
             </div>
@@ -574,7 +574,6 @@ const Users = () => {
                 required
                 value={newUser.password}
                 onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                placeholder="••••••••"
                 style={{ width: '100%', padding: '12px 12px 12px 40px', backgroundColor: '#f8fafc', color: 'var(--text-primary)', border: '1.5px solid var(--border-color)', borderRadius: '10px', outline: 'none' }}
               />
             </div>

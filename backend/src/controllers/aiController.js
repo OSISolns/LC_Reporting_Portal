@@ -563,10 +563,7 @@ exports.suggestMedicationRoutes = async (req, res, next) => {
       if (nameLower.includes('metronidazole')) frequency = 'TDS';
       if (nameLower.includes('diclofenac')) frequency = 'BD';
       if (nameLower.includes('dextrose 50%')) dose = '50ml';
-      if (nameLower.includes('saline') || nameLower.includes('lactate')) {
-        dose = '500ml';
-        frequency = 'STAT';
-      }
+      if (nameLower.includes('saline') || nameLower.includes('lactate')) route = 'IV';
 
       return {
         name: med,

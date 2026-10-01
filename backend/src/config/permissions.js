@@ -98,7 +98,7 @@ const ROLE_DEFAULTS = {
     results_transfer: { view:0, create:0, edit:0, approve:0, reject:0 },
     incident_reports: { view:1, create:1, edit:1, approve:0 },
     user_management: { view:1, create:1, edit:1, delete:1 },
-    audit_logs: { view:0 },
+    audit_logs: { view: 1 },
     reports: { view:0, download:0 },
     staff_performance: { view:0, create:0 },
 

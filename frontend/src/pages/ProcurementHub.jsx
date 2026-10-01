@@ -1037,6 +1037,9 @@ export default function ProcurementHub() {
 
       if (res.data.success) {
         toast.success(res.data.message || (isDraft ? 'RFQ draft saved.' : 'Tender published successfully.'));
+        if (res.data.data && res.data.data.sessions && res.data.data.sessions.length > 0) {
+          setOpenedPortalSession(res.data.data.sessions);
+        }
         setShowRFQPasswordConfirmModal(false);
         setShowCreateRFQModal(false);
         setEditingRFQ(null);

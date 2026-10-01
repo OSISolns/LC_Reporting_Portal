@@ -118,7 +118,7 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'users', name: 'User Management', icon: <Users size={18} />, path: '/users', requiredPerm: { mod: 'user_management', act: 'view' }, allowedRoles: ['admin', 'it_officer'] },
         { configKey: 'providers', name: 'Provider Management', icon: <UserCheck size={18} />, path: '/providers', requiredPerm: { mod: 'user_management', act: 'view' }, allowedRoles: ['admin', 'coo', 'deputy_coo', 'medical_director'] },
         { configKey: 'permissions', name: 'Permissions', icon: <Shield size={18} />, path: '/permissions', requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
-        { configKey: 'audit_logs', name: 'Audit Logs', icon: <History size={18} />, path: '/audit-logs', requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin'] },
+        { configKey: 'audit_logs', name: 'Audit Logs', icon: <History size={18} />, path: '/audit-logs', requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin', 'it_officer'] },
         { configKey: 'feedbacks', name: 'Internal Feedback', icon: <MessageSquare size={18} />, path: '/feedbacks', requiredPerm: { mod: 'feedbacks', act: 'view' }, allowedRoles: ['coo', 'deputy_coo', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director'] },
       ]
     }

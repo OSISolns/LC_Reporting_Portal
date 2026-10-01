@@ -6049,7 +6049,7 @@ exports.getRFQById = async (req, res) => {
   }
 };
 
-async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, portalSessions = [], ccProcurement = true) {
+async function helperOpenPortalsForRFQ(rfqId, validVendorIds) {
   // Fetch items for this RFQ to attach to portal sessions & email notification
   const { rows: rfqItemsRows } = await db.query(
     "SELECT item_name, quantity, unit, quantity_label FROM rfq_items WHERE rfq_id = $1 ORDER BY line_no",
@@ -6064,12 +6064,9 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
     quantity_label: i.quantity_label || ''
   }));
 
+  const portalSessions = [];
+
   for (const vendorId of validVendorIds) {
-    const { rows: vRows } = await db.query(
-      "SELECT name, contact, email FROM vendors WHERE id = $1",
-      [vendorId]
-    );
-    const vendorObj = vRows[0] || {};
     let tokenCode = '';
 
     const { rows: existing } = await db.query(
@@ -6093,20 +6090,34 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
     } else {
       const session = await helperOpenSupplierPortalSession(vendorId, formattedItems, false);
       if (session) {
-        tokenCode = session.token;
         portalSessions.push(session);
       }
     }
+  }
+
+  return { portalSessions, formattedItems };
+}
+
+async function helperNotifyVendorsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, portalSessions, formattedItems, ccProcurement) {
+  for (const vendorId of validVendorIds) {
+    const { rows: vRows } = await db.query(
+      "SELECT name, contact, email FROM vendors WHERE id = $1",
+      [vendorId]
+    );
+    const vendorObj = vRows[0] || {};
+    const session = portalSessions.find(s => Number(s.vendorId) === Number(vendorId));
+    if (!session) continue;
+    const tokenCode = session.token;
 
     if (vendorObj.email && vendorObj.email.trim()) {
       const portalUrl = process.env.SUPPLIER_PORTAL_URL || 'https://report.ops-legacyclinics.rw/supplier-portal';
       const emailSubject = `[Tender Invitation] ${rfqTitle} - Ref: ${refNo}`;
 
       let itemsTableHtml = '';
-      if (rfqItemsRows.length > 0) {
+      if (formattedItems.length > 0) {
         itemsTableHtml = `
           <div style="margin: 16px 0;">
-            <p style="margin-bottom: 8px; font-weight: bold; color: #1e3a8a; font-size: 14px;">Requested Line Items (${rfqItemsRows.length}):</p>
+            <p style="margin-bottom: 8px; font-weight: bold; color: #1e3a8a; font-size: 14px;">Requested Line Items (${formattedItems.length}):</p>
             <table style="width: 100%; border-collapse: collapse; font-size: 13px; background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
               <thead>
                 <tr style="background-color: #f1f5f9; color: #334155; text-align: left;">
@@ -6117,7 +6128,7 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
                 </tr>
               </thead>
               <tbody>
-                ${rfqItemsRows.map((item, idx) => `
+                ${formattedItems.map((item, idx) => `
                   <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 1 ? 'background-color: #f8fafc;' : ''}">
                     <td style="padding: 8px 10px; color: #64748b;">${idx + 1}</td>
                     <td style="padding: 8px 10px; font-weight: bold; color: #1e293b;">
@@ -6179,7 +6190,6 @@ async function helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category
         </div>
       `;
       
-      // Support multiple comma-separated emails per vendor
       const ccAddress = (ccProcurement !== false && ccProcurement !== 'false') ? 'procurement@legacyclinics.rw' : undefined;
       const recipientEmails = vendorObj.email.split(',').map(e => e.trim()).filter(Boolean);
       for (const recipientEmail of recipientEmails) {
@@ -6308,14 +6318,18 @@ exports.createRFQ = async (req, res) => {
     // NOTE: Fire-and-forget — email sending can take 30-45s per vendor via SMTP.
     // We respond immediately after DB writes; notifications run in the background
     // to avoid a 504 Gateway Timeout on the client.
-    const msg = isDraft ? 'RFQ draft saved successfully.' : 'Tender / RFQ created & opened for bidding successfully.';
-    res.json({ success: true, message: msg, data: { id: rfqId, reference_no: refNo, status: initialStatus } });
-
+    let portalSessions = [];
     if (!isDraft && validVendorIds.length > 0) {
-      helperNotifyAndOpenPortalsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, [], ccProcurement !== false).catch(err =>
+      const portalsResult = await helperOpenPortalsForRFQ(rfqId, validVendorIds);
+      portalSessions = portalsResult.portalSessions;
+      
+      helperNotifyVendorsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, portalSessions, portalsResult.formattedItems, ccProcurement !== false).catch(err =>
         console.error('[createRFQ] Background portal/email notification failed:', err)
       );
     }
+    
+    const msg = isDraft ? 'RFQ draft saved successfully.' : 'Tender / RFQ created & opened for bidding successfully.';
+    res.json({ success: true, message: msg, data: { id: rfqId, reference_no: refNo, status: initialStatus, sessions: portalSessions } });
   } catch (error) {
     console.error('━━━━━━━━━━━━━━ [createRFQ] 500 ERROR ━━━━━━━━━━━━━━');
     console.error('Message :', error.message);
@@ -6429,17 +6443,21 @@ exports.updateRFQ = async (req, res) => {
 
     // NOTE: Fire-and-forget — respond immediately, send emails in background
     // to avoid 504 Gateway Timeout when SMTP is slow.
-    res.json({ success: true, message: targetStatus === 'Collecting' ? 'Tender published & opened for bidding successfully.' : 'RFQ updated successfully.', data: { id, status: targetStatus } });
-
+    let portalSessions = [];
     if (isPublishing || (targetStatus === 'Collecting' && oldRFQ.status === 'Draft')) {
       const { rows: sups } = await db.query('SELECT vendor_id FROM rfq_suppliers WHERE rfq_id = $1', [id]);
       const validVendorIds = sups.map(s => s.vendor_id);
       if (validVendorIds.length > 0) {
-        helperNotifyAndOpenPortalsForRFQ(id, rfqTitle, oldRFQ.reference_no, rfqCategory, rfqNotes, validVendorIds, [], ccProcurement !== false).catch(err =>
+        const portalsResult = await helperOpenPortalsForRFQ(id, validVendorIds);
+        portalSessions = portalsResult.portalSessions;
+        
+        helperNotifyVendorsForRFQ(id, rfqTitle, oldRFQ.reference_no, rfqCategory, rfqNotes, validVendorIds, portalSessions, portalsResult.formattedItems, ccProcurement !== false).catch(err =>
           console.error('[updateRFQ] Background portal/email notification failed:', err)
         );
       }
     }
+    
+    res.json({ success: true, message: targetStatus === 'Collecting' ? 'Tender published & opened for bidding successfully.' : 'RFQ updated successfully.', data: { id, status: targetStatus, sessions: portalSessions } });
   } catch (error) {
     console.error('Error in updateRFQ:', error);
     res.status(500).json({ success: false, message: error.message || 'Internal server error' });

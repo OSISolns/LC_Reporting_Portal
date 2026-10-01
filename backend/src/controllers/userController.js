@@ -16,6 +16,13 @@ exports.getAllUsers = async (req, res, next) => {
 
 exports.createUser = async (req, res, next) => {
   try {
+    if (req.user.role === 'it_officer') {
+      const { rows: targetRoleRows } = await db.query('SELECT name FROM roles WHERE id = $1', [req.body.roleId]);
+      if (targetRoleRows.length === 0 || !['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetRoleRows[0].name)) {
+        return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+      }
+    }
+
     const user = await User.create(req.body);
     await logAction(req, 'CREATE', 'user', user.id, { email: user.email });
 
@@ -49,6 +56,22 @@ exports.createUser = async (req, res, next) => {
 
 exports.updateUser = async (req, res, next) => {
   try {
+    if (req.user.role === 'it_officer') {
+      const targetUser = await User.findById(req.params.id);
+      if (!targetUser) return res.status(404).json({ success: false, message: 'User not found' });
+      if (!['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetUser.role)) {
+        return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+      }
+      if (req.body.roleId) {
+        const { rows: targetRoleRows } = await db.query('SELECT name FROM roles WHERE id = $1', [req.body.roleId]);
+        if (targetRoleRows.length === 0 || !['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetRoleRows[0].name)) {
+          return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+        }
+      }
+    }
+    if (req.body.email === '') req.body.email = null;
+    if (req.body.username === '') req.body.username = null;
+
     const user = await User.update(req.params.id, req.body);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     await logAction(req, 'UPDATE', 'user', user.id, { email: user.email });
@@ -66,6 +89,14 @@ exports.updateUser = async (req, res, next) => {
 
 exports.deleteUser = async (req, res, next) => {
   try {
+    if (req.user.role === 'it_officer') {
+      const targetUser = await User.findById(req.params.id);
+      if (!targetUser) return res.status(404).json({ success: false, message: 'User not found' });
+      if (!['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetUser.role)) {
+        return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+      }
+    }
+
     const { adminPassword } = req.body;
     const authCheck = await User.verifyAdminPassword(adminPassword, req.user.id);
     if (!authCheck.isValid) {
@@ -90,6 +121,14 @@ exports.deleteUser = async (req, res, next) => {
 
 exports.resetPassword = async (req, res, next) => {
   try {
+    if (req.user.role === 'it_officer') {
+      const targetUser = await User.findById(req.params.id);
+      if (!targetUser) return res.status(404).json({ success: false, message: 'User not found' });
+      if (!['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetUser.role)) {
+        return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+      }
+    }
+
     const { password } = req.body;
     if (!password) return res.status(400).json({ success: false, message: 'New password is required' });
 
