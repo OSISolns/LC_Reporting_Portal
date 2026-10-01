@@ -233,16 +233,18 @@ const Users = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const targetRoleId = editingUser.role_id || roles.find(r => r.display_name === editingUser.role_name || r.name === editingUser.role_key)?.id;
     try {
       await updateUser(editingUser.id, {
         fullName: editingUser.full_name,
         username: editingUser.username,
         email: editingUser.email,
-        roleId: editingUser.role_id || roles.find(r => r.display_name === editingUser.role_name)?.id,
-        isActive: editingUser.is_active
+        roleId: targetRoleId,
+        isActive: Boolean(editingUser.is_active)
       });
       setIsModalOpen(false);
       fetchData();
+      showToast('User record updated successfully.', 'success');
     } catch (err) {
       console.error('Update error:', err);
       showToast(err.response?.data?.message || 'Failed to update user', 'error');

@@ -84,8 +84,8 @@ class User {
   static async getAll() {
     const { rows } = await db.query(
       `SELECT 
-         u.id, u.full_name, u.username, u.email, u.is_active, 
-         r.display_name as role_name 
+         u.id, u.full_name, u.username, u.email, u.is_active, u.role_id,
+         r.display_name as role_name, r.name as role_key
        FROM users u
        JOIN roles r ON u.role_id = r.id
        ORDER BY u.id DESC`
@@ -94,12 +94,21 @@ class User {
   }
 
   static async update(id, { fullName, username, email, roleId, isActive }) {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+
+    const finalFullName = fullName !== undefined ? fullName : existing.full_name;
+    const finalUsername = username !== undefined ? username : existing.username;
+    const finalEmail = email !== undefined ? email : existing.email;
+    const finalRoleId = (roleId !== undefined && roleId !== null && !isNaN(Number(roleId))) ? Number(roleId) : existing.role_id;
+    const finalIsActive = isActive !== undefined ? (isActive ? 1 : 0) : existing.is_active;
+
     const { rows } = await db.query(
       `UPDATE users 
        SET full_name = ?, username = ?, email = ?, role_id = ?, is_active = ?
        WHERE id = ?
        RETURNING id, full_name, username, email, role_id, is_active`,
-      [fullName, username, email, roleId, isActive, id]
+      [finalFullName, finalUsername, finalEmail, finalRoleId, finalIsActive, id]
     );
     return rows[0];
   }
