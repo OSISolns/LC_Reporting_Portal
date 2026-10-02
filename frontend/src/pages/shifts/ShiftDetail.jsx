@@ -613,7 +613,7 @@ export default function ShiftDetail() {
                 </div>
                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">Digital Forensic Log</p>
                 <div className="text-slate-400 font-black text-xs uppercase tracking-widest">
-                  Sealed & Authenticated under MD-244 Compliance
+                  Sealed & Authenticated under Rwandan RRA & Data Protection Law No. 058/2021 Compliance
                 </div>
               </div>
             )}

@@ -1626,7 +1626,7 @@ export default function CloseShift() {
           </button>
 
           <p className="mt-8 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] leading-relaxed max-w-lg mx-auto">
-            Shift data will be timestamped and digitally signed under MD-244 Compliance Regulations.
+            Shift data will be timestamped and digitally signed under Rwandan RRA & Data Protection Law No. 058/2021 Compliance Regulations.
           </p>
         </div>
       </form>
