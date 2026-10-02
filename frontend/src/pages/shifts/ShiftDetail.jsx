@@ -55,18 +55,18 @@ const ICON_MAP = {
 
 const getWaveTemporalData = (shift) => {
   if (!shift) return { initiation: '—', termination: '—' };
-  
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString([], { dateStyle: 'medium' });
   };
-  
+
   const openedDateStr = formatDate(shift.opened_at);
   const closedDateStr = formatDate(shift.closed_at || shift.opened_at);
-  
+
   let startStr = '';
   let endStr = '';
-  
+
   if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
     startStr = '7:00 AM';
     endStr = '3:00 PM';
@@ -85,7 +85,7 @@ const getWaveTemporalData = (shift) => {
     startStr = isMorning ? '7:00 AM' : '3:00 PM';
     endStr = isMorning ? '3:00 PM' : '9:00 PM';
   }
-  
+
   return {
     initiation: openedDateStr ? `${openedDateStr}, ${startStr}` : '—',
     termination: shift.closed_at ? (closedDateStr ? `${closedDateStr}, ${endStr}` : `${endStr}`) : 'Running'
@@ -160,7 +160,7 @@ export default function ShiftDetail() {
 
   const handleExportDocx = () => {
     if (!shift || !cd?.vip_logs) return;
-    
+
     const shiftInfo = {
       id: shift.id,
       date: shift.opened_at ? new Date(shift.opened_at).toLocaleDateString() : 'N/A',
@@ -301,7 +301,7 @@ export default function ShiftDetail() {
     const blob = new Blob(['\ufeff' + htmlContent], {
       type: 'application/msword;charset=utf-8'
     });
-    
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -337,10 +337,9 @@ export default function ShiftDetail() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Shift Summary</h1>
-                <span className={`px-3 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                  shift.status === 'open' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                  shift.status === 'draft' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                    'bg-slate-100 text-slate-600 border border-slate-200'
+                <span className={`px-3 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${shift.status === 'open' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                    shift.status === 'draft' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                      'bg-slate-100 text-slate-600 border border-slate-200'
                   }`}>{shift.status}</span>
               </div>
               <p className="text-slate-500 font-medium text-xs mt-0.5">{ROLE_LABELS[shift.shift_role]} Report · ID: #{shift.id}</p>
@@ -613,7 +612,7 @@ export default function ShiftDetail() {
                 </div>
                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">Digital Forensic Log</p>
                 <div className="text-slate-400 font-black text-xs uppercase tracking-widest">
-                  Sealed & Authenticated under Rwandan RRA & Data Protection Law No. 058/2021 Compliance
+                  Sealed & Authenticated under Rwandan Data Protection Law No. 058/2021 Compliance
                 </div>
               </div>
             )}
