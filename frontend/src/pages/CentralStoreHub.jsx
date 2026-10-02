@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -90,6 +90,7 @@ export default function CentralStoreHub() {
   const { user, hasPermission } = useAuth();
 
   const [activeTab, setActiveTab]               = useState('stock_in_hand');
+  const deferredActiveTab                       = useDeferredValue(activeTab);
   const [activeDept, setActiveDept]             = useState('All Departments');
   const [searchTerm, setSearchTerm]             = useState('');
   const [stockPage, setStockPage]               = useState(1);
@@ -1797,9 +1798,9 @@ export default function CentralStoreHub() {
               <button
                 key={tab.id}
                 onClick={() => {
-                  setSearchTerm('');
+                  setActiveTab(tab.id);
                   React.startTransition(() => {
-                    setActiveTab(tab.id);
+                    setSearchTerm('');
                   });
                 }}
                 className={`flex items-center gap-1.5 px-3.5 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all shrink-0 cursor-pointer relative ${
@@ -1840,7 +1841,7 @@ export default function CentralStoreHub() {
           <div className="space-y-6">
 
             {/* ══ TAB 1: STOCK IN HAND ══ */}
-            {activeTab === 'stock_in_hand' && (
+            {deferredActiveTab === 'stock_in_hand' && (
               <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-2xl">
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-5 pb-4 border-b border-slate-100">
                   <div>
@@ -2210,7 +2211,7 @@ export default function CentralStoreHub() {
             )}
 
             {/* ══ TAB 1.5: DISTRIBUTED STOCK (read-only echo of approved requisitions) ══ */}
-            {activeTab === 'distributed_stock' && (
+            {deferredActiveTab === 'distributed_stock' && (
               <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-2xl">
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-5 pb-4 border-b border-slate-100">
                   <div>
@@ -2610,7 +2611,7 @@ export default function CentralStoreHub() {
             )}
 
             {/* ══ TAB 2: VENDORS ══ */}
-            {activeTab === 'vendors' && (
+            {deferredActiveTab === 'vendors' && (
               <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-2xl">
                 <div className="flex justify-between items-center mb-5 pb-4 border-b border-slate-100">
                   <div>
@@ -2654,7 +2655,7 @@ export default function CentralStoreHub() {
             )}
 
             {/* ══ TAB 3: REQUISITIONS ══ */}
-            {activeTab === 'requisitions' && (
+            {deferredActiveTab === 'requisitions' && (
               <Card className="border border-slate-200/60 shadow-sm bg-white rounded-2xl overflow-hidden">
                 
                 {/* Requisition Tab Stats */}
@@ -2849,7 +2850,7 @@ export default function CentralStoreHub() {
             )}
 
             {/* ══ TAB 4: EXPIRING ITEMS ══ */}
-            {activeTab === 'expiring' && (
+            {deferredActiveTab === 'expiring' && (
               <Card className="p-6 border border-slate-200/60 shadow-sm bg-white rounded-2xl">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 pb-4 border-b border-slate-100">
                   <div>
@@ -2920,7 +2921,7 @@ export default function CentralStoreHub() {
             )}
 
             {/* ══ TAB 5: DISPOSAL MANAGEMENT ══ */}
-            {activeTab === 'disposals' && (
+            {deferredActiveTab === 'disposals' && (
               <div className="space-y-6">
                 <Card className="p-6 border border-red-200 shadow-sm bg-white rounded-2xl">
                   <div className="flex justify-between items-center mb-5 pb-4 border-b border-red-100">
