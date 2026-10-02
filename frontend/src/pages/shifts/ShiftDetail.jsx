@@ -172,6 +172,7 @@ export default function ShiftDetail() {
             xmlns:w='urn:schemas-microsoft-com:office:word' 
             xmlns='http://www.w3.org/TR/REC-html40'>
       <head>
+        <meta charset="utf-8">
         <title>VIP Lounge Reception Log</title>
         <!--[if gte mso 9]>
         <xml>
@@ -183,81 +184,122 @@ export default function ShiftDetail() {
         </xml>
         <![endif]-->
         <style>
+          @page Section1 {
+            size: 8.5in 11.0in;
+            margin: 0.75in 0.75in 0.75in 0.75in;
+            mso-header-margin: 0.5in;
+            mso-footer-margin: 0.5in;
+            mso-paper-source: 0;
+          }
+          div.Section1 {
+            page: Section1;
+          }
           body {
             font-family: 'Segoe UI', Arial, sans-serif;
-            margin: 1in;
             color: #333333;
+          }
+          .header-box {
+            border-bottom: 2px solid #1b669d;
+            padding-bottom: 8pt;
+            margin-bottom: 15pt;
           }
           h1 {
             color: #1b669d;
-            font-size: 20pt;
-            margin-bottom: 5pt;
-            border-bottom: 2px solid #1b669d;
-            padding-bottom: 5pt;
+            font-size: 18pt;
+            margin: 0 0 4pt 0;
             font-weight: bold;
           }
-          p {
-            font-size: 10.5pt;
-            color: #666666;
-            margin-bottom: 20pt;
-            line-height: 1.5;
-          }
-          table {
+          .meta-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15pt;
+            margin-bottom: 15pt;
           }
-          th {
+          .meta-table td {
+            border: none;
+            padding: 3pt 0;
+            font-size: 10pt;
+            color: #475569;
+          }
+          .meta-table td strong {
+            color: #0f172a;
+          }
+          table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+          }
+          table.data-table th {
             background-color: #1b669d;
             color: #ffffff;
             font-weight: bold;
-            font-size: 10.5pt;
-            padding: 10pt;
+            font-size: 10pt;
+            padding: 8pt;
             border: 1px solid #1b669d;
             text-align: left;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
           }
-          td {
-            padding: 10pt;
-            border: 1px solid #e2e8f0;
-            font-size: 10pt;
+          table.data-table td {
+            padding: 8pt;
+            border: 1px solid #cbd5e1;
+            font-size: 9.5pt;
             color: #334155;
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
           }
-          tr:nth-child(even) {
+          table.data-table tr:nth-child(even) {
             background-color: #f8fafc;
           }
         </style>
       </head>
       <body>
-        <h1>VIP Lounge Reception Log</h1>
-        <p>
-          <strong>Shift Date:</strong> ${shiftInfo.date}<br/>
-          <strong>Staff Member:</strong> ${shiftInfo.staff}<br/>
-          <strong>Shift Session ID:</strong> #${shiftInfo.id}
-        </p>
-        <table>
-          <thead>
+        <div class="Section1">
+          <div class="header-box">
+            <h1>VIP Lounge Reception Log</h1>
+          </div>
+          <table class="meta-table">
             <tr>
-              <th style="width: 35%;">Names</th>
-              <th style="width: 35%;">Position</th>
-              <th style="width: 30%;">Doctor/Service Offered</th>
+              <td style="width: 33%;"><strong>Shift Date:</strong> ${shiftInfo.date}</td>
+              <td style="width: 33%;"><strong>Staff Member:</strong> ${shiftInfo.staff}</td>
+              <td style="width: 34%;"><strong>Session ID:</strong> #${shiftInfo.id}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${cd.vip_logs.map(vip => `
+          </table>
+          <table class="data-table">
+            <thead>
               <tr>
-                <td><strong>${vip.name || '—'}</strong></td>
-                <td>${vip.position || '—'}</td>
-                <td>${vip.doctor_service || '—'}</td>
+                <th style="width: 6%;">#</th>
+                <th style="width: 30%;">Names</th>
+                <th style="width: 30%;">Position</th>
+                <th style="width: 34%;">Doctor/Service Offered</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              ${cd.vip_logs.length > 0 ? cd.vip_logs.map((vip, index) => `
+                <tr>
+                  <td style="text-align: center; color: #64748b;">${index + 1}</td>
+                  <td><strong>${vip.name || '—'}</strong></td>
+                  <td>${vip.position || '—'}</td>
+                  <td>${vip.doctor_service || '—'}</td>
+                </tr>
+              `).join('') : `
+                <tr>
+                  <td colspan="4" style="text-align: center; color: #94a3b8; padding: 12pt;">No VIP log entries recorded for this shift.</td>
+                </tr>
+              `}
+            </tbody>
+          </table>
+        </div>
       </body>
       </html>
     `;
 
     const blob = new Blob(['\ufeff' + htmlContent], {
-      type: 'application/msword'
+      type: 'application/msword;charset=utf-8'
     });
     
     const url = URL.createObjectURL(blob);
