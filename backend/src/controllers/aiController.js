@@ -5,8 +5,13 @@ const { analyzeRecords } = require('../utils/localAI');
 
 // ── DB helper ─────────────────────────────────────────────────────────────────
 const queryRows = async (sql, args = []) => {
-  const res = await db.query(sql, args);
-  return res.rows;
+  try {
+    const res = await db.query(sql, args);
+    return res?.rows || [];
+  } catch (err) {
+    console.warn(`queryRows caught query failure (${sql}):`, err.message);
+    return [];
+  }
 };
 
 // ── Module statistics — cached 30 s ──────────────────────────────────────────
@@ -330,17 +335,23 @@ const DEPT_QUERIES = {
     };
   },
   dental: async () => {
-    const [cases, byStatus, consumables] = await Promise.all([
+    const [cases1, cases2, byStatus1, byStatus2, consumables] = await Promise.all([
       queryRows(`SELECT COUNT(*) AS total FROM dental_cases`),
+      queryRows(`SELECT COUNT(*) AS total FROM dental_clinic_cases`),
       queryRows(`SELECT status, COUNT(*) AS cnt FROM dental_cases GROUP BY status`),
-      queryRows(`SELECT COUNT(*) AS total FROM consumables_log WHERE department='dental'`),
+      queryRows(`SELECT status, COUNT(*) AS cnt FROM dental_clinic_cases GROUP BY status`),
+      queryRows(`SELECT COUNT(*) AS total FROM consumables_log WHERE LOWER(department) LIKE '%dental%'`),
     ]);
-    const sta = {}; byStatus.forEach(r => { sta[r.status] = Number(r.cnt); });
+    const totalCount = Number(cases1[0]?.total || 0) + Number(cases2[0]?.total || 0);
+    const sta = {};
+    (byStatus1 || []).forEach(r => { if (r.status) sta[String(r.status).toLowerCase()] = (sta[String(r.status).toLowerCase()] || 0) + Number(r.cnt); });
+    (byStatus2 || []).forEach(r => { if (r.status) sta[String(r.status).toLowerCase()] = (sta[String(r.status).toLowerCase()] || 0) + Number(r.cnt); });
+
     return {
-      total: Number(cases[0]?.total || 0),
-      active: sta['active'] || 0,
-      completed: sta['completed'] || 0,
-      pending: sta['pending'] || 0,
+      total: totalCount,
+      active: (sta['active'] || 0) + (sta['in progress'] || 0) + (sta['in_progress'] || 0) + (sta['received'] || 0) + (sta['open'] || 0),
+      completed: (sta['completed'] || 0) + (sta['delivered'] || 0) + (sta['closed'] || 0),
+      pending: (sta['pending'] || 0) + (sta['draft'] || 0),
       consumables: Number(consumables[0]?.total || 0),
     };
   },
