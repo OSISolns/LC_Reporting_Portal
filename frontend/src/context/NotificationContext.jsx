@@ -15,13 +15,13 @@ export const NotificationProvider = ({ children }) => {
     if (!user) return;
     try {
       setLoading(true);
-      const data = await notificationApi.getNotifications();
-      setNotifications(data);
+      const data = await notificationApi.getNotifications().catch(() => null);
+      if (data) setNotifications(data);
       
-      const countData = await notificationApi.getUnreadCount();
-      setUnreadCount(countData.count);
+      const countData = await notificationApi.getUnreadCount().catch(() => null);
+      if (countData && countData.count !== undefined) setUnreadCount(countData.count);
     } catch (err) {
-      console.error('Failed to fetch notifications', err);
+      // Ignore background notification fetch errors
     } finally {
       setLoading(false);
     }
