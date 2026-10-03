@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/axios';
 import { getAIStats, classifyModule, getDeptStats } from '../api/ai';
 import * as XLSX from 'xlsx';
 import {
@@ -9,7 +10,7 @@ import {
   MessageSquare, Package, ClipboardList,
   FlaskConical, Scan, Truck, Activity,
   Building2, Monitor, HeartPulse, Users, ShoppingCart,
-  Star, Zap, Eye, Lock, Download,
+  Star, Zap, Eye, Lock, Download, BookOpen, Siren,
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -23,13 +24,23 @@ const SEVERITY_COLOR = {
   low:    { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' },
 };
 
-// ── AI classification → which backend module to call per dept ─────────────────
+// ── Lumina Intelligence classification → which backend module to call per dept ──
 const CLASSIFIABLE_MODULES = {
   operations:    'daily_reports',
   customer_care: 'cancellations',
   nursing:       'incidents',
   it:            'security',
 };
+
+// ── Line manager roles that get Incident Analysis panel ───────────────────────
+const LINE_MANAGER_ROLES = [
+  'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
+  'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager',
+  'lab_manager', 'lab_team_lead', 'lab_lead',
+  'imaging_manager', 'dental_hod', 'dental_lab_manager',
+  'physio_manager', 'logistics_manager', 'logistics_officer',
+  'procurement-manager', 'it_officer', 'hsfp', 'stock-manager', 'sales_manager',
+];
 
 // ── Brand palette ─────────────────────────────────────────────────────────────
 const L = {
@@ -306,7 +317,7 @@ const exportToExcel = (dept, stats, classified, user, globalStats) => {
 
   // ── Sheet 1: Cover ────────────────────────────────────────────────────────
   const coverData = [
-    ['LUMINA AI INSIGHT — DEPARTMENT REPORT'],
+    ['LUMINA INTELLIGENCE — DEPARTMENT REPORT'],
     [],
     ['Department',      dept.label],
     ['Report Date',     ts],
@@ -469,12 +480,12 @@ const DeptPanel = ({ dept, globalStats, canClassify, onClassify, classifying, cl
         </div>
       )}
 
-      {/* ── AI Reason Classification (executive only, supported depts) ── */}
+      {/* ── Lumina Intelligence Reason Classification (executive only, supported depts) ── */}
       {canClassify && (
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '0.85rem 1.25rem', borderBottom: moduleClassified ? '1px solid #f1f5f9' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
             <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#1e293b' }}>Reason Classification</p>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#1e293b' }}>Lumina Intelligence Classification</p>
               <p style={{ margin: 0, fontSize: '0.73rem', color: '#94a3b8', marginTop: '1px' }}>Analyses recent records to surface recurring patterns</p>
             </div>
             <button
@@ -526,8 +537,170 @@ const DeptPanel = ({ dept, globalStats, canClassify, onClassify, classifying, cl
   );
 };
 
+// ── Incident Analysis Panel (for line managers) ──────────────────────────────
+const IncidentAnalysisPanel = ({ userRole }) => {
+  const [incidents, setIncidents]   = useState([]);
+  const [loading,   setLoading]     = useState(true);
+  const [err,       setErr]         = useState(false);
+  const [expanded,  setExpanded]    = useState(true);
+
+  useEffect(() => {
+    setLoading(true); setErr(false);
+    api.get('/incidents', { params: { limit: 200 } })
+      .then(res => {
+        const rows = Array.isArray(res.data?.data) ? res.data.data
+          : Array.isArray(res.data?.incidents) ? res.data.incidents
+          : Array.isArray(res.data) ? res.data : [];
+        setIncidents(rows);
+      })
+      .catch(() => setErr(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const total    = incidents.length;
+  const pending  = incidents.filter(i => (i.status || '').toLowerCase() === 'pending').length;
+  const reviewed = incidents.filter(i => (i.status || '').toLowerCase() === 'reviewed').length;
+  const approved = incidents.filter(i => ['approved','closed'].includes((i.status || '').toLowerCase())).length;
+
+  // By severity
+  const byServerity = { High: 0, Medium: 0, Low: 0 };
+  incidents.forEach(i => { const s = i.severity || 'Low'; byServerity[s] = (byServerity[s] || 0) + 1; });
+
+  // By type
+  const byType = {};
+  incidents.forEach(i => { const t = i.incident_type || 'Unknown'; byType[t] = (byType[t] || 0) + 1; });
+  const typeEntries = Object.entries(byType).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const maxType = typeEntries[0]?.[1] || 1;
+
+  // Recent 5
+  const recent = [...incidents].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
+
+  const SEV_COLOR = { High: '#dc2626', Medium: '#f59e0b', Low: '#22c55e' };
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden', marginBottom: '1.5rem' }}>
+      {/* Header */}
+      <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(135deg, #1C3A5E10, #ffffff)', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ padding: '8px', borderRadius: '10px', background: '#fef2f2', color: '#dc2626' }}>
+            <Siren size={18} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#1e293b' }}>Incident Report Analysis</h2>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>Lumina Intelligence · Your department's incident overview</p>
+          </div>
+        </div>
+        <button onClick={() => setExpanded(e => !e)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}>
+          {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          {expanded ? 'Collapse' : 'Expand'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {loading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#94a3b8', fontSize: '0.85rem' }}>
+              <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} /> Loading incident data…
+            </div>
+          )}
+          {!loading && err && (
+            <div style={{ padding: '1rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', color: '#92400e', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={14} /> Could not load incident reports.
+            </div>
+          )}
+          {!loading && !err && (
+            <>
+              {/* KPI strip */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.9rem' }}>
+                {[
+                  { label: 'Total Incidents',  value: total,    color: '#1C69A0', icon: <ShieldAlert size={15} /> },
+                  { label: 'Pending Review',   value: pending,  color: '#f59e0b', icon: <Clock size={15} /> },
+                  { label: 'Reviewed',         value: reviewed, color: '#3b82f6', icon: <BookOpen size={15} /> },
+                  { label: 'Closed / Approved',value: approved, color: '#22c55e', icon: <CheckCircle size={15} /> },
+                ].map(k => (
+                  <div key={k.label} style={{ background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '9px', background: `${k.color}15`, color: k.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{k.icon}</div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>{k.label}</p>
+                      <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#1e293b', lineHeight: 1.1 }}>{k.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Severity + Type breakdown */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                {/* Severity */}
+                <div style={{ background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1rem' }}>
+                  <p style={{ margin: '0 0 10px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>By Severity</p>
+                  {Object.entries(byServerity).map(([sev, cnt]) => (
+                    <div key={sev} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: SEV_COLOR[sev] || '#94a3b8', flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.8rem', color: '#475569', flex: 1 }}>{sev}</span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>{cnt}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* By type */}
+                <div style={{ background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1rem' }}>
+                  <p style={{ margin: '0 0 10px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>By Incident Type</p>
+                  {typeEntries.map(([type, cnt]) => (
+                    <div key={type} style={{ marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span style={{ fontSize: '0.78rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>{type}</span>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1e293b' }}>{cnt}</span>
+                      </div>
+                      <div style={{ height: '5px', background: '#e2e8f0', borderRadius: '99px', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.round((cnt / maxType) * 100)}%`, height: '100%', background: '#1C69A0', borderRadius: '99px' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recent incidents table */}
+              {recent.length > 0 && (
+                <div>
+                  <p style={{ margin: '0 0 8px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>Recent Incidents</p>
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 100px 90px', padding: '6px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.04em' }}>
+                      <span>Description</span><span>Type</span><span>Severity</span><span>Status</span>
+                    </div>
+                    {recent.map((inc, i) => {
+                      const sColor = SEV_COLOR[inc.severity] || '#94a3b8';
+                      const stColor = inc.status?.toLowerCase() === 'pending' ? '#f59e0b'
+                        : inc.status?.toLowerCase() === 'reviewed' ? '#3b82f6'
+                        : '#22c55e';
+                      return (
+                        <div key={inc.id} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 100px 90px', padding: '8px 12px', alignItems: 'center', borderBottom: i < recent.length - 1 ? '1px solid #f1f5f9' : 'none', background: '#fff' }}>
+                          <p style={{ margin: 0, fontSize: '0.78rem', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>{inc.description || '—'}</p>
+                          <span style={{ fontSize: '0.75rem', color: '#475569' }}>{inc.incident_type || '—'}</span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: sColor }}>{inc.severity || '—'}</span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: stColor, textTransform: 'capitalize' }}>{inc.status || '—'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {total === 0 && (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', fontSize: '0.85rem' }}>
+                  <CheckCircle size={28} style={{ marginBottom: '8px', color: '#22c55e' }} />
+                  <p style={{ margin: 0 }}>No incidents on record for your department.</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
-const AIInsights = () => {
+const LuminaIntelligence = () => {
   const { user } = useAuth();
   const role = user?.role || '';
 
@@ -617,13 +790,13 @@ const AIInsights = () => {
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '1.7rem', fontWeight: 800, color: '#1e293b', margin: 0, letterSpacing: '-0.4px' }}>Lumina AI Insight</h1>
+              <h1 style={{ fontSize: '1.7rem', fontWeight: 800, color: '#1e293b', margin: 0, letterSpacing: '-0.4px' }}>Lumina Intelligence</h1>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 9px', borderRadius: '99px', background: 'rgba(28,105,160,0.1)', color: L.accent, fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <Lock size={9} /> Elevated Access
               </span>
             </div>
             <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '2px 0 0' }}>
-              Department intelligence · {fmtDate()}
+              Lumina Intelligence · {fmtDate()}
             </p>
           </div>
         </div>
@@ -648,6 +821,11 @@ const AIInsights = () => {
           <ShieldAlert size={15} /> <span>{error}</span>
           <button onClick={() => setError('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', fontSize: '1rem', lineHeight: 1 }}>×</button>
         </div>
+      )}
+
+      {/* ── Lumina Intelligence: Incident Analysis (line managers) ── */}
+      {LINE_MANAGER_ROLES.includes(role) && (
+        <IncidentAnalysisPanel userRole={role} />
       )}
 
       {/* ── Department Tab Bar ── */}
@@ -725,7 +903,7 @@ const AIInsights = () => {
           </div>
         ))}
         <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#94a3b8' }}>
-          Lumina AI Insight · Legacy Clinics
+          Lumina Intelligence · Legacy Clinics
         </span>
       </div>
 
@@ -734,4 +912,4 @@ const AIInsights = () => {
   );
 };
 
-export default AIInsights;
+export default LuminaIntelligence;
