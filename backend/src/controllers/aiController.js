@@ -202,8 +202,18 @@ exports.classifyReasons = async (req, res, next) => {
          LEFT JOIN providers p ON m.provider_id = p.id
          ORDER  BY m.report_date DESC LIMIT 500`
       );
+    } else if (module === 'clinical_docs') {
+      rows = await queryRows(
+        `SELECT c.id,
+                COALESCE(c.ward || ' Ward Observation', 'Clinical Observation Record') AS reason,
+                c.status,
+                u.full_name AS cashier
+         FROM   clinical_observations c
+         LEFT JOIN users u ON c.created_by = u.id
+         ORDER  BY c.updated_at DESC LIMIT 500`
+      );
     } else {
-      return res.status(400).json({ success: false, message: 'Invalid module. Use: cancellations | refunds | incidents | transfers | shifts | security | feedbacks | stock_checks | daily_reports' });
+      return res.status(400).json({ success: false, message: 'Invalid module. Use: cancellations | refunds | incidents | transfers | shifts | security | feedbacks | stock_checks | daily_reports | clinical_docs' });
     }
 
     // Run the local AI engine (pure JS — no API call)
@@ -485,6 +495,23 @@ const DEPT_QUERIES = {
       feedbacks: Number(feedbacks[0]?.total || 0),
     };
   },
+  clinical_docs: async () => {
+    const [sheets, byStatus, vitals, imaging] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM clinical_observations`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM clinical_observations GROUP BY LOWER(status)`),
+      queryRows(`SELECT COUNT(*) AS total FROM patient_vitals`),
+      queryRows(`SELECT COUNT(*) AS total FROM imaging_reports`),
+    ]);
+    const sta = {};
+    byStatus.forEach(r => { if (r.status) sta[r.status] = Number(r.cnt); });
+    return {
+      total_sheets: Number(sheets[0]?.total || 0),
+      verified: (sta['verified'] || 0) + (sta['completed'] || 0),
+      draft: (sta['draft'] || 0) + (sta['pending'] || 0),
+      vitals_logged: Number(vitals[0]?.total || 0),
+      imaging_reports: Number(imaging[0]?.total || 0),
+    };
+  },
 };
 
 exports.getDeptStats = async (req, res, next) => {
@@ -523,7 +550,7 @@ exports.compileLuminaReport = async (req, res, next) => {
       operations: 'Operations', it: 'Information Technology', dental: 'Dental',
       nursing: 'Nursing', laboratory: 'Laboratory', imaging: 'Imaging',
       stock: 'Stock Management', procurement: 'Procurement', logistics: 'Logistics',
-      physio: 'Physiotherapy', customer_care: 'Customer Care',
+      physio: 'Physiotherapy', customer_care: 'Customer Care', clinical_docs: 'Clinical Documentation',
     }[dept] || dept;
 
     const narrativeParts = [`Lumina AI Insight — ${label} Department Report. Generated: ${new Date().toUTCString()}.`];

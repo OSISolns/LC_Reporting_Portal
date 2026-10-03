@@ -216,6 +216,7 @@ const CLASSIFIABLE_MODULES = {
   customer_care: 'cancellations',
   nursing:       'incidents',
   it:            'security',
+  clinical_docs: 'clinical_docs',
 };
 
 // ── Line manager roles ────────────────────────────────────────────────────────
@@ -237,6 +238,18 @@ const EXEC_ROLES = [
 const SECURITY_ROLES = ['admin'];
 
 const DEPARTMENTS = [
+  {
+    id: 'clinical_docs', label: 'Clinical Documentation', icon: <ClipboardList size={14} />,
+    description: 'Patient observations, clinical sheets, vitals & diagnostic reports.',
+    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'hsfp'],
+    kpiMap: [
+      { key: 'total_sheets',     label: 'Clinical Sheets' },
+      { key: 'verified',         label: 'Verified / Signed' },
+      { key: 'draft',            label: 'Draft / In Progress' },
+      { key: 'vitals_logged',    label: 'Vitals Recorded' },
+      { key: 'imaging_reports',  label: 'Diagnostic Reports' },
+    ],
+  },
   {
     id: 'operations', label: 'Operations', icon: <Building2 size={14} />,
     description: 'Daily operational reports, shift management & performance.',
