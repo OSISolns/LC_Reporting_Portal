@@ -10,21 +10,28 @@ import {
   MessageSquare, Package, ClipboardList,
   FlaskConical, Scan, Truck, Activity,
   Building2, Monitor, HeartPulse, Users, ShoppingCart,
-  Star, Zap, Eye, Lock, Download, BookOpen, Siren,
+  Star, Eye, Lock, Download, BookOpen, Siren,
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const fmtRWF = (n) => `RWF ${Number(n || 0).toLocaleString()}`;
-const fmtDate = () => new Date().toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' });
-const safeNum = (v) => (v == null || v === '' ? '—' : Number(v).toLocaleString());
+const fmtRWF  = (n) => `RWF ${Number(n || 0).toLocaleString()}`;
+const fmtDate = ()  => new Date().toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' });
+const safeNum = (v) => (v == null || v === '' ? '\u2014' : Number(v).toLocaleString());
 
-const SEVERITY_COLOR = {
-  high:   { bg: '#fef2f2', text: '#b91c1c', border: '#fecaca' },
-  medium: { bg: '#fffbeb', text: '#92400e', border: '#fde68a' },
-  low:    { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' },
+// ── Design tokens: single accent, flat, light ─────────────────────────────────
+const T = {
+  accent:      '#1C69A0',
+  border:      '#d1d5db',
+  borderLight: '#e5e7eb',
+  bg:          '#ffffff',
+  bgSubtle:    '#f9fafb',
+  bgMuted:     '#f3f4f6',
+  text:        '#111827',
+  textSub:     '#6b7280',
+  textMuted:   '#9ca3af',
 };
 
-// ── Lumina Intelligence classification → which backend module to call per dept ──
+// ── Classification module map ─────────────────────────────────────────────────
 const CLASSIFIABLE_MODULES = {
   operations:    'daily_reports',
   customer_care: 'cancellations',
@@ -32,7 +39,7 @@ const CLASSIFIABLE_MODULES = {
   it:            'security',
 };
 
-// ── Line manager roles that get Incident Analysis panel ───────────────────────
+// ── Line manager roles ────────────────────────────────────────────────────────
 const LINE_MANAGER_ROLES = [
   'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
   'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager',
@@ -42,356 +49,293 @@ const LINE_MANAGER_ROLES = [
   'procurement-manager', 'it_officer', 'hsfp', 'stock-manager', 'sales_manager',
 ];
 
-// ── Brand palette ─────────────────────────────────────────────────────────────
-const L = {
-  grad:  'linear-gradient(135deg, #1C3A5E 0%, #1C69A0 100%)',
-  accent:'#1C69A0',
-  light: 'rgba(28,105,160,0.07)',
-};
-
-// ── RBAC: exact roles per department ─────────────────────────────────────────
-// Executive set (sees all tabs + Executive Summary)
+// ── RBAC ──────────────────────────────────────────────────────────────────────
 const EXEC_ROLES = [
   'admin', 'chairman', 'coo', 'deputy_coo', 'medical_director', 'pa',
   'sales_manager', 'consultant', 'quality_accreditation_officer',
   'quality_manager', 'qm',
 ];
-// Roles that see the Security tab inside IT (admin only)
 const SECURITY_ROLES = ['admin'];
 
 const DEPARTMENTS = [
   {
-    id: 'operations', label: 'Operations', icon: <Building2 size={16} />, color: '#1C69A0',
+    id: 'operations', label: 'Operations', icon: <Building2 size={14} />,
     description: 'Daily operational reports, shift management & performance.',
-    allowedRoles: [
-      ...EXEC_ROLES, 'hsfp',
-    ],
+    allowedRoles: [...EXEC_ROLES, 'hsfp'],
     kpiMap: [
-      { key: 'daily_reports',  label: 'Daily Reports Submitted', color: '#1C69A0', icon: <ClipboardList size={15} /> },
-      { key: 'shifts_total',   label: 'Total Shifts',            color: '#059669', icon: <Clock size={15} /> },
-      { key: 'shifts_open',    label: 'Open / Live Shifts',      color: '#f59e0b', icon: <Activity size={15} /> },
-      { key: 'shifts_closed',  label: 'Closed Shifts',           color: '#22c55e', icon: <CheckCircle size={15} /> },
-      { key: 'shifts_flagged', label: 'Flagged Shifts',          color: '#dc2626', icon: <AlertTriangle size={15} /> },
+      { key: 'daily_reports',  label: 'Daily Reports' },
+      { key: 'shifts_total',   label: 'Total Shifts' },
+      { key: 'shifts_open',    label: 'Open Shifts' },
+      { key: 'shifts_closed',  label: 'Closed Shifts' },
+      { key: 'shifts_flagged', label: 'Flagged Shifts' },
     ],
   },
   {
-    id: 'it', label: 'IT', icon: <Monitor size={16} />, color: '#6366f1',
+    id: 'it', label: 'IT', icon: <Monitor size={14} />,
     description: 'IT support tickets, asset lifecycle & system security events.',
     allowedRoles: [...EXEC_ROLES, 'it_officer'],
     kpiMap: [
-      { key: 'total',    label: 'Total Tickets',      color: '#6366f1', icon: <FileText size={15} /> },
-      { key: 'open',     label: 'Open / In Progress', color: '#f59e0b', icon: <Clock size={15} /> },
-      { key: 'resolved', label: 'Resolved',           color: '#22c55e', icon: <CheckCircle size={15} /> },
-      { key: 'critical', label: 'Critical Priority',  color: '#dc2626', icon: <AlertTriangle size={15} /> },
-      { key: 'high',     label: 'High Priority',      color: '#ea580c', icon: <AlertTriangle size={15} /> },
+      { key: 'total',    label: 'Total Tickets' },
+      { key: 'open',     label: 'Open / In Progress' },
+      { key: 'resolved', label: 'Resolved' },
+      { key: 'critical', label: 'Critical Priority' },
+      { key: 'high',     label: 'High Priority' },
     ],
   },
   {
-    id: 'dental', label: 'Dental', icon: <Star size={16} />, color: '#0891b2',
+    id: 'dental', label: 'Dental', icon: <Star size={14} />,
     description: 'Dental cases by status, procedure types & consumables.',
     allowedRoles: [...EXEC_ROLES, 'dental_hod', 'dental_lab_manager'],
     kpiMap: [
-      { key: 'total',       label: 'Total Cases',      color: '#0891b2', icon: <FileText size={15} /> },
-      { key: 'active',      label: 'Active Cases',     color: '#f59e0b', icon: <Activity size={15} /> },
-      { key: 'completed',   label: 'Completed Cases',  color: '#22c55e', icon: <CheckCircle size={15} /> },
-      { key: 'pending',     label: 'Pending Cases',    color: '#94a3b8', icon: <Clock size={15} /> },
-      { key: 'consumables', label: 'Consumable Entries', color: '#ea580c', icon: <Package size={15} /> },
+      { key: 'total',       label: 'Total Cases' },
+      { key: 'active',      label: 'Active Cases' },
+      { key: 'completed',   label: 'Completed' },
+      { key: 'pending',     label: 'Pending' },
+      { key: 'consumables', label: 'Consumable Entries' },
     ],
   },
   {
-    id: 'nursing', label: 'Nursing', icon: <HeartPulse size={16} />, color: '#e11d48',
+    id: 'nursing', label: 'Nursing', icon: <HeartPulse size={14} />,
     description: 'Clinical sheets, ward reports, stock levels & incident tracking.',
     allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'hsfp'],
     kpiMap: [
-      { key: 'clinical_sheets', label: 'Clinical Sheets',    color: '#e11d48', icon: <FileText size={15} /> },
-      { key: 'daily_reports',   label: 'Daily Ward Reports', color: '#1C69A0', icon: <ClipboardList size={15} /> },
-      { key: 'stock_ok',        label: 'Stock OK',           color: '#22c55e', icon: <CheckCircle size={15} /> },
-      { key: 'stock_low',       label: 'Low Stock Items',    color: '#f59e0b', icon: <Package size={15} /> },
-      { key: 'stock_critical',  label: 'Critical Stock',     color: '#dc2626', icon: <AlertTriangle size={15} /> },
-      { key: 'incidents',       label: 'Incidents Reported', color: '#9333ea', icon: <ShieldAlert size={15} /> },
+      { key: 'clinical_sheets', label: 'Clinical Sheets' },
+      { key: 'daily_reports',   label: 'Daily Ward Reports' },
+      { key: 'stock_ok',        label: 'Stock Adequate' },
+      { key: 'stock_low',       label: 'Low Stock Items' },
+      { key: 'stock_critical',  label: 'Critical Stock' },
+      { key: 'incidents',       label: 'Incidents Reported' },
     ],
   },
   {
-    id: 'laboratory', label: 'Laboratory', icon: <FlaskConical size={16} />, color: '#7c3aed',
+    id: 'laboratory', label: 'Laboratory', icon: <FlaskConical size={14} />,
     description: 'Lab sessions, NCR management, analyzer status & quality metrics.',
     allowedRoles: [...EXEC_ROLES, 'lab_manager', 'lab_team_lead', 'lab_lead', 'hsfp'],
     kpiMap: [
-      { key: 'sessions',   label: 'Lab Sessions',  color: '#7c3aed', icon: <FlaskConical size={15} /> },
-      { key: 'ncrs_total', label: 'Total NCRs',    color: '#dc2626', icon: <FileText size={15} /> },
-      { key: 'ncrs_open',  label: 'Open NCRs',     color: '#f59e0b', icon: <AlertTriangle size={15} /> },
-      { key: 'ncrs_closed',label: 'Closed NCRs',   color: '#22c55e', icon: <CheckCircle size={15} /> },
-      { key: 'analyzers',  label: 'Analyzers on Record', color: '#059669', icon: <Activity size={15} /> },
+      { key: 'sessions',    label: 'Lab Sessions' },
+      { key: 'ncrs_total',  label: 'Total NCRs' },
+      { key: 'ncrs_open',   label: 'Open NCRs' },
+      { key: 'ncrs_closed', label: 'Closed NCRs' },
+      { key: 'analyzers',   label: 'Analyzers on Record' },
     ],
   },
   {
-    id: 'imaging', label: 'Imaging', icon: <Scan size={16} />, color: '#0369a1',
+    id: 'imaging', label: 'Imaging', icon: <Scan size={14} />,
     description: 'Radiology & imaging study volumes by modality.',
     allowedRoles: [...EXEC_ROLES, 'imaging_manager'],
     kpiMap: [
-      { key: 'total', label: 'Total Imaging Studies', color: '#0369a1', icon: <Scan size={15} /> },
+      { key: 'total', label: 'Total Imaging Studies' },
     ],
   },
   {
-    id: 'stock', label: 'Stock', icon: <Package size={16} />, color: '#ea580c',
+    id: 'stock', label: 'Stock', icon: <Package size={14} />,
     description: 'Central store stock levels, replenishment alerts & consumables log.',
     allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'stock-manager'],
     kpiMap: [
-      { key: 'total',              label: 'Total Stock Records',  color: '#ea580c', icon: <Package size={15} /> },
-      { key: 'ok',                 label: 'Adequate Stock',       color: '#22c55e', icon: <CheckCircle size={15} /> },
-      { key: 'low',                label: 'Low Stock Items',      color: '#f59e0b', icon: <AlertTriangle size={15} /> },
-      { key: 'critical',           label: 'Critical Depletion',   color: '#dc2626', icon: <XCircle size={15} /> },
-      { key: 'consumables_logged', label: 'Consumables Logged',   color: '#0891b2', icon: <ClipboardList size={15} /> },
+      { key: 'total',              label: 'Total Stock Records' },
+      { key: 'ok',                 label: 'Adequate Stock' },
+      { key: 'low',                label: 'Low Stock Items' },
+      { key: 'critical',           label: 'Critical Depletion' },
+      { key: 'consumables_logged', label: 'Consumables Logged' },
     ],
   },
   {
-    id: 'procurement', label: 'Procurement', icon: <ShoppingCart size={16} />, color: '#0f766e',
+    id: 'procurement', label: 'Procurement', icon: <ShoppingCart size={14} />,
     description: 'Purchase requests, approval pipeline & supplier performance.',
     allowedRoles: [...EXEC_ROLES, 'procurement-manager'],
     kpiMap: [
-      { key: 'total',    label: 'Total Purchase Requests', color: '#0f766e', icon: <FileText size={15} /> },
-      { key: 'pending',  label: 'Awaiting Approval',       color: '#f59e0b', icon: <Clock size={15} /> },
-      { key: 'approved', label: 'Approved',                color: '#22c55e', icon: <CheckCircle size={15} /> },
-      { key: 'rejected', label: 'Rejected',                color: '#dc2626', icon: <XCircle size={15} /> },
+      { key: 'total',    label: 'Total Purchase Requests' },
+      { key: 'pending',  label: 'Awaiting Approval' },
+      { key: 'approved', label: 'Approved' },
+      { key: 'rejected', label: 'Rejected' },
     ],
   },
   {
-    id: 'logistics', label: 'Logistics', icon: <Truck size={16} />, color: '#92400e',
+    id: 'logistics', label: 'Logistics', icon: <Truck size={14} />,
     description: 'Fleet & transport requests — pending, in-transit & completed.',
     allowedRoles: [...EXEC_ROLES, 'logistics_manager', 'logistics_officer'],
     kpiMap: [
-      { key: 'total',      label: 'Total Requests', color: '#92400e', icon: <FileText size={15} /> },
-      { key: 'pending',    label: 'Pending Dispatch',color: '#f59e0b', icon: <Clock size={15} /> },
-      { key: 'in_transit', label: 'In Transit',     color: '#1C69A0', icon: <Truck size={15} /> },
-      { key: 'completed',  label: 'Completed',      color: '#22c55e', icon: <CheckCircle size={15} /> },
+      { key: 'total',      label: 'Total Requests' },
+      { key: 'pending',    label: 'Pending Dispatch' },
+      { key: 'in_transit', label: 'In Transit' },
+      { key: 'completed',  label: 'Completed' },
     ],
   },
   {
-    id: 'physio', label: 'Physio', icon: <Activity size={16} />, color: '#0d9488',
+    id: 'physio', label: 'Physio', icon: <Activity size={14} />,
     description: 'Physiotherapy session outcomes & patient treatment continuity.',
     allowedRoles: [...EXEC_ROLES, 'physio_manager'],
     kpiMap: [
-      { key: 'total',        label: 'Total Sessions',  color: '#0d9488', icon: <FileText size={15} /> },
-      { key: 'completed',    label: 'Completed',       color: '#22c55e', icon: <CheckCircle size={15} /> },
-      { key: 'ongoing',      label: 'Ongoing',         color: '#f59e0b', icon: <Activity size={15} /> },
-      { key: 'discontinued', label: 'Discontinued',    color: '#dc2626', icon: <XCircle size={15} /> },
+      { key: 'total',        label: 'Total Sessions' },
+      { key: 'completed',    label: 'Completed' },
+      { key: 'ongoing',      label: 'Ongoing' },
+      { key: 'discontinued', label: 'Discontinued' },
     ],
   },
   {
-    id: 'customer_care', label: 'Customer Care', icon: <Users size={16} />, color: '#9333ea',
+    id: 'customer_care', label: 'Customer Care', icon: <Users size={14} />,
     description: 'Cancellations, refunds, financial exposure & patient feedback.',
-    allowedRoles: [
-      'admin', 'chairman', 'coo', 'deputy_coo', 'sales_manager',
-      'principal_cashier', 'consultant', 'quality_accreditation_officer',
-    ],
+    allowedRoles: ['admin', 'chairman', 'coo', 'deputy_coo', 'sales_manager', 'principal_cashier', 'consultant', 'quality_accreditation_officer'],
     kpiMap: [
-      { key: 'cancellations_total',   label: 'Total Cancellations',     color: '#9333ea', icon: <FileText size={15} /> },
-      { key: 'cancellations_approved',label: 'Approved Cancellations',  color: '#22c55e', icon: <CheckCircle size={15} /> },
-      { key: 'cancellations_pending', label: 'Pending Cancellations',   color: '#f59e0b', icon: <Clock size={15} /> },
-      { key: 'cancellations_value',   label: 'Approved Cancellation Value', color: '#059669', icon: <TrendingUp size={15} />, format: 'rwf' },
-      { key: 'refunds_total',         label: 'Total Refunds',           color: '#dc2626', icon: <ReceiptText size={15} /> },
-      { key: 'refunds_approved',      label: 'Approved Refunds',        color: '#22c55e', icon: <CheckCircle size={15} /> },
-      { key: 'refunds_pending',       label: 'Pending Refunds',         color: '#f59e0b', icon: <Clock size={15} /> },
-      { key: 'refunds_value',         label: 'Approved Refund Value',   color: '#9333ea', icon: <TrendingUp size={15} />, format: 'rwf' },
-      { key: 'feedbacks',             label: 'Feedback Records',        color: '#ec4899', icon: <MessageSquare size={15} /> },
+      { key: 'cancellations_total',    label: 'Total Cancellations' },
+      { key: 'cancellations_approved', label: 'Approved Cancellations' },
+      { key: 'cancellations_pending',  label: 'Pending Cancellations' },
+      { key: 'cancellations_value',    label: 'Approved Value', format: 'rwf' },
+      { key: 'refunds_total',          label: 'Total Refunds' },
+      { key: 'refunds_approved',       label: 'Approved Refunds' },
+      { key: 'refunds_pending',        label: 'Pending Refunds' },
+      { key: 'refunds_value',          label: 'Approved Refund Value', format: 'rwf' },
+      { key: 'feedbacks',              label: 'Feedback Records' },
     ],
   },
 ];
 
+// ── Shared style tokens ───────────────────────────────────────────────────────
+const S = {
+  card:      { background: T.bg, border: `1px solid ${T.border}`, borderRadius: '6px' },
+  label:     { margin: 0, fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: T.textMuted },
+  sectionHd: { margin: 0, fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: T.textSub },
+};
+
 // ── KPI Card ──────────────────────────────────────────────────────────────────
-const KpiCard = ({ label, value, icon, color, format }) => {
-  const display = format === 'rwf' ? fmtRWF(value) : safeNum(value);
+const KpiCard = ({ label, value, format }) => {
+  const display   = format === 'rwf' ? fmtRWF(value) : safeNum(value);
   const isUnavail = value == null;
   return (
-    <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1rem 1.2rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-      <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: `${color}15`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        {icon}
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '2px' }}>{label}</p>
-        <p style={{ margin: 0, fontSize: isUnavail ? '0.82rem' : '1.5rem', fontWeight: 800, color: isUnavail ? '#94a3b8' : '#1e293b', lineHeight: 1.1 }}>{display}</p>
-      </div>
+    <div style={{ ...S.card, padding: '1.1rem 1.25rem' }}>
+      <p style={S.label}>{label}</p>
+      <p style={{
+        margin: '6px 0 0', lineHeight: 1,
+        fontSize: isUnavail ? '0.85rem' : '1.75rem',
+        fontWeight: 700,
+        color: isUnavail ? T.textMuted : T.text,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {display}
+      </p>
     </div>
   );
 };
 
-// ── Status badge ──────────────────────────────────────────────────────────────
-const Pill = ({ label, value, color }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.55rem 0.9rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />
-    <span style={{ fontSize: '0.8rem', color: '#475569', flex: 1 }}>{label}</span>
-    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>{safeNum(value)}</span>
+// ── Inline progress bar (single accent colour) ────────────────────────────────
+const InlineBar = ({ pct }) => (
+  <div style={{ flex: 1, height: '4px', background: T.bgMuted, borderRadius: '2px', overflow: 'hidden' }}>
+    <div style={{ width: `${Math.min(pct || 0, 100)}%`, height: '100%', background: T.accent, borderRadius: '2px', transition: 'width 0.4s ease' }} />
   </div>
 );
 
-// ── Mini progress bar ─────────────────────────────────────────────────────────
-const Bar = ({ pct: p, color }) => (
-  <div style={{ flex: 1, height: '7px', background: '#f1f5f9', borderRadius: '99px', overflow: 'hidden' }}>
-    <div style={{ width: `${Math.min(p, 100)}%`, height: '100%', background: color, borderRadius: '99px', transition: 'width 0.6s ease' }} />
+// ── Row: label + bar + value ──────────────────────────────────────────────────
+const DataRow = ({ label, value, pct }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderBottom: `1px solid ${T.borderLight}` }}>
+    <span style={{ fontSize: '0.82rem', color: T.textSub, minWidth: '80px' }}>{label}</span>
+    {pct !== undefined && <InlineBar pct={pct} />}
+    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: T.text, minWidth: '28px', textAlign: 'right' }}>{value}</span>
   </div>
 );
 
-// ── Classification result card ────────────────────────────────────────────────
-const CategoryCard = ({ cat, color }) => {
-  const sc = SEVERITY_COLOR[cat.severity] || SEVERITY_COLOR.low;
+// ── Classification category row ───────────────────────────────────────────────
+const CategoryRow = ({ cat, total }) => {
+  const pct      = total > 0 ? Math.round((cat.count / total) * 100) : 0;
+  const sevLabel = cat.severity ? (cat.severity.charAt(0).toUpperCase() + cat.severity.slice(1).toLowerCase()) : '';
   return (
-    <div style={{ padding: '0.9rem 1rem', background: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
-        <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>{cat.label}</span>
-        <span style={{ padding: '2px 9px', borderRadius: '99px', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', background: sc.bg, color: sc.text, border: `1px solid ${sc.border}`, whiteSpace: 'nowrap' }}>{cat.severity}</span>
+    <div style={{ padding: '0.75rem 0', borderBottom: `1px solid ${T.borderLight}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px', gap: '12px' }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 500, color: T.text, flex: 1 }}>{cat.label}</span>
+        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: T.textSub, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          {sevLabel}{sevLabel ? ' · ' : ''}{cat.count} ({pct}%)
+        </span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <Bar pct={cat.percentage} color={color} />
-        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap' }}>{cat.count} <span style={{ fontWeight: 400, color: '#94a3b8' }}>({cat.percentage}%)</span></span>
-      </div>
+      <InlineBar pct={pct} />
       {cat.examples?.length > 0 && (
-        <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
-          {cat.examples.map((ex, i) => (
-            <p key={i} style={{ margin: 0, fontSize: '0.73rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }}>"{ex}"</p>
-          ))}
-        </div>
+        <p style={{ margin: '5px 0 0', fontSize: '0.72rem', color: T.textMuted, fontStyle: 'italic' }}>
+          {cat.examples.slice(0, 2).join(' · ')}
+        </p>
       )}
     </div>
   );
 };
 
-// ── Staff breakdown table ─────────────────────────────────────────────────────
-const StaffBreakdownTable = ({ rows = [], color }) => {
+// ── Staff attribution table ───────────────────────────────────────────────────
+const StaffTable = ({ rows = [] }) => {
   if (!rows.length) return null;
   const max = rows[0]?.count || 1;
   return (
     <div style={{ marginTop: '1rem' }}>
-      <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', margin: '0 0 8px' }}>Staff Breakdown</p>
-      <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px', padding: '6px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>
-          <span>Name</span><span style={{ textAlign: 'right' }}>Count</span>
-        </div>
-        {rows.map((row, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 60px', padding: '8px 12px', alignItems: 'center', gap: '8px', borderBottom: i < rows.length - 1 ? '1px solid #f1f5f9' : 'none', background: '#fff' }}>
-            <div>
-              <p style={{ margin: '0 0 3px', fontWeight: 600, fontSize: '0.8rem', color: '#1e293b' }}>{row.cashier}</p>
-              <div style={{ height: '4px', background: '#f1f5f9', borderRadius: '99px', overflow: 'hidden' }}>
-                <div style={{ width: `${Math.round((row.count / max) * 100)}%`, height: '100%', background: color, borderRadius: '99px' }} />
-              </div>
-            </div>
-            <span style={{ textAlign: 'right', fontWeight: 700, fontSize: '0.88rem', color }}>{row.count}</span>
-          </div>
-        ))}
-      </div>
+      <p style={{ ...S.sectionHd, marginBottom: '8px' }}>Staff Breakdown</p>
+      {rows.map((row, i) => (
+        <DataRow key={i} label={row.cashier} value={row.count} pct={Math.round((row.count / max) * 100)} />
+      ))}
     </div>
   );
 };
 
-// ── Donut chart ───────────────────────────────────────────────────────────────
-const Donut = ({ approved = 0, pending = 0, rejected = 0, verified = 0, reviewed = 0, total = 0 }) => {
-  const r = 52, cx = 60, cy = 60, circ = 2 * Math.PI * r;
-  const segs = [
-    { val: approved, color: '#22c55e' },
-    { val: verified + reviewed, color: '#3b82f6' },
-    { val: pending, color: '#f59e0b' },
-    { val: rejected, color: '#ef4444' },
-  ].filter(s => s.val > 0);
-  let off = 0;
+// ── Customer Care summary box ─────────────────────────────────────────────────
+const StatusSummaryBox = ({ label, data }) => {
+  if (!data || !data.total) return null;
+  const rows = [
+    { l: 'Approved', v: data.approved },
+    { l: 'Pending',  v: data.pending },
+    { l: 'Rejected', v: data.rejected },
+  ].filter(r => r.v != null);
   return (
-    <svg width="120" height="120" viewBox="0 0 120 120">
-      {total === 0
-        ? <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth="15" />
-        : segs.map((s, i) => {
-            const dash = (s.val / total) * circ;
-            const arc = { dash, gap: circ - dash, offset: off, color: s.color };
-            off += dash;
-            return <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={arc.color} strokeWidth="15"
-              strokeDasharray={`${arc.dash} ${arc.gap}`} strokeDashoffset={-arc.offset}
-              style={{ transform: 'rotate(-90deg)', transformOrigin: '60px 60px' }} />;
-          })}
-      <text x={cx} y={cy - 5} textAnchor="middle" fontSize="18" fontWeight="800" fill="#1e293b">{total}</text>
-      <text x={cx} y={cy + 12} textAnchor="middle" fontSize="8" fill="#94a3b8" fontWeight="600" letterSpacing="0.5">TOTAL</text>
-    </svg>
+    <div style={{ ...S.card, padding: '1rem 1.25rem' }}>
+      <p style={{ ...S.sectionHd, marginBottom: '10px' }}>{label}</p>
+      {rows.map(r => <DataRow key={r.l} label={r.l} value={safeNum(r.v)} />)}
+      {data.approvedAmountRWF != null && (
+        <p style={{ margin: '8px 0 0', fontSize: '0.82rem', color: T.textSub }}>
+          Approved value: <strong style={{ color: T.text }}>{fmtRWF(data.approvedAmountRWF)}</strong>
+        </p>
+      )}
+    </div>
   );
 };
 
 // ── Excel export ──────────────────────────────────────────────────────────────
-const exportToExcel = (dept, stats, classified, user, globalStats) => {
-  const wb = XLSX.utils.book_new();
-  const ts = fmtDate();
-  const roleName = (user?.role || '').replace(/_/g, ' ').replace(/-/g, ' ');
+const exportToExcel = (dept, stats, classified, user) => {
+  const wb   = XLSX.utils.book_new();
+  const ts   = fmtDate();
+  const role = (user?.role || '').replace(/_/g, ' ').replace(/-/g, ' ');
 
-  // ── Sheet 1: Cover ────────────────────────────────────────────────────────
-  const coverData = [
+  const ws0 = XLSX.utils.aoa_to_sheet([
     ['LUMINA INTELLIGENCE — DEPARTMENT REPORT'],
     [],
-    ['Department',      dept.label],
-    ['Report Date',     ts],
-    ['Generated By',    user?.full_name || user?.username || 'Unknown'],
-    ['Role',            roleName],
-    ['Classification',  'CONFIDENTIAL — INTERNAL USE ONLY'],
+    ['Department',     dept.label],
+    ['Report Date',    ts],
+    ['Generated By',   user?.full_name || user?.username || 'Unknown'],
+    ['Role',           role],
+    ['Classification', 'CONFIDENTIAL — INTERNAL USE ONLY'],
     [],
     ['Scope', dept.description],
-  ];
-  const ws0 = XLSX.utils.aoa_to_sheet(coverData);
+  ]);
   ws0['!cols'] = [{ wch: 24 }, { wch: 48 }];
-  // Bold the title cell
-  if (ws0['A1']) ws0['A1'].s = { font: { bold: true, sz: 14 } };
   XLSX.utils.book_append_sheet(wb, ws0, 'Cover');
 
-  // ── Sheet 2: KPI Summary ──────────────────────────────────────────────────
-  const kpiRows = [['Metric', 'Value', 'Notes']];
+  const kpiRows = [['Metric', 'Value']];
   dept.kpiMap.forEach(k => {
-    let raw = stats?.[k.key];
+    const raw = stats?.[k.key];
     if (typeof raw === 'object' && raw !== null) {
-      // e.g. imaging modalities object — flatten
-      Object.entries(raw).forEach(([mod, cnt]) => kpiRows.push([`${k.label} — ${mod}`, cnt, '']));
-      return;
+      Object.entries(raw).forEach(([mod, cnt]) => kpiRows.push([`${k.label} — ${mod}`, cnt]));
+    } else {
+      kpiRows.push([k.label, raw == null ? 'N/A' : (k.format === 'rwf' ? Number(raw).toLocaleString() : Number(raw))]);
     }
-    const val = raw == null ? 'N/A' : (k.format === 'rwf' ? Number(raw).toLocaleString() : Number(raw));
-    kpiRows.push([k.label, val, '']);
   });
-  // Customer care donut supplemental data
-  if (dept.id === 'customer_care' && globalStats) {
-    kpiRows.push(['', '', '']);
-    kpiRows.push(['— Cancellation Status Breakdown —', '', '']);
-    const c = globalStats.cancellations || {};
-    if (c.approved != null) kpiRows.push(['Approved', c.approved, '']);
-    if (c.pending  != null) kpiRows.push(['Pending',  c.pending,  '']);
-    if (c.rejected != null) kpiRows.push(['Rejected', c.rejected, '']);
-    if (c.approvedAmountRWF != null) kpiRows.push(['Approved Value (RWF)', Number(c.approvedAmountRWF).toLocaleString(), '']);
-    kpiRows.push(['— Refund Status Breakdown —', '', '']);
-    const r = globalStats.refunds || {};
-    if (r.approved != null) kpiRows.push(['Approved', r.approved, '']);
-    if (r.pending  != null) kpiRows.push(['Pending',  r.pending,  '']);
-    if (r.rejected != null) kpiRows.push(['Rejected', r.rejected, '']);
-    if (r.approvedAmountRWF != null) kpiRows.push(['Approved Value (RWF)', Number(r.approvedAmountRWF).toLocaleString(), '']);
-  }
   const ws1 = XLSX.utils.aoa_to_sheet(kpiRows);
-  ws1['!cols'] = [{ wch: 36 }, { wch: 22 }, { wch: 20 }];
+  ws1['!cols'] = [{ wch: 36 }, { wch: 22 }];
   XLSX.utils.book_append_sheet(wb, ws1, 'KPI Summary');
 
-  // ── Sheet 3: Classification Results (if available) ────────────────────────
   const classModule = CLASSIFIABLE_MODULES[dept.id];
   const cls = classModule ? classified[classModule] : null;
   if (cls) {
     const clsRows = [['Category', 'Count', 'Percentage (%)', 'Severity', 'Examples']];
-    (cls.categories || []).forEach(cat => {
-      clsRows.push([
-        cat.label,
-        cat.count,
-        cat.percentage,
-        (cat.severity || '').toUpperCase(),
-        (cat.examples || []).join(' | '),
-      ]);
-    });
-    if (cls.cashierAttribution?.length) {
-      clsRows.push(['', '', '', '', '']);
-      clsRows.push(['Staff', 'Count', '', '', '']);
-      cls.cashierAttribution.forEach(r => clsRows.push([r.cashier, r.count, '', '', '']));
-    }
+    (cls.categories || []).forEach(cat => clsRows.push([
+      cat.label, cat.count, cat.percentage, (cat.severity || '').toUpperCase(), (cat.examples || []).join(' | ')
+    ]));
     const ws2 = XLSX.utils.aoa_to_sheet(clsRows);
     ws2['!cols'] = [{ wch: 32 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 50 }];
     XLSX.utils.book_append_sheet(wb, ws2, 'Classification');
   }
 
-  // ── Save ──────────────────────────────────────────────────────────────────
-  const fileName = `Lumina_${dept.label.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  XLSX.writeFile(wb, fileName);
+  XLSX.writeFile(wb, `Lumina_${dept.label.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 };
 
 // ── Department Panel ──────────────────────────────────────────────────────────
@@ -404,12 +348,8 @@ const DeptPanel = ({ dept, globalStats, canClassify, onClassify, classifying, cl
   useEffect(() => {
     setLoading(true); setLoadErr(false); setDeptStats(null);
     getDeptStats(dept.id)
-      .then(res => {
-        const d = res.data.data;
-        if (d?._error) { setLoadErr(true); setDeptStats(null); }
-        else setDeptStats(d);
-      })
-      .catch(() => { setLoadErr(true); setDeptStats(null); })
+      .then(res => { const d = res.data.data; d?._error ? setLoadErr(true) : setDeptStats(d); })
+      .catch(() => setLoadErr(true))
       .finally(() => setLoading(false));
   }, [dept.id]);
 
@@ -419,114 +359,78 @@ const DeptPanel = ({ dept, globalStats, canClassify, onClassify, classifying, cl
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-      {/* ── Data unavailability notice ── */}
       {!loading && loadErr && (
-        <div style={{ padding: '1rem 1.25rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#92400e' }}>
-          <AlertTriangle size={15} />
-          <span>No data available for <strong>{dept.label}</strong>. Verify the department module is active and has records.</span>
-        </div>
+        <p style={{ margin: 0, padding: '0.85rem 1rem', background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: '6px', fontSize: '0.84rem', color: T.textSub }}>
+          No data available for <strong>{dept.label}</strong>. Verify the module is active and has records.
+        </p>
       )}
 
-      {/* ── KPI Grid ── */}
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#94a3b8', fontSize: '0.85rem', padding: '0.5rem' }}>
-          <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} /> Loading data…
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: T.textMuted, fontSize: '0.84rem', padding: '0.5rem 0' }}>
+          <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Loading data…
         </div>
       ) : !loadErr && deptStats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '0.9rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
           {dept.kpiMap.map(kpi => {
             const rawVal = deptStats[kpi.key];
             const val = typeof rawVal === 'object' && rawVal !== null
-              ? Object.values(rawVal).reduce((a, b) => a + Number(b), 0)
-              : rawVal;
-            return (
-              <KpiCard key={kpi.key} label={kpi.label} value={val} icon={kpi.icon} color={kpi.color} format={kpi.format} />
-            );
+              ? Object.values(rawVal).reduce((a, b) => a + Number(b), 0) : rawVal;
+            return <KpiCard key={kpi.key} label={kpi.label} value={val} format={kpi.format} />;
           })}
         </div>
       )}
 
-      {/* ── Customer Care: donut breakdown of global modules ── */}
       {!loading && !loadErr && dept.id === 'customer_care' && globalStats && (
-        <div>
-          <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', margin: '0 0 10px' }}>Status Breakdown</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
-            {[
-              { key: 'cancellations', label: 'Cancellations', color: '#9333ea' },
-              { key: 'refunds',       label: 'Refunds',       color: '#dc2626' },
-            ].map(({ key, label, color }) => {
-              const s = globalStats[key];
-              if (!s || !s.total) return null;
-              return (
-                <div key={key} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.1rem' }}>
-                  <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>{label}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <Donut {...s} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
-                      {s.approved != null && <Pill label="Approved" value={s.approved} color="#22c55e" />}
-                      {s.pending  != null && <Pill label="Pending"  value={s.pending}  color="#f59e0b" />}
-                      {s.rejected != null && <Pill label="Rejected" value={s.rejected} color="#ef4444" />}
-                      {s.approvedAmountRWF != null && (
-                        <div style={{ padding: '4px 8px', background: '#f0fdf4', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, color: '#166534' }}>
-                          {fmtRWF(s.approvedAmountRWF)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.75rem' }}>
+          {[{ key: 'cancellations', label: 'Cancellations' }, { key: 'refunds', label: 'Refunds' }].map(({ key, label }) => (
+            <StatusSummaryBox key={key} label={label} data={globalStats[key]} />
+          ))}
         </div>
       )}
 
-      {/* ── Lumina Intelligence Reason Classification (executive only, supported depts) ── */}
       {canClassify && (
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '0.85rem 1.25rem', borderBottom: moduleClassified ? '1px solid #f1f5f9' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={S.card}>
+          <div style={{ padding: '0.9rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', borderBottom: moduleClassified ? `1px solid ${T.borderLight}` : 'none' }}>
             <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#1e293b' }}>Lumina Intelligence Classification</p>
-              <p style={{ margin: 0, fontSize: '0.73rem', color: '#94a3b8', marginTop: '1px' }}>Analyses recent records to surface recurring patterns</p>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: '0.88rem', color: T.text }}>Lumina Intelligence Classification</p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: T.textMuted }}>Analyses recent records to surface recurring patterns</p>
             </div>
             <button
               id={`classify-btn-${dept.id}`}
               onClick={() => { onClassify(classModule); setExpanded(true); }}
               disabled={classifying}
-              style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '0.5rem 1.1rem', background: classifying ? '#f1f5f9' : L.grad, color: classifying ? '#94a3b8' : '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.8rem', cursor: classifying ? 'not-allowed' : 'pointer', transition: 'opacity 0.2s' }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '0.45rem 1rem', background: classifying ? T.bgMuted : T.accent,
+                color: classifying ? T.textMuted : '#fff', border: 'none', borderRadius: '5px',
+                fontWeight: 600, fontSize: '0.8rem', cursor: classifying ? 'not-allowed' : 'pointer',
+              }}
             >
-              {classifying ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={13} />}
-              {classifying ? 'Classifying…' : moduleClassified ? 'Re-classify' : 'Run Classification'}
+              {classifying ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={12} />}
+              {classifying ? 'Running…' : moduleClassified ? 'Re-run' : 'Run Analysis'}
             </button>
           </div>
 
           {moduleClassified && (
-            <div style={{ padding: '1.25rem' }}>
-              {/* Toggle header */}
+            <div style={{ padding: '1rem 1.25rem' }}>
               <div
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: expanded ? '1rem' : 0 }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: expanded ? '0.75rem' : 0 }}
                 onClick={() => setExpanded(e => !e)}
               >
-                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <BarChart2 size={14} style={{ color: dept.color }} />
-                  {moduleClassified.total} records analysed across {(moduleClassified.categories || []).length} categories
+                <span style={{ fontWeight: 600, fontSize: '0.84rem', color: T.text }}>
+                  {moduleClassified.total} records &nbsp;&middot;&nbsp; {(moduleClassified.categories || []).length} categories identified
                 </span>
-                {expanded ? <ChevronUp size={15} color="#94a3b8" /> : <ChevronDown size={15} color="#94a3b8" />}
+                {expanded ? <ChevronUp size={14} color={T.textMuted} /> : <ChevronDown size={14} color={T.textMuted} />}
               </div>
-
               {expanded && (
                 <>
                   {moduleClassified.executiveSummary && (
-                    <div style={{ padding: '0.85rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '0.75rem', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <Lightbulb size={14} style={{ color: dept.color, marginTop: '1px', flexShrink: 0 }} />
-                      <p style={{ margin: 0, fontSize: '0.82rem', color: '#475569', lineHeight: 1.65 }}>{moduleClassified.executiveSummary}</p>
+                    <div style={{ padding: '0.8rem 1rem', background: T.bgSubtle, borderRadius: '5px', border: `1px solid ${T.borderLight}`, marginBottom: '0.75rem' }}>
+                      <p style={{ margin: 0, fontSize: '0.82rem', color: T.textSub, lineHeight: 1.65 }}>{moduleClassified.executiveSummary}</p>
                     </div>
                   )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                    {(moduleClassified.categories || []).map((cat, i) => (
-                      <CategoryCard key={i} cat={cat} color={dept.color} />
-                    ))}
-                  </div>
-                  <StaffBreakdownTable rows={moduleClassified.cashierAttribution || []} color={dept.color} />
+                  <div>{(moduleClassified.categories || []).map((cat, i) => <CategoryRow key={i} cat={cat} total={moduleClassified.total} />)}</div>
+                  <StaffTable rows={moduleClassified.cashierAttribution || []} />
                 </>
               )}
             </div>
@@ -537,12 +441,12 @@ const DeptPanel = ({ dept, globalStats, canClassify, onClassify, classifying, cl
   );
 };
 
-// ── Incident Analysis Panel (for line managers) ──────────────────────────────
-const IncidentAnalysisPanel = ({ userRole }) => {
-  const [incidents, setIncidents]   = useState([]);
-  const [loading,   setLoading]     = useState(true);
-  const [err,       setErr]         = useState(false);
-  const [expanded,  setExpanded]    = useState(true);
+// ── Incident Analysis Panel (line managers) ───────────────────────────────────
+const IncidentAnalysisPanel = () => {
+  const [incidents, setIncidents] = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [err,       setErr]       = useState(false);
+  const [expanded,  setExpanded]  = useState(true);
 
   useEffect(() => {
     setLoading(true); setErr(false);
@@ -560,136 +464,114 @@ const IncidentAnalysisPanel = ({ userRole }) => {
   const total    = incidents.length;
   const pending  = incidents.filter(i => (i.status || '').toLowerCase() === 'pending').length;
   const reviewed = incidents.filter(i => (i.status || '').toLowerCase() === 'reviewed').length;
-  const approved = incidents.filter(i => ['approved','closed'].includes((i.status || '').toLowerCase())).length;
+  const approved = incidents.filter(i => ['approved', 'closed'].includes((i.status || '').toLowerCase())).length;
 
-  // By severity
-  const byServerity = { High: 0, Medium: 0, Low: 0 };
-  incidents.forEach(i => { const s = i.severity || 'Low'; byServerity[s] = (byServerity[s] || 0) + 1; });
+  const bySeverity = { High: 0, Medium: 0, Low: 0 };
+  incidents.forEach(i => { const s = i.severity || 'Low'; bySeverity[s] = (bySeverity[s] || 0) + 1; });
 
-  // By type
   const byType = {};
   incidents.forEach(i => { const t = i.incident_type || 'Unknown'; byType[t] = (byType[t] || 0) + 1; });
   const typeEntries = Object.entries(byType).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const maxType = typeEntries[0]?.[1] || 1;
 
-  // Recent 5
   const recent = [...incidents].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
 
-  const SEV_COLOR = { High: '#dc2626', Medium: '#f59e0b', Low: '#22c55e' };
-
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden', marginBottom: '1.5rem' }}>
-      {/* Header */}
-      <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(135deg, #1C3A5E10, #ffffff)', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+    <div style={{ ...S.card, overflow: 'hidden', marginBottom: '0.5rem' }}>
+      <div style={{
+        padding: '0.9rem 1.25rem', display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap',
+        borderBottom: expanded ? `1px solid ${T.borderLight}` : 'none',
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ padding: '8px', borderRadius: '10px', background: '#fef2f2', color: '#dc2626' }}>
-            <Siren size={18} />
-          </div>
+          <Siren size={16} color={T.accent} />
           <div>
-            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#1e293b' }}>Incident Report Analysis</h2>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>Lumina Intelligence · Your department's incident overview</p>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem', color: T.text }}>Incident Report Analysis</p>
+            <p style={{ margin: '1px 0 0', fontSize: '0.75rem', color: T.textMuted }}>Lumina Intelligence · Your department overview</p>
           </div>
         </div>
-        <button onClick={() => setExpanded(e => !e)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}>
-          {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        <button
+          onClick={() => setExpanded(e => !e)}
+          style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: '4px', cursor: 'pointer', color: T.textSub, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', padding: '0.3rem 0.65rem' }}
+        >
+          {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           {expanded ? 'Collapse' : 'Expand'}
         </button>
       </div>
 
       {expanded && (
-        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
           {loading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#94a3b8', fontSize: '0.85rem' }}>
-              <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} /> Loading incident data…
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: T.textMuted, fontSize: '0.84rem' }}>
+              <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Loading incident data…
             </div>
           )}
+
           {!loading && err && (
-            <div style={{ padding: '1rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', color: '#92400e', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <AlertTriangle size={14} /> Could not load incident reports.
-            </div>
+            <p style={{ margin: 0, padding: '0.85rem 1rem', background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: '6px', fontSize: '0.84rem', color: T.textSub }}>
+              Unable to load incident reports.
+            </p>
           )}
+
           {!loading && !err && (
             <>
-              {/* KPI strip */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.9rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '0.75rem' }}>
                 {[
-                  { label: 'Total Incidents',  value: total,    color: '#1C69A0', icon: <ShieldAlert size={15} /> },
-                  { label: 'Pending Review',   value: pending,  color: '#f59e0b', icon: <Clock size={15} /> },
-                  { label: 'Reviewed',         value: reviewed, color: '#3b82f6', icon: <BookOpen size={15} /> },
-                  { label: 'Closed / Approved',value: approved, color: '#22c55e', icon: <CheckCircle size={15} /> },
-                ].map(k => (
-                  <div key={k.label} style={{ background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '9px', background: `${k.color}15`, color: k.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{k.icon}</div>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>{k.label}</p>
-                      <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#1e293b', lineHeight: 1.1 }}>{k.value}</p>
-                    </div>
-                  </div>
-                ))}
+                  { label: 'Total Incidents',   value: total },
+                  { label: 'Pending Review',    value: pending },
+                  { label: 'Reviewed',          value: reviewed },
+                  { label: 'Closed / Approved', value: approved },
+                ].map(k => <KpiCard key={k.label} label={k.label} value={k.value} />)}
               </div>
 
-              {/* Severity + Type breakdown */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                {/* Severity */}
-                <div style={{ background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1rem' }}>
-                  <p style={{ margin: '0 0 10px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>By Severity</p>
-                  {Object.entries(byServerity).map(([sev, cnt]) => (
-                    <div key={sev} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }}>
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: SEV_COLOR[sev] || '#94a3b8', flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.8rem', color: '#475569', flex: 1 }}>{sev}</span>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>{cnt}</span>
-                    </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ ...S.card, padding: '1rem 1.25rem' }}>
+                  <p style={{ ...S.sectionHd, marginBottom: '8px' }}>By Severity</p>
+                  {Object.entries(bySeverity).map(([sev, cnt]) => (
+                    <DataRow key={sev} label={sev} value={cnt} pct={total > 0 ? Math.round((cnt / total) * 100) : 0} />
                   ))}
                 </div>
-
-                {/* By type */}
-                <div style={{ background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1rem' }}>
-                  <p style={{ margin: '0 0 10px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>By Incident Type</p>
+                <div style={{ ...S.card, padding: '1rem 1.25rem' }}>
+                  <p style={{ ...S.sectionHd, marginBottom: '8px' }}>By Incident Type</p>
                   {typeEntries.map(([type, cnt]) => (
-                    <div key={type} style={{ marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                        <span style={{ fontSize: '0.78rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>{type}</span>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1e293b' }}>{cnt}</span>
-                      </div>
-                      <div style={{ height: '5px', background: '#e2e8f0', borderRadius: '99px', overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.round((cnt / maxType) * 100)}%`, height: '100%', background: '#1C69A0', borderRadius: '99px' }} />
-                      </div>
-                    </div>
+                    <DataRow key={type} label={type} value={cnt} pct={Math.round((cnt / maxType) * 100)} />
                   ))}
+                  {typeEntries.length === 0 && <p style={{ margin: 0, fontSize: '0.82rem', color: T.textMuted }}>No records.</p>}
                 </div>
               </div>
 
-              {/* Recent incidents table */}
               {recent.length > 0 && (
-                <div>
-                  <p style={{ margin: '0 0 8px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>Recent Incidents</p>
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 100px 90px', padding: '6px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.04em' }}>
-                      <span>Description</span><span>Type</span><span>Severity</span><span>Status</span>
-                    </div>
-                    {recent.map((inc, i) => {
-                      const sColor = SEV_COLOR[inc.severity] || '#94a3b8';
-                      const stColor = inc.status?.toLowerCase() === 'pending' ? '#f59e0b'
-                        : inc.status?.toLowerCase() === 'reviewed' ? '#3b82f6'
-                        : '#22c55e';
-                      return (
-                        <div key={inc.id} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 100px 90px', padding: '8px 12px', alignItems: 'center', borderBottom: i < recent.length - 1 ? '1px solid #f1f5f9' : 'none', background: '#fff' }}>
-                          <p style={{ margin: 0, fontSize: '0.78rem', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>{inc.description || '—'}</p>
-                          <span style={{ fontSize: '0.75rem', color: '#475569' }}>{inc.incident_type || '—'}</span>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: sColor }}>{inc.severity || '—'}</span>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: stColor, textTransform: 'capitalize' }}>{inc.status || '—'}</span>
-                        </div>
-                      );
-                    })}
+                <div style={S.card}>
+                  <div style={{ padding: '0.7rem 1.25rem', borderBottom: `1px solid ${T.borderLight}` }}>
+                    <p style={S.sectionHd}>Recent Incidents</p>
                   </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ background: T.bgSubtle }}>
+                        {['Description', 'Type', 'Severity', 'Status'].map(h => (
+                          <th key={h} style={{ padding: '0.5rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: T.textMuted, borderBottom: `1px solid ${T.borderLight}` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recent.map((inc, i) => (
+                        <tr key={inc.id} style={{ background: i % 2 === 0 ? T.bg : T.bgSubtle }}>
+                          <td style={{ padding: '0.6rem 1rem', color: T.text, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inc.description || '—'}</td>
+                          <td style={{ padding: '0.6rem 1rem', color: T.textSub }}>{inc.incident_type || '—'}</td>
+                          <td style={{ padding: '0.6rem 1rem', color: T.text, fontWeight: 500 }}>{inc.severity || '—'}</td>
+                          <td style={{ padding: '0.6rem 1rem', color: T.textSub, textTransform: 'capitalize' }}>{inc.status || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
               {total === 0 && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', fontSize: '0.85rem' }}>
-                  <CheckCircle size={28} style={{ marginBottom: '8px', color: '#22c55e' }} />
-                  <p style={{ margin: 0 }}>No incidents on record for your department.</p>
-                </div>
+                <p style={{ margin: 0, fontSize: '0.84rem', color: T.textMuted, textAlign: 'center', padding: '1.5rem 0' }}>
+                  No incidents on record.
+                </p>
               )}
             </>
           )}
@@ -702,39 +584,29 @@ const IncidentAnalysisPanel = ({ userRole }) => {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const LuminaIntelligence = () => {
   const { user } = useAuth();
-  const role = user?.role || '';
+  const role     = user?.role || '';
 
-  const [activeTab,    setActiveTab]    = useState(null);
-  const [globalStats,  setGlobalStats]  = useState(null);
-  const [classified,   setClassified]   = useState({});
-  const [analyzing,    setAnalyzing]    = useState({});
-  const [error,        setError]        = useState('');
-  const [exporting,    setExporting]    = useState(false);
-  const [deptStatsCache, setDeptStatsCache] = useState({});
+  const [activeTab,   setActiveTab]   = useState(null);
+  const [globalStats, setGlobalStats] = useState(null);
+  const [classified,  setClassified]  = useState({});
+  const [analyzing,   setAnalyzing]   = useState({});
+  const [error,       setError]       = useState('');
+  const [exporting,   setExporting]   = useState(false);
 
-  // Executive = sees all tabs + Executive Summary section
-  const isExec = EXEC_ROLES.includes(role);
+  const isExec               = EXEC_ROLES.includes(role);
   const canSeeSecurityClassify = SECURITY_ROLES.includes(role);
+  const visibleDepts         = DEPARTMENTS.filter(d => isExec || d.allowedRoles.includes(role));
 
-  // Build visible tab list based on role
-  const visibleDepts = DEPARTMENTS.filter(d => isExec || d.allowedRoles.includes(role));
-
-  // Set first visible tab on mount
   useEffect(() => {
     if (visibleDepts.length && !activeTab) setActiveTab(visibleDepts[0].id);
   }, [visibleDepts.length]);
 
-  // Load global stats (for customer care donuts)
   useEffect(() => {
-    getAIStats()
-      .then(res => setGlobalStats(res.data.data))
-      .catch(() => {});
+    getAIStats().then(res => setGlobalStats(res.data.data)).catch(() => {});
   }, []);
 
-  // Classification handler
   const handleClassify = useCallback(async (module) => {
     if (!module) return;
-    // Block non-admin from security classify
     if (module === 'security' && !canSeeSecurityClassify) {
       setError('Security classification is restricted to administrators.');
       return;
@@ -751,85 +623,75 @@ const LuminaIntelligence = () => {
     }
   }, [canSeeSecurityClassify]);
 
-  // Export handler
   const handleExport = async () => {
     const dept = DEPARTMENTS.find(d => d.id === activeTab);
     if (!dept) return;
     setExporting(true); setError('');
     try {
       const res = await getDeptStats(dept.id);
-      const stats = res.data.data?._error ? null : res.data.data;
-      exportToExcel(dept, stats, classified, user, globalStats);
+      exportToExcel(dept, res.data.data?._error ? null : res.data.data, classified, user);
     } catch {
-      setError('Export failed. Please verify the server is reachable.');
+      setError('Export failed. Verify the server is reachable.');
     } finally { setExporting(false); }
   };
 
-  const activeDept = DEPARTMENTS.find(d => d.id === activeTab);
-  const classModule = activeDept ? CLASSIFIABLE_MODULES[activeDept.id] : null;
+  const activeDept        = DEPARTMENTS.find(d => d.id === activeTab);
+  const classModule       = activeDept ? CLASSIFIABLE_MODULES[activeDept.id] : null;
   const canClassifyActive = isExec && !!classModule && (classModule !== 'security' || canSeeSecurityClassify);
 
   if (!visibleDepts.length) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '55vh', gap: '0.75rem', textAlign: 'center' }}>
-        <Lock size={38} style={{ color: '#cbd5e1' }} />
-        <p style={{ fontWeight: 700, color: '#1e293b', margin: 0 }}>Access Restricted</p>
-        <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Your role does not have permission to access this module.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: '0.5rem', textAlign: 'center' }}>
+        <Lock size={32} color={T.textMuted} />
+        <p style={{ fontWeight: 600, color: T.text, margin: '8px 0 0' }}>Access Restricted</p>
+        <p style={{ fontSize: '0.84rem', color: T.textSub, margin: 0 }}>Your role does not have permission to view this module.</p>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-      {/* ── Page Header ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', borderRadius: '13px', background: L.grad, color: '#fff', boxShadow: '0 3px 12px rgba(28,105,160,0.3)', flexShrink: 0 }}>
-            <Brain size={22} />
-          </div>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', paddingBottom: '1rem', borderBottom: `1px solid ${T.borderLight}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Brain size={20} color={T.accent} />
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '1.7rem', fontWeight: 800, color: '#1e293b', margin: 0, letterSpacing: '-0.4px' }}>Lumina Intelligence</h1>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 9px', borderRadius: '99px', background: 'rgba(28,105,160,0.1)', color: L.accent, fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                <Lock size={9} /> Elevated Access
-              </span>
-            </div>
-            <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '2px 0 0' }}>
-              Lumina Intelligence · {fmtDate()}
-            </p>
+            <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: T.text, letterSpacing: '-0.2px' }}>Lumina Intelligence</h1>
+            <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: T.textMuted }}>Department analytics &nbsp;&middot;&nbsp; {fmtDate()}</p>
           </div>
         </div>
-
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            id="lumina-export-btn"
-            onClick={handleExport}
-            disabled={exporting}
-            style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '0.55rem 1.1rem', background: exporting ? '#f1f5f9' : '#fff', color: exporting ? '#94a3b8' : '#1e293b', border: '1.5px solid #e2e8f0', borderRadius: '9px', fontWeight: 600, fontSize: '0.82rem', cursor: exporting ? 'not-allowed' : 'pointer', transition: 'border-color 0.15s' }}
-          >
-            {exporting ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={13} />}
-            Export to Excel
-          </button>
-        </div>
+        <button
+          id="lumina-export-btn"
+          onClick={handleExport}
+          disabled={exporting}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '0.45rem 0.9rem', background: T.bg,
+            color: exporting ? T.textMuted : T.text,
+            border: `1px solid ${T.border}`, borderRadius: '5px',
+            fontWeight: 500, fontSize: '0.82rem', cursor: exporting ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {exporting ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={13} />}
+          Export to Excel
+        </button>
       </div>
 
-      {/* ── Error banner ── */}
+      {/* Error banner */}
       {error && (
-        <div style={{ padding: '0.8rem 1.1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '9px', display: 'flex', alignItems: 'center', gap: '9px', color: '#b91c1c', fontSize: '0.84rem' }}>
-          <ShieldAlert size={15} /> <span>{error}</span>
-          <button onClick={() => setError('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', fontSize: '1rem', lineHeight: 1 }}>×</button>
+        <div style={{ padding: '0.75rem 1rem', background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: '5px', display: 'flex', alignItems: 'center', gap: '8px', color: T.text, fontSize: '0.84rem' }}>
+          <AlertTriangle size={14} color={T.accent} />
+          <span style={{ flex: 1 }}>{error}</span>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: '1.1rem', lineHeight: 1 }}>&#x2715;</button>
         </div>
       )}
 
-      {/* ── Lumina Intelligence: Incident Analysis (line managers) ── */}
-      {LINE_MANAGER_ROLES.includes(role) && (
-        <IncidentAnalysisPanel userRole={role} />
-      )}
+      {/* Incident Analysis (line managers) */}
+      {LINE_MANAGER_ROLES.includes(role) && <IncidentAnalysisPanel />}
 
-      {/* ── Department Tab Bar ── */}
-      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '5px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: '0', flexWrap: 'wrap', borderBottom: `1px solid ${T.border}` }}>
         {visibleDepts.map(dept => {
           const active = activeTab === dept.id;
           return (
@@ -838,13 +700,12 @@ const LuminaIntelligence = () => {
               id={`dept-tab-${dept.id}`}
               onClick={() => { setActiveTab(dept.id); setError(''); }}
               style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '0.45rem 0.95rem', borderRadius: '8px',
-                border: 'none', cursor: 'pointer', fontWeight: active ? 700 : 500,
-                fontSize: '0.8rem', transition: 'all 0.15s',
-                background: active ? dept.color : 'transparent',
-                color: active ? '#fff' : '#475569',
-                boxShadow: active ? `0 2px 6px ${dept.color}40` : 'none',
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '0.5rem 1rem', background: 'none', border: 'none',
+                borderBottom: active ? `2px solid ${T.accent}` : '2px solid transparent',
+                fontWeight: active ? 600 : 400, fontSize: '0.83rem',
+                color: active ? T.accent : T.textSub,
+                cursor: 'pointer', transition: 'color 0.15s', marginBottom: '-1px',
               }}
             >
               {dept.icon}
@@ -854,27 +715,19 @@ const LuminaIntelligence = () => {
         })}
       </div>
 
-      {/* ── Active Department Panel ── */}
+      {/* Active department card */}
       {activeDept && (
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-          {/* Panel header */}
-          <div style={{ padding: '1.1rem 1.5rem', background: `linear-gradient(135deg, ${activeDept.color}10, #ffffff)`, borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ padding: '8px', borderRadius: '10px', background: `${activeDept.color}15`, color: activeDept.color }}>
-                {activeDept.icon}
-              </div>
-              <div>
-                <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#1e293b' }}>{activeDept.label}</h2>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>{activeDept.description}</p>
-              </div>
+        <div style={S.card}>
+          <div style={{ padding: '0.85rem 1.25rem', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+            <div>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: '0.88rem', color: T.text }}>{activeDept.label}</p>
+              <p style={{ margin: '1px 0 0', fontSize: '0.76rem', color: T.textMuted }}>{activeDept.description}</p>
             </div>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 10px', background: `${activeDept.color}12`, color: activeDept.color, borderRadius: '99px', fontSize: '0.68rem', fontWeight: 700 }}>
-              <Eye size={10} /> Live Data
+            <span style={{ fontSize: '0.72rem', color: T.textMuted, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Eye size={11} /> Live data
             </span>
           </div>
-
-          {/* Panel body */}
-          <div style={{ padding: '1.5rem' }}>
+          <div style={{ padding: '1.25rem' }}>
             <DeptPanel
               key={activeDept.id}
               dept={activeDept}
@@ -888,22 +741,14 @@ const LuminaIntelligence = () => {
         </div>
       )}
 
-      {/* ── Legend ── */}
-      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.8rem 1.25rem', background: '#fff', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-        <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>Status Key</span>
-        {[
-          { label: 'Approved / Completed', color: '#22c55e' },
-          { label: 'Pending / Open',       color: '#f59e0b' },
-          { label: 'Verified / Reviewed',  color: '#3b82f6' },
-          { label: 'Rejected',             color: '#ef4444' },
-        ].map(k => (
-          <div key={k.label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#64748b' }}>
-            <div style={{ width: '9px', height: '9px', borderRadius: '2px', background: k.color }} />
-            {k.label}
-          </div>
+      {/* Footer */}
+      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.6rem 0', borderTop: `1px solid ${T.borderLight}` }}>
+        <span style={S.sectionHd}>Status key:</span>
+        {['Approved / Completed', 'Pending / Open', 'Verified / Reviewed', 'Rejected'].map(k => (
+          <span key={k} style={{ fontSize: '0.78rem', color: T.textSub }}>{k}</span>
         ))}
-        <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#94a3b8' }}>
-          Lumina Intelligence · Legacy Clinics
+        <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: T.textMuted }}>
+          Lumina Intelligence &nbsp;&middot;&nbsp; Legacy Clinics
         </span>
       </div>
 
