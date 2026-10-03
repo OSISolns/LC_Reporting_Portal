@@ -305,7 +305,7 @@ const DEPT_QUERIES = {
   operations: async () => {
     const [reports, shifts, perf] = await Promise.all([
       queryRows(`SELECT COUNT(*) AS total FROM daily_report_metrics`),
-      queryRows(`SELECT status, COUNT(*) AS cnt FROM shift_sessions GROUP BY status`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM shift_sessions GROUP BY LOWER(status)`),
       queryRows(`SELECT COUNT(*) AS cnt FROM shift_sessions WHERE is_flagged=1`),
     ]);
     const shiftMap = {}; shifts.forEach(r => { shiftMap[r.status] = Number(r.cnt); });
@@ -319,17 +319,17 @@ const DEPT_QUERIES = {
   },
   it: async () => {
     const [tickets, byPriority, byStatus] = await Promise.all([
-      queryRows(`SELECT COUNT(*) AS total FROM it_support_tickets`),
-      queryRows(`SELECT priority, COUNT(*) AS cnt FROM it_support_tickets GROUP BY priority`),
-      queryRows(`SELECT status, COUNT(*) AS cnt FROM it_support_tickets GROUP BY status`),
+      queryRows(`SELECT COUNT(*) AS total FROM it_tickets`),
+      queryRows(`SELECT LOWER(priority) AS priority, COUNT(*) AS cnt FROM it_tickets GROUP BY LOWER(priority)`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM it_tickets GROUP BY LOWER(status)`),
     ]);
     const pri = {}, sta = {};
-    byPriority.forEach(r => { pri[r.priority] = Number(r.cnt); });
-    byStatus.forEach(r => { sta[r.status] = Number(r.cnt); });
+    byPriority.forEach(r => { if (r.priority) pri[r.priority] = Number(r.cnt); });
+    byStatus.forEach(r => { if (r.status) sta[r.status] = Number(r.cnt); });
     return {
       total: Number(tickets[0]?.total || 0),
-      open: (sta['open'] || 0) + (sta['in_progress'] || 0),
-      resolved: sta['resolved'] || 0,
+      open: (sta['open'] || 0) + (sta['in progress'] || 0) + (sta['in_progress'] || 0) + (sta['pending'] || 0),
+      resolved: (sta['resolved'] || 0) + (sta['closed'] || 0),
       critical: pri['critical'] || 0,
       high: pri['high'] || 0,
     };
@@ -338,14 +338,14 @@ const DEPT_QUERIES = {
     const [cases1, cases2, byStatus1, byStatus2, consumables] = await Promise.all([
       queryRows(`SELECT COUNT(*) AS total FROM dental_cases`),
       queryRows(`SELECT COUNT(*) AS total FROM dental_clinic_cases`),
-      queryRows(`SELECT status, COUNT(*) AS cnt FROM dental_cases GROUP BY status`),
-      queryRows(`SELECT status, COUNT(*) AS cnt FROM dental_clinic_cases GROUP BY status`),
-      queryRows(`SELECT COUNT(*) AS total FROM consumables_log WHERE LOWER(department) LIKE '%dental%'`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM dental_cases GROUP BY LOWER(status)`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM dental_clinic_cases GROUP BY LOWER(status)`),
+      queryRows(`SELECT COUNT(*) AS total FROM consumables_log WHERE LOWER(department_name) LIKE '%dental%'`),
     ]);
     const totalCount = Number(cases1[0]?.total || 0) + Number(cases2[0]?.total || 0);
     const sta = {};
-    (byStatus1 || []).forEach(r => { if (r.status) sta[String(r.status).toLowerCase()] = (sta[String(r.status).toLowerCase()] || 0) + Number(r.cnt); });
-    (byStatus2 || []).forEach(r => { if (r.status) sta[String(r.status).toLowerCase()] = (sta[String(r.status).toLowerCase()] || 0) + Number(r.cnt); });
+    (byStatus1 || []).forEach(r => { if (r.status) sta[r.status] = (sta[r.status] || 0) + Number(r.cnt); });
+    (byStatus2 || []).forEach(r => { if (r.status) sta[r.status] = (sta[r.status] || 0) + Number(r.cnt); });
 
     return {
       total: totalCount,
@@ -356,15 +356,16 @@ const DEPT_QUERIES = {
     };
   },
   nursing: async () => {
-    const [sheets, stock, incidents, reports] = await Promise.all([
-      queryRows(`SELECT COUNT(*) AS total FROM clinical_sheets`),
-      queryRows(`SELECT status, COUNT(*) AS cnt FROM nursing_monthly_stock GROUP BY status`),
-      queryRows(`SELECT COUNT(*) AS total FROM incident_reports WHERE department='nursing' OR department IS NULL`),
+    const [sheets, stock, incidents, reports, vitals] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM clinical_observations`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM nursing_monthly_stock GROUP BY LOWER(status)`),
+      queryRows(`SELECT COUNT(*) AS total FROM incident_reports WHERE LOWER(department) LIKE '%nurse%' OR LOWER(department) LIKE '%nursing%' OR department IS NULL`),
       queryRows(`SELECT COUNT(*) AS total FROM daily_report_metrics`),
+      queryRows(`SELECT COUNT(*) AS total FROM patient_vitals`),
     ]);
-    const sta = {}; stock.forEach(r => { sta[r.status] = Number(r.cnt); });
+    const sta = {}; stock.forEach(r => { if (r.status) sta[r.status] = Number(r.cnt); });
     return {
-      clinical_sheets: Number(sheets[0]?.total || 0),
+      clinical_sheets: Number(sheets[0]?.total || 0) + Number(vitals[0]?.total || 0),
       stock_ok: sta['ok'] || 0,
       stock_low: sta['low'] || 0,
       stock_critical: sta['critical'] || 0,
@@ -373,15 +374,15 @@ const DEPT_QUERIES = {
     };
   },
   laboratory: async () => {
-    const [sessions, ncrs, analyzers] = await Promise.all([
-      queryRows(`SELECT COUNT(*) AS total FROM lab_sessions`),
-      queryRows(`SELECT status, COUNT(*) AS cnt FROM ncr_records GROUP BY status`),
+    const [orders, ncrs, analyzers] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM lab_orders`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM lab_ncr GROUP BY LOWER(status)`),
       queryRows(`SELECT COUNT(*) AS total FROM lab_analyzers`),
     ]);
-    const sta = {}; ncrs.forEach(r => { sta[r.status] = Number(r.cnt); });
+    const sta = {}; ncrs.forEach(r => { if (r.status) sta[r.status] = Number(r.cnt); });
     return {
-      sessions: Number(sessions[0]?.total || 0),
-      ncrs_open: (sta['open'] || 0) + (sta['in_progress'] || 0),
+      sessions: Number(orders[0]?.total || 0),
+      ncrs_open: (sta['open'] || 0) + (sta['in_progress'] || 0) + (sta['pending'] || 0),
       ncrs_closed: sta['closed'] || 0,
       ncrs_total: Object.values(sta).reduce((a, b) => a + b, 0),
       analyzers: Number(analyzers[0]?.total || 0),
@@ -400,10 +401,10 @@ const DEPT_QUERIES = {
   },
   stock: async () => {
     const [checks, consumables] = await Promise.all([
-      queryRows(`SELECT status, COUNT(*) AS cnt FROM nursing_monthly_stock GROUP BY status`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM nursing_monthly_stock GROUP BY LOWER(status)`),
       queryRows(`SELECT COUNT(*) AS total FROM consumables_log`),
     ]);
-    const sta = {}; checks.forEach(r => { sta[r.status] = Number(r.cnt); });
+    const sta = {}; checks.forEach(r => { if (r.status) sta[r.status] = Number(r.cnt); });
     return {
       total: Object.values(sta).reduce((a, b) => a + b, 0),
       ok: sta['ok'] || 0,
@@ -413,53 +414,65 @@ const DEPT_QUERIES = {
     };
   },
   procurement: async () => {
-    const [requests, byStatus] = await Promise.all([
-      queryRows(`SELECT COUNT(*) AS total FROM purchase_requests`),
-      queryRows(`SELECT status, COUNT(*) AS cnt FROM purchase_requests GROUP BY status`),
+    const [orders, reqs, byStatusOrders, byStatusReqs] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM purchase_orders`),
+      queryRows(`SELECT COUNT(*) AS total FROM requisitions`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM purchase_orders GROUP BY LOWER(status)`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM requisitions GROUP BY LOWER(status)`),
     ]);
-    const sta = {}; byStatus.forEach(r => { sta[r.status] = Number(r.cnt); });
+    const sta = {};
+    byStatusOrders.forEach(r => { if (r.status) sta[r.status] = (sta[r.status] || 0) + Number(r.cnt); });
+    byStatusReqs.forEach(r => { if (r.status) sta[r.status] = (sta[r.status] || 0) + Number(r.cnt); });
     return {
-      total: Number(requests[0]?.total || 0),
-      pending: sta['pending'] || 0,
+      total: Number(orders[0]?.total || 0) + Number(reqs[0]?.total || 0),
+      pending: (sta['pending'] || 0) + (sta['draft'] || 0) + (sta['sent to supplier'] || 0),
       approved: sta['approved'] || 0,
       rejected: sta['rejected'] || 0,
     };
   },
   logistics: async () => {
-    const [requests, byStatus] = await Promise.all([
-      queryRows(`SELECT COUNT(*) AS total FROM logistics_requests`),
-      queryRows(`SELECT status, COUNT(*) AS cnt FROM logistics_requests GROUP BY status`),
+    const [preqs, dispatches, transfers, byStatusReqs, byStatusTransfers] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM logistics_purchase_requisitions`),
+      queryRows(`SELECT COUNT(*) AS total FROM logistics_sample_dispatches`),
+      queryRows(`SELECT COUNT(*) AS total FROM logistics_asset_transfers`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM logistics_purchase_requisitions GROUP BY LOWER(status)`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM logistics_asset_transfers GROUP BY LOWER(status)`),
     ]);
-    const sta = {}; byStatus.forEach(r => { sta[r.status] = Number(r.cnt); });
+    const sta = {};
+    byStatusReqs.forEach(r => { if (r.status) sta[r.status] = (sta[r.status] || 0) + Number(r.cnt); });
+    byStatusTransfers.forEach(r => { if (r.status) sta[r.status] = (sta[r.status] || 0) + Number(r.cnt); });
+
     return {
-      total: Number(requests[0]?.total || 0),
-      pending: sta['pending'] || 0,
-      in_transit: sta['in_transit'] || 0,
-      completed: sta['completed'] || 0,
+      total: Number(preqs[0]?.total || 0) + Number(dispatches[0]?.total || 0) + Number(transfers[0]?.total || 0),
+      pending: (sta['pending'] || 0) + (sta['initiated'] || 0),
+      in_transit: (sta['approved'] || 0) + (sta['in_transit'] || 0) + (sta['dispatched'] || 0),
+      completed: (sta['completed'] || 0) + (sta['accepted'] || 0),
     };
   },
   physio: async () => {
-    const [sessions, byOutcome] = await Promise.all([
-      queryRows(`SELECT COUNT(*) AS total FROM physio_sessions`),
-      queryRows(`SELECT outcome, COUNT(*) AS cnt FROM physio_sessions GROUP BY outcome`),
+    const [assessments, rehabs, byStatusRehab] = await Promise.all([
+      queryRows(`SELECT COUNT(*) AS total FROM physio_assessments`),
+      queryRows(`SELECT COUNT(*) AS total FROM physio_rehab_sessions`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt FROM physio_rehab_sessions GROUP BY LOWER(status)`),
     ]);
-    const out = {}; byOutcome.forEach(r => { out[r.outcome] = Number(r.cnt); });
+    const sta = {}; byStatusRehab.forEach(r => { if (r.status) sta[r.status] = Number(r.cnt); });
+    const totalCount = Number(assessments[0]?.total || 0) + Number(rehabs[0]?.total || 0);
     return {
-      total: Number(sessions[0]?.total || 0),
-      completed: out['completed'] || 0,
-      ongoing: out['ongoing'] || 0,
-      discontinued: out['discontinued'] || 0,
+      total: totalCount,
+      completed: sta['completed'] || 0,
+      ongoing: (sta['ongoing'] || 0) + (sta['in_progress'] || 0) + (sta['scheduled'] || 0),
+      discontinued: (sta['discontinued'] || 0) + (sta['cancelled'] || 0),
     };
   },
   customer_care: async () => {
     const [cancels, refunds, feedbacks] = await Promise.all([
-      queryRows(`SELECT status, COUNT(*) AS cnt, COALESCE(SUM(total_amount_cancelled),0) AS total_val FROM cancellation_requests GROUP BY status`),
-      queryRows(`SELECT status, COUNT(*) AS cnt, COALESCE(SUM(amount_to_be_refunded),0) AS total_val FROM refund_requests GROUP BY status`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt, COALESCE(SUM(total_amount_cancelled),0) AS total_val FROM cancellation_requests GROUP BY LOWER(status)`),
+      queryRows(`SELECT LOWER(status) AS status, COUNT(*) AS cnt, COALESCE(SUM(amount_to_be_refunded),0) AS total_val FROM refund_requests GROUP BY LOWER(status)`),
       queryRows(`SELECT COUNT(*) AS total FROM internal_feedbacks`),
     ]);
     const cs = {}, rs = {};
-    cancels.forEach(r => { cs[r.status] = { cnt: Number(r.cnt), val: Number(r.total_val) }; });
-    refunds.forEach(r => { rs[r.status] = { cnt: Number(r.cnt), val: Number(r.total_val) }; });
+    cancels.forEach(r => { if (r.status) cs[r.status] = { cnt: Number(r.cnt), val: Number(r.total_val) }; });
+    refunds.forEach(r => { if (r.status) rs[r.status] = { cnt: Number(r.cnt), val: Number(r.total_val) }; });
     return {
       cancellations_total: Object.values(cs).reduce((a, b) => a + b.cnt, 0),
       cancellations_approved: cs['approved']?.cnt || 0,
