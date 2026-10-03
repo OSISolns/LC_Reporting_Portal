@@ -190,11 +190,190 @@ const DEPARTMENTS = [
   },
 ];
 
+// ── Design tokens: matching Legacy Clinics system palette ─────────────────────
+const T = {
+  accent:       '#007B8A',
+  accentDark:   '#005d68',
+  accentLight:  '#e6f4f6',
+  accentSubtle: '#f0f9fa',
+  accentBorder: '#cce8ec',
+  border:       '#e2e8f0',
+  borderLight:  '#f1f5f9',
+  bg:           '#ffffff',
+  bgSubtle:     '#f8fafc',
+  bgMuted:      '#f1f5f9',
+  text:         '#1e293b',
+  textDark:     '#003B44',
+  textSub:      '#64748b',
+  textMuted:    '#94a3b8',
+  shadowSm:     '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03)',
+  shadowMd:     '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.04)',
+};
+
+// ── Classification module map ─────────────────────────────────────────────────
+const CLASSIFIABLE_MODULES = {
+  operations:    'daily_reports',
+  customer_care: 'cancellations',
+  nursing:       'incidents',
+  it:            'security',
+};
+
+// ── Line manager roles ────────────────────────────────────────────────────────
+const LINE_MANAGER_ROLES = [
+  'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
+  'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager',
+  'lab_manager', 'lab_team_lead', 'lab_lead',
+  'imaging_manager', 'dental_hod', 'dental_lab_manager',
+  'physio_manager', 'logistics_manager', 'logistics_officer',
+  'procurement-manager', 'it_officer', 'hsfp', 'stock-manager', 'sales_manager',
+];
+
+// ── RBAC ──────────────────────────────────────────────────────────────────────
+const EXEC_ROLES = [
+  'admin', 'chairman', 'coo', 'deputy_coo', 'medical_director', 'pa',
+  'sales_manager', 'consultant', 'quality_accreditation_officer',
+  'quality_manager', 'qm',
+];
+const SECURITY_ROLES = ['admin'];
+
+const DEPARTMENTS = [
+  {
+    id: 'operations', label: 'Operations', icon: <Building2 size={14} />,
+    description: 'Daily operational reports, shift management & performance.',
+    allowedRoles: [...EXEC_ROLES, 'hsfp'],
+    kpiMap: [
+      { key: 'daily_reports',  label: 'Daily Reports' },
+      { key: 'shifts_total',   label: 'Total Shifts' },
+      { key: 'shifts_open',    label: 'Open Shifts' },
+      { key: 'shifts_closed',  label: 'Closed Shifts' },
+      { key: 'shifts_flagged', label: 'Flagged Shifts' },
+    ],
+  },
+  {
+    id: 'it', label: 'IT', icon: <Monitor size={14} />,
+    description: 'IT support tickets, asset lifecycle & system security events.',
+    allowedRoles: [...EXEC_ROLES, 'it_officer'],
+    kpiMap: [
+      { key: 'total',    label: 'Total Tickets' },
+      { key: 'open',     label: 'Open / In Progress' },
+      { key: 'resolved', label: 'Resolved' },
+      { key: 'critical', label: 'Critical Priority' },
+      { key: 'high',     label: 'High Priority' },
+    ],
+  },
+  {
+    id: 'dental', label: 'Dental', icon: <Star size={14} />,
+    description: 'Dental cases by status, procedure types & consumables.',
+    allowedRoles: [...EXEC_ROLES, 'dental_hod', 'dental_lab_manager'],
+    kpiMap: [
+      { key: 'total',       label: 'Total Cases' },
+      { key: 'active',      label: 'Active Cases' },
+      { key: 'completed',   label: 'Completed' },
+      { key: 'pending',     label: 'Pending' },
+      { key: 'consumables', label: 'Consumable Entries' },
+    ],
+  },
+  {
+    id: 'nursing', label: 'Nursing', icon: <HeartPulse size={14} />,
+    description: 'Clinical sheets, ward reports, stock levels & incident tracking.',
+    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'hsfp'],
+    kpiMap: [
+      { key: 'clinical_sheets', label: 'Clinical Sheets' },
+      { key: 'daily_reports',   label: 'Daily Ward Reports' },
+      { key: 'stock_ok',        label: 'Stock Adequate' },
+      { key: 'stock_low',       label: 'Low Stock Items' },
+      { key: 'stock_critical',  label: 'Critical Stock' },
+      { key: 'incidents',       label: 'Incidents Reported' },
+    ],
+  },
+  {
+    id: 'laboratory', label: 'Laboratory', icon: <FlaskConical size={14} />,
+    description: 'Lab sessions, NCR management, analyzer status & quality metrics.',
+    allowedRoles: [...EXEC_ROLES, 'lab_manager', 'lab_team_lead', 'lab_lead', 'hsfp'],
+    kpiMap: [
+      { key: 'sessions',    label: 'Lab Sessions' },
+      { key: 'ncrs_total',  label: 'Total NCRs' },
+      { key: 'ncrs_open',   label: 'Open NCRs' },
+      { key: 'ncrs_closed', label: 'Closed NCRs' },
+      { key: 'analyzers',   label: 'Analyzers on Record' },
+    ],
+  },
+  {
+    id: 'imaging', label: 'Imaging', icon: <Scan size={14} />,
+    description: 'Radiology & imaging study volumes by modality.',
+    allowedRoles: [...EXEC_ROLES, 'imaging_manager'],
+    kpiMap: [
+      { key: 'total', label: 'Total Imaging Studies' },
+    ],
+  },
+  {
+    id: 'stock', label: 'Stock', icon: <Package size={14} />,
+    description: 'Central store stock levels, replenishment alerts & consumables log.',
+    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'stock-manager'],
+    kpiMap: [
+      { key: 'total',              label: 'Total Stock Records' },
+      { key: 'ok',                 label: 'Adequate Stock' },
+      { key: 'low',                label: 'Low Stock Items' },
+      { key: 'critical',           label: 'Critical Depletion' },
+      { key: 'consumables_logged', label: 'Consumables Logged' },
+    ],
+  },
+  {
+    id: 'procurement', label: 'Procurement', icon: <ShoppingCart size={14} />,
+    description: 'Purchase requests, approval pipeline & supplier performance.',
+    allowedRoles: [...EXEC_ROLES, 'procurement-manager'],
+    kpiMap: [
+      { key: 'total',    label: 'Total Purchase Requests' },
+      { key: 'pending',  label: 'Awaiting Approval' },
+      { key: 'approved', label: 'Approved' },
+      { key: 'rejected', label: 'Rejected' },
+    ],
+  },
+  {
+    id: 'logistics', label: 'Logistics', icon: <Truck size={14} />,
+    description: 'Fleet & transport requests — pending, in-transit & completed.',
+    allowedRoles: [...EXEC_ROLES, 'logistics_manager', 'logistics_officer'],
+    kpiMap: [
+      { key: 'total',      label: 'Total Requests' },
+      { key: 'pending',    label: 'Pending Dispatch' },
+      { key: 'in_transit', label: 'In Transit' },
+      { key: 'completed',  label: 'Completed' },
+    ],
+  },
+  {
+    id: 'physio', label: 'Physio', icon: <Activity size={14} />,
+    description: 'Physiotherapy session outcomes & patient treatment continuity.',
+    allowedRoles: [...EXEC_ROLES, 'physio_manager'],
+    kpiMap: [
+      { key: 'total',        label: 'Total Sessions' },
+      { key: 'completed',    label: 'Completed' },
+      { key: 'ongoing',      label: 'Ongoing' },
+      { key: 'discontinued', label: 'Discontinued' },
+    ],
+  },
+  {
+    id: 'customer_care', label: 'Customer Care', icon: <Users size={14} />,
+    description: 'Cancellations, refunds, financial exposure & patient feedback.',
+    allowedRoles: ['admin', 'chairman', 'coo', 'deputy_coo', 'sales_manager', 'principal_cashier', 'consultant', 'quality_accreditation_officer'],
+    kpiMap: [
+      { key: 'cancellations_total',    label: 'Total Cancellations' },
+      { key: 'cancellations_approved', label: 'Approved Cancellations' },
+      { key: 'cancellations_pending',  label: 'Pending Cancellations' },
+      { key: 'cancellations_value',    label: 'Approved Value', format: 'rwf' },
+      { key: 'refunds_total',          label: 'Total Refunds' },
+      { key: 'refunds_approved',       label: 'Approved Refunds' },
+      { key: 'refunds_pending',        label: 'Pending Refunds' },
+      { key: 'refunds_value',          label: 'Approved Refund Value', format: 'rwf' },
+      { key: 'feedbacks',              label: 'Feedback Records' },
+    ],
+  },
+];
+
 // ── Shared style tokens ───────────────────────────────────────────────────────
 const S = {
-  card:      { background: T.bg, border: `1px solid ${T.border}`, borderRadius: '6px' },
-  label:     { margin: 0, fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: T.textMuted },
-  sectionHd: { margin: 0, fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: T.textSub },
+  card:      { background: T.bg, border: `1px solid ${T.border}`, borderRadius: '10px', boxShadow: T.shadowSm },
+  label:     { margin: 0, fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: T.textSub },
+  sectionHd: { margin: 0, fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: T.textDark },
 };
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
@@ -202,13 +381,20 @@ const KpiCard = ({ label, value, format }) => {
   const display   = format === 'rwf' ? fmtRWF(value) : safeNum(value);
   const isUnavail = value == null;
   return (
-    <div style={{ ...S.card, padding: '1.1rem 1.25rem' }}>
+    <div style={{
+      ...S.card,
+      padding: '1.1rem 1.25rem',
+      position: 'relative',
+      overflow: 'hidden',
+      transition: 'all 0.2s ease',
+    }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: T.accentLight }} />
       <p style={S.label}>{label}</p>
       <p style={{
         margin: '6px 0 0', lineHeight: 1,
         fontSize: isUnavail ? '0.85rem' : '1.75rem',
         fontWeight: 700,
-        color: isUnavail ? T.textMuted : T.text,
+        color: isUnavail ? T.textMuted : T.textDark,
         fontVariantNumeric: 'tabular-nums',
       }}>
         {display}
@@ -217,19 +403,19 @@ const KpiCard = ({ label, value, format }) => {
   );
 };
 
-// ── Inline progress bar (single accent colour) ────────────────────────────────
+// ── Inline progress bar (matching system primary accent) ──────────────────────
 const InlineBar = ({ pct }) => (
-  <div style={{ flex: 1, height: '4px', background: T.bgMuted, borderRadius: '2px', overflow: 'hidden' }}>
-    <div style={{ width: `${Math.min(pct || 0, 100)}%`, height: '100%', background: T.accent, borderRadius: '2px', transition: 'width 0.4s ease' }} />
+  <div style={{ flex: 1, height: '6px', background: T.bgMuted, borderRadius: '3px', overflow: 'hidden' }}>
+    <div style={{ width: `${Math.min(pct || 0, 100)}%`, height: '100%', background: T.accent, borderRadius: '3px', transition: 'width 0.4s ease' }} />
   </div>
 );
 
 // ── Row: label + bar + value ──────────────────────────────────────────────────
 const DataRow = ({ label, value, pct }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderBottom: `1px solid ${T.borderLight}` }}>
-    <span style={{ fontSize: '0.82rem', color: T.textSub, minWidth: '80px' }}>{label}</span>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: `1px solid ${T.borderLight}` }}>
+    <span style={{ fontSize: '0.82rem', color: T.textSub, minWidth: '85px', fontWeight: 500 }}>{label}</span>
     {pct !== undefined && <InlineBar pct={pct} />}
-    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: T.text, minWidth: '28px', textAlign: 'right' }}>{value}</span>
+    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: T.textDark, minWidth: '32px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
   </div>
 );
 
@@ -240,14 +426,14 @@ const CategoryRow = ({ cat, total }) => {
   return (
     <div style={{ padding: '0.75rem 0', borderBottom: `1px solid ${T.borderLight}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px', gap: '12px' }}>
-        <span style={{ fontSize: '0.85rem', fontWeight: 500, color: T.text, flex: 1 }}>{cat.label}</span>
-        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: T.textSub, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: T.textDark, flex: 1 }}>{cat.label}</span>
+        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: T.accent, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           {sevLabel}{sevLabel ? ' · ' : ''}{cat.count} ({pct}%)
         </span>
       </div>
       <InlineBar pct={pct} />
       {cat.examples?.length > 0 && (
-        <p style={{ margin: '5px 0 0', fontSize: '0.72rem', color: T.textMuted, fontStyle: 'italic' }}>
+        <p style={{ margin: '5px 0 0', fontSize: '0.74rem', color: T.textSub, fontStyle: 'italic' }}>
           {cat.examples.slice(0, 2).join(' · ')}
         </p>
       )}
@@ -282,8 +468,8 @@ const StatusSummaryBox = ({ label, data }) => {
       <p style={{ ...S.sectionHd, marginBottom: '10px' }}>{label}</p>
       {rows.map(r => <DataRow key={r.l} label={r.l} value={safeNum(r.v)} />)}
       {data.approvedAmountRWF != null && (
-        <p style={{ margin: '8px 0 0', fontSize: '0.82rem', color: T.textSub }}>
-          Approved value: <strong style={{ color: T.text }}>{fmtRWF(data.approvedAmountRWF)}</strong>
+        <p style={{ margin: '10px 0 0', fontSize: '0.82rem', color: T.textSub }}>
+          Approved value: <strong style={{ color: T.textDark }}>{fmtRWF(data.approvedAmountRWF)}</strong>
         </p>
       )}
     </div>
@@ -360,7 +546,7 @@ const DeptPanel = ({ dept, globalStats, canClassify, onClassify, classifying, cl
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
       {!loading && loadErr && (
-        <p style={{ margin: 0, padding: '0.85rem 1rem', background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: '6px', fontSize: '0.84rem', color: T.textSub }}>
+        <p style={{ margin: 0, padding: '0.85rem 1rem', background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: '8px', fontSize: '0.84rem', color: T.textSub }}>
           No data available for <strong>{dept.label}</strong>. Verify the module is active and has records.
         </p>
       )}
@@ -370,7 +556,7 @@ const DeptPanel = ({ dept, globalStats, canClassify, onClassify, classifying, cl
           <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Loading data…
         </div>
       ) : !loadErr && deptStats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.85rem' }}>
           {dept.kpiMap.map(kpi => {
             const rawVal = deptStats[kpi.key];
             const val = typeof rawVal === 'object' && rawVal !== null
@@ -381,7 +567,7 @@ const DeptPanel = ({ dept, globalStats, canClassify, onClassify, classifying, cl
       )}
 
       {!loading && !loadErr && dept.id === 'customer_care' && globalStats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.85rem' }}>
           {[{ key: 'cancellations', label: 'Cancellations' }, { key: 'refunds', label: 'Refunds' }].map(({ key, label }) => (
             <StatusSummaryBox key={key} label={label} data={globalStats[key]} />
           ))}
@@ -390,10 +576,10 @@ const DeptPanel = ({ dept, globalStats, canClassify, onClassify, classifying, cl
 
       {canClassify && (
         <div style={S.card}>
-          <div style={{ padding: '0.9rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', borderBottom: moduleClassified ? `1px solid ${T.borderLight}` : 'none' }}>
+          <div style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', borderBottom: moduleClassified ? `1px solid ${T.borderLight}` : 'none' }}>
             <div>
-              <p style={{ margin: 0, fontWeight: 600, fontSize: '0.88rem', color: T.text }}>Lumina Intelligence Classification</p>
-              <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: T.textMuted }}>Analyses recent records to surface recurring patterns</p>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem', color: T.textDark }}>Lumina Intelligence Classification</p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: T.textSub }}>Analyses recent records to surface recurring patterns</p>
             </div>
             <button
               id={`classify-btn-${dept.id}`}
@@ -401,32 +587,34 @@ const DeptPanel = ({ dept, globalStats, canClassify, onClassify, classifying, cl
               disabled={classifying}
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '0.45rem 1rem', background: classifying ? T.bgMuted : T.accent,
-                color: classifying ? T.textMuted : '#fff', border: 'none', borderRadius: '5px',
+                padding: '0.5rem 1.1rem', background: classifying ? T.bgMuted : T.accent,
+                color: classifying ? T.textMuted : '#fff', border: 'none', borderRadius: '6px',
+                boxShadow: classifying ? 'none' : '0 2px 4px rgba(0, 123, 138, 0.25)',
                 fontWeight: 600, fontSize: '0.8rem', cursor: classifying ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s ease',
               }}
             >
-              {classifying ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={12} />}
-              {classifying ? 'Running…' : moduleClassified ? 'Re-run' : 'Run Analysis'}
+              {classifying ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={13} />}
+              {classifying ? 'Running…' : moduleClassified ? 'Re-run Analysis' : 'Run Analysis'}
             </button>
           </div>
 
           {moduleClassified && (
-            <div style={{ padding: '1rem 1.25rem' }}>
+            <div style={{ padding: '1.25rem' }}>
               <div
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: expanded ? '0.75rem' : 0 }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: expanded ? '0.85rem' : 0 }}
                 onClick={() => setExpanded(e => !e)}
               >
-                <span style={{ fontWeight: 600, fontSize: '0.84rem', color: T.text }}>
+                <span style={{ fontWeight: 600, fontSize: '0.85rem', color: T.textDark }}>
                   {moduleClassified.total} records &nbsp;&middot;&nbsp; {(moduleClassified.categories || []).length} categories identified
                 </span>
-                {expanded ? <ChevronUp size={14} color={T.textMuted} /> : <ChevronDown size={14} color={T.textMuted} />}
+                {expanded ? <ChevronUp size={15} color={T.textSub} /> : <ChevronDown size={15} color={T.textSub} />}
               </div>
               {expanded && (
                 <>
                   {moduleClassified.executiveSummary && (
-                    <div style={{ padding: '0.8rem 1rem', background: T.bgSubtle, borderRadius: '5px', border: `1px solid ${T.borderLight}`, marginBottom: '0.75rem' }}>
-                      <p style={{ margin: 0, fontSize: '0.82rem', color: T.textSub, lineHeight: 1.65 }}>{moduleClassified.executiveSummary}</p>
+                    <div style={{ padding: '0.9rem 1.1rem', background: T.accentSubtle, borderRadius: '6px', border: `1px solid ${T.accentBorder}`, marginBottom: '0.85rem' }}>
+                      <p style={{ margin: 0, fontSize: '0.83rem', color: T.textDark, lineHeight: 1.65 }}>{moduleClassified.executiveSummary}</p>
                     </div>
                   )}
                   <div>{(moduleClassified.categories || []).map((cat, i) => <CategoryRow key={i} cat={cat} total={moduleClassified.total} />)}</div>
@@ -479,22 +667,25 @@ const IncidentAnalysisPanel = () => {
   return (
     <div style={{ ...S.card, overflow: 'hidden', marginBottom: '0.5rem' }}>
       <div style={{
-        padding: '0.9rem 1.25rem', display: 'flex', alignItems: 'center',
+        padding: '1rem 1.25rem', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap',
         borderBottom: expanded ? `1px solid ${T.borderLight}` : 'none',
+        background: T.bg,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Siren size={16} color={T.accent} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: T.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Siren size={18} color={T.accent} />
+          </div>
           <div>
-            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem', color: T.text }}>Incident Report Analysis</p>
-            <p style={{ margin: '1px 0 0', fontSize: '0.75rem', color: T.textMuted }}>Lumina Intelligence · Your department overview</p>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.92rem', color: T.textDark }}>Incident Report Analysis</p>
+            <p style={{ margin: '1px 0 0', fontSize: '0.76rem', color: T.textSub }}>Lumina Intelligence · Line Manager Overview</p>
           </div>
         </div>
         <button
           onClick={() => setExpanded(e => !e)}
-          style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: '4px', cursor: 'pointer', color: T.textSub, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', padding: '0.3rem 0.65rem' }}
+          style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: '6px', cursor: 'pointer', color: T.textSub, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', padding: '0.35rem 0.75rem', boxShadow: T.shadowSm, fontWeight: 500 }}
         >
-          {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           {expanded ? 'Collapse' : 'Expand'}
         </button>
       </div>
@@ -509,14 +700,14 @@ const IncidentAnalysisPanel = () => {
           )}
 
           {!loading && err && (
-            <p style={{ margin: 0, padding: '0.85rem 1rem', background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: '6px', fontSize: '0.84rem', color: T.textSub }}>
+            <p style={{ margin: 0, padding: '0.85rem 1rem', background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: '8px', fontSize: '0.84rem', color: T.textSub }}>
               Unable to load incident reports.
             </p>
           )}
 
           {!loading && !err && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '0.85rem' }}>
                 {[
                   { label: 'Total Incidents',   value: total },
                   { label: 'Pending Review',    value: pending },
@@ -525,15 +716,15 @@ const IncidentAnalysisPanel = () => {
                 ].map(k => <KpiCard key={k.label} label={k.label} value={k.value} />)}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div style={{ ...S.card, padding: '1rem 1.25rem' }}>
-                  <p style={{ ...S.sectionHd, marginBottom: '8px' }}>By Severity</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+                <div style={{ ...S.card, padding: '1.1rem 1.25rem' }}>
+                  <p style={{ ...S.sectionHd, marginBottom: '10px' }}>By Severity</p>
                   {Object.entries(bySeverity).map(([sev, cnt]) => (
                     <DataRow key={sev} label={sev} value={cnt} pct={total > 0 ? Math.round((cnt / total) * 100) : 0} />
                   ))}
                 </div>
-                <div style={{ ...S.card, padding: '1rem 1.25rem' }}>
-                  <p style={{ ...S.sectionHd, marginBottom: '8px' }}>By Incident Type</p>
+                <div style={{ ...S.card, padding: '1.1rem 1.25rem' }}>
+                  <p style={{ ...S.sectionHd, marginBottom: '10px' }}>By Incident Type</p>
                   {typeEntries.map(([type, cnt]) => (
                     <DataRow key={type} label={type} value={cnt} pct={Math.round((cnt / maxType) * 100)} />
                   ))}
@@ -543,24 +734,24 @@ const IncidentAnalysisPanel = () => {
 
               {recent.length > 0 && (
                 <div style={S.card}>
-                  <div style={{ padding: '0.7rem 1.25rem', borderBottom: `1px solid ${T.borderLight}` }}>
+                  <div style={{ padding: '0.8rem 1.25rem', borderBottom: `1px solid ${T.borderLight}`, background: T.bgSubtle }}>
                     <p style={S.sectionHd}>Recent Incidents</p>
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                     <thead>
                       <tr style={{ background: T.bgSubtle }}>
                         {['Description', 'Type', 'Severity', 'Status'].map(h => (
-                          <th key={h} style={{ padding: '0.5rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: T.textMuted, borderBottom: `1px solid ${T.borderLight}` }}>{h}</th>
+                          <th key={h} style={{ padding: '0.6rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: T.textSub, borderBottom: `1px solid ${T.borderLight}` }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {recent.map((inc, i) => (
                         <tr key={inc.id} style={{ background: i % 2 === 0 ? T.bg : T.bgSubtle }}>
-                          <td style={{ padding: '0.6rem 1rem', color: T.text, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inc.description || '—'}</td>
-                          <td style={{ padding: '0.6rem 1rem', color: T.textSub }}>{inc.incident_type || '—'}</td>
-                          <td style={{ padding: '0.6rem 1rem', color: T.text, fontWeight: 500 }}>{inc.severity || '—'}</td>
-                          <td style={{ padding: '0.6rem 1rem', color: T.textSub, textTransform: 'capitalize' }}>{inc.status || '—'}</td>
+                          <td style={{ padding: '0.65rem 1rem', color: T.textDark, fontWeight: 500, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inc.description || '—'}</td>
+                          <td style={{ padding: '0.65rem 1rem', color: T.textSub }}>{inc.incident_type || '—'}</td>
+                          <td style={{ padding: '0.65rem 1rem', color: T.textDark, fontWeight: 600 }}>{inc.severity || '—'}</td>
+                          <td style={{ padding: '0.65rem 1rem', color: T.textSub, textTransform: 'capitalize' }}>{inc.status || '—'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -643,7 +834,7 @@ const LuminaIntelligence = () => {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: '0.5rem', textAlign: 'center' }}>
         <Lock size={32} color={T.textMuted} />
-        <p style={{ fontWeight: 600, color: T.text, margin: '8px 0 0' }}>Access Restricted</p>
+        <p style={{ fontWeight: 600, color: T.textDark, margin: '8px 0 0' }}>Access Restricted</p>
         <p style={{ fontSize: '0.84rem', color: T.textSub, margin: 0 }}>Your role does not have permission to view this module.</p>
       </div>
     );
@@ -653,12 +844,18 @@ const LuminaIntelligence = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', paddingBottom: '1rem', borderBottom: `1px solid ${T.borderLight}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Brain size={20} color={T.accent} />
+      <div style={{
+        ...S.card,
+        padding: '1.25rem 1.5rem',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: T.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Brain size={22} color={T.accent} />
+          </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: T.text, letterSpacing: '-0.2px' }}>Lumina Intelligence</h1>
-            <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: T.textMuted }}>Department analytics &nbsp;&middot;&nbsp; {fmtDate()}</p>
+            <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700, color: T.textDark, letterSpacing: '-0.2px' }}>Lumina Intelligence</h1>
+            <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: T.textSub }}>Department analytics &nbsp;&middot;&nbsp; {fmtDate()}</p>
           </div>
         </div>
         <button
@@ -667,20 +864,22 @@ const LuminaIntelligence = () => {
           disabled={exporting}
           style={{
             display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '0.45rem 0.9rem', background: T.bg,
-            color: exporting ? T.textMuted : T.text,
-            border: `1px solid ${T.border}`, borderRadius: '5px',
-            fontWeight: 500, fontSize: '0.82rem', cursor: exporting ? 'not-allowed' : 'pointer',
+            padding: '0.5rem 1rem', background: T.bg,
+            color: exporting ? T.textMuted : T.textDark,
+            border: `1px solid ${T.border}`, borderRadius: '6px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            fontWeight: 600, fontSize: '0.82rem', cursor: exporting ? 'not-allowed' : 'pointer',
+            transition: 'all 0.15s ease',
           }}
         >
-          {exporting ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={13} />}
+          {exporting ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={13} color={T.accent} />}
           Export to Excel
         </button>
       </div>
 
       {/* Error banner */}
       {error && (
-        <div style={{ padding: '0.75rem 1rem', background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: '5px', display: 'flex', alignItems: 'center', gap: '8px', color: T.text, fontSize: '0.84rem' }}>
+        <div style={{ padding: '0.75rem 1rem', background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: '6px', boxShadow: T.shadowSm, display: 'flex', alignItems: 'center', gap: '8px', color: T.textDark, fontSize: '0.84rem' }}>
           <AlertTriangle size={14} color={T.accent} />
           <span style={{ flex: 1 }}>{error}</span>
           <button onClick={() => setError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: '1.1rem', lineHeight: 1 }}>&#x2715;</button>
@@ -691,7 +890,7 @@ const LuminaIntelligence = () => {
       {LINE_MANAGER_ROLES.includes(role) && <IncidentAnalysisPanel />}
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: '0', flexWrap: 'wrap', borderBottom: `1px solid ${T.border}` }}>
+      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '4px', background: T.bgSubtle, borderRadius: '8px', border: `1px solid ${T.border}` }}>
         {visibleDepts.map(dept => {
           const active = activeTab === dept.id;
           return (
@@ -700,15 +899,18 @@ const LuminaIntelligence = () => {
               id={`dept-tab-${dept.id}`}
               onClick={() => { setActiveTab(dept.id); setError(''); }}
               style={{
-                display: 'flex', alignItems: 'center', gap: '5px',
-                padding: '0.5rem 1rem', background: 'none', border: 'none',
-                borderBottom: active ? `2px solid ${T.accent}` : '2px solid transparent',
-                fontWeight: active ? 600 : 400, fontSize: '0.83rem',
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '0.55rem 0.95rem',
+                background: active ? T.bg : 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                boxShadow: active ? T.shadowSm : 'none',
+                fontWeight: active ? 600 : 500, fontSize: '0.82rem',
                 color: active ? T.accent : T.textSub,
-                cursor: 'pointer', transition: 'color 0.15s', marginBottom: '-1px',
+                cursor: 'pointer', transition: 'all 0.15s ease',
               }}
             >
-              {dept.icon}
+              <span style={{ display: 'flex', alignItems: 'center', color: active ? T.accent : T.textMuted }}>{dept.icon}</span>
               {dept.label}
             </button>
           );
@@ -718,13 +920,13 @@ const LuminaIntelligence = () => {
       {/* Active department card */}
       {activeDept && (
         <div style={S.card}>
-          <div style={{ padding: '0.85rem 1.25rem', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ padding: '0.95rem 1.25rem', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
             <div>
-              <p style={{ margin: 0, fontWeight: 600, fontSize: '0.88rem', color: T.text }}>{activeDept.label}</p>
-              <p style={{ margin: '1px 0 0', fontSize: '0.76rem', color: T.textMuted }}>{activeDept.description}</p>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: '0.92rem', color: T.textDark }}>{activeDept.label}</p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: T.textSub }}>{activeDept.description}</p>
             </div>
-            <span style={{ fontSize: '0.72rem', color: T.textMuted, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Eye size={11} /> Live data
+            <span style={{ fontSize: '0.72rem', color: T.textSub, display: 'flex', alignItems: 'center', gap: '4px', background: T.accentSubtle, padding: '0.25rem 0.6rem', borderRadius: '4px', border: `1px solid ${T.accentBorder}`, fontWeight: 500 }}>
+              <Eye size={12} color={T.accent} /> Live data
             </span>
           </div>
           <div style={{ padding: '1.25rem' }}>
@@ -742,7 +944,7 @@ const LuminaIntelligence = () => {
       )}
 
       {/* Footer */}
-      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.6rem 0', borderTop: `1px solid ${T.borderLight}` }}>
+      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.75rem 0', borderTop: `1px solid ${T.borderLight}` }}>
         <span style={S.sectionHd}>Status key:</span>
         {['Approved / Completed', 'Pending / Open', 'Verified / Reviewed', 'Rejected'].map(k => (
           <span key={k} style={{ fontSize: '0.78rem', color: T.textSub }}>{k}</span>
