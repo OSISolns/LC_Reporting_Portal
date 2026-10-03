@@ -104,7 +104,7 @@ class ClinicalObservation {
   }
   static async getAllByPatient(patient_id) {
     const { rows } = await db.query(
-      `SELECT co.*, u.name as created_by_name, u.username as created_by_username
+      `SELECT co.*, u.full_name as created_by_name, u.username as created_by_username
        FROM clinical_observations co
        LEFT JOIN users u ON co.created_by = u.id
        WHERE co.patient_id = $1
