@@ -35,8 +35,19 @@ class Incident {
     `;
     const params = [];
 
-    // Access control: regular users only see their own reports
-    if (user && !['coo', 'deputy_coo', 'admin', 'it_officer', 'principal_cashier', 'sales_manager', 'hsfp', 'medical_director'].includes(user.role)) {
+    // Access control: Executive, safety, and line managers / department leads can view all incident reports
+    const LINE_MANAGER_ROLES = [
+      'coo', 'deputy_coo', 'admin', 'it_officer', 'principal_cashier', 'sales_manager', 'hsfp', 'medical_director',
+      'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
+      'lab_team_lead', 'lab_lead', 'lab_manager',
+      'dental_hod', 'dental_lab_manager',
+      'imaging_manager',
+      'physio_manager',
+      'logistics_manager',
+      'procurement-manager',
+      'quality_manager', 'qm', 'quality_accreditation_officer'
+    ];
+    if (user && !LINE_MANAGER_ROLES.includes(user.role)) {
       params.push(user.id);
       query += ` AND i.created_by = $${params.length}`;
     }
