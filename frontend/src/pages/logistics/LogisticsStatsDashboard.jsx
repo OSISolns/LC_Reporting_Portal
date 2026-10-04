@@ -67,51 +67,38 @@ const LogisticsStatsDashboard = () => {
 
   return (
     <div style={{ paddingBottom: '3rem' }}>
-      {/* ── STATISTICAL DASHBOARD HEADER ── */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1.5rem',
-        flexWrap: 'wrap',
-        gap: '1rem'
-      }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              backgroundColor: '#e0f2fe',
-              color: '#0369a1',
-              padding: '4px 10px',
-              borderRadius: '6px',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              letterSpacing: '0.05em'
-            }}>
-              EXECUTIVE ANALYTICS & STATISTICS
-            </span>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Calendar size={14} /> {todayStr}
-            </span>
+      {/* ── LUMINA PORTAL CORPORATE HEADER BANNER ── */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#1B669E] p-6 rounded-2xl text-white shadow-md border border-[#155280] mb-6">
+        <div className="flex items-center gap-3.5">
+          <div className="p-2.5 bg-blue-800/80 rounded-xl border border-blue-700 text-blue-100">
+            <BarChart3 size={22} />
           </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#0f172a' }}>
-            Logistics Statistics Dashboard
-          </h1>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold tracking-tight text-white">Logistics Statistics Dashboard</h1>
+              <span className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[#155280] text-blue-100 border border-[#155280]">
+                {todayStr}
+              </span>
+            </div>
+            <p className="text-xs text-blue-200/80">
+              Executive operational analytics, fleet readiness, and infrastructure compliance metrics
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={fetchStats}
-            className="btn btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <RefreshCw size={16} /> Refresh Metrics
-          </button>
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => navigate('/logistics')}
-            className="btn btn-primary"
-            style={{ backgroundColor: '#0284c7', display: 'flex', alignItems: 'center', gap: '6px' }}
+            className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            Go to Logistics Hub <ArrowRight size={16} />
+            Go to Logistics Hub <ArrowRight size={14} />
+          </button>
+          <button
+            onClick={fetchStats}
+            className="p-2 text-white/80 hover:text-white hover:bg-[#155280] rounded-xl transition-all cursor-pointer border border-[#155280]"
+            title="Refresh Metrics"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
@@ -124,10 +111,10 @@ const LogisticsStatsDashboard = () => {
         marginBottom: '1.5rem'
       }}>
         {/* Fleet Readiness Rate */}
-        <div className="glass card-shadow" style={{ padding: '1.25rem', backgroundColor: '#ffffff', borderRadius: '12px', borderLeft: '4px solid #0284c7' }}>
+        <div style={{ padding: '1.25rem', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0' }}>FLEET READINESS</p>
+              <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0', letterSpacing: '0.05em' }}>FLEET READINESS</p>
               <h3 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                 {fleetAvailabilityRate}%
               </h3>
@@ -135,28 +122,28 @@ const LogisticsStatsDashboard = () => {
                 {data.kpis.fleet.available} of {data.kpis.fleet.total} Vehicles Available
               </p>
             </div>
-            <div style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '10px', borderRadius: '10px' }}>
+            <div style={{ backgroundColor: '#f1f5f9', color: '#0f172a', padding: '10px', borderRadius: '10px' }}>
               <Truck size={20} />
             </div>
           </div>
           <div style={{ marginTop: '0.75rem', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
-            <div style={{ width: `${fleetAvailabilityRate}%`, height: '100%', backgroundColor: '#0284c7', borderRadius: '3px' }} />
+            <div style={{ width: `${fleetAvailabilityRate}%`, height: '100%', backgroundColor: '#0f172a', borderRadius: '3px' }} />
           </div>
         </div>
 
         {/* Primary Power Readiness */}
-        <div className="glass card-shadow" style={{ padding: '1.25rem', backgroundColor: '#ffffff', borderRadius: '12px', borderLeft: '4px solid #16a34a' }}>
+        <div style={{ padding: '1.25rem', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0' }}>GENERATOR RESERVE</p>
-              <h3 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: '#15803d' }}>
+              <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0', letterSpacing: '0.05em' }}>GENERATOR RESERVE</p>
+              <h3 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                 {data.kpis.power.fuelLevelPct}%
               </h3>
               <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
                 {data.latestGen ? `${data.latestGen.fuel_liters} Liters Tank Reserve` : 'Standby Active'}
               </p>
             </div>
-            <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '10px', borderRadius: '10px' }}>
+            <div style={{ backgroundColor: '#f1f5f9', color: '#0f172a', padding: '10px', borderRadius: '10px' }}>
               <Zap size={20} />
             </div>
           </div>

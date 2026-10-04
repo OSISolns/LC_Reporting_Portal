@@ -211,162 +211,134 @@ const LogisticsDashboard = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 min-h-screen bg-slate-50/50">
 
-      {/* ── LOGISTICS COMMAND HUB HEADER (Corporate Grade) ── */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* ── LOGISTICS COMMAND HUB HEADER (Lumina Corporate Portal Style) ── */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#1B669E] p-6 rounded-2xl text-white shadow-md border border-[#155280]">
         <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold shrink-0">
-            <Truck size={20} />
+          <div className="p-2.5 bg-blue-800/80 rounded-xl border border-blue-700 text-blue-100">
+            <Truck size={22} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-slate-900 tracking-tight">Logistics Command Hub</h1>
-              <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+              <h1 className="text-lg font-bold tracking-tight text-white">Logistics Command Hub</h1>
+              <span className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[#155280] text-blue-100 border border-[#155280]">
                 System Active
               </span>
             </div>
-            <p className="text-slate-500 text-xs mt-0.5 font-normal">
+            <p className="text-xs text-blue-200/80">
               Fleet operations, facilities telemetry, asset life cycle, and maintenance inventory control
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setActiveModal('vehicle')}
-            className="h-8 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <Plus size={14} /> Register Vehicle
+            <Plus size={13} /> Register Vehicle
           </button>
 
           <button
             onClick={() => setActiveModal('dispatch')}
-            className="h-8 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <Truck size={14} /> Dispatch Vehicle
+            <Truck size={13} /> Dispatch Vehicle
           </button>
 
           <button
             onClick={() => setActiveModal('gencheck')}
-            className="h-8 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
+            className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <Zap size={14} /> Log Generator Check
+            <Zap size={13} /> Log Generator Check
           </button>
 
           <button
             onClick={() => navigate('/incidents')}
-            className="h-8 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
+            className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <AlertTriangle size={14} /> Incident Reports
+            <AlertTriangle size={13} /> Incident Reports
           </button>
 
           <button
             onClick={fetchDashboardData}
-            className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors border border-slate-200"
+            className="p-2 text-white/80 hover:text-white hover:bg-[#155280] rounded-xl transition-all cursor-pointer border border-[#155280]"
             title="Refresh Feed"
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      {/* ── COMMAND KPI CARDS GRID (Clean Corporate) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── LUMINA KPI TILES GRID ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
 
         {/* KPI 1: Fleet Status */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Fleet Operations</span>
-            <div className="flex items-center gap-1.5">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fleet Operations</span>
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setActiveModal('vehicle')}
-                title="Register New Vehicle"
-                className="h-6 px-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 font-semibold text-[11px] transition-colors"
+                title="Register Vehicle"
+                className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-900 font-bold text-[10px] hover:bg-blue-100"
               >
-                <Plus size={12} /> Add
+                + Add
               </button>
-              <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
-                <Truck size={15} />
-              </div>
+              <Truck size={17} className="text-blue-900" />
             </div>
           </div>
-          <div className="flex items-baseline justify-between mb-2">
-            <span className="text-2xl font-bold text-slate-900">{fleetKpi.total || data.vehicles.length || 0}</span>
-            <span className="text-xs font-medium text-slate-500">Vehicles Registered</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs font-medium pt-2 border-t border-slate-100">
-            <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <p className="text-2xl font-bold text-blue-950">{fleetKpi.total || data.vehicles.length || 0}</p>
+          <div className="flex items-center gap-1.5 text-[11px] font-medium pt-1">
+            <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold">
               {fleetKpi.available} Available
             </span>
-            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
               {fleetKpi.inUse} In-Use
             </span>
-            {fleetKpi.maintenance > 0 && (
-              <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                {fleetKpi.maintenance} Service
-              </span>
-            )}
           </div>
         </div>
 
         {/* KPI 2: Facilities & Power */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Power & Facilities</span>
-            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
-              <Zap size={15} />
-            </div>
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Power & Facilities</span>
+            <Zap size={17} className="text-amber-600" />
           </div>
-          <div className="flex items-baseline justify-between mb-1">
-            <span className="text-base font-bold text-slate-900">{powerKpi.gridStatus || 'Grid Active'}</span>
-            <span className="text-xs font-semibold text-slate-700">{powerKpi.fuelLevelPct}% Fuel</span>
+          <div className="flex items-baseline justify-between">
+            <p className="text-2xl font-bold text-blue-950">{powerKpi.gridStatus || 'Grid Active'}</p>
+            <span className="text-xs font-bold text-slate-700">{powerKpi.fuelLevelPct}% Fuel</span>
           </div>
-          <div className="w-full bg-slate-100 rounded h-1.5 mb-2 overflow-hidden">
+          <div className="w-full bg-slate-100 rounded h-1.5 overflow-hidden">
             <div
               className={`h-1.5 rounded transition-all ${
-                powerKpi.fuelLevelPct < 35 ? 'bg-rose-600' : powerKpi.fuelLevelPct < 60 ? 'bg-amber-500' : 'bg-emerald-600'
+                powerKpi.fuelLevelPct < 35 ? 'bg-rose-600' : 'bg-[#1B669E]'
               }`}
               style={{ width: `${Math.min(100, Math.max(0, powerKpi.fuelLevelPct))}%` }}
             />
           </div>
-          <p className="text-xs text-slate-500 flex items-center justify-between">
-            <span>Generator: <strong className="text-slate-800 font-semibold">{powerKpi.genStatus || 'Standby'}</strong></span>
-            <span>{powerKpi.fuelLiters ? `${powerKpi.fuelLiters}L` : 'Verified'}</span>
-          </p>
         </div>
 
         {/* KPI 3: Preventive Maintenance */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Asset Lifecycle</span>
-            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
-              <Wrench size={15} />
-            </div>
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Asset PPM</span>
+            <Wrench size={17} className="text-indigo-600" />
           </div>
-          <div className="flex items-baseline justify-between mb-2">
-            <span className="text-2xl font-bold text-slate-900">{ppmKpi.pending || 0}</span>
-            <span className="text-xs font-medium text-slate-500">Pending PPM</span>
-          </div>
-          <p className="text-xs text-slate-500 flex items-center justify-between pt-2 border-t border-slate-100">
-            <span>Low Stock Parts:</span>
-            <strong className="text-slate-900 font-semibold">{data.lowStock?.length || 0} items</strong>
+          <p className="text-2xl font-bold text-blue-950">{ppmKpi.pending || 0}</p>
+          <p className="text-[11px] text-slate-500">
+            Low Stock Parts: <strong className="text-slate-800 font-semibold">{data.lowStock?.length || 0} items</strong>
           </p>
         </div>
 
         {/* KPI 4: Incidents & IT Tickets */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Facility Operations</span>
-            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
-              <ShieldAlert size={15} />
-            </div>
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Facility Safety</span>
+            <ShieldAlert size={17} className="text-rose-600" />
           </div>
-          <div className="flex items-baseline justify-between mb-2">
-            <span className="text-2xl font-bold text-slate-900">{incidentsKpi.openCount || data.openIncidents?.length || 0}</span>
-            <span className="text-xs font-medium text-slate-500">Open Incidents</span>
-          </div>
-          <p className="text-xs text-slate-500 flex items-center justify-between pt-2 border-t border-slate-100">
-            <span>Open IT Tickets:</span>
-            <strong className="text-slate-900 font-semibold">{data.openItTickets?.length || 0}</strong>
+          <p className="text-2xl font-bold text-blue-950">{incidentsKpi.openCount || data.openIncidents?.length || 0}</p>
+          <p className="text-[11px] text-slate-500">
+            Open IT Support Tickets: <strong className="text-slate-800 font-semibold">{data.openItTickets?.length || 0}</strong>
           </p>
         </div>
       </div>
@@ -390,7 +362,7 @@ const LogisticsDashboard = () => {
         </div>
       )}
 
-      {/* ── CORPORATE SUB-MODULE TAB NAVIGATION ── */}
+      {/* ── LUMINA PORTAL SUB-MODULE TABS ── */}
       <div className="flex items-center gap-1.5 border-b border-slate-200 overflow-x-auto pb-2 scrollbar-none">
         {[
           { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -406,10 +378,10 @@ const LogisticsDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setTab(tab.id)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-semibold text-xs whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                  ? 'bg-[#1B669E] text-white shadow-xs border border-[#155280]'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50/50 hover:border-blue-300'
               }`}
             >
               <Icon size={14} />
@@ -437,34 +409,106 @@ const LogisticsDashboard = () => {
       {activeTab === 'overview' && (
         <div className="space-y-6">
 
+          {/* Manager Executive Operational Health Matrix */}
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center font-bold">
+                  <Activity size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Manager Operational Health Matrix</h3>
+                  <p className="text-[11px] text-slate-500">Real-time logistics readiness & infrastructure stability summary</p>
+                </div>
+              </div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Updated {todayStr}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Fleet Availability</span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xl font-extrabold text-slate-900">
+                    {fleetKpi.total > 0 ? Math.round((fleetKpi.available / fleetKpi.total) * 100) : 100}%
+                  </span>
+                  <span className="text-xs text-slate-600 font-medium">
+                    {fleetKpi.available} / {fleetKpi.total || data.vehicles.length || 0} Operational
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 rounded h-1.5 overflow-hidden mt-1">
+                  <div
+                    className="bg-slate-900 h-1.5 rounded"
+                    style={{ width: `${fleetKpi.total > 0 ? Math.round((fleetKpi.available / fleetKpi.total) * 100) : 100}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Generator Reserve</span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xl font-extrabold text-slate-900">{powerKpi.fuelLevelPct}%</span>
+                  <span className="text-xs text-slate-600 font-medium">
+                    {powerKpi.fuelLiters ? `${powerKpi.fuelLiters} Liters` : 'Standby Ready'}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 rounded h-1.5 overflow-hidden mt-1">
+                  <div
+                    className={`h-1.5 rounded ${powerKpi.fuelLevelPct < 35 ? 'bg-rose-600' : 'bg-slate-900'}`}
+                    style={{ width: `${Math.min(100, Math.max(0, powerKpi.fuelLevelPct))}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">PPM Maintenance</span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xl font-extrabold text-slate-900">{ppmKpi.pending || 0}</span>
+                  <span className="text-xs text-slate-600 font-medium">Scheduled PPMs</span>
+                </div>
+                <p className="text-[11px] text-slate-500">Quarterly Biomedical Calibration</p>
+              </div>
+
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Inventory Health</span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xl font-extrabold text-slate-900">{data.lowStock?.length || 0}</span>
+                  <span className="text-xs text-slate-600 font-medium">Low Stock Alerts</span>
+                </div>
+                <p className="text-[11px] text-slate-500">Spares & Replacements Required</p>
+              </div>
+            </div>
+          </div>
+
           {/* Live Monitoring 2-Column Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {/* Active Trips & Fleet Runbook */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center font-bold">
                     <Truck size={18} />
                   </div>
-                  <h3 className="text-base font-black text-slate-900">Active Fleet Trips & Dispatches</h3>
+                  <h3 className="text-sm font-bold text-slate-900">Active Fleet Trips & Dispatches</h3>
                 </div>
                 <button
                   onClick={() => setTab('fleet')}
-                  className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1"
+                  className="text-xs font-bold text-slate-800 hover:text-slate-900 flex items-center gap-1"
                 >
                   Manage Fleet <ArrowUpRight size={14} />
                 </button>
               </div>
 
               {Array.isArray(data.activeTrips) && data.activeTrips.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {data.activeTrips.map(t => (
-                    <div key={t.id} className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+                    <div key={t.id} className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 hover:bg-slate-100 transition-colors">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-black text-slate-900 text-xs sm:text-sm">{t.plate_number || 'VEHICLE'}</span>
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-sky-100 text-sky-800">
+                          <span className="font-bold text-slate-900 text-xs sm:text-sm">{t.plate_number || 'VEHICLE'}</span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-800">
                             {t.trip_type || 'Operational'}
                           </span>
                         </div>
@@ -472,31 +516,31 @@ const LogisticsDashboard = () => {
                           Driver: <strong className="text-slate-800">{t.driver_name}</strong> | Dest: <strong className="text-slate-800">{t.destination}</strong>
                         </p>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
+                      <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">
                         {t.start_km ? `${t.start_km} KM` : 'En Route'}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-xs text-slate-400 italic">
+                <div className="text-center py-8 text-xs text-slate-500 italic">
                   No active vehicle trips currently en route.
                 </div>
               )}
             </div>
 
             {/* Power & Facilities Telemetry */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center font-bold">
                     <Zap size={18} />
                   </div>
-                  <h3 className="text-base font-black text-slate-900">Latest Facilities & Power Check</h3>
+                  <h3 className="text-sm font-bold text-slate-900">Latest Facilities & Power Check</h3>
                 </div>
                 <button
                   onClick={() => setTab('facilities')}
-                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                  className="text-xs font-bold text-slate-800 hover:text-slate-900 flex items-center gap-1"
                 >
                   Facilities Hub <ArrowUpRight size={14} />
                 </button>
@@ -504,36 +548,36 @@ const LogisticsDashboard = () => {
 
               {data.latestGen ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest block">Fuel Level</span>
-                      <span className="text-lg font-black text-emerald-900">{data.latestGen.fuel_level_pct}%</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Fuel Level</span>
+                      <span className="text-lg font-extrabold text-slate-900">{data.latestGen.fuel_level_pct}%</span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest block">Fuel Rem.</span>
-                      <span className="text-lg font-black text-emerald-900">{data.latestGen.fuel_liters} L</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Fuel Rem.</span>
+                      <span className="text-lg font-extrabold text-slate-900">{data.latestGen.fuel_liters} L</span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest block">Battery</span>
-                      <span className="text-lg font-black text-emerald-900">{data.latestGen.battery_voltage} V</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Battery</span>
+                      <span className="text-lg font-extrabold text-slate-900">{data.latestGen.battery_voltage} V</span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest block">Output</span>
-                      <span className="text-lg font-black text-emerald-900">{data.latestGen.output_voltage} V</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Output</span>
+                      <span className="text-lg font-extrabold text-slate-900">{data.latestGen.output_voltage} V</span>
                     </div>
                   </div>
 
                   {data.latestGen.notes && (
-                    <p className="text-xs text-slate-600 italic bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <p className="text-xs text-slate-600 italic bg-slate-50 p-3 rounded-lg border border-slate-200">
                       "{data.latestGen.notes}"
                     </p>
                   )}
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-slate-500">
                     Inspected by <strong className="text-slate-700">{data.latestGen.operator_name || 'Technician'}</strong>
                   </p>
                 </div>
               ) : (
-                <div className="text-center py-8 text-xs text-slate-400 italic">
+                <div className="text-center py-8 text-xs text-slate-500 italic">
                   No generator checks logged for today yet.
                 </div>
               )}
@@ -543,7 +587,7 @@ const LogisticsDashboard = () => {
 
           {/* Departmental Logistics Modules */}
           <div>
-            <h2 className="text-base font-bold text-slate-900 mb-3">
+            <h2 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider">
               Departmental Logistics Modules
             </h2>
 
@@ -585,23 +629,23 @@ const LogisticsDashboard = () => {
                   <div
                     key={mod.id}
                     onClick={() => setTab(mod.id)}
-                    className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-[#007B8A] transition-colors cursor-pointer flex flex-col justify-between"
+                    className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs hover:bg-blue-50/50 hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between group"
                   >
                     <div>
                       <div className="flex items-center gap-3 mb-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-[#E6F4F6] text-[#007B8A] flex items-center justify-center font-bold shrink-0">
+                        <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center font-bold shrink-0">
                           <Icon size={18} />
                         </div>
-                        <h4 className="text-sm font-bold text-slate-800">{mod.title}</h4>
+                        <h4 className="text-sm font-bold text-slate-900">{mod.title}</h4>
                       </div>
                       <p className="text-xs text-slate-500 leading-relaxed font-normal">
                         {mod.desc}
                       </p>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-[#007B8A]">
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-blue-900">
                       <span>Open Module</span>
-                      <ChevronRight size={15} />
+                      <ChevronRight size={15} className="text-slate-400 group-hover:text-blue-900 transition-transform group-hover:translate-x-1" />
                     </div>
                   </div>
                 );
@@ -725,7 +769,7 @@ const LogisticsDashboard = () => {
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <button type="button" className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold" onClick={() => setActiveModal(null)}>Cancel</button>
-              <button type="submit" className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold" disabled={submitting}>
+              <button type="submit" className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold" disabled={submitting}>
                 {submitting ? 'Dispatching...' : 'Confirm Dispatch'}
               </button>
             </div>
@@ -802,7 +846,7 @@ const LogisticsDashboard = () => {
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <button type="button" className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold" onClick={() => setActiveModal(null)}>Cancel</button>
-              <button type="submit" className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold" disabled={submitting}>
+              <button type="submit" className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold" disabled={submitting}>
                 {submitting ? 'Saving...' : 'Save Generator Log'}
               </button>
             </div>
@@ -897,7 +941,7 @@ const LogisticsDashboard = () => {
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <button type="button" className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold" onClick={() => setActiveModal(null)}>Cancel</button>
-              <button type="submit" className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold" disabled={submitting}>
+              <button type="submit" className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold" disabled={submitting}>
                 {submitting ? 'Registering...' : 'Register Vehicle'}
               </button>
             </div>
