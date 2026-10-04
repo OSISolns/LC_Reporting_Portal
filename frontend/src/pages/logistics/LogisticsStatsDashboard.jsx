@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import ChairmanExecutiveActions from '../../components/ChairmanExecutiveActions';
 import {
   BarChart3, TrendingUp, ShieldCheck, Activity, Truck, Zap, Wrench,
   Package, DollarSign, Calendar, RefreshCw, AlertTriangle, CheckCircle2,
@@ -341,6 +342,14 @@ const LogisticsStatsDashboard = () => {
           </p>
         </div>
       </div>
+
+      {/* EXECUTIVE DIRECTIVES & CHAIRMAN ACTIONS */}
+      <ChairmanExecutiveActions
+        reportType="logistics"
+        reportId="overview"
+        reportTitle="Logistics Operations & Asset Management Overview"
+        targetDepartment="Logistics & Facilities"
+      />
     </div>
   );
 };

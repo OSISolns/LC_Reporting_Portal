@@ -28,6 +28,7 @@ import api from '../api/axios';
 
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import ChairmanExecutiveActions from '../components/ChairmanExecutiveActions';
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
 
 const getWeekRange = (dateStr) => {
@@ -3089,6 +3090,14 @@ export default function DailyOperationalReportBoard() {
                 No monthly report matrix dataset is loaded for the selected period.
               </div>
             )}
+
+            {/* EXECUTIVE DIRECTIVES & CHAIRMAN ACTIONS */}
+            <ChairmanExecutiveActions
+              reportType="daily_operational"
+              reportId={selectedDate || 'overall'}
+              reportTitle={`Daily Operational Report (${selectedDate || 'Overall Board'})`}
+              targetDepartment="Operations & Clinical"
+            />
 
           </div>
         )

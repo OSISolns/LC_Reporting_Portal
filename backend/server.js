@@ -102,6 +102,8 @@ const logisticsRoutes = require('./src/routes/logistics');
 
 const providerRoutes = require('./src/routes/providers');
 
+const executiveDirectivesRoutes = require('./src/routes/executiveDirectives');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/cancellations', cancellationRoutes);
 app.use('/api/refunds', refundRoutes);
@@ -130,6 +132,7 @@ app.use('/api/dental', dentalRoutes);
 app.use('/api/roster', rosterRoutes);
 app.use('/api/operations', operationsRoutes);
 app.use('/api/logistics', logisticsRoutes);
+app.use('/api/executive-directives', executiveDirectivesRoutes);
 
 
 
