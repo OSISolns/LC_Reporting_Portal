@@ -600,36 +600,36 @@ const AssetManagement = () => {
                     <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Quarterly PPM + Calibration Verification</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '14px 18px', fontWeight 700, color: '#0f172a' }}>Diagnostic & Imaging</td>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Diagnostic & Imaging</td>
                     <td style={{ padding: '14px 18px', color: '#475569' }}>Ultrasound systems, digital radiography/X-ray, dental X-ray units</td>
                     <td style={{ padding: '14px 18px' }}>
                       <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#fff7ed', color: '#c2410c' }}>High / Tier 1</span>
                     </td>
-                    <td style={{ padding: '14px 18px', fontWeight 600, color: '#334155' }}>Semi-annual OEM vendor service + in-house PPM</td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Semi-annual OEM vendor service + in-house PPM</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '14px 18px', fontWeight 700, color: '#0f172a' }}>Laboratory Services</td>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Laboratory Services</td>
                     <td style={{ padding: '14px 18px', color: '#475569' }}>Chemistry analyzers, hematology counters, centrifuges, incubators</td>
                     <td style={{ padding: '14px 18px' }}>
                       <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#e0f2fe', color: '#0369a1' }}>High / Tier 2</span>
                     </td>
-                    <td style={{ padding: '14px 18px', fontWeight 600, color: '#334155' }}>Reagent-vendor calibration + monthly/quarterly checks</td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Reagent-vendor calibration + monthly/quarterly checks</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '14px 18px', fontWeight 700, color: '#0f172a' }}>General Wards & OPD</td>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>General Wards & OPD</td>
                     <td style={{ padding: '14px 18px', color: '#475569' }}>Vital sign monitors, ECG machines, suction pumps, examination beds</td>
                     <td style={{ padding: '14px 18px' }}>
-                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight 800, backgroundColor: '#f1f5f9', color: '#475569' }}>Medium / Tier 2</span>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#f1f5f9', color: '#475569' }}>Medium / Tier 2</span>
                     </td>
-                    <td style={{ padding: '14px 18px', fontWeight 600, color: '#334155' }}>In-house bi-annual electrical & performance tests</td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>In-house bi-annual electrical & performance tests</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '14px 18px', fontWeight 700, color: '#0f172a' }}>Facility & IT Infrastructure</td>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Facility & IT Infrastructure</td>
                     <td style={{ padding: '14px 18px', color: '#475569' }}>UPS units, server racks, managed switches, core workstations</td>
                     <td style={{ padding: '14px 18px' }}>
-                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight 800, backgroundColor: '#f0fdf4', color: '#15803d' }}>Operational Backbone</span>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#f0fdf4', color: '#15803d' }}>Operational Backbone</span>
                     </td>
-                    <td style={{ padding: '14px 18px', fontWeight 600, color: '#334155' }}>Monthly physical inspection + battery load testing</td>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Monthly physical inspection + battery load testing</td>
                   </tr>
                 </tbody>
               </table>
