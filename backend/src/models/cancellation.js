@@ -87,16 +87,44 @@ class Cancellation {
       params.push(filters.created_by);
       query += ` AND c.created_by = $${params.length}`;
     }
-    if (filters.pid) {
-      params.push(`%${filters.pid}%`);
-      query += ` AND c.pid_number ILIKE $${params.length}`;
-    }
-    if (filters.patientName) {
-      params.push(`%${filters.patientName}%`);
-      query += ` AND c.patient_full_name ILIKE $${params.length}`;
+
+    if (filters.search && filters.search.trim()) {
+      const term = `%${filters.search.trim()}%`;
+      params.push(term);
+      const p = `$${params.length}`;
+      query += ` AND (
+        c.patient_full_name ILIKE ${p} OR 
+        c.pid_number ILIKE ${p} OR 
+        c.old_sid_number ILIKE ${p} OR 
+        c.new_sid_number ILIKE ${p} OR 
+        c.original_receipt_number ILIKE ${p} OR 
+        c.rectified_receipt_number ILIKE ${p} OR
+        c.reason_for_cancellation ILIKE ${p} OR
+        u1.full_name ILIKE ${p}
+      )`;
+    } else {
+      if (filters.pid && filters.pid.trim()) {
+        params.push(`%${filters.pid.trim()}%`);
+        query += ` AND c.pid_number ILIKE $${params.length}`;
+      }
+      if (filters.patientName && filters.patientName.trim()) {
+        const term = `%${filters.patientName.trim()}%`;
+        params.push(term);
+        const p = `$${params.length}`;
+        query += ` AND (c.patient_full_name ILIKE ${p} OR c.pid_number ILIKE ${p} OR c.old_sid_number ILIKE ${p})`;
+      }
     }
 
-    query += ` ORDER BY c.created_at DESC LIMIT 100`;
+    if (filters.startDate) {
+      params.push(filters.startDate);
+      query += ` AND c.created_at >= $${params.length}::date`;
+    }
+    if (filters.endDate) {
+      params.push(`${filters.endDate} 23:59:59`);
+      query += ` AND c.created_at <= $${params.length}::timestamp`;
+    }
+
+    query += ` ORDER BY c.created_at DESC LIMIT 200`;
     const { rows } = await db.query(query, params);
     return rows;
   }

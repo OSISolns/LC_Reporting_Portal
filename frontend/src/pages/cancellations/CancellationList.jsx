@@ -25,7 +25,7 @@ const CancellationList = () => {
   const [requests, setRequests] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
-  const [filters, setFilters] = useState({ patientName: '', pid: '', status: '' });
+  const [filters, setFilters] = useState({ search: '', status: '', startDate: '', endDate: '' });
 
   useEffect(() => {
     setCurrentPage(1);
@@ -64,7 +64,14 @@ const CancellationList = () => {
 
   const fetchRequests = async () => {
     try {
-      const res = await getCancellations(filters).catch(() => ({ data: { data: [] } }));
+      setLoading(true);
+      const cleanParams = {};
+      if (filters.search && filters.search.trim()) cleanParams.search = filters.search.trim();
+      if (filters.status) cleanParams.status = filters.status;
+      if (filters.startDate) cleanParams.startDate = filters.startDate;
+      if (filters.endDate) cleanParams.endDate = filters.endDate;
+
+      const res = await getCancellations(cleanParams).catch(() => ({ data: { data: [] } }));
       setRequests(res.data.data || []);
     } catch (err) {
       console.error('Failed to fetch requests');
@@ -168,31 +175,56 @@ const CancellationList = () => {
         </div>
 
 
-      <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff' }}>
-        <div style={{ position: 'relative', flex: 2, minWidth: '300px' }}>
+      <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: '12px' }}>
+        <div style={{ position: 'relative', flex: '2 1 250px', minWidth: '220px' }}>
           <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
           <input
             type="text"
-            placeholder="Search by Patient Name or PID..."
-            value={filters.patientName}
-            onChange={(e) => setFilters({ ...filters, patientName: e.target.value })}
-            style={{ width: '100%', padding: '12px 14px 12px 46px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem' }}
+            placeholder="Search by Patient Name, PID, SID, Receipt #..."
+            value={filters.search}
+            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+            style={{ width: '100%', padding: '10px 14px 10px 42px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem' }}
           />
         </div>
-        <div style={{ flex: 1, minWidth: '180px' }}>
+        <div style={{ flex: '1 1 160px', minWidth: '150px' }}>
           <select
             value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            style={{ width: '100%', padding: '12px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem', cursor: 'pointer' }}
+            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+            style={{ width: '100%', padding: '10px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem', cursor: 'pointer' }}
           >
             <option value="">Status: All Requests</option>
-            <option value="pending">⏳ Pending</option>
-            <option value="verified">🔍 Verified</option>
-            <option value="approved">✅ Approved</option>
-            <option value="rejected">❌ Rejected</option>
+            <option value="pending">Pending</option>
+            <option value="verified">Verified</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
           </select>
         </div>
-        <button onClick={() => setFilters({ patientName: '', pid: '', status: '' })} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', padding: '0 10px' }}>Reset Filters</button>
+        <div style={{ flex: '1 1 140px', minWidth: '130px' }}>
+          <input
+            type="date"
+            title="Start Date"
+            value={filters.startDate}
+            onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
+            style={{ width: '100%', padding: '10px 12px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem' }}
+          />
+        </div>
+        <div style={{ flex: '1 1 140px', minWidth: '130px' }}>
+          <input
+            type="date"
+            title="End Date"
+            value={filters.endDate}
+            onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
+            style={{ width: '100%', padding: '10px 12px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem' }}
+          />
+        </div>
+        {(filters.search || filters.status || filters.startDate || filters.endDate) && (
+          <button 
+            onClick={() => setFilters({ search: '', status: '', startDate: '', endDate: '' })} 
+            style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', padding: '0 8px', whiteSpace: 'nowrap' }}
+          >
+            Reset Filters
+          </button>
+        )}
       </div>
 
       <div className="glass card-shadow" style={{ overflow: 'hidden', backgroundColor: '#ffffff' }}>

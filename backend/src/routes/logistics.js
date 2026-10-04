@@ -162,8 +162,42 @@ router.post('/fleet/vehicles', async (req, res) => {
       INSERT INTO logistics_vehicles (plate_number, model, vehicle_type, insurance_exp, control_exp, rema_exp, current_odometer, status, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *
-    `, [plate_number, model, vehicle_type || 'Ambulance', insurance_exp, control_exp, rema_exp, current_odometer || 0, status || 'Available', notes]);
+    `, [plate_number, model, vehicle_type || 'Ambulance', insurance_exp || null, control_exp || null, rema_exp || null, current_odometer || 0, status || 'Available', notes || null]);
     res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/fleet/vehicles/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { plate_number, model, vehicle_type, insurance_exp, control_exp, rema_exp, current_odometer, status, notes } = req.body;
+    const { rows } = await db.query(`
+      UPDATE logistics_vehicles
+      SET plate_number = COALESCE(?, plate_number),
+          model = COALESCE(?, model),
+          vehicle_type = COALESCE(?, vehicle_type),
+          insurance_exp = ?,
+          control_exp = ?,
+          rema_exp = ?,
+          current_odometer = COALESCE(?, current_odometer),
+          status = COALESCE(?, status),
+          notes = ?
+      WHERE id = ?
+      RETURNING *
+    `, [plate_number, model, vehicle_type, insurance_exp || null, control_exp || null, rema_exp || null, current_odometer, status, notes || null, id]);
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/fleet/vehicles/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM logistics_vehicles WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Vehicle deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -421,8 +455,44 @@ router.post('/assets', async (req, res) => {
       INSERT INTO logistics_assets (asset_tag, serial_number, name, category, department, custodian, purchase_date, warranty_exp, expected_lifespan_years, purchase_cost, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *
-    `, [asset_tag, serial_number, name, category, department, custodian, purchase_date, warranty_exp, expected_lifespan_years || 5, purchase_cost || 0, status || 'Active']);
+    `, [asset_tag, serial_number, name, category, department, custodian, purchase_date, warranty_exp || null, expected_lifespan_years || 5, purchase_cost || 0, status || 'Active']);
     res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/assets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { asset_tag, serial_number, name, category, department, custodian, purchase_date, warranty_exp, expected_lifespan_years, purchase_cost, status } = req.body;
+    const { rows } = await db.query(`
+      UPDATE logistics_assets
+      SET asset_tag = COALESCE(?, asset_tag),
+          serial_number = COALESCE(?, serial_number),
+          name = COALESCE(?, name),
+          category = COALESCE(?, category),
+          department = COALESCE(?, department),
+          custodian = COALESCE(?, custodian),
+          purchase_date = COALESCE(?, purchase_date),
+          warranty_exp = ?,
+          expected_lifespan_years = COALESCE(?, expected_lifespan_years),
+          purchase_cost = COALESCE(?, purchase_cost),
+          status = COALESCE(?, status)
+      WHERE id = ?
+      RETURNING *
+    `, [asset_tag, serial_number, name, category, department, custodian, purchase_date, warranty_exp || null, expected_lifespan_years, purchase_cost, status, id]);
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/assets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM logistics_assets WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Asset deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -466,6 +536,12 @@ router.patch('/assets/transfers/:id', async (req, res) => {
       WHERE id = ?
       RETURNING *
     `, [status, approved_by, accepted_by, id]);
+    
+    // If transfer approved, update asset department
+    if (status === 'Approved' && rows[0]?.asset_id && rows[0]?.to_dept) {
+      await db.query('UPDATE logistics_assets SET department = ? WHERE id = ?', [rows[0].to_dept, rows[0].asset_id]);
+    }
+
     res.json({ success: true, data: rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -500,6 +576,25 @@ router.post('/assets/ppm', async (req, res) => {
   }
 });
 
+router.put('/assets/ppm/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, findings, cost, technician } = req.body;
+    const { rows } = await db.query(`
+      UPDATE logistics_ppm_records
+      SET status = COALESCE(?, status),
+          findings = COALESCE(?, findings),
+          cost = COALESCE(?, cost),
+          technician = COALESCE(?, technician)
+      WHERE id = ?
+      RETURNING *
+    `, [status, findings, cost, technician, id]);
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // ── 5. MAINTENANCE MATERIALS & SPARE PARTS ─────────────────────────────────────
 
 router.get('/inventory/items', async (req, res) => {
@@ -525,6 +620,37 @@ router.post('/inventory/items', async (req, res) => {
   }
 });
 
+router.put('/inventory/items/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { item_name, category, unit, quantity_on_hand, min_threshold, unit_cost } = req.body;
+    const { rows } = await db.query(`
+      UPDATE logistics_stock_items
+      SET item_name = COALESCE(?, item_name),
+          category = COALESCE(?, category),
+          unit = COALESCE(?, unit),
+          quantity_on_hand = COALESCE(?, quantity_on_hand),
+          min_threshold = COALESCE(?, min_threshold),
+          unit_cost = COALESCE(?, unit_cost)
+      WHERE id = ?
+      RETURNING *
+    `, [item_name, category, unit, quantity_on_hand, min_threshold, unit_cost, id]);
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/inventory/items/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM logistics_stock_items WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Stock item deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.get('/inventory/releases', async (req, res) => {
   try {
     const { rows } = await db.query('SELECT * FROM logistics_stock_releases ORDER BY id DESC');
@@ -537,17 +663,18 @@ router.get('/inventory/releases', async (req, res) => {
 router.post('/inventory/releases', async (req, res) => {
   try {
     const { item_id, item_name, quantity, target_location, requested_by, approved_by } = req.body;
+    const releaseQty = Number(quantity) || 1;
     
     // Deduct stock balance
     if (item_id) {
-      await db.query(`UPDATE logistics_stock_items SET quantity_on_hand = MAX(0, quantity_on_hand - ?) WHERE id = ?`, [quantity, item_id]);
+      await db.query(`UPDATE logistics_stock_items SET quantity_on_hand = GREATEST(0, quantity_on_hand - ?) WHERE id = ?`, [releaseQty, item_id]);
     }
 
     const { rows } = await db.query(`
       INSERT INTO logistics_stock_releases (item_id, item_name, quantity, target_location, requested_by, approved_by, release_date)
       VALUES (?, ?, ?, ?, ?, ?, ?)
       RETURNING *
-    `, [item_id, item_name, quantity, target_location, requested_by || req.user?.full_name, approved_by || 'Logistics Manager', new Date().toISOString().split('T')[0]]);
+    `, [item_id, item_name, releaseQty, target_location, requested_by || req.user?.full_name, approved_by || 'Logistics Manager', new Date().toISOString().split('T')[0]]);
 
     res.json({ success: true, data: rows[0] });
   } catch (err) {
@@ -580,6 +707,19 @@ router.post('/admin/petty-cash', async (req, res) => {
   }
 });
 
+router.put('/admin/petty-cash/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const { rows } = await db.query(`
+      UPDATE logistics_petty_cash SET status = ? WHERE id = ? RETURNING *
+    `, [status, id]);
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.get('/admin/sample-dispatches', async (req, res) => {
   try {
     const { rows } = await db.query('SELECT * FROM logistics_sample_dispatches ORDER BY id DESC');
@@ -603,6 +743,19 @@ router.post('/admin/sample-dispatches', async (req, res) => {
   }
 });
 
+router.put('/admin/sample-dispatches/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const { rows } = await db.query(`
+      UPDATE logistics_sample_dispatches SET status = ? WHERE id = ? RETURNING *
+    `, [status, id]);
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.get('/admin/print-requisitions', async (req, res) => {
   try {
     const { rows } = await db.query('SELECT * FROM logistics_print_requisitions ORDER BY id DESC');
@@ -620,6 +773,19 @@ router.post('/admin/print-requisitions', async (req, res) => {
       VALUES (?, ?, ?, ?, 'Approved')
       RETURNING *
     `, [nursing_station, item_description, quantity, new Date().toISOString().split('T')[0]]);
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/admin/print-requisitions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const { rows } = await db.query(`
+      UPDATE logistics_print_requisitions SET status = ? WHERE id = ? RETURNING *
+    `, [status, id]);
     res.json({ success: true, data: rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

@@ -117,16 +117,16 @@ const FacilitiesPower = () => {
     <div style={{ paddingBottom: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <span style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+          <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.05em' }}>
             FACILITIES & POWER
           </span>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#0f172a' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#0f172a', letterSpacing: '-0.025em' }}>
             Facilities, Power & Environment
           </h1>
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setIsGenModal(true)} className="btn btn-primary" style={{ backgroundColor: '#16a34a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button onClick={() => setIsGenModal(true)} className="btn btn-primary" style={{ backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Zap size={16} /> Log Generator Check
           </button>
           <button onClick={() => setIsTourModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -137,11 +137,11 @@ const FacilitiesPower = () => {
 
       {/* ── GENERATOR HEADS-UP DISPLAY ── */}
       {latestGen && activeTab === 'generator' && (
-        <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid #16a34a', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #0f172a' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>CURRENT GENERATOR READINESS</span>
-              <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CURRENT GENERATOR READINESS</span>
+              <h3 style={{ margin: '4px 0 0 0', fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>
                 Generator 01 Standby: {latestGen.fuel_level_pct}% Fuel ({latestGen.fuel_liters} Liters)
               </h3>
               <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
@@ -152,15 +152,15 @@ const FacilitiesPower = () => {
             <div style={{ display: 'flex', gap: '1.5rem' }}>
               <div>
                 <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Battery Voltage</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{latestGen.battery_voltage}V</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{latestGen.battery_voltage}V</span>
               </div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Output Voltage</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{latestGen.output_voltage}V</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{latestGen.output_voltage}V</span>
               </div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Test Run</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{latestGen.test_run_mins} mins</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{latestGen.test_run_mins} mins</span>
               </div>
             </div>
           </div>
@@ -168,20 +168,21 @@ const FacilitiesPower = () => {
       )}
 
       {/* TABS */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem', gap: '1rem' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '1.5rem', gap: '1rem' }}>
         <button
           onClick={() => setActiveTab('generator')}
           style={{
             padding: '10px 16px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'generator' ? '#16a34a' : '#64748b',
-            borderBottom: activeTab === 'generator' ? '3px solid #16a34a' : 'none',
+            fontWeight: activeTab === 'generator' ? 700 : 500,
+            color: activeTab === 'generator' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'generator' ? '2px solid #0f172a' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            fontSize: '0.875rem'
           }}
         >
           <Zap size={16} /> Generator Operation Checks
@@ -193,13 +194,14 @@ const FacilitiesPower = () => {
             padding: '10px 16px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'tour' ? '#16a34a' : '#64748b',
-            borderBottom: activeTab === 'tour' ? '3px solid #16a34a' : 'none',
+            fontWeight: activeTab === 'tour' ? 700 : 500,
+            color: activeTab === 'tour' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'tour' ? '2px solid #0f172a' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            fontSize: '0.875rem'
           }}
         >
           <Activity size={16} /> Daily Morning Clinic Tour Reports

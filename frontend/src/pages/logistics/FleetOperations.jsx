@@ -72,6 +72,7 @@ const FleetOperations = () => {
   });
 
   const [vehicleForm, setVehicleForm] = useState({
+    id: null,
     plate_number: '',
     model: '',
     vehicle_type: 'Ambulance',
@@ -79,7 +80,8 @@ const FleetOperations = () => {
     control_exp: '',
     rema_exp: '',
     current_odometer: 0,
-    status: 'Available'
+    status: 'Available',
+    notes: ''
   });
 
   const [driverForm, setDriverForm] = useState({
@@ -254,8 +256,10 @@ const FleetOperations = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/fleet/vehicles', {
-        method: 'POST',
+      const method = vehicleForm.id ? 'PUT' : 'POST';
+      const url = vehicleForm.id ? `/api/logistics/fleet/vehicles/${vehicleForm.id}` : '/api/logistics/fleet/vehicles';
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -264,16 +268,63 @@ const FleetOperations = () => {
       });
       const json = await res.json();
       if (json.success) {
-        toast.success('Vehicle registered successfully!');
+        toast.success(vehicleForm.id ? 'Vehicle updated successfully!' : 'Vehicle registered successfully!');
         setIsVehicleModal(false);
+        setVehicleForm({
+          id: null,
+          plate_number: '',
+          model: '',
+          vehicle_type: 'Ambulance',
+          insurance_exp: '',
+          control_exp: '',
+          rema_exp: '',
+          current_odometer: 0,
+          status: 'Available',
+          notes: ''
+        });
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to add vehicle');
+        toast.error(json.message || 'Failed to save vehicle');
       }
     } catch (err) {
       toast.error('Error saving vehicle');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEditVehicle = (v) => {
+    setVehicleForm({
+      id: v.id,
+      plate_number: v.plate_number || '',
+      model: v.model || '',
+      vehicle_type: v.vehicle_type || 'Ambulance',
+      insurance_exp: v.insurance_exp ? v.insurance_exp.split('T')[0] : '',
+      control_exp: v.control_exp ? v.control_exp.split('T')[0] : '',
+      rema_exp: v.rema_exp ? v.rema_exp.split('T')[0] : '',
+      current_odometer: v.current_odometer || 0,
+      status: v.status || 'Available',
+      notes: v.notes || ''
+    });
+    setIsVehicleModal(true);
+  };
+
+  const handleDeleteVehicle = async (id, plate) => {
+    if (!window.confirm(`Are you sure you want to remove vehicle ${plate || ''}?`)) return;
+    try {
+      const res = await fetch(`/api/logistics/fleet/vehicles/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success('Vehicle removed');
+        fetchData();
+      } else {
+        toast.error(json.message || 'Failed to remove vehicle');
+      }
+    } catch (err) {
+      toast.error('Error removing vehicle');
     }
   };
 
@@ -311,153 +362,209 @@ const FleetOperations = () => {
     <div style={{ paddingBottom: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <span style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
-            FLEET & AMBULANCE
-          </span>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#0f172a' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#0f172a', letterSpacing: '-0.01em' }}>
             Fleet & Ambulance Operations
           </h1>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '2px 0 0 0' }}>
+            Vehicle dispatch, driver assignments, regulatory compliance, and pre-trip inspections
+          </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button onClick={() => { setDriverForm({ id: null, full_name: '', license_number: '', phone: '', status: 'Active', notes: '' }); setIsDriverModal(true); }} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '12px' }}>
-            <User size={16} /> Register Driver
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button onClick={() => { setDriverForm({ id: null, full_name: '', license_number: '', phone: '', status: 'Active', notes: '' }); setIsDriverModal(true); }} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600, fontSize: '0.85rem', padding: '8px 14px' }}>
+            <User size={15} /> Register Driver
           </button>
-          <button onClick={() => setIsTripModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#0284c7', borderRadius: '12px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)' }}>
-            <Truck size={16} /> Log New Trip
+          <button onClick={() => setIsTripModal(true)} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', padding: '8px 14px', border: 'none' }}>
+            <Truck size={15} /> Log New Trip
           </button>
-          <button onClick={() => setIsChecklistModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '12px' }}>
-            <CheckSquare size={16} /> New Pre-Trip Check
+          <button onClick={() => setIsChecklistModal(true)} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600, fontSize: '0.85rem', padding: '8px 14px' }}>
+            <CheckSquare size={15} /> Pre-Trip Check
           </button>
-          <button onClick={() => setIsVehicleModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '12px' }}>
-            <Plus size={16} /> Add Vehicle
+          <button onClick={() => setIsVehicleModal(true)} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600, fontSize: '0.85rem', padding: '8px 14px' }}>
+            <Plus size={15} /> Add Vehicle
           </button>
         </div>
       </div>
 
       {/* ── TABS ── */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem', gap: '1rem', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '1.25rem', gap: '0.5rem', overflowX: 'auto' }}>
         <button
           onClick={() => setActiveTab('compliance')}
           style={{
-            padding: '10px 16px',
+            padding: '10px 14px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'compliance' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'compliance' ? '3px solid #0284c7' : 'none',
+            fontWeight: 600,
+            fontSize: '0.85rem',
+            color: activeTab === 'compliance' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'compliance' ? '2px solid #0f172a' : '2px solid transparent',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            transition: 'color 0.2s',
+            transition: 'all 0.15s',
             whiteSpace: 'nowrap'
           }}
         >
-          <ShieldCheck size={16} /> Regulatory Compliance Board
+          <ShieldCheck size={15} /> Regulatory Compliance
         </button>
 
         <button
           onClick={() => setActiveTab('drivers')}
           style={{
-            padding: '10px 16px',
+            padding: '10px 14px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'drivers' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'drivers' ? '3px solid #0284c7' : 'none',
+            fontWeight: 600,
+            fontSize: '0.85rem',
+            color: activeTab === 'drivers' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'drivers' ? '2px solid #0f172a' : '2px solid transparent',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            transition: 'color 0.2s',
+            transition: 'all 0.15s',
             whiteSpace: 'nowrap'
           }}
         >
-          <User size={16} /> Drivers Roster & Management
+          <User size={15} /> Drivers Roster
         </button>
 
         <button
           onClick={() => setActiveTab('trips')}
           style={{
-            padding: '10px 16px',
+            padding: '10px 14px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'trips' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'trips' ? '3px solid #0284c7' : 'none',
+            fontWeight: 600,
+            fontSize: '0.85rem',
+            color: activeTab === 'trips' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'trips' ? '2px solid #0f172a' : '2px solid transparent',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            transition: 'color 0.2s',
+            transition: 'all 0.15s',
             whiteSpace: 'nowrap'
           }}
         >
-          <Truck size={16} /> Movement Logbook & Authorization
+          <Truck size={15} /> Movement Logbook
         </button>
 
         <button
           onClick={() => setActiveTab('checklists')}
           style={{
-            padding: '10px 16px',
+            padding: '10px 14px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'checklists' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'checklists' ? '3px solid #0284c7' : 'none',
+            fontWeight: 600,
+            fontSize: '0.85rem',
+            color: activeTab === 'checklists' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'checklists' ? '2px solid #0f172a' : '2px solid transparent',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            transition: 'color 0.2s',
+            transition: 'all 0.15s',
             whiteSpace: 'nowrap'
           }}
         >
-          <CheckSquare size={16} /> Technical Pre-Trip Checklists
+          <CheckSquare size={15} /> Pre-Trip Checklists
         </button>
       </div>
 
-      {/* TAB 1: REGULATORY COMPLIANCE BOARD */}
+      {/* TAB 1: REGULATORY COMPLIANCE BOARD & FLEET DIRECTORY */}
       {activeTab === 'compliance' && (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
-            {vehicles.map((v) => (
-              <div key={v.id} className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{v.plate_number}</h3>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>{v.model} • {v.vehicle_type}</p>
-                  </div>
-                  <span style={{
-                    padding: '4px 10px',
-                    borderRadius: '12px',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    backgroundColor: v.status === 'Available' ? '#dcfce7' : '#e0f2fe',
-                    color: v.status === 'Available' ? '#15803d' : '#0369a1'
-                  }}>
-                    {v.status}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-                    <span style={{color: '#475569', fontWeight: 600}}>Technical Control Expiry</span>
-                    {getExpiryBadge(v.control_exp)}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-                    <span style={{color: '#475569', fontWeight: 600}}>Motor Insurance Cover</span>
-                    {getExpiryBadge(v.insurance_exp)}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-                    <span style={{color: '#475569', fontWeight: 600}}>REMA Pass Certificate</span>
-                    {getExpiryBadge(v.rema_exp)}
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '6px 12px', width: '300px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+              <Search size={18} style={{ color: '#94a3b8', marginRight: '8px' }} />
+              <input 
+                type="text" 
+                placeholder="Search plate, model or classification..." 
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.875rem' }}
+              />
+            </div>
+            <button
+              onClick={() => {
+                setVehicleForm({ id: null, plate_number: '', model: '', vehicle_type: 'Ambulance', insurance_exp: '', control_exp: '', rema_exp: '', current_odometer: 0, status: 'Available', notes: '' });
+                setIsVehicleModal(true);
+              }}
+              className="btn btn-primary"
+              style={{ backgroundColor: '#0284c7', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Plus size={16} /> Register Vehicle
+            </button>
           </div>
+
+          {vehicles.filter(v => (v.plate_number || '').toLowerCase().includes(searchQuery.toLowerCase()) || (v.model || '').toLowerCase().includes(searchQuery.toLowerCase()) || (v.vehicle_type || '').toLowerCase().includes(searchQuery.toLowerCase())).length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+              {vehicles.filter(v => (v.plate_number || '').toLowerCase().includes(searchQuery.toLowerCase()) || (v.model || '').toLowerCase().includes(searchQuery.toLowerCase()) || (v.vehicle_type || '').toLowerCase().includes(searchQuery.toLowerCase())).map((v) => (
+                <div key={v.id} className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{v.plate_number}</h3>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>{v.model} • {v.vehicle_type}</p>
+                      {v.current_odometer ? <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Odometer: {Number(v.current_odometer).toLocaleString()} KM</p> : null}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                      <span style={{
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        backgroundColor: v.status === 'Available' ? '#dcfce7' : v.status === 'In Use' ? '#e0f2fe' : '#fee2e2',
+                        color: v.status === 'Available' ? '#15803d' : v.status === 'In Use' ? '#0369a1' : '#dc2626'
+                      }}>
+                        {v.status}
+                      </span>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => handleEditVehicle(v)} title="Edit Vehicle Details & Expiries" style={{ border: 'none', background: '#f1f5f9', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer', color: '#475569' }}>
+                          <Pencil size={13} />
+                        </button>
+                        <button onClick={() => handleDeleteVehicle(v.id, v.plate_number)} title="Remove Vehicle" style={{ border: 'none', background: '#fef2f2', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer', color: '#dc2626' }}>
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                      <span style={{color: '#475569', fontWeight: 600}}>Technical Control Expiry</span>
+                      {getExpiryBadge(v.control_exp)}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                      <span style={{color: '#475569', fontWeight: 600}}>Motor Insurance Cover</span>
+                      {getExpiryBadge(v.insurance_exp)}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                      <span style={{color: '#475569', fontWeight: 600}}>REMA Pass Certificate</span>
+                      {getExpiryBadge(v.rema_exp)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+              <Truck size={40} style={{ color: '#94a3b8', margin: '0 auto 12px auto' }} />
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>No Fleet Vehicles Found</h3>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>Register your institution's ambulances and operational vehicles to track movement dispatches and technical compliance.</p>
+              <button
+                onClick={() => {
+                  setVehicleForm({ id: null, plate_number: '', model: '', vehicle_type: 'Ambulance', insurance_exp: '', control_exp: '', rema_exp: '', current_odometer: 0, status: 'Available', notes: '' });
+                  setIsVehicleModal(true);
+                }}
+                className="btn btn-primary"
+                style={{ backgroundColor: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Plus size={16} /> Register First Vehicle
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -980,13 +1087,13 @@ const FleetOperations = () => {
         </Modal>
       )}
 
-      {/* MODAL: ADD VEHICLE */}
+      {/* MODAL: REGISTER / EDIT VEHICLE */}
       {isVehicleModal && (
-        <Modal isOpen={true} title="Register Vehicle / Update Expiries" onClose={() => setIsVehicleModal(false)}>
+        <Modal isOpen={true} title={vehicleForm.id ? "Edit Vehicle & Expiries" : "Register New Fleet Vehicle"} onClose={() => setIsVehicleModal(false)}>
           <form onSubmit={handleVehicleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Plate Number</label>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Plate Number *</label>
                 <input
                   type="text"
                   className="input"
@@ -998,7 +1105,7 @@ const FleetOperations = () => {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Vehicle Model & Make</label>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Vehicle Model & Make *</label>
                 <input
                   type="text"
                   className="input"
@@ -1008,6 +1115,48 @@ const FleetOperations = () => {
                   onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })}
                   required
                 />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Classification</label>
+                <select
+                  className="input"
+                  style={{ width: '100%' }}
+                  value={vehicleForm.vehicle_type}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, vehicle_type: e.target.value })}
+                >
+                  <option value="Ambulance">Ambulance</option>
+                  <option value="Utility">Utility Service</option>
+                  <option value="Operational">Operational Staff</option>
+                  <option value="Executive">Executive</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Current Odometer (KM)</label>
+                <input
+                  type="number"
+                  className="input"
+                  style={{ width: '100%' }}
+                  placeholder="e.g. 45000"
+                  value={vehicleForm.current_odometer}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, current_odometer: e.target.value })}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Status</label>
+                <select
+                  className="input"
+                  style={{ width: '100%' }}
+                  value={vehicleForm.status}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, status: e.target.value })}
+                >
+                  <option value="Available">Available</option>
+                  <option value="In Use">In Use</option>
+                  <option value="Maintenance">Maintenance</option>
+                  <option value="Decommissioned">Decommissioned</option>
+                </select>
               </div>
             </div>
 
@@ -1046,8 +1195,8 @@ const FleetOperations = () => {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setIsVehicleModal(false)}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={submitting}>
-                {submitting ? 'Registering...' : 'Register Vehicle'}
+              <button type="submit" className="btn btn-primary" style={{ backgroundColor: '#0284c7' }} disabled={submitting}>
+                {submitting ? 'Saving...' : vehicleForm.id ? 'Save Vehicle Updates' : 'Register Vehicle'}
               </button>
             </div>
           </form>

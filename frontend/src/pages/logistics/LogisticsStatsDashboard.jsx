@@ -93,7 +93,7 @@ const LogisticsStatsDashboard = () => {
               <Calendar size={14} /> {todayStr}
             </span>
           </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#1e3a8a' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#0f172a' }}>
             Logistics Statistics Dashboard
           </h1>
         </div>
@@ -116,7 +116,7 @@ const LogisticsStatsDashboard = () => {
         </div>
       </div>
 
-      {/* ── TOP KPI SUMMARY CARDS (LEGACY CLINICS BLUE & GREEN) ── */}
+      {/* ── TOP KPI SUMMARY CARDS ── */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -128,7 +128,7 @@ const LogisticsStatsDashboard = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0' }}>FLEET READINESS</p>
-              <h3 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: '#1e3a8a' }}>
+              <h3 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                 {fleetAvailabilityRate}%
               </h3>
               <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
@@ -170,7 +170,7 @@ const LogisticsStatsDashboard = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px 0' }}>PENDING PPM ORDERS</p>
-              <h3 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: '#1e3a8a' }}>
+              <h3 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                 {data.kpis.ppm.pending}
               </h3>
               <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
@@ -224,7 +224,7 @@ const LogisticsStatsDashboard = () => {
           boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e3a8a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <BarChart3 size={18} style={{ color: '#0284c7' }} /> Fleet Operational Statistics
             </h3>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0284c7', backgroundColor: '#e0f2fe', padding: '2px 8px', borderRadius: '12px' }}>
@@ -237,7 +237,7 @@ const LogisticsStatsDashboard = () => {
               data.vehicles.map((v) => (
                 <div key={v.id} style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #f1f5f9' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span style={{ fontWeight: 700, color: '#1e3a8a', fontSize: '0.9rem' }}>{v.plate_number} ({v.model})</span>
+                    <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>{v.plate_number} ({v.model})</span>
                     <span style={{
                       padding: '2px 8px',
                       borderRadius: '10px',
@@ -270,7 +270,7 @@ const LogisticsStatsDashboard = () => {
           boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e3a8a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Zap size={18} style={{ color: '#16a34a' }} /> Facilities & Plant Health Metrics
             </h3>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#16a34a', backgroundColor: '#dcfce7', padding: '2px 8px', borderRadius: '12px' }}>
@@ -321,11 +321,11 @@ const LogisticsStatsDashboard = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
             <ShieldAlert size={18} style={{ color: '#0284c7' }} />
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#1e3a8a' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
               Safety & Incident Statistics
             </h3>
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e3a8a' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>
             {data.kpis.incidents.openCount} Active Incident Reports
           </div>
           <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
@@ -341,12 +341,12 @@ const LogisticsStatsDashboard = () => {
           padding: '1.25rem'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
-            <Activity size={18} style={{ color: '#2563eb' }} />
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#1e3a8a' }}>
+            <Activity size={18} style={{ color: '#0284c7' }} />
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
               IT Support SLA Performance
             </h3>
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e3a8a' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>
             {data.kpis.it.inProgress} Open Support Tickets
           </div>
           <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>

@@ -148,6 +148,63 @@ const LogisticsAdmin = () => {
     }
   };
 
+  const handleUpdatePettyCashStatus = async (id, status) => {
+    try {
+      const res = await fetch(`/api/logistics/admin/petty-cash/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ status })
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(`Petty cash marked as ${status}`);
+        fetchData();
+      } else {
+        toast.error(json.message || 'Failed to update status');
+      }
+    } catch (err) {
+      toast.error('Error updating status');
+    }
+  };
+
+  const handleUpdateSampleStatus = async (id, status) => {
+    try {
+      const res = await fetch(`/api/logistics/admin/sample-dispatches/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ status })
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(`Shipment updated to ${status}`);
+        fetchData();
+      } else {
+        toast.error(json.message || 'Failed to update status');
+      }
+    } catch (err) {
+      toast.error('Error updating status');
+    }
+  };
+
+  const handleUpdatePrintStatus = async (id, status) => {
+    try {
+      const res = await fetch(`/api/logistics/admin/print-requisitions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ status })
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(`Requisition updated to ${status}`);
+        fetchData();
+      } else {
+        toast.error(json.message || 'Failed to update status');
+      }
+    } catch (err) {
+      toast.error('Error updating status');
+    }
+  };
+
   return (
     <div style={{ paddingBottom: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -249,33 +306,54 @@ const LogisticsAdmin = () => {
       </div>
 
       {activeTab === 'petty_cash' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                <th style={{ padding: '12px 16px' }}>Date</th>
-                <th style={{ padding: '12px 16px' }}>Category</th>
-                <th style={{ padding: '12px 16px' }}>Description</th>
-                <th style={{ padding: '12px 16px' }}>Receipt #</th>
-                <th style={{ padding: '12px 16px' }}>Amount (RWF)</th>
-                <th style={{ padding: '12px 16px' }}>Logged By</th>
+              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Date</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Category</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Description</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Receipt #</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Amount (RWF)</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Logged By</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {pettyCash.length > 0 ? (
                 pettyCash.map((c) => (
                   <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{c.transaction_date}</td>
-                    <td style={{ padding: '12px 16px' }}>{c.category}</td>
-                    <td style={{ padding: '12px 16px' }}>{c.description}</td>
-                    <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{c.receipt_number || 'N/A'}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 800, color: '#2563eb' }}>{c.amount?.toLocaleString()} RWF</td>
-                    <td style={{ padding: '12px 16px' }}>{c.logged_by}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>{c.transaction_date}</td>
+                    <td style={{ padding: '12px 16px', color: '#334155' }}>{c.category}</td>
+                    <td style={{ padding: '12px 16px', color: '#334155' }}>{c.description}</td>
+                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#64748b' }}>{c.receipt_number || 'N/A'}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 800, color: '#0284c7' }}>{Number(c.amount)?.toLocaleString()} RWF</td>
+                    <td style={{ padding: '12px 16px', color: '#64748b' }}>{c.logged_by}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,
+                        backgroundColor: c.status === 'Paid' ? '#dcfce7' : c.status === 'Approved' ? '#e0f2fe' : '#fee2e2',
+                        color: c.status === 'Paid' ? '#15803d' : c.status === 'Approved' ? '#0369a1' : '#dc2626'
+                      }}>
+                        {c.status || 'Approved'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      {c.status !== 'Paid' ? (
+                        <button
+                          onClick={() => handleUpdatePettyCashStatus(c.id, 'Paid')}
+                          style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, border: 'none', backgroundColor: '#dcfce7', color: '#15803d', cursor: 'pointer' }}
+                        >
+                          Mark Paid
+                        </button>
+                      ) : <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Settled</span>}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No petty cash transactions recorded yet</td>
+                  <td colSpan="8" style={{ padding: '3rem 2rem', textAlign: 'center', color: '#64748b', fontSize: '0.95rem' }}>No petty cash transactions recorded yet</td>
                 </tr>
               )}
             </tbody>
@@ -284,39 +362,56 @@ const LogisticsAdmin = () => {
       )}
 
       {activeTab === 'nipt' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                <th style={{ padding: '12px 16px' }}>Patient Code</th>
-                <th style={{ padding: '12px 16px' }}>Sampling Timestamp</th>
-                <th style={{ padding: '12px 16px' }}>Cold Chain Verification</th>
-                <th style={{ padding: '12px 16px' }}>DHL Waybill Number</th>
-                <th style={{ padding: '12px 16px' }}>Status</th>
+              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Patient Code</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Sampling Timestamp</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Cold Chain Verification</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>DHL Waybill Number</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700 }}>Update Tracking</th>
               </tr>
             </thead>
             <tbody>
               {samples.length > 0 ? (
                 samples.map((s) => (
                   <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#2563eb' }}>{s.patient_code}</td>
-                    <td style={{ padding: '12px 16px' }}>{new Date(s.sampling_time).toLocaleString()}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0284c7' }}>{s.patient_code}</td>
+                    <td style={{ padding: '12px 16px', color: '#334155' }}>{new Date(s.sampling_time).toLocaleString()}</td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#dcfce7', color: '#15803d' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#dcfce7', color: '#15803d' }}>
                         Cold Chain OK
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontWeight: 700, fontFamily: 'monospace' }}>{s.dhl_waybill}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, fontFamily: 'monospace', color: '#0f172a' }}>{s.dhl_waybill}</td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#e0f2fe', color: '#0369a1' }}>
+                      <span style={{
+                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,
+                        backgroundColor: s.status === 'Delivered' ? '#dcfce7' : s.status === 'In Transit' ? '#fef9c3' : '#e0f2fe',
+                        color: s.status === 'Delivered' ? '#15803d' : s.status === 'In Transit' ? '#ca8a04' : '#0369a1'
+                      }}>
                         {s.status}
                       </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <select
+                        value={s.status}
+                        onChange={(e) => handleUpdateSampleStatus(s.id, e.target.value)}
+                        style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #cbd5e1' }}
+                      >
+                        <option value="Dispatched">Dispatched</option>
+                        <option value="In Transit">In Transit</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Received at Brussels Lab">Received at Brussels Lab</option>
+                      </select>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No NIPT international shipments dispatched yet</td>
+                  <td colSpan="6" style={{ padding: '3rem 2rem', textAlign: 'center', color: '#64748b', fontSize: '0.95rem' }}>No NIPT international shipments dispatched yet</td>
                 </tr>
               )}
             </tbody>
@@ -325,37 +420,54 @@ const LogisticsAdmin = () => {
       )}
 
       {activeTab === 'printing' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                <th style={{ padding: '12px 16px' }}>Date</th>
-                <th style={{ padding: '12px 16px' }}>Nursing Station</th>
-                <th style={{ padding: '12px 16px' }}>Item Description</th>
-                <th style={{ padding: '12px 16px' }}>Qty</th>
-                <th style={{ padding: '12px 16px' }}>Requested By</th>
-                <th style={{ padding: '12px 16px' }}>Status</th>
+              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Date</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Nursing Station</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Item Description</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Qty</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Requested By</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {printReqs.length > 0 ? (
                 printReqs.map((p) => (
                   <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{p.request_date}</td>
-                    <td style={{ padding: '12px 16px' }}>{p.nursing_station}</td>
-                    <td style={{ padding: '12px 16px' }}>{p.item_description}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{p.quantity}</td>
-                    <td style={{ padding: '12px 16px' }}>{p.requested_by}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>{p.request_date}</td>
+                    <td style={{ padding: '12px 16px', color: '#334155' }}>{p.nursing_station}</td>
+                    <td style={{ padding: '12px 16px', color: '#334155' }}>{p.item_description}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>{p.quantity}</td>
+                    <td style={{ padding: '12px 16px', color: '#64748b' }}>{p.requested_by}</td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#fef3c7', color: '#b45309' }}>
+                      <span style={{
+                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,
+                        backgroundColor: p.status === 'Delivered' ? '#dcfce7' : p.status === 'Printed' ? '#e0f2fe' : '#fef3c7',
+                        color: p.status === 'Delivered' ? '#15803d' : p.status === 'Printed' ? '#0369a1' : '#b45309'
+                      }}>
                         {p.status || 'Pending'}
                       </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <select
+                        value={p.status || 'Pending'}
+                        onChange={(e) => handleUpdatePrintStatus(p.id, e.target.value)}
+                        style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #cbd5e1' }}
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Printed">Printed</option>
+                        <option value="Delivered">Delivered</option>
+                      </select>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No stationery print requisitions submitted yet</td>
+                  <td colSpan="7" style={{ padding: '3rem 2rem', textAlign: 'center', color: '#64748b', fontSize: '0.95rem' }}>No stationery print requisitions submitted yet</td>
                 </tr>
               )}
             </tbody>
@@ -454,6 +566,35 @@ const LogisticsAdmin = () => {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setIsSampleModal(false)}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={submitting}>Record DHL Dispatch</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* MODAL: PRINT REQUISITION */}
+      {isPrintModal && (
+        <Modal isOpen={true} title="New Stationery Print Requisition" onClose={() => setIsPrintModal(false)}>
+          <form onSubmit={handlePrintSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Nursing Station / Department</label>
+                <input type="text" className="input" style={{ width: '100%' }} value={printForm.nursing_station} onChange={(e) => setPrintForm({ ...printForm, nursing_station: e.target.value })} placeholder="e.g. ICU, OPD, Maternity" required />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Quantity</label>
+                <input type="number" min="1" className="input" style={{ width: '100%' }} value={printForm.quantity} onChange={(e) => setPrintForm({ ...printForm, quantity: e.target.value })} required />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Item Description / Form Name</label>
+              <input type="text" className="input" style={{ width: '100%' }} value={printForm.item_description} onChange={(e) => setPrintForm({ ...printForm, item_description: e.target.value })} placeholder="e.g. Patient Clinical Vitals Chart Pads (500 sheets)" required />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsPrintModal(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>Submit Requisition</button>
             </div>
           </form>
         </Modal>

@@ -151,20 +151,79 @@ const AssetManagement = () => {
     }
   };
 
+  const handleApproveTransfer = async (id, toDept) => {
+    try {
+      const res = await fetch(`/api/logistics/assets/transfers/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ status: 'Approved', approved_by: user?.full_name || 'Asset Manager' })
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(`Transfer approved! Asset relocated to ${toDept}`);
+        fetchData();
+      } else {
+        toast.error(json.message || 'Failed to approve transfer');
+      }
+    } catch (err) {
+      toast.error('Error approving transfer');
+    }
+  };
+
+  const handleCompletePpm = async (id) => {
+    const findings = window.prompt('Enter PPM maintenance findings / calibration result:', 'Inspected, calibrated, all parameters within nominal tolerance.');
+    if (findings === null) return;
+    try {
+      const res = await fetch(`/api/logistics/assets/ppm/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ status: 'Completed', findings })
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success('PPM Work Order marked Completed!');
+        fetchData();
+      } else {
+        toast.error(json.message || 'Failed to update PPM status');
+      }
+    } catch (err) {
+      toast.error('Error updating PPM status');
+    }
+  };
+
+  const handleDeleteAsset = async (id, tag) => {
+    if (!window.confirm(`Are you sure you want to remove asset tag ${tag}?`)) return;
+    try {
+      const res = await fetch(`/api/logistics/assets/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success('Asset removed from register');
+        fetchData();
+      } else {
+        toast.error(json.message || 'Failed to delete asset');
+      }
+    } catch (err) {
+      toast.error('Error deleting asset');
+    }
+  };
+
   return (
     <div style={{ paddingBottom: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <span style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+          <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.05em' }}>
             ASSETS & LIFECYCLE
           </span>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#0f172a' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#0f172a', letterSpacing: '-0.025em' }}>
             Biomedical & Physical Asset Management
           </h1>
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setIsAssetModal(true)} className="btn btn-primary" style={{ backgroundColor: '#0284c7', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button onClick={() => setIsAssetModal(true)} className="btn btn-primary" style={{ backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Plus size={16} /> Add Asset
           </button>
           <button onClick={() => setIsTransferModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -177,20 +236,21 @@ const AssetManagement = () => {
       </div>
 
       {/* TABS */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '1.5rem', gap: '0.5rem', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('register')}
           style={{
             padding: '10px 16px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'register' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'register' ? '3px solid #0284c7' : 'none',
+            fontWeight: activeTab === 'register' ? 700 : 500,
+            color: activeTab === 'register' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'register' ? '2px solid #0f172a' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            fontSize: '0.875rem'
           }}
         >
           <Tag size={16} /> Master Asset Register
@@ -202,13 +262,14 @@ const AssetManagement = () => {
             padding: '10px 16px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'transfers' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'transfers' ? '3px solid #0284c7' : 'none',
+            fontWeight: activeTab === 'transfers' ? 700 : 500,
+            color: activeTab === 'transfers' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'transfers' ? '2px solid #0f172a' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            fontSize: '0.875rem'
           }}
         >
           <ArrowRightLeft size={16} /> Asset Transfers
@@ -220,13 +281,14 @@ const AssetManagement = () => {
             padding: '10px 16px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'ppm' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'ppm' ? '3px solid #0284c7' : 'none',
+            fontWeight: activeTab === 'ppm' ? 700 : 500,
+            color: activeTab === 'ppm' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'ppm' ? '2px solid #0f172a' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            fontSize: '0.875rem'
           }}
         >
           <Wrench size={16} /> Preventive Maintenance Plan
@@ -238,13 +300,14 @@ const AssetManagement = () => {
             padding: '10px 16px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'capex' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'capex' ? '3px solid #0284c7' : 'none',
+            fontWeight: activeTab === 'capex' ? 700 : 500,
+            color: activeTab === 'capex' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'capex' ? '2px solid #0f172a' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            fontSize: '0.875rem'
           }}
         >
           <DollarSign size={16} /> 5-Year Capital Replacement
@@ -256,13 +319,14 @@ const AssetManagement = () => {
             padding: '10px 16px',
             border: 'none',
             background: 'none',
-            fontWeight: 700,
-            color: activeTab === 'report' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'report' ? '3px solid #0284c7' : 'none',
+            fontWeight: activeTab === 'report' ? 700 : 500,
+            color: activeTab === 'report' ? '#0f172a' : '#64748b',
+            borderBottom: activeTab === 'report' ? '2px solid #0f172a' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            fontSize: '0.875rem'
           }}
         >
           <FileText size={16} /> 2026 Audit Report
@@ -281,6 +345,7 @@ const AssetManagement = () => {
                 <th style={{ padding: '12px 16px' }}>Custodian</th>
                 <th style={{ padding: '12px 16px' }}>Cost (RWF)</th>
                 <th style={{ padding: '12px 16px' }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -294,17 +359,25 @@ const AssetManagement = () => {
                     </td>
                     <td style={{ padding: '12px 16px' }}>{a.category} • {a.department}</td>
                     <td style={{ padding: '12px 16px' }}>{a.custodian || 'Unassigned'}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 600 }}>{a.purchase_cost?.toLocaleString()} RWF</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 600 }}>{Number(a.purchase_cost)?.toLocaleString()} RWF</td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#dcfce7', color: '#15803d' }}>
                         {a.status}
                       </span>
                     </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <button
+                        onClick={() => handleDeleteAsset(a.id, a.asset_tag)}
+                        style={{ border: 'none', background: '#fef2f2', padding: '4px 8px', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '0.75rem', fontWeight: 700 }}
+                      >
+                        Remove
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No assets registered yet</td>
+                  <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No assets registered yet</td>
                 </tr>
               )}
             </tbody>
@@ -323,6 +396,7 @@ const AssetManagement = () => {
                 <th style={{ padding: '12px 16px' }}>Transfer Route</th>
                 <th style={{ padding: '12px 16px' }}>Initiated By</th>
                 <th style={{ padding: '12px 16px' }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -334,15 +408,29 @@ const AssetManagement = () => {
                     <td style={{ padding: '12px 16px' }}>{t.from_dept} → {t.to_dept}</td>
                     <td style={{ padding: '12px 16px' }}>{t.initiated_by}</td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#fef3c7', color: '#b45309' }}>
+                      <span style={{
+                        padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700,
+                        backgroundColor: t.status === 'Approved' ? '#dcfce7' : '#fef3c7',
+                        color: t.status === 'Approved' ? '#15803d' : '#b45309'
+                      }}>
                         {t.status}
                       </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      {t.status === 'Pending' ? (
+                        <button
+                          onClick={() => handleApproveTransfer(t.id, t.to_dept)}
+                          style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, border: 'none', backgroundColor: '#dcfce7', color: '#15803d', cursor: 'pointer' }}
+                        >
+                          Approve Relocation
+                        </button>
+                      ) : <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Transferred</span>}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No asset transfers initiated yet</td>
+                  <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No asset transfers initiated yet</td>
                 </tr>
               )}
             </tbody>
@@ -360,7 +448,9 @@ const AssetManagement = () => {
                 <th style={{ padding: '12px 16px' }}>Asset</th>
                 <th style={{ padding: '12px 16px' }}>Maintenance Type</th>
                 <th style={{ padding: '12px 16px' }}>Technician</th>
-                <th style={{ padding: '12px 16px' }}>Findings / Status</th>
+                <th style={{ padding: '12px 16px' }}>Findings / Notes</th>
+                <th style={{ padding: '12px 16px' }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -371,12 +461,31 @@ const AssetManagement = () => {
                     <td style={{ padding: '12px 16px' }}>{p.asset_name} ({p.asset_tag})</td>
                     <td style={{ padding: '12px 16px' }}>{p.maintenance_type}</td>
                     <td style={{ padding: '12px 16px' }}>{p.technician}</td>
-                    <td style={{ padding: '12px 16px' }}>{p.findings}</td>
+                    <td style={{ padding: '12px 16px' }}>{p.findings || 'Pending Service'}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700,
+                        backgroundColor: p.status === 'Completed' ? '#dcfce7' : '#fef3c7',
+                        color: p.status === 'Completed' ? '#15803d' : '#b45309'
+                      }}>
+                        {p.status || 'Scheduled'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      {p.status !== 'Completed' ? (
+                        <button
+                          onClick={() => handleCompletePpm(p.id)}
+                          style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, border: 'none', backgroundColor: '#dcfce7', color: '#15803d', cursor: 'pointer' }}
+                        >
+                          Complete PPM
+                        </button>
+                      ) : <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Certified</span>}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No preventive maintenance work orders recorded</td>
+                  <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No preventive maintenance work orders recorded</td>
                 </tr>
               )}
             </tbody>

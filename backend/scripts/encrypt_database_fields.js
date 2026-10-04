@@ -18,7 +18,7 @@ const ENCRYPTED_COLUMNS = {
   requisitions: ['notes', 'rejection_reason'],
   safety_reports: ['title', 'executive_summary', 'key_findings', 'recommendations'],
   shift_sessions: ['handover_notes', 'flag_reasons'],
-  shift_nurse_close: ['handover_sbar_sb', 'handover_sbar_ar'],
+  shift_nurse_close: ['handover_sbar_sb', 'handover_sbar_ar', 'census_notes', 'medication_notes', 'critical_patients_details', 'infection_control_issues', 'supply_shortages', 'procedures_other'],
   shift_callcenter_close: ['call_top_reasons', 'followup_details'],
   shift_viplounge_close: ['vip_logs'],
   sukraa_patients: ['full_name', 'age', 'dob', 'gender', 'phone', 'insurance', 'extra_1', 'extra_2'],

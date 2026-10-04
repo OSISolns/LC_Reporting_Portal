@@ -25,6 +25,9 @@ router.get(
     query('status').optional().isString(),
     query('pid').optional().isString(),
     query('patientName').optional().isString(),
+    query('search').optional().isString(),
+    query('startDate').optional().isString(),
+    query('endDate').optional().isString(),
   ]),
   cancellationController.getAllRequests
 );

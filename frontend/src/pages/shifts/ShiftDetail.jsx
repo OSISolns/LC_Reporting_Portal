@@ -32,7 +32,10 @@ import {
   Coins,
   Crown,
   Stethoscope,
-  FileText
+  FileText,
+  Pill,
+  Activity,
+  ShieldAlert
 } from 'lucide-react';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -520,23 +523,110 @@ export default function ShiftDetail() {
 
           {!isPA && shift.shift_role === 'nurse' && cd && (
             <div className="space-y-10">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <div className="shift-card">
-                  <h3 className="section-label">Clinical Activity Summary</h3>
-                  <InfoRow label="Patients Assessed" value={cd.total_assessments} icon={<Users size={18} />} />
-                  <InfoRow label="Incidents Reported" value={cd.total_incidents} icon={<AlertTriangle size={18} />} />
+              {/* Patient Census Summary */}
+              <div className="shift-card">
+                <h3 className="section-label flex items-center gap-2">
+                  <Users size={18} /> Patient Census Summary
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-4">
+                  <InfoRow label="Start Census" value={cd.patients_at_start || 0} />
+                  <InfoRow label="Admissions / Arrivals" value={cd.patients_admitted || 0} />
+                  <InfoRow label="Discharges / Transfers" value={cd.patients_discharged || 0} />
+                  <InfoRow label="Net End Census" value={cd.patients_at_end || 0} />
                 </div>
+                {cd.census_notes && (
+                  <div className="mt-3 p-4 rounded-xl bg-teal-50/50 border border-teal-100 text-xs text-teal-900 font-medium">
+                    <span className="font-bold uppercase text-[10px] text-teal-600 block mb-1">Census Notes</span>
+                    "{cd.census_notes}"
+                  </div>
+                )}
+              </div>
+
+              {/* Medication Rounds & Safety */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="shift-card">
+                  <h3 className="section-label flex items-center gap-2">
+                    <Pill size={18} /> Medication Administration
+                  </h3>
+                  <InfoRow label="Rounds Completed" value={`${cd.medication_rounds_completed || 0} / ${cd.medication_rounds_expected || 2}`} />
+                  <InfoRow label="Controlled Substances" value={cd.controlled_substances_administered || 0} />
+                  <InfoRow label="Medication Errors" value={cd.medication_errors || 0} icon={<AlertTriangle size={16} className="text-rose-500" />} />
+                  {cd.medication_notes && (
+                    <div className="mt-3 p-4 rounded-xl bg-purple-50/50 border border-purple-100 text-xs text-purple-900 font-medium">
+                      <span className="font-bold uppercase text-[10px] text-purple-600 block mb-1">Medication Notes</span>
+                      "{cd.medication_notes}"
+                    </div>
+                  )}
+                </div>
+
+                <div className="shift-card">
+                  <h3 className="section-label flex items-center gap-2">
+                    <ShieldAlert size={18} /> Clinical Handover Flags
+                  </h3>
+                  <InfoRow label="Critical Watchlist Patients" value={cd.critical_patients_count || 0} />
+                  <InfoRow label="Pending Labs" value={cd.pending_labs || 0} />
+                  <InfoRow label="Pending Imaging" value={cd.pending_imaging || 0} />
+                  <InfoRow label="Awaiting Doctor Review" value={cd.pending_doctor_reviews || 0} />
+                </div>
+              </div>
+
+              {/* Critical Patients Register if any */}
+              {Array.isArray(cd.critical_patients_details) && cd.critical_patients_details.length > 0 && (
+                <div className="shift-card bg-amber-50/40 border border-amber-200">
+                  <h3 className="section-label text-amber-900 flex items-center gap-2">
+                    <AlertTriangle size={18} className="text-amber-600" /> Critical Patient Watchlist
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {cd.critical_patients_details.map((pt, i) => (
+                      <div key={i} className="p-4 rounded-2xl bg-white border border-amber-200 shadow-xs">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-black text-slate-900 text-sm">{pt.patient_name}</span>
+                          {pt.pid && <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">#{pt.pid}</span>}
+                        </div>
+                        {pt.condition && <div className="text-xs font-bold text-rose-600 mb-1">{pt.condition}</div>}
+                        {pt.notes && <div className="text-xs text-slate-600 italic">"{pt.notes}"</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Procedures Summary */}
+              <div className="shift-card">
+                <h3 className="section-label flex items-center gap-2">
+                  <Activity size={18} /> Procedure Log Summary
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                  <InfoRow label="Patients Assessed" value={cd.total_assessments || 0} />
+                  <InfoRow label="Vitals Checks" value={cd.vital_signs_taken || 0} />
+                  <InfoRow label="Injections Given" value={cd.injections_given || 0} />
+                  <InfoRow label="Wound Dressings" value={cd.wound_dressings || 0} />
+                  <InfoRow label="Blood Draws" value={cd.blood_draws || 0} />
+                  <InfoRow label="ECGs Performed" value={cd.ecgs_performed || 0} />
+                  <InfoRow label="Vaccinations" value={cd.vaccinations_given || 0} />
+                  <InfoRow label="Incidents Reported" value={cd.total_incidents || 0} />
+                </div>
+                {cd.procedures_other && (
+                  <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700 font-medium">
+                    <span className="font-bold uppercase text-[10px] text-slate-500 block mb-1">Procedure Notes</span>
+                    "{cd.procedures_other}"
+                  </div>
+                )}
+              </div>
+
+              {/* SBAR Handover Notes */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                 <div className="shift-card">
                   <h3 className="section-label">SBAR Handover (Situation/Background)</h3>
                   <div className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-6 rounded-2xl border border-slate-100 italic">
                     {cd.handover_sbar_sb ? `"${cd.handover_sbar_sb}"` : "None provided"}
                   </div>
                 </div>
-              </div>
-              <div className="shift-card">
-                <h3 className="section-label">SBAR Handover (Assessment/Recommendation)</h3>
-                <div className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-6 rounded-2xl border border-slate-100 italic">
-                  {cd.handover_sbar_ar ? `"${cd.handover_sbar_ar}"` : "None provided"}
+                <div className="shift-card">
+                  <h3 className="section-label">SBAR Handover (Assessment/Recommendation)</h3>
+                  <div className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-6 rounded-2xl border border-slate-100 italic">
+                    {cd.handover_sbar_ar ? `"${cd.handover_sbar_ar}"` : "None provided"}
+                  </div>
                 </div>
               </div>
             </div>

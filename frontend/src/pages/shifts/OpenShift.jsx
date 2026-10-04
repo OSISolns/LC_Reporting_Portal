@@ -68,69 +68,69 @@ const WAVE_OPTIONS = [
 
 // ─── Sub-component: Equipment Checklist ──────────────────────────────────────
 const EquipmentChecklist = ({ items, onChange }) => (
-  <div className="grid grid-cols-1 gap-4">
+  <div className="space-y-2.5">
     {items.map((item, i) => (
       <div
         key={item.name}
-        className={`group relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${item.status === 'Working'
-          ? 'bg-emerald-50 border-emerald-100 shadow-sm shadow-emerald-500/5'
-          : item.status === 'Needs Repair'
-            ? 'bg-amber-50 border-amber-100 shadow-sm shadow-amber-500/5'
-            : 'bg-rose-50 border-rose-100 shadow-sm shadow-rose-500/5'
-          }`}
+        className={`p-3 rounded-xl border transition-all ${
+          item.status === 'Working'
+            ? 'bg-white border-slate-200'
+            : item.status === 'Needs Repair'
+            ? 'bg-amber-50/50 border-amber-200'
+            : 'bg-rose-50/50 border-rose-200'
+        }`}
       >
-        <div className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-2xl ${item.status === 'Working' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' :
-                item.status === 'Needs Repair' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' :
-                  'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
-                }`}>
-                {ICON_MAP[item.name] || <Briefcase size={20} />}
-              </div>
-              <div>
-                <span className="font-black text-slate-900 block text-lg">{item.name}</span>
-                <span className={`text-[10px] font-black uppercase tracking-widest ${item.status === 'Working' ? 'text-emerald-600' :
-                  item.status === 'Needs Repair' ? 'text-amber-600' :
-                    'text-rose-600'
-                  }`}>{item.status}</span>
-              </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+              item.status === 'Working' ? 'bg-emerald-50 text-emerald-700' :
+              item.status === 'Needs Repair' ? 'bg-amber-100 text-amber-800' :
+              'bg-rose-100 text-rose-800'
+            }`}>
+              {ICON_MAP[item.name] || <Briefcase size={16} />}
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              {EQUIPMENT_STATUS_OPTIONS.map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => onChange(i, 'status', status)}
-                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${item.status === status
-                    ? status === 'Working' ? 'bg-emerald-600 text-white shadow-lg' :
-                      status === 'Needs Repair' ? 'bg-amber-600 text-white shadow-lg' :
-                        'bg-rose-600 text-white shadow-lg'
-                    : 'bg-white border-2 border-slate-100 text-slate-400 hover:border-slate-200 hover:text-slate-600'
-                    }`}
-                >
-                  {status}
-                </button>
-              ))}
+            <div>
+              <span className="font-semibold text-slate-800 text-xs block">{item.name}</span>
+              <span className={`text-[10px] font-medium ${
+                item.status === 'Working' ? 'text-emerald-600' :
+                item.status === 'Needs Repair' ? 'text-amber-600' :
+                'text-rose-600'
+              }`}>{item.status}</span>
             </div>
           </div>
 
-          {item.status !== 'Working' && (
-            <div>
-              <div className="mt-5 pt-5 border-t border-slate-200/60">
-                <input
-                  type="text"
-                  placeholder="Briefly describe the hardware issue..."
-                  value={item.remarks}
-                  onChange={(e) => onChange(i, 'remarks', e.target.value)}
-                  className="shift-input w-full border-amber-200 bg-amber-50/30 placeholder-amber-400/60"
-                  required
-                />
-              </div>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-1.5">
+            {EQUIPMENT_STATUS_OPTIONS.map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => onChange(i, 'status', status)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                  item.status === status
+                    ? status === 'Working' ? 'bg-emerald-600 text-white' :
+                      status === 'Needs Repair' ? 'bg-amber-600 text-white' :
+                      'bg-rose-600 text-white'
+                    : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {item.status !== 'Working' && (
+          <div className="mt-2 pt-2 border-t border-slate-200/60">
+            <input
+              type="text"
+              placeholder="Briefly describe the issue..."
+              value={item.remarks}
+              onChange={(e) => onChange(i, 'remarks', e.target.value)}
+              className="w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50/50 text-slate-800 placeholder-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              required
+            />
+          </div>
+        )}
       </div>
     ))}
   </div>
@@ -264,71 +264,64 @@ export default function OpenShift() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 space-y-5">
       {/* Header Wizard */}
-      <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-8 border-b-2 border-slate-100 pb-10">
-        <div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-          <div className="flex items-center gap-5 mb-4">
-            <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#1b669d] to-[#124d77] flex items-center justify-center text-white shadow-2xl shadow-[#1b669d]/30">
-              {loading ? <Briefcase size={28} className="animate-pulse" /> : <Briefcase size={28} />}
-            </div>
-            <div>
-              <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Open Shift</h1>
-              <p className="text-slate-400 font-black text-xs uppercase tracking-widest mt-1">Operational Protocol v2.5</p>
-            </div>
+      <header className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#E6F4F6] text-[#007B8A] flex items-center justify-center font-bold">
+            <Briefcase size={20} />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Open Shift Session</h1>
+            <p className="text-slate-500 text-xs mt-0.5">Select station and verify equipment readiness</p>
           </div>
         </div>
 
-        <div className="flex items-center bg-slate-100 p-2 rounded-3xl border-2 border-white shadow-inner">
-          {[{ n: 1, l: 'Role Selection' }, { n: 2, l: 'Verification' }].map(({ n, l }) => (
+        <div className="flex items-center bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+          {[{ n: 1, l: 'Role' }, { n: 2, l: 'Verification' }].map(({ n, l }) => (
             <div key={n} className="flex items-center">
-              <div className={`flex items-center gap-3 px-6 py-3 rounded-2xl transition-all duration-500 ${step === n
-                ? 'bg-white text-slate-900 shadow-xl'
-                : step > n ? 'text-[#6fb448]' : 'text-slate-400'
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                step === n ? 'bg-white text-slate-800 shadow-xs' : step > n ? 'text-emerald-600' : 'text-slate-400'
+              }`}>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  step === n ? 'bg-[#007B8A] text-white' : step > n ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
                 }`}>
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black border-2 ${step === n ? 'border-[#1b669d] bg-[#1b669d]/10 text-[#1b669d]' :
-                  step > n ? 'border-[#6fb448] bg-[#6fb448]/10 text-[#6fb448]' :
-                    'border-slate-200 text-slate-300'
-                  }`}>
-                  {step > n ? <CheckCircle2 size={18} /> : n}
+                  {step > n ? <CheckCircle2 size={12} /> : n}
                 </div>
-                <span className="text-xs font-black uppercase tracking-widest">{l}</span>
+                <span>{l}</span>
               </div>
-              {n === 1 && <ChevronRight size={18} className="mx-2 text-slate-300" />}
+              {n === 1 && <ChevronRight size={14} className="mx-1 text-slate-300" />}
             </div>
           ))}
         </div>
       </header>
 
-      <div className="space-y-10">
+      <div className="space-y-5">
         {loading ? (
           <div className="flex justify-center p-12">
-            <div className="w-12 h-12 border-4 border-slate-100 border-t-[#1b669d] rounded-full animate-spin shadow-xl" />
+            <div className="w-10 h-10 border-3 border-slate-200 border-t-[#007B8A] rounded-full animate-spin" />
           </div>
         ) : step === 1 ? (
-          <div
-            key="step1"
-            className="space-y-10"
-          >
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Select Shift Role</h2>
-              <p className="text-slate-500 font-bold">Your role determines the required equipment checks and reporting metrics.</p>
+          <div key="step1" className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs text-center">
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-slate-800">Select Shift Role</h2>
+              <p className="text-slate-500 text-xs">Your role determines required equipment checks and metrics.</p>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-3">
+            <div className="flex flex-wrap justify-center gap-3 pt-2">
               {visibleRoles.map((role) => (
                 <button
                   key={role.value}
                   onClick={() => handleRoleSelect(role.value)}
-                  className="group flex items-center gap-2.5 px-5 py-3 rounded-2xl border-2 border-slate-100 bg-white hover:border-[#1b669d]/40 hover:bg-[#1b669d]/5 hover:shadow-lg hover:shadow-[#1b669d]/10 hover:-translate-y-0.5 transition-all duration-300 shadow-sm"
+                  className="group flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white hover:border-[#007B8A] hover:bg-[#E6F4F6]/50 transition-all text-left shadow-xs"
                 >
-                  <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center group-hover:bg-[#1b669d]/10 group-hover:border-[#1b669d]/20 transition-all shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-[#007B8A] group-hover:text-white transition-colors shrink-0">
                     {ROLE_ICONS[role.value]}
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-black text-slate-800 leading-none">{role.label}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                      {EQUIPMENT_BY_ROLE[role.value].length} items
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">{role.label}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      {EQUIPMENT_BY_ROLE[role.value].length} equipment items
                     </p>
                   </div>
                 </button>
@@ -336,47 +329,45 @@ export default function OpenShift() {
             </div>
           </div>
         ) : (
-          <div
-            key="step2"
-            className="space-y-10"
-          >
-            {/* Context Info */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-[#1b669d]/5 border-2 border-[#1b669d]/10 p-8 rounded-[32px]">
-              <div className="flex items-center gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-xl shadow-[#1b669d]/10">
-                  {ROLE_ICONS[selectedRole]}
+          <div key="step2" className="space-y-5">
+            {/* Authenticated Role Banner */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#E6F4F6] text-[#007B8A] flex items-center justify-center">
+                  <Stethoscope size={18} />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black text-[#1b669d] uppercase tracking-[0.2em] block leading-none mb-1">Authenticated Role</span>
-                  <span className="text-xl font-black text-slate-900">{SHIFT_ROLES.find(r => r.value === selectedRole)?.label}</span>
+                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Authenticated Role</span>
+                  <span className="text-sm font-bold text-slate-800">{SHIFT_ROLES.find(r => r.value === selectedRole)?.label}</span>
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={() => setStep(1)}
-                className="px-8 py-3 rounded-2xl bg-white border-2 border-slate-100 text-slate-500 font-black text-xs uppercase tracking-widest hover:border-[#1b669d]/30 hover:text-[#1b669d] transition-all"
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors border border-slate-200"
               >
                 Change Role
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-10">
-              {/* Nursing Ward / Station Selector (Mandatory for Nurse role) */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Nursing Ward / Station Selector */}
               {selectedRole === 'nurse' && (
-                <div className="shift-card bg-gradient-to-br from-sky-50/50 to-white border-2 border-sky-100 shadow-sm rounded-3xl p-8 animate-fadeIn">
-                  <div className="flex items-center gap-5 mb-8">
-                    <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center text-sky-600 shadow-inner">
-                      <Stethoscope size={24} />
-                    </div>
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-xl font-black text-slate-900 tracking-tight">Select Nursing Station / Ward <span className="text-rose-500">*</span></h3>
-                      <p className="text-slate-500 text-xs font-black uppercase tracking-widest">
-                        Mandatory: Choose your station before activating shift to load station equipment
+                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <Stethoscope size={16} className="text-[#007B8A]" />
+                        Select Nursing Station / Ward <span className="text-rose-500">*</span>
+                      </h3>
+                      <p className="text-slate-500 text-xs mt-0.5">
+                        Choose your assigned station before activating shift to auto-load station equipment
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     {NURSING_WARDS.map((w) => {
                       const isSelected = selectedWard === w.name;
                       return (
@@ -384,33 +375,35 @@ export default function OpenShift() {
                           key={w.id}
                           type="button"
                           onClick={() => handleWardSelect(w.name)}
-                          className={`relative flex flex-col items-start p-6 rounded-2xl border-2 transition-all duration-300 text-left ${
+                          className={`relative flex flex-col justify-between p-4 rounded-xl border transition-all text-left ${
                             isSelected
-                              ? 'bg-sky-50 border-sky-500 shadow-lg shadow-sky-500/10 scale-[1.01]'
-                              : 'bg-white border-slate-100 hover:border-slate-200'
+                              ? 'bg-[#E6F4F6] border-[#007B8A] ring-1 ring-[#007B8A] shadow-xs'
+                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
                           }`}
                         >
-                          <div className="flex justify-between items-center w-full mb-3">
-                            <span className={`text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full ${
-                              isSelected ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600'
-                            }`}>
-                              {w.name}
-                            </span>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                              isSelected ? 'bg-sky-600 border-sky-600' : 'bg-white border-slate-200'
-                            }`}>
-                              {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                          <div>
+                            <div className="flex justify-between items-center w-full mb-2">
+                              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md ${
+                                isSelected ? 'bg-[#007B8A] text-white' : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {w.name}
+                              </span>
+                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                isSelected ? 'bg-[#007B8A] border-[#007B8A]' : 'bg-white border-slate-300'
+                              }`}>
+                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                              </div>
                             </div>
+
+                            <p className="text-xs font-semibold text-slate-800 leading-snug">
+                              {w.services}
+                            </p>
                           </div>
-                          <span className="text-base font-extrabold text-slate-900 leading-snug">
-                            {w.description}
-                          </span>
-                          <span className="text-[11px] font-bold text-sky-700 mt-2 bg-sky-100/60 px-2.5 py-1 rounded-lg">
-                            {w.services}
-                          </span>
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-3">
-                            Equipment: {w.equipment.slice(1, 4).join(', ')}... ({w.equipment.length} items)
-                          </span>
+
+                          <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                            <span>{w.equipment.length} equipment items</span>
+                            <span className="font-medium text-[#007B8A]">Auto-loaded</span>
+                          </div>
                         </button>
                       );
                     })}
@@ -420,18 +413,16 @@ export default function OpenShift() {
 
               {/* Starting Hour & Wave Selector */}
               {selectedRole && (
-                <div className="shift-card bg-gradient-to-br from-slate-50 to-white border-2 border-slate-100 shadow-sm rounded-3xl p-8 animate-fadeIn">
-                  <div className="flex items-center gap-5 mb-8">
-                    <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center text-violet-600 shadow-inner">
-                      <Clock size={24} />
-                    </div>
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} className="text-[#1b669d]" />
                     <div>
-                      <h3 className="text-xl font-black text-slate-900 tracking-tight">Starting Hour & Wave Selection</h3>
-                      <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Select your starting hour to automatically allocate your wave</p>
+                      <h3 className="text-sm font-bold text-slate-800">Starting Hour & Wave</h3>
+                      <p className="text-slate-500 text-xs">Select start time to allocate shift wave</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {WAVE_OPTIONS.map((opt) => {
                       const isSelected = startHour === opt.hour;
                       return (
@@ -439,34 +430,21 @@ export default function OpenShift() {
                           key={opt.hour}
                           type="button"
                           onClick={() => setStartHour(opt.hour)}
-                          className={`relative flex flex-col items-start p-6 rounded-2xl border-2 transition-all duration-300 text-left ${
+                          className={`p-3.5 rounded-xl border text-left transition-all ${
                             isSelected
-                              ? 'bg-violet-50 border-violet-500 shadow-lg shadow-violet-500/5'
-                              : 'bg-white border-slate-100 hover:border-slate-200'
+                              ? 'bg-[#1b669d]/10 border-[#1b669d] text-[#1b669d] font-bold shadow-xs'
+                              : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
                           }`}
                         >
-                          <div className="flex justify-between items-center w-full mb-3">
-                            <span className={`text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
-                              isSelected ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-500'
+                          <div className="flex justify-between items-center mb-1">
+                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                              isSelected ? 'bg-[#1b669d] text-white' : 'bg-slate-100 text-slate-600'
                             }`}>
                               {opt.wave}
                             </span>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                              isSelected ? 'bg-violet-600 border-violet-600' : 'bg-white border-slate-200'
-                            }`}>
-                              {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
-                            </div>
                           </div>
-                          
-                          <span className="text-2xl font-black text-slate-900 mt-1 block">
-                            {opt.label}
-                          </span>
-                          <span className="text-xs font-bold text-slate-500 mt-1 block">
-                            {opt.schedule}
-                          </span>
-                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mt-4 block">
-                            {opt.desc}
-                          </span>
+                          <p className="text-base font-bold text-slate-800">{opt.label}</p>
+                          <p className="text-[11px] text-slate-500">{opt.schedule}</p>
                         </button>
                       );
                     })}
@@ -475,14 +453,12 @@ export default function OpenShift() {
               )}
 
               {/* Equipment Checklist */}
-              <div className="shift-card">
-                <div className="flex items-center gap-5 mb-10">
-                  <div className="w-12 h-12 rounded-2xl bg-[#1b669d]/10 flex items-center justify-center text-[#1b669d] shadow-inner">
-                    <Monitor size={24} />
-                  </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                <div className="flex items-center gap-2">
+                  <Monitor size={16} className="text-[#1b669d]" />
                   <div>
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Security & Equipment Check</h3>
-                    <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Hardware Integrity Verification</p>
+                    <h3 className="text-sm font-bold text-slate-800">Equipment Verification</h3>
+                    <p className="text-slate-500 text-xs">Verify status of {equipment.length} station items</p>
                   </div>
                 </div>
 
@@ -490,30 +466,24 @@ export default function OpenShift() {
               </div>
 
               {/* Submit Action */}
-              <div className="pt-6">
+              <div className="pt-2">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full relative group overflow-hidden"
+                  className="w-full h-11 bg-[#007B8A] hover:bg-[#005D68] text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#1b669d] via-[#6fb448] to-[#1b669d] opacity-90 group-hover:opacity-100 transition-opacity duration-300 shadow-2xl" />
-                  <div className="relative py-8 rounded-[32px] flex items-center justify-center gap-4 text-white font-black text-xl tracking-widest uppercase">
-                    {loading ? (
-                      <>
-                        <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                        <span>Initializing Protocol...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 size={32} />
-                        <span>Activate Shift Mission</span>
-                      </>
-                    )}
-                  </div>
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Activating Shift...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} />
+                      <span>Activate Shift Session</span>
+                    </>
+                  )}
                 </button>
-                <p className="text-center mt-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">
-                  Shift data will be timestamped and digitally signed
-                </p>
               </div>
             </form>
           </div>

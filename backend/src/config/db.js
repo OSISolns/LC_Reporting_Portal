@@ -25,7 +25,7 @@ const ENCRYPTED_COLUMNS = {
   requisitions: ['notes', 'rejection_reason'],
   safety_reports: ['title', 'executive_summary', 'key_findings', 'recommendations'],
   shift_sessions: ['handover_notes', 'flag_reasons'],
-  shift_nurse_close: ['handover_sbar_sb', 'handover_sbar_ar'],
+  shift_nurse_close: ['handover_sbar_sb', 'handover_sbar_ar', 'census_notes', 'medication_notes', 'critical_patients_details', 'infection_control_issues', 'supply_shortages', 'procedures_other'],
   shift_callcenter_close: ['call_top_reasons', 'followup_details'],
   shift_viplounge_close: ['vip_logs'],
   sukraa_patients: ['full_name', 'age', 'dob', 'gender', 'phone', 'insurance', 'ref_type', 'referrer_name', 'extra_1', 'extra_2'],
@@ -2000,11 +2000,71 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         total_incidents INTEGER DEFAULT 0,
         handover_sbar_sb TEXT,
         handover_sbar_ar TEXT,
+        patients_at_start INTEGER DEFAULT 0,
+        patients_admitted INTEGER DEFAULT 0,
+        patients_discharged INTEGER DEFAULT 0,
+        patients_at_end INTEGER DEFAULT 0,
+        census_notes TEXT,
+        medication_rounds_completed INTEGER DEFAULT 0,
+        medication_rounds_expected INTEGER DEFAULT 0,
+        medication_errors INTEGER DEFAULT 0,
+        controlled_substances_administered INTEGER DEFAULT 0,
+        medication_notes TEXT,
+        critical_patients_count INTEGER DEFAULT 0,
+        critical_patients_details TEXT,
+        pending_labs INTEGER DEFAULT 0,
+        pending_imaging INTEGER DEFAULT 0,
+        pending_doctor_reviews INTEGER DEFAULT 0,
+        infection_control_issues TEXT,
+        supply_shortages TEXT,
+        vital_signs_taken INTEGER DEFAULT 0,
+        injections_given INTEGER DEFAULT 0,
+        wound_dressings INTEGER DEFAULT 0,
+        ecgs_performed INTEGER DEFAULT 0,
+        vaccinations_given INTEGER DEFAULT 0,
+        blood_draws INTEGER DEFAULT 0,
+        procedures_other TEXT,
         created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
         updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
       )
     `);
       console.log('✅ SQLite Schema Migration: created shift_nurse_close table');
+
+      const nurseCloseNewCols = [
+        'patients_at_start INTEGER DEFAULT 0',
+        'patients_admitted INTEGER DEFAULT 0',
+        'patients_discharged INTEGER DEFAULT 0',
+        'patients_at_end INTEGER DEFAULT 0',
+        'census_notes TEXT',
+        'medication_rounds_completed INTEGER DEFAULT 0',
+        'medication_rounds_expected INTEGER DEFAULT 0',
+        'medication_errors INTEGER DEFAULT 0',
+        'controlled_substances_administered INTEGER DEFAULT 0',
+        'medication_notes TEXT',
+        'critical_patients_count INTEGER DEFAULT 0',
+        'critical_patients_details TEXT',
+        'pending_labs INTEGER DEFAULT 0',
+        'pending_imaging INTEGER DEFAULT 0',
+        'pending_doctor_reviews INTEGER DEFAULT 0',
+        'infection_control_issues TEXT',
+        'supply_shortages TEXT',
+        'vital_signs_taken INTEGER DEFAULT 0',
+        'injections_given INTEGER DEFAULT 0',
+        'wound_dressings INTEGER DEFAULT 0',
+        'ecgs_performed INTEGER DEFAULT 0',
+        'vaccinations_given INTEGER DEFAULT 0',
+        'blood_draws INTEGER DEFAULT 0',
+        'procedures_other TEXT',
+      ];
+      for (const colDef of nurseCloseNewCols) {
+        try {
+          await client.execute(`ALTER TABLE shift_nurse_close ADD COLUMN ${colDef}`);
+        } catch (err) {
+          if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+            console.warn('⚠️ SQLite Schema Migration Notice for shift_nurse_close:', err.message);
+          }
+        }
+      }
     } catch (err) {
       console.warn('⚠️ SQLite Schema Migration Notice for shift_nurse_close:', err.message);
     }

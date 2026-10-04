@@ -111,6 +111,25 @@ const MaintenanceStock = () => {
     }
   };
 
+  const handleDeleteStockItem = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to remove item "${name}" from stock directory?`)) return;
+    try {
+      const res = await fetch(`/api/logistics/inventory/items/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success('Stock item removed');
+        fetchData();
+      } else {
+        toast.error(json.message || 'Failed to remove item');
+      }
+    } catch (err) {
+      toast.error('Error removing stock item');
+    }
+  };
+
   return (
     <div style={{ paddingBottom: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -142,8 +161,8 @@ const MaintenanceStock = () => {
             border: 'none',
             background: 'none',
             fontWeight: 700,
-            color: activeTab === 'inventory' ? '#16a34a' : '#64748b',
-            borderBottom: activeTab === 'inventory' ? '3px solid #16a34a' : 'none',
+            color: activeTab === 'inventory' ? '#0284c7' : '#64748b',
+            borderBottom: activeTab === 'inventory' ? '3px solid #0284c7' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -160,8 +179,8 @@ const MaintenanceStock = () => {
             border: 'none',
             background: 'none',
             fontWeight: 700,
-            color: activeTab === 'releases' ? '#16a34a' : '#64748b',
-            borderBottom: activeTab === 'releases' ? '3px solid #16a34a' : 'none',
+            color: activeTab === 'releases' ? '#0284c7' : '#64748b',
+            borderBottom: activeTab === 'releases' ? '3px solid #0284c7' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -173,16 +192,17 @@ const MaintenanceStock = () => {
       </div>
 
       {activeTab === 'inventory' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                <th style={{ padding: '12px 16px' }}>Item Description</th>
-                <th style={{ padding: '12px 16px' }}>Category</th>
-                <th style={{ padding: '12px 16px' }}>Quantity On Hand</th>
-                <th style={{ padding: '12px 16px' }}>Reorder Threshold</th>
-                <th style={{ padding: '12px 16px' }}>Unit Cost (RWF)</th>
-                <th style={{ padding: '12px 16px' }}>Status</th>
+              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Item Description</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Category</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Quantity On Hand</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Reorder Threshold</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Unit Cost (RWF)</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -191,31 +211,39 @@ const MaintenanceStock = () => {
                   const isLow = i.quantity_on_hand <= i.min_threshold;
                   return (
                     <tr key={i.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 700 }}>{i.item_name}</td>
-                      <td style={{ padding: '12px 16px' }}>{i.category}</td>
-                      <td style={{ padding: '12px 16px', fontWeight: 800, color: isLow ? '#0284c7' : '#0f172a' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>{i.item_name}</td>
+                      <td style={{ padding: '12px 16px', color: '#334155' }}>{i.category}</td>
+                      <td style={{ padding: '12px 16px', fontWeight: 800, color: isLow ? '#b45309' : '#0f172a' }}>
                         {i.quantity_on_hand} {i.unit}
                       </td>
-                      <td style={{ padding: '12px 16px' }}>{i.min_threshold} {i.unit}</td>
-                      <td style={{ padding: '12px 16px' }}>{i.unit_cost?.toLocaleString()} RWF</td>
+                      <td style={{ padding: '12px 16px', color: '#64748b' }}>{i.min_threshold} {i.unit}</td>
+                      <td style={{ padding: '12px 16px', fontWeight: 600 }}>{Number(i.unit_cost)?.toLocaleString()} RWF</td>
                       <td style={{ padding: '12px 16px' }}>
                         <span style={{
-                          padding: '4px 8px',
-                          borderRadius: '6px',
+                          padding: '4px 10px',
+                          borderRadius: '20px',
                           fontSize: '0.75rem',
                           fontWeight: 700,
-                          backgroundColor: isLow ? '#e0f2fe' : '#dcfce7',
-                          color: isLow ? '#0369a1' : '#15803d'
+                          backgroundColor: isLow ? '#fef3c7' : '#dcfce7',
+                          color: isLow ? '#b45309' : '#15803d'
                         }}>
                           {isLow ? 'REORDER LOW' : 'OK'}
                         </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <button
+                          onClick={() => handleDeleteStockItem(i.id, i.item_name)}
+                          style={{ border: 'none', background: '#fef2f2', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '0.75rem', fontWeight: 700 }}
+                        >
+                          Remove
+                        </button>
                       </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No stock items registered yet</td>
+                  <td colSpan="7" style={{ padding: '3rem 2rem', textAlign: 'center', color: '#64748b', fontSize: '0.95rem' }}>No stock items registered yet</td>
                 </tr>
               )}
             </tbody>
@@ -224,31 +252,31 @@ const MaintenanceStock = () => {
       )}
 
       {activeTab === 'releases' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                <th style={{ padding: '12px 16px' }}>Release Date</th>
-                <th style={{ padding: '12px 16px' }}>Item Issued</th>
-                <th style={{ padding: '12px 16px' }}>Qty Issued</th>
-                <th style={{ padding: '12px 16px' }}>Target Location</th>
-                <th style={{ padding: '12px 16px' }}>Requested By</th>
+              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Release Date</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Item Issued</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Qty Issued</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Target Location</th>
+                <th style={{ padding: '12px 16px', fontWeight: 700 }}>Requested By</th>
               </tr>
             </thead>
             <tbody>
               {releases.length > 0 ? (
                 releases.map((r) => (
                   <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{r.release_date}</td>
-                    <td style={{ padding: '12px 16px' }}>{r.item_name}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>{r.release_date}</td>
+                    <td style={{ padding: '12px 16px', color: '#334155' }}>{r.item_name}</td>
                     <td style={{ padding: '12px 16px', fontWeight: 700 }}>{r.quantity}</td>
-                    <td style={{ padding: '12px 16px' }}>{r.target_location}</td>
-                    <td style={{ padding: '12px 16px' }}>{r.requested_by}</td>
+                    <td style={{ padding: '12px 16px', color: '#334155' }}>{r.target_location}</td>
+                    <td style={{ padding: '12px 16px', color: '#64748b' }}>{r.requested_by}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No stock releases issued yet</td>
+                  <td colSpan="5" style={{ padding: '3rem 2rem', textAlign: 'center', color: '#64748b', fontSize: '0.95rem' }}>No stock releases issued yet</td>
                 </tr>
               )}
             </tbody>

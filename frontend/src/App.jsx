@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { MemoryRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -66,9 +66,33 @@ import RosterGenerator from './pages/RosterGenerator';
 import LogisticsDashboard from './pages/logistics/LogisticsDashboard';
 
 
+const CHEF_NURSE_ROLES = [
+  'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
+  'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head',
+  'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
+];
+
+const isChefNurseRole = (role) => {
+  if (!role) return false;
+  const r = role.toLowerCase();
+  return CHEF_NURSE_ROLES.some(cn => r.includes(cn) || r === cn);
+};
+
 const ShiftDashboardRedirect = () => {
   const { user } = useAuth();
-  if (user?.role === 'nurse' || user?.role === 'chef-nurse') return <NurseShiftDashboard />;
+  const searchParams = new URLSearchParams(window.location.search);
+  const viewMode = searchParams.get('view');
+
+  if (isChefNurseRole(user?.role)) {
+    if (viewMode === 'active_nurse') return <NurseShiftDashboard />;
+    return <ShiftDashboard />;
+  }
+
+  if (user?.role === 'nurse') {
+    if (viewMode === 'manager') return <ShiftDashboard />;
+    return <NurseShiftDashboard />;
+  }
+
   if (['cashier', 'customer_care'].includes(user?.role)) return <StaffShiftDashboard />;
   return <ShiftDashboard />;
 };
@@ -78,7 +102,7 @@ function App() {
     <AuthProvider>
       <NotificationProvider>
         <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/supplier-portal" element={<SupplierPortalPublic />} />

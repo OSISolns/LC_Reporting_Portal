@@ -756,7 +756,19 @@ async function enrichShiftDetail(shift) {
         : null,
     };
   } else if (shift.shift_role === 'nurse') {
-    roleData = { closing: await q1(`SELECT * FROM shift_nurse_close WHERE shift_id = ?`, [shift.id]) };
+    const row = await q1(`SELECT * FROM shift_nurse_close WHERE shift_id = ?`, [shift.id]);
+    roleData = {
+      closing: row
+        ? {
+            ...row,
+            critical_patients_details: row.critical_patients_details
+              ? (typeof row.critical_patients_details === 'string'
+                  ? JSON.parse(row.critical_patients_details)
+                  : row.critical_patients_details)
+              : [],
+          }
+        : null
+    };
   } else if (shift.shift_role === 'vip_lounge') {
     const row = await q1(`SELECT * FROM shift_viplounge_close WHERE shift_id = ?`, [shift.id]);
     roleData = {
@@ -889,15 +901,63 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
   if (shift_role === 'nurse' && nurse_close) {
     const n = nurse_close;
     const existing = await q1(`SELECT id FROM shift_nurse_close WHERE shift_id = ?`, [shiftId]);
+    const criticalPatientsStr = Array.isArray(n.critical_patients_details)
+      ? JSON.stringify(n.critical_patients_details)
+      : (typeof n.critical_patients_details === 'string' ? n.critical_patients_details : JSON.stringify([]));
+
+    const fields = [
+      n.total_assessments || 0,
+      n.total_incidents || 0,
+      n.handover_sbar_sb || null,
+      n.handover_sbar_ar || null,
+      n.patients_at_start || 0,
+      n.patients_admitted || 0,
+      n.patients_discharged || 0,
+      n.patients_at_end || 0,
+      n.census_notes || null,
+      n.medication_rounds_completed || 0,
+      n.medication_rounds_expected || 0,
+      n.medication_errors || 0,
+      n.controlled_substances_administered || 0,
+      n.medication_notes || null,
+      n.critical_patients_count || 0,
+      criticalPatientsStr,
+      n.pending_labs || 0,
+      n.pending_imaging || 0,
+      n.pending_doctor_reviews || 0,
+      n.infection_control_issues || null,
+      n.supply_shortages || null,
+      n.vital_signs_taken || 0,
+      n.injections_given || 0,
+      n.wound_dressings || 0,
+      n.ecgs_performed || 0,
+      n.vaccinations_given || 0,
+      n.blood_draws || 0,
+      n.procedures_other || null,
+    ];
+
     if (existing) {
       await db.query(
-        `UPDATE shift_nurse_close SET total_assessments = ?, total_incidents = ?, handover_sbar_sb = ?, handover_sbar_ar = ?, updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) WHERE shift_id = ?`,
-        [n.total_assessments || 0, n.total_incidents || 0, n.handover_sbar_sb || null, n.handover_sbar_ar || null, shiftId]
+        `UPDATE shift_nurse_close SET
+          total_assessments = ?, total_incidents = ?, handover_sbar_sb = ?, handover_sbar_ar = ?,
+          patients_at_start = ?, patients_admitted = ?, patients_discharged = ?, patients_at_end = ?, census_notes = ?,
+          medication_rounds_completed = ?, medication_rounds_expected = ?, medication_errors = ?, controlled_substances_administered = ?, medication_notes = ?,
+          critical_patients_count = ?, critical_patients_details = ?, pending_labs = ?, pending_imaging = ?, pending_doctor_reviews = ?, infection_control_issues = ?, supply_shortages = ?,
+          vital_signs_taken = ?, injections_given = ?, wound_dressings = ?, ecgs_performed = ?, vaccinations_given = ?, blood_draws = ?, procedures_other = ?,
+          updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        WHERE shift_id = ?`,
+        [...fields, shiftId]
       );
     } else {
       await db.query(
-        `INSERT INTO shift_nurse_close (shift_id, total_assessments, total_incidents, handover_sbar_sb, handover_sbar_ar) VALUES (?,?,?,?,?)`,
-        [shiftId, n.total_assessments || 0, n.total_incidents || 0, n.handover_sbar_sb || null, n.handover_sbar_ar || null]
+        `INSERT INTO shift_nurse_close (
+          shift_id, total_assessments, total_incidents, handover_sbar_sb, handover_sbar_ar,
+          patients_at_start, patients_admitted, patients_discharged, patients_at_end, census_notes,
+          medication_rounds_completed, medication_rounds_expected, medication_errors, controlled_substances_administered, medication_notes,
+          critical_patients_count, critical_patients_details, pending_labs, pending_imaging, pending_doctor_reviews, infection_control_issues, supply_shortages,
+          vital_signs_taken, injections_given, wound_dressings, ecgs_performed, vaccinations_given, blood_draws, procedures_other
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [shiftId, ...fields]
       );
     }
   }

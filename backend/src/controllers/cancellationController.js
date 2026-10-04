@@ -94,6 +94,8 @@ exports.verifyRequest = async (req, res, next) => {
       });
     }
 
+    cache.invalidatePattern('canc:list');
+    cache.invalidate('ai:module_stats');
     res.json({ success: true, data: request });
   } catch (err) {
     next(err);
@@ -117,6 +119,8 @@ exports.approveRequest = async (req, res, next) => {
       });
     }
 
+    cache.invalidatePattern('canc:list');
+    cache.invalidate('ai:module_stats');
     res.json({ success: true, data: request });
   } catch (err) {
     next(err);
@@ -147,6 +151,8 @@ exports.rejectRequest = async (req, res, next) => {
       });
     }
 
+    cache.invalidatePattern('canc:list');
+    cache.invalidate('ai:module_stats');
     res.json({ success: true, data: request });
   } catch (err) {
     next(err);
@@ -166,7 +172,8 @@ exports.deleteRequest = async (req, res, next) => {
     const request = await Cancellation.delete(req.params.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be deleted' });
     await logAction(req, 'DELETE', 'cancellation_request', req.params.id);
-    cache.invalidatePattern('cancellation:list');
+    cache.invalidatePattern('canc:list');
+    cache.invalidate('ai:module_stats');
     res.json({ success: true, message: 'Request deleted successfully' });
   } catch (err) { next(err); }
 };

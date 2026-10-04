@@ -293,7 +293,11 @@ function KanbanBoard({ shifts, navigate }) {
 export default function ShiftDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isChefNurse = ['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head'].some(r => user?.role?.toLowerCase()?.includes(r) || user?.role?.toLowerCase() === r);
+  const isChefNurse = [
+    'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
+    'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head',
+    'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
+  ].some(r => user?.role?.toLowerCase()?.includes(r) || user?.role?.toLowerCase() === r);
   const isSupervisor = ['admin', 'deputy_coo', 'coo'].includes(user?.role) || isChefNurse;
   const isPrincipalCashier = user?.role === 'principal_cashier';
 
@@ -574,6 +578,19 @@ export default function ShiftDashboard() {
 
         {/* Right toolbar */}
         <div className="flex items-center gap-3">
+          {(isChefNurse || user?.role === 'nurse') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/shifts?view=active_nurse')}
+              className="border-[#007B8A] text-[#007B8A] hover:bg-[#E6F4F6] text-xs font-semibold"
+              title="Switch to Active Nurse Terminal & Shift Log"
+            >
+              <Stethoscope size={15} className="mr-1.5" />
+              Active Nurse Workspace
+            </Button>
+          )}
+
           {isSupervisor && (
             <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl mr-2">
               <Button

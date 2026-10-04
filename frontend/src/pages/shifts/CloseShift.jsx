@@ -22,7 +22,8 @@ import {
   AlertCircle, AlertTriangle, CheckCircle2, Clock,
   Briefcase, Search, PhoneCall, PhoneForwarded,
   ListPlus, StickyNote, Timer, Sun, Moon, Sunrise,
-  BadgeCheck, Home, Crown, Stethoscope
+  BadgeCheck, Home, Crown, Stethoscope, Pill, Activity,
+  ShieldAlert, Plus, Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -747,70 +748,560 @@ const HelpdeskCloseForm = ({ data, onChange }) => (
 );
 
 // ─── Nursing Close Form ────────────────────────────────────────────────────────
-const NursingCloseForm = ({ data, onChange }) => (
-  <div className="space-y-8">
-    <div className="shift-card">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-[#1b669d]/10 flex items-center justify-center text-[#1b669d]">
-          <Stethoscope size={20} />
+const NursingCloseForm = ({ data, onChange, shiftStation = 'STATION 1', wave = 'Wave 1' }) => {
+  const [newCritical, setNewCritical] = useState({ patient_name: '', pid: '', condition: '', notes: '' });
+  const [showAddCriticalModal, setShowAddCriticalModal] = useState(false);
+
+  // Auto-calculate end census
+  const start = parseInt(data.patients_at_start) || 0;
+  const admitted = parseInt(data.patients_admitted) || 0;
+  const discharged = parseInt(data.patients_discharged) || 0;
+  const endCensus = Math.max(0, start + admitted - discharged);
+
+  useEffect(() => {
+    if (data.patients_at_end !== endCensus) {
+      onChange('patients_at_end', endCensus);
+    }
+  }, [start, admitted, discharged]);
+
+  const criticalList = Array.isArray(data.critical_patients_details) ? data.critical_patients_details : [];
+
+  const handleAddCritical = () => {
+    if (!newCritical.patient_name.trim()) {
+      toast.error('Please enter patient name');
+      return;
+    }
+    const updated = [...criticalList, { ...newCritical }];
+    onChange('critical_patients_details', updated);
+    onChange('critical_patients_count', updated.length);
+    setNewCritical({ patient_name: '', pid: '', condition: '', notes: '' });
+    setShowAddCriticalModal(false);
+  };
+
+  const handleRemoveCritical = (idx) => {
+    const updated = criticalList.filter((_, i) => i !== idx);
+    onChange('critical_patients_details', updated);
+    onChange('critical_patients_count', updated.length);
+  };
+
+  const isStation2 = shiftStation?.toUpperCase().includes('STATION 2');
+  const isPaediatrics = shiftStation?.toUpperCase().includes('PAEDIATRICS');
+
+  return (
+    <div className="space-y-8">
+      {/* SECTION 1: Patient Census Tracker */}
+      <div className="shift-card bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center text-teal-600 font-bold">
+              <Users size={20} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">1. Patient Census Tracker</h3>
+              <p className="text-xs text-slate-500 font-medium">Per-shift ward volume tracking & balance</p>
+            </div>
+          </div>
+          <div className="px-4 py-2 rounded-2xl bg-teal-50 border border-teal-200 text-teal-800 text-center">
+            <span className="text-[10px] font-black uppercase tracking-widest block text-teal-600">Calculated Net End Census</span>
+            <span className="text-2xl font-black">{endCensus} Patients</span>
+          </div>
         </div>
-        <h3 className="text-xl font-black text-slate-900 tracking-tight">Clinical Activity Summary</h3>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Shift Start Census
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.patients_at_start || 0}
+              onChange={(e) => onChange('patients_at_start', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200 focus:border-teal-500 focus:ring-teal-500/20"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-emerald-600 text-xs font-bold uppercase tracking-wider mb-2 block">
+              + Admitted / Arrival
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.patients_admitted || 0}
+              onChange={(e) => onChange('patients_admitted', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-rose-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              - Discharged / Transferred
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.patients_discharged || 0}
+              onChange={(e) => onChange('patients_discharged', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200 focus:border-rose-500 focus:ring-rose-500/20"
+            />
+          </div>
+        </div>
+
         <div>
-          <label className="field-label text-slate-500">Patients Assessed</label>
-          <input
-            type="number"
-            min="0"
-            value={data.total_assessments || 0}
-            onChange={(e) => onChange('total_assessments', parseInt(e.target.value) || 0)}
-            className="shift-input w-full text-xl font-black border-slate-200"
+          <label className="field-label text-slate-500 uppercase tracking-widest text-[10px] font-bold mb-1.5 block">
+            Ward Census Notes & Remarks
+          </label>
+          <textarea
+            rows={2}
+            value={data.census_notes || ''}
+            onChange={(e) => onChange('census_notes', e.target.value)}
+            className="shift-input w-full border-slate-200 resize-none text-sm"
+            placeholder="E.g., 2 patients in observation area waiting for lab results, 1 bed reserved..."
           />
         </div>
+      </div>
+
+      {/* SECTION 2: Medication Round Tracker */}
+      <div className="shift-card bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 font-bold">
+            <Pill size={20} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">2. Medication Round Tracker</h3>
+            <p className="text-xs text-slate-500 font-medium">Administration rounds, error logs & narcotic counts</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Rounds Completed
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="10"
+              value={data.medication_rounds_completed || 0}
+              onChange={(e) => onChange('medication_rounds_completed', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Expected Rounds
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={data.medication_rounds_expected || 2}
+              onChange={(e) => onChange('medication_rounds_expected', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-rose-600 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Medication Errors
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.medication_errors || 0}
+              onChange={(e) => onChange('medication_errors', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200 text-rose-700"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-purple-600 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Controlled Administered
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.controlled_substances_administered || 0}
+              onChange={(e) => onChange('controlled_substances_administered', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200 text-purple-700"
+            />
+          </div>
+        </div>
+
         <div>
-          <label className="field-label text-slate-500">Incidents Reported</label>
-          <input
-            type="number"
-            min="0"
-            value={data.total_incidents || 0}
-            onChange={(e) => onChange('total_incidents', parseInt(e.target.value) || 0)}
-            className="shift-input w-full text-xl font-black border-slate-200"
+          <label className="field-label text-slate-500 uppercase tracking-widest text-[10px] font-bold mb-1.5 block">
+            Medication Round Notes & Refusals / Omissions
+          </label>
+          <textarea
+            rows={2}
+            value={data.medication_notes || ''}
+            onChange={(e) => onChange('medication_notes', e.target.value)}
+            className="shift-input w-full border-slate-200 resize-none text-sm"
+            placeholder="Record any missed doses, patient refusals, or narcotic sign-off notes..."
           />
         </div>
       </div>
+
+      {/* SECTION 3: Ward-Level Handover Checklist & Critical Patients */}
+      <div className="shift-card bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 font-bold">
+              <ShieldAlert size={20} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">3. Clinical Handover & Pending Items</h3>
+              <p className="text-xs text-slate-500 font-medium">Critical patient watch list, pending diagnostics & SBAR</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Critical Patient Register */}
+        <div className="bg-amber-50/50 border border-amber-200/80 p-5 rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-900 font-black text-sm">
+              <AlertTriangle size={16} className="text-amber-600" />
+              Critical Patient Watchlist ({criticalList.length})
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddCriticalModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1 transition-colors"
+            >
+              <Plus size={14} /> Add Patient
+            </button>
+          </div>
+
+          {criticalList.length === 0 ? (
+            <p className="text-xs text-amber-800/70 italic py-2 text-center">
+              No critical patients registered for special watch this shift.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {criticalList.map((pt, idx) => (
+                <div key={idx} className="bg-white p-3.5 rounded-xl border border-amber-200 flex items-start justify-between gap-3 shadow-xs">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-slate-900 text-sm">{pt.patient_name}</span>
+                      {pt.pid && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">#{pt.pid}</span>}
+                    </div>
+                    {pt.condition && <div className="text-xs font-bold text-rose-600 mt-0.5">{pt.condition}</div>}
+                    {pt.notes && <div className="text-xs text-slate-600 mt-1 italic">"{pt.notes}"</div>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCritical(idx)}
+                    className="text-slate-400 hover:text-rose-600 p-1"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pending items counts */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Pending Lab Results
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.pending_labs || 0}
+              onChange={(e) => onChange('pending_labs', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Pending Imaging
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.pending_imaging || 0}
+              onChange={(e) => onChange('pending_imaging', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Awaiting Doctor Review
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.pending_doctor_reviews || 0}
+              onChange={(e) => onChange('pending_doctor_reviews', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200"
+            />
+          </div>
+        </div>
+
+        {/* Safety & Shortages */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label className="field-label text-slate-500 uppercase tracking-widest text-[10px] font-bold mb-1.5 block">
+              Infection Control Flags / Isolation
+            </label>
+            <textarea
+              rows={2}
+              value={data.infection_control_issues || ''}
+              onChange={(e) => onChange('infection_control_issues', e.target.value)}
+              className="shift-input w-full border-slate-200 resize-none text-sm"
+              placeholder="E.g., Room 4 under contact precautions..."
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-slate-500 uppercase tracking-widest text-[10px] font-bold mb-1.5 block">
+              Supply / Consumable Shortages
+            </label>
+            <textarea
+              rows={2}
+              value={data.supply_shortages || ''}
+              onChange={(e) => onChange('supply_shortages', e.target.value)}
+              className="shift-input w-full border-slate-200 resize-none text-sm"
+              placeholder="E.g., IV cannulas 20G low in stock..."
+            />
+          </div>
+        </div>
+
+        {/* SBAR Handover Text Areas */}
+        <div className="space-y-4 pt-2">
+          <div>
+            <label className="field-label text-slate-500 uppercase tracking-widest text-[10px] font-bold mb-1.5 block">
+              SBAR: Situation & Background
+            </label>
+            <textarea
+              rows={3}
+              value={data.handover_sbar_sb || ''}
+              onChange={(e) => onChange('handover_sbar_sb', e.target.value)}
+              className="shift-input w-full border-slate-200 resize-none text-sm"
+              placeholder="General ward status, notable events, admissions/discharges overview..."
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-slate-500 uppercase tracking-widest text-[10px] font-bold mb-1.5 block">
+              SBAR: Assessment & Recommendation
+            </label>
+            <textarea
+              rows={3}
+              value={data.handover_sbar_ar || ''}
+              onChange={(e) => onChange('handover_sbar_ar', e.target.value)}
+              className="shift-input w-full border-slate-200 resize-none text-sm"
+              placeholder="Recommendations for incoming shift, action items, doctor follow-ups..."
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 4: Procedure Log Summary */}
+      <div className="shift-card bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 font-bold">
+            <Activity size={20} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">4. Procedure Log Summary</h3>
+            <p className="text-xs text-slate-500 font-medium">Aggregated counts of clinical interventions</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-6">
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Patients Assessed
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.total_assessments || 0}
+              onChange={(e) => onChange('total_assessments', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Vital Signs Taken
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.vital_signs_taken || 0}
+              onChange={(e) => onChange('vital_signs_taken', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Injections Given
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.injections_given || 0}
+              onChange={(e) => onChange('injections_given', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Wound Dressings
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.wound_dressings || 0}
+              onChange={(e) => onChange('wound_dressings', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Blood Draws
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.blood_draws || 0}
+              onChange={(e) => onChange('blood_draws', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Incidents Reported
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.total_incidents || 0}
+              onChange={(e) => onChange('total_incidents', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200 text-rose-600"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-indigo-600 text-xs font-bold uppercase tracking-wider mb-2 block">
+              ECGs Performed {isStation2 && '(Station 2)'}
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.ecgs_performed || 0}
+              onChange={(e) => onChange('ecgs_performed', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200 text-indigo-700"
+            />
+          </div>
+
+          <div>
+            <label className="field-label text-emerald-600 text-xs font-bold uppercase tracking-wider mb-2 block">
+              Vaccinations {isPaediatrics && '(Paediatrics)'}
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data.vaccinations_given || 0}
+              onChange={(e) => onChange('vaccinations_given', parseInt(e.target.value) || 0)}
+              className="shift-input w-full text-xl font-black border-slate-200 text-emerald-700"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="field-label text-slate-500 uppercase tracking-widest text-[10px] font-bold mb-1.5 block">
+            Other Notable Procedures / Comments
+          </label>
+          <textarea
+            rows={2}
+            value={data.procedures_other || ''}
+            onChange={(e) => onChange('procedures_other', e.target.value)}
+            className="shift-input w-full border-slate-200 resize-none text-sm"
+            placeholder="Record any unusual or specialized procedures performed..."
+          />
+        </div>
+      </div>
+
+      {/* Add Critical Patient Modal */}
+      {showAddCriticalModal && (
+        <Modal isOpen={showAddCriticalModal} onClose={() => setShowAddCriticalModal(false)} title="Register Critical Patient">
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Patient Full Name *</label>
+              <input
+                type="text"
+                value={newCritical.patient_name}
+                onChange={(e) => setNewCritical((p) => ({ ...p, patient_name: e.target.value }))}
+                placeholder="e.g. John Doe"
+                className="shift-input w-full text-sm font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">PID Number</label>
+              <input
+                type="text"
+                value={newCritical.pid}
+                onChange={(e) => setNewCritical((p) => ({ ...p, pid: e.target.value }))}
+                placeholder="e.g. PID-9842"
+                className="shift-input w-full text-sm font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Clinical Condition / Risk</label>
+              <input
+                type="text"
+                value={newCritical.condition}
+                onChange={(e) => setNewCritical((p) => ({ ...p, condition: e.target.value }))}
+                placeholder="e.g. Severe hypertension, post-op monitoring"
+                className="shift-input w-full text-sm font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Handover Notes / Instructions</label>
+              <textarea
+                rows={3}
+                value={newCritical.notes}
+                onChange={(e) => setNewCritical((p) => ({ ...p, notes: e.target.value }))}
+                placeholder="e.g. Repeat BP check at 21:00, notify Dr. Smith if systolic > 160"
+                className="shift-input w-full text-sm border-slate-200 resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowAddCriticalModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddCritical}
+                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold"
+              >
+                Save Patient
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
-    <div className="shift-card">
-       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
-          <StickyNote size={20} />
-        </div>
-        <h3 className="text-xl font-black text-slate-900 tracking-tight">SBAR Handover (Final)</h3>
-      </div>
-      <div className="space-y-4">
-        <div>
-          <label className="field-label text-slate-500 uppercase tracking-widest text-[10px]">Situation / Background</label>
-          <textarea 
-            rows={3}
-            value={data.handover_sbar_sb || ''}
-            onChange={(e) => onChange('handover_sbar_sb', e.target.value)}
-            className="shift-input w-full border-slate-200 resize-none"
-            placeholder="Key patient status at handover..."
-          />
-        </div>
-        <div>
-          <label className="field-label text-slate-500 uppercase tracking-widest text-[10px]">Assessment / Recommendation</label>
-          <textarea 
-            rows={3}
-            value={data.handover_sbar_ar || ''}
-            onChange={(e) => onChange('handover_sbar_ar', e.target.value)}
-            className="shift-input w-full border-slate-200 resize-none"
-            placeholder="Outstanding tasks or concerns..."
-          />
-        </div>
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 // ─── VIP Lounge Close Form ────────────────────────────────────────────────────
 const VipLoungeCloseForm = ({ data, onChange }) => {
@@ -1207,7 +1698,36 @@ export default function CloseShift() {
   const [billingClose, setBillingClose] = useState({ payments_all_successful: true, insurances_used: [], total_momo_transactions: 0, total_card_transactions: 0 });
   const [helpdeskClose, setHelpdeskClose] = useState({ patient_walkin_queries: 0, internal_staff_queries: 0 });
   const [callcenterClose, setCallcenterClose] = useState({ call_top_reasons: [], has_pending_followups: false, followup_details: [] });
-  const [nursingClose, setNursingClose] = useState({ total_assessments: 0, total_incidents: 0, handover_sbar_sb: '', handover_sbar_ar: '' });
+  const [nursingClose, setNursingClose] = useState({
+    total_assessments: 0,
+    total_incidents: 0,
+    handover_sbar_sb: '',
+    handover_sbar_ar: '',
+    patients_at_start: 0,
+    patients_admitted: 0,
+    patients_discharged: 0,
+    patients_at_end: 0,
+    census_notes: '',
+    medication_rounds_completed: 0,
+    medication_rounds_expected: 2,
+    medication_errors: 0,
+    controlled_substances_administered: 0,
+    medication_notes: '',
+    critical_patients_count: 0,
+    critical_patients_details: [],
+    pending_labs: 0,
+    pending_imaging: 0,
+    pending_doctor_reviews: 0,
+    infection_control_issues: '',
+    supply_shortages: '',
+    vital_signs_taken: 0,
+    injections_given: 0,
+    wound_dressings: 0,
+    ecgs_performed: 0,
+    vaccinations_given: 0,
+    blood_draws: 0,
+    procedures_other: '',
+  });
   const [viploungeClose, setViploungeClose] = useState({ vip_logs: [] });
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [incidentReported, setIncidentReported] = useState(false);
@@ -1239,7 +1759,17 @@ export default function CloseShift() {
         }
         if (s.shift_role === 'helpdesk' && s.role_data?.closing) setHelpdeskClose(s.role_data.closing);
         if (s.shift_role === 'call_center' && s.role_data?.closing) setCallcenterClose(s.role_data.closing);
-        if (s.shift_role === 'nurse' && s.role_data?.closing) setNursingClose(s.role_data.closing);
+        if (s.shift_role === 'nurse' && s.role_data?.closing) {
+          let criticalDetails = s.role_data.closing.critical_patients_details || [];
+          if (typeof criticalDetails === 'string') {
+            try { criticalDetails = JSON.parse(criticalDetails); } catch (e) { criticalDetails = []; }
+          }
+          setNursingClose(prev => ({
+            ...prev,
+            ...s.role_data.closing,
+            critical_patients_details: Array.isArray(criticalDetails) ? criticalDetails : [],
+          }));
+        }
         if (s.shift_role === 'vip_lounge' && s.role_data?.closing) {
           let parsedLogs = s.role_data.closing.vip_logs;
           if (typeof parsedLogs === 'string') {
@@ -1561,7 +2091,12 @@ export default function CloseShift() {
             <CallCenterCloseForm data={callcenterClose} onChange={(k, v) => setCallcenterClose((p) => ({ ...p, [k]: v }))} />
           )}
           {shift.shift_role === 'nurse' && (
-            <NursingCloseForm data={nursingClose} onChange={(k, v) => setNursingClose((p) => ({ ...p, [k]: v }))} />
+            <NursingCloseForm
+              data={nursingClose}
+              onChange={(k, v) => setNursingClose((p) => ({ ...p, [k]: v }))}
+              shiftStation={shift.nursing_ward || shift.work_station || 'STATION 1'}
+              wave={shift.wave || 'Wave 1'}
+            />
           )}
           {shift.shift_role === 'vip_lounge' && (
             <VipLoungeCloseForm data={viploungeClose} onChange={(k, v) => setViploungeClose((p) => ({ ...p, [k]: v }))} />
