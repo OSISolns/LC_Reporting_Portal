@@ -1,4 +1,4 @@
-import api from './axiosConfig';
+import api from './axios';
 
 export const getExecutiveDirectives = async (params = {}) => {
   const response = await api.get('/executive-directives', { params });
