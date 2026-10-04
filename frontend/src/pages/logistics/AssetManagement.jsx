@@ -520,12 +520,11 @@ const AssetManagement = () => {
 
       {/* 2026 AUDIT & REPLACEMENT REPORT TAB */}
       {activeTab === 'report' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          {/* Header Banner */}
-          <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '2rem', border: '1px solid #cbd5e1', borderLeft: '6px solid #0284c7', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem'           {/* Header Banner */}
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
-                <span style={{ padding: '4px 10px', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span style={{ padding: '4px 10px', backgroundColor: '#f1f5f9', color: '#475569', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Annual Operations Audit • 2026 Edition
                 </span>
                 <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', margin: '8px 0 4px 0' }}>
@@ -548,25 +547,25 @@ const AssetManagement = () => {
           {/* Section 1: Executive Summary */}
           <div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Activity size={20} color="#0284c7" /> 1. Executive Summary
+              <Activity size={20} color="#0f172a" /> 1. Executive Summary
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
-              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderTop: '4px solid #0284c7', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0284c7', textTransform: 'uppercase', marginBottom: '6px' }}>Active Asset Base</div>
+              <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', marginBottom: '6px' }}>Active Asset Base</div>
                 <p style={{ margin: 0, fontSize: '0.875rem', color: '#334155', lineHeight: 1.5 }}>
                   The primary registry covers clinical departments, imaging/diagnostics, surgical suites, and supporting IT/biomedical infrastructure across all legacy clinic operational zones.
                 </p>
               </div>
 
-              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderTop: '4px solid #16a34a', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', marginBottom: '6px' }}>Maintenance Strategy</div>
+              <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', marginBottom: '6px' }}>Maintenance Strategy</div>
                 <p style={{ margin: 0, fontSize: '0.875rem', color: '#334155', lineHeight: 1.5 }}>
                   The 2026 PPM schedule establishes routine quarterly (Q1–Q4) and bi-annual inspection cycles designed to minimize unplanned downtime, meet clinical audit standards, and extend useful life.
                 </p>
               </div>
 
-              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderTop: '4px solid #d97706', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase', marginBottom: '6px' }}>Capital Renewal & Replacement</div>
+              <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', marginBottom: '6px' }}>Capital Renewal & Replacement</div>
                 <p style={{ margin: 0, fontSize: '0.875rem', color: '#334155', lineHeight: 1.5 }}>
                   Prioritizes aging, high-repair-frequency, or obsolete units (legacy monitors, anesthesia/suction apparatus, lab analyzers, network switches, and workstations) posing operational bottlenecks.
                 </p>
@@ -577,10 +576,10 @@ const AssetManagement = () => {
           {/* Section 2: Master Asset Register Breakdown */}
           <div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Tag size={20} color="#0284c7" /> 2. Master Asset Register Breakdown
+              <Tag size={20} color="#0f172a" /> 2. Master Asset Register Breakdown
             </h3>
             
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '1.25rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '1.25rem' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
@@ -600,36 +599,36 @@ const AssetManagement = () => {
                     <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Quarterly PPM + Calibration Verification</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Diagnostic & Imaging</td>
+                    <td style={{ padding: '14px 18px', fontWeight 700, color: '#0f172a' }}>Diagnostic & Imaging</td>
                     <td style={{ padding: '14px 18px', color: '#475569' }}>Ultrasound systems, digital radiography/X-ray, dental X-ray units</td>
                     <td style={{ padding: '14px 18px' }}>
                       <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#fff7ed', color: '#c2410c' }}>High / Tier 1</span>
                     </td>
-                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Semi-annual OEM vendor service + in-house PPM</td>
+                    <td style={{ padding: '14px 18px', fontWeight 600, color: '#334155' }}>Semi-annual OEM vendor service + in-house PPM</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Laboratory Services</td>
+                    <td style={{ padding: '14px 18px', fontWeight 700, color: '#0f172a' }}>Laboratory Services</td>
                     <td style={{ padding: '14px 18px', color: '#475569' }}>Chemistry analyzers, hematology counters, centrifuges, incubators</td>
                     <td style={{ padding: '14px 18px' }}>
                       <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#e0f2fe', color: '#0369a1' }}>High / Tier 2</span>
                     </td>
-                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Reagent-vendor calibration + monthly/quarterly checks</td>
+                    <td style={{ padding: '14px 18px', fontWeight 600, color: '#334155' }}>Reagent-vendor calibration + monthly/quarterly checks</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>General Wards & OPD</td>
+                    <td style={{ padding: '14px 18px', fontWeight 700, color: '#0f172a' }}>General Wards & OPD</td>
                     <td style={{ padding: '14px 18px', color: '#475569' }}>Vital sign monitors, ECG machines, suction pumps, examination beds</td>
                     <td style={{ padding: '14px 18px' }}>
-                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#f1f5f9', color: '#475569' }}>Medium / Tier 2</span>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight 800, backgroundColor: '#f1f5f9', color: '#475569' }}>Medium / Tier 2</span>
                     </td>
-                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>In-house bi-annual electrical & performance tests</td>
+                    <td style={{ padding: '14px 18px', fontWeight 600, color: '#334155' }}>In-house bi-annual electrical & performance tests</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>Facility & IT Infrastructure</td>
+                    <td style={{ padding: '14px 18px', fontWeight 700, color: '#0f172a' }}>Facility & IT Infrastructure</td>
                     <td style={{ padding: '14px 18px', color: '#475569' }}>UPS units, server racks, managed switches, core workstations</td>
                     <td style={{ padding: '14px 18px' }}>
-                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: '#f0fdf4', color: '#15803d' }}>Operational Backbone</span>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight 800, backgroundColor: '#f0fdf4', color: '#15803d' }}>Operational Backbone</span>
                     </td>
-                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#334155' }}>Monthly physical inspection + battery load testing</td>
+                    <td style={{ padding: '14px 18px', fontWeight 600, color: '#334155' }}>Monthly physical inspection + battery load testing</td>
                   </tr>
                 </tbody>
               </table>
@@ -662,12 +661,12 @@ const AssetManagement = () => {
           {/* Section 3: 2026 Planned Preventive Maintenance (PPM) Analysis */}
           <div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Wrench size={20} color="#0284c7" /> 3. 2026 Planned Preventive Maintenance (PPM) Analysis
+              <Wrench size={20} color="#0f172a" /> 3. 2026 Planned Preventive Maintenance (PPM) Analysis
             </h3>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #0284c7', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0284c7', marginBottom: '8px' }}>Q1 (Jan - Mar)</div>
+              <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>Q1 (Jan - Mar)</div>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <li>OT & Anesthesia Safety</li>
                   <li>Defibrillator Energy Verification</li>
@@ -675,8 +674,8 @@ const AssetManagement = () => {
                 </ul>
               </div>
 
-              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #16a34a', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#16a34a', marginBottom: '8px' }}>Q2 (Apr - Jun)</div>
+              <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>Q2 (Apr - Jun)</div>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <li>Lab & Centrifuge Overhaul</li>
                   <li>Ward Monitors & ECG Calibration</li>
@@ -684,8 +683,8 @@ const AssetManagement = () => {
                 </ul>
               </div>
 
-              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #d97706', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#d97706', marginBottom: '8px' }}>Q3 (Jul - Sep)</div>
+              <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>Q3 (Jul - Sep)</div>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <li>Diagnostic Imaging Inspection</li>
                   <li>Suction & Infusion Calibration</li>
@@ -693,15 +692,15 @@ const AssetManagement = () => {
                 </ul>
               </div>
 
-              <div className="glass card-shadow" style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '1.5rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #9333ea', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#9333ea', marginBottom: '8px' }}>Q4 (Oct - Dec)</div>
+              <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>Q4 (Oct - Dec)</div>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <li>Annual Electrical Run</li>
                   <li>Deep Battery Load Testing</li>
                   <li>2027 Schedule & Budget Planning</li>
                 </ul>
               </div>
-            </div>
+            </div>  </div>
 
             {/* Strategic Focus Areas */}
             <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>

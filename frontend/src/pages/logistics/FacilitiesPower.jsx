@@ -137,7 +137,7 @@ const FacilitiesPower = () => {
 
       {/* ── GENERATOR HEADS-UP DISPLAY ── */}
       {latestGen && activeTab === 'generator' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #0f172a' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CURRENT GENERATOR READINESS</span>

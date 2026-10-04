@@ -489,21 +489,21 @@ const LogisticsAdmin = () => {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-            <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #0284c7' }}>
+            <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>TOTAL PETTY CASH EXPENSE</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>
                 {cfoReport.pettyCashTotal?.toLocaleString()} RWF
               </div>
             </div>
 
-            <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #16a34a' }}>
+            <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>AMBULANCE RUNS & FUEL</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>
                 {cfoReport.totalTrips} Runs ({cfoReport.totalFuelLiters} L)
               </div>
             </div>
 
-            <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #0284c7' }}>
+            <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>LOGGED INCIDENTS</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>
                 {cfoReport.totalIncidents} Total
