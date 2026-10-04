@@ -520,7 +520,8 @@ const AssetManagement = () => {
 
       {/* 2026 AUDIT & REPLACEMENT REPORT TAB */}
       {activeTab === 'report' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem'           {/* Header Banner */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          {/* Header Banner */}
           <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
