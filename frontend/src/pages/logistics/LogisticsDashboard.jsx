@@ -43,8 +43,9 @@ const LogisticsDashboard = () => {
   });
 
   // Modal states for Fast Action Launchpad
-  const [activeModal, setActiveModal] = useState(null); // 'dispatch', 'gencheck'
+  const [activeModal, setActiveModal] = useState(null); // 'dispatch', 'gencheck', 'vehicle', 'workorder'
   const [submitting, setSubmitting] = useState(false);
+  const [tripFilter, setTripFilter] = useState('All'); // 'All', 'Operational', 'Emergency', 'Executive'
 
   // Form states (Clean initial state without hardcoded mock data)
   const [dispatchForm, setDispatchForm] = useState({
@@ -78,6 +79,14 @@ const LogisticsDashboard = () => {
     current_odometer: '',
     status: 'Available',
     notes: ''
+  });
+
+  const [workOrderForm, setWorkOrderForm] = useState({
+    title: '',
+    category: 'Facility Repair',
+    priority: 'Normal',
+    description: '',
+    requested_by: user?.full_name || user?.fullName || ''
   });
 
   const fetchDashboardData = async () => {
@@ -196,6 +205,39 @@ const LogisticsDashboard = () => {
     }
   };
 
+  const handleWorkOrderSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      const res = await fetch('/api/logistics/assets/ppm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          maintenance_type: workOrderForm.category,
+          scheduled_date: new Date().toISOString().split('T')[0],
+          technician: workOrderForm.requested_by,
+          findings: `[${workOrderForm.priority}] ${workOrderForm.title}: ${workOrderForm.description}`
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success('Work Order request submitted!');
+        setActiveModal(null);
+        setWorkOrderForm({ title: '', category: 'Facility Repair', priority: 'Normal', description: '', requested_by: user?.full_name || user?.fullName || '' });
+        fetchDashboardData();
+      } else {
+        toast.error(json.message || 'Failed to submit work order');
+      }
+    } catch (err) {
+      toast.error('Error submitting work order');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const setTab = (tabName) => {
     setSearchParams(tabName === 'overview' ? {} : { tab: tabName });
   };
@@ -253,10 +295,17 @@ const LogisticsDashboard = () => {
           </button>
 
           <button
+            onClick={() => setActiveModal('workorder')}
+            className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Wrench size={13} /> Work Order
+          </button>
+
+          <button
             onClick={() => navigate('/incidents')}
             className="px-3.5 py-2 bg-[#155280] hover:bg-[#114266] text-white font-semibold text-xs rounded-xl border border-[#114266] transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <AlertTriangle size={13} /> Incident Reports
+            <AlertTriangle size={13} /> Incidents
           </button>
 
           <button
@@ -269,48 +318,52 @@ const LogisticsDashboard = () => {
         </div>
       </div>
 
-      {/* ── LUMINA KPI TILES GRID ── */}
+      {/* ── LUMINA KPI TILES GRID (Sleek Box Styling) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
 
         {/* KPI 1: Fleet Status */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs hover:border-blue-300/80 transition-all space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fleet Operations</span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setActiveModal('vehicle')}
                 title="Register Vehicle"
-                className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-900 font-bold text-[10px] hover:bg-blue-100"
+                className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-900 font-bold text-[10px] hover:bg-blue-100 border border-blue-200/60 transition-colors"
               >
                 + Add
               </button>
-              <Truck size={17} className="text-blue-900" />
+              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-900 border border-blue-100 flex items-center justify-center font-bold">
+                <Truck size={15} />
+              </div>
             </div>
           </div>
-          <p className="text-2xl font-bold text-blue-950">{fleetKpi.total || data.vehicles.length || 0}</p>
-          <div className="flex items-center gap-1.5 text-[11px] font-medium pt-1">
-            <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold">
+          <p className="text-2xl font-bold text-blue-950 tracking-tight">{fleetKpi.total || data.vehicles.length || 0}</p>
+          <div className="flex items-center gap-1.5 text-[11px] font-medium pt-1 border-t border-slate-100">
+            <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/60">
               {fleetKpi.available} Available
             </span>
-            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/60">
               {fleetKpi.inUse} In-Use
             </span>
           </div>
         </div>
 
         {/* KPI 2: Facilities & Power */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs hover:border-blue-300/80 transition-all space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Power & Facilities</span>
-            <Zap size={17} className="text-amber-600" />
+            <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 border border-amber-100 flex items-center justify-center font-bold">
+              <Zap size={15} />
+            </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <p className="text-2xl font-bold text-blue-950">{powerKpi.gridStatus || 'Grid Active'}</p>
+            <p className="text-2xl font-bold text-blue-950 tracking-tight">{powerKpi.gridStatus || 'Grid Active'}</p>
             <span className="text-xs font-bold text-slate-700">{powerKpi.fuelLevelPct}% Fuel</span>
           </div>
-          <div className="w-full bg-slate-100 rounded h-1.5 overflow-hidden">
+          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
             <div
-              className={`h-1.5 rounded transition-all ${
+              className={`h-1.5 rounded-full transition-all ${
                 powerKpi.fuelLevelPct < 35 ? 'bg-rose-600' : 'bg-[#1B669E]'
               }`}
               style={{ width: `${Math.min(100, Math.max(0, powerKpi.fuelLevelPct))}%` }}
@@ -319,25 +372,29 @@ const LogisticsDashboard = () => {
         </div>
 
         {/* KPI 3: Preventive Maintenance */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs hover:border-blue-300/80 transition-all space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Asset PPM</span>
-            <Wrench size={17} className="text-indigo-600" />
+            <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center justify-center font-bold">
+              <Wrench size={15} />
+            </div>
           </div>
-          <p className="text-2xl font-bold text-blue-950">{ppmKpi.pending || 0}</p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-2xl font-bold text-blue-950 tracking-tight">{ppmKpi.pending || 0}</p>
+          <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-100">
             Low Stock Parts: <strong className="text-slate-800 font-semibold">{data.lowStock?.length || 0} items</strong>
           </p>
         </div>
 
         {/* KPI 4: Incidents & IT Tickets */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs hover:border-blue-300/80 transition-all space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Facility Safety</span>
-            <ShieldAlert size={17} className="text-rose-600" />
+            <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-700 border border-rose-100 flex items-center justify-center font-bold">
+              <ShieldAlert size={15} />
+            </div>
           </div>
-          <p className="text-2xl font-bold text-blue-950">{incidentsKpi.openCount || data.openIncidents?.length || 0}</p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-2xl font-bold text-blue-950 tracking-tight">{incidentsKpi.openCount || data.openIncidents?.length || 0}</p>
+          <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-100">
             Open IT Support Tickets: <strong className="text-slate-800 font-semibold">{data.openItTickets?.length || 0}</strong>
           </p>
         </div>
@@ -943,6 +1000,73 @@ const LogisticsDashboard = () => {
               <button type="button" className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold" onClick={() => setActiveModal(null)}>Cancel</button>
               <button type="submit" className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold" disabled={submitting}>
                 {submitting ? 'Registering...' : 'Register Vehicle'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ── FAST ACTION MODAL: WORK ORDER REQUEST ── */}
+      {activeModal === 'workorder' && (
+        <Modal isOpen={true} title="Submit Maintenance Work Order Request" onClose={() => setActiveModal(null)}>
+          <form onSubmit={handleWorkOrderSubmit} className="space-y-4 py-2">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Work Order Title *</label>
+              <input
+                type="text"
+                className="shift-input w-full text-xs font-semibold"
+                placeholder="e.g. Cold Room Temperature Sensor Recalibration"
+                value={workOrderForm.title}
+                onChange={(e) => setWorkOrderForm({ ...workOrderForm, title: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Category</label>
+                <select
+                  className="shift-input w-full text-xs font-semibold"
+                  value={workOrderForm.category}
+                  onChange={(e) => setWorkOrderForm({ ...workOrderForm, category: e.target.value })}
+                >
+                  <option value="Facility Repair">Facility Repair</option>
+                  <option value="Biomedical Equipment">Biomedical Equipment</option>
+                  <option value="Fleet Maintenance">Fleet Maintenance</option>
+                  <option value="Electrical / Power">Electrical / Power</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Priority Level</label>
+                <select
+                  className="shift-input w-full text-xs font-semibold"
+                  value={workOrderForm.priority}
+                  onChange={(e) => setWorkOrderForm({ ...workOrderForm, priority: e.target.value })}
+                >
+                  <option value="Normal">Normal</option>
+                  <option value="Urgent">Urgent (24h SLA)</option>
+                  <option value="Critical">Critical (Immediate SLA)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Detailed Work Description *</label>
+              <textarea
+                className="shift-input w-full text-xs border-slate-200 resize-none"
+                rows={3}
+                placeholder="Describe issue, location, or equipment asset tag affected..."
+                value={workOrderForm.description}
+                onChange={(e) => setWorkOrderForm({ ...workOrderForm, description: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button type="button" className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold" onClick={() => setActiveModal(null)}>Cancel</button>
+              <button type="submit" className="px-5 py-2 rounded-xl bg-[#1B669E] hover:bg-[#155280] text-white text-xs font-bold" disabled={submitting}>
+                {submitting ? 'Submitting...' : 'Submit Work Order'}
               </button>
             </div>
           </form>
