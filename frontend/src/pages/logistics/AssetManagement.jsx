@@ -701,7 +701,7 @@ const AssetManagement = () => {
                   <li>2027 Schedule & Budget Planning</li>
                 </ul>
               </div>
-            </div>  </div>
+            </div>
 
             {/* Strategic Focus Areas */}
             <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
