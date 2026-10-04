@@ -64,6 +64,7 @@ import PhysioManagerDashboard from './pages/physio/PhysioManagerDashboard';
 import OperationsHub from './pages/operations/OperationsHub';
 import RosterGenerator from './pages/RosterGenerator';
 import LogisticsDashboard from './pages/logistics/LogisticsDashboard';
+import ChairmanExecutiveHub from './pages/ChairmanExecutiveHub';
 
 
 const CHEF_NURSE_ROLES = [
@@ -155,6 +156,7 @@ function App() {
             <Route path="/e-prescriptions" element={<ProtectedRoute allowedRoles={['doctor', 'consultant', 'medical_director', 'coo', 'deputy_coo', 'chairman']}><EPrescriptions /></ProtectedRoute>} />
             <Route path="/nursing-hub/daily-report" element={<ProtectedRoute allowedRoles={['nurse', 'chef-nurse', 'admin', 'coo', 'deputy_coo', 'chairman']}><DailyOperationalReport /></ProtectedRoute>} />
             <Route path="/daily-reports-board" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'chef-nurse', 'pa', 'medical_director']}><DailyOperationalReportBoard /></ProtectedRoute>} />
+            <Route path="/executive-dashboard" element={<ProtectedRoute allowedRoles={['chairman', 'coo', 'admin', 'deputy_coo', 'medical_director']}><ChairmanExecutiveHub /></ProtectedRoute>} />
             <Route path="/feedbacks" element={<ProtectedRoute allowedRoles={['coo', 'deputy_coo', 'chef-nurse', 'medical_director', 'chairman']}><FeedbackList /></ProtectedRoute>} />
             <Route path="/central-store" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'coo', 'chef-nurse', 'nurse', 'stock-manager', 'chairman']}><CentralStoreHub /></ProtectedRoute>} />
             <Route path="/master" element={<ProtectedRoute allowedRoles={['admin', 'stock-manager', 'deputy_coo', 'chairman']}><MasterModule /></ProtectedRoute>} />
