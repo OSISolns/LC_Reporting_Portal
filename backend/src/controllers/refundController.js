@@ -232,3 +232,71 @@ exports.exportExcel = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.uploadDocument = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { fileBase64, fileName } = req.body;
+
+    const allowedRoles = ['sales_manager', 'principal_cashier', 'admin'];
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Access denied. Only Sales Managers and Principal Cashiers can upload supporting documents.' });
+    }
+
+    const existing = await Refund.findById(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Refund request not found.' });
+    }
+
+    if (!fileBase64 || !fileName) {
+      return res.status(400).json({ success: false, message: 'File data and file name are required.' });
+    }
+
+    if (!fileName.toLowerCase().endsWith('.pdf')) {
+      return res.status(400).json({ success: false, message: 'Invalid file type. Only PDF documents (.pdf) are allowed.' });
+    }
+
+    const cleanBase64 = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    const buffer = Buffer.from(cleanBase64, 'base64');
+    const magicHeader = buffer.slice(0, 4).toString('ascii');
+    if (magicHeader !== '%PDF') {
+      return res.status(400).json({ success: false, message: 'Invalid document content. File is not a valid PDF.' });
+    }
+
+    const result = await Refund.uploadSupportingDocument(id, fileBase64, fileName, req.user.id);
+    await logAction(req, 'UPLOAD_DOCUMENT', 'refund_request', id, { fileName });
+
+    cache.invalidatePattern('refund:list');
+    res.json({ success: true, message: 'Supporting document uploaded successfully.', data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getDocument = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const request = await Refund.findById(id);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Refund request not found.' });
+    }
+
+    const doc = await Refund.getSupportingDocument(id);
+    if (!doc || !doc.supporting_document_base64) {
+      return res.status(404).json({ success: false, message: 'No supporting document found for this request.' });
+    }
+
+    if (req.query.download === 'true') {
+      const cleanBase64 = doc.supporting_document_base64.replace(/^data:[^;]+;base64,/, '');
+      const buffer = Buffer.from(cleanBase64, 'base64');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${doc.supporting_document_name || 'supporting_document.pdf'}"`);
+      return res.send(buffer);
+    }
+
+    res.json({ success: true, data: doc });
+  } catch (err) {
+    next(err);
+  }
+};
+

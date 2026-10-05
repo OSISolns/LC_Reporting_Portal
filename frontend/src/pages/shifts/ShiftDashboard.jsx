@@ -11,7 +11,8 @@ import {
   triggerAutoClose,
   deleteShift,
   exportShiftsExcel,
-  updateShiftByAdmin
+  updateShiftByAdmin,
+  transferStaffStation
 } from '../../api/shifts';
 import {
   Users, Clock, Filter, Calendar, Search, Flag, CheckCircle2,
@@ -20,7 +21,7 @@ import {
   FileText, Zap, MoreHorizontal, ChevronDown, SlidersHorizontal,
   ArrowUpDown, Download, Timer, Lock, Unlock, Play, LayoutDashboard,
   CheckSquare, Square, Trash2, Edit3, LayoutList, Kanban,
-  CreditCard, Phone, Monitor, Stethoscope, Crown
+  CreditCard, Phone, Monitor, Stethoscope, Crown, FileSpreadsheet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -64,6 +65,7 @@ function getWaveStartTime(shift) {
 // ── Constants ─────────────────────────────────────────────────────────────
 const ROLE_META = {
   cashier:     { label: 'Billing / Cashier',  color: 'success',   dot: 'bg-emerald-500' },
+  rama_rssb:   { label: 'RAMA/RSSB Billing Station', color: 'indigo', dot: 'bg-indigo-500' },
   helpdesk:    { label: 'Helpdesk Support',   color: 'blue',      dot: 'bg-blue-500'    },
   call_center: { label: 'Call Center',        color: 'default',   dot: 'bg-[#1b669d]'  },
   nurse:       { label: 'Clinical Nurse',     color: 'secondary', dot: 'bg-teal-500'   },
@@ -332,6 +334,18 @@ export default function ShiftDashboard() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
 
+  // Transfer Station modal state
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferShift, setTransferShift] = useState(null);
+  const [transferRole, setTransferRole] = useState('cashier');
+  const [transferWard, setTransferWard] = useState('Ground-Floor');
+  const [transferReason, setTransferReason] = useState('');
+  const [transferPassword, setTransferPassword] = useState('');
+  const [transferError, setTransferError] = useState('');
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
+
+  const canTransferStation = ['coo', 'deputy_coo', 'operations_staff', 'admin'].includes(user?.role);
+
   // Count active filters for badge
   useEffect(() => {
     setActiveFilters(Object.values(filters).filter(Boolean).length);
@@ -535,6 +549,60 @@ export default function ShiftDashboard() {
       toast.success('Record purged successfully', { id: tid });
     } catch {
       toast.error('Purge failed', { id: tid });
+    }
+  };
+
+  const handleOpenTransfer = (shift) => {
+    setTransferShift(shift);
+    const initialRole = shift.shift_role || 'cashier';
+    setTransferRole(initialRole);
+    if (initialRole === 'cashier') {
+      setTransferWard(shift.nursing_ward || 'Ground-Floor');
+    } else if (initialRole === 'nurse') {
+      setTransferWard(shift.nursing_ward || 'STATION 1');
+    } else {
+      setTransferWard('');
+    }
+    setTransferReason('');
+    setTransferPassword('');
+    setTransferError('');
+    setTransferOpen(true);
+  };
+
+  const handleTransferSubmit = async (e) => {
+    e?.preventDefault();
+    if (!transferShift) return;
+    setTransferError('');
+
+    if (!transferReason.trim()) {
+      setTransferError('Please provide a reason for the station transfer.');
+      return;
+    }
+    if (!transferPassword) {
+      setTransferError('Password confirmation is required to authorize transfer.');
+      return;
+    }
+
+    setTransferSubmitting(true);
+    const tid = toast.loading('Transferring staff to new station…');
+    try {
+      const payload = {
+        new_shift_role: transferRole,
+        new_nursing_ward: (transferRole === 'cashier' || transferRole === 'nurse') ? transferWard : null,
+        transfer_reason: transferReason,
+        password: transferPassword
+      };
+      await transferStaffStation(transferShift.id, payload);
+      toast.success(`Staff transferred to ${transferRole.toUpperCase()} successfully!`, { id: tid });
+      setTransferOpen(false);
+      setTransferShift(null);
+      fetchShifts(meta.page);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to transfer station';
+      setTransferError(msg);
+      toast.error(msg, { id: tid });
+    } finally {
+      setTransferSubmitting(false);
     }
   };
 
@@ -1235,6 +1303,17 @@ export default function ShiftDashboard() {
                       {/* Actions */}
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {isLive && canTransferStation && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Transfer Staff Station"
+                              onClick={() => handleOpenTransfer(s)}
+                              className="w-9 h-9 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <ArrowUpDown size={15} />
+                            </Button>
+                          )}
                           {isSupervisor && (
                             <>
                               {isSealed ? (
@@ -1572,6 +1651,132 @@ export default function ShiftDashboard() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Transfer Station Modal ───────────────────────────────────────── */}
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <DialogContent className="bg-white rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-100 max-w-lg">
+          <DialogHeader className="px-8 py-6 border-b border-slate-100 bg-blue-50/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                <ArrowUpDown size={20} />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-xl font-black text-slate-900">Transfer Staff Station</DialogTitle>
+                <DialogDescription className="text-xs font-bold text-slate-500 mt-0.5">
+                  Reassigning {transferShift?.user_name} (Shift #{transferShift ? String(transferShift.id).padStart(5, '0') : ''})
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <form onSubmit={handleTransferSubmit} className="p-8 space-y-5">
+            <div className="space-y-1.5 text-left">
+              <Label className="text-xs font-bold text-slate-700">Target Shift Role</Label>
+              <Select
+                value={transferRole}
+                onChange={(e) => {
+                  const role = e.target.value;
+                  setTransferRole(role);
+                  if (role === 'cashier') setTransferWard('Ground-Floor');
+                  else if (role === 'nurse') setTransferWard('STATION 1');
+                  else setTransferWard('');
+                }}
+                className="w-full"
+              >
+                <option value="cashier">Cashier</option>
+                <option value="rama_rssb">RAMA/RSSB Billing Station</option>
+                <option value="helpdesk">Helpdesk</option>
+                <option value="call_center">Call Center Agent</option>
+                <option value="nurse">Registered Nurse</option>
+                <option value="vip_lounge">VIP Lounge</option>
+              </Select>
+            </div>
+
+            {transferRole === 'cashier' && (
+              <div className="space-y-1.5 text-left">
+                <Label className="text-xs font-bold text-slate-700">Cashier Station Location</Label>
+                <Select
+                  value={transferWard}
+                  onChange={(e) => setTransferWard(e.target.value)}
+                  className="w-full"
+                >
+                  <option value="Ground-Floor">Ground-Floor</option>
+                  <option value="First-Floor">First-Floor</option>
+                  <option value="Paediatrics">Paediatrics</option>
+                </Select>
+              </div>
+            )}
+
+            {transferRole === 'nurse' && (
+              <div className="space-y-1.5 text-left">
+                <Label className="text-xs font-bold text-slate-700">Nursing Ward / Station</Label>
+                <Select
+                  value={transferWard}
+                  onChange={(e) => setTransferWard(e.target.value)}
+                  className="w-full"
+                >
+                  <option value="STATION 1">STATION 1 (Vital Signs &amp; Orientation)</option>
+                  <option value="STATION 2">STATION 2 (Cardiology)</option>
+                  <option value="MINOR SURGERY">MINOR SURGERY</option>
+                  <option value="PAEDIATRICS">PAEDIATRICS</option>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1.5 text-left">
+              <Label className="text-xs font-bold text-slate-700">Reason for Transfer</Label>
+              <textarea
+                value={transferReason}
+                onChange={(e) => {
+                  setTransferReason(e.target.value);
+                  if (transferError) setTransferError('');
+                }}
+                placeholder="e.g. High patient traffic at Ground-Floor cashier counter..."
+                rows={3}
+                className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5 text-left">
+              <Label className="text-xs font-bold text-slate-700">Authorize Action (Your Password)</Label>
+              <Input
+                type="password"
+                placeholder="Enter password to confirm transfer..."
+                value={transferPassword}
+                onChange={(e) => {
+                  setTransferPassword(e.target.value);
+                  if (transferError) setTransferError('');
+                }}
+                className={`w-full ${transferError ? 'border-rose-500 focus-visible:ring-rose-500' : ''}`}
+                required
+              />
+              {transferError && (
+                <p className="text-rose-500 text-[11px] font-bold mt-1">
+                  {transferError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1 rounded-2xl py-6" 
+                onClick={() => setTransferOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={transferSubmitting}
+                className="flex-1 rounded-2xl py-6 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >
+                {transferSubmitting ? 'Transferring...' : 'Confirm Transfer'}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

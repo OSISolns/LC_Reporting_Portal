@@ -9,3 +9,5 @@ export const approveRefund    = (id)           => api.patch(`/refunds/${id}/appr
 export const rejectRefund     = (id, comment)  => api.patch(`/refunds/${id}/reject`, { comment });
 export const deleteRefund     = (id)           => api.delete(`/refunds/${id}`);
 export const getRefundPDF     = (id)           => api.get(`/refunds/${id}/pdf`, { responseType: 'blob' });
+export const uploadRefundDocument = (id, data) => api.post(`/refunds/${id}/document`, data);
+export const getRefundDocument = (id)          => api.get(`/refunds/${id}/document`);

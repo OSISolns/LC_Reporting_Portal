@@ -12,8 +12,8 @@ const { encryptField, decryptField } = require('../utils/crypto');
 const ENCRYPTED_COLUMNS = {
   clinical_observations: ['patient_name', 'identification_json', 'triage_json', 'progress_notes_json', 'medication_mar_json', 'sbar_json'],
   patient_vitals: ['temperature', 'pulse', 'respiratory_rate', 'blood_pressure', 'weight', 'spo2', 'general_comments'],
-  cancellation_requests: ['patient_full_name', 'pid_number', 'old_sid_number', 'new_sid_number', 'telephone_number', 'insurance_payer', 'reason_for_cancellation', 'rejection_comment'],
-  refund_requests: ['patient_full_name', 'pid_number', 'sid_number', 'telephone_number', 'insurance_payer', 'momo_code', 'amount_paid_by', 'original_receipt_number', 'reason_for_refund', 'rejection_comment'],
+  cancellation_requests: ['patient_full_name', 'pid_number', 'old_sid_number', 'new_sid_number', 'telephone_number', 'insurance_payer', 'reason_for_cancellation', 'rejection_comment', 'supporting_document_base64'],
+  refund_requests: ['patient_full_name', 'pid_number', 'sid_number', 'telephone_number', 'insurance_payer', 'momo_code', 'amount_paid_by', 'original_receipt_number', 'reason_for_refund', 'rejection_comment', 'supporting_document_base64'],
   incident_reports: ['names_involved', 'pid_number', 'description', 'contributing_factors', 'immediate_actions', 'prevention_measures', 'review_comments', 'hsfp_comments', 'rca_environment', 'rca_staff', 'rca_equipment', 'rca_policy', 'rca_verification_json', 'corrective_actions_json'],
   results_transfers: ['old_sid', 'new_sid', 'reason', 'edited_by_name', 'rejection_comment'],
   internal_feedbacks: ['contact_info', 'concern_description', 'other_details'],
@@ -1933,11 +1933,13 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
 
     // ─── Shift Sessions Role CHECK Constraint Upgrade & Related Tables ───────────────────
     try {
+      await client.execute("DROP TABLE IF EXISTS shift_sessions_old");
+
       const { rows } = await client.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='shift_sessions'");
       if (rows.length > 0) {
         const sql = rows[0].sql;
-        if (!sql.includes('vip_lounge')) {
-          console.log('⚙️ Migrating shift_sessions to support nurse and vip_lounge...');
+        if (!sql.includes('rama_rssb') || !sql.includes('imaging')) {
+          console.log('⚙️ Migrating shift_sessions to support rama_rssb and imaging roles...');
 
           // 1. Rename table
           await client.execute("ALTER TABLE shift_sessions RENAME TO shift_sessions_old");
@@ -1947,7 +1949,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           CREATE TABLE shift_sessions (
             id                  INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-            shift_role          TEXT NOT NULL CHECK (shift_role IN ('cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge')),
+            shift_role          TEXT NOT NULL CHECK (shift_role IN ('cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge', 'imaging', 'rama_rssb')),
             status              TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'draft', 'closed')),
             opened_at           DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
             closed_at           DATETIME,
@@ -1959,23 +1961,32 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
             created_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
             updated_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
             start_hour          TEXT,
-            wave                TEXT
+            wave                TEXT,
+            nursing_ward        TEXT,
+            transferred_from_shift_id INTEGER,
+            transfer_reason     TEXT,
+            transferred_by      INTEGER,
+            transfer_status     TEXT,
+            transferred_to_role TEXT
           )
         `);
 
-          // 3. Copy data
-          const { rows: colRows } = await client.execute("PRAGMA table_info(shift_sessions_old)");
-          const cols = colRows.map(r => r.name);
-          const commonCols = cols.filter(c => c !== 'id');
-          const colsListStr = ['id', ...commonCols].join(', ');
+          // 3. Copy data if old table exists
+          const oldTableExists = await client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='shift_sessions_old'");
+          if (oldTableExists.rows.length > 0) {
+            const { rows: colRows } = await client.execute("PRAGMA table_info(shift_sessions_old)");
+            const cols = colRows.map(r => r.name);
+            const commonCols = cols.filter(c => c !== 'id');
+            const colsListStr = ['id', ...commonCols].join(', ');
 
-          await client.execute(`
-          INSERT INTO shift_sessions (${colsListStr})
-          SELECT ${colsListStr} FROM shift_sessions_old
-        `);
+            await client.execute(`
+              INSERT INTO shift_sessions (${colsListStr})
+              SELECT ${colsListStr} FROM shift_sessions_old
+            `);
 
-          // 4. Drop old table
-          await client.execute("DROP TABLE shift_sessions_old");
+            // 4. Drop old table
+            await client.execute("DROP TABLE shift_sessions_old");
+          }
 
           // 5. Recreate indexes
           await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_user_id     ON shift_sessions(user_id)");
@@ -1984,7 +1995,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_opened_at   ON shift_sessions(opened_at DESC)");
           await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_is_flagged  ON shift_sessions(is_flagged)");
 
-          console.log('✅ SQLite Schema Migration: upgraded shift_sessions table check constraint');
+          console.log('✅ SQLite Schema Migration: upgraded shift_sessions table check constraint to include rama_rssb and imaging');
         }
       }
     } catch (err) {
@@ -2290,6 +2301,26 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     } catch (err) {
       if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
         console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+      }
+    }
+
+    const docCols = [
+      { name: 'supporting_document_base64', type: 'TEXT' },
+      { name: 'supporting_document_name', type: 'TEXT' },
+      { name: 'supporting_document_uploaded_by', type: 'INTEGER REFERENCES users(id) ON DELETE SET NULL' },
+      { name: 'supporting_document_uploaded_at', type: 'DATETIME' }
+    ];
+
+    for (const table of ['cancellation_requests', 'refund_requests']) {
+      for (const col of docCols) {
+        try {
+          await client.execute(`ALTER TABLE ${table} ADD COLUMN ${col.name} ${col.type}`);
+          console.log(`✅ SQLite Schema Migration: added ${col.name} to ${table}`);
+        } catch (err) {
+          if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+            console.warn(`⚠️ SQLite Schema Migration Notice for ${table}.${col.name}:`, err.message);
+          }
+        }
       }
     }
 

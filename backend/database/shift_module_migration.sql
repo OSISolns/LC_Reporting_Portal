@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS shift_sessions (
   user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
 
   -- Shift role selected AT open time (independent of system role)
-  shift_role          TEXT NOT NULL CHECK (shift_role IN ('cashier', 'helpdesk', 'call_center')),
+  shift_role          TEXT NOT NULL CHECK (shift_role IN ('cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge', 'imaging', 'rama_rssb')),
 
   -- Lifecycle
   status              TEXT NOT NULL DEFAULT 'open'

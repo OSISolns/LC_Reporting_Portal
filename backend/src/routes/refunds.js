@@ -101,4 +101,18 @@ router.delete(
   refundController.deleteRequest
 );
 
+router.post(
+  '/:id/document',
+  checkPermission('refunds', 'view'),
+  validate([param('id').isInt().withMessage('Invalid request ID')]),
+  refundController.uploadDocument
+);
+
+router.get(
+  '/:id/document',
+  checkPermission('refunds', 'view'),
+  validate([param('id').isInt().withMessage('Invalid request ID')]),
+  refundController.getDocument
+);
+
 module.exports = router;

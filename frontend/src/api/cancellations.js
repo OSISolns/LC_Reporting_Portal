@@ -15,3 +15,5 @@ export const approveCancellation = (id) => api.patch(`/cancellations/${id}/appro
 export const rejectCancellation = (id, comment) => api.patch(`/cancellations/${id}/reject`, { comment });
 export const deleteCancellation = (id) => api.delete(`/cancellations/${id}`);
 export const getCancellationPDF = (id) => api.get(`/cancellations/${id}/pdf`, { responseType: 'blob' });
+export const uploadCancellationDocument = (id, data) => api.post(`/cancellations/${id}/document`, data);
+export const getCancellationDocument = (id) => api.get(`/cancellations/${id}/document`);

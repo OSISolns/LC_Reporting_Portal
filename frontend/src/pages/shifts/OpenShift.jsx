@@ -22,17 +22,19 @@ import {
   ShieldCheck,
   Pill,
   CreditCard,
-  Crown
+  Crown,
+  FileSpreadsheet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { openShift, getMyActiveShift } from '../../api/shifts';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
-import { SHIFT_ROLES, EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS, NURSING_WARDS, getItemStatusOptions, getDefaultItemStatus } from './shiftConfig';
+import { SHIFT_ROLES, EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS, NURSING_WARDS, CASHIER_STATIONS, getItemStatusOptions, getDefaultItemStatus } from './shiftConfig';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const ROLE_ICONS = {
   cashier: <CreditCard size={36} className="text-[#1b669d]" />,
+  rama_rssb: <FileSpreadsheet size={36} className="text-[#1b669d]" />,
   helpdesk: <Monitor size={36} className="text-[#1b669d]" />,
   call_center: <Phone size={36} className="text-[#1b669d]" />,
   nurse: <Stethoscope size={36} className="text-[#1b669d]" />,
@@ -151,6 +153,7 @@ export default function OpenShift() {
   const [step, setStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedWard, setSelectedWard] = useState('STATION 1');
+  const [selectedCashierStation, setSelectedCashierStation] = useState('Ground-Floor');
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
   const [startHour, setStartHour] = useState('');
@@ -158,11 +161,11 @@ export default function OpenShift() {
   const isCustomerCare = ['helpdesk', 'call_center'].includes(selectedRole);
 
   const visibleRoles = SHIFT_ROLES.filter(role => {
-    if (['admin', 'it_officer'].includes(user?.role)) return true;
+    if (['admin', 'it_officer', 'operations_staff', 'coo', 'deputy_coo'].includes(user?.role)) return true;
     if (user?.role === 'nurse' || user?.role === 'chef-nurse') return role.value === 'nurse';
     if (user?.role === 'vip_lounge') return role.value === 'vip_lounge';
-    if (user?.role === 'customer_care') return ['vip_lounge', 'helpdesk', 'call_center', 'cashier'].includes(role.value);
-    if (user?.role === 'cashier') return role.value === 'cashier';
+    if (user?.role === 'customer_care') return ['vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb'].includes(role.value);
+    if (user?.role === 'cashier') return ['cashier', 'rama_rssb'].includes(role.value);
     return role.value !== 'nurse' && role.value !== 'vip_lounge';
   });
   const [password, setPassword] = useState('');
@@ -191,6 +194,9 @@ export default function OpenShift() {
     if (role === 'nurse') {
       const wardObj = NURSING_WARDS.find(w => w.name === selectedWard) || NURSING_WARDS[0];
       setEquipment(wardObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
+    } else if (role === 'cashier') {
+      const stObj = CASHIER_STATIONS.find(s => s.name === selectedCashierStation) || CASHIER_STATIONS[0];
+      setEquipment(stObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
     } else {
       setEquipment(EQUIPMENT_BY_ROLE[role].map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
     }
@@ -203,6 +209,12 @@ export default function OpenShift() {
     setEquipment(wardObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
   };
 
+  const handleCashierStationSelect = (stationName) => {
+    setSelectedCashierStation(stationName);
+    const stObj = CASHIER_STATIONS.find(s => s.name === stationName) || CASHIER_STATIONS[0];
+    setEquipment(stObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
+  };
+
   const handleEquipmentChange = (i, field, val) => {
     setEquipment(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: val } : item));
   };
@@ -213,6 +225,11 @@ export default function OpenShift() {
 
     if (selectedRole === 'nurse' && !selectedWard) {
       toast.error('Please select your assigned Nursing Ward (STATION 1, STATION 2, MINOR SURGERY, or PAEDIATRICS).');
+      return;
+    }
+
+    if (selectedRole === 'cashier' && !selectedCashierStation) {
+      toast.error('Please select your Cashier Station (Ground-Floor, First-Floor, or Paediatrics).');
       return;
     }
 
@@ -244,7 +261,7 @@ export default function OpenShift() {
     try {
       const payload = {
         shift_role: selectedRole,
-        nursing_ward: selectedRole === 'nurse' ? selectedWard : null,
+        nursing_ward: selectedRole === 'nurse' ? selectedWard : selectedRole === 'cashier' ? selectedCashierStation : null,
         equipment: equipment.map(e => ({ name: e.name, status: e.status, remarks: e.remarks || null })),
         password,
         start_hour: startHour,
@@ -419,7 +436,64 @@ export default function OpenShift() {
                 </div>
               )}
 
-              {/* Starting Hour & Wave Selector */}
+              {/* Cashier Station Selector */}
+              {selectedRole === 'cashier' && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <CreditCard size={16} className="text-[#007B8A]" />
+                        Select Cashier Station / Floor <span className="text-rose-500">*</span>
+                      </h3>
+                      <p className="text-slate-500 text-xs mt-0.5">
+                        Choose your assigned cashier counter location (Ground-Floor, First-Floor, or Paediatrics)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                    {CASHIER_STATIONS.map((st) => {
+                      const isSelected = selectedCashierStation === st.name;
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => handleCashierStationSelect(st.name)}
+                          className={`relative flex flex-col justify-between p-4 rounded-xl border transition-all text-left ${
+                            isSelected
+                              ? 'bg-[#E6F4F6] border-[#007B8A] ring-1 ring-[#007B8A] shadow-xs'
+                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex justify-between items-center w-full mb-2">
+                              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md ${
+                                isSelected ? 'bg-[#007B8A] text-white' : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {st.label}
+                              </span>
+                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                isSelected ? 'bg-[#007B8A] border-[#007B8A]' : 'bg-white border-slate-300'
+                              }`}>
+                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                              </div>
+                            </div>
+
+                            <p className="text-xs font-semibold text-slate-800 leading-snug">
+                              {st.services}
+                            </p>
+                          </div>
+
+                          <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                            <span>{st.equipment.length} equipment items</span>
+                            <span className="font-medium text-[#007B8A]">Assigned</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {selectedRole && (
                 <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
                   <div className="flex items-center gap-2">

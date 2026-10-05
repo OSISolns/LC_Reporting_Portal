@@ -47,6 +47,20 @@ function decryptField(text) {
   }
 
   try {
+    const match = text.match(/^enc:([a-f0-9]+):([a-f0-9]+):([a-f0-9]+)(\s*[\s\S]*)?$/i);
+    if (match) {
+      const iv = Buffer.from(match[1], 'hex');
+      const authTag = Buffer.from(match[2], 'hex');
+      const encryptedText = Buffer.from(match[3], 'hex');
+      const trailingText = match[4] || '';
+
+      const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+      decipher.setAuthTag(authTag);
+      let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted + trailingText;
+    }
+
     const parts = text.substring(4).split(':');
     if (parts.length !== 3) return text;
     const iv = Buffer.from(parts[0], 'hex');
@@ -59,8 +73,9 @@ function decryptField(text) {
     decrypted += decipher.final('utf8');
     return decrypted;
   } catch (err) {
-    console.error('Decryption failed:', err);
-    return text; // Return as-is on failure to prevent app crashes
+    const stripped = text.replace(/^enc:[a-f0-9]+:[a-f0-9]+:[a-f0-9]+\s*/i, '').trim();
+    if (stripped) return stripped;
+    return text;
   }
 }
 

@@ -1,10 +1,38 @@
 // ─── Shift role definitions ──────────────────────────────────────────────────
 export const SHIFT_ROLES = [
   { value: 'cashier', label: 'Cashier', icon: 'CreditCard' },
+  { value: 'rama_rssb', label: 'RAMA/RSSB Billing Station', icon: 'FileSpreadsheet' },
   { value: 'helpdesk', label: 'Helpdesk', icon: 'Monitor' },
   { value: 'call_center', label: 'Call Center Agent', icon: 'Phone' },
   { value: 'nurse', label: 'Registered Nurse', icon: 'Stethoscope' },
   { value: 'vip_lounge', label: 'VIP Lounge', icon: 'Crown' },
+];
+
+export const CASHIER_STATIONS = [
+  {
+    id: 'Ground-Floor',
+    name: 'Ground-Floor',
+    label: 'Ground-Floor',
+    description: 'Ground Floor Main Cashier Counter',
+    services: 'General Outpatient Cashier Billing',
+    equipment: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Paid Stamp']
+  },
+  {
+    id: 'First-Floor',
+    name: 'First-Floor',
+    label: 'First-Floor',
+    description: 'First Floor Specialist Clinic Cashier',
+    services: 'Specialist Clinic Cashier Billing',
+    equipment: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Paid Stamp']
+  },
+  {
+    id: 'Paediatrics',
+    name: 'Paediatrics',
+    label: 'Paediatrics',
+    description: 'Paediatrics Ward Cashier Counter',
+    services: 'Paediatric Clinic & Ward Cashier Billing',
+    equipment: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone']
+  }
 ];
 
 export const NURSING_WARDS = [
@@ -44,7 +72,8 @@ export const NURSING_WARDS = [
 
 // ─── Equipment per role ──────────────────────────────────────────────────────
 export const EQUIPMENT_BY_ROLE = {
-  cashier: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Paid Stamp'],
+  cashier: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
+  rama_rssb: ['PC', 'Receipt Printer', 'Barcode Printer', 'MoMo Phone', 'Desk Phone'],
   helpdesk: ['PC', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Waiting No. Stamp'],
   call_center: ['PC', 'Headset'],
   nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
@@ -152,7 +181,7 @@ export const CALL_REASON_OPTIONS = [
 export const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'pa', 'operations_staff', 'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'deputy_head_nurse'];
 
 // ─── Staff roles that can open shifts ────────────────────────────────────────
-export const STAFF_SHIFT_ROLES = ['cashier', 'customer_care', 'operations_staff', 'nurse'];
+export const STAFF_SHIFT_ROLES = ['cashier', 'customer_care', 'operations_staff', 'nurse', 'rama_rssb'];
 
 // ─── VIP Position Dropdown Options ──────────────────────────────────────────
 export const VIP_POSITIONS_CONFIG = {

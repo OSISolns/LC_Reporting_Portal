@@ -64,7 +64,8 @@ function getWaveStartTime(shift) {
  */
 const EQUIPMENT_MAP = {
   cashier: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
-  helpdesk: ['PC', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
+  rama_rssb: ['PC', 'Receipt Printer', 'Barcode Printer', 'MoMo Phone', 'Desk Phone'],
+  helpdesk: ['PC', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Waiting No. Stamp'],
   call_center: ['PC', 'Headset'],
   nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
   vip_lounge: ['PC', 'Desk Phone'],
@@ -240,13 +241,17 @@ exports.openShift = async (req, res, next) => {
     }
 
     // Validate shift role
-    if (!['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge', 'imaging'].includes(shift_role)) {
+    if (!['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge', 'imaging', 'rama_rssb'].includes(shift_role)) {
       return res.status(400).json({ success: false, message: 'Invalid shift role.' });
     }
 
-    // Nursing Ward Validation for Nurse role
+    // Station Validation
     if (shift_role === 'nurse' && !nursing_ward) {
       return res.status(400).json({ success: false, message: 'Please select a Nursing Ward (STATION 1, STATION 2, MINOR SURGERY, or PAEDIATRICS) before opening shift.' });
+    }
+
+    if (shift_role === 'cashier' && !nursing_ward) {
+      return res.status(400).json({ success: false, message: 'Please select a Cashier Station (Ground-Floor, First-Floor, or Paediatrics) before opening shift.' });
     }
 
     // Wave Allocation Validation for all roles
@@ -550,6 +555,15 @@ exports.transferStation = async (req, res, next) => {
     const { new_shift_role, transfer_reason, password, new_nursing_ward } = req.body;
     const managerId = req.user.id;
 
+    // Check manager/requester permission (COO, Deputy COO, Operations Staff, Admin)
+    const allowedTransferRoles = ['coo', 'deputy_coo', 'operations_staff', 'admin'];
+    if (!allowedTransferRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Only COO, Deputy COO, Operations Staff, and Admin can transfer staff stations.'
+      });
+    }
+
     // 1. Password verification for manager
     const manager = await User.findById(managerId);
     const authResult = await verifyPasswordAndCheckLockout(req, password, manager);
@@ -565,8 +579,8 @@ exports.transferStation = async (req, res, next) => {
     if (currentShift.status === 'closed') {
       return res.status(400).json({ success: false, message: 'Cannot transfer a closed shift.' });
     }
-    if (currentShift.shift_role === new_shift_role) {
-      return res.status(400).json({ success: false, message: `Staff member is already assigned to ${new_shift_role}.` });
+    if (currentShift.shift_role === new_shift_role && (currentShift.nursing_ward || '') === (new_nursing_ward || '')) {
+      return res.status(400).json({ success: false, message: `Staff member is already assigned to ${new_shift_role}${currentShift.nursing_ward ? ' (' + currentShift.nursing_ward + ')' : ''}.` });
     }
 
     const staffUser = await User.findById(currentShift.user_id);
@@ -575,26 +589,34 @@ exports.transferStation = async (req, res, next) => {
     }
 
     // 3. Terminate / close current shift
-    const closeNotes = `[STATION TRANSFER] Transferred from ${currentShift.shift_role.toUpperCase()} to ${new_shift_role.toUpperCase()} by ${req.user.full_name} (${req.user.role}). Reason: ${transfer_reason}`;
-    
+    const existingNotes = (currentShift.handover_notes || '').trim();
+    let cleanNotes = existingNotes;
+    if (cleanNotes.startsWith('enc:')) {
+      cleanNotes = cleanNotes.replace(/^enc:[a-f0-9]+:[a-f0-9]+:[a-f0-9]+\s*/i, '').trim();
+    }
+    const transferNote = `[STATION TRANSFER] Transferred from ${currentShift.shift_role.toUpperCase()}${currentShift.nursing_ward ? ' (' + currentShift.nursing_ward + ')' : ''} to ${new_shift_role.toUpperCase()}${new_nursing_ward ? ' (' + new_nursing_ward + ')' : ''} by ${req.user.full_name} (${req.user.role}). Reason: ${transfer_reason}`;
+    const combinedNotes = cleanNotes ? `${cleanNotes}\n${transferNote}` : transferNote;
+
     await db.query(
       `UPDATE shift_sessions 
        SET status = 'closed',
            closed_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-           handover_notes = CASE WHEN handover_notes IS NULL OR handover_notes = '' THEN ? ELSE handover_notes || X'0A' || ? END,
+           handover_notes = ?,
            transfer_status = 'transferred_out',
            transferred_to_role = ?,
            transferred_by = ?,
            transfer_reason = ?,
            updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
        WHERE id = ?`,
-      [closeNotes, closeNotes, new_shift_role, managerId, transfer_reason, id]
+      [combinedNotes, new_shift_role, managerId, transfer_reason, id]
     );
 
     // 4. Open NEW shift for the staff member
     const newWave = currentShift.wave || 'Wave 1';
     const newStartHour = currentShift.start_hour || '07:00';
-    const ward = new_shift_role === 'nurse' ? (new_nursing_ward || currentShift.nursing_ward || 'STATION 1') : null;
+    const ward = (new_shift_role === 'nurse' || new_shift_role === 'cashier') 
+      ? (new_nursing_ward || currentShift.nursing_ward || (new_shift_role === 'cashier' ? 'Ground-Floor' : 'STATION 1')) 
+      : null;
 
     const insertResult = await db.query(
       `INSERT INTO shift_sessions 

@@ -5,7 +5,8 @@ import {
   verifyCancellation, 
   approveCancellation, 
   rejectCancellation,
-  getCancellationPDF 
+  getCancellationPDF,
+  uploadCancellationDocument
 } from '../../api/cancellations';
 import { submitRating } from '../../api/performance';
 import { useAuth } from '../../context/AuthContext';
@@ -24,6 +25,7 @@ import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
 import CancellationDetailsView from './components/CancellationDetailsView';
+import SupportingDocumentSection from '../../components/SupportingDocumentSection';
 
 const CancellationDetail = () => {
   const { id } = useParams();
@@ -40,6 +42,11 @@ const CancellationDetail = () => {
     severity: 1,
     note: ''
   });
+
+  const handleDocumentUpload = async (fileBase64, fileName) => {
+    await uploadCancellationDocument(id, { fileBase64, fileName });
+    fetchData();
+  };
 
   useEffect(() => {
     fetchData();
@@ -154,6 +161,14 @@ const CancellationDetail = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <CancellationDetailsView data={data} onExport={downloadPDF} />
           
+          <SupportingDocumentSection 
+            data={data} 
+            requestId={id} 
+            requestType="cancellation" 
+            user={user} 
+            onUpload={handleDocumentUpload} 
+          />
+
           {data.status === 'rejected' && (
             <div className="glass card-shadow" style={{ padding: '2rem', borderLeft: '6px solid var(--danger)', backgroundColor: '#ffffff', borderRadius: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--danger)', marginBottom: '1rem' }}>

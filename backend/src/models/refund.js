@@ -166,6 +166,7 @@ class Refund {
               u3.full_name AS approver_name,
               u4.full_name AS rejector_name,
               u5.full_name AS billed_by_name,
+              u6.full_name AS supporting_document_uploader_name,
               CASE WHEN spr.id IS NOT NULL THEN true ELSE false END as is_rated
        FROM refund_requests r
        LEFT JOIN users u1 ON r.created_by  = u1.id
@@ -173,11 +174,35 @@ class Refund {
        LEFT JOIN users u3 ON r.approved_by = u3.id
        LEFT JOIN users u4 ON r.rejected_by = u4.id
        LEFT JOIN users u5 ON r.billed_by   = u5.id
+       LEFT JOIN users u6 ON r.supporting_document_uploaded_by = u6.id
        LEFT JOIN staff_performance_ratings spr ON spr.request_type = 'refund' AND spr.request_id = r.id
        WHERE r.id = $1`;
     const params = [id];
 
     const { rows } = await db.query(query, params);
+    return rows[0];
+  }
+
+  static async uploadSupportingDocument(id, fileBase64, fileName, userId) {
+    const { rows } = await db.query(
+      `UPDATE refund_requests
+       SET supporting_document_base64 = $1,
+           supporting_document_name = $2,
+           supporting_document_uploaded_by = $3,
+           supporting_document_uploaded_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $4
+       RETURNING id, supporting_document_name, supporting_document_uploaded_at, supporting_document_uploaded_by`,
+      [fileBase64, fileName, userId, id]
+    );
+    return rows[0];
+  }
+
+  static async getSupportingDocument(id) {
+    const { rows } = await db.query(
+      `SELECT id, supporting_document_base64, supporting_document_name FROM refund_requests WHERE id = $1`,
+      [id]
+    );
     return rows[0];
   }
 

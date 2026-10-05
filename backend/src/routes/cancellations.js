@@ -55,6 +55,17 @@ router.patch('/:id/reject', checkPermission('cancellations', 'reject'), validate
   param('id').isInt().withMessage('Invalid request ID'),
   body('comment').trim().notEmpty().withMessage('Rejection comment is required'),
 ]), cancellationController.rejectRequest);
-router.delete('/:id', checkPermission('cancellations', 'delete'), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.deleteRequest);
+router.post(
+  '/:id/document',
+  checkPermission('cancellations', 'view'),
+  validate([param('id').isInt().withMessage('Invalid request ID')]),
+  cancellationController.uploadDocument
+);
+router.get(
+  '/:id/document',
+  checkPermission('cancellations', 'view'),
+  validate([param('id').isInt().withMessage('Invalid request ID')]),
+  cancellationController.getDocument
+);
 
 module.exports = router;

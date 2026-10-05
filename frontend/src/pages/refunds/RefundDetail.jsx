@@ -5,7 +5,8 @@ import {
   verifyRefund,
   approveRefund,
   rejectRefund,
-  getRefundPDF
+  getRefundPDF,
+  uploadRefundDocument
 } from '../../api/refunds';
 import { submitRating } from '../../api/performance';
 import { useAuth } from '../../context/AuthContext';
@@ -17,6 +18,7 @@ import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
 import RefundDetailsView from './components/RefundDetailsView';
+import SupportingDocumentSection from '../../components/SupportingDocumentSection';
 
 const RefundDetail = () => {
   const { id }      = useParams();
@@ -32,6 +34,11 @@ const RefundDetail = () => {
     severity: 1,
     note: ''
   });
+
+  const handleDocumentUpload = async (fileBase64, fileName) => {
+    await uploadRefundDocument(id, { fileBase64, fileName });
+    fetchData();
+  };
 
   useEffect(() => { fetchData(); }, [id]);
 
@@ -116,6 +123,14 @@ const RefundDetail = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <RefundDetailsView data={data} onExport={downloadPDF} />
+
+          <SupportingDocumentSection 
+            data={data} 
+            requestId={id} 
+            requestType="refund" 
+            user={user} 
+            onUpload={handleDocumentUpload} 
+          />
 
           {data.status === 'rejected' && (
             <div className="glass card-shadow" style={{ padding: '2rem', borderLeft: '6px solid var(--danger)', backgroundColor: '#ffffff', borderRadius: '12px' }}>
