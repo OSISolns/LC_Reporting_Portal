@@ -72,6 +72,8 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
           <div style={fieldStyle}>
             <label style={labelStyle}>Patient's full name *</label>
             <PatientAutocomplete
+              name="patientFullName"
+              required
               value={formData.patientFullName}
               onChange={(val) => handleChange({ target: { name: 'patientFullName', value: val } })}
               onPatientSelect={(patient) => {
@@ -93,6 +95,8 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
           <div style={fieldStyle}>
             <label style={labelStyle}>PID number *</label>
             <PatientAutocomplete
+              name="pidNumber"
+              required
               value={formData.pidNumber}
               onChange={(val) => handleChange({ target: { name: 'pidNumber', value: val } })}
               onPatientSelect={(patient) => {

@@ -26,7 +26,7 @@ router.post(
       .withMessage('Equipment checklist is required'),
     body('equipment.*.name').notEmpty().withMessage('Equipment name is required'),
     body('equipment.*.status')
-      .isIn(['Working', 'Needs Repair', 'Broken/Missing'])
+      .isIn(['Working', 'Needs Repair', 'Broken', 'Missing', 'Available', 'Broken/Missing'])
       .withMessage('Invalid equipment status'),
   ]),
   shift.openShift
@@ -147,6 +147,24 @@ router.post(
   checkPermission('shifts', 'review'),
   validate([body('ids').isArray({ min: 1 }).withMessage('IDs must be an array')]),
   shift.bulkReview
+);
+
+/**
+ * POST /api/shifts/:id/transfer
+ * Transfer a staff member's active station — COO, deputy_coo, admin only.
+ */
+router.post(
+  '/:id/transfer',
+  checkPermission('shifts', 'edit'),
+  validate([
+    param('id').isInt().withMessage('Invalid shift ID'),
+    body('new_shift_role')
+      .isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge', 'imaging'])
+      .withMessage('Invalid target shift role'),
+    body('transfer_reason').notEmpty().withMessage('Transfer reason is required'),
+    body('password').notEmpty().withMessage('Password confirmation is required'),
+  ]),
+  shift.transferStation
 );
 
 /**

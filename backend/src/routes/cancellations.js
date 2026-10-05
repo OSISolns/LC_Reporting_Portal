@@ -18,6 +18,18 @@ router.post(
   ]),
   cancellationController.createRequest
 );
+router.put(
+  '/:id',
+  checkPermission('cancellations', 'create'),
+  validate([
+    param('id').isInt().withMessage('Invalid request ID'),
+    body('patientFullName').trim().notEmpty().withMessage('Patient name is required'),
+    body('pidNumber').trim().notEmpty().withMessage('PID number is required'),
+    body('totalAmountCancelled').notEmpty().withMessage('Total amount is required'),
+    body('reasonForCancellation').trim().notEmpty().withMessage('Reason for cancellation is required'),
+  ]),
+  cancellationController.updateRequest
+);
 router.get(
   '/',
   checkPermission('cancellations', 'view'),

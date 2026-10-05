@@ -35,7 +35,8 @@ import {
   FileText,
   Pill,
   Activity,
-  ShieldAlert
+  ShieldAlert,
+  BadgeCheck,
 } from 'lucide-react';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -54,6 +55,8 @@ const ICON_MAP = {
   'Barcode Printer': <Printer size={18} />,
   'Desk Phone': <Phone size={18} />,
   'Headset': <Headphones size={18} />,
+  'Paid Stamp': <BadgeCheck size={18} />,
+  'Waiting No. Stamp': <BadgeCheck size={18} />,
 };
 
 const getWaveTemporalData = (shift) => {
@@ -122,7 +125,7 @@ const EquipSection = ({ title, items, icon, color }) => (
             <span className="text-sm font-black text-slate-800">{e.equipment_name}</span>
           </div>
           <div className="flex flex-col items-end">
-            <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border-2 ${e.equipment_status === 'Working' ? 'text-emerald-700 border-emerald-100 bg-emerald-50' :
+            <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border-2 ${(e.equipment_status === 'Working' || e.equipment_status === 'Available') ? 'text-emerald-700 border-emerald-100 bg-emerald-50' :
               e.equipment_status === 'Needs Repair' ? 'text-amber-700 border-amber-100 bg-amber-50' :
                 'text-rose-700 border-rose-100 bg-rose-50'
               }`}>{e.equipment_status}</span>

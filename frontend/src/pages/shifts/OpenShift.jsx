@@ -28,7 +28,7 @@ import toast from 'react-hot-toast';
 import { openShift, getMyActiveShift } from '../../api/shifts';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
-import { SHIFT_ROLES, EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS, NURSING_WARDS } from './shiftConfig';
+import { SHIFT_ROLES, EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS, NURSING_WARDS, getItemStatusOptions, getDefaultItemStatus } from './shiftConfig';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const ROLE_ICONS = {
@@ -57,7 +57,9 @@ const ICON_MAP = {
   'Surgical Light': <Monitor size={18} />,
   'Autoclave Sterilizer': <Briefcase size={18} />,
   'Vaccine Cold Storage / Refrigerator': <Thermometer size={18} />,
-}
+  'Paid Stamp': <BadgeCheck size={18} />,
+  'Waiting No. Stamp': <BadgeCheck size={18} />,
+};
 
 const WAVE_OPTIONS = [
   { hour: '07:00', label: '7:00 A.M.', wave: 'Wave 1', schedule: '7:00 AM - 3:00 PM', desc: 'Morning Core Shift' },
@@ -69,70 +71,76 @@ const WAVE_OPTIONS = [
 // ─── Sub-component: Equipment Checklist ──────────────────────────────────────
 const EquipmentChecklist = ({ items, onChange }) => (
   <div className="space-y-2.5">
-    {items.map((item, i) => (
-      <div
-        key={item.name}
-        className={`p-3 rounded-xl border transition-all ${
-          item.status === 'Working'
-            ? 'bg-white border-slate-200'
-            : item.status === 'Needs Repair'
-            ? 'bg-amber-50/50 border-amber-200'
-            : 'bg-rose-50/50 border-rose-200'
-        }`}
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-              item.status === 'Working' ? 'bg-emerald-50 text-emerald-700' :
-              item.status === 'Needs Repair' ? 'bg-amber-100 text-amber-800' :
-              'bg-rose-100 text-rose-800'
-            }`}>
-              {ICON_MAP[item.name] || <Briefcase size={16} />}
+    {items.map((item, i) => {
+      const isGood = item.status === 'Working' || item.status === 'Available';
+      const isAmber = item.status === 'Needs Repair';
+      const statusOptions = getItemStatusOptions(item.name);
+
+      return (
+        <div
+          key={item.name}
+          className={`p-3 rounded-xl border transition-all ${
+            isGood
+              ? 'bg-white border-slate-200'
+              : isAmber
+              ? 'bg-amber-50/50 border-amber-200'
+              : 'bg-rose-50/50 border-rose-200'
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                isGood ? 'bg-emerald-50 text-emerald-700' :
+                isAmber ? 'bg-amber-100 text-amber-800' :
+                'bg-rose-100 text-rose-800'
+              }`}>
+                {ICON_MAP[item.name] || <Briefcase size={16} />}
+              </div>
+              <div>
+                <span className="font-semibold text-slate-800 text-xs block">{item.name}</span>
+                <span className={`text-[10px] font-medium ${
+                  isGood ? 'text-emerald-600' :
+                  isAmber ? 'text-amber-600' :
+                  'text-rose-600'
+                }`}>{item.status}</span>
+              </div>
             </div>
-            <div>
-              <span className="font-semibold text-slate-800 text-xs block">{item.name}</span>
-              <span className={`text-[10px] font-medium ${
-                item.status === 'Working' ? 'text-emerald-600' :
-                item.status === 'Needs Repair' ? 'text-amber-600' :
-                'text-rose-600'
-              }`}>{item.status}</span>
+
+            <div className="flex flex-wrap gap-1.5">
+              {statusOptions.map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => onChange(i, 'status', status)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                    item.status === status
+                      ? (status === 'Working' || status === 'Available') ? 'bg-emerald-600 text-white' :
+                        status === 'Needs Repair' ? 'bg-amber-600 text-white' :
+                        'bg-rose-600 text-white'
+                      : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
-            {EQUIPMENT_STATUS_OPTIONS.map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => onChange(i, 'status', status)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
-                  item.status === status
-                    ? status === 'Working' ? 'bg-emerald-600 text-white' :
-                      status === 'Needs Repair' ? 'bg-amber-600 text-white' :
-                      'bg-rose-600 text-white'
-                    : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
+          {!isGood && (
+            <div className="mt-2 pt-2 border-t border-slate-200/60">
+              <input
+                type="text"
+                placeholder="Briefly describe the issue..."
+                value={item.remarks}
+                onChange={(e) => onChange(i, 'remarks', e.target.value)}
+                className="w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50/50 text-slate-800 placeholder-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                required
+              />
+            </div>
+          )}
         </div>
-
-        {item.status !== 'Working' && (
-          <div className="mt-2 pt-2 border-t border-slate-200/60">
-            <input
-              type="text"
-              placeholder="Briefly describe the issue..."
-              value={item.remarks}
-              onChange={(e) => onChange(i, 'remarks', e.target.value)}
-              className="w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50/50 text-slate-800 placeholder-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              required
-            />
-          </div>
-        )}
-      </div>
-    ))}
+      );
+    })}
   </div>
 );
 
@@ -182,9 +190,9 @@ export default function OpenShift() {
     setSelectedRole(role);
     if (role === 'nurse') {
       const wardObj = NURSING_WARDS.find(w => w.name === selectedWard) || NURSING_WARDS[0];
-      setEquipment(wardObj.equipment.map(name => ({ name, status: 'Working', remarks: '' })));
+      setEquipment(wardObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
     } else {
-      setEquipment(EQUIPMENT_BY_ROLE[role].map(name => ({ name, status: 'Working', remarks: '' })));
+      setEquipment(EQUIPMENT_BY_ROLE[role].map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
     }
     setStep(2);
   };
@@ -192,7 +200,7 @@ export default function OpenShift() {
   const handleWardSelect = (wardName) => {
     setSelectedWard(wardName);
     const wardObj = NURSING_WARDS.find(w => w.name === wardName) || NURSING_WARDS[0];
-    setEquipment(wardObj.equipment.map(name => ({ name, status: 'Working', remarks: '' })));
+    setEquipment(wardObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
   };
 
   const handleEquipmentChange = (i, field, val) => {
@@ -213,7 +221,7 @@ export default function OpenShift() {
       return;
     }
 
-    const badEquip = equipment.filter(e => e.status !== 'Working' && !e.remarks.trim());
+    const badEquip = equipment.filter(e => e.status !== 'Working' && e.status !== 'Available' && !e.remarks.trim());
     if (badEquip.length) {
       toast.error(`Please provide details for the ${badEquip[0].name}`);
       return;

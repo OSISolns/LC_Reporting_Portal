@@ -7,7 +7,9 @@ const PatientAutocomplete = ({
   onChange,
   onPatientSelect,
   placeholder = "Start typing name, phone, or PID...",
-  inputStyle = {}
+  inputStyle = {},
+  required = false,
+  name
 }) => {
   const [query, setQuery] = useState(value || '');
   const [suggestions, setSuggestions] = useState([]);
@@ -108,6 +110,8 @@ const PatientAutocomplete = ({
         <input
           ref={inputRef}
           type="text"
+          name={name}
+          required={required}
           value={query}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}

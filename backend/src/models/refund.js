@@ -12,18 +12,26 @@ class Refund {
     } = data;
 
     // Prevent duplicate: Check for existing active/approved request for this SID
-    const existing = await db.query(
-      `SELECT id FROM refund_requests WHERE sid_number = $1 AND status != 'rejected' LIMIT 1`,
-      [sidNumber]
-    );
-    if (existing.rows.length > 0) {
-      const error = new Error('A refund request for this SID already exists.');
-      error.status = 400;
-      throw error;
+    if (sidNumber && sidNumber.trim() !== '') {
+      const existing = await db.query(
+        `SELECT id FROM refund_requests WHERE sid_number ILIKE $1 AND status != 'rejected' LIMIT 1`,
+        [sidNumber]
+      );
+      if (existing.rows.length > 0) {
+        const error = new Error('A refund request for this SID already exists.');
+        error.status = 400;
+        throw error;
+      }
     }
 
-    const cleanDate   = (d) => (d && d.trim() !== '' ? d : null);
-    const cleanAmount = (a) => (a && a.toString().trim() !== '' ? a : null);
+    const cleanDate = (d) => {
+      if (!d || typeof d !== 'string' || d.trim() === '') return null;
+      const s = /^\d{4}-\d{2}-\d{2}$/.test(d.trim()) ? d.trim() + 'T00:00:00.000Z' : d.trim();
+      const parsed = new Date(s);
+      if (isNaN(parsed.getTime())) return null;
+      return parsed.toISOString();
+    };
+    const cleanAmount = (a) => (a !== undefined && a !== null && a.toString().trim() !== '' ? a : null);
 
     const { rows } = await db.query(
       `INSERT INTO refund_requests (
@@ -33,7 +41,7 @@ class Refund {
         amount_paid_by, original_receipt_number,
         initial_transaction_date, reason_for_refund,
         created_by, status, billed_by
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending',$14)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       RETURNING *`,
       [
         patientFullName, pidNumber, sidNumber,
@@ -41,7 +49,67 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        userId, billedBy || null
+        userId, 'pending', billedBy || null
+      ]
+    );
+    return rows[0];
+  }
+
+  static async update(id, data) {
+    const {
+      patientFullName, pidNumber, sidNumber,
+      telephoneNumber, insurancePayer,
+      momoCode, totalAmountPaid, amountToBeRefunded,
+      amountPaidBy, originalReceiptNumber,
+      initialTransactionDate, reasonForRefund, billedBy
+    } = data;
+
+    if (sidNumber && sidNumber.trim() !== '') {
+      const existing = await db.query(
+        `SELECT id FROM refund_requests WHERE sid_number ILIKE $1 AND id != $2 AND status != 'rejected' LIMIT 1`,
+        [sidNumber, id]
+      );
+      if (existing.rows.length > 0) {
+        const error = new Error('A refund request for this SID already exists.');
+        error.status = 400;
+        throw error;
+      }
+    }
+
+    const cleanDate = (d) => {
+      if (!d || typeof d !== 'string' || d.trim() === '') return null;
+      const s = /^\d{4}-\d{2}-\d{2}$/.test(d.trim()) ? d.trim() + 'T00:00:00.000Z' : d.trim();
+      const parsed = new Date(s);
+      if (isNaN(parsed.getTime())) return null;
+      return parsed.toISOString();
+    };
+    const cleanAmount = (a) => (a && a.toString().trim() !== '' ? a : null);
+
+    const { rows } = await db.query(
+      `UPDATE refund_requests SET
+        patient_full_name = $1,
+        pid_number = $2,
+        sid_number = $3,
+        telephone_number = $4,
+        insurance_payer = $5,
+        momo_code = $6,
+        total_amount_paid = $7,
+        amount_to_be_refunded = $8,
+        amount_paid_by = $9,
+        original_receipt_number = $10,
+        initial_transaction_date = $11,
+        reason_for_refund = $12,
+        billed_by = $13,
+        updated_at = NOW()
+      WHERE id = $14 AND status = 'pending'
+      RETURNING *`,
+      [
+        patientFullName, pidNumber, sidNumber,
+        telephoneNumber, insurancePayer,
+        momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
+        amountPaidBy, originalReceiptNumber,
+        cleanDate(initialTransactionDate), reasonForRefund,
+        billedBy || null, id
       ]
     );
     return rows[0];

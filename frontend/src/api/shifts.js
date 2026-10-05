@@ -90,3 +90,11 @@ export const deleteShift = (id) => api.delete(`/shifts/${id}`);
  * Export shifts to excel (Reviewer only).
  */
 export const exportShiftsExcel = (params = {}) => api.get('/shifts/export/excel', { params, responseType: 'blob' });
+
+/**
+ * Transfer a staff member's active station (COO, Deputy COO, Admin only).
+ * @param {number} shiftId
+ * @param {object} payload - { new_shift_role, transfer_reason, password, new_nursing_ward }
+ */
+export const transferStaffStation = (shiftId, payload) => api.post(`/shifts/${shiftId}/transfer`, payload);
+

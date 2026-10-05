@@ -2111,6 +2111,79 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       }
     }
 
+    // ─── Fix TIMESTAMPTZ column type on users table ───────────────────────────
+    // Prisma ≥6.x rejects raw queries that touch columns declared as TIMESTAMPTZ
+    // in SQLite (it's not a recognised SQLite affinity). If the lockout_until column
+    // was created before transformQuery normalised the DDL, it will still carry the
+    // TIMESTAMPTZ declaration and break every $queryRawUnsafe call that touches users.
+    // We detect this and rebuild the table in-place using the standard SQLite
+    // copy-rename pattern so that all existing data is preserved.
+    try {
+      const { rows: userCols } = await client.execute("PRAGMA table_info(users)");
+      const badCol = userCols.find(c => c.name === 'lockout_until' && String(c.type).toUpperCase().includes('TIMESTAMPTZ'));
+      if (badCol) {
+        console.log('⚙️ Fixing TIMESTAMPTZ → DATETIME on users.lockout_until ...');
+        // Build column list from current PRAGMA so the copy stays in sync
+        const colDefs = userCols.map(c => {
+          const type = String(c.type).toUpperCase().includes('TIMESTAMPTZ') ? 'DATETIME' : c.type;
+          let def = `${c.name} ${type}`;
+          if (c.pk) def += ' PRIMARY KEY AUTOINCREMENT';
+          if (c.notnull && !c.pk) def += ' NOT NULL';
+          if (c.dflt_value !== null && c.dflt_value !== undefined) def += ` DEFAULT ${c.dflt_value}`;
+          return def;
+        }).join(', ');
+        const colNames = userCols.map(c => c.name).join(', ');
+        // SQLite does not support ALTER COLUMN — use copy/rename instead
+        await prisma.$executeRawUnsafe('PRAGMA foreign_keys = OFF');
+        await prisma.$executeRawUnsafe(`CREATE TABLE users_new (${colDefs})`);
+        await prisma.$executeRawUnsafe(`INSERT INTO users_new (${colNames}) SELECT ${colNames} FROM users`);
+        await prisma.$executeRawUnsafe('DROP TABLE users');
+        await prisma.$executeRawUnsafe('ALTER TABLE users_new RENAME TO users');
+        await prisma.$executeRawUnsafe('PRAGMA foreign_keys = ON');
+        console.log('✅ Fixed: users.lockout_until is now DATETIME');
+      }
+    } catch (err) {
+      console.error('❌ Failed to fix TIMESTAMPTZ on users table:', err.message);
+    }
+
+    // ─── Fix date-only values in DATETIME columns ─────────────────────────────
+    // Prisma ≥6.x tries to coerce DATETIME column values to JS Date objects and
+    // rejects strings that are not full ISO 8601 datetimes (e.g. "2026-10-04"
+    // instead of "2026-10-04T00:00:00.000Z"). Patch any date-only rows in the
+    // tables that accept user-supplied date input so that $queryRawUnsafe can
+    // return their results without throwing "Conversion failed: input contains
+    // invalid characters".
+    try {
+      const dateOnlyTables = [
+        { table: 'cancellation_requests', cols: ['initial_transaction_date', 'rectified_date'] },
+        { table: 'refund_requests',       cols: ['transaction_date', 'refund_date'] },
+        { table: 'results_transfers',     cols: ['transfer_date'] },
+      ];
+      for (const { table, cols } of dateOnlyTables) {
+        // Check if table exists before trying to update
+        const { rows: tbl } = await client.execute(
+          `SELECT name FROM sqlite_master WHERE type='table' AND name='${table}'`
+        );
+        if (tbl.length === 0) continue;
+        for (const col of cols) {
+          // Check if column exists
+          const { rows: pragma } = await client.execute(`PRAGMA table_info(${table})`);
+          if (!pragma.some(c => c.name === col)) continue;
+          // Only update rows where the value looks like a bare date (YYYY-MM-DD)
+          await prisma.$executeRawUnsafe(
+            `UPDATE ${table} SET ${col} = ${col} || 'T00:00:00.000Z'
+             WHERE ${col} IS NOT NULL
+               AND ${col} GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+               AND length(${col}) = 10`
+          );
+        }
+      }
+      console.log('✅ SQLite Migration: patched date-only DATETIME values to full ISO 8601');
+    } catch (err) {
+      console.error('❌ Failed to patch date-only DATETIME values:', err.message);
+    }
+
+
     try {
       await client.execute("ALTER TABLE shift_sessions ADD COLUMN start_hour TEXT");
       console.log('✅ SQLite Schema Migration: added start_hour to shift_sessions');
@@ -2119,6 +2192,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
       }
     }
+
 
     try {
       await client.execute("ALTER TABLE shift_sessions ADD COLUMN wave TEXT");
@@ -2132,6 +2206,51 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     try {
       await client.execute("ALTER TABLE shift_sessions ADD COLUMN nursing_ward TEXT");
       console.log('✅ SQLite Schema Migration: added nursing_ward to shift_sessions');
+    } catch (err) {
+      if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+        console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+      }
+    }
+
+    try {
+      await client.execute("ALTER TABLE shift_sessions ADD COLUMN transferred_from_shift_id INTEGER");
+      console.log('✅ SQLite Schema Migration: added transferred_from_shift_id to shift_sessions');
+    } catch (err) {
+      if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+        console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+      }
+    }
+
+    try {
+      await client.execute("ALTER TABLE shift_sessions ADD COLUMN transfer_reason TEXT");
+      console.log('✅ SQLite Schema Migration: added transfer_reason to shift_sessions');
+    } catch (err) {
+      if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+        console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+      }
+    }
+
+    try {
+      await client.execute("ALTER TABLE shift_sessions ADD COLUMN transferred_by INTEGER");
+      console.log('✅ SQLite Schema Migration: added transferred_by to shift_sessions');
+    } catch (err) {
+      if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+        console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+      }
+    }
+
+    try {
+      await client.execute("ALTER TABLE shift_sessions ADD COLUMN transfer_status TEXT");
+      console.log('✅ SQLite Schema Migration: added transfer_status to shift_sessions');
+    } catch (err) {
+      if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+        console.warn('⚠️ SQLite Schema Migration Notice:', err.message);
+      }
+    }
+
+    try {
+      await client.execute("ALTER TABLE shift_sessions ADD COLUMN transferred_to_role TEXT");
+      console.log('✅ SQLite Schema Migration: added transferred_to_role to shift_sessions');
     } catch (err) {
       if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
         console.warn('⚠️ SQLite Schema Migration Notice:', err.message);

@@ -46,6 +46,27 @@ exports.createRequest = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.updateRequest = async (req, res, next) => {
+  try {
+    const existing = await Cancellation.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Cancellation request not found' });
+    }
+    if (existing.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Only pending cancellation requests can be edited.' });
+    }
+    const privilegedRoles = ['sales_manager', 'coo', 'deputy_coo', 'admin'];
+    if (existing.created_by !== req.user.id && !privilegedRoles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Access denied: You can only edit your own pending requests.' });
+    }
+    const updated = await Cancellation.update(req.params.id, req.body);
+    try { await logAction(req, 'UPDATE', 'cancellation_request', updated.id, { patient: updated.patient_full_name }); } catch (e) {}
+    cache.invalidatePattern('canc:list');
+    cache.invalidate('ai:module_stats');
+    res.json({ success: true, data: updated });
+  } catch (err) { next(err); }
+};
+
 exports.getAllRequests = async (req, res, next) => {
   try {
     const filters = { ...req.query };

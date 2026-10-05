@@ -21,6 +21,19 @@ router.post(
   refundController.createRequest
 );
 
+router.put(
+  '/:id',
+  checkPermission('refunds', 'create'),
+  validate([
+    param('id').isInt().withMessage('Invalid request ID'),
+    body('patientFullName').trim().notEmpty().withMessage('Patient name is required'),
+    body('pidNumber').trim().notEmpty().withMessage('PID number is required'),
+    body('amountToBeRefunded').notEmpty().withMessage('Refund amount is required'),
+    body('reasonForRefund').trim().notEmpty().withMessage('Reason for refund is required'),
+  ]),
+  refundController.updateRequest
+);
+
 // ── List ─────────────────────────────────────────────────────────
 router.get(
   '/',

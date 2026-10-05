@@ -46,6 +46,7 @@ import {
 } from '../../api/operations';
 import ConsumablesLog from '../ConsumablesLog';
 import ResultTransferList from '../results-transfer/ResultTransferList';
+import { transferStaffStation } from '../../api/shifts';
 import toast from 'react-hot-toast';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -296,7 +297,148 @@ const SHIFT_ROLE_LABELS = {
   call_center:  'Call Center',
   nurse:        'Nurse',
   vip_lounge:   'VIP Lounge',
+  imaging:      'Imaging / Radiology',
 };
+
+function StationTransferModal({ shift, onClose, onSuccess }) {
+  const [targetRole, setTargetRole] = useState(shift.shift_role === 'cashier' ? 'helpdesk' : 'cashier');
+  const [nursingWard, setNursingWard] = useState('STATION 1');
+  const [reason, setReason] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!reason.trim()) {
+      toast.error('Please specify the reason for station transfer.');
+      return;
+    }
+    if (!password) {
+      toast.error('Manager password confirmation is required.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await transferStaffStation(shift.id, {
+        new_shift_role: targetRole,
+        new_nursing_ward: targetRole === 'nurse' ? nursingWard : null,
+        transfer_reason: reason,
+        password: password
+      });
+      toast.success(res.data.message || 'Station transferred successfully!');
+      onSuccess();
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to transfer station.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden border border-slate-100"
+      >
+        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-900 to-slate-900 text-white flex justify-between items-center">
+          <div className="flex items-center gap-2 font-bold text-base">
+            <ArrowLeftRight size={18} className="text-blue-400" />
+            Transfer Staff Station
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl font-bold">
+            &times;
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm text-slate-700">
+          <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+            <p className="text-xs font-semibold text-blue-900">
+              Staff Member: <span className="font-bold text-blue-900">{shift.employee_name || shift.user_name}</span>
+            </p>
+            <p className="text-xs text-blue-700 mt-0.5">
+              Current Station: <span className="font-bold uppercase">{SHIFT_ROLE_LABELS[shift.shift_role] || shift.shift_role}</span> (Wave: {shift.wave || 'Wave 1'})
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase text-slate-600 mb-1">New Target Station</label>
+            <select
+              value={targetRole}
+              onChange={(e) => setTargetRole(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none font-medium focus:border-blue-500"
+            >
+              {Object.entries(SHIFT_ROLE_LABELS)
+                .filter(([k]) => k !== shift.shift_role)
+                .map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+            </select>
+          </div>
+
+          {targetRole === 'nurse' && (
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Nursing Ward Station</label>
+              <select
+                value={nursingWard}
+                onChange={(e) => setNursingWard(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none font-medium focus:border-blue-500"
+              >
+                <option value="STATION 1">STATION 1 (Inpatient Wards)</option>
+                <option value="STATION 2">STATION 2 (Outpatient Clinics)</option>
+                <option value="MINOR SURGERY">MINOR SURGERY</option>
+                <option value="PAEDIATRICS">PAEDIATRICS</option>
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Transfer Reason / Operational Notes</label>
+            <textarea
+              rows={2}
+              placeholder="e.g. Covering Helpdesk queue surge during peak morning wave..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none font-medium focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Manager Password Authorization</label>
+            <input
+              type="password"
+              placeholder="Enter your login password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none font-medium focus:border-blue-500"
+            />
+          </div>
+
+          <div className="pt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {submitting ? <Loader2 size={14} className="animate-spin" /> : <ArrowLeftRight size={14} />}
+              Confirm Station Transfer
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
 
 function ShiftReviewBoard() {
   const { hasPermission } = useAuth();
@@ -306,6 +448,7 @@ function ShiftReviewBoard() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ status: '', role: '', employee_name: '' });
   const [reviewingId, setReviewingId] = useState(null);
+  const [transferShiftTarget, setTransferShiftTarget] = useState(null);
 
   // Default to today
   const todayStr = new Date().toISOString().split('T')[0];
@@ -473,16 +616,27 @@ function ShiftReviewBoard() {
                     <td className="px-4 py-3"><StatusPill status={s.status} /></td>
                     {canReview && (
                       <td className="px-4 py-3 text-right">
-                        {s.status === 'closed' && (
-                          <button
-                            onClick={() => handleReview(s.id)}
-                            disabled={reviewingId === s.id}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
-                          >
-                            {reviewingId === s.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
-                            Mark Reviewed
-                          </button>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {(s.status === 'open' || s.status === 'draft') && (
+                            <button
+                              onClick={() => setTransferShiftTarget(s)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                            >
+                              <ArrowLeftRight size={12} />
+                              Transfer Station
+                            </button>
+                          )}
+                          {s.status === 'closed' && (
+                            <button
+                              onClick={() => handleReview(s.id)}
+                              disabled={reviewingId === s.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
+                            >
+                              {reviewingId === s.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                              Mark Reviewed
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </motion.tr>
@@ -492,6 +646,14 @@ function ShiftReviewBoard() {
           </div>
         )}
       </div>
+
+      {transferShiftTarget && (
+        <StationTransferModal
+          shift={transferShiftTarget}
+          onClose={() => setTransferShiftTarget(null)}
+          onSuccess={load}
+        />
+      )}
     </div>
   );
 }

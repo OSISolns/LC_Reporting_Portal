@@ -543,6 +543,111 @@ exports.reactivateShift = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ─── TRANSFER STATION ────────────────────────────────────────────────────────
+exports.transferStation = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { new_shift_role, transfer_reason, password, new_nursing_ward } = req.body;
+    const managerId = req.user.id;
+
+    // 1. Password verification for manager
+    const manager = await User.findById(managerId);
+    const authResult = await verifyPasswordAndCheckLockout(req, password, manager);
+    if (!authResult.allowed) {
+      return res.status(authResult.status).json({ success: false, message: authResult.message });
+    }
+
+    // 2. Fetch target shift to transfer
+    const currentShift = await q1(`SELECT * FROM shift_sessions WHERE id = ?`, [id]);
+    if (!currentShift) {
+      return res.status(404).json({ success: false, message: 'Shift session not found.' });
+    }
+    if (currentShift.status === 'closed') {
+      return res.status(400).json({ success: false, message: 'Cannot transfer a closed shift.' });
+    }
+    if (currentShift.shift_role === new_shift_role) {
+      return res.status(400).json({ success: false, message: `Staff member is already assigned to ${new_shift_role}.` });
+    }
+
+    const staffUser = await User.findById(currentShift.user_id);
+    if (!staffUser) {
+      return res.status(404).json({ success: false, message: 'Staff user not found.' });
+    }
+
+    // 3. Terminate / close current shift
+    const closeNotes = `[STATION TRANSFER] Transferred from ${currentShift.shift_role.toUpperCase()} to ${new_shift_role.toUpperCase()} by ${req.user.full_name} (${req.user.role}). Reason: ${transfer_reason}`;
+    
+    await db.query(
+      `UPDATE shift_sessions 
+       SET status = 'closed',
+           closed_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+           handover_notes = CASE WHEN handover_notes IS NULL OR handover_notes = '' THEN ? ELSE handover_notes || X'0A' || ? END,
+           transfer_status = 'transferred_out',
+           transferred_to_role = ?,
+           transferred_by = ?,
+           transfer_reason = ?,
+           updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+       WHERE id = ?`,
+      [closeNotes, closeNotes, new_shift_role, managerId, transfer_reason, id]
+    );
+
+    // 4. Open NEW shift for the staff member
+    const newWave = currentShift.wave || 'Wave 1';
+    const newStartHour = currentShift.start_hour || '07:00';
+    const ward = new_shift_role === 'nurse' ? (new_nursing_ward || currentShift.nursing_ward || 'STATION 1') : null;
+
+    const insertResult = await db.query(
+      `INSERT INTO shift_sessions 
+       (user_id, shift_role, status, start_hour, wave, nursing_ward, transferred_from_shift_id, transfer_status, transfer_reason, transferred_by)
+       VALUES (?, ?, 'open', ?, ?, ?, ?, 'transferred_in', ?, ?)`,
+      [currentShift.user_id, new_shift_role, newStartHour, newWave, ward, id, transfer_reason, managerId]
+    );
+
+    const newShiftId = insertResult.rows[0]?.id ?? (await q1(`SELECT last_insert_rowid() AS id`))?.id;
+
+    // 5. Populate opening equipment checklist for new station
+    const defaultEquip = EQUIPMENT_MAP[new_shift_role] || ['PC'];
+    for (const item of defaultEquip) {
+      await db.query(
+        `INSERT INTO shift_equipment_logs (shift_id, snapshot, equipment_name, equipment_status, remarks)
+         VALUES (?, 'open', ?, 'Working', ?)`,
+        [newShiftId, item, `Auto-assigned upon transfer from ${currentShift.shift_role}`]
+      );
+    }
+
+    // 6. Audit log
+    await db.query(
+      `INSERT INTO audit_logs (user_id, user_name, user_role, action, entity_type, entity_id, details)
+       VALUES (?, ?, ?, 'SHIFT_STATION_TRANSFERRED', 'shift_sessions', ?, ?)`,
+      [managerId, req.user.full_name, req.user.role, id,
+       JSON.stringify({ staff_user_id: currentShift.user_id, old_shift_id: id, new_shift_id: newShiftId, old_role: currentShift.shift_role, new_role: new_shift_role, reason: transfer_reason })]
+    );
+
+    // 7. Notification to staff
+    try {
+      await Notification.create({
+        userId: currentShift.user_id,
+        title: 'Station Transfer Notice',
+        message: `Your active shift station has been transferred from ${currentShift.shift_role.toUpperCase()} to ${new_shift_role.toUpperCase()} by ${req.user.full_name}. Reason: ${transfer_reason}`,
+        type: 'info',
+        link: `/shifts/${newShiftId}`
+      });
+    } catch (e) {}
+
+    res.json({
+      success: true,
+      message: `Staff station transferred successfully from ${currentShift.shift_role} to ${new_shift_role}.`,
+      data: {
+        oldShiftId: id,
+        newShiftId: newShiftId,
+        newRole: new_shift_role,
+        staffName: staffUser.full_name
+      }
+    });
+
+  } catch (err) { next(err); }
+};
+
 // ─── GET MY ACTIVE SHIFT ──────────────────────────────────────────────────────
 exports.getMyActiveShift = async (req, res, next) => {
   try {
@@ -781,12 +886,49 @@ async function enrichShiftDetail(shift) {
     };
   }
 
+  let transferredFromShift = null;
+  if (shift.transferred_from_shift_id) {
+    const prevShift = await q1(
+      `SELECT s.*, u.full_name AS user_name, u.email AS user_email,
+              tb.full_name AS transferred_by_name
+       FROM shift_sessions s
+       JOIN users u ON s.user_id = u.id
+       LEFT JOIN users tb ON s.transferred_by = tb.id
+       WHERE s.id = ?`,
+      [shift.transferred_from_shift_id]
+    );
+    if (prevShift) {
+      const prevEquipOpen = await q(`SELECT * FROM shift_equipment_logs WHERE shift_id = ? AND snapshot = 'open'`, [prevShift.id]);
+      const prevEquipClose = await q(`SELECT * FROM shift_equipment_logs WHERE shift_id = ? AND snapshot = 'close'`, [prevShift.id]);
+      let prevRoleData = null;
+      if (prevShift.shift_role === 'cashier') {
+        const openData = await q1(`SELECT * FROM shift_cashier_open WHERE shift_id = ?`, [prevShift.id]);
+        const closeData = await q1(`SELECT * FROM shift_cashier_close WHERE shift_id = ?`, [prevShift.id]);
+        prevRoleData = { opening: openData, closing: closeData };
+      } else if (prevShift.shift_role === 'helpdesk') {
+        prevRoleData = { closing: await q1(`SELECT * FROM shift_helpdesk_close WHERE shift_id = ?`, [prevShift.id]) };
+      } else if (prevShift.shift_role === 'call_center') {
+        prevRoleData = { closing: await q1(`SELECT * FROM shift_callcenter_close WHERE shift_id = ?`, [prevShift.id]) };
+      } else if (prevShift.shift_role === 'nurse') {
+        prevRoleData = { closing: await q1(`SELECT * FROM shift_nurse_close WHERE shift_id = ?`, [prevShift.id]) };
+      } else if (prevShift.shift_role === 'vip_lounge') {
+        prevRoleData = { closing: await q1(`SELECT * FROM shift_viplounge_close WHERE shift_id = ?`, [prevShift.id]) };
+      }
+      transferredFromShift = {
+        ...prevShift,
+        equipment: { open: prevEquipOpen, close: prevEquipClose },
+        role_data: prevRoleData
+      };
+    }
+  }
+
   return {
     ...shift,
     is_flagged: !!shift.is_flagged,
     flag_reasons: shift.flag_reasons ? JSON.parse(shift.flag_reasons) : [],
     equipment: { open: equipOpen, close: equipClose },
     role_data: roleData,
+    transferred_from_shift: transferredFromShift,
   };
 }
 

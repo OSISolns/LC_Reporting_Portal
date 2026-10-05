@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, FileText, Trash2, Eye, Download, CheckCircle } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Eye, Download, CheckCircle, Edit2 } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
@@ -15,6 +15,7 @@ import {
   rejectRefund,
   getRefundPDF,
   createRefund,
+  updateRefund,
   deleteRefund
 } from '../../api/refunds';
 import { getStaffList } from '../../api/users';
@@ -38,6 +39,7 @@ const RefundList = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal,   setShowViewModal]   = useState(false);
   const [activeRequest,   setActiveRequest]   = useState(null);
+  const [editingRequest,  setEditingRequest]  = useState(null);
   const [formData,        setFormData]        = useState(EMPTY_FORM);
   const [submitting,      setSubmitting]      = useState(false);
   const [detailLoading,   setDetailLoading]   = useState(false);
@@ -75,6 +77,32 @@ const RefundList = () => {
     }
   };
 
+  const handleOpenCreate = () => {
+    setEditingRequest(null);
+    setFormData(EMPTY_FORM);
+    setShowCreateModal(true);
+  };
+
+  const handleOpenEdit = (r) => {
+    setEditingRequest(r);
+    setFormData({
+      patientFullName: r.patient_full_name || '',
+      pidNumber: r.pid_number || '',
+      sidNumber: r.sid_number || '',
+      telephoneNumber: r.telephone_number || '',
+      insurancePayer: r.insurance_payer || '',
+      momoCode: r.momo_code || '',
+      totalAmountPaid: r.total_amount_paid || '',
+      amountToBeRefunded: r.amount_to_be_refunded || '',
+      amountPaidBy: r.amount_paid_by || '',
+      originalReceiptNumber: r.original_receipt_number || '',
+      initialTransactionDate: r.initial_transaction_date ? r.initial_transaction_date.split('T')[0] : '',
+      reasonForRefund: r.reason_for_refund || '',
+      billedBy: r.billed_by || ''
+    });
+    setShowCreateModal(true);
+  };
+
   const handleViewDetails = async (id) => {
     setActiveRequest(null);
     setShowViewModal(true);
@@ -93,12 +121,26 @@ const RefundList = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await createRefund(formData);
+      if (editingRequest) {
+        await updateRefund(editingRequest.id, formData);
+      } else {
+        await createRefund(formData);
+      }
       setShowCreateModal(false);
       fetchRequests();
       setFormData(EMPTY_FORM);
+      setEditingRequest(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to submit refund request');
+      const data = err.response?.data;
+      let errMsg = 'Failed to submit refund request';
+      if (data?.message) {
+        errMsg = data.message;
+      } else if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+        errMsg = data.errors.map(item => item.msg || item.message).join('\n');
+      } else if (err.message) {
+        errMsg = err.message;
+      }
+      alert(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -148,7 +190,7 @@ const RefundList = () => {
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Workflow for patient payment refunds.</p>
         </div>
         {canCreate && (
-          <button onClick={() => setShowCreateModal(true)}
+          <button onClick={handleOpenCreate}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#003b44', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(0,59,68,0.2)', cursor: 'pointer' }}>
             <Plus size={18} /> New Refund Request
           </button>
@@ -256,6 +298,15 @@ const RefundList = () => {
                       }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(40,167,69,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Download size={18} />
                     </button>
+                    {r.status === 'pending' && (user.role === 'admin' || r.created_by === user.id) && (
+                      <button 
+                        onClick={() => handleOpenEdit(r)}
+                        title="Edit Request"
+                        style={{ color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                    )}
                     {r.status === 'pending' && hasPermission('refunds', 'delete') && (user.role === 'admin' || r.created_by === user.id) && (
                       <button 
                         onClick={() => handleDelete(r.id)}
@@ -330,7 +381,7 @@ const RefundList = () => {
       </div>
 
       {/* Create Modal */}
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Refund Request" maxWidth="800px">
+      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title={editingRequest ? "Edit Refund Request" : "Create Refund Request"} maxWidth="800px">
         <RefundFormFields
           formData={formData}
           handleChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))}

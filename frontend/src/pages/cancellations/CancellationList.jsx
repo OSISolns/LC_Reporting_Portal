@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, Trash2, Eye, FileText, Download, CheckCircle } from 'lucide-react';
+import { Plus, Search, Trash2, Eye, FileText, Download, CheckCircle, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -10,6 +10,7 @@ import CancellationDetailsView from './components/CancellationDetailsView';
 import { 
   getCancellationById, 
   createCancellation, 
+  updateCancellation,
   getCancellationPDF, 
   getCancellations, 
   deleteCancellation,
@@ -38,10 +39,12 @@ const CancellationList = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [activeRequest, setActiveRequest] = useState(null);
+  const [editingRequest, setEditingRequest] = useState(null);
   const [formData, setFormData] = useState({
     patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
     telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
     originalReceiptNumber: '', rectifiedReceiptNumber: '',
+    originalReceiptAmount: '', rectifiedReceiptAmount: '',
     initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '', billedBy: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -80,6 +83,44 @@ const CancellationList = () => {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
+      telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
+      originalReceiptNumber: '', rectifiedReceiptNumber: '',
+      originalReceiptAmount: '', rectifiedReceiptAmount: '',
+      initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '', billedBy: ''
+    });
+    setEditingRequest(null);
+  };
+
+  const handleOpenCreate = () => {
+    resetForm();
+    setShowCreateModal(true);
+  };
+
+  const handleOpenEdit = (r) => {
+    setEditingRequest(r);
+    setFormData({
+      patientFullName: r.patient_full_name || '',
+      pidNumber: r.pid_number || '',
+      oldSidNumber: r.old_sid_number || '',
+      newSidNumber: r.new_sid_number || '',
+      telephoneNumber: r.telephone_number || '',
+      insurancePayer: r.insurance_payer || '',
+      totalAmountCancelled: r.total_amount_cancelled || '',
+      originalReceiptNumber: r.original_receipt_number || '',
+      rectifiedReceiptNumber: r.rectified_receipt_number || '',
+      originalReceiptAmount: r.original_receipt_amount || '',
+      rectifiedReceiptAmount: r.rectified_receipt_amount || '',
+      initialTransactionDate: r.initial_transaction_date ? r.initial_transaction_date.split('T')[0] : '',
+      rectifiedDate: r.rectified_date ? r.rectified_date.split('T')[0] : '',
+      reasonForCancellation: r.reason_for_cancellation || '',
+      billedBy: r.billed_by || ''
+    });
+    setShowCreateModal(true);
+  };
+
   const handleViewDetails = async (id) => {
     setActiveRequest(null);
     setShowViewModal(true);
@@ -94,22 +135,29 @@ const CancellationList = () => {
     }
   };
 
-
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await createCancellation(formData);
+      if (editingRequest) {
+        await updateCancellation(editingRequest.id, formData);
+      } else {
+        await createCancellation(formData);
+      }
       setShowCreateModal(false);
       fetchRequests();
-      setFormData({
-        patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
-        telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
-        originalReceiptNumber: '', rectifiedReceiptNumber: '',
-        initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '', billedBy: ''
-      });
+      resetForm();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to submit request');
+      const data = err.response?.data;
+      let errMsg = 'Failed to submit cancellation request';
+      if (data?.message) {
+        errMsg = data.message;
+      } else if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+        errMsg = data.errors.map(item => item.msg || item.message).join('\n');
+      } else if (err.message) {
+        errMsg = err.message;
+      }
+      alert(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -165,7 +213,7 @@ const CancellationList = () => {
         </div>
           {hasPermission('cancellations', 'create') && (
             <button 
-              onClick={() => setShowCreateModal(true)}
+              onClick={handleOpenCreate}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#1b669e', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(27, 102, 158, 0.2)', cursor: 'pointer' }}
             >
               <Plus size={18} />
@@ -315,6 +363,15 @@ const CancellationList = () => {
                       }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(40,167,69,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Download size={18} />
                     </button>
+                    {r.status === 'pending' && (user.role === 'admin' || r.created_by === user.id) && (
+                      <button 
+                        onClick={() => handleOpenEdit(r)}
+                        title="Edit Request"
+                        style={{ color: '#1b669e', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                    )}
                     {r.status === 'pending' && hasPermission('cancellations', 'delete') && (user.role === 'admin' || r.created_by === user.id) && (
                       <button 
                         onClick={() => handleDelete(r.id)}
@@ -390,7 +447,7 @@ const CancellationList = () => {
       <Modal 
         isOpen={showCreateModal} 
         onClose={() => setShowCreateModal(false)}
-        title="Create Cancellation Request"
+        title={editingRequest ? "Edit Cancellation Request" : "Create Cancellation Request"}
         maxWidth="800px"
       >
         <CancellationFormFields 

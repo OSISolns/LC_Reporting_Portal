@@ -44,14 +44,25 @@ export const NURSING_WARDS = [
 
 // ─── Equipment per role ──────────────────────────────────────────────────────
 export const EQUIPMENT_BY_ROLE = {
-  cashier: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
-  helpdesk: ['PC', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
+  cashier: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Paid Stamp'],
+  helpdesk: ['PC', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Waiting No. Stamp'],
   call_center: ['PC', 'Headset'],
   nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
   vip_lounge: ['PC', 'Desk Phone'],
 };
 
-export const EQUIPMENT_STATUS_OPTIONS = ['Working', 'Needs Repair', 'Broken/Missing'];
+export const EQUIPMENT_STATUS_OPTIONS = ['Working', 'Needs Repair', 'Broken', 'Missing'];
+
+export const getItemStatusOptions = (itemName) => {
+  if (itemName === 'Waiting No. Stamp' || itemName === 'Paid Stamp' || (itemName && itemName.toLowerCase().includes('stamp'))) {
+    return ['Available', 'Missing'];
+  }
+  return EQUIPMENT_STATUS_OPTIONS;
+};
+
+export const getDefaultItemStatus = (itemName) => {
+  return getItemStatusOptions(itemName)[0];
+};
 
 // ─── Insurance options ───────────────────────────────────────────────────────
 export const INSURANCE_OPTIONS = [

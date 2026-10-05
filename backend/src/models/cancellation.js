@@ -21,7 +21,7 @@ class Cancellation {
     // Prevent duplicate: Check for existing active/approved request for this SID (only if old SID is provided)
     if (oldSidNumber && oldSidNumber.trim() !== '') {
       const existing = await db.query(
-        `SELECT id FROM cancellation_requests WHERE old_sid_number = $1 AND status != 'rejected' LIMIT 1`,
+        `SELECT id FROM cancellation_requests WHERE old_sid_number ILIKE $1 AND status != 'rejected' LIMIT 1`,
         [oldSidNumber]
       );
       if (existing.rows.length > 0) {
@@ -31,8 +31,16 @@ class Cancellation {
       }
     }
 
-    const cleanDate = (d) => (d && d.trim() !== '' ? d : null);
-    const cleanAmount = (a) => (a && a.toString().trim() !== '' ? a : null);
+    const cleanDate = (d) => {
+      if (!d || typeof d !== 'string' || d.trim() === '') return null;
+      // If the value is a bare date (YYYY-MM-DD), append midnight UTC so
+      // Prisma ≥6.x does not reject the value when reading it back from a DATETIME column.
+      const s = /^\d{4}-\d{2}-\d{2}$/.test(d.trim()) ? d.trim() + 'T00:00:00.000Z' : d.trim();
+      const parsed = new Date(s);
+      if (isNaN(parsed.getTime())) return null;
+      return parsed.toISOString();
+    };
+    const cleanAmount = (a) => (a !== undefined && a !== null && a.toString().trim() !== '' ? a : null);
 
     const { rows } = await db.query(
       `INSERT INTO cancellation_requests (
@@ -42,7 +50,7 @@ class Cancellation {
         original_receipt_amount, rectified_receipt_amount,
         initial_transaction_date, rectified_date, reason_for_cancellation,
         created_by, status, billed_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending', $16)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *`,
       [
         patientFullName, pidNumber, oldSidNumber, newSidNumber,
@@ -50,7 +58,75 @@ class Cancellation {
         originalReceiptNumber, rectifiedReceiptNumber,
         cleanAmount(originalReceiptAmount), cleanAmount(rectifiedReceiptAmount),
         cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
-        userId, billedBy || null
+        userId, 'pending', billedBy || null
+      ]
+    );
+    return rows[0];
+  }
+
+  static async update(id, data) {
+    const {
+      patientFullName, pidNumber, oldSidNumber, newSidNumber,
+      telephoneNumber, insurancePayer, totalAmountCancelled,
+      originalReceiptNumber, rectifiedReceiptNumber,
+      originalReceiptAmount, rectifiedReceiptAmount,
+      initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy
+    } = data;
+
+    if (oldSidNumber && oldSidNumber.trim() !== '' && (!newSidNumber || newSidNumber.trim() === '')) {
+      const error = new Error('New SID is required when an Old SID is provided.');
+      error.status = 400;
+      throw error;
+    }
+
+    if (oldSidNumber && oldSidNumber.trim() !== '') {
+      const existing = await db.query(
+        `SELECT id FROM cancellation_requests WHERE old_sid_number ILIKE $1 AND id != $2 AND status != 'rejected' LIMIT 1`,
+        [oldSidNumber, id]
+      );
+      if (existing.rows.length > 0) {
+        const error = new Error('A cancellation request for this SID already exists.');
+        error.status = 400;
+        throw error;
+      }
+    }
+
+    const cleanDate = (d) => {
+      if (!d || typeof d !== 'string' || d.trim() === '') return null;
+      const s = /^\d{4}-\d{2}-\d{2}$/.test(d.trim()) ? d.trim() + 'T00:00:00.000Z' : d.trim();
+      const parsed = new Date(s);
+      if (isNaN(parsed.getTime())) return null;
+      return parsed.toISOString();
+    };
+    const cleanAmount = (a) => (a && a.toString().trim() !== '' ? a : null);
+
+    const { rows } = await db.query(
+      `UPDATE cancellation_requests SET
+        patient_full_name = $1,
+        pid_number = $2,
+        old_sid_number = $3,
+        new_sid_number = $4,
+        telephone_number = $5,
+        insurance_payer = $6,
+        total_amount_cancelled = $7,
+        original_receipt_number = $8,
+        rectified_receipt_number = $9,
+        original_receipt_amount = $10,
+        rectified_receipt_amount = $11,
+        initial_transaction_date = $12,
+        rectified_date = $13,
+        reason_for_cancellation = $14,
+        billed_by = $15,
+        updated_at = NOW()
+      WHERE id = $16 AND status = 'pending'
+      RETURNING *`,
+      [
+        patientFullName, pidNumber, oldSidNumber, newSidNumber,
+        telephoneNumber, insurancePayer, cleanAmount(totalAmountCancelled),
+        originalReceiptNumber, rectifiedReceiptNumber,
+        cleanAmount(originalReceiptAmount), cleanAmount(rectifiedReceiptAmount),
+        cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
+        billedBy || null, id
       ]
     );
     return rows[0];
@@ -117,11 +193,11 @@ class Cancellation {
 
     if (filters.startDate) {
       params.push(filters.startDate);
-      query += ` AND c.created_at >= $${params.length}::date`;
+      query += ` AND c.created_at >= $${params.length}`;
     }
     if (filters.endDate) {
-      params.push(`${filters.endDate} 23:59:59`);
-      query += ` AND c.created_at <= $${params.length}::timestamp`;
+      params.push(`${filters.endDate}T23:59:59.999Z`);
+      query += ` AND c.created_at <= $${params.length}`;
     }
 
     query += ` ORDER BY c.created_at DESC LIMIT 200`;
