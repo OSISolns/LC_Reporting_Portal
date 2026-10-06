@@ -253,6 +253,10 @@ exports.uploadDocument = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Cancellation request not found.' });
     }
 
+    if (existing.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Supporting documents can only be attached when the request is in pending status.' });
+    }
+
     if (!fileBase64 || !fileName) {
       return res.status(400).json({ success: false, message: 'File data and file name are required.' });
     }

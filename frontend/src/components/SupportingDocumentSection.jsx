@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Upload, Download, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { FileText, Upload, Download, CheckCircle2, AlertCircle, RefreshCw, Eye, X } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 
 const SupportingDocumentSection = ({ data, onUpload, requestId, requestType = 'cancellation', user }) => {
@@ -8,8 +8,11 @@ const SupportingDocumentSection = ({ data, onUpload, requestId, requestType = 'c
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isReplacing, setIsReplacing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
-  const canUpload = ['sales_manager', 'principal_cashier', 'admin'].includes(user?.role);
+  const isPending = data?.status === 'pending';
+  const canUpload = isPending && ['sales_manager', 'principal_cashier', 'admin'].includes(user?.role);
 
   const hasDocument = Boolean(data?.supporting_document_name || data?.supporting_document_uploaded_at);
 
@@ -64,6 +67,41 @@ const SupportingDocumentSection = ({ data, onUpload, requestId, requestType = 'c
       setError('An unexpected error occurred during upload.');
       setUploading(false);
     }
+  };
+
+  const handlePreviewPDF = () => {
+    setPreviewLoading(true);
+    const token = localStorage.getItem('token');
+    const endpoint = requestType === 'cancellation'
+      ? `/api/cancellations/${requestId}/document?download=true`
+      : `/api/refunds/${requestId}/document?download=true`;
+
+    fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load document preview');
+        return res.blob();
+      })
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob);
+        setPreviewUrl(url);
+      })
+      .catch((err) => {
+        alert(err.message || 'Failed to load preview');
+      })
+      .finally(() => {
+        setPreviewLoading(false);
+      });
+  };
+
+  const closePreview = () => {
+    if (previewUrl) {
+      window.URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
   };
 
   const handleDownload = () => {
@@ -153,26 +191,47 @@ const SupportingDocumentSection = ({ data, onUpload, requestId, requestType = 'c
             </div>
           </div>
 
-          <button
-            onClick={handleDownload}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: 'var(--primary)',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              flexShrink: 0,
-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-            }}
-          >
-            <Download size={16} /> View / Download PDF
-          </button>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            <button
+              onClick={handlePreviewPDF}
+              disabled={previewLoading}
+              style={{
+                padding: '9px 14px',
+                backgroundColor: '#f1f5f9',
+                color: 'var(--primary-dark)',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              {previewLoading ? <LoadingSpinner size="sm" /> : <Eye size={15} />}
+              View PDF
+            </button>
+            <button
+              onClick={handleDownload}
+              style={{
+                padding: '9px 14px',
+                backgroundColor: 'var(--primary)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+              }}
+            >
+              <Download size={15} /> Download
+            </button>
+          </div>
         </div>
       ) : canUpload ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -272,7 +331,94 @@ const SupportingDocumentSection = ({ data, onUpload, requestId, requestType = 'c
         </div>
       ) : (
         <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', color: 'var(--text-secondary)', fontSize: '0.875rem', fontStyle: 'italic' }}>
-          No supporting document attached. (Only Sales Manager and Principal Cashiers can upload supporting documents)
+          No supporting document attached. {isPending ? '(Only Sales Manager and Principal Cashiers can upload supporting documents while request is pending)' : '(Supporting documents can only be attached while request is pending)'}
+        </div>
+      )}
+
+      {previewUrl && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            width: '90%',
+            maxWidth: '1000px',
+            height: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)'
+          }}>
+            <div style={{
+              padding: '1rem 1.5rem',
+              backgroundColor: '#f8fafc',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <FileText size={20} style={{ color: 'var(--primary)' }} />
+                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary-dark)' }}>
+                  {data?.supporting_document_name || 'Supporting Document Viewer'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  onClick={handleDownload}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: 'var(--primary)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Download size={14} /> Download PDF
+                </button>
+                <button
+                  onClick={closePreview}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#64748b',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    borderRadius: '6px'
+                  }}
+                >
+                  <X size={22} />
+                </button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, backgroundColor: '#525659' }}>
+              <iframe
+                src={previewUrl}
+                title="Supporting Document PDF Preview"
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
