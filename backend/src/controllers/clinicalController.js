@@ -6070,18 +6070,19 @@ async function helperOpenPortalsForRFQ(rfqId, validVendorIds) {
     let tokenCode = '';
 
     const { rows: existing } = await db.query(
-      "SELECT id, vendor_id, vendor_name, token, created_at FROM supplier_portal_sessions WHERE vendor_id = $1 AND is_active = 1 LIMIT 1",
+      "SELECT id, vendor_id, vendor_name, token, created_at FROM supplier_portal_sessions WHERE vendor_id = $1 ORDER BY id DESC LIMIT 1",
       [vendorId]
     );
     if (existing.length > 0) {
       tokenCode = existing[0].token;
       await db.query(
-        "UPDATE supplier_portal_sessions SET items = $1 WHERE id = $2",
+        "UPDATE supplier_portal_sessions SET items = $1, is_active = 1 WHERE id = $2",
         [JSON.stringify(formattedItems), existing[0].id]
       );
       portalSessions.push({
         id: existing[0].id,
         vendorId: existing[0].vendor_id,
+        vendor_id: existing[0].vendor_id,
         vendorName: existing[0].vendor_name,
         token: tokenCode,
         createdAt: existing[0].created_at,
@@ -6090,7 +6091,11 @@ async function helperOpenPortalsForRFQ(rfqId, validVendorIds) {
     } else {
       const session = await helperOpenSupplierPortalSession(vendorId, formattedItems, false);
       if (session) {
-        portalSessions.push(session);
+        portalSessions.push({
+          ...session,
+          vendorId: session.vendorId || vendorId,
+          vendor_id: session.vendorId || vendorId
+        });
       }
     }
   }
@@ -6099,22 +6104,41 @@ async function helperOpenPortalsForRFQ(rfqId, validVendorIds) {
 }
 
 async function helperNotifyVendorsForRFQ(rfqId, rfqTitle, refNo, category, notes, validVendorIds, portalSessions, formattedItems, ccProcurement) {
-  for (const vendorId of validVendorIds) {
-    const { rows: vRows } = await db.query(
-      "SELECT name, contact, email FROM vendors WHERE id = $1",
-      [vendorId]
-    );
-    const vendorObj = vRows[0] || {};
-    const session = portalSessions.find(s => Number(s.vendorId) === Number(vendorId));
-    if (!session) continue;
-    const tokenCode = session.token;
+  console.log(`📧 [RFQ Email Dispatch] Starting background notifications for RFQ #${rfqId} ("${rfqTitle}") to ${validVendorIds.length} vendor(s)...`);
 
-    if (vendorObj.email && vendorObj.email.trim()) {
+  const { rows: rfqDeptRows } = await db.query("SELECT department FROM rfqs WHERE id = $1", [rfqId]);
+  const rfqDepartment = rfqDeptRows[0]?.department || '';
+
+  for (const vendorId of validVendorIds) {
+    try {
+      const { rows: vRows } = await db.query(
+        "SELECT name, contact, email FROM vendors WHERE id = $1",
+        [vendorId]
+      );
+      const vendorObj = vRows[0] || {};
+      const session = portalSessions.find(s => Number(s.vendorId || s.vendor_id) === Number(vendorId));
+      if (!session) {
+        console.warn(`⚠️ [RFQ Email Skip] No portal session found for vendorId=${vendorId} ("${vendorObj.name || 'Unknown'}")`);
+        continue;
+      }
+      const tokenCode = session.token;
+
+      // Robust email fallback: check email column, or contact column if it contains '@'
+      let rawEmail = (vendorObj.email && vendorObj.email.trim()) ? vendorObj.email.trim() : '';
+      if (!rawEmail && vendorObj.contact && vendorObj.contact.includes('@')) {
+        rawEmail = vendorObj.contact.trim();
+      }
+
+      if (!rawEmail) {
+        console.warn(`⚠️ [RFQ Email Skip] Vendor "${vendorObj.name || vendorId}" (ID: ${vendorId}) has no email address configured in database.`);
+        continue;
+      }
+
       const portalUrl = process.env.SUPPLIER_PORTAL_URL || 'https://report.ops-legacyclinics.rw/supplier-portal';
       const emailSubject = `[Tender Invitation] ${rfqTitle} - Ref: ${refNo}`;
 
       let itemsTableHtml = '';
-      if (formattedItems.length > 0) {
+      if (formattedItems && formattedItems.length > 0) {
         itemsTableHtml = `
           <div style="margin: 16px 0;">
             <p style="margin-bottom: 8px; font-weight: bold; color: #1e3a8a; font-size: 14px;">Requested Line Items (${formattedItems.length}):</p>
@@ -6132,11 +6156,11 @@ async function helperNotifyVendorsForRFQ(rfqId, rfqTitle, refNo, category, notes
                   <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 1 ? 'background-color: #f8fafc;' : ''}">
                     <td style="padding: 8px 10px; color: #64748b;">${idx + 1}</td>
                     <td style="padding: 8px 10px; font-weight: bold; color: #1e293b;">
-                      ${item.item_name}
+                      ${item.item_name || item.name}
                       ${item.quantity_label ? `<br/><span style="font-size: 11px; font-weight: normal; color: #64748b;">${item.quantity_label}</span>` : ''}
                     </td>
                     <td style="padding: 8px 10px; text-align: right; font-weight: bold; color: #2563eb;">${item.quantity !== null && item.quantity !== undefined ? item.quantity : '—'}</td>
-                    <td style="padding: 8px 10px; text-align: center; color: #64748b;">${item.unit || 'Units'}</td>
+                    <td style="padding: 8px 10px; text-align: center; color: #64748b;">${item.unit || item.unit_of_measure || 'Units'}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -6144,9 +6168,6 @@ async function helperNotifyVendorsForRFQ(rfqId, rfqTitle, refNo, category, notes
           </div>
         `;
       }
-
-      const { rows: rfqDeptRows } = await db.query("SELECT department FROM rfqs WHERE id = $1", [rfqId]);
-      const rfqDepartment = rfqDeptRows[0]?.department || '';
 
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
@@ -6191,20 +6212,28 @@ async function helperNotifyVendorsForRFQ(rfqId, rfqTitle, refNo, category, notes
       `;
       
       const ccAddress = (ccProcurement !== false && ccProcurement !== 'false') ? 'procurement@legacyclinics.rw' : undefined;
-      const recipientEmails = vendorObj.email.split(',').map(e => e.trim()).filter(Boolean);
+      const recipientEmails = rawEmail.split(/[;,]/).map(e => e.trim()).filter(Boolean);
+
       for (const recipientEmail of recipientEmails) {
         try {
-          await emailService.sendEmail({
+          const sendRes = await emailService.sendEmail({
             to: recipientEmail,
             cc: ccAddress,
             subject: emailSubject,
             html: emailHtml,
             text: `Dear ${vendorObj.name},\n\nYou are invited to tender for: ${rfqTitle} (${refNo}).\nAccess Token: ${tokenCode}\nLog in at: ${portalUrl}`
           });
+          if (sendRes.success) {
+            console.log(`✅ [RFQ Email Delivered] Sent RFQ #${rfqId} to ${vendorObj.name} <${recipientEmail}> (MsgID: ${sendRes.messageId})`);
+          } else {
+            console.warn(`⚠️ [RFQ Email Failed] Could not deliver to ${recipientEmail}: ${sendRes.error}`);
+          }
         } catch (err) {
-          console.error(`Failed to send vendor tender invitation email to ${recipientEmail}:`, err);
+          console.error(`❌ [RFQ Email Error] Failed to send to ${recipientEmail}:`, err);
         }
       }
+    } catch (vendorError) {
+      console.error(`❌ [RFQ Email Error] Processing vendor ${vendorId} failed:`, vendorError);
     }
   }
 }
