@@ -1,81 +1,138 @@
 'use strict';
 const nodemailer = require('nodemailer');
 
-// From address configuration
-const mailFromAddress = process.env.MAIL_FROM_ADDRESS || 'no-reply@legacyclinics.rw';
-const mailFromName    = process.env.MAIL_FROM_NAME    || 'Legacy Clinics';
-const mailFrom        = `"${mailFromName}" <${mailFromAddress}>`;
+/**
+ * Dynamically resolves SMTP configuration from process.env at runtime.
+ * Ensures production environment variables take precedence immediately.
+ */
+const getSmtpConfig = () => {
+  const host = (process.env.SMTP_HOST || 'mail.legacyclinics.rw').trim();
+  const port = parseInt(process.env.SMTP_PORT || '465', 10);
+  const user = (process.env.SMTP_USER || 'no-reply@legacyclinics.rw').trim();
+  const pass = (process.env.SMTP_PASS || 'AMAhamba@2110').trim();
+  
+  const fromName = (process.env.MAIL_FROM_NAME || 'Legacy Clinics').trim();
+  const fromAddress = (process.env.MAIL_FROM_ADDRESS || user).trim();
+  const from = `"${fromName}" <${fromAddress}>`;
 
-const smtpHost = process.env.SMTP_HOST || 'mail.legacyclinics.rw';
-const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
-const smtpUser = process.env.SMTP_USER || 'no-reply@legacyclinics.rw';
-const smtpPass = process.env.SMTP_PASS || 'AMAhamba@2110';
-const isSecure = smtpPort === 465;
+  return { host, port, user, pass, from, fromName, fromAddress };
+};
 
-// Log resolved SMTP config on startup (mask password)
-console.log(`📧 Email Service Config → host=${smtpHost} port=${smtpPort} secure=${isSecure} user=${smtpUser} pass=${smtpPass ? '***' : '(MISSING!)'}`);
+/**
+ * Create primary nodemailer transporter for configured port/host
+ */
+const createPrimaryTransporter = () => {
+  const config = getSmtpConfig();
+  const isPort465 = config.port === 465;
 
-if (!smtpPass) {
-  console.warn('⚠️  SMTP_PASS is not set! Emails will fail to authenticate. Please set SMTP_PASS in your production environment.');
-}
+  return nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: isPort465, // true for 465, false for 587
+    requireTLS: !isPort465, // Force STARTTLS upgrade on port 587
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+    tls: {
+      rejectUnauthorized: false, // Smooth SSL/TLS handshake with self-signed or legacy certs
+      minVersion: 'TLSv1.2',
+    },
+    connectionTimeout: 15000,
+    greetingTimeout:   10000,
+    socketTimeout:     30000,
+  });
+};
 
-// SMTP transporter (created once with resolved env values)
-const transporter = nodemailer.createTransport({
-  host: smtpHost,
-  port: smtpPort,
-  secure: isSecure, // true for 465, false for 587 or other ports
-  auth: {
-    user: smtpUser,
-    pass: smtpPass,
-  },
-  tls: {
-    rejectUnauthorized: false, // Smooth SSL handshake without certificate mismatch errors
-  },
-  connectionTimeout: 15000,
-  greetingTimeout:   10000,
-  socketTimeout:     30000,
-});
+/**
+ * Create fallback transporter for port 587 (STARTTLS) if port 465 is blocked by cloud host
+ */
+const createFallbackTransporter587 = () => {
+  const config = getSmtpConfig();
 
-// Fallback transporter (port 587 STARTTLS) in case port 465 is firewalled/blocked on production host
-const fallbackTransporter = nodemailer.createTransport({
-  host: smtpHost,
-  port: 587,
-  secure: false,
-  auth: {
-    user: smtpUser,
-    pass: smtpPass,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-  connectionTimeout: 15000,
-  greetingTimeout:   10000,
-  socketTimeout:     30000,
-});
+  return nodemailer.createTransport({
+    host: config.host,
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2',
+    },
+    connectionTimeout: 15000,
+    greetingTimeout:   10000,
+    socketTimeout:     30000,
+  });
+};
 
-// Verify primary connection on startup gracefully
-transporter.verify((error) => {
-  if (error) {
-    console.error(`❌ Primary SMTP Connection FAILED (host=${smtpHost}:${smtpPort} user=${smtpUser}):`, error.message);
-  } else {
-    console.log(`✅ Primary SMTP Connected: ${smtpHost}:${smtpPort} (secure=${isSecure}) user=${smtpUser}`);
-  }
-});
+/**
+ * Create fallback transporter for port 465 (Direct SSL) if port 587 is blocked
+ */
+const createFallbackTransporter465 = () => {
+  const config = getSmtpConfig();
+
+  return nodemailer.createTransport({
+    host: config.host,
+    port: 465,
+    secure: true,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2',
+    },
+    connectionTimeout: 15000,
+    greetingTimeout:   10000,
+    socketTimeout:     30000,
+  });
+};
+
+// Transporter instances
+let primaryTransporter = createPrimaryTransporter();
+let fallback587 = createFallbackTransporter587();
+let fallback465 = createFallbackTransporter465();
+
+// Verify connection on startup gracefully
+const verifyTransporter = () => {
+  const config = getSmtpConfig();
+  console.log(`📧 Email Service Init → host=${config.host} port=${config.port} user=${config.user} pass=${config.pass ? '***' : '(MISSING!)'}`);
+
+  primaryTransporter.verify((error) => {
+    if (error) {
+      console.error(`❌ Primary SMTP Connection FAILED (host=${config.host}:${config.port} user=${config.user}):`, error.message);
+    } else {
+      console.log(`✅ Primary SMTP Connected Successfully: ${config.host}:${config.port} user=${config.user}`);
+    }
+  });
+};
+
+verifyTransporter();
 
 /**
  * Generic email sender — always resolves, never throws.
- * Tries primary transporter first, falls back to port 587 if network error occurs.
+ * Tries primary transporter first, falls back to alternative ports (587 / 465) if network/firewall error occurs.
  * Returns { success, messageId?, error? }
  */
 const sendEmail = async ({ to, cc, bcc, subject, html, text, attachments }) => {
-  if (!smtpPass) {
-    const msg = 'SMTP_PASS is not configured — email not sent.';
+  const config = getSmtpConfig();
+
+  if (!config.pass) {
+    const msg = 'SMTP_PASS is not configured in environment — email not sent.';
     console.error(`❌ ${msg} (to=${to} subject="${subject}")`);
     return { success: false, error: msg };
   }
 
   const mailOptions = {
-    from: mailFrom,
+    from: config.from,
     to,
     cc,
     bcc,
@@ -85,22 +142,38 @@ const sendEmail = async ({ to, cc, bcc, subject, html, text, attachments }) => {
     attachments,
   };
 
+  // 1. Try Primary Transporter
   try {
-    const info = await transporter.sendMail(mailOptions);
+    const info = await primaryTransporter.sendMail(mailOptions);
     console.log(`📧 Email sent → to=${to}${cc ? ` cc=${cc}` : ''} subject="${subject}" id=${info.messageId} accepted=${JSON.stringify(info.accepted)} rejected=${JSON.stringify(info.rejected)}`);
     if (info.rejected && info.rejected.length > 0) {
-      console.warn(`⚠️  Some recipients were rejected by SMTP: ${info.rejected.join(', ')}`);
+      console.warn(`⚠️  Some recipients were rejected by SMTP server: ${info.rejected.join(', ')}`);
     }
     return { success: true, messageId: info.messageId };
   } catch (primaryError) {
-    console.warn(`⚠️ Primary SMTP send failed (host=${smtpHost}:${smtpPort}): ${primaryError.message}. Attempting fallback (port 587)...`);
+    console.warn(`⚠️ Primary SMTP send failed (host=${config.host}:${config.port}): ${primaryError.message}. Trying port 587 STARTTLS fallback...`);
+    
+    // 2. Try Fallback 587 (STARTTLS)
     try {
-      const info = await fallbackTransporter.sendMail(mailOptions);
-      console.log(`📧 Email sent via Fallback (port 587) → to=${to}${cc ? ` cc=${cc}` : ''} subject="${subject}" id=${info.messageId}`);
+      const info = await fallback587.sendMail(mailOptions);
+      console.log(`📧 Email sent via Fallback (port 587 STARTTLS) → to=${to}${cc ? ` cc=${cc}` : ''} subject="${subject}" id=${info.messageId}`);
       return { success: true, messageId: info.messageId };
-    } catch (fallbackError) {
-      console.error(`❌ Both Primary and Fallback SMTP send FAILED → to=${to} subject="${subject}":`, fallbackError.message);
-      return { success: false, error: fallbackError.message };
+    } catch (fallback587Error) {
+      console.warn(`⚠️ Fallback 587 failed: ${fallback587Error.message}. Trying port 465 Direct SSL fallback...`);
+
+      // 3. Try Fallback 465 (Direct SSL)
+      try {
+        const info = await fallback465.sendMail(mailOptions);
+        console.log(`📧 Email sent via Fallback (port 465 SSL) → to=${to}${cc ? ` cc=${cc}` : ''} subject="${subject}" id=${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+      } catch (fallback465Error) {
+        console.error(`❌ ALL SMTP send attempts FAILED for recipient=${to} subject="${subject}":`, {
+          primaryError: primaryError.message,
+          fallback587Error: fallback587Error.message,
+          fallback465Error: fallback465Error.message,
+        });
+        return { success: false, error: primaryError.message || fallback587Error.message };
+      }
     }
   }
 };
@@ -249,7 +322,7 @@ const sendBatch = async (recipients, subject, html, text) => {
 };
 
 module.exports = {
-  transporter,
+  transporter: primaryTransporter,
   sendEmail,
   sendUserCredentials,
   sendNotification,
@@ -257,4 +330,5 @@ module.exports = {
   sendTemporaryPassword,
   sendBatch,
 };
+
 
