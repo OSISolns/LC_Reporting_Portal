@@ -1,29 +1,25 @@
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
-
-// Global click/mouse tracker to capture coordinates of the button that triggered the modal
-let lastClickCoords = null;
-if (typeof window !== 'undefined') {
-  window.addEventListener('mousedown', (e) => {
-    lastClickCoords = { x: e.clientX, y: e.clientY };
-  }, { capture: true, passive: true });
-}
+import { useState, useEffect, useRef } from 'react';
 
 const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isAnimated, setIsAnimated] = useState(isOpen);
-  const [transformOrigin, setTransformOrigin] = useState('center center');
   const cardRef = useRef(null);
 
   // Synchronize shouldRender and animation state with isOpen prop cleanly
   useEffect(() => {
     let animFrame;
+    let timer;
     let closeTimer;
+
     if (isOpen) {
       setShouldRender(true);
+      // Double requestAnimationFrame or small timeout ensures DOM is painted before transition
       animFrame = requestAnimationFrame(() => {
-        setIsAnimated(true);
+        timer = setTimeout(() => {
+          setIsAnimated(true);
+        }, 10);
       });
     } else {
       setIsAnimated(false);
@@ -31,25 +27,13 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
         setShouldRender(false);
       }, 180);
     }
+
     return () => {
       if (animFrame) cancelAnimationFrame(animFrame);
+      if (timer) clearTimeout(timer);
       if (closeTimer) clearTimeout(closeTimer);
     };
   }, [isOpen]);
-
-  // Compute transform-origin based on last click
-  useLayoutEffect(() => {
-    if (shouldRender && cardRef.current) {
-      const rect = cardRef.current.getBoundingClientRect();
-      if (lastClickCoords && rect.width > 0) {
-        const x = Math.max(0, Math.min(rect.width, lastClickCoords.x - rect.left));
-        const y = Math.max(0, Math.min(rect.height, lastClickCoords.y - rect.top));
-        setTransformOrigin(`${x}px ${y}px`);
-      } else {
-        setTransformOrigin('center center');
-      }
-    }
-  }, [shouldRender]);
 
   if (!shouldRender) return null;
 
@@ -74,11 +58,12 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 999999,
-        padding: '1.5rem',
-        backdropFilter: 'blur(3px)',
-        WebkitBackdropFilter: 'blur(3px)',
+        padding: '1rem',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
         opacity: isAnimated ? 1 : 0,
         transition: 'opacity 0.2s ease-out',
+        boxSizing: 'border-box'
       }}
     >
       <div 
@@ -86,20 +71,22 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
         onClick={(e) => e.stopPropagation()} // Prevent clicking within modal from closing it
         style={{
           width: '100%',
-          maxWidth,
+          maxWidth: `min(${maxWidth}, calc(100vw - 2rem))`,
           maxHeight: '90vh',
+          height: 'auto',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: '#ffffff',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.08)',
           borderRadius: '16px',
-          transformOrigin,
-          transform: isAnimated ? 'scale(1)' : 'scale(0.97)',
+          transformOrigin: 'center center',
+          transform: isAnimated ? 'scale(1) translateY(0)' : 'scale(0.96) translateY(8px)',
           opacity: isAnimated ? 1 : 0,
           transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease-out',
           position: 'relative',
-          zIndex: 1000000
+          zIndex: 1000000,
+          boxSizing: 'border-box'
         }}
       >
         <div style={{
@@ -109,7 +96,8 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
           alignItems: 'center',
           background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
           color: '#ffffff',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          flexShrink: 0
         }}>
           <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', margin: 0, fontFamily: "'Poppins', sans-serif", letterSpacing: '0.01em' }}>{title}</h2>
           <button 
@@ -133,7 +121,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
             <X size={18} />
           </button>
         </div>
-        <div style={{ padding: '1.75rem 2rem', overflowY: 'auto', backgroundColor: '#ffffff', color: '#1e293b' }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '1.75rem 2rem', backgroundColor: '#ffffff', color: '#1e293b', display: 'flex', flexDirection: 'column' }}>
           {children}
         </div>
       </div>
@@ -144,4 +132,5 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
 };
 
 export default Modal;
+
 
