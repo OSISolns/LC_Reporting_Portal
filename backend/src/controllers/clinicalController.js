@@ -6386,10 +6386,10 @@ exports.updateRFQ = async (req, res) => {
       return res.status(404).json({ success: false, message: 'RFQ not found.' });
     }
     const oldRFQ = rfqRows[0];
-    const isPublishing = status === 'Collecting';
+    const isPublishing = status && status !== 'Draft';
     const targetStatus = status || oldRFQ.status;
 
-    if (isPublishing) {
+    if (isPublishing && oldRFQ.status === 'Draft') {
       if (!password) {
         return res.status(400).json({ success: false, message: 'Password confirmation is required to launch/publish a Tender / RFQ.' });
       }
@@ -6473,7 +6473,7 @@ exports.updateRFQ = async (req, res) => {
     // NOTE: Fire-and-forget — respond immediately, send emails in background
     // to avoid 504 Gateway Timeout when SMTP is slow.
     let portalSessions = [];
-    if (isPublishing || (targetStatus === 'Collecting' && oldRFQ.status === 'Draft')) {
+    if (targetStatus !== 'Draft') {
       const { rows: sups } = await db.query('SELECT vendor_id FROM rfq_suppliers WHERE rfq_id = $1', [id]);
       const validVendorIds = sups.map(s => s.vendor_id);
       if (validVendorIds.length > 0) {
