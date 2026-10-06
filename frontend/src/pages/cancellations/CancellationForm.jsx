@@ -60,7 +60,7 @@ const CancellationForm = () => {
   };
 
   return (
-    <div style={{ maxWidth: '850px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
       <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2rem', fontWeight: 600, cursor: 'pointer' }}>
         <ChevronLeft size={20} />
         Back to Dashboard

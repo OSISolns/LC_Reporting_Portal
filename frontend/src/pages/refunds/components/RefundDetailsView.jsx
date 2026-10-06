@@ -3,8 +3,9 @@ import { Download, CheckCircle, XCircle } from 'lucide-react';
 import StatusBadge from '../../../components/StatusBadge';
 import { PrintHeader, PrintFooter, PrintWatermark } from '../../../components/PrintBranding';
 import { useAuth } from '../../../context/AuthContext';
+import SupportingDocumentSection from '../../../components/SupportingDocumentSection';
 
-const RefundDetailsView = ({ data, onExport, onVerify, onApprove, onReject }) => {
+const RefundDetailsView = ({ data, onExport, onVerify, onApprove, onReject, onUploadDocument }) => {
   const { user, hasPermission } = useAuth();
   const [isRejecting,   setIsRejecting]   = useState(false);
   const [rejectComment, setRejectComment] = useState('');
@@ -105,6 +106,16 @@ const RefundDetailsView = ({ data, onExport, onVerify, onApprove, onReject }) =>
             <div style={{ fontSize: '8pt', marginTop: '4px', opacity: 0.8 }}>Rejected by: {data.rejector_name}</div>
           </div>
         )}
+      </div>
+
+      <div className="no-print">
+        <SupportingDocumentSection
+          data={data}
+          requestId={data.id}
+          requestType="refund"
+          user={user}
+          onUpload={onUploadDocument}
+        />
       </div>
 
       {/* Actions (no-print) */}

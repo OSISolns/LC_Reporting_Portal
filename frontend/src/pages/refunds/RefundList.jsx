@@ -16,7 +16,8 @@ import {
   getRefundPDF,
   createRefund,
   updateRefund,
-  deleteRefund
+  deleteRefund,
+  uploadRefundDocument
 } from '../../api/refunds';
 import { getStaffList } from '../../api/users';
 
@@ -178,6 +179,14 @@ const RefundList = () => {
       fetchRequests();
       setShowViewModal(false);
     } catch (err) { alert('Action failed'); }
+  };
+
+  const handleDocumentUpload = async (fileBase64, fileName) => {
+    if (!activeRequest) return;
+    await uploadRefundDocument(activeRequest.id, { fileBase64, fileName });
+    const updated = await getRefundById(activeRequest.id);
+    setActiveRequest(updated.data.data);
+    fetchRequests();
   };
 
   const canCreate = hasPermission('refunds', 'create');
@@ -381,7 +390,7 @@ const RefundList = () => {
       </div>
 
       {/* Create Modal */}
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title={editingRequest ? "Edit Refund Request" : "Create Refund Request"} maxWidth="800px">
+      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title={editingRequest ? "Edit Refund Request" : "Create Refund Request"} maxWidth="1100px">
         <RefundFormFields
           formData={formData}
           handleChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))}
@@ -400,6 +409,7 @@ const RefundList = () => {
           <RefundDetailsView
             data={activeRequest}
             user={user}
+            onUploadDocument={handleDocumentUpload}
             onExport={() => activeRequest && handleExport(activeRequest.id)}
             onVerify={() => activeRequest && handleAction(verifyRefund, activeRequest.id)}
             onApprove={() => activeRequest && handleAction(approveRefund, activeRequest.id)}

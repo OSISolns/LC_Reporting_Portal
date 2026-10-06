@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { FileText, Upload, Download, CheckCircle2, AlertCircle, RefreshCw, Eye, X } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
+import { useAuth } from '../context/AuthContext';
 
 const SupportingDocumentSection = ({ data, onUpload, requestId, requestType = 'cancellation', user }) => {
+  const { user: authUser, hasPermission } = useAuth();
+  const currentUser = user || authUser;
+
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -12,7 +16,10 @@ const SupportingDocumentSection = ({ data, onUpload, requestId, requestType = 'c
   const [previewLoading, setPreviewLoading] = useState(false);
 
   const isPending = data?.status === 'pending';
-  const canUpload = isPending && ['sales_manager', 'principal_cashier', 'admin'].includes(user?.role);
+  const moduleName = requestType === 'cancellation' ? 'cancellations' : 'refunds';
+  const canUpload = isPending && (
+    hasPermission ? hasPermission(moduleName, 'review') : ['sales_manager', 'principal_cashier'].includes(currentUser?.role)
+  );
 
   const hasDocument = Boolean(data?.supporting_document_name || data?.supporting_document_uploaded_at);
 

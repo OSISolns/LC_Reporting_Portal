@@ -16,7 +16,8 @@ import {
   deleteCancellation,
   verifyCancellation,
   approveCancellation,
-  rejectCancellation 
+  rejectCancellation,
+  uploadCancellationDocument
 } from '../../api/cancellations';
 import { getStaffList } from '../../api/users';
 
@@ -203,6 +204,14 @@ const CancellationList = () => {
     }
   };
 
+
+  const handleDocumentUpload = async (fileBase64, fileName) => {
+    if (!activeRequest) return;
+    await uploadCancellationDocument(activeRequest.id, { fileBase64, fileName });
+    const updated = await getCancellationById(activeRequest.id);
+    setActiveRequest(updated.data.data);
+    fetchRequests();
+  };
 
   return (
     <div>
@@ -448,7 +457,7 @@ const CancellationList = () => {
         isOpen={showCreateModal} 
         onClose={() => setShowCreateModal(false)}
         title={editingRequest ? "Edit Cancellation Request" : "Create Cancellation Request"}
-        maxWidth="800px"
+        maxWidth="1100px"
       >
         <CancellationFormFields 
           formData={formData}
@@ -473,6 +482,7 @@ const CancellationList = () => {
           <CancellationDetailsView 
             data={activeRequest} 
             user={user}
+            onUploadDocument={handleDocumentUpload}
             onExport={() => activeRequest && handleExport(activeRequest.id)}
             onVerify={() => activeRequest && handleAction(verifyCancellation, activeRequest.id)}
             onApprove={() => activeRequest && handleAction(approveCancellation, activeRequest.id)}

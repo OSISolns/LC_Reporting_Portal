@@ -13,6 +13,12 @@ const checkPermission = (module, action) => {
         return res.status(401).json({ success: false, message: 'Authentication required' });
       }
 
+      // Strictly enforce: Only COO and Deputy COO can approve cancellation and refund requests! No exceptions!
+      const isCancellationOrRefundApprove = (Array.isArray(module) ? module.some(m => ['cancellations', 'refunds'].includes(m)) : ['cancellations', 'refunds'].includes(module)) && action === 'approve';
+      if (isCancellationOrRefundApprove && !['coo', 'deputy_coo'].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Access denied. Only COO and Deputy COO are authorized to approve cancellation and refund requests.' });
+      }
+
       // Admin has bypass for all permissions, but explicitly NOT for 'review' (verification) unless results_transfer
       if (req.user.role === 'admin' && action === 'review' && module !== 'results_transfer') {
         return res.status(403).json({ success: false, message: 'Admins are not permitted to perform L1 verification.' });

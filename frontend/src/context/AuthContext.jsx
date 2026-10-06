@@ -63,6 +63,11 @@ export const AuthProvider = ({ children }) => {
   const hasPermission = (module, action) => {
     if (!user) return false;
 
+    // Strictly enforce: Only COO and Deputy COO can approve cancellation and refund requests. No exceptions!
+    if (['cancellations', 'refunds'].includes(module) && action === 'approve') {
+      return ['coo', 'deputy_coo'].includes(user.role);
+    }
+
     // Admins should NOT be able to verify (review) any request
     if (user.role === 'admin' && action === 'review') return false;
 

@@ -125,6 +125,10 @@ exports.verifyRequest = async (req, res, next) => {
 
 exports.approveRequest = async (req, res, next) => {
   try {
+    if (!['coo', 'deputy_coo'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Access denied. Only COO and Deputy COO can approve cancellation requests.' });
+    }
+
     const request = await Cancellation.approve(req.params.id, req.user.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be approved' });
     await logAction(req, 'APPROVE', 'cancellation_request', request.id);
