@@ -52,6 +52,10 @@ model cancellation_requests {
   billed_by                                      Int?
   original_receipt_amount                        Float?
   rectified_receipt_amount                       Float?
+  supporting_document_base64                     String?
+  supporting_document_name                       String?
+  supporting_document_uploaded_at                DateTime?
+  supporting_document_uploader_id                Int?
   users_cancellation_requests_rejected_byTousers users?    @relation("cancellation_requests_rejected_byTousers", fields: [rejected_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_cancellation_requests_approved_byTousers users?    @relation("cancellation_requests_approved_byTousers", fields: [approved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_cancellation_requests_verified_byTousers users?    @relation("cancellation_requests_verified_byTousers", fields: [verified_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -386,6 +390,10 @@ model refund_requests {
   rejected_at                              String?
   updated_at                               String? @default("DATETIME('now')")
   billed_by                                Int?
+  supporting_document_base64               String?
+  supporting_document_name                 String?
+  supporting_document_uploaded_at          String?
+  supporting_document_uploader_id          Int?
   users_refund_requests_rejected_byTousers users?  @relation("refund_requests_rejected_byTousers", fields: [rejected_by], references: [id], onUpdate: NoAction)
   users_refund_requests_approved_byTousers users?  @relation("refund_requests_approved_byTousers", fields: [approved_by], references: [id], onUpdate: NoAction)
   users_refund_requests_verified_byTousers users?  @relation("refund_requests_verified_byTousers", fields: [verified_by], references: [id], onUpdate: NoAction)

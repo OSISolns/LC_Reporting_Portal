@@ -52,6 +52,63 @@ const CancellationList = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [staff, setStaff] = useState([]);
 
+  const [docPreviewModal, setDocPreviewModal] = useState(false);
+  const [docPreviewUrl, setDocPreviewUrl] = useState(null);
+  const [docPreviewTitle, setDocPreviewTitle] = useState('');
+  const [docPreviewLoading, setDocPreviewLoading] = useState(false);
+
+  const handleDownloadSupportingDoc = (requestId, docName) => {
+    const token = localStorage.getItem('token');
+    fetch(`/api/cancellations/${requestId}/document?download=true`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Download failed');
+        return res.blob();
+      })
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = docName || `Supporting_Document_CAN-${requestId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch((err) => alert(err.message || 'Download failed'));
+  };
+
+  const handlePreviewSupportingDoc = (requestId, docName) => {
+    setDocPreviewLoading(true);
+    setDocPreviewTitle(docName || 'Supporting Document');
+    setDocPreviewModal(true);
+    const token = localStorage.getItem('token');
+    fetch(`/api/cancellations/${requestId}/document?download=true`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load document');
+        return res.blob();
+      })
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob);
+        setDocPreviewUrl(url);
+      })
+      .catch((err) => {
+        alert(err.message || 'Preview failed');
+        setDocPreviewModal(false);
+      })
+      .finally(() => setDocPreviewLoading(false));
+  };
+
+  const closeDocPreviewModal = () => {
+    if (docPreviewUrl) {
+      window.URL.revokeObjectURL(docPreviewUrl);
+    }
+    setDocPreviewUrl(null);
+    setDocPreviewModal(false);
+  };
+
   useEffect(() => {
     fetchRequests();
     fetchStaff();
@@ -299,6 +356,7 @@ const CancellationList = () => {
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>PID Number</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amount</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Submission Date</th>
+                <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Supporting Doc</th>
                 <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Status</th>
                 {['sales_manager', 'coo', 'deputy_coo', 'admin', 'principal_cashier'].includes(user.role) && (
                   <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rating Status</th>
@@ -316,6 +374,55 @@ const CancellationList = () => {
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.9rem' }}>{r.pid_number}</td>
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--primary-dark)' }}>RWF {Number(r.total_amount_cancelled).toLocaleString()}</td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{new Date(r.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                  <td style={{ padding: '1.25rem 1.5rem' }}>
+                    {r.supporting_document_name ? (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handlePreviewSupportingDoc(r.id, r.supporting_document_name)}
+                          title="View Supporting PDF"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '6px 10px',
+                            backgroundColor: '#eff6ff',
+                            color: '#1d4ed8',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '6px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <FileText size={14} style={{ color: '#dc2626' }} />
+                          <span>View PDF</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadSupportingDoc(r.id, r.supporting_document_name)}
+                          title="Download Supporting PDF"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '6px 8px',
+                            backgroundColor: '#005696',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Download size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '0.82rem', fontStyle: 'italic' }}>
+                        No Document
+                      </span>
+                    )}
+                  </td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <StatusBadge status={r.status} />
                   </td>
@@ -488,6 +595,30 @@ const CancellationList = () => {
             onApprove={() => activeRequest && handleAction(approveCancellation, activeRequest.id)}
             onReject={(comment) => activeRequest && handleAction(rejectCancellation, activeRequest.id, comment)}
           />
+        )}
+      </Modal>
+
+      {/* Supporting Document PDF Viewer Modal */}
+      <Modal
+        isOpen={docPreviewModal}
+        onClose={closeDocPreviewModal}
+        title={docPreviewTitle || "Supporting Document PDF"}
+        maxWidth="1000px"
+      >
+        {docPreviewLoading ? (
+          <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+        ) : docPreviewUrl ? (
+          <div style={{ height: '70vh', width: '100%', backgroundColor: '#525659', borderRadius: '8px', overflow: 'hidden' }}>
+            <iframe
+              src={docPreviewUrl}
+              title="Supporting Document PDF Preview"
+              style={{ width: '100%', height: '100%', border: 'none' }}
+            />
+          </div>
+        ) : (
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+            Unable to load document preview.
+          </div>
         )}
       </Modal>
     </div>

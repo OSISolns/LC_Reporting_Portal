@@ -4711,6 +4711,27 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       }
     }
 
+    try {
+      const suppCols = [
+        "ALTER TABLE cancellation_requests ADD COLUMN supporting_document_base64 TEXT",
+        "ALTER TABLE cancellation_requests ADD COLUMN supporting_document_name TEXT",
+        "ALTER TABLE cancellation_requests ADD COLUMN supporting_document_uploaded_at DATETIME",
+        "ALTER TABLE cancellation_requests ADD COLUMN supporting_document_uploader_id INTEGER",
+        "ALTER TABLE refund_requests ADD COLUMN supporting_document_base64 TEXT",
+        "ALTER TABLE refund_requests ADD COLUMN supporting_document_name TEXT",
+        "ALTER TABLE refund_requests ADD COLUMN supporting_document_uploaded_at DATETIME",
+        "ALTER TABLE refund_requests ADD COLUMN supporting_document_uploader_id INTEGER"
+      ];
+      for (const colStmt of suppCols) {
+        await client.execute(colStmt).catch(() => {});
+      }
+      console.log('✅ SQLite Schema Migration: cancellation_requests & refund_requests supporting document columns verified.');
+    } catch (err) {
+      if (!err.message?.includes('already exists')) {
+        console.error('❌ supporting document migration error:', err.message);
+      }
+    }
+
   })();
 }
 
