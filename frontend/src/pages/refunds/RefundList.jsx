@@ -294,7 +294,8 @@ const RefundList = () => {
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>No refund requests found matching your filters.</p>
           </div>
         ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--bg-color)', backgroundColor: '#f8fafc' }}>
                 {['ID', 'Patient Details', 'PID Number', 'Refund Amount', 'Submission Date', 'Supporting Doc', 'Current Status', 
@@ -520,6 +521,30 @@ const RefundList = () => {
             onApprove={() => activeRequest && handleAction(approveRefund, activeRequest.id)}
             onReject={(comment) => activeRequest && handleAction(rejectRefund, activeRequest.id, comment)}
           />
+        )}
+      </Modal>
+
+      {/* Supporting Document PDF Viewer Modal */}
+      <Modal
+        isOpen={docPreviewModal}
+        onClose={closeDocPreviewModal}
+        title={docPreviewTitle || "Supporting Document PDF"}
+        maxWidth="1000px"
+      >
+        {docPreviewLoading ? (
+          <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
+        ) : docPreviewUrl ? (
+          <div style={{ height: '70vh', width: '100%', backgroundColor: '#525659', borderRadius: '8px', overflow: 'hidden' }}>
+            <iframe
+              src={docPreviewUrl}
+              title="Supporting Document PDF Preview"
+              style={{ width: '100%', height: '100%', border: 'none' }}
+            />
+          </div>
+        ) : (
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+            Unable to load document preview.
+          </div>
         )}
       </Modal>
     </div>
