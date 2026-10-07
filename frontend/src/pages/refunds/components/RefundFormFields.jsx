@@ -26,7 +26,7 @@ const selectStyle = {
 const fieldStyle = { display: 'flex', flexDirection: 'column', gap: '6px' };
 const labelStyle = { fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' };
 
-const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel }) => {
+const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel, hasRestoredDraft, onClearDraft }) => {
   // Tag-input state for Amount Paid By
   const [payerInput, setPayerInput] = useLocalState('');
 
@@ -58,6 +58,24 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
   };
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+      {hasRestoredDraft && (
+        <div style={{ padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: '#92400e', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Info size={18} style={{ color: '#d97706' }} />
+            <span>Auto-saved draft from your previous session has been restored.</span>
+          </div>
+          {onClearDraft && (
+            <button
+              type="button"
+              onClick={onClearDraft}
+              style={{ padding: '4px 12px', backgroundColor: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '6px', color: '#78350f', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Discard Draft
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Section 1: Patient Identification ── */}
       <div className="glass card-shadow" style={{ padding: '2rem', backgroundColor: '#ffffff', borderRadius: '16px' }}>

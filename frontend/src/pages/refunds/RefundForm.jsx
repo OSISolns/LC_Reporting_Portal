@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createRefund } from '../../api/refunds';
 import { ChevronLeft } from 'lucide-react';
 import RefundFormFields from './components/RefundFormFields';
 import { getStaffList } from '../../api/users';
-import { useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 
 const EMPTY_FORM = {
   patientFullName: '', pidNumber: '', sidNumber: '',
@@ -23,6 +23,14 @@ const RefundForm = () => {
   const [staff, setStaff] = useState([]);
 
   const { user } = useAuth();
+  const { hasRestoredDraft, clearDraft } = useFormAutoSave(
+    'refund',
+    user?.id,
+    EMPTY_FORM,
+    formData,
+    setFormData,
+    false
+  );
 
   useEffect(() => {
     const fetchStaff = async () => {
@@ -48,6 +56,7 @@ const RefundForm = () => {
     setLoading(true);
     try {
       await createRefund(formData);
+      clearDraft();
       navigate('/refunds');
     } catch (err) {
       alert('Failed to submit refund request');
@@ -79,6 +88,8 @@ const RefundForm = () => {
         loading={loading}
         onCancel={() => navigate(-1)}
         staff={staff}
+        hasRestoredDraft={hasRestoredDraft}
+        onClearDraft={clearDraft}
       />
     </div>
   );

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { createResultTransfer } from '../../api/resultTransfer';
 import { ChevronLeft } from 'lucide-react';
 import ResultTransferFormFields from './components/ResultTransferFormFields';
+import { useAuth } from '../../context/AuthContext';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 
 const EMPTY_FORM = {
   transferDate: new Date().toISOString().split('T')[0],
@@ -16,11 +18,22 @@ const ResultTransferForm = () => {
   const [loading, setLoading]   = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
 
+  const { user } = useAuth();
+  const { hasRestoredDraft, clearDraft } = useFormAutoSave(
+    'result_transfer',
+    user?.id,
+    EMPTY_FORM,
+    formData,
+    setFormData,
+    false
+  );
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       await createResultTransfer(formData);
+      clearDraft();
       navigate('/results-transfer');
     } catch (err) {
       console.error(err);
@@ -52,6 +65,8 @@ const ResultTransferForm = () => {
         handleSubmit={handleSubmit}
         loading={loading}
         onCancel={() => navigate(-1)}
+        hasRestoredDraft={hasRestoredDraft}
+        onClearDraft={clearDraft}
       />
     </div>
   );

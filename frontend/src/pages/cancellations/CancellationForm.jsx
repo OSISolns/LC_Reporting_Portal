@@ -1,34 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createCancellation } from '../../api/cancellations';
 import { ChevronLeft } from 'lucide-react';
 import CancellationFormFields from './components/CancellationFormFields';
 import { getStaffList } from '../../api/users';
-import { useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
+
+const EMPTY_FORM = {
+  patientFullName: '', 
+  pidNumber: '', 
+  oldSidNumber: '', 
+  newSidNumber: '',
+  telephoneNumber: '', 
+  insurancePayer: '', 
+  totalAmountCancelled: '',
+  originalReceiptNumber: '', 
+  rectifiedReceiptNumber: '',
+  originalReceiptAmount: '',
+  rectifiedReceiptAmount: '',
+  initialTransactionDate: '', 
+  rectifiedDate: '', 
+  reasonForCancellation: ''
+};
 
 const CancellationForm = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    patientFullName: '', 
-    pidNumber: '', 
-    oldSidNumber: '', 
-    newSidNumber: '',
-    telephoneNumber: '', 
-    insurancePayer: '', 
-    totalAmountCancelled: '',
-    originalReceiptNumber: '', 
-    rectifiedReceiptNumber: '',
-    originalReceiptAmount: '',
-    rectifiedReceiptAmount: '',
-    initialTransactionDate: '', 
-    rectifiedDate: '', 
-    reasonForCancellation: ''
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [staff, setStaff] = useState([]);
 
   const { user } = useAuth();
+  const { hasRestoredDraft, clearDraft } = useFormAutoSave(
+    'cancellation',
+    user?.id,
+    EMPTY_FORM,
+    formData,
+    setFormData,
+    false
+  );
 
   useEffect(() => {
     const fetchStaff = async () => {
@@ -47,6 +57,7 @@ const CancellationForm = () => {
     setLoading(true);
     try {
       await createCancellation(formData);
+      clearDraft();
       navigate('/cancellations');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to submit request');
@@ -78,6 +89,8 @@ const CancellationForm = () => {
         loading={loading}
         onCancel={() => navigate(-1)}
         staff={staff}
+        hasRestoredDraft={hasRestoredDraft}
+        onClearDraft={clearDraft}
       />
     </div>
   );

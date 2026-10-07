@@ -7,6 +7,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
 import RefundFormFields from './components/RefundFormFields';
 import RefundDetailsView from './components/RefundDetailsView';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import {
   getRefunds,
   getRefundById,
@@ -45,6 +46,15 @@ const RefundList = () => {
   const [submitting,      setSubmitting]      = useState(false);
   const [detailLoading,   setDetailLoading]   = useState(false);
   const [staff,           setStaff]           = useState([]);
+
+  const { hasRestoredDraft, clearDraft } = useFormAutoSave(
+    'refund',
+    user?.id,
+    EMPTY_FORM,
+    formData,
+    setFormData,
+    !!editingRequest
+  );
 
   const [docPreviewModal, setDocPreviewModal] = useState(false);
   const [docPreviewUrl, setDocPreviewUrl] = useState(null);
@@ -184,6 +194,7 @@ const RefundList = () => {
       } else {
         await createRefund(formData);
       }
+      clearDraft();
       setShowCreateModal(false);
       fetchRequests();
       setFormData(EMPTY_FORM);
@@ -504,6 +515,8 @@ const RefundList = () => {
           loading={submitting}
           onCancel={() => setShowCreateModal(false)}
           staff={staff}
+          hasRestoredDraft={hasRestoredDraft}
+          onClearDraft={clearDraft}
         />
       </Modal>
 

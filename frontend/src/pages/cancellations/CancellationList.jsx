@@ -7,6 +7,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
 import CancellationFormFields from './components/CancellationFormFields';
 import CancellationDetailsView from './components/CancellationDetailsView';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { 
   getCancellationById, 
   createCancellation, 
@@ -20,6 +21,14 @@ import {
   uploadCancellationDocument
 } from '../../api/cancellations';
 import { getStaffList } from '../../api/users';
+
+const EMPTY_CANCELLATION_FORM = {
+  patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
+  telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
+  originalReceiptNumber: '', rectifiedReceiptNumber: '',
+  originalReceiptAmount: '', rectifiedReceiptAmount: '',
+  initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '', billedBy: ''
+};
 
 const CancellationList = () => {
   const { user, hasPermission } = useAuth();
@@ -41,16 +50,19 @@ const CancellationList = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [activeRequest, setActiveRequest] = useState(null);
   const [editingRequest, setEditingRequest] = useState(null);
-  const [formData, setFormData] = useState({
-    patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
-    telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
-    originalReceiptNumber: '', rectifiedReceiptNumber: '',
-    originalReceiptAmount: '', rectifiedReceiptAmount: '',
-    initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '', billedBy: ''
-  });
+  const [formData, setFormData] = useState(EMPTY_CANCELLATION_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [staff, setStaff] = useState([]);
+
+  const { hasRestoredDraft, clearDraft } = useFormAutoSave(
+    'cancellation',
+    user?.id,
+    EMPTY_CANCELLATION_FORM,
+    formData,
+    setFormData,
+    !!editingRequest
+  );
 
   const [docPreviewModal, setDocPreviewModal] = useState(false);
   const [docPreviewUrl, setDocPreviewUrl] = useState(null);
@@ -202,6 +214,7 @@ const CancellationList = () => {
       } else {
         await createCancellation(formData);
       }
+      clearDraft();
       setShowCreateModal(false);
       fetchRequests();
       resetForm();
@@ -573,6 +586,8 @@ const CancellationList = () => {
           loading={submitting}
           onCancel={() => setShowCreateModal(false)}
           staff={staff}
+          hasRestoredDraft={hasRestoredDraft}
+          onClearDraft={clearDraft}
         />
       </Modal>
 

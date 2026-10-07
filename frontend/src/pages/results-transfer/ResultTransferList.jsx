@@ -7,6 +7,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
 import ResultTransferFormFields from './components/ResultTransferFormFields';
 import ResultTransferDetailsView from './components/ResultTransferDetailsView';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import {
   getResultTransfers, getResultTransferById, createResultTransfer,
   getResultTransferPDF, deleteResultTransfer,
@@ -41,6 +42,15 @@ const ResultTransferList = () => {
   const [formData,        setFormData]        = useState(EMPTY_FORM);
   const [submitting,      setSubmitting]      = useState(false);
   const [detailLoading,   setDetailLoading]   = useState(false);
+
+  const { hasRestoredDraft, clearDraft } = useFormAutoSave(
+    'result_transfer',
+    user?.id,
+    EMPTY_FORM,
+    formData,
+    setFormData,
+    false
+  );
 
   useEffect(() => {
     setCurrentPage(1);
@@ -81,6 +91,7 @@ const ResultTransferList = () => {
     setSubmitting(true);
     try {
       await createResultTransfer(formData);
+      clearDraft();
       setShowCreateModal(false);
       fetchRequests();
       setFormData(EMPTY_FORM);
@@ -381,6 +392,8 @@ const ResultTransferList = () => {
           handleSubmit={handleCreateSubmit}
           loading={submitting}
           onCancel={() => setShowCreateModal(false)}
+          hasRestoredDraft={hasRestoredDraft}
+          onClearDraft={clearDraft}
         />
       </Modal>
 
