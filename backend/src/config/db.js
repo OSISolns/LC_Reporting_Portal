@@ -2013,6 +2013,32 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         await client.execute("PRAGMA foreign_keys = ON");
       } catch (_) {}
     }
+    try {
+      const { rows: brokenTables } = await client.execute("SELECT name, sql FROM sqlite_master WHERE type='table' AND sql LIKE '%shift_sessions_old%'");
+      if (brokenTables && brokenTables.length > 0) {
+        console.log(`⚙️ Self-healing repair: found ${brokenTables.length} table(s) referencing shift_sessions_old in schema...`);
+        for (const tbl of brokenTables) {
+          try {
+            console.log(`🔧 Self-healing table ${tbl.name}...`);
+            const fixedSql = tbl.sql.replace(/shift_sessions_old/g, 'shift_sessions');
+            await client.execute(`DROP TABLE IF EXISTS ${tbl.name}_repair_temp`);
+            await client.execute(`ALTER TABLE ${tbl.name} RENAME TO ${tbl.name}_repair_temp`);
+            await client.execute(fixedSql);
+            const { rows: colRows } = await client.execute(`SELECT name FROM PRAGMA_TABLE_INFO('${tbl.name}_repair_temp')`);
+            const cols = (colRows || []).map(r => r.name).join(', ');
+            if (cols) {
+              await client.execute(`INSERT INTO ${tbl.name} (${cols}) SELECT ${cols} FROM ${tbl.name}_repair_temp`);
+            }
+            await client.execute(`DROP TABLE IF EXISTS ${tbl.name}_repair_temp`);
+            console.log(`✅ Self-healing complete for table ${tbl.name}`);
+          } catch (tblErr) {
+            console.warn(`⚠️ Self-healing note for ${tbl.name}:`, tblErr.message);
+          }
+        }
+      }
+    } catch (repairErr) {
+      console.warn('⚠️ Self-healing repair check completed:', repairErr.message);
+    }
 
     try {
       await client.execute(`
