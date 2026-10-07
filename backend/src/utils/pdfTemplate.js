@@ -475,20 +475,20 @@ const getMedicalReportHTML = (type, data) => {
           <div style="font-size: 8.5pt; font-weight: 800; color: #0f172a; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 3px; margin-bottom: 10px;">III. Continuous Observations & 5-Step Nursing Process Flowsheet</div>
           
           ${observations.map((obs, idx) => {
-            const obsIden = obs.identification || {};
-            const obsTriage = obs.triage || {};
-            const obsMar = obs.medication_mar || {};
-            const obsNotes = obs.progress_notes || [];
-            const np = obsTriage.nursing_process || obs.nursing_process || {};
-            const step1 = np.step1_assessment || {};
-            const step2 = np.step2_diagnosis || {};
-            const step3 = np.step3_planning || {};
-            const step4 = np.step4_implementation || {};
-            const step5 = np.step5_evaluation || {};
+      const obsIden = obs.identification || {};
+      const obsTriage = obs.triage || {};
+      const obsMar = obs.medication_mar || {};
+      const obsNotes = obs.progress_notes || [];
+      const np = obsTriage.nursing_process || obs.nursing_process || {};
+      const step1 = np.step1_assessment || {};
+      const step2 = np.step2_diagnosis || {};
+      const step3 = np.step3_planning || {};
+      const step4 = np.step4_implementation || {};
+      const step5 = np.step5_evaluation || {};
 
-            const rnName = (obsIden.rn && obsIden.rn !== 'N/A' && obsIden.rn.trim() !== '') ? obsIden.rn : (obs.created_by_name || obs.created_by_username || 'Duty RN Staff');
+      const rnName = (obsIden.rn && obsIden.rn !== 'N/A' && obsIden.rn.trim() !== '') ? obsIden.rn : (obs.created_by_name || obs.created_by_username || 'Duty RN Staff');
 
-            return `
+      return `
               <div style="border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 12px; background: white; page-break-inside: avoid;">
                 
                 <!-- Flowsheet Row Header -->
@@ -623,7 +623,7 @@ const getMedicalReportHTML = (type, data) => {
 
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </div>
 
         <!-- Document Authenticity Footer -->
@@ -1026,8 +1026,8 @@ const getMedicalReportHTML = (type, data) => {
       <div class="brand-footer-bar">
         <div class="footer-left-bar">HEALTH FOR LIFE</div>
         <div class="footer-right-bar">
-          <div>KK3 RD 134, KICUKIRO District, NYARUGUNGA Sector, RWANDA</div>
-          <div>Tel: 0788302100 | 0732002100 | 0738302300 | 03033</div>
+          <div>KK 3 RD 134 KICUKIRO District NYARUGUNGA Sector RWANDA</div>
+          <div>Tel: <span style="display:inline-flex;align-items:center;justify-content:center;background:#e11d48;color:white;width:14px;height:14px;border-radius:50%;font-size:9px;margin:0 2px;vertical-align:middle;">📞</span> 8000 | 0788 122 100 | Whatsapp: 0788 382 000</div>
           <div>info@legacyclinics.rw | www.legacyclinics.rw</div>
         </div>
       </div>

@@ -10,7 +10,7 @@
 
   <!-- Code -->
   <text x="2200" y="70" text-anchor="end" font-size="32" font-weight="600" fill="#334155" font-family="Arial, sans-serif">
-    Code : 103672011
+    Code: 103672011
   </text>
 
   <!-- Green Section -->
@@ -24,16 +24,21 @@
     HEALTH FOR LIFE
   </text>
 
-  <!-- Contact Info -->
-  <text x="1250" y="190" font-size="28" fill="#ffffff" font-family="Arial, sans-serif">
-    KK3 RD 134 KICUKIRO District NYARUGUNGA Sector RWANDA
+  <!-- Contact Info Line 1 -->
+  <text x="1250" y="185" font-size="28" fill="#ffffff" font-family="Arial, sans-serif">
+    KK 3 RD 134 KICUKIRO District NYARUGUNGA Sector RWANDA
   </text>
 
-  <text x="1250" y="230" font-size="28" fill="#ffffff" font-family="Arial, sans-serif">
-    Tel: 0788382000 | 0733682000 | 0723382000 | 08000
-  </text>
+  <!-- Contact Info Line 2 (Tel with Red Circle Phone Icon) -->
+  <g transform="translate(1250, 235)">
+    <text x="0" y="0" font-size="28" fill="#ffffff" font-family="Arial, sans-serif">Tel:</text>
+    <circle cx="76" cy="-9" r="14" fill="#e11d48"/>
+    <path d="M71 -13.5 C71 -14.3 71.7 -15 72.5 -15 L74.2 -15 C74.8 -15 75.3 -14.6 75.5 -14 L76.2 -11.8 C76.4 -11.2 76.2 -10.6 75.7 -10.2 L74.8 -9.3 C75.6 -7.7 76.9 -6.4 78.5 -5.6 L79.4 -6.5 C79.8 -6.9 80.4 -7.1 81 -6.9 L83.2 -6.2 C83.8 -6 84.2 -5.5 84.2 -4.9 L84.2 -3.2 C84.2 -2.4 83.5 -1.7 82.7 -1.7 C76.3 -1.7 71 -7 71 -13.5 Z" fill="#ffffff"/>
+    <text x="100" y="0" font-size="28" fill="#ffffff" font-family="Arial, sans-serif">8000 | 0788 122 100 | Whatsapp: 0788 382 000</text>
+  </g>
 
-  <text x="1250" y="270" font-size="28" fill="#ffffff" font-family="Arial, sans-serif">
+  <!-- Contact Info Line 3 -->
+  <text x="1250" y="285" font-size="28" fill="#ffffff" font-family="Arial, sans-serif">
     info@legacyclinics.rw | www.legacyclinics.rw
   </text>
 

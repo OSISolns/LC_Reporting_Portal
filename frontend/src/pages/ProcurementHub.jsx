@@ -7077,9 +7077,12 @@ export default function ProcurementHub() {
                     </div>
                     {/* Address block */}
                     <div style={{ textAlign: 'right', fontSize: '9px', lineHeight: '1.5', color: '#444' }}>
-                      <div style={{ fontWeight: 700 }}>KK3 RD 134, KICUKIRO District</div>
-                      <div>Nyarugunga Sector, Kigali, RWANDA</div>
-                      <div>Tel: 0788 122 100 | 0788 382 000 | 8000</div>
+                      <div style={{ fontWeight: 700 }}>KK 3 RD 134 KICUKIRO District NYARUGUNGA Sector RWANDA</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                        <span>Tel:</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e11d48', color: '#ffffff', width: '12px', height: '12px', borderRadius: '50%', fontSize: '8px' }}>📞</span>
+                        <span>8000 | 0788 122 100 | Whatsapp: 0788 382 000</span>
+                      </div>
                       <div>info@legacyclinics.rw | www.legacyclinics.rw</div>
                     </div>
                   </div>
@@ -7232,9 +7235,12 @@ export default function ProcurementHub() {
                     </div>
                     {/* Address block */}
                     <div style={{ textAlign: 'right', fontSize: '9px', lineHeight: '1.5', color: '#444' }}>
-                      <div style={{ fontWeight: 700 }}>KK3 RD 134 KICUKIRO Districts</div>
-                      <div>Nyarugunga Sector RWANDA</div>
-                      <div>Tel: 0788382000 | 0733682000 | 0723382000 | 8000</div>
+                      <div style={{ fontWeight: 700 }}>KK 3 RD 134 KICUKIRO District NYARUGUNGA Sector RWANDA</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                        <span>Tel:</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e11d48', color: '#ffffff', width: '12px', height: '12px', borderRadius: '50%', fontSize: '8px' }}>📞</span>
+                        <span>8000 | 0788 122 100 | Whatsapp: 0788 382 000</span>
+                      </div>
                       <div>info@legacyclinics.rw | www.legacyclinics.rw</div>
                     </div>
                   </div>
