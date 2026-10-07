@@ -1937,11 +1937,13 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     try {
       const { rows } = await client.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='shift_sessions'");
       if (rows.length > 0) {
-        const sql = rows[0].sql;
-        if (!sql.includes('rama_rssb') || !sql.includes('imaging') || sql.includes('CHECK (shift_role')) {
-          console.log('⚙️ Migrating shift_sessions to support rama_rssb and imaging roles...');
+        const sql = rows[0].sql || '';
+        const hasLegacyCheck = /CHECK\s*\(\s*shift_role\s+IN/i.test(sql);
+        if (hasLegacyCheck) {
+          console.log('⚙️ Migrating shift_sessions to remove legacy role CHECK constraint...');
 
           await client.execute("PRAGMA foreign_keys = OFF");
+          await client.execute("PRAGMA legacy_alter_table = ON");
 
           await client.execute("DROP TABLE IF EXISTS shift_sessions_old");
           await client.execute("ALTER TABLE shift_sessions RENAME TO shift_sessions_old");
@@ -1999,13 +2001,17 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_opened_at   ON shift_sessions(opened_at DESC)");
           await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_is_flagged  ON shift_sessions(is_flagged)");
 
+          await client.execute("PRAGMA legacy_alter_table = OFF");
           await client.execute("PRAGMA foreign_keys = ON");
           console.log('✅ SQLite Schema Migration: upgraded shift_sessions table check constraint to support all shift roles');
         }
       }
     } catch (err) {
       console.warn('⚠️ Shift sessions migration check completed:', err.message);
-      try { await client.execute("PRAGMA foreign_keys = ON"); } catch (_) {}
+      try {
+        await client.execute("PRAGMA legacy_alter_table = OFF");
+        await client.execute("PRAGMA foreign_keys = ON");
+      } catch (_) {}
     }
 
     try {
