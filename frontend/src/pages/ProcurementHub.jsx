@@ -2103,8 +2103,8 @@ export default function ProcurementHub() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${isActive
-                    ? 'bg-teal-700 text-white shadow-xs font-black border border-teal-700'
-                    : 'text-slate-650 hover:text-slate-900 hover:bg-slate-100 bg-slate-50/70 border border-slate-150'
+                  ? 'bg-teal-700 text-white shadow-xs font-black border border-teal-700'
+                  : 'text-slate-650 hover:text-slate-900 hover:bg-slate-100 bg-slate-50/70 border border-slate-150'
                   }`}
               >
                 <Icon size={13} className={isActive ? 'text-white' : 'text-slate-450'} />
@@ -5445,8 +5445,8 @@ export default function ProcurementHub() {
                       type="button"
                       onClick={() => setBudgetPeriodType('monthly')}
                       className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${budgetPeriodType === 'monthly'
-                          ? 'bg-emerald-600 text-white shadow-xs font-black'
-                          : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        ? 'bg-emerald-600 text-white shadow-xs font-black'
+                        : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
                         }`}
                     >
                       Monthly Budget
@@ -5455,8 +5455,8 @@ export default function ProcurementHub() {
                       type="button"
                       onClick={() => setBudgetPeriodType('annual')}
                       className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${budgetPeriodType === 'annual'
-                          ? 'bg-emerald-600 text-white shadow-xs font-black'
-                          : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        ? 'bg-emerald-600 text-white shadow-xs font-black'
+                        : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
                         }`}
                     >
                       Yearly (Annual) Budget
@@ -7077,9 +7077,9 @@ export default function ProcurementHub() {
                     </div>
                     {/* Address block */}
                     <div style={{ textAlign: 'right', fontSize: '9px', lineHeight: '1.5', color: '#444' }}>
-                      <div style={{ fontWeight: 700 }}>KK3 RD 134 KICUKIRO District</div>
-                      <div>Nyarugunga Sector RWANDA</div>
-                      <div>Tel: 0788382000 | 0733682000 | 0723382000 | 8000</div>
+                      <div style={{ fontWeight: 700 }}>KK3 RD 134, KICUKIRO District</div>
+                      <div>Nyarugunga Sector, Kigali, RWANDA</div>
+                      <div>Tel: 0788 122 100 | 0788 382 000 | 8000</div>
                       <div>info@legacyclinics.rw | www.legacyclinics.rw</div>
                     </div>
                   </div>
