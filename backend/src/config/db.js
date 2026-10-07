@@ -1938,8 +1938,10 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       const { rows } = await client.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='shift_sessions'");
       if (rows.length > 0) {
         const sql = rows[0].sql;
-        if (!sql.includes('rama_rssb') || !sql.includes('imaging')) {
+        if (!sql.includes('rama_rssb') || !sql.includes('imaging') || sql.includes('CHECK (shift_role')) {
           console.log('⚙️ Migrating shift_sessions to support rama_rssb and imaging roles...');
+
+          await client.execute("PRAGMA foreign_keys = OFF");
 
           await client.execute("DROP TABLE IF EXISTS shift_sessions_old");
           await client.execute("ALTER TABLE shift_sessions RENAME TO shift_sessions_old");
@@ -1948,7 +1950,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           CREATE TABLE shift_sessions (
             id                  INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-            shift_role          TEXT NOT NULL CHECK (shift_role IN ('cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge', 'imaging', 'rama_rssb')),
+            shift_role          TEXT NOT NULL,
             status              TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'draft', 'closed')),
             opened_at           DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
             closed_at           DATETIME,
@@ -1997,11 +1999,13 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_opened_at   ON shift_sessions(opened_at DESC)");
           await client.execute("CREATE INDEX IF NOT EXISTS idx_shift_is_flagged  ON shift_sessions(is_flagged)");
 
-          console.log('✅ SQLite Schema Migration: upgraded shift_sessions table check constraint to include rama_rssb and imaging');
+          await client.execute("PRAGMA foreign_keys = ON");
+          console.log('✅ SQLite Schema Migration: upgraded shift_sessions table check constraint to support all shift roles');
         }
       }
     } catch (err) {
       console.warn('⚠️ Shift sessions migration check completed:', err.message);
+      try { await client.execute("PRAGMA foreign_keys = ON"); } catch (_) {}
     }
 
     try {
