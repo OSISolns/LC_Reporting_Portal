@@ -2102,11 +2102,10 @@ export default function ProcurementHub() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
-                  isActive
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${isActive
                     ? 'bg-teal-700 text-white shadow-xs font-black border border-teal-700'
                     : 'text-slate-650 hover:text-slate-900 hover:bg-slate-100 bg-slate-50/70 border border-slate-150'
-                }`}
+                  }`}
               >
                 <Icon size={13} className={isActive ? 'text-white' : 'text-slate-450'} />
                 <span>{tab.label}</span>
@@ -2372,8 +2371,8 @@ export default function ProcurementHub() {
                         key={tab.id}
                         onClick={() => setRequisitionMode(tab.id)}
                         className={`flex items-center gap-2 px-5 py-3 border-b-2 font-black text-xs transition-all cursor-pointer ${requisitionMode === tab.id
-                            ? 'border-teal-600 text-teal-700'
-                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                          ? 'border-teal-600 text-teal-700'
+                          : 'border-transparent text-slate-400 hover:text-slate-600'
                           }`}
                       >
                         <tab.icon size={14} />
@@ -2468,8 +2467,8 @@ export default function ProcurementHub() {
                                   <td className="p-4 text-slate-500">{req.created_at ? new Date(req.created_at).toLocaleString() : '—'}</td>
                                   <td className="p-4">
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${req.urgency === 'Urgent' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
-                                        req.urgency === 'Critical' ? 'bg-red-50 text-red-650 border border-red-100 font-black' :
-                                          'bg-slate-50 text-slate-500 border border-slate-100'
+                                      req.urgency === 'Critical' ? 'bg-red-50 text-red-650 border border-red-100 font-black' :
+                                        'bg-slate-50 text-slate-500 border border-slate-100'
                                       }`}>
                                       {req.urgency}
                                     </span>
@@ -2478,8 +2477,8 @@ export default function ProcurementHub() {
                                   <td className="p-4 text-slate-500 max-w-xs truncate">{req.notes || '—'}</td>
                                   <td className="p-4">
                                     <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${req.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                        req.status === 'Rejected' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
-                                          'bg-amber-50 text-amber-600 border border-amber-100'
+                                      req.status === 'Rejected' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
+                                        'bg-amber-50 text-amber-600 border border-amber-100'
                                       }`}>
                                       {req.status}
                                     </span>
@@ -2750,9 +2749,9 @@ export default function ProcurementHub() {
                               <td className="p-4 text-teal-700 font-bold">{po.total_amount ? `${po.total_amount.toLocaleString()} RWF` : '—'}</td>
                               <td className="p-4">
                                 <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${po.status === 'Fulfilled' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                    po.status === 'Sent to Supplier' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
-                                      po.status === 'Approved' ? 'bg-teal-50 text-teal-600 border border-teal-100' :
-                                        'bg-slate-50 text-slate-500 border border-slate-100'
+                                  po.status === 'Sent to Supplier' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
+                                    po.status === 'Approved' ? 'bg-teal-50 text-teal-600 border border-teal-100' :
+                                      'bg-slate-50 text-slate-500 border border-slate-100'
                                   }`}>
                                   {po.status}
                                 </span>
@@ -2961,7 +2960,7 @@ export default function ProcurementHub() {
                 const totalUnits = rows.reduce((s, r) => s + Number(r.quantity || 0), 0);
                 const totalValue = rows.reduce((s, r) => s + Number(r.quantity || 0) * Number(r.price || 0), 0);
                 const expiringSoon = rows.filter(r => { const d = daysTo(r.expiry_date); return d !== null && d <= 90; }).length;
-                
+
                 const totalPages = Math.ceil(rows.length / 25) || 1;
                 const safePage = Math.min(centralStockPage, totalPages);
                 const paginatedRows = rows.slice((safePage - 1) * 25, safePage * 25);
@@ -3317,11 +3316,11 @@ export default function ProcurementHub() {
                           <div className="flex flex-wrap gap-2">
                             {[['status', selectedInvoice.status], ['match', selectedInvoice.match_status]].map(([k, v]) => (
                               <span key={k} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${v === 'matched' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                  v === 'discrepancy' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                    v === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                      v === 'paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                        v === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                                          'bg-amber-50 text-amber-700 border-amber-200'
+                                v === 'discrepancy' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                  v === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                    v === 'paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                      v === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                                        'bg-amber-50 text-amber-700 border-amber-200'
                                 }`}>{v}</span>
                             ))}
                           </div>
@@ -3466,16 +3465,16 @@ export default function ProcurementHub() {
                                   <td className="p-4 text-right font-bold text-slate-800">{Number(inv.total_amount || 0).toLocaleString()} RWF</td>
                                   <td className="p-4 text-center">
                                     <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${inv.status === 'paid' ? 'bg-blue-50 text-blue-700' :
-                                        inv.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
-                                          inv.status === 'rejected' ? 'bg-red-50 text-red-700' :
-                                            inv.status === 'submitted' ? 'bg-teal-50 text-teal-700' :
-                                              'bg-amber-50 text-amber-700'
+                                      inv.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                                        inv.status === 'rejected' ? 'bg-red-50 text-red-700' :
+                                          inv.status === 'submitted' ? 'bg-teal-50 text-teal-700' :
+                                            'bg-amber-50 text-amber-700'
                                       }`}>{inv.status}</span>
                                   </td>
                                   <td className="p-4 text-center">
                                     <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${inv.match_status === 'matched' ? 'bg-emerald-50 text-emerald-700' :
-                                        inv.match_status === 'discrepancy' ? 'bg-rose-50 text-rose-700' :
-                                          'bg-slate-100 text-slate-500'
+                                      inv.match_status === 'discrepancy' ? 'bg-rose-50 text-rose-700' :
+                                        'bg-slate-100 text-slate-500'
                                       }`}>{inv.match_status || 'unmatched'}</span>
                                   </td>
                                   <td className="p-4 text-center">
@@ -3883,7 +3882,7 @@ export default function ProcurementHub() {
                             <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-500 ${utilization >= 90 ? 'bg-rose-500' :
-                                    utilization >= 75 ? 'bg-amber-500' : 'bg-indigo-600'
+                                  utilization >= 75 ? 'bg-amber-500' : 'bg-indigo-600'
                                   }`}
                                 style={{ width: `${utilization}%` }}
                               />
@@ -3919,10 +3918,10 @@ export default function ProcurementHub() {
                               </span>
                             )}
                             <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md ${rfqDetails?.rfq.status === 'Draft' ? 'bg-slate-100 text-slate-650' :
-                                rfqDetails?.rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
-                                  rfqDetails?.rfq.status === 'UnderReview' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' :
-                                    rfqDetails?.rfq.status === 'Awarded' ? 'bg-teal-50 text-teal-700 border border-teal-150' :
-                                      'bg-emerald-50 text-emerald-700 border border-emerald-150'
+                              rfqDetails?.rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
+                                rfqDetails?.rfq.status === 'UnderReview' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' :
+                                  rfqDetails?.rfq.status === 'Awarded' ? 'bg-teal-50 text-teal-700 border border-teal-150' :
+                                    'bg-emerald-50 text-emerald-700 border border-emerald-150'
                               }`}>
                               {rfqDetails?.rfq.status}
                             </span>
@@ -4258,10 +4257,10 @@ export default function ProcurementHub() {
                                   <td className="p-4 text-center font-bold">{rfq.item_count}</td>
                                   <td className="p-4 text-center">
                                     <span className={`px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full ${rfq.status === 'Draft' ? 'bg-slate-100 text-slate-700 border border-slate-200' :
-                                        rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
-                                          rfq.status === 'UnderReview' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' :
-                                            rfq.status === 'Awarded' ? 'bg-teal-50 text-teal-700 border border-teal-150' :
-                                              'bg-emerald-50 text-emerald-700 border border-emerald-150'
+                                      rfq.status === 'Collecting' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
+                                        rfq.status === 'UnderReview' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' :
+                                          rfq.status === 'Awarded' ? 'bg-teal-50 text-teal-700 border border-teal-150' :
+                                            'bg-emerald-50 text-emerald-700 border border-emerald-150'
                                       }`}>
                                       {rfq.status}
                                     </span>
@@ -4295,10 +4294,10 @@ export default function ProcurementHub() {
                                         <button
                                           onClick={() => { setSelectedRFQ(rfq.id); fetchRFQDetails(rfq.id); }}
                                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-xs border ${done
-                                              ? 'bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                                              : reviewing
-                                                ? 'bg-teal-650 border-teal-650 text-white hover:bg-teal-700'
-                                                : 'bg-white border-teal-200 text-teal-700 hover:bg-teal-50'
+                                            ? 'bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                                            : reviewing
+                                              ? 'bg-teal-650 border-teal-650 text-white hover:bg-teal-700'
+                                              : 'bg-white border-teal-200 text-teal-700 hover:bg-teal-50'
                                             }`}
                                         >
                                           <Icon size={13} /> {label}
@@ -4856,7 +4855,7 @@ export default function ProcurementHub() {
                             <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
                               <div
                                 className={`h-1.5 rounded-full ${(fulfillmentRateVal || 0) >= 90 ? 'bg-emerald-500' :
-                                    (fulfillmentRateVal || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                                  (fulfillmentRateVal || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
                                   }`}
                                 style={{ width: `${fulfillmentRateVal || 0}%` }}
                               />
@@ -4991,8 +4990,8 @@ export default function ProcurementHub() {
                     key={tab.id}
                     onClick={() => setVendorProfileTab(tab.id)}
                     className={`flex items-center gap-1.5 px-4 py-2 border-b-2 font-black text-xs transition-all cursor-pointer ${vendorProfileTab === tab.id
-                        ? 'border-teal-600 text-teal-700'
-                        : 'border-transparent text-slate-400 hover:text-slate-650'
+                      ? 'border-teal-600 text-teal-700'
+                      : 'border-transparent text-slate-400 hover:text-slate-650'
                       }`}
                   >
                     <tab.icon size={13} />
@@ -5029,7 +5028,7 @@ export default function ProcurementHub() {
                               <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
                                 <div
                                   className={`h-1.5 rounded-full ${(fulfillmentRateVal || 0) >= 90 ? 'bg-emerald-500' :
-                                      (fulfillmentRateVal || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                                    (fulfillmentRateVal || 0) >= 70 ? 'bg-amber-500' : 'bg-rose-500'
                                     }`}
                                   style={{ width: `${fulfillmentRateVal || 0}%` }}
                                 />
@@ -5445,22 +5444,20 @@ export default function ProcurementHub() {
                     <button
                       type="button"
                       onClick={() => setBudgetPeriodType('monthly')}
-                      className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        budgetPeriodType === 'monthly'
+                      className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${budgetPeriodType === 'monthly'
                           ? 'bg-emerald-600 text-white shadow-xs font-black'
                           : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       Monthly Budget
                     </button>
                     <button
                       type="button"
                       onClick={() => setBudgetPeriodType('annual')}
-                      className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        budgetPeriodType === 'annual'
+                      className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${budgetPeriodType === 'annual'
                           ? 'bg-emerald-600 text-white shadow-xs font-black'
                           : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       Yearly (Annual) Budget
                     </button>
@@ -6933,15 +6930,15 @@ export default function ProcurementHub() {
                 <div>
                   <p className="text-[10px] text-slate-455 uppercase font-black">Priority / Classification</p>
                   <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-block mt-0.5 ${selectedRequisition.urgency === 'Critical' ? 'bg-red-50 text-red-655 border border-red-100' :
-                      selectedRequisition.urgency === 'High' ? 'bg-amber-50 text-amber-655 border border-amber-100' :
-                        'bg-slate-100 text-slate-550 border border-slate-200'
+                    selectedRequisition.urgency === 'High' ? 'bg-amber-50 text-amber-655 border border-amber-100' :
+                      'bg-slate-100 text-slate-550 border border-slate-200'
                     }`}>{selectedRequisition.urgency}</span>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-455 uppercase font-black">Status</p>
                   <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-block mt-0.5 ${selectedRequisition.status === 'Pending' ? 'bg-amber-50 text-amber-655 border border-amber-100' :
-                      selectedRequisition.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                        'bg-slate-100 text-slate-550 border border-slate-200'
+                    selectedRequisition.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                      'bg-slate-100 text-slate-550 border border-slate-200'
                     }`}>{selectedRequisition.status}</span>
                 </div>
                 {selectedRequisition.notes && (
@@ -7080,7 +7077,7 @@ export default function ProcurementHub() {
                     </div>
                     {/* Address block */}
                     <div style={{ textAlign: 'right', fontSize: '9px', lineHeight: '1.5', color: '#444' }}>
-                      <div style={{ fontWeight: 700 }}>KK3 RD 134 KICUKIRO Districts</div>
+                      <div style={{ fontWeight: 700 }}>KK3 RD 134 KICUKIRO District</div>
                       <div>Nyarugunga Sector RWANDA</div>
                       <div>Tel: 0788382000 | 0733682000 | 0723382000 | 8000</div>
                       <div>info@legacyclinics.rw | www.legacyclinics.rw</div>
