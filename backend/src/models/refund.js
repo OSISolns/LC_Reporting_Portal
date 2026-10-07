@@ -14,7 +14,7 @@ class Refund {
     // Prevent duplicate: Check for existing active/approved request for this SID
     if (sidNumber && sidNumber.trim() !== '') {
       const existing = await db.query(
-        `SELECT id FROM refund_requests WHERE sid_number ILIKE $1 AND status != 'rejected' LIMIT 1`,
+        `SELECT id FROM refund_requests WHERE sid_number ILIKE $1 AND status NOT IN ('rejected', 'draft') LIMIT 1`,
         [sidNumber]
       );
       if (existing.rows.length > 0) {
@@ -68,7 +68,7 @@ class Refund {
 
     if (sidNumber && sidNumber.trim() !== '') {
       const existing = await db.query(
-        `SELECT id FROM refund_requests WHERE sid_number ILIKE $1 AND id != $2 AND status != 'rejected' LIMIT 1`,
+        `SELECT id FROM refund_requests WHERE sid_number ILIKE $1 AND id != $2 AND status NOT IN ('rejected', 'draft') LIMIT 1`,
         [sidNumber, id]
       );
       if (existing.rows.length > 0) {

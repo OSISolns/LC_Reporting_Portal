@@ -14,7 +14,7 @@ class Cancellation {
     // Check for duplicate active cancellation on the same old SID if provided
     if (oldSidNumber && oldSidNumber.trim() !== '') {
       const existing = await db.query(
-        `SELECT id FROM cancellation_requests WHERE old_sid_number ILIKE $1 AND status != 'rejected' LIMIT 1`,
+        `SELECT id FROM cancellation_requests WHERE old_sid_number ILIKE $1 AND status NOT IN ('rejected', 'draft') LIMIT 1`,
         [oldSidNumber.trim()]
       );
       if (existing.rows.length > 0) {
@@ -70,7 +70,7 @@ class Cancellation {
 
     if (oldSidNumber && oldSidNumber.trim() !== '') {
       const existing = await db.query(
-        `SELECT id FROM cancellation_requests WHERE old_sid_number ILIKE $1 AND id != $2 AND status != 'rejected' LIMIT 1`,
+        `SELECT id FROM cancellation_requests WHERE old_sid_number ILIKE $1 AND id != $2 AND status NOT IN ('rejected', 'draft') LIMIT 1`,
         [oldSidNumber.trim(), id]
       );
       if (existing.rows.length > 0) {

@@ -9,7 +9,7 @@ class ResultTransfer {
 
     // Prevent duplicate
     const existing = await db.query(
-      `SELECT id FROM results_transfers WHERE old_sid = $1 AND new_sid = $2 AND status != 'rejected' LIMIT 1`,
+      `SELECT id FROM results_transfers WHERE old_sid = $1 AND new_sid = $2 AND status NOT IN ('rejected', 'draft') LIMIT 1`,
       [oldSid, newSid]
     );
     if (existing.rows.length > 0) {

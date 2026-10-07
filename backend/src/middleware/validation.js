@@ -2,6 +2,10 @@
 const { body, param, query, validationResult } = require('express-validator');
 
 const validate = (validations) => async (req, res, next) => {
+  if (req.body && (req.body.status === 'draft' || req.body.isDraft)) {
+    return next();
+  }
+
   await Promise.all(validations.map((validation) => validation.run(req)));
 
   const errors = validationResult(req);
