@@ -13,31 +13,33 @@ exports.createRequest = async (req, res, next) => {
     const request = await Refund.create(req.body, req.user.id);
     try { await logAction(req, 'CREATE', 'refund_request', request.id, { patient: request.patient_full_name }); } catch (e) {}
     
-    // Notify Operations and Management
-    try {
-      const rolesToNotify = ['operations_staff', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
-      const usersToNotify = [];
-      
-      for (const role of rolesToNotify) {
-        const users = await User.findByRole(role);
-        usersToNotify.push(...users);
-      }
+    // Notify Operations and Management ONLY if submitted (not draft)
+    if (request.status !== 'draft') {
+      try {
+        const rolesToNotify = ['operations_staff', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
+        const usersToNotify = [];
+        
+        for (const role of rolesToNotify) {
+          const users = await User.findByRole(role);
+          usersToNotify.push(...users);
+        }
 
-      // Unique users only
-      const uniqueUsers = Array.from(new Set(usersToNotify.map(u => u.id)))
-        .map(id => usersToNotify.find(u => u.id === id));
+        // Unique users only
+        const uniqueUsers = Array.from(new Set(usersToNotify.map(u => u.id)))
+          .map(id => usersToNotify.find(u => u.id === id));
 
-      for (const user of uniqueUsers) {
-        await Notification.create({
-          userId: user.id,
-          title: 'New Refund Request',
-          message: `A new refund request for ${request.patient_full_name} (${request.amount_to_be_refunded} RWF).`,
-          type: 'info',
-          link: `/refunds/${request.id}`
-        });
+        for (const user of uniqueUsers) {
+          await Notification.create({
+            userId: user.id,
+            title: 'New Refund Request',
+            message: `A new refund request for ${request.patient_full_name} (${request.amount_to_be_refunded} RWF).`,
+            type: 'info',
+            link: `/refunds/${request.id}`
+          });
+        }
+      } catch (e) {
+        console.error('Notification error:', e);
       }
-    } catch (e) {
-      console.error('Notification error:', e);
     }
 
     cache.invalidatePattern('ref:list');
@@ -52,12 +54,12 @@ exports.updateRequest = async (req, res, next) => {
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Refund request not found' });
     }
-    if (existing.status !== 'pending') {
-      return res.status(400).json({ success: false, message: 'Only pending refund requests can be edited.' });
+    if (existing.status !== 'pending' && existing.status !== 'draft') {
+      return res.status(400).json({ success: false, message: 'Only pending or draft refund requests can be edited.' });
     }
     const privilegedRoles = ['sales_manager', 'coo', 'deputy_coo', 'admin'];
     if (existing.created_by !== req.user.id && !privilegedRoles.includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Access denied: You can only edit your own pending requests.' });
+      return res.status(403).json({ success: false, message: 'Access denied: You can only edit your own pending or draft requests.' });
     }
     const updated = await Refund.update(req.params.id, req.body);
     try { await logAction(req, 'UPDATE', 'refund_request', updated.id, { patient: updated.patient_full_name }); } catch (e) {}
@@ -74,6 +76,8 @@ exports.getAllRequests = async (req, res, next) => {
     const isPrivileged = privilegedRoles.includes(req.user.role);
     if (!isPrivileged) {
       filters.created_by = req.user.id;
+    } else {
+      filters.user_id = req.user.id;
     }
     const cacheKey = `ref:list:${req.user.role}:${req.user.id}:${JSON.stringify(filters)}`;
     const data = await cache.getOrSet(cacheKey, () => Refund.getAll(filters), 15_000);

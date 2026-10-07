@@ -3,6 +3,7 @@ import api from './axios';
 export const getResultTransfers    = (params = {}) => api.get('/results-transfer', { params });
 export const getResultTransferById = (id)           => api.get(`/results-transfer/${id}`);
 export const createResultTransfer  = (data)         => api.post('/results-transfer', data);
+export const updateResultTransfer  = (id, data)   => api.put(`/results-transfer/${id}`, data);
 export const reviewResultTransfer  = (id)           => api.put(`/results-transfer/${id}/review`);
 export const approveResultTransfer = (id, editedByName) => api.put(`/results-transfer/${id}/approve`, { editedByName });
 export const rejectResultTransfer  = (id, comment)  => api.put(`/results-transfer/${id}/reject`, { comment });

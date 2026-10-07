@@ -189,10 +189,11 @@ const RefundList = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const payload = { ...formData, status: 'pending' };
       if (editingRequest) {
-        await updateRefund(editingRequest.id, formData);
+        await updateRefund(editingRequest.id, payload);
       } else {
-        await createRefund(formData);
+        await createRefund(payload);
       }
       clearDraft();
       setShowCreateModal(false);
@@ -210,6 +211,27 @@ const RefundList = () => {
         errMsg = err.message;
       }
       alert(errMsg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setSubmitting(true);
+    try {
+      const payload = { ...formData, status: 'draft' };
+      if (editingRequest) {
+        await updateRefund(editingRequest.id, payload);
+      } else {
+        await createRefund(payload);
+      }
+      clearDraft();
+      setShowCreateModal(false);
+      fetchRequests();
+      setFormData(EMPTY_FORM);
+      setEditingRequest(null);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to save draft');
     } finally {
       setSubmitting(false);
     }
@@ -286,6 +308,7 @@ const RefundList = () => {
           <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             style={{ width: '100%', padding: '12px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem', cursor: 'pointer' }}>
             <option value="">Status: All Requests</option>
+            <option value="draft">📝 Draft</option>
             <option value="pending">⏳ Pending</option>
             <option value="verified">🔍 Verified</option>
             <option value="approved">✅ Approved</option>
@@ -424,16 +447,16 @@ const RefundList = () => {
                       }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(40,167,69,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Download size={18} />
                     </button>
-                    {r.status === 'pending' && (user.role === 'admin' || r.created_by === user.id) && (
+                    {(r.status === 'pending' || r.status === 'draft') && (user.role === 'admin' || r.created_by === user.id) && (
                       <button 
                         onClick={() => handleOpenEdit(r)}
-                        title="Edit Request"
-                        style={{ color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
+                        title={r.status === 'draft' ? "Edit / Complete Draft" : "Edit Request"}
+                        style={{ color: r.status === 'draft' ? '#d97706' : 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
                       >
                         <Edit2 size={18} />
                       </button>
                     )}
-                    {r.status === 'pending' && hasPermission('refunds', 'delete') && (user.role === 'admin' || r.created_by === user.id) && (
+                    {(r.status === 'pending' || r.status === 'draft') && hasPermission('refunds', 'delete') && (user.role === 'admin' || r.created_by === user.id) && (
                       <button 
                         onClick={() => handleDelete(r.id)}
                         title="Delete Request"
@@ -507,11 +530,12 @@ const RefundList = () => {
       </div>
 
       {/* Create Modal */}
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title={editingRequest ? "Edit Refund Request" : "Create Refund Request"} maxWidth="1100px">
+      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title={editingRequest ? (editingRequest.status === 'draft' ? "Edit Draft Request" : "Edit Refund Request") : "Create Refund Request"} maxWidth="1100px">
         <RefundFormFields
           formData={formData}
           handleChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))}
           handleSubmit={handleCreateSubmit}
+          onSaveDraft={handleSaveDraft}
           loading={submitting}
           onCancel={() => setShowCreateModal(false)}
           staff={staff}

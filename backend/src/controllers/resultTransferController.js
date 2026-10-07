@@ -17,27 +17,29 @@ exports.createRequest = async (req, res, next) => {
           new_sid: request.new_sid 
         }); 
         
-        // Notify Lab Lead and Management
-        const rolesToNotify = ['lab_team_lead', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
-        const usersToNotify = [];
-        
-        for (const role of rolesToNotify) {
-          const users = await User.findByRole(role);
-          usersToNotify.push(...users);
-        }
+        // Notify Lab Lead and Management ONLY if submitted (not draft)
+        if (request.status !== 'draft') {
+          const rolesToNotify = ['lab_team_lead', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
+          const usersToNotify = [];
+          
+          for (const role of rolesToNotify) {
+            const users = await User.findByRole(role);
+            usersToNotify.push(...users);
+          }
 
-        // Unique users only
-        const uniqueUsers = Array.from(new Set(usersToNotify.map(u => u.id)))
-          .map(id => usersToNotify.find(u => u.id === id));
+          // Unique users only
+          const uniqueUsers = Array.from(new Set(usersToNotify.map(u => u.id)))
+            .map(id => usersToNotify.find(u => u.id === id));
 
-        for (const user of uniqueUsers) {
-          await Notification.create({
-            userId: user.id,
-            title: 'New Result Transfer Request',
-            message: `A new result transfer requisition has been submitted (Old SID: ${request.old_sid}).`,
-            type: 'info',
-            link: `/results-transfer`
-          });
+          for (const user of uniqueUsers) {
+            await Notification.create({
+              userId: user.id,
+              title: 'New Result Transfer Request',
+              message: `A new result transfer requisition has been submitted (Old SID: ${request.old_sid}).`,
+              type: 'info',
+              link: `/results-transfer`
+            });
+          }
         }
       } catch (e) {}
     }
@@ -47,10 +49,38 @@ exports.createRequest = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.updateRequest = async (req, res, next) => {
+  try {
+    const existing = await ResultTransfer.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+    if (existing.status !== 'pending' && existing.status !== 'draft') {
+      return res.status(400).json({ success: false, message: 'Only pending or draft requests can be edited.' });
+    }
+    const privilegedRoles = ['lab_team_lead', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
+    if (Number(existing.created_by) !== Number(req.user.id) && !privilegedRoles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Access denied: You can only edit your own pending or draft requests.' });
+    }
+    const updated = await ResultTransfer.update(req.params.id, req.body);
+    try { await logAction(req, 'UPDATE', 'result_transfer', updated.id); } catch (e) {}
+    cache.invalidatePattern('rt:list');
+    res.json({ success: true, data: updated });
+  } catch (err) { next(err); }
+};
+
 exports.getAllRequests = async (req, res, next) => {
   try {
-    const cacheKey = `rt:list:${req.user.role}:${JSON.stringify(req.query)}`;
-    const data = await cache.getOrSet(cacheKey, () => ResultTransfer.getAll(req.query), 15_000);
+    const filters = { ...req.query };
+    const privilegedRoles = ['lab_team_lead', 'sales_manager', 'coo', 'deputy_coo', 'admin', 'chairman', 'principal_cashier', 'operations_staff'];
+    const isPrivileged = privilegedRoles.includes(req.user.role);
+    if (!isPrivileged) {
+      filters.created_by = req.user.id;
+    } else {
+      filters.user_id = req.user.id;
+    }
+    const cacheKey = `rt:list:${req.user.role}:${req.user.id}:${JSON.stringify(filters)}`;
+    const data = await cache.getOrSet(cacheKey, () => ResultTransfer.getAll(filters), 15_000);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };
@@ -153,7 +183,9 @@ exports.deleteRequest = async (req, res, next) => {
   try {
     const existing = await ResultTransfer.findById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
-    if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending requests can be deleted.' });
+    if (existing.status !== 'pending' && existing.status !== 'draft') {
+      return res.status(400).json({ success: false, message: 'Only pending or draft requests can be deleted.' });
+    }
 
     if (req.user.role !== 'admin' && Number(existing.created_by) !== Number(req.user.id)) {
       return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own requests.' });

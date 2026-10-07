@@ -35,6 +35,8 @@ class Cancellation {
     };
     const cleanAmount = (a) => (a !== undefined && a !== null && a.toString().trim() !== '' ? a : null);
 
+    const initialStatus = (data.status === 'draft' || data.isDraft) ? 'draft' : 'pending';
+
     const { rows } = await db.query(
       `INSERT INTO cancellation_requests (
         patient_full_name, pid_number, old_sid_number, new_sid_number,
@@ -51,7 +53,7 @@ class Cancellation {
         originalReceiptNumber, rectifiedReceiptNumber,
         cleanAmount(originalReceiptAmount), cleanAmount(rectifiedReceiptAmount),
         cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
-        userId, 'pending', billedBy || null
+        userId, initialStatus, billedBy || null
       ]
     );
     return rows[0];
@@ -104,8 +106,9 @@ class Cancellation {
         rectified_date = $13,
         reason_for_cancellation = $14,
         billed_by = $15,
+        status = COALESCE($16, status),
         updated_at = NOW()
-      WHERE id = $16 AND status = 'pending'
+      WHERE id = $17 AND (status = 'pending' OR status = 'draft')
       RETURNING *`,
       [
         patientFullName, pidNumber, oldSidNumber, newSidNumber,
@@ -113,7 +116,7 @@ class Cancellation {
         originalReceiptNumber, rectifiedReceiptNumber,
         cleanAmount(originalReceiptAmount), cleanAmount(rectifiedReceiptAmount),
         cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
-        billedBy || null, id
+        billedBy || null, data.status || null, id
       ]
     );
     return rows[0];
@@ -145,10 +148,14 @@ class Cancellation {
     if (filters.status) {
       params.push(filters.status);
       query += ` AND c.status = $${params.length}`;
-    }
-    if (filters.created_by) {
+    } else if (filters.created_by) {
       params.push(filters.created_by);
       query += ` AND c.created_by = $${params.length}`;
+    } else if (filters.user_id) {
+      params.push(filters.user_id);
+      query += ` AND (c.status != 'draft' OR c.created_by = $${params.length})`;
+    } else {
+      query += ` AND c.status != 'draft'`;
     }
 
     if (filters.search && filters.search.trim()) {

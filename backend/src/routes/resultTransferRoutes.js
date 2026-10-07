@@ -35,6 +35,13 @@ router.post(
   controller.createRequest
 );
 
+// PUT update request / draft
+router.put(
+  '/:id',
+  checkPermission('results_transfer', 'create'),
+  controller.updateRequest
+);
+
 // PUT review request
 router.put(
   '/:id/review', 

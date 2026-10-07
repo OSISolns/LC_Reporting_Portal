@@ -18,7 +18,7 @@ const sectionIconStyle = (color) => ({
   color: `rgb(${color})`,
 });
 
-const ResultTransferFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel, hasRestoredDraft, onClearDraft }) => {
+const ResultTransferFormFields = ({ formData, handleChange, handleSubmit, onSaveDraft, loading, onCancel, hasRestoredDraft, onClearDraft }) => {
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
@@ -70,10 +70,10 @@ const ResultTransferFormFields = ({ formData, handleChange, handleSubmit, loadin
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: '1.25rem', marginTop: '1rem' }}>
+      <div style={{ display: 'flex', gap: '1.25rem', marginTop: '1rem', flexWrap: 'wrap' }}>
         <button type="button" onClick={onCancel}
           style={{ 
-            flex: 1, 
+            flex: '1 1 120px', 
             padding: '1rem', 
             backgroundColor: 'rgba(71, 85, 105, 0.1)', 
             color: '#475569', 
@@ -88,9 +88,31 @@ const ResultTransferFormFields = ({ formData, handleChange, handleSubmit, loadin
         >
           Cancel
         </button>
+        {onSaveDraft && (
+          <button type="button" onClick={onSaveDraft} disabled={loading}
+            style={{ 
+              flex: '1.5 1 160px', 
+              padding: '1rem', 
+              backgroundColor: '#fef3c7', 
+              color: '#92400e', 
+              border: '1px solid #fcd34d', 
+              borderRadius: '14px', 
+              fontWeight: 700, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '8px', 
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            <Save size={18} />
+            Save as Draft
+          </button>
+        )}
         <button type="submit" disabled={loading}
           style={{ 
-            flex: 2, 
+            flex: '2 1 200px', 
             padding: '1rem', 
             background: 'linear-gradient(135deg, #007B8A 0%, #0099ab 100%)', 
             color: '#ffffff', 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, RefreshCw, Eye, Download, Trash2 } from 'lucide-react';
+import { Plus, Search, RefreshCw, Eye, Download, Trash2, Edit2 } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
@@ -9,7 +9,7 @@ import ResultTransferFormFields from './components/ResultTransferFormFields';
 import ResultTransferDetailsView from './components/ResultTransferDetailsView';
 import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import {
-  getResultTransfers, getResultTransferById, createResultTransfer,
+  getResultTransfers, getResultTransferById, createResultTransfer, updateResultTransfer,
   getResultTransferPDF, deleteResultTransfer,
   reviewResultTransfer, approveResultTransfer, rejectResultTransfer,
 } from '../../api/resultTransfer';
@@ -39,6 +39,7 @@ const ResultTransferList = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal,   setShowViewModal]   = useState(false);
   const [activeRequest,   setActiveRequest]   = useState(null);
+  const [editingRequest,  setEditingRequest]  = useState(null);
   const [formData,        setFormData]        = useState(EMPTY_FORM);
   const [submitting,      setSubmitting]      = useState(false);
   const [detailLoading,   setDetailLoading]   = useState(false);
@@ -49,7 +50,7 @@ const ResultTransferList = () => {
     EMPTY_FORM,
     formData,
     setFormData,
-    false
+    !!editingRequest
   );
 
   useEffect(() => {
@@ -86,17 +87,55 @@ const ResultTransferList = () => {
     }
   };
 
+  const handleOpenEdit = (r) => {
+    setEditingRequest(r);
+    setFormData({
+      transferDate: r.transfer_date ? r.transfer_date.split('T')[0] : EMPTY_FORM.transferDate,
+      oldSid: r.old_sid || '',
+      newSid: r.new_sid || '',
+      reason: r.reason || '',
+    });
+    setShowCreateModal(true);
+  };
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await createResultTransfer(formData);
+      const payload = { ...formData, status: 'pending' };
+      if (editingRequest) {
+        await updateResultTransfer(editingRequest.id, payload);
+      } else {
+        await createResultTransfer(payload);
+      }
       clearDraft();
       setShowCreateModal(false);
       fetchRequests();
       setFormData(EMPTY_FORM);
+      setEditingRequest(null);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to submit transfer request');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setSubmitting(true);
+    try {
+      const payload = { ...formData, status: 'draft' };
+      if (editingRequest) {
+        await updateResultTransfer(editingRequest.id, payload);
+      } else {
+        await createResultTransfer(payload);
+      }
+      clearDraft();
+      setShowCreateModal(false);
+      fetchRequests();
+      setFormData(EMPTY_FORM);
+      setEditingRequest(null);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to save draft');
     } finally {
       setSubmitting(false);
     }
@@ -183,6 +222,7 @@ const ResultTransferList = () => {
           <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             style={{ width: '100%', padding: '12px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem', cursor: 'pointer' }}>
             <option value="">Status: All</option>
+            <option value="draft">📝 Draft</option>
             <option value="pending">⏳ Pending Review</option>
             <option value="reviewed">🔍 Reviewed</option>
             <option value="approved">✅ Approved</option>
@@ -285,7 +325,25 @@ const ResultTransferList = () => {
                     >
                       <Download size={18} />
                     </button>
-                    {r.status === 'pending' && (user.role === 'admin' || r.created_by === user.id) && (
+                    {(r.status === 'pending' || r.status === 'draft') && (user.role === 'admin' || r.created_by === user.id) && (
+                      <button onClick={() => handleOpenEdit(r)}
+                        title={r.status === 'draft' ? "Edit / Complete Draft" : "Edit Request"}
+                        style={{ 
+                          color: r.status === 'draft' ? '#d97706' : '#007B8A', 
+                          backgroundColor: r.status === 'draft' ? '#fffbeb' : 'rgba(0, 123, 138, 0.1)', 
+                          border: 'none', 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          padding: '10px', 
+                          borderRadius: '10px', 
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                    )}
+                    {(r.status === 'pending' || r.status === 'draft') && (user.role === 'admin' || r.created_by === user.id) && (
                       <button onClick={async () => {
                         if (window.confirm('Are you sure you want to delete this transfer request?')) {
                           try {
@@ -385,13 +443,14 @@ const ResultTransferList = () => {
       </div>
 
       {/* Create Modal */}
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="New Results Transfer" maxWidth="700px">
+      <Modal isOpen={showCreateModal} onClose={() => { setShowCreateModal(false); setEditingRequest(null); }} title={editingRequest ? (editingRequest.status === 'draft' ? "Edit Draft Transfer Request" : "Edit Transfer Request") : "New Results Transfer"} maxWidth="700px">
         <ResultTransferFormFields
           formData={formData}
           handleChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
           handleSubmit={handleCreateSubmit}
+          onSaveDraft={handleSaveDraft}
           loading={submitting}
-          onCancel={() => setShowCreateModal(false)}
+          onCancel={() => { setShowCreateModal(false); setEditingRequest(null); }}
           hasRestoredDraft={hasRestoredDraft}
           onClearDraft={clearDraft}
         />

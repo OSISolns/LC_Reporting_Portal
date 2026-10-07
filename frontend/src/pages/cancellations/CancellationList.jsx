@@ -209,10 +209,11 @@ const CancellationList = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const payload = { ...formData, status: 'pending' };
       if (editingRequest) {
-        await updateCancellation(editingRequest.id, formData);
+        await updateCancellation(editingRequest.id, payload);
       } else {
-        await createCancellation(formData);
+        await createCancellation(payload);
       }
       clearDraft();
       setShowCreateModal(false);
@@ -229,6 +230,26 @@ const CancellationList = () => {
         errMsg = err.message;
       }
       alert(errMsg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setSubmitting(true);
+    try {
+      const payload = { ...formData, status: 'draft' };
+      if (editingRequest) {
+        await updateCancellation(editingRequest.id, payload);
+      } else {
+        await createCancellation(payload);
+      }
+      clearDraft();
+      setShowCreateModal(false);
+      fetchRequests();
+      resetForm();
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to save draft');
     } finally {
       setSubmitting(false);
     }
@@ -320,10 +341,11 @@ const CancellationList = () => {
             style={{ width: '100%', padding: '10px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem', cursor: 'pointer' }}
           >
             <option value="">Status: All Requests</option>
-            <option value="pending">Pending</option>
-            <option value="verified">Verified</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
+            <option value="draft">📝 Draft</option>
+            <option value="pending">⏳ Pending</option>
+            <option value="verified">🔍 Verified</option>
+            <option value="approved">✅ Approved</option>
+            <option value="rejected">❌ Rejected</option>
           </select>
         </div>
         <div style={{ flex: '1 1 140px', minWidth: '130px' }}>
@@ -492,16 +514,16 @@ const CancellationList = () => {
                       }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(40,167,69,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Download size={18} />
                     </button>
-                    {r.status === 'pending' && (user.role === 'admin' || r.created_by === user.id) && (
+                    {(r.status === 'pending' || r.status === 'draft') && (user.role === 'admin' || r.created_by === user.id) && (
                       <button 
                         onClick={() => handleOpenEdit(r)}
-                        title="Edit Request"
-                        style={{ color: '#1b669e', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
+                        title={r.status === 'draft' ? "Edit / Complete Draft" : "Edit Request"}
+                        style={{ color: r.status === 'draft' ? '#d97706' : '#1b669e', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
                       >
                         <Edit2 size={18} />
                       </button>
                     )}
-                    {r.status === 'pending' && hasPermission('cancellations', 'delete') && (user.role === 'admin' || r.created_by === user.id) && (
+                    {(r.status === 'pending' || r.status === 'draft') && hasPermission('cancellations', 'delete') && (user.role === 'admin' || r.created_by === user.id) && (
                       <button 
                         onClick={() => handleDelete(r.id)}
                         title="Delete Request"
@@ -576,13 +598,14 @@ const CancellationList = () => {
       <Modal 
         isOpen={showCreateModal} 
         onClose={() => setShowCreateModal(false)}
-        title={editingRequest ? "Edit Cancellation Request" : "Create Cancellation Request"}
+        title={editingRequest ? (editingRequest.status === 'draft' ? "Edit Draft Request" : "Edit Cancellation Request") : "Create Cancellation Request"}
         maxWidth="1100px"
       >
         <CancellationFormFields 
           formData={formData}
           handleChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))}
           handleSubmit={handleCreateSubmit}
+          onSaveDraft={handleSaveDraft}
           loading={submitting}
           onCancel={() => setShowCreateModal(false)}
           staff={staff}

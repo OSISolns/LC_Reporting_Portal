@@ -18,13 +18,32 @@ class ResultTransfer {
       throw error;
     }
 
+    const initialStatus = (data.status === 'draft' || data.isDraft) ? 'draft' : 'pending';
+
     const { rows } = await db.query(
       `INSERT INTO results_transfers (
         transfer_date, old_sid, new_sid, reason,
         created_by, status
-      ) VALUES ($1, $2, $3, $4, $5, 'pending')
+      ) VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *`,
-      [transferDate, oldSid, newSid, reason, userId]
+      [transferDate, oldSid, newSid, reason, userId, initialStatus]
+    );
+    return rows[0];
+  }
+
+  static async update(id, data) {
+    const { transferDate, oldSid, newSid, reason } = data;
+    const { rows } = await db.query(
+      `UPDATE results_transfers SET
+        transfer_date = $1,
+        old_sid = $2,
+        new_sid = $3,
+        reason = $4,
+        status = COALESCE($5, status),
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = $6 AND (status = 'pending' OR status = 'draft')
+       RETURNING *`,
+      [transferDate, oldSid, newSid, reason, data.status || null, id]
     );
     return rows[0];
   }
@@ -46,7 +65,16 @@ class ResultTransfer {
     if (filters.status) {
       params.push(filters.status);
       query += ` AND t.status = $${params.length}`;
+    } else if (filters.created_by) {
+      params.push(filters.created_by);
+      query += ` AND t.created_by = $${params.length}`;
+    } else if (filters.user_id) {
+      params.push(filters.user_id);
+      query += ` AND (t.status != 'draft' OR t.created_by = $${params.length})`;
+    } else {
+      query += ` AND t.status != 'draft'`;
     }
+
     if (filters.sid) {
       const sidPattern = `%${filters.sid}%`;
       params.push(sidPattern, sidPattern);
@@ -111,7 +139,7 @@ class ResultTransfer {
 
   static async delete(id) {
     const { rows } = await db.query(
-      `DELETE FROM results_transfers WHERE id = $1 AND status = 'pending' RETURNING *`,
+      `DELETE FROM results_transfers WHERE id = $1 AND (status = 'pending' OR status = 'draft') RETURNING *`,
       [id]
     );
     return rows[0];

@@ -33,6 +33,8 @@ class Refund {
     };
     const cleanAmount = (a) => (a !== undefined && a !== null && a.toString().trim() !== '' ? a : null);
 
+    const initialStatus = (data.status === 'draft' || data.isDraft) ? 'draft' : 'pending';
+
     const { rows } = await db.query(
       `INSERT INTO refund_requests (
         patient_full_name, pid_number, sid_number,
@@ -49,7 +51,7 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        userId, 'pending', billedBy || null
+        userId, initialStatus, billedBy || null
       ]
     );
     return rows[0];
@@ -100,8 +102,9 @@ class Refund {
         initial_transaction_date = $11,
         reason_for_refund = $12,
         billed_by = $13,
+        status = COALESCE($14, status),
         updated_at = NOW()
-      WHERE id = $14 AND status = 'pending'
+      WHERE id = $15 AND (status = 'pending' OR status = 'draft')
       RETURNING *`,
       [
         patientFullName, pidNumber, sidNumber,
@@ -109,7 +112,7 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        billedBy || null, id
+        billedBy || null, data.status || null, id
       ]
     );
     return rows[0];
@@ -140,10 +143,14 @@ class Refund {
     if (filters.status) {
       params.push(filters.status);
       query += ` AND r.status = $${params.length}`;
-    }
-    if (filters.created_by) {
+    } else if (filters.created_by) {
       params.push(filters.created_by);
       query += ` AND r.created_by = $${params.length}`;
+    } else if (filters.user_id) {
+      params.push(filters.user_id);
+      query += ` AND (r.status != 'draft' OR r.created_by = $${params.length})`;
+    } else {
+      query += ` AND r.status != 'draft'`;
     }
     if (filters.pid) {
       params.push(`%${filters.pid}%`);

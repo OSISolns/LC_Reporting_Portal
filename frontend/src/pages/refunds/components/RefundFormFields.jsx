@@ -26,7 +26,7 @@ const selectStyle = {
 const fieldStyle = { display: 'flex', flexDirection: 'column', gap: '6px' };
 const labelStyle = { fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' };
 
-const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCancel, hasRestoredDraft, onClearDraft }) => {
+const RefundFormFields = ({ formData, handleChange, handleSubmit, onSaveDraft, loading, onCancel, hasRestoredDraft, onClearDraft }) => {
   // Tag-input state for Amount Paid By
   const [payerInput, setPayerInput] = useLocalState('');
 
@@ -315,13 +315,20 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, loading, onCan
       </div>
 
       {/* ── Actions ── */}
-      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
         <button type="button" onClick={onCancel}
-          style={{ flex: 1, padding: '1rem', backgroundColor: '#f1f5f9', color: 'var(--text-secondary)', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>
+          style={{ flex: '1 1 120px', padding: '1rem', backgroundColor: '#f1f5f9', color: 'var(--text-secondary)', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>
           Cancel
         </button>
+        {onSaveDraft && (
+          <button type="button" onClick={onSaveDraft} disabled={loading}
+            style={{ flex: '1.5 1 160px', padding: '1rem', backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
+            <Save size={18} />
+            Save as Draft
+          </button>
+        )}
         <button type="submit" disabled={loading}
-          style={{ flex: 2, padding: '1rem', backgroundColor: '#003b44', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', boxShadow: '0 4px 6px -1px rgba(0,59,68,0.2)', cursor: 'pointer' }}>
+          style={{ flex: '2 1 200px', padding: '1rem', backgroundColor: '#003b44', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', boxShadow: '0 4px 6px -1px rgba(0,59,68,0.2)', cursor: 'pointer' }}>
           <Save size={18} />
           {loading ? 'Submitting...' : 'Submit Refund Request'}
         </button>
