@@ -7078,11 +7078,7 @@ export default function ProcurementHub() {
                     {/* Address block */}
                     <div style={{ textAlign: 'right', fontSize: '9px', lineHeight: '1.5', color: '#444' }}>
                       <div style={{ fontWeight: 700 }}>134 KK 3 Rd, KICUKIRO District, NYARUGUNGA Sector, Kigali, RWANDA</div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                        <span>Tel:</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e11d48', color: '#ffffff', width: '12px', height: '12px', borderRadius: '50%', fontSize: '8px' }}>📞</span>
-                        <span>8000 | 0788 122 100 | Whatsapp: 0788 382 000</span>
-                      </div>
+                      <div>Tel: 8000 | 0788 122 100 | Whatsapp: 0788 382 000</div>
                       <div>info@legacyclinics.rw | www.legacyclinics.rw</div>
                     </div>
                   </div>
@@ -7236,11 +7232,7 @@ export default function ProcurementHub() {
                     {/* Address block */}
                     <div style={{ textAlign: 'right', fontSize: '9px', lineHeight: '1.5', color: '#444' }}>
                       <div style={{ fontWeight: 700 }}>134 KK 3 Rd, KICUKIRO District, NYARUGUNGA Sector, Kigali, RWANDA</div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                        <span>Tel:</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e11d48', color: '#ffffff', width: '12px', height: '12px', borderRadius: '50%', fontSize: '8px' }}>📞</span>
-                        <span>8000 | 0788 122 100 | Whatsapp: 0788 382 000</span>
-                      </div>
+                      <div>Tel: 8000 | 0788 122 100 | Whatsapp: 0788 382 000</div>
                       <div>info@legacyclinics.rw | www.legacyclinics.rw</div>
                     </div>
                   </div>
