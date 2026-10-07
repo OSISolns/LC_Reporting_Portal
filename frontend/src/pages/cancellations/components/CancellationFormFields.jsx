@@ -93,10 +93,10 @@ const CancellationFormFields = ({ formData, handleChange, handleSubmit, loading,
           </div>
 
           <div style={fieldStyle}>
-            <label style={labelStyle}>New SID {formData.oldSidNumber ? ' *' : '(if applicable)'}</label>
-            <input type="text" name="newSidNumber" required={!!formData.oldSidNumber}
+            <label style={labelStyle}>New SID (if test was re-billed)</label>
+            <input type="text" name="newSidNumber"
               value={formData.newSidNumber} onChange={handleChange} style={inputStyle}
-              placeholder={formData.oldSidNumber ? "Required because Old SID is provided" : "Leave blank if none"} />
+              placeholder="Leave blank if total cancellation (no new SID)" />
           </div>
 
           <div style={fieldStyle}>

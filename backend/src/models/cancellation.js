@@ -11,18 +11,11 @@ class Cancellation {
       initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy
     } = data;
 
-    // Validate: If old SID is present, new SID must be present
-    if (oldSidNumber && oldSidNumber.trim() !== '' && (!newSidNumber || newSidNumber.trim() === '')) {
-      const error = new Error('New SID is required when an Old SID is provided.');
-      error.status = 400;
-      throw error;
-    }
-
-    // Prevent duplicate: Check for existing active/approved request for this SID (only if old SID is provided)
+    // Check for duplicate active cancellation on the same old SID if provided
     if (oldSidNumber && oldSidNumber.trim() !== '') {
       const existing = await db.query(
         `SELECT id FROM cancellation_requests WHERE old_sid_number ILIKE $1 AND status != 'rejected' LIMIT 1`,
-        [oldSidNumber]
+        [oldSidNumber.trim()]
       );
       if (existing.rows.length > 0) {
         const error = new Error('A cancellation request for this SID already exists.');
@@ -53,7 +46,7 @@ class Cancellation {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *`,
       [
-        patientFullName, pidNumber, oldSidNumber, newSidNumber,
+        patientFullName, pidNumber, oldSidNumber ? oldSidNumber.trim() : null, newSidNumber ? newSidNumber.trim() : null,
         telephoneNumber, insurancePayer, cleanAmount(totalAmountCancelled),
         originalReceiptNumber, rectifiedReceiptNumber,
         cleanAmount(originalReceiptAmount), cleanAmount(rectifiedReceiptAmount),
@@ -73,16 +66,10 @@ class Cancellation {
       initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy
     } = data;
 
-    if (oldSidNumber && oldSidNumber.trim() !== '' && (!newSidNumber || newSidNumber.trim() === '')) {
-      const error = new Error('New SID is required when an Old SID is provided.');
-      error.status = 400;
-      throw error;
-    }
-
     if (oldSidNumber && oldSidNumber.trim() !== '') {
       const existing = await db.query(
         `SELECT id FROM cancellation_requests WHERE old_sid_number ILIKE $1 AND id != $2 AND status != 'rejected' LIMIT 1`,
-        [oldSidNumber, id]
+        [oldSidNumber.trim(), id]
       );
       if (existing.rows.length > 0) {
         const error = new Error('A cancellation request for this SID already exists.');

@@ -245,13 +245,15 @@ const transformQuery = (sql, params) => {
   let transformedSql = sql;
   const matches = sql.match(/\$\d+/g);
   let args = [];
-  if (matches && params && params.length > 0) {
+  if (matches && matches.length > 0 && params && params.length > 0) {
     args = matches.map(m => {
       const index = parseInt(m.substring(1), 10) - 1;
       return sanitizeParam(params[index]);
     });
-  } else {
+  } else if (!matches && sql.includes('?')) {
     args = (params || []).map(p => sanitizeParam(p));
+  } else {
+    args = [];
   }
   transformedSql = transformedSql.replace(/\$\d+/g, '?');
   transformedSql = transformedSql
