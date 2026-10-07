@@ -1026,7 +1026,7 @@ const getMedicalReportHTML = (type, data) => {
       <div class="brand-footer-bar">
         <div class="footer-left-bar">HEALTH FOR LIFE</div>
         <div class="footer-right-bar">
-          <div>KK 3 RD 134 KICUKIRO District NYARUGUNGA Sector RWANDA</div>
+          <div>KK 3 RD 134 KICUKIRO District, NYARUGUNGA Sector, Kigali, RWANDA</div>
           <div>Tel: <span style="display:inline-flex;align-items:center;justify-content:center;background:#e11d48;color:white;width:14px;height:14px;border-radius:50%;font-size:9px;margin:0 2px;vertical-align:middle;">📞</span> 8000 | 0788 122 100 | Whatsapp: 0788 382 000</div>
           <div>info@legacyclinics.rw | www.legacyclinics.rw</div>
         </div>

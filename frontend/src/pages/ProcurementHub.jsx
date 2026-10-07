@@ -7077,7 +7077,7 @@ export default function ProcurementHub() {
                     </div>
                     {/* Address block */}
                     <div style={{ textAlign: 'right', fontSize: '9px', lineHeight: '1.5', color: '#444' }}>
-                      <div style={{ fontWeight: 700 }}>KK 3 RD 134 KICUKIRO District NYARUGUNGA Sector RWANDA</div>
+                      <div style={{ fontWeight: 700 }}>KK 3 RD 134 KICUKIRO District, NYARUGUNGA Sector, Kigali, RWANDA</div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                         <span>Tel:</span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e11d48', color: '#ffffff', width: '12px', height: '12px', borderRadius: '50%', fontSize: '8px' }}>📞</span>
@@ -7235,7 +7235,7 @@ export default function ProcurementHub() {
                     </div>
                     {/* Address block */}
                     <div style={{ textAlign: 'right', fontSize: '9px', lineHeight: '1.5', color: '#444' }}>
-                      <div style={{ fontWeight: 700 }}>KK 3 RD 134 KICUKIRO District NYARUGUNGA Sector RWANDA</div>
+                      <div style={{ fontWeight: 700 }}>KK 3 RD 134 KICUKIRO District, NYARUGUNGA Sector, Kigali, RWANDA</div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                         <span>Tel:</span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e11d48', color: '#ffffff', width: '12px', height: '12px', borderRadius: '50%', fontSize: '8px' }}>📞</span>
