@@ -303,10 +303,11 @@ exports.openShift = async (req, res, next) => {
       }
     }
 
-    // Cashier: store opening float
-    if (shift_role === 'cashier' && opening_float !== undefined) {
+    // Cashier / RAMA_RSSB: store opening float
+    if ((shift_role === 'cashier' || shift_role === 'rama_rssb') && opening_float !== undefined) {
+      const openTable = shift_role === 'rama_rssb' ? 'shift_rama_rssb_open' : 'shift_cashier_open';
       await db.query(
-        `INSERT INTO shift_cashier_open (shift_id, opening_float) VALUES (?, ?)`,
+        `INSERT INTO ${openTable} (shift_id, opening_float) VALUES (?, ?)`,
         [resolvedId, parseFloat(opening_float) || 0]
       );
     }
@@ -454,8 +455,9 @@ exports.closeShift = async (req, res, next) => {
       `SELECT * FROM shift_equipment_logs WHERE shift_id = ?`, [id]
     );
     let cashierCloseRow = null;
-    if (shift.shift_role === 'cashier') {
-      cashierCloseRow = await q1(`SELECT * FROM shift_cashier_close WHERE shift_id = ?`, [id]);
+    if (shift.shift_role === 'cashier' || shift.shift_role === 'rama_rssb') {
+      const closeTable = shift.shift_role === 'rama_rssb' ? 'shift_rama_rssb_close' : 'shift_cashier_close';
+      cashierCloseRow = await q1(`SELECT * FROM ${closeTable} WHERE shift_id = ?`, [id]);
     }
     const { is_flagged, flag_reasons } = evaluateFlags(allEquip, cashierCloseRow);
 
@@ -856,9 +858,11 @@ async function enrichShiftDetail(shift) {
   const equipClose = await q(`SELECT * FROM shift_equipment_logs WHERE shift_id = ? AND snapshot = 'close'`, [shift.id]);
 
   let roleData = null;
-  if (shift.shift_role === 'cashier') {
-    const openData = await q1(`SELECT * FROM shift_cashier_open  WHERE shift_id = ?`, [shift.id]);
-    const closeData = await q1(`SELECT * FROM shift_cashier_close WHERE shift_id = ?`, [shift.id]);
+  if (shift.shift_role === 'cashier' || shift.shift_role === 'rama_rssb') {
+    const openTable = shift.shift_role === 'rama_rssb' ? 'shift_rama_rssb_open' : 'shift_cashier_open';
+    const closeTable = shift.shift_role === 'rama_rssb' ? 'shift_rama_rssb_close' : 'shift_cashier_close';
+    const openData = await q1(`SELECT * FROM ${openTable} WHERE shift_id = ?`, [shift.id]);
+    const closeData = await q1(`SELECT * FROM ${closeTable} WHERE shift_id = ?`, [shift.id]);
     roleData = {
       opening: openData,
       closing: closeData
@@ -923,9 +927,11 @@ async function enrichShiftDetail(shift) {
       const prevEquipOpen = await q(`SELECT * FROM shift_equipment_logs WHERE shift_id = ? AND snapshot = 'open'`, [prevShift.id]);
       const prevEquipClose = await q(`SELECT * FROM shift_equipment_logs WHERE shift_id = ? AND snapshot = 'close'`, [prevShift.id]);
       let prevRoleData = null;
-      if (prevShift.shift_role === 'cashier') {
-        const openData = await q1(`SELECT * FROM shift_cashier_open WHERE shift_id = ?`, [prevShift.id]);
-        const closeData = await q1(`SELECT * FROM shift_cashier_close WHERE shift_id = ?`, [prevShift.id]);
+      if (prevShift.shift_role === 'cashier' || prevShift.shift_role === 'rama_rssb') {
+        const openTable = prevShift.shift_role === 'rama_rssb' ? 'shift_rama_rssb_open' : 'shift_cashier_open';
+        const closeTable = prevShift.shift_role === 'rama_rssb' ? 'shift_rama_rssb_close' : 'shift_cashier_close';
+        const openData = await q1(`SELECT * FROM ${openTable} WHERE shift_id = ?`, [prevShift.id]);
+        const closeData = await q1(`SELECT * FROM ${closeTable} WHERE shift_id = ?`, [prevShift.id]);
         prevRoleData = { opening: openData, closing: closeData };
       } else if (prevShift.shift_role === 'helpdesk') {
         prevRoleData = { closing: await q1(`SELECT * FROM shift_helpdesk_close WHERE shift_id = ?`, [prevShift.id]) };
@@ -956,17 +962,18 @@ async function enrichShiftDetail(shift) {
 
 // ─── Internal: upsert role-specific closing data ─────────────────────────────
 async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_close, callcenter_close, nurse_close, vip_lounge_close) {
-  if (shift_role === 'cashier' && cashier_close) {
+  if ((shift_role === 'cashier' || shift_role === 'rama_rssb') && cashier_close) {
     const c = cashier_close;
+    const table = shift_role === 'rama_rssb' ? 'shift_rama_rssb_close' : 'shift_cashier_close';
     const discrepancy =
       parseFloat(c.opening_float || 0) +
       parseFloat(c.cash_payments_total || 0) -
       parseFloat(c.closing_float || 0);
 
-    const existing = await q1(`SELECT id FROM shift_cashier_close WHERE shift_id = ?`, [shiftId]);
+    const existing = await q1(`SELECT id FROM ${table} WHERE shift_id = ?`, [shiftId]);
     if (existing) {
       await db.query(
-        `UPDATE shift_cashier_close SET
+        `UPDATE ${table} SET
           total_patients = ?, total_insured = ?, total_private = ?,
           insurances_used = ?, total_momo_transactions = ?,
           total_card_transactions = ?, card_bank_terminal = ?,
@@ -991,7 +998,7 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
       );
     } else {
       await db.query(
-        `INSERT INTO shift_cashier_close (
+        `INSERT INTO ${table} (
           shift_id, total_patients, total_insured, total_private,
           insurances_used, total_momo_transactions, total_card_transactions,
           card_bank_terminal, payments_all_successful, failed_payment_status,
@@ -1372,6 +1379,8 @@ exports.deleteShift = async (req, res, next) => {
       'shift_equipment_logs',
       'shift_cashier_open',
       'shift_cashier_close',
+      'shift_rama_rssb_open',
+      'shift_rama_rssb_close',
       'shift_helpdesk_close',
       'shift_callcenter_close',
       'shift_nurse_close',

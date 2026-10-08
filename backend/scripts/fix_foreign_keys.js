@@ -159,6 +159,41 @@ async function run() {
     )
   `);
 
+  // 8. shift_rama_rssb_open
+  await fixTable('shift_rama_rssb_open', `
+    CREATE TABLE shift_rama_rssb_open (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shift_id INTEGER UNIQUE NOT NULL REFERENCES shift_sessions(id) ON DELETE CASCADE,
+      opening_float REAL NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    )
+  `);
+
+  // 9. shift_rama_rssb_close
+  await fixTable('shift_rama_rssb_close', `
+    CREATE TABLE shift_rama_rssb_close (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shift_id INTEGER UNIQUE NOT NULL REFERENCES shift_sessions(id) ON DELETE CASCADE,
+      total_patients INTEGER NOT NULL DEFAULT 0,
+      total_insured INTEGER NOT NULL DEFAULT 0,
+      total_private INTEGER NOT NULL DEFAULT 0,
+      insurances_used TEXT,
+      total_momo_transactions INTEGER NOT NULL DEFAULT 0,
+      total_card_transactions INTEGER NOT NULL DEFAULT 0,
+      card_bank_terminal TEXT,
+      payments_all_successful INTEGER NOT NULL DEFAULT 1,
+      failed_payment_status TEXT,
+      failed_payment_amount REAL,
+      failed_payment_action_taken TEXT,
+      opening_float REAL NOT NULL DEFAULT 0,
+      closing_float REAL NOT NULL DEFAULT 0,
+      cash_payments_total REAL NOT NULL DEFAULT 0,
+      cash_discrepancy REAL NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+      updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    )
+  `);
+
   try {
     await client.execute("PRAGMA foreign_keys = ON");
   } catch (e) {

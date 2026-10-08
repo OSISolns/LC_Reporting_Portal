@@ -15,18 +15,18 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const [success, setSuccess] = useState(false);
 
   if (loading) return (
-    <div style={{ 
-      height: '100vh', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      backgroundColor: '#0f172a' 
+    <div style={{
+      height: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#0f172a'
     }}>
       <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#00b4d8', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
-  
+
   if (!user) return <Navigate to="/login" replace />;
 
   // Intercept and force password change on first login / administrative reset
@@ -85,24 +85,45 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 100%)',
+        background: '#1C69A0',
         padding: '2rem 1rem',
         fontFamily: 'Inter, system-ui, sans-serif',
-        color: '#f8fafc'
+        color: '#0f172a',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
+        {/* Engraved Caduceus Background Image */}
+        <img
+          src="/caduceus_bg.png"
+          alt=""
+          style={{
+            position: 'absolute',
+            bottom: '-2rem',
+            left: '-2rem',
+            height: '420px',
+            opacity: 0.15,
+            mixBlendMode: 'overlay',
+            filter: 'contrast(1.2) brightness(0.9)',
+            pointerEvents: 'none',
+            zIndex: 0,
+            transform: 'rotate(12deg)'
+          }}
+        />
+
         <div style={{
           width: '100%',
           maxWidth: '480px',
-          backdropFilter: 'blur(20px)',
-          backgroundColor: 'rgba(30, 41, 59, 0.7)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: '#ffffff',
+          border: '1px solid #e2e8f0',
           borderRadius: '24px',
           padding: '2.5rem',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          animation: 'fadeIn 0.6s ease'
+          animation: 'fadeIn 0.6s ease',
+          position: 'relative',
+          zIndex: 1
         }}>
           {/* Logo */}
           <div style={{ marginBottom: '1.75rem', textAlign: 'center' }}>
@@ -115,18 +136,18 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                 width: '64px',
                 height: '64px',
                 borderRadius: '50%',
-                background: 'rgba(52, 211, 153, 0.1)',
-                border: '2px solid #34d399',
+                background: '#ecfdf5',
+                border: '2px solid #10b981',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 1.5rem',
-                color: '#34d399'
+                color: '#059669'
               }}>
                 <ShieldCheck size={36} className="animate-bounce" />
               </div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 8px', color: '#34d399' }}>Security Verified</h2>
-              <p style={{ color: '#94a3b8', fontSize: '0.95rem', margin: 0 }}>Your account password has been secured. Loading your portal workspace...</p>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 8px', color: '#059669' }}>Security Verified</h2>
+              <p style={{ color: '#475569', fontSize: '0.95rem', margin: 0 }}>Your account password has been secured. Loading your portal workspace...</p>
             </div>
           ) : (
             <>
@@ -134,22 +155,22 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                 width: '52px',
                 height: '52px',
                 borderRadius: '16px',
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1.5px solid rgba(239, 68, 68, 0.3)',
+                background: '#fef2f2',
+                border: '1.5px solid #fecaca',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: '1.25rem',
-                color: '#f87171'
+                color: '#ef4444'
               }}>
                 <ShieldAlert size={28} />
               </div>
 
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 8px', textAlign: 'center', letterSpacing: '-0.02em' }}>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 8px', textAlign: 'center', letterSpacing: '-0.02em', color: '#0f172a' }}>
                 Password Update Required
               </h2>
-              <p style={{ color: '#94a3b8', fontSize: '0.88rem', margin: '0 0 1.75rem', textAlign: 'center', lineHeight: '1.5' }}>
-                This is your first login or your credentials have been reset. For absolute security, please establish a strong personal password to continue.
+              <p style={{ color: '#475569', fontSize: '0.88rem', margin: '0 0 1.75rem', textAlign: 'center', lineHeight: '1.5' }}>
+
               </p>
 
               {error && (
@@ -159,10 +180,10 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                   alignItems: 'start',
                   gap: '10px',
                   padding: '12px 16px',
-                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
                   borderRadius: '12px',
-                  color: '#fca5a5',
+                  color: '#dc2626',
                   fontSize: '0.82rem',
                   marginBottom: '1.5rem',
                   boxSizing: 'border-box'
@@ -173,10 +194,10 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
               )}
 
               <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                
+
                 {/* Current Temporary Password */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Current Temporary Password
                   </label>
                   <div style={{ position: 'relative' }}>
@@ -189,17 +210,17 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                       style={{
                         width: '100%',
                         padding: '12px 42px 12px 14px',
-                        backgroundColor: 'rgba(15, 23, 42, 0.4)',
-                        border: '1.5px solid rgba(255, 255, 255, 0.1)',
+                        backgroundColor: '#f8fafc',
+                        border: '1.5px solid #cbd5e1',
                         borderRadius: '12px',
-                        color: '#fff',
+                        color: '#0f172a',
                         fontSize: '0.92rem',
                         outline: 'none',
                         transition: 'all 0.2s',
                         boxSizing: 'border-box'
                       }}
-                      onFocus={e => e.target.style.borderColor = '#38bdf8'}
-                      onBlur={e => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+                      onFocus={e => e.target.style.borderColor = '#0284c7'}
+                      onBlur={e => e.target.style.borderColor = '#cbd5e1'}
                     />
                     <button
                       type="button"
@@ -213,7 +234,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
                 {/* New Secure Password */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     New Personal Password
                   </label>
                   <div style={{ position: 'relative' }}>
@@ -226,17 +247,17 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                       style={{
                         width: '100%',
                         padding: '12px 42px 12px 14px',
-                        backgroundColor: 'rgba(15, 23, 42, 0.4)',
-                        border: '1.5px solid rgba(255, 255, 255, 0.1)',
+                        backgroundColor: '#f8fafc',
+                        border: '1.5px solid #cbd5e1',
                         borderRadius: '12px',
-                        color: '#fff',
+                        color: '#0f172a',
                         fontSize: '0.92rem',
                         outline: 'none',
                         transition: 'all 0.2s',
                         boxSizing: 'border-box'
                       }}
-                      onFocus={e => e.target.style.borderColor = '#38bdf8'}
-                      onBlur={e => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+                      onFocus={e => e.target.style.borderColor = '#0284c7'}
+                      onBlur={e => e.target.style.borderColor = '#cbd5e1'}
                     />
                     <button
                       type="button"
@@ -250,20 +271,20 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                   {/* Password Strength Indicator */}
                   {form.newPassword && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-                      <div style={{ flex: 1, height: '4px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '99px', overflow: 'hidden' }}>
+                      <div style={{ flex: 1, height: '4px', backgroundColor: '#e2e8f0', borderRadius: '99px', overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${(strength / 5) * 100}%`, backgroundColor: strengthColor, transition: 'all 0.3s' }} />
                       </div>
                       <span style={{ fontSize: '0.7rem', fontWeight: 700, color: strengthColor }}>{strengthLabel}</span>
                     </div>
                   )}
-                  <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '6px 0 0' }}>
+                  <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '6px 0 0' }}>
                     Use at least 6 characters, mixing letters and numbers.
                   </p>
                 </div>
 
                 {/* Confirm Password */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Confirm New Password
                   </label>
                   <div style={{ position: 'relative' }}>
@@ -276,17 +297,17 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                       style={{
                         width: '100%',
                         padding: '12px 42px 12px 14px',
-                        backgroundColor: 'rgba(15, 23, 42, 0.4)',
-                        border: '1.5px solid rgba(255, 255, 255, 0.1)',
+                        backgroundColor: '#f8fafc',
+                        border: '1.5px solid #cbd5e1',
                         borderRadius: '12px',
-                        color: '#fff',
+                        color: '#0f172a',
                         fontSize: '0.92rem',
                         outline: 'none',
                         transition: 'all 0.2s',
                         boxSizing: 'border-box'
                       }}
-                      onFocus={e => e.target.style.borderColor = '#38bdf8'}
-                      onBlur={e => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+                      onFocus={e => e.target.style.borderColor = '#0284c7'}
+                      onBlur={e => e.target.style.borderColor = '#cbd5e1'}
                     />
                     <button
                       type="button"
@@ -297,7 +318,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                     </button>
                   </div>
                   {form.confirmPassword && form.newPassword !== form.confirmPassword && (
-                    <span style={{ fontSize: '0.72rem', color: '#f87171' }}>Passwords do not match</span>
+                    <span style={{ fontSize: '0.72rem', color: '#dc2626' }}>Passwords do not match</span>
                   )}
                 </div>
 
@@ -310,7 +331,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                     padding: '12px',
                     borderRadius: '12px',
                     border: 'none',
-                    backgroundColor: submitLoading || strength < 2 ? 'rgba(56, 189, 248, 0.3)' : '#0284c7',
+                    backgroundColor: submitLoading || strength < 2 ? '#94a3b8' : '#479445',
                     color: '#fff',
                     fontWeight: 700,
                     fontSize: '0.92rem',
@@ -320,7 +341,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                     justifyContent: 'center',
                     gap: '8px',
                     transition: 'all 0.2s',
-                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.2)'
+                    boxShadow: '0 4px 12px rgba(71, 148, 69, 0.3)'
                   }}
                 >
                   {submitLoading ? (
@@ -338,7 +359,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                   marginTop: '1.5rem',
                   background: 'none',
                   border: 'none',
-                  color: '#94a3b8',
+                  color: '#64748b',
                   fontSize: '0.85rem',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -347,8 +368,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
                   gap: '6px',
                   transition: 'color 0.2s'
                 }}
-                onMouseEnter={e => e.target.style.color = '#f87171'}
-                onMouseLeave={e => e.target.style.color = '#94a3b8'}
+                onMouseEnter={e => e.target.style.color = '#ef4444'}
+                onMouseLeave={e => e.target.style.color = '#64748b'}
               >
                 <LogOut size={14} /> Cancel & Logout
               </button>

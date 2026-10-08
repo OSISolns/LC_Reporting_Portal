@@ -1762,7 +1762,7 @@ export default function CloseShift() {
           ? s.equipment.close.map((e) => ({ name: e.equipment_name, status: e.equipment_status, remarks: e.remarks || '' }))
           : EQUIPMENT_BY_ROLE[s.shift_role].map((name) => ({ name, status: getDefaultItemStatus(name), remarks: '' }));
         setEquipment(closeEquip);
-        if (s.shift_role === 'cashier' && s.role_data?.closing) {
+        if ((s.shift_role === 'cashier' || s.shift_role === 'rama_rssb') && s.role_data?.closing) {
           setBillingClose({ ...billingClose, ...s.role_data.closing, payments_all_successful: !!s.role_data.closing.payments_all_successful });
         }
         if (s.shift_role === 'helpdesk' && s.role_data?.closing) setHelpdeskClose(s.role_data.closing);
@@ -1818,7 +1818,7 @@ export default function CloseShift() {
     handover_notes: handoverNotes,
     password: password,
     equipment: equipment.map(({ name, status, remarks }) => ({ name, status, remarks: remarks || null })),
-    ...(shift?.shift_role === 'cashier' && { cashier_close: { ...billingClose, opening_float: 0, closing_float: 0, cash_payments_total: 0 } }),
+    ...((shift?.shift_role === 'cashier' || shift?.shift_role === 'rama_rssb') && { cashier_close: { ...billingClose, opening_float: 0, closing_float: 0, cash_payments_total: 0 } }),
     ...(shift?.shift_role === 'helpdesk' && { helpdesk_close: helpdeskClose }),
     ...(shift?.shift_role === 'call_center' && { callcenter_close: callcenterClose }),
     ...(shift?.shift_role === 'nurse' && { nurse_close: nursingClose }),
@@ -1952,7 +1952,7 @@ export default function CloseShift() {
 
   if (!shift) return null;
 
-  const roleLabel = { cashier: 'Billing Agent', helpdesk: 'Helpdesk', call_center: 'Call Center Agent', nurse: 'Registered Nurse', vip_lounge: 'VIP Lounge' }[shift.shift_role];
+  const roleLabel = { cashier: 'Billing Agent', rama_rssb: 'RAMA/RSSB Billing Station', helpdesk: 'Helpdesk', call_center: 'Call Center Agent', nurse: 'Registered Nurse', vip_lounge: 'VIP Lounge' }[shift.shift_role];
 
   return (
     <>
@@ -2162,7 +2162,7 @@ export default function CloseShift() {
           </div>
 
           {/* Role-specific closing forms */}
-          {shift.shift_role === 'cashier' && (
+          {(shift.shift_role === 'cashier' || shift.shift_role === 'rama_rssb') && (
             <BillingCloseForm
               data={billingClose}
               onChange={(k, v) => setBillingClose((p) => ({ ...p, [k]: v }))}

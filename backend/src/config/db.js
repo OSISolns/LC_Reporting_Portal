@@ -1938,7 +1938,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       const { rows } = await client.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='shift_sessions'");
       if (rows.length > 0) {
         const sql = rows[0].sql || '';
-        const hasLegacyCheck = /CHECK\s*\(\s*shift_role\s+IN/i.test(sql);
+        const hasLegacyCheck = /CHECK\s*\(\s*shift_role\s+IN/i.test(sql) && !sql.includes('rama_rssb');
         if (hasLegacyCheck) {
           console.log('⚙️ Migrating shift_sessions to remove legacy role CHECK constraint...');
 
@@ -2014,13 +2014,15 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       } catch (_) {}
     }
     try {
-      const { rows: brokenTables } = await client.execute("SELECT name, sql FROM sqlite_master WHERE type='table' AND sql LIKE '%shift_sessions_old%'");
+      const { rows: brokenTables } = await client.execute("SELECT name, sql FROM sqlite_master WHERE type='table' AND (sql LIKE '%shift_sessions_old%' OR sql LIKE '%shift_sessions_bak%')");
       if (brokenTables && brokenTables.length > 0) {
-        console.log(`⚙️ Self-healing repair: found ${brokenTables.length} table(s) referencing shift_sessions_old in schema...`);
+        console.log(`⚙️ Self-healing repair: found ${brokenTables.length} table(s) referencing temporary shift_sessions in schema...`);
         for (const tbl of brokenTables) {
           try {
             console.log(`🔧 Self-healing table ${tbl.name}...`);
-            const fixedSql = tbl.sql.replace(/shift_sessions_old/g, 'shift_sessions');
+            const fixedSql = tbl.sql
+              .replace(/shift_sessions_old/g, 'shift_sessions')
+              .replace(/shift_sessions_bak/g, 'shift_sessions');
             await client.execute(`DROP TABLE IF EXISTS ${tbl.name}_repair_temp`);
             await client.execute(`ALTER TABLE ${tbl.name} RENAME TO ${tbl.name}_repair_temp`);
             await client.execute(fixedSql);
@@ -2131,6 +2133,43 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.log('✅ SQLite Schema Migration: created shift_viplounge_close table');
     } catch (err) {
       console.warn('⚠️ SQLite Schema Migration Notice for shift_viplounge_close:', err.message);
+    }
+
+    try {
+      await client.execute(`
+      CREATE TABLE IF NOT EXISTS shift_rama_rssb_open (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        shift_id INTEGER UNIQUE NOT NULL REFERENCES shift_sessions(id) ON DELETE CASCADE,
+        opening_float REAL NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+      await client.execute(`
+      CREATE TABLE IF NOT EXISTS shift_rama_rssb_close (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        shift_id INTEGER UNIQUE NOT NULL REFERENCES shift_sessions(id) ON DELETE CASCADE,
+        total_patients INTEGER NOT NULL DEFAULT 0,
+        total_insured INTEGER NOT NULL DEFAULT 0,
+        total_private INTEGER NOT NULL DEFAULT 0,
+        insurances_used TEXT,
+        total_momo_transactions INTEGER NOT NULL DEFAULT 0,
+        total_card_transactions INTEGER NOT NULL DEFAULT 0,
+        card_bank_terminal TEXT,
+        payments_all_successful INTEGER NOT NULL DEFAULT 1,
+        failed_payment_status TEXT,
+        failed_payment_amount REAL,
+        failed_payment_action_taken TEXT,
+        opening_float REAL NOT NULL DEFAULT 0,
+        closing_float REAL NOT NULL DEFAULT 0,
+        cash_payments_total REAL NOT NULL DEFAULT 0,
+        cash_discrepancy REAL NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+      console.log('✅ SQLite Schema Migration: created shift_rama_rssb_open and shift_rama_rssb_close tables');
+    } catch (err) {
+      console.warn('⚠️ SQLite Schema Migration Notice for RAMA/RSSB tables:', err.message);
     }
 
     try {
