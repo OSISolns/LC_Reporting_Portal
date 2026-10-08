@@ -21,14 +21,15 @@ CREATE TABLE roles (
 
 INSERT INTO roles (name, display_name) VALUES
   ('cashier',          'Cashier'),
-  ('customer_care',    'Customer Care'),
+  ('customer_care',    'Customer Care Officer'),
   ('operations_staff', 'Operations Staff'),
   ('sales_manager',    'Sales Manager'),
   ('coo',              'Chief Operations Officer'),
   ('deputy_coo',       'Deputy COO'),
   ('chairman',         'Chairman'),
   ('lab_team_lead',    'Laboratory Team Lead'),
-  ('it_officer',       'IT Officer');
+  ('it_officer',       'IT Officer'),
+  ('principal_cashier',  'Principal Cashier');
 
 -- =============================================================
 -- USERS

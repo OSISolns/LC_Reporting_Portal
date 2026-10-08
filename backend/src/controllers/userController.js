@@ -19,7 +19,7 @@ exports.createUser = async (req, res, next) => {
     if (req.user.role === 'it_officer') {
       const { rows: targetRoleRows } = await db.query('SELECT name FROM roles WHERE id = $1', [req.body.roleId]);
       if (targetRoleRows.length === 0 || !['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetRoleRows[0].name)) {
-        return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+        return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care Officers, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
       }
     }
 

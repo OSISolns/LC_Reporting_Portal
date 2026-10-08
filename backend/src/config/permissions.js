@@ -210,9 +210,9 @@ const ROLE_DEFAULTS = {
     patients:         { view:1, create:0 },
   },
   cashier: {
-    cancellations:    { view:1, create:0, edit:0, approve:0, reject:0 },
-    refunds: { view:1, create:0, edit:0, approve:0, reject:0 },
-    results_transfer: { view:1, create:0, edit:0, approve:0, reject:0 },
+    cancellations:    { view:1, create:1, edit:0, approve:0, reject:0 },
+    refunds: { view:1, create:1, edit:0, approve:0, reject:0 },
+    results_transfer: { view:1, create:1, edit:0, approve:0, reject:0 },
     incident_reports: { view:1, create:1, edit:0, approve:0 },
     user_management: { view:0, create:0, edit:0, delete:0 },
     audit_logs: { view:0 },

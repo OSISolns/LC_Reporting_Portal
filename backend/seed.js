@@ -123,7 +123,7 @@ async function seed() {
       ['hsfp', 'Health & Safety Focal Person'],
       ['cashier', 'Cashier'],
       ['principal_cashier', 'Principal Cashier'],
-      ['customer_care', 'Customer Care'],
+      ['customer_care', 'Customer Care Officer'],
       ['nurse', 'Clinical Nurse'],
       ['medical_director', 'Medical Director'],
       ['logistics_manager', 'Logistics Manager'],
