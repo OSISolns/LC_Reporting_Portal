@@ -9,7 +9,7 @@ const { exportToExcel } = require('../utils/excel');
 const MAX_SHIFT_HOURS  = 8;   // Auto-close threshold
 const MIN_SHIFT_HOURS  = 6;   // Agent self-close minimum (general)
 const EVENING_MIN_HOURS = 5;  // Special minimum for 3PM-8PM shift
-const COOLDOWN_HOURS   = 12;  // Required rest between shifts
+const COOLDOWN_HOURS   = 0;  // Required rest between shifts (temporarily 0 as requested by user to bypass false blocks)
 const CHEF_NURSE_ROLES = ['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'deputy_head_nurse'];
 
 const isChefNurseRole = (role) => {
@@ -65,8 +65,9 @@ function getWaveStartTime(shift) {
 const EQUIPMENT_MAP = {
   cashier: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
   rama_rssb: ['PC', 'Receipt Printer', 'Barcode Printer', 'MoMo Phone', 'Desk Phone'],
-  helpdesk: ['PC', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Waiting No. Stamp'],
-  call_center: ['PC', 'Headset'],
+  helpdesk: ['PC', 'Receipt Printer', 'Desk Phone', 'Waiting No. Stamp'],
+  customer_care: ['PC', 'Receipt Printer', 'Desk Phone', 'Waiting No. Stamp'],
+  call_center: ['PC', 'Headset', 'Desk Phone'],
   nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
   vip_lounge: ['PC', 'Desk Phone'],
   imaging: ['PC / Workstation', 'Modality Console', 'Reader / Printer', 'Archiving System'],
@@ -802,7 +803,7 @@ exports.getLatestHandover = async (req, res, next) => {
     if (!isAuthorized) {
       if (req.user.role === shiftRole || (shiftRole === 'nurse' && clinicalRoles.includes(req.user.role))) {
         isAuthorized = true;
-      } else if (req.user.role === 'customer_care' && (shiftRole === 'customer_care' || shiftRole === 'vip_lounge' || shiftRole === 'helpdesk' || shiftRole === 'call_center' || shiftRole === 'cashier')) {
+      } else if (['customer_care', 'cashier'].includes(req.user.role) && ['customer_care', 'vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb'].includes(shiftRole)) {
         isAuthorized = true;
       }
     }
@@ -976,7 +977,9 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
         `UPDATE ${table} SET
           total_patients = ?, total_insured = ?, total_private = ?,
           insurances_used = ?, total_momo_transactions = ?,
+          momo_pay_code = ?, momo_pay_code_other = ?,
           total_card_transactions = ?, card_bank_terminal = ?,
+          total_cash_usd = ?, total_cash_eur = ?,
           payments_all_successful = ?, failed_payment_status = ?,
           failed_payment_amount = ?, failed_payment_action_taken = ?,
           opening_float = ?, closing_float = ?, cash_payments_total = ?,
@@ -986,8 +989,11 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
         [
           c.total_patients || 0, c.total_insured || 0, c.total_private || 0,
           JSON.stringify(c.insurances_used || []),
-          c.total_momo_transactions || 0, c.total_card_transactions || 0,
-          c.card_bank_terminal || null,
+          c.total_momo_transactions || 0,
+          c.momo_breakdown ? JSON.stringify(c.momo_breakdown) : null, c.momo_pay_code_other || null,
+          c.total_card_transactions || 0,
+          c.card_breakdown ? JSON.stringify(c.card_breakdown) : null,
+          c.total_cash_usd || 0, c.total_cash_eur || 0,
           c.payments_all_successful ? 1 : 0,
           c.failed_payment_status || null, c.failed_payment_amount || null,
           c.failed_payment_action_taken || null,
@@ -1000,17 +1006,19 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
       await db.query(
         `INSERT INTO ${table} (
           shift_id, total_patients, total_insured, total_private,
-          insurances_used, total_momo_transactions, total_card_transactions,
-          card_bank_terminal, payments_all_successful, failed_payment_status,
+          insurances_used, total_momo_transactions, momo_pay_code, momo_pay_code_other,
+          total_card_transactions, card_bank_terminal, total_cash_usd, total_cash_eur,
+          payments_all_successful, failed_payment_status,
           failed_payment_amount, failed_payment_action_taken,
           opening_float, closing_float, cash_payments_total, cash_discrepancy
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           shiftId,
           c.total_patients || 0, c.total_insured || 0, c.total_private || 0,
           JSON.stringify(c.insurances_used || []),
-          c.total_momo_transactions || 0, c.total_card_transactions || 0,
-          c.card_bank_terminal || null,
+          c.total_momo_transactions || 0, c.momo_breakdown ? JSON.stringify(c.momo_breakdown) : null, c.momo_pay_code_other || null,
+          c.total_card_transactions || 0, c.card_breakdown ? JSON.stringify(c.card_breakdown) : null,
+          c.total_cash_usd || 0, c.total_cash_eur || 0,
           c.payments_all_successful ? 1 : 0,
           c.failed_payment_status || null, c.failed_payment_amount || null,
           c.failed_payment_action_taken || null,

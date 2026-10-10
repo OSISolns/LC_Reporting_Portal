@@ -21,7 +21,7 @@ class Notification {
             const rawEmail = rows[0].email;
             const userEmail = decryptField(rawEmail);
             if (userEmail && typeof userEmail === 'string' && userEmail.includes('@')) {
-              emailService.sendNotification(userEmail.trim(), title, message, type)
+              emailService.sendNotification(userEmail.trim(), title, message, type, link)
                 .catch(err => console.error(`⚠️ Failed to send notification email to ${userEmail}:`, err.message));
             }
           }

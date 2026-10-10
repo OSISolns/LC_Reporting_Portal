@@ -13,7 +13,7 @@ import Modal from '../../components/Modal';
 import IncidentFormFields from '../incidents/components/IncidentFormFields';
 import {
   EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS, getItemStatusOptions, getDefaultItemStatus,
-  INSURANCE_OPTIONS, BANK_TERMINAL_OPTIONS, CALL_REASON_OPTIONS,
+  INSURANCE_OPTIONS, BANK_TERMINAL_OPTIONS, MOMO_PAY_CODES, CALL_REASON_OPTIONS,
   VIP_POSITIONS_CONFIG, PREDEFINED_VIP_POSITIONS
 } from './shiftConfig';
 import {
@@ -617,64 +617,136 @@ const BillingCloseForm = ({ data, onChange }) => {
         </Modal>
       </div>
 
-      {/* Digital Payment Verification */}
+      {/* Payment Verification */}
       <div className="shift-card">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-            <Smartphone size={20} />
+            <CreditCard size={20} />
           </div>
-          <h3 className="text-xl font-black text-slate-900 tracking-tight">Digital Payment Reconciliation</h3>
+          <h3 className="text-xl font-black text-slate-900 tracking-tight">Payment Reconciliation</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          <div className="p-6 rounded-3xl bg-emerald-50/50 border-2 border-emerald-100/50">
-            <label className="field-label flex items-center gap-2 text-emerald-700 mb-3">
-              <Smartphone size={16} /> Total MoMo Payments (RWF)
-            </label>
-            <input
-              type="number"
-              min="0"
-              placeholder="0.00"
-              value={data.total_momo_transactions || ''}
-              onChange={(e) => onChange('total_momo_transactions', parseFloat(e.target.value) || 0)}
-              className="shift-input w-full text-2xl font-black border-emerald-200 focus:border-emerald-500"
-            />
+          {/* MoMo Section */}
+          <div className="p-6 rounded-3xl bg-emerald-50/50 border-2 border-emerald-100/50 space-y-4">
+            <div className="flex items-center justify-between mb-3 border-b border-emerald-200/50 pb-2">
+              <label className="field-label flex items-center gap-2 text-emerald-700">
+                <Smartphone size={16} /> MoMo Breakdown (RWF)
+              </label>
+              <div className="text-xl font-black text-emerald-800">
+                Total: {(data.total_momo_transactions || 0).toLocaleString()}
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {MOMO_PAY_CODES.map((code) => {
+                const isOther = code === 'Other';
+                return (
+                  <div key={code} className="flex items-center gap-3">
+                    <div className="w-1/3">
+                      {isOther ? (
+                        <input
+                          type="text"
+                          placeholder="Other Code"
+                          value={data.momo_pay_code_other || ''}
+                          onChange={(e) => onChange('momo_pay_code_other', e.target.value)}
+                          className="shift-input w-full py-2 px-3 text-sm border-emerald-200 focus:border-emerald-500"
+                        />
+                      ) : (
+                        <span className="font-bold text-emerald-700 text-sm">{code}</span>
+                      )}
+                    </div>
+                    <div className="w-2/3">
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0.00"
+                        value={(data.momo_breakdown && data.momo_breakdown[code]) || ''}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const newBreakdown = { ...(data.momo_breakdown || {}), [code]: val };
+                          const total = Object.values(newBreakdown).reduce((a, b) => a + b, 0);
+                          onChange('momo_breakdown', newBreakdown);
+                          onChange('total_momo_transactions', total);
+                        }}
+                        className="shift-input w-full text-lg font-black border-emerald-200 focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="p-6 rounded-3xl bg-blue-50/50 border-2 border-blue-100/50">
-            <label className="field-label flex items-center gap-2 text-blue-700 mb-3">
-              <CreditCard size={16} /> Total Card Payments (RWF)
-            </label>
-            <input
-              type="number"
-              min="0"
-              placeholder="0.00"
-              value={data.total_card_transactions || ''}
-              onChange={(e) => onChange('total_card_transactions', parseFloat(e.target.value) || 0)}
-              className="shift-input w-full text-2xl font-black border-blue-200 focus:border-blue-500"
-            />
-          </div>
-        </div>
 
-        {(data.total_card_transactions || 0) > 0 && (
-          <div className="mb-8 overflow-hidden bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
-            <label className="field-label text-slate-500 mb-4">Bank / Terminal Used</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {BANK_TERMINAL_OPTIONS.map((b) => (
-                <button
-                  key={b}
-                  type="button"
-                  onClick={() => onChange('card_bank_terminal', b)}
-                  className={`px-4 py-3 rounded-2xl text-xs font-black transition-all border-2 ${data.card_bank_terminal === b
-                      ? 'bg-[#1b669d] border-[#1b669d] text-white shadow-xl'
-                      : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
-                    }`}
-                >
-                  {b}
-                </button>
+          {/* Cards Section */}
+          <div className="p-6 rounded-3xl bg-blue-50/50 border-2 border-blue-100/50 space-y-4">
+            <div className="flex items-center justify-between mb-3 border-b border-blue-200/50 pb-2">
+              <label className="field-label flex items-center gap-2 text-blue-700">
+                <CreditCard size={16} /> Card Breakdown (RWF)
+              </label>
+              <div className="text-xl font-black text-blue-800">
+                Total: {(data.total_card_transactions || 0).toLocaleString()}
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {BANK_TERMINAL_OPTIONS.map((bank) => (
+                <div key={bank} className="flex items-center gap-3">
+                  <div className="w-1/3">
+                    <span className="font-bold text-blue-700 text-sm">{bank}</span>
+                  </div>
+                  <div className="w-2/3">
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0.00"
+                      value={(data.card_breakdown && data.card_breakdown[bank]) || ''}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        const newBreakdown = { ...(data.card_breakdown || {}), [bank]: val };
+                        const total = Object.values(newBreakdown).reduce((a, b) => a + b, 0);
+                        onChange('card_breakdown', newBreakdown);
+                        onChange('total_card_transactions', total);
+                      }}
+                      className="shift-input w-full text-lg font-black border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
               ))}
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Cash Section */}
+        <div className="mb-8 p-6 rounded-3xl bg-amber-50/50 border-2 border-amber-100/50">
+          <label className="field-label flex items-center gap-2 text-amber-700 mb-4">
+            <CreditCard size={16} /> Cash Collected (Foreign Currency Only)
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label className="field-label text-amber-700 mb-2">Total USD ($)</label>
+              <input
+                type="number"
+                min="0"
+                placeholder="0.00"
+                value={data.total_cash_usd || ''}
+                onChange={(e) => onChange('total_cash_usd', parseFloat(e.target.value) || 0)}
+                className="shift-input w-full text-xl font-black border-amber-200 focus:border-amber-500 bg-white"
+              />
+            </div>
+            <div>
+              <label className="field-label text-amber-700 mb-2">Total Euros (€)</label>
+              <input
+                type="number"
+                min="0"
+                placeholder="0.00"
+                value={data.total_cash_eur || ''}
+                onChange={(e) => onChange('total_cash_eur', parseFloat(e.target.value) || 0)}
+                className="shift-input w-full text-xl font-black border-amber-200 focus:border-amber-500 bg-white"
+              />
+            </div>
+          </div>
+        </div>
 
         <div className="pt-8 border-t border-slate-100">
           <label className="field-label mb-6 text-slate-500">All Digital Transactions Successfully Verified?</label>

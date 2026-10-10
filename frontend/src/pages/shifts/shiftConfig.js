@@ -1,6 +1,7 @@
 // ─── Shift role definitions ──────────────────────────────────────────────────
 export const SHIFT_ROLES = [
   { value: 'cashier', label: 'Cashier', icon: 'CreditCard' },
+  { value: 'customer_care', label: 'Customer Care Officer', icon: 'PhoneCall' },
   { value: 'rama_rssb', label: 'RAMA/RSSB Billing Station', icon: 'FileSpreadsheet' },
   { value: 'helpdesk', label: 'Helpdesk', icon: 'Monitor' },
   { value: 'call_center', label: 'Call Center Agent', icon: 'Phone' },
@@ -73,9 +74,10 @@ export const NURSING_WARDS = [
 // ─── Equipment per role ──────────────────────────────────────────────────────
 export const EQUIPMENT_BY_ROLE = {
   cashier: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone'],
+  customer_care: ['PC', 'Receipt Printer', 'Desk Phone', 'Waiting No. Stamp'],
   rama_rssb: ['PC', 'Receipt Printer', 'Barcode Printer', 'MoMo Phone', 'Desk Phone'],
-  helpdesk: ['PC', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Waiting No. Stamp'],
-  call_center: ['PC', 'Headset'],
+  helpdesk: ['PC', 'Receipt Printer', 'Desk Phone', 'Waiting No. Stamp'],
+  call_center: ['PC', 'Headset', 'Desk Phone'],
   nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
   vip_lounge: ['PC', 'Desk Phone'],
 };
@@ -168,7 +170,10 @@ export const INSURANCE_OPTIONS = [
 ];
 
 // ─── Bank/terminal options ───────────────────────────────────────────────────
-export const BANK_TERMINAL_OPTIONS = ['BK', 'BPR', 'Equity', 'Cogebanque', 'Ecobank', 'I&M'];
+export const BANK_TERMINAL_OPTIONS = ['Bank Of Kigali', 'Equity Bank', 'Ecobank', 'BPR', 'I&M Bank'];
+
+// ─── MoMo Pay Codes ──────────────────────────────────────────────────────────
+export const MOMO_PAY_CODES = ['333100', '333200', '036201', '035884', '035885', '036200', 'Other'];
 
 // ─── Call reason options ─────────────────────────────────────────────────────
 export const CALL_REASON_OPTIONS = [

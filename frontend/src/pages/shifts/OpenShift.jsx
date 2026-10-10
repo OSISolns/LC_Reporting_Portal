@@ -164,8 +164,7 @@ export default function OpenShift() {
     if (['admin', 'it_officer', 'operations_staff', 'coo', 'deputy_coo'].includes(user?.role)) return true;
     if (user?.role === 'nurse' || user?.role === 'chef-nurse') return role.value === 'nurse';
     if (user?.role === 'vip_lounge') return role.value === 'vip_lounge';
-    if (user?.role === 'customer_care') return ['vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb'].includes(role.value);
-    if (user?.role === 'cashier') return ['cashier', 'rama_rssb'].includes(role.value);
+    if (user?.role === 'customer_care' || user?.role === 'cashier') return ['vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb'].includes(role.value);
     return role.value !== 'nurse' && role.value !== 'vip_lounge';
   });
   const [password, setPassword] = useState('');

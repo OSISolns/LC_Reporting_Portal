@@ -155,7 +155,7 @@ export default function LabManagerDashboard() {
             <ShieldCheck size={17} className="text-emerald-600" />
           </div>
           <p className="text-2xl font-bold text-emerald-800">{qc.pass_rate != null ? `${qc.pass_rate}%` : '—'}</p>
-          <p className="text-[11px] text-slate-500">Westgard Rules Compliant</p>
+          <p className="text-[11px] text-slate-500">Rules Compliant</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
@@ -286,11 +286,10 @@ export default function LabManagerDashboard() {
                         <td className="py-2.5 px-3 text-slate-500">{q.control_level}</td>
                         <td className="py-2.5 px-3 font-mono font-bold text-blue-900">{q.measured_value}</td>
                         <td className="py-2.5 px-3">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[9.5px] font-bold border ${
-                            q.status === 'Passed'
+                          <span className={`inline-block px-2 py-0.5 rounded text-[9.5px] font-bold border ${q.status === 'Passed'
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                               : 'bg-rose-50 text-rose-800 border-rose-200'
-                          }`}>
+                            }`}>
                             {q.status}
                           </span>
                         </td>
@@ -329,11 +328,10 @@ export default function LabManagerDashboard() {
                   <div key={item.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-mono font-bold text-xs text-blue-950">{item.ncr_number}</span>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border uppercase ${
-                        item.significance === 'major'
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border uppercase ${item.significance === 'major'
                           ? 'bg-rose-50 text-rose-800 border-rose-200'
                           : 'bg-blue-50 text-blue-800 border-blue-200'
-                      }`}>
+                        }`}>
                         {item.significance}
                       </span>
                     </div>
@@ -369,11 +367,10 @@ export default function LabManagerDashboard() {
                   <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-xs text-slate-900">{inst.name}</span>
-                      <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold border ${
-                        inst.status === 'Operational'
+                      <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold border ${inst.status === 'Operational'
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           : 'bg-amber-50 text-amber-800 border-amber-200'
-                      }`}>
+                        }`}>
                         {inst.status}
                       </span>
                     </div>

@@ -534,8 +534,12 @@ model shift_cashier_close {
   total_private               Int            @default(0)
   insurances_used             String?
   total_momo_transactions     Int            @default(0)
+  momo_pay_code               String?
+  momo_pay_code_other         String?
   total_card_transactions     Int            @default(0)
   card_bank_terminal          String?
+  total_cash_usd              Float          @default(0)
+  total_cash_eur              Float          @default(0)
   payments_all_successful     Int            @default(1)
   failed_payment_status       String?
   failed_payment_amount       Float?
@@ -644,8 +648,12 @@ model shift_rama_rssb_close {
   total_private               Int            @default(0)
   insurances_used             String?
   total_momo_transactions     Int            @default(0)
+  momo_pay_code               String?
+  momo_pay_code_other         String?
   total_card_transactions     Int            @default(0)
   card_bank_terminal          String?
+  total_cash_usd              Float          @default(0)
+  total_cash_eur              Float          @default(0)
   payments_all_successful     Int            @default(1)
   failed_payment_status       String?
   failed_payment_amount       Float?
