@@ -15,7 +15,7 @@ export const CASHIER_STATIONS = [
     name: 'Ground-Floor',
     label: 'Ground-Floor',
     description: 'Ground Floor Main Cashier Counter',
-    services: 'General Outpatient Cashier Billing',
+    services: 'Billing',
     equipment: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Paid Stamp']
   },
   {
@@ -23,7 +23,7 @@ export const CASHIER_STATIONS = [
     name: 'First-Floor',
     label: 'First-Floor',
     description: 'First Floor Specialist Clinic Cashier',
-    services: 'Specialist Clinic Cashier Billing',
+    services: 'Billing',
     equipment: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone', 'Paid Stamp']
   },
   {
