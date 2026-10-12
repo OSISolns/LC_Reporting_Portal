@@ -19,6 +19,10 @@ const isChefNurseRole = (role) => {
 
 const SUPERVISOR_ROLES = ['admin', 'deputy_coo', 'coo', 'medical_director', ...CHEF_NURSE_ROLES];
 
+exports.CHEF_NURSE_ROLES = CHEF_NURSE_ROLES;
+exports.isChefNurseRole = isChefNurseRole;
+exports.SUPERVISOR_ROLES = SUPERVISOR_ROLES;
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const q = async (sql, args = []) => (await db.query(sql, args)).rows;

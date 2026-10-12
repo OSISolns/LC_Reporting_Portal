@@ -4,6 +4,7 @@ const router  = express.Router();
 const shift   = require('../controllers/shiftController');
 const { authMiddleware } = require('../middleware/auth');
 const checkPermission = require('../middleware/permission');
+const Permission = require('../models/permission');
 const { validate, body, param, query } = require('../middleware/validation');
 
 // All shift routes require authentication
@@ -199,13 +200,26 @@ router.delete(
 );
 
 /**
- * Manually trigger the auto-close job — admin and deputy_coo only.
+ * Manually trigger the auto-close job — administrators, COO, deputy COO, nursing leadership, or shift supervisors.
  */
 router.post(
   '/admin/auto-close',
-  checkPermission('shifts', 'create'),
   async (req, res, next) => {
     try {
+      const isSupervisor =
+        ['admin', 'coo', 'deputy_coo', 'medical_director', 'operations_staff'].includes(req.user?.role) ||
+        (shift.isChefNurseRole && shift.isChefNurseRole(req.user?.role));
+
+      const hasPerm = isSupervisor ||
+        (await Permission.check(req.user?.id, req.user?.role, 'shifts', ['edit', 'review', 'create', 'view']));
+
+      if (!hasPerm) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: You do not have permission to audit or auto-close shifts.'
+        });
+      }
+
       const count = await shift.autoCloseExpiredShifts();
       res.json({
         success: true,

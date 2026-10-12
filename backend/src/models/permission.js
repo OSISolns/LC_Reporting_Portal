@@ -213,6 +213,9 @@ class Permission {
    */
   static async check(userId, roleName, module, action) {
     const effective = await this.getEffectivePermissions(userId, roleName);
+    if (Array.isArray(action)) {
+      return action.some(act => effective[module]?.[act]?.granted ?? false);
+    }
     return effective[module]?.[action]?.granted ?? false;
   }
 

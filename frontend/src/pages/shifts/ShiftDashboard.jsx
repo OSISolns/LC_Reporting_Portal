@@ -485,8 +485,8 @@ export default function ShiftDashboard() {
       const res = await triggerAutoClose();
       toast.success(res.data.message, { id: tid });
       fetchShifts(meta.page);
-    } catch {
-      toast.error('Policy audit failed', { id: tid });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Policy audit failed', { id: tid });
     }
   };
 

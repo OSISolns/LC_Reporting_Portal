@@ -46,7 +46,7 @@ const checkPermission = (module, action) => {
         if (!hasAnyAccess) {
           return res.status(403).json({
             success: false,
-            message: `Access denied. You do not have permission to ${action} in ${module.join(' or ')}.`
+            message: `Access denied. You do not have permission to ${Array.isArray(action) ? action.join(' or ') : action} in ${module.join(' or ')}.`
           });
         }
         return next();
@@ -57,7 +57,7 @@ const checkPermission = (module, action) => {
       if (!hasAccess) {
         return res.status(403).json({ 
           success: false, 
-          message: `Access denied. You do not have permission to ${action} in ${module}.` 
+          message: `Access denied. You do not have permission to ${Array.isArray(action) ? action.join(' or ') : action} in ${module}.` 
         });
       }
 

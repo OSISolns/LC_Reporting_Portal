@@ -260,7 +260,7 @@ const sendNotification = async (email, subject, message, type = 'info', actionLi
 
         <div style="margin: 28px 0; text-align: center;">
           <a href="${portalUrl}" style="display: inline-block; background-color: ${themeColor}; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(37,99,235,0.25);">
-            🚀 Open Lumina Portal
+            Open Lumina Portal
           </a>
         </div>
 
