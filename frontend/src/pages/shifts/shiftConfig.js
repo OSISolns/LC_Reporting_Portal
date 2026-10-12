@@ -30,8 +30,8 @@ export const CASHIER_STATIONS = [
     id: 'Paediatrics',
     name: 'Paediatrics',
     label: 'Paediatrics',
-    description: 'Paediatrics Ward Cashier Counter',
-    services: 'Paediatric Clinic & Ward Cashier Billing',
+    description: 'Paediatrics Ward',
+    services: 'Billing',
     equipment: ['PC', 'MoMo Phone', 'Receipt Printer', 'Barcode Printer', 'Desk Phone']
   }
 ];
