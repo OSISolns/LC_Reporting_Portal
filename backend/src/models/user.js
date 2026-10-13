@@ -41,17 +41,17 @@ class User {
   }
 
   static async findByEmail(email) {
+    if (!email) return null;
     const { rows } = await db.query(
       `SELECT 
          u.id, u.full_name, u.username, u.password_hash, u.email, 
          u.role_id, u.is_active, u.failed_attempts, u.must_change_password,
          r.name as role 
        FROM users u 
-       JOIN roles r ON u.role_id = r.id 
-       WHERE u.email = ?`,
-      [email]
+       JOIN roles r ON u.role_id = r.id`
     );
-    return rows[0];
+    const target = email.toLowerCase().trim();
+    return rows.find(r => r.email && r.email.toLowerCase().trim() === target) || null;
   }
 
   static async findById(id) {
@@ -84,7 +84,7 @@ class User {
   static async getAll() {
     const { rows } = await db.query(
       `SELECT 
-         u.id, u.full_name, u.username, u.email, u.is_active, u.role_id,
+         u.id, u.full_name, u.username, u.email, u.is_active, u.role_id, u.must_change_password,
          r.display_name as role_name, r.name as role_key
        FROM users u
        JOIN roles r ON u.role_id = r.id

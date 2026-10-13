@@ -4,6 +4,7 @@ const db = require('../config/db');
 const { logAction } = require('../middleware/audit');
 const emailService = require('../services/emailService');
 const { decryptField } = require('../utils/crypto');
+const bcrypt = require('bcryptjs');
 
 exports.getAllUsers = async (req, res, next) => {
   try {
@@ -180,6 +181,181 @@ exports.getStaffList = async (req, res, next) => {
       ORDER BY u.full_name ASC
     `, [req.user.id]);
     res.json({ success: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.bulkSendCredentials = async (req, res, next) => {
+  try {
+    const { userIds, password, passwordMode = 'fixed', mustChangePassword = true, emailSubject } = req.body;
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Please select at least one user.' });
+    }
+
+    const defaultInitialPass = password && password.trim().length >= 6 ? password.trim() : 'Legacy@2026';
+    const isItOfficer = req.user.role === 'it_officer';
+    const itPermittedRoles = ['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'];
+
+    const results = [];
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (const rawId of userIds) {
+      const id = parseInt(rawId, 10);
+      if (isNaN(id)) continue;
+
+      try {
+        const user = await User.findById(id);
+        if (!user) {
+          results.push({ id, success: false, message: 'User not found' });
+          failedCount++;
+          continue;
+        }
+
+        if (isItOfficer && !itPermittedRoles.includes(user.role)) {
+          results.push({ id, username: user.username, success: false, message: 'Unauthorized role for IT Officer' });
+          failedCount++;
+          continue;
+        }
+
+        const decryptedEmail = decryptField(user.email);
+        if (!decryptedEmail || !decryptedEmail.includes('@')) {
+          results.push({ id, username: user.username, fullName: user.full_name, success: false, message: 'No valid email configured' });
+          failedCount++;
+          continue;
+        }
+
+        // Generate or assign password
+        let assignedPassword = defaultInitialPass;
+        if (passwordMode === 'random') {
+          const rand = Math.random().toString(36).substring(2, 6).toUpperCase() + Math.random().toString(36).substring(2, 5);
+          assignedPassword = `LC@${rand}`;
+        }
+
+        // Hash and update database
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(assignedPassword, salt);
+        await db.query(
+          `UPDATE users 
+           SET password_hash = ?, must_change_password = ?, failed_attempts = 0, lockout_until = NULL, updated_at = CURRENT_TIMESTAMP 
+           WHERE id = ?`,
+          [passwordHash, mustChangePassword ? 1 : 0, user.id]
+        );
+
+        // Send email with credentials
+        const subject = emailSubject || 'Your Legacy Clinics Lumina Portal Credentials';
+        const emailResult = await emailService.sendUserCredentials(
+          decryptedEmail,
+          user.username,
+          assignedPassword,
+          subject,
+          user.full_name
+        );
+
+        if (emailResult.success) {
+          successCount++;
+          results.push({
+            id: user.id,
+            username: user.username,
+            fullName: user.full_name,
+            email: decryptedEmail,
+            success: true
+          });
+        } else {
+          failedCount++;
+          results.push({
+            id: user.id,
+            username: user.username,
+            fullName: user.full_name,
+            email: decryptedEmail,
+            success: false,
+            message: emailResult.error || 'SMTP delivery failed'
+          });
+        }
+      } catch (userErr) {
+        failedCount++;
+        results.push({ id, success: false, message: userErr.message });
+      }
+    }
+
+    await logAction(req, 'BULK_SEND_CREDENTIALS', 'user', null, {
+      totalRequested: userIds.length,
+      successCount,
+      failedCount,
+      passwordMode
+    });
+
+    res.json({
+      success: true,
+      message: `Dispatched credentials to ${successCount} user${successCount === 1 ? '' : 's'}${failedCount > 0 ? ` (${failedCount} failed)` : ''}.`,
+      total: userIds.length,
+      sent: successCount,
+      failed: failedCount,
+      results
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.sendSingleCredentials = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { password, mustChangePassword = true, emailSubject } = req.body;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (req.user.role === 'it_officer') {
+      const itPermittedRoles = ['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'];
+      if (!itPermittedRoles.includes(user.role)) {
+        return res.status(403).json({ success: false, message: 'Unauthorized role for IT Officer' });
+      }
+    }
+
+    const decryptedEmail = decryptField(user.email);
+    if (!decryptedEmail || !decryptedEmail.includes('@')) {
+      return res.status(400).json({ success: false, message: 'User does not have a registered email address.' });
+    }
+
+    const assignedPassword = password && password.trim().length >= 6 ? password.trim() : 'Legacy@2026';
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(assignedPassword, salt);
+
+    await db.query(
+      `UPDATE users 
+       SET password_hash = ?, must_change_password = ?, failed_attempts = 0, lockout_until = NULL, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = ?`,
+      [passwordHash, mustChangePassword ? 1 : 0, user.id]
+    );
+
+    const subject = emailSubject || 'Your Legacy Clinics Lumina Portal Credentials';
+    const emailResult = await emailService.sendUserCredentials(
+      decryptedEmail,
+      user.username,
+      assignedPassword,
+      subject,
+      user.full_name
+    );
+
+    await logAction(req, 'SEND_CREDENTIALS', 'user', user.id, {
+      username: user.username,
+      email: decryptedEmail,
+      emailSent: emailResult.success
+    });
+
+    res.json({
+      success: true,
+      message: emailResult.success
+        ? `Credentials sent successfully to ${decryptedEmail}.`
+        : `Password updated, but email sending failed: ${emailResult.error}`,
+      emailSent: emailResult.success,
+      emailError: emailResult.error || null
+    });
   } catch (err) {
     next(err);
   }

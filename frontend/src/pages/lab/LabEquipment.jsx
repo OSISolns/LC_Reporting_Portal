@@ -11,6 +11,7 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from '../../api/lab';
+import { useAuth } from '../../context/AuthContext';
 
 // ── FALLBACK 2026 PPM DATASET ──────────────────────────────────────────────────
 const FALLBACK_EQUIPMENT = [
@@ -295,6 +296,12 @@ function EquipmentModal({ initial, onSave, onClose, saving }) {
 // ── MAIN LAB EQUIPMENT COMPONENT ───────────────────────────────────────────────
 export default function LabEquipment() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const userRole = (user?.role || '').toLowerCase();
+  const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'].includes(userRole);
+  const isTeamLead = ['lab_team_lead', 'lab_lead'].includes(userRole);
+  const isLeadOrManager = isManager || isTeamLead;
 
   const [equipmentList, setEquipmentList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -520,12 +527,14 @@ export default function LabEquipment() {
         >
           <FolderArchive size={14} /> Document Archive
         </button>
-        <button
-          onClick={() => navigate('/lab-manager')}
-          className="px-4 py-2 rounded-xl font-medium text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60 ml-auto"
-        >
-          <BarChart2 size={14} /> Manager Dashboard
-        </button>
+        {isManager && (
+          <button
+            onClick={() => navigate('/lab-manager')}
+            className="px-4 py-2 rounded-xl font-medium text-xs transition-all flex items-center gap-2 cursor-pointer text-blue-800 bg-blue-50/80 hover:bg-blue-100 hover:text-blue-950 ml-auto border border-blue-200/60"
+          >
+            <BarChart2 size={14} /> Manager Dashboard
+          </button>
+        )}
       </div>
 
       {/* ── HEADER ── */}
@@ -533,6 +542,13 @@ export default function LabEquipment() {
         <div>
           <div className="flex items-center gap-2 text-sky-700 text-xs font-semibold uppercase tracking-wider mb-1">
             <Sparkles size={14} /> Executive Equipment Dashboard
+            {isManager ? (
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-900 rounded-full text-[10px] font-bold lowercase first-letter:uppercase">Manager Access</span>
+            ) : isTeamLead ? (
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded-full text-[10px] font-bold lowercase first-letter:uppercase">Team Leader Access</span>
+            ) : (
+              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-medium lowercase first-letter:uppercase">Staff View</span>
+            )}
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
             <Wrench className="text-sky-700" size={24} /> Equipment & Planned Maintenance (PPM)
@@ -557,15 +573,17 @@ export default function LabEquipment() {
             <Printer size={15} /> Print Summary
           </button>
 
-          <button
-            onClick={() => {
-              setEditingItem(null);
-              setShowModal(true);
-            }}
-            className="px-4 py-2.5 bg-sky-700 hover:bg-sky-800 text-white font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus size={15} /> Add Equipment
-          </button>
+          {isLeadOrManager && (
+            <button
+              onClick={() => {
+                setEditingItem(null);
+                setShowModal(true);
+              }}
+              className="px-4 py-2.5 bg-sky-700 hover:bg-sky-800 text-white font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus size={15} /> Add Equipment
+            </button>
+          )}
 
           <button
             onClick={fetchEquipmentList}
@@ -854,25 +872,31 @@ export default function LabEquipment() {
 
                     {/* Actions */}
                     <td className="py-3 px-4 text-right print:hidden">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            setEditingItem(eq);
-                            setShowModal(true);
-                          }}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-sky-700 transition-colors"
-                          title="Edit Equipment"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(eq.id, eq.name)}
-                          className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      {isLeadOrManager ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setEditingItem(eq);
+                              setShowModal(true);
+                            }}
+                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-sky-700 transition-colors"
+                            title="Edit Equipment"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          {isManager && (
+                            <button
+                              onClick={() => handleDelete(eq.id, eq.name)}
+                              className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
+                              title="Delete (Manager Only)"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 italic">Read-only</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -925,25 +949,31 @@ export default function LabEquipment() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right print:hidden">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            setEditingItem(eq);
-                            setShowModal(true);
-                          }}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-sky-700 transition-colors"
-                          title="Edit Equipment"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(eq.id, eq.name)}
-                          className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      {isLeadOrManager ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setEditingItem(eq);
+                              setShowModal(true);
+                            }}
+                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-sky-700 transition-colors"
+                            title="Edit Equipment"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          {isManager && (
+                            <button
+                              onClick={() => handleDelete(eq.id, eq.name)}
+                              className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
+                              title="Delete (Manager Only)"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 italic">Read-only</span>
+                      )}
                     </td>
                   </tr>
                 ))}

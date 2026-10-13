@@ -191,8 +191,9 @@ const getPortalUrl = (path = '') => {
 /**
  * Send user credentials email (new account, password reset, etc.)
  */
-const sendUserCredentials = async (email, username, password, subject = 'Your Account Credentials') => {
+const sendUserCredentials = async (email, username, password, subject = 'Your Account Credentials', fullName = null) => {
   const portalUrl = getPortalUrl('/login');
+  const greeting = fullName ? `Dear ${fullName},` : 'Dear Colleague,';
   const html = `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
       <div style="background-color: #1e3a8a; padding: 24px; text-align: center; color: white;">
@@ -200,10 +201,10 @@ const sendUserCredentials = async (email, username, password, subject = 'Your Ac
         <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Lumina Portal Login Credentials</p>
       </div>
       <div style="padding: 24px; background-color: #ffffff; color: #334155;">
-        <p style="margin-top: 0;">Dear User,</p>
+        <p style="margin-top: 0;">${greeting}</p>
         <p>Your account has been configured. Here are your credentials to log in to the Lumina Portal:</p>
         <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; border-radius: 6px; margin: 20px 0;">
-          <p style="margin: 4px 0;"><strong>Username:</strong> ${username}</p>
+          <p style="margin: 4px 0;"><strong>Username / Email:</strong> ${username}</p>
           <p style="margin: 4px 0;"><strong>Password:</strong> ${password}</p>
         </div>
 
@@ -227,7 +228,7 @@ const sendUserCredentials = async (email, username, password, subject = 'Your Ac
       </div>
     </div>
   `;
-  const text = `Legacy Clinics Lumina Portal\n\nYour account credentials:\nUsername: ${username}\nPassword: ${password}\n\nLog In to Lumina Portal: ${portalUrl}\n\nPlease change your password on first login.`;
+  const text = `Legacy Clinics Lumina Portal\n\n${greeting}\n\nYour account credentials:\nUsername: ${username}\nPassword: ${password}\n\nLog In to Lumina Portal: ${portalUrl}\n\nPlease change your password on first login.`;
 
   return sendEmail({ to: email, subject, html, text });
 };

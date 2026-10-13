@@ -230,6 +230,18 @@ exports.updateStage = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'stage is required.' });
     }
 
+    // Role check: Only Team Leaders and Managers can advance an order to 'Verified'
+    if (stage === 'Verified') {
+      const userRole = (req.user?.role || '').toLowerCase();
+      const allowedVerifierRoles = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead'];
+      if (!allowedVerifierRoles.includes(userRole)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: Advancing order to Verified requires Laboratory Team Leader or Manager authorization.'
+        });
+      }
+    }
+
     // Determine phase based on stage
     let phase = 'pre-analytical';
     if (['Centrifuged', 'Analyzing'].includes(stage)) {
@@ -401,6 +413,15 @@ exports.verifyOrder = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { verified_by_name } = req.body;
+
+    const userRole = (req.user?.role || '').toLowerCase();
+    const allowedVerifierRoles = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead'];
+    if (!allowedVerifierRoles.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access Denied: Only Laboratory Managers, Team Leaders, and Authorized Leadership can verify diagnostic orders.'
+      });
+    }
     
     const { rows: results } = await db.query('SELECT id, parameter_value FROM lab_results WHERE order_id = ?', [id]);
     if (results.length === 0) {
@@ -412,7 +433,14 @@ exports.verifyOrder = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please enter values for all parameters before verifying.' });
     }
 
-    const verifier = verified_by_name || req.user?.username || 'Medical Technologist';
+    let roleTitle = 'Medical Technologist';
+    if (['lab_manager', 'quality_manager', 'qm'].includes(userRole)) roleTitle = 'Lab Manager';
+    else if (['lab_team_lead', 'lab_lead'].includes(userRole)) roleTitle = 'Lab Team Lead';
+    else if (['admin', 'deputy_coo', 'coo'].includes(userRole)) roleTitle = 'Clinical Leadership';
+
+    const verifier = req.user?.full_name
+      ? `${req.user.full_name} (${roleTitle})`
+      : (verified_by_name || req.user?.username || roleTitle);
 
     await db.query(
       `UPDATE lab_orders 
@@ -422,8 +450,8 @@ exports.verifyOrder = async (req, res, next) => {
       [verifier, id]
     );
 
-    await logAction(req, 'LAB_VERIFY_ORDER', 'lab_orders', id, { verifier });
-    res.json({ success: true, message: 'Lab order verified and signed off successfully.' });
+    await logAction(req, 'LAB_VERIFY_ORDER', 'lab_orders', id, { verifier, role: userRole });
+    res.json({ success: true, message: `Lab order verified and signed off by ${verifier}.` });
   } catch (err) { next(err); }
 };
 
@@ -963,6 +991,14 @@ exports.updateAnalyzer = async (req, res, next) => {
 
 exports.deleteAnalyzer = async (req, res, next) => {
   try {
+    const userRole = (req.user?.role || '').toLowerCase();
+    const allowedDeleteRoles = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'];
+    if (!allowedDeleteRoles.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access Denied: Only Laboratory Managers and Administrators can delete analyzer configurations.'
+      });
+    }
     const { id } = req.params;
     const { rows } = await db.query('SELECT name FROM lab_analyzers WHERE id = ?', [id]);
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Analyzer not found.' });
@@ -1195,6 +1231,14 @@ exports.updateInhandInventory = async (req, res, next) => {
 // DELETE /api/lab/inhand-inventory/:id
 exports.deleteInhandInventory = async (req, res, next) => {
   try {
+    const userRole = (req.user?.role || '').toLowerCase();
+    const allowedDeleteRoles = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'];
+    if (!allowedDeleteRoles.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access Denied: Only Laboratory Managers and Administrators can delete in-hand inventory items.'
+      });
+    }
     const { id } = req.params;
     const { rows } = await db.query('SELECT item_name FROM lab_inhand_inventory WHERE id = ?', [id]);
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Item not found.' });

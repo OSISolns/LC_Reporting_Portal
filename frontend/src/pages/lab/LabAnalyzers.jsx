@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Cpu, Plus, Pencil, Trash2, RefreshCw, X, CheckCircle, AlertTriangle, Clock, WrenchIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getAnalyzers, createAnalyzer, updateAnalyzer, deleteAnalyzer } from '../../api/lab';
+import { useAuth } from '../../context/AuthContext';
 
 const DEPARTMENTS = ['Hematology', 'Biochemistry', 'Microbiology', 'Serology / Immunology', 'Urinalysis', 'Blood Bank', 'Coagulation', 'Immunoassay', 'Molecular', 'Other'];
 const STATUSES = ['Operational', 'Maintenance Due', 'Under Maintenance', 'Out of Service'];
@@ -180,6 +181,12 @@ function AnalyzerModal({ initial, onSave, onClose, saving }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function LabAnalyzers() {
+  const { user } = useAuth();
+  const userRole = (user?.role || '').toLowerCase();
+  const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'].includes(userRole);
+  const isTeamLead = ['lab_team_lead', 'lab_lead'].includes(userRole);
+  const isLeadOrManager = isManager || isTeamLead;
+
   const [analyzers, setAnalyzers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -264,7 +271,16 @@ export default function LabAnalyzers() {
             <Cpu size={20} className="text-blue-100" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-white">Analyzer Configuration</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-bold text-white">Analyzer Configuration</h1>
+              {isManager ? (
+                <span className="px-2 py-0.5 bg-white/20 text-white rounded-full text-[10px] font-bold">Lab Manager</span>
+              ) : isTeamLead ? (
+                <span className="px-2 py-0.5 bg-emerald-400/20 text-emerald-100 rounded-full text-[10px] font-bold">Team Leader</span>
+              ) : (
+                <span className="px-2 py-0.5 bg-slate-400/20 text-slate-100 rounded-full text-[10px] font-medium">Read-Only Staff</span>
+              )}
+            </div>
             <p className="text-xs text-blue-200/80">Manage laboratory instruments &amp; calibration schedules</p>
           </div>
         </div>
@@ -275,12 +291,14 @@ export default function LabAnalyzers() {
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
-          <button
-            onClick={() => setModal('add')}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-blue-950 font-bold text-xs rounded-xl hover:bg-blue-50 transition-all cursor-pointer"
-          >
-            <Plus size={14} /> Add Analyzer
-          </button>
+          {isLeadOrManager && (
+            <button
+              onClick={() => setModal('add')}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-blue-950 font-bold text-xs rounded-xl hover:bg-blue-50 transition-all cursor-pointer shadow-sm"
+            >
+              <Plus size={14} /> Add Analyzer
+            </button>
+          )}
         </div>
       </div>
 
@@ -369,22 +387,26 @@ export default function LabAnalyzers() {
                             <p className="text-[11px] text-slate-400 mt-2 italic truncate">{analyzer.notes}</p>
                           )}
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
-                          <button
-                            onClick={() => setModal(analyzer)}
-                            className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
-                            title="Edit"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(analyzer)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                        {isLeadOrManager && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                            <button
+                              onClick={() => setModal(analyzer)}
+                              className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                              title="Edit"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            {isManager && (
+                              <button
+                                onClick={() => setDeleteTarget(analyzer)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                                title="Delete (Manager Only)"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

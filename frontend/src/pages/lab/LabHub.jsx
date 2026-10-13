@@ -11,6 +11,7 @@ import {
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 // ── TUBE TYPES CONFIG (CLSI H3-A6 Order of Draw Sequence) ────────────────────
 const TUBE_TYPES = [
@@ -299,6 +300,14 @@ const TatCounter = ({ order }) => {
 
 const LabHub = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Role separation calculations
+  const userRole = (user?.role || '').toLowerCase();
+  const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'].includes(userRole);
+  const isTeamLead = ['lab_team_lead', 'lab_lead'].includes(userRole);
+  const isLeadOrManager = isManager || isTeamLead;
+
   const [mainView, setMainView] = useState('worklist'); // 'worklist' | 'inhand_inventory'
   const [phaseFilter, setPhaseFilter] = useState('all');
   const [orders, setOrders] = useState([]);
@@ -802,6 +811,9 @@ const LabHub = () => {
 
   // Transition Order Stage
   const handleUpdateStage = async (orderId, newStage, hilIndex = 'Normal') => {
+    if (newStage === 'Verified' && !isLeadOrManager) {
+      return toast.error('Verification requires Laboratory Team Leader or Manager authorization.');
+    }
     try {
       await api.put(`/lab/orders/${orderId}/stage`, { stage: newStage, hil_index: hilIndex });
     } catch (err) {
@@ -841,6 +853,9 @@ const LabHub = () => {
   // Manual Technologist Verification & Signoff
   const handleVerifyOrder = async () => {
     if (!selectedOrder) return;
+    if (!isLeadOrManager) {
+      return toast.error('Access Denied: Only Laboratory Team Leaders and Managers can verify and sign off orders.');
+    }
     const missingValues = resultParams.some(p => !p.parameter_value);
     if (missingValues) {
       return toast.error('Please enter values for all parameters before verifying.');
@@ -853,11 +868,14 @@ const LabHub = () => {
         hil_index: selectedOrder.hil_index || 'Normal'
       });
 
+      const roleTitle = isManager ? 'Lab Manager' : isTeamLead ? 'Lab Team Lead' : 'Medical Technologist';
+      const verifierSign = user?.full_name ? `${user.full_name} (${roleTitle})` : roleTitle;
+
       const res = await api.post(`/lab/orders/${selectedOrder.id}/verify`, {
-        verified_by_name: 'Medical Technologist (Signed)'
+        verified_by_name: verifierSign
       });
       if (res.data?.success) {
-        toast.success('Lab report verified.');
+        toast.success(res.data.message || 'Lab report verified.');
         fetchOrders();
         handleSelectOrder(selectedOrder);
       }
@@ -1024,32 +1042,51 @@ const LabHub = () => {
         >
           <Package size={14} /> In-Hand Inventory
         </button>
-        <button
-          onClick={() => navigate('/lab-manager')}
-          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60 ml-auto"
-        >
-          <BarChart2 size={14} /> Manager Dashboard
-        </button>
+        {isManager && (
+          <button
+            onClick={() => navigate('/lab-manager')}
+            className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-blue-800 bg-blue-50/80 hover:bg-blue-100 hover:text-blue-950 ml-auto border border-blue-200/60"
+          >
+            <BarChart2 size={14} /> Manager Dashboard
+          </button>
+        )}
       </div>
 
       {/* ── MINIMALIST HEADER ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <FlaskConical className="text-slate-700" size={20} /> Laboratory Hub
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <FlaskConical className="text-slate-700" size={20} /> Laboratory Hub
+            </h1>
+            {isManager ? (
+              <span className="px-2.5 py-0.5 bg-blue-100/80 text-blue-900 border border-blue-200 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-2xs">
+                <ShieldCheck size={12} className="text-blue-700" /> Lab Manager
+              </span>
+            ) : isTeamLead ? (
+              <span className="px-2.5 py-0.5 bg-emerald-100/80 text-emerald-900 border border-emerald-200 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-2xs">
+                <Shield size={12} className="text-emerald-700" /> Team Leader
+              </span>
+            ) : (
+              <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-medium flex items-center gap-1 shadow-2xs">
+                <FlaskConical size={12} className="text-slate-500" /> Lab Staff
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-500 mt-0.5 font-normal">
             Outpatient Specimen Diagnostics & Worklist Management
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
-          <button
-            onClick={() => navigate('/lab-manager')}
-            className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <Activity size={15} /> Manager Dashboard
-          </button>
+          {isManager && (
+            <button
+              onClick={() => navigate('/lab-manager')}
+              className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Activity size={15} /> Manager Dashboard
+            </button>
+          )}
           <button
             onClick={() => { handleGenerateBarcode(); setShowRegModal(true); }}
             className="flex-1 sm:flex-none px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
@@ -1399,14 +1436,24 @@ const LabHub = () => {
 
                       {/* Advance button */}
                       {!isCompleted && nextStage ? (
-                        <button
-                          onClick={() => handleUpdateStage(selectedOrder.id, nextStage.id)}
-                          className="w-full mt-1 py-2.5 rounded-xl text-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:opacity-90 active:scale-[0.98]"
-                          style={{ backgroundColor: nextStage.phaseColor }}
-                        >
-                          <ArrowRight size={13} />
-                          Advance to: {nextStage.label}
-                        </button>
+                        nextStage.id === 'Verified' && !isLeadOrManager ? (
+                          <div className="w-full mt-1.5 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-[11px] flex items-center gap-2">
+                            <Shield size={14} className="text-amber-600 shrink-0" />
+                            <div>
+                              <span className="font-bold block">Sign-Off Restricted</span>
+                              <span className="text-[10px] text-amber-700">Verification requires Laboratory Team Leader or Manager authorization.</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleUpdateStage(selectedOrder.id, nextStage.id)}
+                            className="w-full mt-1 py-2.5 rounded-xl text-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:opacity-90 active:scale-[0.98]"
+                            style={{ backgroundColor: nextStage.phaseColor }}
+                          >
+                            <ArrowRight size={13} />
+                            Advance to: {nextStage.label}
+                          </button>
+                        )
                       ) : isCompleted ? (
                         <div className="w-full mt-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5">
                           <CheckCircle2 size={13} className="text-emerald-600" />
@@ -1925,10 +1972,12 @@ const LabHub = () => {
                                       className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer" title="Edit">
                                       <Edit3 size={12} />
                                     </button>
-                                    <button onClick={() => handleDeleteInhandItem(item.id)}
-                                      className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md cursor-pointer" title="Delete">
-                                      <Trash2 size={12} />
-                                    </button>
+                                    {isManager && (
+                                      <button onClick={() => handleDeleteInhandItem(item.id)}
+                                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md cursor-pointer" title="Delete (Manager Only)">
+                                        <Trash2 size={12} />
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
                               </tr>

@@ -64,6 +64,7 @@ import PhysioManagerDashboard from './pages/physio/PhysioManagerDashboard';
 import OperationsHub from './pages/operations/OperationsHub';
 import RosterGenerator from './pages/RosterGenerator';
 import LogisticsDashboard from './pages/logistics/LogisticsDashboard';
+import SalesHub from './pages/sales/SalesHub';
 
 
 const CHEF_NURSE_ROLES = [
@@ -186,7 +187,7 @@ function App() {
 
             <Route path="/lab-manager" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm'
+                'admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'
               ]}>
                 <LabManagerDashboard />
               </ProtectedRoute>
@@ -269,6 +270,14 @@ function App() {
                 'admin', 'deputy_coo', 'operations_staff', 'coo', 'chairman'
               ]}>
                 <OperationsHub />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/sales-hub" element={
+              <ProtectedRoute allowedRoles={[
+                'sales_manager', 'principal_cashier', 'cashier', 'admin', 'coo', 'deputy_coo', 'chairman'
+              ]}>
+                <SalesHub />
               </ProtectedRoute>
             } />
 

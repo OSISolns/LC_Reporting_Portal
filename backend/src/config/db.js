@@ -4805,6 +4805,240 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         await client.execute(colStmt).catch(() => {});
       }
       console.log('✅ SQLite Schema Migration: cancellation_requests & refund_requests supporting document columns verified.');
+      // ─── Proforma Invoices & Sales Service Catalog ──────────────────────────────
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS proforma_invoices (
+          id                INTEGER PRIMARY KEY AUTOINCREMENT,
+          invoice_number    TEXT UNIQUE NOT NULL,
+          invoice_date      TEXT NOT NULL,
+          due_date          TEXT DEFAULT 'N/A',
+          customer_id       TEXT,
+          customer_name     TEXT NOT NULL,
+          customer_email    TEXT,
+          customer_phone    TEXT,
+          customer_tin      TEXT,
+          customer_address  TEXT,
+          items_json        TEXT NOT NULL DEFAULT '[]',
+          subtotal          REAL NOT NULL DEFAULT 0,
+          taxable_amount    REAL DEFAULT 0,
+          tax_due           REAL DEFAULT 0,
+          other_fees        REAL DEFAULT 0,
+          total_amount      REAL NOT NULL DEFAULT 0,
+          currency          TEXT NOT NULL DEFAULT 'RWF',
+          terms_details     TEXT,
+          bank_details      TEXT,
+          momo_details      TEXT,
+          prepared_by_title TEXT DEFAULT 'Sales Manager',
+          prepared_by_name  TEXT,
+          contact_person    TEXT DEFAULT 'Sofia, 0787363970, E-mail: sofia@legacyclinics.rw',
+          notes             TEXT,
+          status            TEXT NOT NULL DEFAULT 'Draft',
+          created_by        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          created_at        DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at        DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_proforma_inv_num ON proforma_invoices(invoice_number)`);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_proforma_status ON proforma_invoices(status)`);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_proforma_date ON proforma_invoices(invoice_date)`);
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS sales_service_catalog (
+          id            INTEGER PRIMARY KEY AUTOINCREMENT,
+          code          TEXT UNIQUE,
+          name          TEXT NOT NULL,
+          department    TEXT DEFAULT 'General',
+          default_price REAL NOT NULL DEFAULT 0,
+          is_active     INTEGER NOT NULL DEFAULT 1,
+          created_at    DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `);
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_sales_cat_name ON sales_service_catalog(name)`);
+
+      // Seed initial sales catalog if empty
+      const catalogCount = await client.execute(`SELECT COUNT(*) as cnt FROM sales_service_catalog`);
+      const cnt = catalogCount.rows?.[0]?.cnt || 0;
+      if (Number(cnt) === 0) {
+        // Rwanda Health Services Tariff 2025-2027 — Private Facilities
+        const initialServices = [
+          // CONSULTATION
+          ['CONS-GP','Consultation – General Practitioner','Consultation',8000],
+          ['CONS-SPE','Consultation – Specialist','Consultation',20000],
+          ['CONS-SUPE','Consultation – Super Specialist','Consultation',35000],
+          ['CONS-EMRG','Emergency Consultation','Consultation',15000],
+          ['CONS-FOLL','Follow-Up Consultation (same specialist)','Consultation',10000],
+          ['CONS-NUT','Nutrition / Dietetics Consultation','Consultation',12000],
+          ['CONS-PSYCH','Psychiatric / Mental Health Consultation','Consultation',25000],
+          ['CONS-PED','Pediatric Consultation','Consultation',12000],
+          ['CONS-GYN','Gynecology Consultation','Consultation',20000],
+          // NURSING
+          ['NURS-INJ','Injection (IV/IM/SC)','Nursing',2000],
+          ['NURS-DRS','Wound Dressing (simple)','Nursing',3000],
+          ['NURS-DRSC','Wound Dressing (complex)','Nursing',8000],
+          ['NURS-SUTR','Suturing (per suture)','Nursing',5000],
+          ['NURS-CATH','Urinary Catheterization','Nursing',10000],
+          ['NURS-NBLZ','Nebulization','Nursing',4000],
+          ['NURS-OXY','Oxygen Therapy (per hour)','Nursing',3000],
+          ['NURS-ECG','ECG / 12-lead Electrocardiogram','Nursing',15000],
+          ['NURS-GLUC','Blood Glucose Monitoring (glucometer)','Nursing',2000],
+          ['NURS-SAMP','Sample Collection','Nursing',1000],
+          // HAEMATOLOGY
+          ['LAB-NFS','NFS / FBC (Full Blood Count)','Laboratory - Haematology',12900],
+          ['LAB-HB','Haemoglobin (Hb)','Laboratory - Haematology',4500],
+          ['LAB-PLT','Platelet Count','Laboratory - Haematology',5500],
+          ['LAB-BG','Blood Grouping and Rh Typing (ABO + Rh)','Laboratory - Haematology',5829],
+          ['LAB-VS','ESR / Vitesse de Sedimentation (VS)','Laboratory - Haematology',1516],
+          ['LAB-PT','Prothrombin Time (PT)','Laboratory - Haematology',9000],
+          ['LAB-APTT','APTT (Activated Partial Thromboplastin Time)','Laboratory - Haematology',9000],
+          ['LAB-INR','INR (International Normalized Ratio)','Laboratory - Haematology',9000],
+          ['LAB-CLOT','Clotting Factor I – Fibrinogen','Laboratory - Haematology',49900],
+          ['LAB-DDI','D-Dimer','Laboratory - Haematology',35000],
+          ['LAB-PS','Peripheral Blood Smear / Film','Laboratory - Haematology',8000],
+          ['LAB-MALA','Malaria RDT','Laboratory - Haematology',5000],
+          // BIOCHEMISTRY
+          ['BIO-GLU','Fasting Blood Glucose','Laboratory - Biochemistry',3032],
+          ['BIO-HBA1C','HbA1c (Glycated Haemoglobin)','Laboratory - Biochemistry',12000],
+          ['BIO-CR','Creatinine','Laboratory - Biochemistry',3032],
+          ['BIO-UREA','Blood Urea Nitrogen (BUN) / Urea','Laboratory - Biochemistry',3032],
+          ['BIO-AU','Uric Acid (Acide Urique)','Laboratory - Biochemistry',3032],
+          ['BIO-NA','Sodium (Na)','Laboratory - Biochemistry',7475],
+          ['BIO-K','Potassium (K)','Laboratory - Biochemistry',7475],
+          ['BIO-CL','Chloride (Cl)','Laboratory - Biochemistry',7475],
+          ['BIO-CA','Calcium (Ca)','Laboratory - Biochemistry',3032],
+          ['BIO-MG','Magnesium (Mg)','Laboratory - Biochemistry',7200],
+          ['BIO-TP','Total Protein','Laboratory - Biochemistry',3032],
+          ['BIO-ALB','Albumin','Laboratory - Biochemistry',3032],
+          ['BIO-BILI','Total Bilirubin','Laboratory - Biochemistry',4430],
+          ['BIO-AST','AST (SGOT)','Laboratory - Biochemistry',3032],
+          ['BIO-ALT','ALT (SGPT)','Laboratory - Biochemistry',3032],
+          ['BIO-GGT','Gamma GT (GGT)','Laboratory - Biochemistry',4430],
+          ['BIO-ALP','Alkaline Phosphatase (ALP)','Laboratory - Biochemistry',4430],
+          ['BIO-LDH','Lactate Dehydrogenase (LDH)','Laboratory - Biochemistry',4430],
+          ['BIO-AMY','Amylase','Laboratory - Biochemistry',9094],
+          ['BIO-LIP','Lipase','Laboratory - Biochemistry',11658],
+          ['BIO-LIPID','Lipid Profile (Cholesterol + HDL + LDL + TG)','Laboratory - Biochemistry',18000],
+          ['BIO-CRP','CRP (C-Reactive Protein)','Laboratory - Biochemistry',5929],
+          ['BIO-TROPP','Troponin I (Cardiac)','Laboratory - Biochemistry',25000],
+          ['BIO-FER','Ferritin','Laboratory - Biochemistry',10000],
+          ['BIO-VITD','Vitamin D (25-OH)','Laboratory - Biochemistry',25000],
+          ['BIO-VITB12','Vitamin B12','Laboratory - Biochemistry',15000],
+          ['BIO-IMM','Immunoglobulins (IgA, IgM, IgG)','Laboratory - Biochemistry',20900],
+          ['BIO-MAST','Mast Cell Tryptase','Laboratory - Biochemistry',108900],
+          // THYROID
+          ['THY-TSH','TSH (Thyroid Stimulating Hormone)','Laboratory - Thyroid',12000],
+          ['THY-FT4','Free T4 (FT4)','Laboratory - Thyroid',12000],
+          ['THY-FT3','Free T3 (FT3)','Laboratory - Thyroid',12000],
+          ['THY-PANEL','Thyroid Function Panel (TSH + FT3 + FT4)','Laboratory - Thyroid',30000],
+          // HORMONES
+          ['HORM-BHCG','Beta-HCG (Pregnancy Test – Quantitative)','Laboratory - Hormones',10000],
+          ['HORM-FSH','FSH (Follicle Stimulating Hormone)','Laboratory - Hormones',15000],
+          ['HORM-LH','LH (Luteinizing Hormone)','Laboratory - Hormones',15000],
+          ['HORM-PRL','Prolactin','Laboratory - Hormones',15000],
+          ['HORM-TEST','Testosterone (Total)','Laboratory - Hormones',15000],
+          ['HORM-CORT','Cortisol','Laboratory - Hormones',18000],
+          ['HORM-AMH','AMH (Anti-Mullerian Hormone)','Laboratory - Hormones',45000],
+          // SEROLOGY
+          ['SERO-HIV','HIV Rapid Test','Laboratory - Serology',5000],
+          ['SERO-HBsAG','Hepatitis B Surface Antigen (HBsAg)','Laboratory - Serology',7000],
+          ['SERO-HCVAB','Anti-HCV (Hepatitis C Antibody)','Laboratory - Serology',10000],
+          ['SERO-VDRL','VDRL / TPHA (Syphilis)','Laboratory - Serology',13747],
+          ['SERO-TOXO','Toxoplasma IgG / IgM','Laboratory - Serology',15000],
+          ['SERO-HERP','Herpes Simplex IgG / IgM (HSV 1+2)','Laboratory - Serology',24900],
+          ['SERO-TORCH','TORCH Panel (Toxo + Rubella + CMV + HSV)','Laboratory - Serology',55000],
+          ['SERO-WIDAL','Widal Test (Typhoid)','Laboratory - Serology',8000],
+          ['SERO-CHLAM','Chlamydia Trachomatis Rapid Test','Laboratory - Serology',18262],
+          ['SERO-GONOC','GeneProbe – Gonococcal','Laboratory - Serology',62900],
+          // MICROBIOLOGY
+          ['MICRO-UCLT','Urine Culture (Uroculture)','Laboratory - Microbiology',7255],
+          ['MICRO-UAST','Urine Antibiogram (Sensitivity)','Laboratory - Microbiology',7757],
+          ['MICRO-USED','Urine Sediment / Dipstick + Microscopy','Laboratory - Microbiology',2110],
+          ['MICRO-UGRAM','Gram Stain – Urine','Laboratory - Microbiology',2343],
+          ['MICRO-BCLT','Blood Culture','Laboratory - Microbiology',25000],
+          ['MICRO-ZIEHL','Ziehl-Neelsen Stain (AFB / TB)','Laboratory - Microbiology',8000],
+          ['MICRO-STOOL','Stool Examination (Microscopy)','Laboratory - Microbiology',4000],
+          ['MICRO-HLPY','H. Pylori Rapid Antigen Test','Laboratory - Microbiology',8000],
+          // MOLECULAR
+          ['MOLEC-HIVVL','HIV Viral Load (PCR)','Laboratory - Molecular',60000],
+          ['MOLEC-TBPCR','TB GeneXpert MTB/RIF','Laboratory - Molecular',35000],
+          ['MOLEC-COVAG','COVID-19 Antigen Rapid Test','Laboratory - Molecular',8000],
+          // TUMOUR MARKERS
+          ['TUM-PSA','PSA (Prostate Specific Antigen)','Laboratory - Tumour Markers',15000],
+          ['TUM-CEA','CEA (Carcinoembryonic Antigen)','Laboratory - Tumour Markers',18000],
+          ['TUM-CA125','CA-125 (Ovarian Marker)','Laboratory - Tumour Markers',18000],
+          ['TUM-AFP','AFP (Alpha-Fetoprotein)','Laboratory - Tumour Markers',18000],
+          // IMAGING - X-RAY
+          ['IMG-CXR','Chest X-Ray PA View','Imaging - X-Ray',25000],
+          ['IMG-CXR2','Chest X-Ray AP + Lateral','Imaging - X-Ray',35000],
+          ['IMG-ABXR','Abdominal X-Ray (AXR)','Imaging - X-Ray',25000],
+          ['IMG-SPINEXR','Spine X-Ray (any region)','Imaging - X-Ray',30000],
+          ['IMG-BXRAY','Bone X-Ray (limb)','Imaging - X-Ray',20000],
+          ['IMG-OPG','Orthopantomogram (OPG / Panoramic Dental)','Imaging - X-Ray',35000],
+          // IMAGING - ULTRASOUND
+          ['IMG-USAB','Abdominal Ultrasound','Imaging - Ultrasound',35000],
+          ['IMG-USPELV','Pelvic Ultrasound','Imaging - Ultrasound',30000],
+          ['IMG-USOB','Obstetric Ultrasound (any trimester)','Imaging - Ultrasound',30000],
+          ['IMG-USTHYR','Thyroid Ultrasound','Imaging - Ultrasound',30000],
+          ['IMG-USBST','Breast Ultrasound','Imaging - Ultrasound',35000],
+          ['IMG-USDOPP','Doppler Ultrasound (any site)','Imaging - Ultrasound',55000],
+          ['IMG-ECHO','Echocardiogram (Echo)','Imaging - Ultrasound',80000],
+          ['IMG-USCOMP','Complete Abdo-Pelvic Ultrasound','Imaging - Ultrasound',55000],
+          // IMAGING - CT SCAN
+          ['IMG-CTHEAD','CT Scan – Brain / Head','Imaging - CT Scan',120000],
+          ['IMG-CTCHEST','CT Scan – Chest','Imaging - CT Scan',150000],
+          ['IMG-CTAB','CT Scan – Abdomen','Imaging - CT Scan',150000],
+          ['IMG-CTABPE','CT Scan – Abdomino-Pelvic','Imaging - CT Scan',200000],
+          ['IMG-CTCONT','CT Scan with IV Contrast (any site)','Imaging - CT Scan',180000],
+          ['IMG-CTA','CT Angiography (any vessel)','Imaging - CT Scan',300000],
+          // DENTISTRY
+          ['DENT-CONS','Dental Consultation and Examination','Dentistry',15000],
+          ['DENT-SCAL','Scaling and Polishing (Prophylaxis)','Dentistry',35000],
+          ['DENT-FILL','Tooth Filling (Composite / Amalgam)','Dentistry',25000],
+          ['DENT-EXT','Simple Tooth Extraction','Dentistry',20000],
+          ['DENT-SEXT','Surgical Extraction','Dentistry',40000],
+          ['DENT-RCT','Root Canal Treatment (per canal)','Dentistry',60000],
+          ['DENT-CRWN','Dental Crown','Dentistry',150000],
+          // PHYSIOTHERAPY
+          ['PHYS-CONS','Physiotherapy Consultation / Assessment','Physiotherapy',15000],
+          ['PHYS-SES','Physiotherapy Session (30 min)','Physiotherapy',20000],
+          ['PHYS-SES60','Physiotherapy Session (60 min)','Physiotherapy',35000],
+          ['PHYS-ULTRA','Ultrasound Therapy','Physiotherapy',12000],
+          ['PHYS-ELECT','Electrotherapy (TENS / IFT / EMS)','Physiotherapy',12000],
+          ['PHYS-MASS','Therapeutic Massage','Physiotherapy',20000],
+          ['PHYS-MANIP','Manual Therapy / Joint Manipulation','Physiotherapy',25000],
+          ['PHYS-NEURO','Neurological Physiotherapy Session','Physiotherapy',30000],
+          // OPHTHALMOLOGY
+          ['OPH-CONS','Eye Consultation','Ophthalmology',15000],
+          ['OPH-REFR','Refraction (Glasses Prescription)','Ophthalmology',10000],
+          ['OPH-FUND','Fundoscopy','Ophthalmology',10000],
+          ['OPH-GLAU','Glaucoma Screening','Ophthalmology',15000],
+          // MATERNITY
+          ['MAT-ANC','Antenatal Care (ANC) Visit','Maternity',10000],
+          ['MAT-DELV','Normal Vaginal Delivery','Maternity',200000],
+          ['MAT-CS','Caesarean Section (C-Section)','Maternity',500000],
+          ['MAT-PNCU','Postnatal Check-Up','Maternity',10000],
+          ['MAT-PAPS','Pap Smear (Cervical Cytology)','Maternity',20000],
+          // MINOR SURGERY
+          ['SURG-INCI','Incision and Drainage (I&D)','Minor Surgery',30000],
+          ['SURG-LUMP','Lump Excision (superficial)','Minor Surgery',60000],
+          ['SURG-CIRC','Circumcision (adult)','Minor Surgery',80000],
+          ['SURG-LIPOM','Lipoma Excision','Minor Surgery',60000],
+          // INPATIENT
+          ['HOSP-WARD','Ward Bed (per day)','Inpatient',35000],
+          ['HOSP-SEMI','Semi-Private Room (per day)','Inpatient',60000],
+          ['HOSP-PRIV','Private Room (per day)','Inpatient',90000],
+          ['HOSP-ICU','ICU Bed (per day)','Inpatient',150000],
+          // ADMINISTRATIVE
+          ['ADMIN-CERT','Medical Certificate','Administrative',5000],
+          ['ADMIN-AMBL','Ambulance Transfer (local)','Administrative',50000],
+        ];
+        for (const [code, name, dept, price] of initialServices) {
+          await client.execute({
+            sql: `INSERT OR IGNORE INTO sales_service_catalog (code, name, department, default_price) VALUES (?, ?, ?, ?)`,
+            args: [code, name, dept, price]
+          }).catch(() => {});
+        }
+        console.log('✅ Sales Service Catalog pre-seeded successfully.');
+      }
     } catch (err) {
       if (!err.message?.includes('already exists')) {
         console.error('❌ supporting document migration error:', err.message);

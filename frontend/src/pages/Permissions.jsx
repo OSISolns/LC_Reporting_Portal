@@ -8,7 +8,7 @@ import {
   MessageSquare, Activity, Building, ShieldAlert, TrendingDown, ShieldCheck,
   Server, Database, Sliders, UserCheck, CheckSquare, Square, RotateCcw,
   FlaskConical, Heart, Dumbbell, Settings, ScanLine, ArrowRight,
-  Layers, Truck, Menu, UserPlus
+  Layers, Truck, Menu, UserPlus, FileSpreadsheet
 } from 'lucide-react';
 import {
   getModules, getRoleMatrix, updateRolePermissions, createRole,
@@ -112,6 +112,7 @@ const MODULE_GROUPS = {
 // ─── Sidebar Items ────────────────────────────────────────────────────────────
 const SIDEBAR_ITEMS = [
   { key: 'dashboard',         name: 'Dashboard',            Icon: LayoutDashboard, allowedRoles: BASE_ALL_ROLES },
+  { key: 'sales_hub',         name: 'Sales Hub',            Icon: FileSpreadsheet, allowedRoles: ['sales_manager','principal_cashier','cashier','admin','coo','deputy_coo','chairman'] },
   { key: 'cancellations',     name: 'Cancellations',        Icon: FileText,        allowedRoles: ['cashier','principal_cashier','customer_care','operations_staff','sales_manager','coo','chairman','admin','deputy_coo','consultant'] },
   { key: 'refunds',           name: 'Refunds',              Icon: ReceiptText,     allowedRoles: ['cashier','principal_cashier','customer_care','operations_staff','sales_manager','coo','chairman','admin','deputy_coo','consultant'] },
   { key: 'incidents',         name: 'Incident Reports',     Icon: AlertTriangle,   allowedRoles: ['nurse','admin','doctor','consultant','hsfp','operations_staff','customer_care','it_officer','chef-nurse','chef_nurse','chief_nurse','chief-nurse','head_nurse','nursing_lead','nurse_manager','nursing_head','deputy_chef_nurse','deputy-chef-nurse','deputy_chief_nurse','pa','stock-manager','coo','deputy_coo','medical_director','procurement-manager','lab_team_lead','lab_lead','lab_manager','dental_hod','dental_lab_manager','imaging_manager','physio_manager','logistics_manager','quality_manager','qm','quality_accreditation_officer'] },

@@ -62,6 +62,29 @@ export default function LabManagerDashboard() {
   const analyzers = data.analyzers || [];
   const tatTotal = (tat.pre_analytical_avg || 0) + (tat.analytical_avg || 0) + (tat.post_analytical_avg || 0);
 
+  const userRole = (user?.role || '').toLowerCase();
+  const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'].includes(userRole);
+
+  if (!isManager) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4">
+        <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-700">
+          <ShieldCheck size={36} className="mx-auto mb-2 text-amber-600" />
+          <h2 className="text-base font-bold text-amber-900">Lab Manager Access Required</h2>
+          <p className="text-xs text-amber-700 max-w-md mt-1">
+            This executive dashboard contains departmental turnaround times, analyzer uptime, and manager quality approvals reserved for Laboratory Managers and Leadership.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/lab')}
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+        >
+          Return to Laboratory Hub
+        </button>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen text-slate-400 text-sm">

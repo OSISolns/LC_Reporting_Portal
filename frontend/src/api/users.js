@@ -7,3 +7,5 @@ export const deleteUser = (id, adminPassword) => api.delete(`/users/${id}`, { da
 export const resetPassword = (id, password) => api.post(`/users/${id}/reset-password`, { password });
 export const getRoles = () => api.get('/users/roles');
 export const getStaffList = () => api.get('/users/staff');
+export const bulkSendCredentials = (data) => api.post('/users/bulk-send-credentials', data);
+export const sendSingleCredentials = (id, data = {}) => api.post(`/users/${id}/send-credentials`, data);

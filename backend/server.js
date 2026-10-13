@@ -39,6 +39,7 @@ const archiveRoutes = require('./src/routes/archive');
 const dentalRoutes = require('./src/routes/dental');
 const rosterRoutes = require('./src/routes/roster');
 const operationsRoutes = require('./src/routes/operations');
+const salesRoutes = require('./src/routes/sales');
 
 const app = express();
 
@@ -133,6 +134,7 @@ app.use('/api/roster', rosterRoutes);
 app.use('/api/operations', operationsRoutes);
 app.use('/api/logistics', logisticsRoutes);
 app.use('/api/executive-directives', executiveDirectivesRoutes);
+app.use('/api/sales', salesRoutes);
 
 
 

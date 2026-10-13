@@ -10,6 +10,8 @@ router.get('/staff', userController.getStaffList);
 
 router.get('/', checkPermission('user_management', 'view'), userController.getAllUsers);
 router.post('/', checkPermission('user_management', 'create'), userController.createUser);
+router.post('/bulk-send-credentials', checkPermission('user_management', 'edit'), userController.bulkSendCredentials);
+router.post('/:id/send-credentials', checkPermission('user_management', 'edit'), userController.sendSingleCredentials);
 router.patch('/:id', checkPermission('user_management', 'edit'), userController.updateUser);
 router.delete('/:id', checkPermission('user_management', 'delete'), userController.deleteUser);
 router.post('/:id/reset-password', checkPermission('user_management', 'edit'), userController.resetPassword);

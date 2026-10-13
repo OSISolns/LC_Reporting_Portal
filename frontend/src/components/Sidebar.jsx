@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ChevronLeft, ChevronRight, LayoutDashboard, FileText, ReceiptText,
   AlertTriangle, Users, UserCheck, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine, ClipboardList, FlaskConical, Heart, Dumbbell, Settings, PackageCheck, AlertOctagon, Archive,
-  Truck, Zap, Wrench, Package, DollarSign, BarChart3
+  Truck, Zap, Wrench, Package, DollarSign, BarChart3, BadgeDollarSign, FileSpreadsheet
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -65,6 +65,7 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'clinical_sheets_nav', name: 'Clinical Sheets', icon: <FileText size={18} />, path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director', 'deputy_coo'] },
         { configKey: 'doctor_hub', name: 'Doctor Hub', icon: <Stethoscope size={18} />, path: '/doctor-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director', 'deputy_coo'] },
         { configKey: 'lab_hub', name: 'Laboratory Hub', icon: <FlaskConical size={18} />, path: '/lab', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'chairman'] },
+        { configKey: 'lab_manager_hub', name: 'Lab Manager Hub', icon: <BarChart3 size={18} />, path: '/lab-manager', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'lab_manager', 'quality_manager', 'qm', 'chairman'] },
         { configKey: 'lab_equipment', name: 'Equipment & PPM', icon: <Wrench size={18} />, path: '/lab/equipment', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'chairman'] },
         { configKey: 'lab_archive', name: 'Document Archive', icon: <Archive size={18} />, path: '/lab/archive', requiredPerm: null, allowedRoles: ['lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'admin', 'deputy_coo', 'chairman'] },
         { configKey: 'ncr_hub', name: 'Non-Conformance (NCR)', icon: <AlertOctagon size={18} />, path: '/ncr', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'hsfp', 'chairman'] },
@@ -88,8 +89,9 @@ const Sidebar = ({ onClose }) => {
     },
 
     {
-      title: 'PATIENTS & FINANCIALS',
+      title: 'SALES & FINANCIALS',
       items: [
+        { configKey: 'sales_hub', name: 'Sales Hub', icon: <FileSpreadsheet size={18} />, path: '/sales-hub', requiredPerm: null, allowedRoles: ['sales_manager', 'principal_cashier', 'cashier', 'admin', 'coo', 'deputy_coo', 'chairman'] },
         { configKey: 'cancellations', name: 'Cancellations', icon: <FileText size={18} />, path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
         { configKey: 'refunds', name: 'Refunds', icon: <ReceiptText size={18} />, path: '/refunds', requiredPerm: { mod: 'refunds', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
         { configKey: 'results', name: 'Result Transfers', icon: <RefreshCw size={18} />, path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },

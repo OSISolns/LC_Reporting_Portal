@@ -15,7 +15,10 @@ exports.login = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please provide username and password.' });
     }
 
-    const user = await User.findByUsername(username);
+    let user = await User.findByUsername(username.trim());
+    if (!user && username.includes('@')) {
+      user = await User.findByEmail(username.trim());
+    }
     if (!user || !user.is_active) {
       return res.status(401).json({ success: false, message: 'Invalid credentials or inactive account.' });
     }
