@@ -179,6 +179,47 @@ const sendEmail = async ({ to, cc, bcc, subject, html, text, attachments }) => {
 };
 
 /**
+ * Send email from a specific address (overrides the default from address).
+ * Useful for departmental senders like sales@legacyclinics.rw.
+ * @param {string} fromName   Display name, e.g. "Legacy Clinics Sales"
+ * @param {string} fromAddr   From address, e.g. "sales@legacyclinics.rw"
+ * @param {object} opts       Same options as sendEmail ({ to, cc, bcc, subject, html, text, attachments })
+ */
+const sendEmailFrom = async (fromName, fromAddr, opts) => {
+  const config = getSmtpConfig();
+
+  if (!config.pass) {
+    const msg = 'SMTP_PASS is not configured — email not sent.';
+    console.error(`❌ ${msg}`);
+    return { success: false, error: msg };
+  }
+
+  const customFrom = `"${fromName}" <${fromAddr}>`;
+  const mailOptions = {
+    from: customFrom,
+    replyTo: fromAddr,
+    ...opts,
+  };
+
+  // Try all transporters in order
+  for (const [label, transporter] of [
+    ['Primary', primaryTransporter],
+    ['Fallback-587', fallback587],
+    ['Fallback-465', fallback465],
+  ]) {
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`📧 [${label}] Email sent from=${customFrom} to=${opts.to} subject="${opts.subject}" id=${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (err) {
+      console.warn(`⚠️ [${label}] Failed to send (from=${fromAddr}): ${err.message}`);
+    }
+  }
+
+  return { success: false, error: `All SMTP attempts failed for recipient=${opts.to}` };
+};
+
+/**
  * Dynamically resolves the Lumina Portal base URL for direct links in email notifications.
  */
 const getPortalUrl = (path = '') => {
@@ -383,6 +424,7 @@ const sendBatch = async (recipients, subject, html, text) => {
 module.exports = {
   transporter: primaryTransporter,
   sendEmail,
+  sendEmailFrom,
   sendUserCredentials,
   sendNotification,
   sendPasswordReset,

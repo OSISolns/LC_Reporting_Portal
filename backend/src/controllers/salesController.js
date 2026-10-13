@@ -2,7 +2,7 @@
 
 const db = require('../config/db');
 const { logAction } = require('../middleware/audit');
-const { sendEmail } = require('../services/emailService');
+const { sendEmail, sendEmailFrom } = require('../services/emailService');
 
 const q  = async (sql, args = []) => (await db.query(sql, args)).rows;
 const q1 = async (sql, args = []) => (await db.query(sql, args)).rows[0] || null;
@@ -419,14 +419,14 @@ async function deleteProforma(req, res) {
 
 /**
  * POST /api/sales/proformas/:id/email
- * Email proforma directly to customer
+ * Email proforma directly to customer from sales@legacyclinics.rw with PDF attachment
  */
 async function sendProformaEmail(req, res) {
   try {
     const { id } = req.params;
     const { recipient_email, custom_message = '' } = req.body;
 
-    const row = await q1(`SELECT * FROM proforma_invoices WHERE id = ?`, [id]);
+    const row = await q1(`SELECT * FROM proforma_invoices WHERE id = $1`, [id]);
     if (!row) {
       return res.status(404).json({ success: false, message: 'Proforma invoice not found' });
     }
@@ -440,6 +440,7 @@ async function sendProformaEmail(req, res) {
       try { return JSON.parse(row.items_json || '[]'); } catch { return []; }
     })();
 
+    // ── Build the email HTML (inline) ──────────────────────────────────────
     const rowsHtml = items.map((it, idx) => `
       <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
         <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-size: 13px; color: #1e293b;">${it.description}</td>
@@ -481,7 +482,7 @@ async function sendProformaEmail(req, res) {
                 <td style="border: none; padding: 0;">
                   <h2 style="margin: 0; color: #ffffff; font-size: 20px;">🏥 LEGACY CLINICS &amp; DIAGNOSTICS</h2>
                   <p style="margin: 4px 0 0; font-size: 12px; color: #cbd5e1;">KG 3 RD 134, Nyarugunga Sector, Kigali - Rwanda | Phone: +250 788 122 100</p>
-                  <p style="margin: 2px 0 0; font-size: 11px; color: #94a3b8;">TIN: 103672011 | info@legacyclinics.rw | www.legacyclinic.rw</p>
+                  <p style="margin: 2px 0 0; font-size: 11px; color: #94a3b8;">TIN: 103672011 | sales@legacyclinics.rw | www.legacyclinic.rw</p>
                 </td>
                 <td style="border: none; padding: 0; text-align: right; vertical-align: top;">
                   <span style="font-size: 22px; font-weight: 800; color: #38bdf8; letter-spacing: 1.5px;">PROFORMA</span>
@@ -550,7 +551,7 @@ async function sendProformaEmail(req, res) {
           </div>
 
           <div class="footer">
-            <p style="margin: 0 0 6px;">${row.contact_person || 'If you have questions, please contact Sofia, 0787363970, E-mail: sofia@legacyclinics.rw'}</p>
+            <p style="margin: 0 0 6px;">${row.contact_person || 'If you have questions, please contact the Sales team, E-mail: sales@legacyclinics.rw'}</p>
             <strong style="color: #0284c7; font-size: 13px;">Thank You For Your Business!</strong>
           </div>
         </div>
@@ -558,11 +559,168 @@ async function sendProformaEmail(req, res) {
       </html>
     `;
 
-    const emailRes = await sendEmail({
-      to: toEmail,
-      subject: emailSubject,
-      html: htmlContent
-    });
+    // ── Generate PDF using Puppeteer ────────────────────────────────────────
+    let pdfBuffer = null;
+    try {
+      const puppeteer = require('puppeteer-core');
+
+      // Build a self-contained PDF HTML (same as email HTML but optimised for print)
+      const pdfHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            @page { size: A4; margin: 18mm 16mm; }
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; color: #111827; margin: 0; padding: 0; font-size: 11px; }
+            .header-bar { background-color: #003b44; color: #fff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+            .header-bar h2 { margin: 0; font-size: 16px; }
+            .header-bar p  { margin: 3px 0 0; font-size: 10px; color: #cbd5e1; }
+            .proforma-title { font-size: 22px; font-weight: 800; color: #38bdf8; letter-spacing: 2px; }
+            .meta-right { text-align: right; }
+            .meta-right div { font-size: 10px; color: #fff; margin-top: 2px; }
+            .recipient-label { background-color: #2563eb; color: #fff; font-weight: 800; font-size: 10px; letter-spacing: 1px; padding: 3px 10px; display: inline-block; text-transform: uppercase; }
+            .customer-name { font-size: 13px; font-weight: 800; color: #111827; margin: 4px 0 2px; text-transform: uppercase; }
+            .customer-meta { font-size: 10px; color: #4b5563; margin-bottom: 12px; }
+            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+            th { background-color: #2563eb; color: #fff; padding: 5px 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; border: 1px solid #1e3a8a; }
+            td { border: 1px solid #64748b; padding: 4px 8px; font-size: 10px; color: #111827; }
+            tr:nth-child(even) td { background-color: #f8fafc; }
+            .totals-table { width: 260px; margin-left: auto; margin-top: 8px; }
+            .totals-table td { border: none; padding: 3px 8px; }
+            .total-final td { background-color: #e0f2fe; color: #0369a1; font-weight: 800; font-size: 12px; border: 1px solid #bae6fd; }
+            .payment-box { border: 1px solid #475569; padding: 8px 12px; font-size: 10px; line-height: 1.6; margin-top: 10px; }
+            .payment-box strong { color: #0f172a; }
+            .footer-note { border-top: 1px solid #e2e8f0; margin-top: 16px; padding-top: 10px; text-align: center; font-size: 9px; color: #4b5563; }
+            .footer-note strong { color: #0284c7; font-size: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="header-bar">
+            <div>
+              <h2>🏥 LEGACY CLINICS &amp; DIAGNOSTICS</h2>
+              <p>KG 3 RD 134, Nyarugunga Sector, Kigali - Rwanda | Tel: +250 788 122 100</p>
+              <p>TIN: 103672011 | sales@legacyclinics.rw | www.legacyclinic.rw</p>
+            </div>
+            <div class="meta-right">
+              <div class="proforma-title">PROFORMA</div>
+              <div><strong>INV #:</strong> ${row.invoice_number}</div>
+              <div><strong>DATE:</strong> ${row.invoice_date}</div>
+              ${row.due_date && row.due_date !== 'N/A' ? `<div><strong>DUE:</strong> ${row.due_date}</div>` : ''}
+            </div>
+          </div>
+
+          <div class="recipient-label">PROFORMA INVOICE TO</div>
+          <div class="customer-name">${row.customer_name}</div>
+          <div class="customer-meta">
+            ${row.customer_phone ? `Tel: ${row.customer_phone} &nbsp;` : ''}
+            ${row.customer_email ? `Email: ${row.customer_email} &nbsp;` : ''}
+            ${row.customer_tin   ? `TIN: ${row.customer_tin}` : ''}
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width:52%; text-align:left;">Description</th>
+                <th style="width:12%; text-align:center;">Qty</th>
+                <th style="width:18%; text-align:right;">U.P (RWF)</th>
+                <th style="width:18%; text-align:right;">Amount (RWF)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((it, i) => `
+                <tr>
+                  <td>${it.description || ''}</td>
+                  <td style="text-align:center;">${it.quantity}</td>
+                  <td style="text-align:right;">${Number(it.unit_price).toLocaleString()}</td>
+                  <td style="text-align:right; font-weight:700;">${Number(it.amount).toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <table class="totals-table">
+            <tr><td style="color:#374151;">Subtotal</td><td style="text-align:right; font-weight:700;">${Number(row.subtotal).toLocaleString()} RWF</td></tr>
+            ${row.tax_due > 0 ? `<tr><td style="color:#6b7280;">Tax / VAT</td><td style="text-align:right; color:#6b7280;">${Number(row.tax_due).toLocaleString()} RWF</td></tr>` : ''}
+            ${row.other_fees > 0 ? `<tr><td style="color:#6b7280;">Other</td><td style="text-align:right; color:#6b7280;">${Number(row.other_fees).toLocaleString()} RWF</td></tr>` : ''}
+            <tr class="total-final"><td style="padding:6px 8px;">TOTAL</td><td style="text-align:right; padding:6px 8px;">${Number(row.total_amount).toLocaleString()} RWF</td></tr>
+          </table>
+
+          <div style="display:flex; justify-content:space-between; margin-top:16px; gap:20px;">
+            <div style="flex:1;">
+              <div class="payment-box">
+                <strong>TERMS OF PAYMENT AND BANK DETAILS</strong><br>
+                1. Please include the invoice number (${row.invoice_number}) on your transfer.<br>
+                2. Please share proof of payment to confirm reservation/service.<br>
+                3. Bank account: <strong>BK 00040-06933483-59</strong><br>
+                4. <strong>MOMO PAY CODE: 035884</strong> / Legacy Clinics
+              </div>
+              <div style="margin-top:14px; font-size:10px; color:#1f2937;">
+                Prepared by: <strong>${row.prepared_by_name || 'Sales Manager'}</strong> ${row.prepared_by_title ? `(${row.prepared_by_title})` : ''}<br>
+                <strong>For Legacy Clinics Management</strong>
+              </div>
+            </div>
+            <div style="font-size:10px; color:#1f2937; text-align:right; font-weight:600; padding-top:8px;">
+              Please make all checks payable to<br>
+              <strong style="color:#003b44;">Legacy Clinics &amp; Diagnostics Ltd</strong>
+            </div>
+          </div>
+
+          <div class="footer-note">
+            <div>${row.contact_person || 'For enquiries: sales@legacyclinics.rw | Tel: +250 788 122 100'}</div>
+            <strong>Thank You For Your Business!</strong>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const browser = await puppeteer.launch({
+        executablePath: process.env.CHROME_EXECUTABLE_PATH || '/usr/bin/google-chrome',
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+        ],
+      });
+
+      const page = await browser.newPage();
+      await page.setContent(pdfHtml, { waitUntil: 'networkidle0' });
+      pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '0', right: '0', bottom: '0', left: '0' },
+      });
+      await browser.close();
+      console.log(`📄 PDF generated for proforma ${row.invoice_number} (${pdfBuffer.length} bytes)`);
+    } catch (pdfErr) {
+      console.error(`⚠️ PDF generation failed for ${row.invoice_number}: ${pdfErr.message}. Sending email without PDF attachment.`);
+    }
+
+    // ── Build attachments array ─────────────────────────────────────────────
+    const attachments = [];
+    if (pdfBuffer) {
+      const safeNum = (row.invoice_number || 'proforma').replace(/[\/\\:*?"<>|]/g, '-');
+      attachments.push({
+        filename: `${safeNum}.pdf`,
+        content:  pdfBuffer,
+        contentType: 'application/pdf',
+      });
+    }
+
+    // ── Send email from sales@legacyclinics.rw ─────────────────────────────
+    const emailRes = await sendEmailFrom(
+      'Legacy Clinics Sales',
+      'sales@legacyclinics.rw',
+      {
+        to: toEmail,
+        subject: emailSubject,
+        html: htmlContent,
+        attachments,
+      }
+    );
 
     if (emailRes.success) {
       if (row.status === 'Draft' || row.status === 'Issued') {
@@ -571,18 +729,19 @@ async function sendProformaEmail(req, res) {
       try {
         await logAction(req, 'EMAIL_PROFORMA', 'proforma_invoices', id, {
           invoice_number: row.invoice_number,
-          to: toEmail
+          to: toEmail,
+          pdf_attached: !!pdfBuffer,
         });
       } catch (e) {}
 
       return res.json({
         success: true,
-        message: `Proforma invoice successfully sent to ${toEmail}`
+        message: `Proforma invoice ${row.invoice_number} sent to ${toEmail}${pdfBuffer ? ' with PDF attachment' : ''}`,
       });
     } else {
       return res.status(500).json({
         success: false,
-        message: `Failed to deliver email: ${emailRes.error || 'SMTP delivery issue'}`
+        message: `Failed to deliver email: ${emailRes.error || 'SMTP delivery issue'}`,
       });
     }
   } catch (err) {
