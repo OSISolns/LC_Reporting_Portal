@@ -104,7 +104,7 @@ function App() {
     <AuthProvider>
       <NotificationProvider>
         <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/supplier-portal" element={<SupplierPortalPublic />} />
