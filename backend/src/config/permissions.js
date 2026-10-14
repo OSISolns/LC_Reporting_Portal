@@ -844,6 +844,7 @@ const ROLE_DEFAULTS = {
   // verification — while Imaging Manager adds department oversight
   // (approvals, staffing, inventory control).
   imaging_tech: {
+    results_transfer: { view:1, create:1, edit:1, review:0, approve:1, reject:0 },
     incident_reports: { view:1, create:1, edit:0, approve:0 },
     reports:          { view:1, download:1 },
     staff_performance:{ view:1, create:0 },
@@ -855,6 +856,7 @@ const ROLE_DEFAULTS = {
     imaging:          { view:1, create:1, edit:1, acquire:1, report:1, verify:1, delete:0 },
   },
   imaging_manager: {
+    results_transfer: { view:1, create:1, edit:1, review:1, approve:1, reject:1 },
     incident_reports: { view:1, create:1, edit:1, approve:1 },
     reports:          { view:1, download:1 },
     staff_performance:{ view:1, create:1 },

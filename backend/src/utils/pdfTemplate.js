@@ -320,29 +320,31 @@ const getMedicalReportHTML = (type, data) => {
     content = `
       <div class="medical-form-modern">
         <div class="medical-form-header">
-          <span>Laboratory Result Transfer Order</span>
-          <span style="font-size: 8pt; opacity: 0.8;">Laboratory Services</span>
+          <span>${data.department === 'Imaging' ? 'Imaging Result Transfer Order' : 'Laboratory Result Transfer Order'}</span>
+          <span style="font-size: 8pt; opacity: 0.8;">${data.department === 'Imaging' ? 'Imaging / Radiology Services' : 'Laboratory Services'}</span>
         </div>
         ${stampHtml}
         
         <div class="section-head">Section 1: Transfer Identification</div>
         <table class="medical-form-table">
+          <tr><th>Department</th><td class="important-value">${data.department || 'Laboratory'}</td></tr>
           <tr><th>Transfer Date</th><td>${new Date(data.transfer_date).toLocaleDateString()}</td></tr>
           <tr><th>Source SID (Old)</th><td>${data.old_sid}</td></tr>
           <tr><th>Target SID (New)</th><td class="important-value">${data.new_sid}</td></tr>
           <tr><th>Transfer Reason</th><td class="handwritten">${data.reason}</td></tr>
+          ${data.edited_by_name ? `<tr><th>Executed By</th><td>${data.edited_by_name}</td></tr>` : ''}
         </table>
 
         <div class="signature-grid">
           <div class="sig-box">
             <span class="sig-label">Requested By</span>
-            <div class="sig-line">${data.creator_name}</div>
-            <span class="sig-meta">${new Date(data.created_at).toLocaleDateString()}</span>
+            <div class="sig-line">${data.creator_name || ''}</div>
+            <span class="sig-meta">${data.created_at ? new Date(data.created_at).toLocaleDateString() : ''}</span>
           </div>
           <div class="sig-box">
-            <span class="sig-label">Lab Verification</span>
-            <div class="sig-line">${data.verifier_name || ''}</div>
-            <span class="sig-meta">${data.verified_at ? new Date(data.verified_at).toLocaleDateString() : 'Pending'}</span>
+            <span class="sig-label">${data.department === 'Imaging' ? 'Verification' : 'Lab Verification'}</span>
+            <div class="sig-line">${data.reviewer_name || data.verifier_name || ''}</div>
+            <span class="sig-meta">${data.reviewed_at || data.verified_at ? new Date(data.reviewed_at || data.verified_at).toLocaleDateString() : 'Pending'}</span>
           </div>
           <div class="sig-box">
             <span class="sig-label">Authorized By</span>

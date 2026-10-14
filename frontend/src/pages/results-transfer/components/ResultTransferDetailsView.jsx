@@ -18,10 +18,10 @@ const ResultTransferDetailsView = ({ data, onReview, onApprove, onReject, onExpo
   if (!data) return null;
 
   const opsRoles = ['operations_staff', 'operations', 'operations_manager', 'ops_lead', 'coo', 'deputy_coo', 'admin'];
-  const labLeadRoles = ['lab_team_lead', 'lab_lead', 'lab_manager', 'lab_head', 'lab_supervisor', 'admin'];
+  const approverRoles = ['lab_team_lead', 'lab_lead', 'lab_manager', 'lab_head', 'lab_supervisor', 'imaging_manager', 'imaging_tech', 'admin'];
 
   const isOperations = hasPermission('results_transfer', 'review') || opsRoles.includes(user?.role);
-  const isLabLead    = hasPermission('results_transfer', 'approve') || labLeadRoles.includes(user?.role);
+  const isApprover   = hasPermission('results_transfer', 'approve') || approverRoles.includes(user?.role);
 
   return (
     <div className="print-body-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
@@ -76,9 +76,10 @@ const ResultTransferDetailsView = ({ data, onReview, onApprove, onReject, onExpo
         <div style={boxStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', color: '#007B8A' }}>
             <Calendar size={18} />
-            <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>Time Information</h3>
+            <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>Time & Department</h3>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div><div style={labelStyle}>Department</div><div style={{ ...valueStyle, color: '#007B8A' }}>{data.department || 'Laboratory'}</div></div>
             <div><div style={labelStyle}>Transfer Date</div><div style={valueStyle}>{new Date(data.transfer_date).toDateString()}</div></div>
             <div><div style={labelStyle}>Submitted At</div><div style={valueStyle}>{new Date(data.created_at).toLocaleString()}</div></div>
           </div>
@@ -114,7 +115,7 @@ const ResultTransferDetailsView = ({ data, onReview, onApprove, onReject, onExpo
 
         {data.edited_by_name && (
           <div style={{ ...boxStyle, gridColumn: 'span 2', backgroundColor: 'rgba(5, 150, 105, 0.05)', borderColor: 'rgba(5, 150, 105, 0.1)' }}>
-            <div style={labelStyle}>Laboratory Execution (Edited By)</div>
+            <div style={labelStyle}>{data.department === 'Imaging' ? 'Imaging Execution (Edited By)' : 'Laboratory Execution (Edited By)'}</div>
             <div style={{ ...valueStyle, color: '#059669' }}>{data.edited_by_name}</div>
           </div>
         )}
@@ -149,7 +150,7 @@ const ResultTransferDetailsView = ({ data, onReview, onApprove, onReject, onExpo
             </>
           )}
 
-          {data.status === 'reviewed' && isLabLead && (
+          {data.status === 'reviewed' && isApprover && (
             <>
                <button onClick={() => setRejectMode(true)}
                 style={{ flex: 1, padding: '1rem', backgroundColor: 'rgba(220, 38, 38, 0.1)', color: '#b91c1c', border: 'none', borderRadius: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}
@@ -173,8 +174,8 @@ const ResultTransferDetailsView = ({ data, onReview, onApprove, onReject, onExpo
       {/* Approval Input Mode */}
       {approveMode && (
         <div style={{ padding: '1.5rem', backgroundColor: '#f0fdf4', border: '2px solid #bbf7d0', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h4 style={{ margin: 0, color: '#166534', fontWeight: 700 }}>Laboratory Signature Required</h4>
-          <p style={{ margin: 0, fontSize: '0.85rem', color: '#15803d' }}>Please enter the name of the technician who edited the results in the system.</p>
+          <h4 style={{ margin: 0, color: '#166534', fontWeight: 700 }}>{data.department === 'Imaging' ? 'Imaging Signature Required' : 'Laboratory / Imaging Signature Required'}</h4>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#15803d' }}>Please enter the name of the technician who transferred/edited the results in the system.</p>
           <input 
             type="text" 
             placeholder="Edited By Name..." 

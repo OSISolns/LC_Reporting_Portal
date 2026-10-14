@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { LayoutGrid, ClipboardList, MonitorPlay, FileText, AlertTriangle } from 'lucide-react';
+import { LayoutGrid, ClipboardList, MonitorPlay, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ImagingDailyBoard from './ImagingDailyBoard';
 import ImagingWorklist from './ImagingWorklist';
@@ -7,6 +7,7 @@ import ModalityConsole from './ModalityConsole';
 import ImagingReporting from './ImagingReporting';
 import ConsumablesLog from '../ConsumablesLog';
 import IncidentList from '../incidents/IncidentList';
+import ResultTransferList from '../results-transfer/ResultTransferList';
 
 // Tab definitions gated by the imaging permission action they require.
 const TABS = [
@@ -14,6 +15,7 @@ const TABS = [
   { key: 'worklist',    label: 'Worklist',        icon: ClipboardList, perm: 'create', Component: ImagingWorklist },
   { key: 'console',     label: 'Console',         icon: MonitorPlay,   perm: 'acquire', Component: ModalityConsole },
   { key: 'reporting',   label: 'Reporting',       icon: FileText,      perm: 'report',  Component: ImagingReporting },
+  { key: 'transfers',   label: 'Result Transfers',icon: RefreshCw,     perm: 'view',    Component: ResultTransferList },
   { key: 'consumables', label: 'Consumables Log', icon: ClipboardList, perm: 'view',    Component: ConsumablesLog },
   { key: 'incidents',   label: 'Incident Reports',icon: AlertTriangle, perm: 'view',    Component: IncidentList },
 ];

@@ -163,6 +163,7 @@ CREATE TABLE IF NOT EXISTS results_transfers (
     old_sid                  VARCHAR(100) NOT NULL,
     new_sid                  VARCHAR(100) NOT NULL,
     reason                   TEXT NOT NULL,
+    department               VARCHAR(100) DEFAULT 'Laboratory',
     status                   VARCHAR(50) NOT NULL DEFAULT 'pending'
                              CHECK (status IN ('pending', 'reviewed', 'approved', 'rejected')),
     

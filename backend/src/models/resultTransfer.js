@@ -4,7 +4,7 @@ const db = require('../config/db');
 class ResultTransfer {
   static async create(data, userId) {
     const {
-      transferDate, oldSid, newSid, reason
+      transferDate, oldSid, newSid, reason, department
     } = data;
 
     // Prevent duplicate
@@ -19,20 +19,21 @@ class ResultTransfer {
     }
 
     const initialStatus = (data.status === 'draft' || data.isDraft) ? 'draft' : 'pending';
+    const dept = department || 'Laboratory';
 
     const { rows } = await db.query(
       `INSERT INTO results_transfers (
         transfer_date, old_sid, new_sid, reason,
-        created_by, status
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        created_by, status, department
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *`,
-      [transferDate, oldSid, newSid, reason, userId, initialStatus]
+      [transferDate, oldSid, newSid, reason, userId, initialStatus, dept]
     );
     return rows[0];
   }
 
   static async update(id, data) {
-    const { transferDate, oldSid, newSid, reason } = data;
+    const { transferDate, oldSid, newSid, reason, department } = data;
     const { rows } = await db.query(
       `UPDATE results_transfers SET
         transfer_date = $1,
@@ -40,10 +41,11 @@ class ResultTransfer {
         new_sid = $3,
         reason = $4,
         status = COALESCE($5, status),
+        department = COALESCE($6, department),
         updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6 AND (status = 'pending' OR status = 'draft')
+       WHERE id = $7 AND (status = 'pending' OR status = 'draft')
        RETURNING *`,
-      [transferDate, oldSid, newSid, reason, data.status || null, id]
+      [transferDate, oldSid, newSid, reason, data.status || null, department || null, id]
     );
     return rows[0];
   }
@@ -73,6 +75,11 @@ class ResultTransfer {
       query += ` AND (t.status != 'draft' OR t.created_by = $${params.length})`;
     } else {
       query += ` AND t.status != 'draft'`;
+    }
+
+    if (filters.department) {
+      params.push(filters.department);
+      query += ` AND t.department = $${params.length}`;
     }
 
     if (filters.sid) {

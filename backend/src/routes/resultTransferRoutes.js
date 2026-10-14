@@ -31,6 +31,7 @@ router.post(
     body('oldSid').trim().notEmpty().withMessage('Old SID number is required'),
     body('newSid').trim().notEmpty().withMessage('New SID number is required'),
     body('reason').trim().notEmpty().withMessage('Reason for transfer is required'),
+    body('department').optional().trim().isIn(['Laboratory', 'Imaging']).withMessage('Department must be Laboratory or Imaging'),
   ]),
   controller.createRequest
 );

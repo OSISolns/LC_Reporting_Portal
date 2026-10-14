@@ -438,6 +438,7 @@ model results_transfers {
   old_sid                                    String
   new_sid                                    String
   reason                                     String
+  department                                 String?   @default("Laboratory")
   edited_by_name                             String?
   status                                     String    @default("pending")
   rejection_comment                          String?

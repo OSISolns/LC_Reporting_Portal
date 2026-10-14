@@ -50,6 +50,13 @@ const ResultTransferFormFields = ({ formData, handleChange, handleSubmit, onSave
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
           <div style={fieldStyle}>
+            <label style={labelStyle}>Department *</label>
+            <select name="department" value={formData.department || 'Laboratory'} onChange={handleChange} style={{ ...inputStyle, cursor: 'pointer' }}>
+              <option value="Laboratory">🧪 Laboratory</option>
+              <option value="Imaging">☢️ Imaging / Radiology</option>
+            </select>
+          </div>
+          <div style={fieldStyle}>
             <label style={labelStyle}>Date of Request *</label>
             <input type="date" name="transferDate" required value={formData.transferDate} onChange={handleChange} style={inputStyle} />
           </div>

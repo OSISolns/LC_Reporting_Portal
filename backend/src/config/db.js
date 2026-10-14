@@ -2454,6 +2454,15 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     }
 
     try {
+      await client.execute("ALTER TABLE results_transfers ADD COLUMN department TEXT DEFAULT 'Laboratory'");
+      console.log('✅ SQLite Schema Migration: added department to results_transfers');
+    } catch (err) {
+      if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+        console.warn('⚠️ SQLite Schema Migration Notice for results_transfers.department:', err.message);
+      }
+    }
+
+    try {
       await client.execute("ALTER TABLE sukraa_patients ADD COLUMN referrer_name TEXT");
       console.log('✅ SQLite Schema Migration: added referrer_name to sukraa_patients');
     } catch (err) {

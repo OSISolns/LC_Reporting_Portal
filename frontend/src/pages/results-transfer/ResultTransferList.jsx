@@ -19,11 +19,18 @@ const EMPTY_FORM = {
   oldSid: '',
   newSid: '',
   reason: '',
+  department: 'Laboratory',
 };
 
 const ResultTransferList = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isImagingUser = user?.role === 'imaging_tech' || user?.role === 'imaging_manager';
+  const initialForm = {
+    ...EMPTY_FORM,
+    department: isImagingUser ? 'Imaging' : 'Laboratory',
+  };
+
   const [requests,        setRequests]       = useState([]);
   const [currentPage,     setCurrentPage]    = useState(1);
   const itemsPerPage = 50;
@@ -35,19 +42,19 @@ const ResultTransferList = () => {
   }, [user, navigate]);
 
   const [loading,         setLoading]        = useState(true);
-  const [filters,         setFilters]        = useState({ sid: '', status: '' });
+  const [filters,         setFilters]        = useState({ sid: '', status: '', department: '' });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal,   setShowViewModal]   = useState(false);
   const [activeRequest,   setActiveRequest]   = useState(null);
   const [editingRequest,  setEditingRequest]  = useState(null);
-  const [formData,        setFormData]        = useState(EMPTY_FORM);
+  const [formData,        setFormData]        = useState(initialForm);
   const [submitting,      setSubmitting]      = useState(false);
   const [detailLoading,   setDetailLoading]   = useState(false);
 
   const { hasRestoredDraft, clearDraft } = useFormAutoSave(
     'result_transfer',
     user?.id,
-    EMPTY_FORM,
+    initialForm,
     formData,
     setFormData,
     !!editingRequest
@@ -94,6 +101,16 @@ const ResultTransferList = () => {
       oldSid: r.old_sid || '',
       newSid: r.new_sid || '',
       reason: r.reason || '',
+      department: r.department || 'Laboratory',
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleOpenCreate = () => {
+    setEditingRequest(null);
+    setFormData({
+      ...EMPTY_FORM,
+      department: isImagingUser ? 'Imaging' : 'Laboratory',
     });
     setShowCreateModal(true);
   };
@@ -111,7 +128,7 @@ const ResultTransferList = () => {
       clearDraft();
       setShowCreateModal(false);
       fetchRequests();
-      setFormData(EMPTY_FORM);
+      setFormData(initialForm);
       setEditingRequest(null);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to submit transfer request');
@@ -132,7 +149,7 @@ const ResultTransferList = () => {
       clearDraft();
       setShowCreateModal(false);
       fetchRequests();
-      setFormData(EMPTY_FORM);
+      setFormData(initialForm);
       setEditingRequest(null);
     } catch (err) {
       alert(err.response?.data?.message || err.message || 'Failed to save draft');
@@ -176,10 +193,10 @@ const ResultTransferList = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Results Transfers</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Manage and approve laboratory results transfers between SIDs.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Manage and approve laboratory and imaging results transfers between SIDs.</p>
         </div>
         {canCreate && (
-          <button onClick={() => setShowCreateModal(true)}
+          <button onClick={handleOpenCreate}
             style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -211,14 +228,22 @@ const ResultTransferList = () => {
       </div>
 
       <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff' }}>
-        <div style={{ position: 'relative', flex: 2, minWidth: '300px' }}>
+        <div style={{ position: 'relative', flex: 2, minWidth: '260px' }}>
           <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
           <input type="text" placeholder="Search by SID..."
             value={filters.sid}
             onChange={(e) => setFilters({ ...filters, sid: e.target.value })}
             style={{ width: '100%', padding: '12px 14px 12px 46px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem' }} />
         </div>
-        <div style={{ flex: 1, minWidth: '180px' }}>
+        <div style={{ flex: 1, minWidth: '160px' }}>
+          <select value={filters.department || ''} onChange={(e) => setFilters({ ...filters, department: e.target.value })}
+            style={{ width: '100%', padding: '12px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem', cursor: 'pointer' }}>
+            <option value="">Department: All</option>
+            <option value="Laboratory">🧪 Laboratory</option>
+            <option value="Imaging">☢️ Imaging</option>
+          </select>
+        </div>
+        <div style={{ flex: 1, minWidth: '160px' }}>
           <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             style={{ width: '100%', padding: '12px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem', cursor: 'pointer' }}>
             <option value="">Status: All</option>
@@ -229,7 +254,7 @@ const ResultTransferList = () => {
             <option value="rejected">❌ Rejected</option>
           </select>
         </div>
-        <button onClick={() => setFilters({ sid: '', status: '' })}
+        <button onClick={() => setFilters({ sid: '', status: '', department: '' })}
           style={{ 
             background: 'rgba(0,123,138,0.1)', 
             border: 'none', 
@@ -259,8 +284,8 @@ const ResultTransferList = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--bg-color)', backgroundColor: '#f8fafc' }}>
-                {['Old SID', 'New SID', 'Submission Date', 'Status', 'Actions'].map((h, i) => (
-                  <th key={h} style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 4 ? 'right' : 'left' }}>
+                {['Old SID', 'New SID', 'Department', 'Submission Date', 'Status', 'Actions'].map((h, i) => (
+                  <th key={h} style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 5 ? 'right' : 'left' }}>
                     {h}
                   </th>
                 ))}
@@ -274,6 +299,18 @@ const ResultTransferList = () => {
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 600, color: 'var(--danger)' }}>{r.old_sid}</td>
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 600, color: '#059669' }}>{r.new_sid}</td>
+                  <td style={{ padding: '1.25rem 1.5rem' }}>
+                    <span style={{ 
+                      padding: '4px 10px', 
+                      borderRadius: '8px', 
+                      fontSize: '0.8rem', 
+                      fontWeight: 700,
+                      backgroundColor: r.department === 'Imaging' ? 'rgba(79, 70, 229, 0.1)' : 'rgba(0, 123, 138, 0.1)',
+                      color: r.department === 'Imaging' ? '#4f46e5' : '#007B8A'
+                    }}>
+                      {r.department === 'Imaging' ? '☢️ Imaging' : '🧪 Laboratory'}
+                    </span>
+                  </td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                     {new Date(r.created_at).toLocaleDateString()}
                   </td>

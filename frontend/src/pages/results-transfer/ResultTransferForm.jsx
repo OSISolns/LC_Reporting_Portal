@@ -11,18 +11,25 @@ const EMPTY_FORM = {
   oldSid: '',
   newSid: '',
   reason: '',
+  department: 'Laboratory',
 };
 
 const ResultTransferForm = () => {
   const navigate  = useNavigate();
-  const [loading, setLoading]   = useState(false);
-  const [formData, setFormData] = useState(EMPTY_FORM);
-
   const { user } = useAuth();
+  const isImagingUser = user?.role === 'imaging_tech' || user?.role === 'imaging_manager';
+  const initialForm = {
+    ...EMPTY_FORM,
+    department: isImagingUser ? 'Imaging' : 'Laboratory',
+  };
+
+  const [loading, setLoading]   = useState(false);
+  const [formData, setFormData] = useState(initialForm);
+
   const { hasRestoredDraft, clearDraft } = useFormAutoSave(
     'result_transfer',
     user?.id,
-    EMPTY_FORM,
+    initialForm,
     formData,
     setFormData,
     false

@@ -119,7 +119,7 @@ const SIDEBAR_ITEMS = [
   { key: 'safety',            name: 'Safety Workspace',     Icon: PenTool,         allowedRoles: ['hsfp','admin','deputy_coo','medical_director','quality_accreditation_officer'] },
   { key: 'risk',              name: 'Risk Register',        Icon: ShieldAlert,     allowedRoles: ['hsfp','admin','deputy_coo','medical_director','quality_accreditation_officer'] },
   { key: 'infection',         name: 'Infection Control',    Icon: Activity,        allowedRoles: ['hsfp','admin','deputy_coo','medical_director','quality_accreditation_officer'] },
-  { key: 'results',           name: 'Result Transfers',     Icon: RefreshCw,       allowedRoles: ['cashier','principal_cashier','customer_care','operations_staff','lab_team_lead','sales_manager','coo','chairman','admin','deputy_coo','consultant'] },
+  { key: 'results',           name: 'Result Transfers',     Icon: RefreshCw,       allowedRoles: ['cashier','principal_cashier','customer_care','operations_staff','lab_team_lead','lab_lead','lab_manager','imaging_tech','imaging_manager','sales_manager','coo','chairman','admin','deputy_coo','consultant'] },
   { key: 'performance',       name: 'Staff Performance',    Icon: Award,           allowedRoles: ['sales_manager','coo','chairman','admin','deputy_coo','cashier','principal_cashier','customer_care','chef-nurse','medical_director'] },
   { key: 'nursing_hub',       name: 'Nursing Hub',          Icon: Stethoscope,     allowedRoles: ['nurse','admin','chef-nurse','coo','deputy_coo'] },
   { key: 'doctor_hub',        name: 'Doctor Hub',           Icon: Stethoscope,     allowedRoles: ['doctor','consultant','admin','medical_director','coo','deputy_coo'] },

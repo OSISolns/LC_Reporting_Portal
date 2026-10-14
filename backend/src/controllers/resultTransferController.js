@@ -17,9 +17,11 @@ exports.createRequest = async (req, res, next) => {
           new_sid: request.new_sid 
         }); 
         
-        // Notify Lab Lead and Management ONLY if submitted (not draft)
+        // Notify Lab/Imaging Lead and Management ONLY if submitted (not draft)
         if (request.status !== 'draft') {
-          const rolesToNotify = ['lab_team_lead', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
+          const rolesToNotify = request.department === 'Imaging'
+            ? ['imaging_manager', 'sales_manager', 'coo', 'deputy_coo', 'admin']
+            : ['lab_team_lead', 'lab_lead', 'lab_manager', 'imaging_manager', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
           const usersToNotify = [];
           
           for (const role of rolesToNotify) {
@@ -34,8 +36,8 @@ exports.createRequest = async (req, res, next) => {
           for (const user of uniqueUsers) {
             await Notification.create({
               userId: user.id,
-              title: 'New Result Transfer Request',
-              message: `A new result transfer requisition has been submitted (Old SID: ${request.old_sid}).`,
+              title: `New Result Transfer Request (${request.department || 'Laboratory'})`,
+              message: `A new ${request.department || 'Laboratory'} result transfer requisition has been submitted (Old SID: ${request.old_sid}).`,
               type: 'info',
               link: `/results-transfer`
             });
@@ -58,7 +60,7 @@ exports.updateRequest = async (req, res, next) => {
     if (existing.status !== 'pending' && existing.status !== 'draft') {
       return res.status(400).json({ success: false, message: 'Only pending or draft requests can be edited.' });
     }
-    const privilegedRoles = ['lab_team_lead', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
+    const privilegedRoles = ['lab_team_lead', 'lab_lead', 'lab_manager', 'imaging_manager', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
     if (Number(existing.created_by) !== Number(req.user.id) && !privilegedRoles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Access denied: You can only edit your own pending or draft requests.' });
     }
@@ -72,7 +74,12 @@ exports.updateRequest = async (req, res, next) => {
 exports.getAllRequests = async (req, res, next) => {
   try {
     const filters = { ...req.query };
-    const privilegedRoles = ['lab_team_lead', 'sales_manager', 'coo', 'deputy_coo', 'admin', 'chairman', 'principal_cashier', 'operations_staff'];
+    const privilegedRoles = [
+      'lab_team_lead', 'lab_lead', 'lab_manager', 
+      'imaging_manager', 'imaging_tech',
+      'sales_manager', 'coo', 'deputy_coo', 'admin', 'chairman', 
+      'principal_cashier', 'operations_staff'
+    ];
     const isPrivileged = privilegedRoles.includes(req.user.role);
     if (!isPrivileged) {
       filters.created_by = req.user.id;
