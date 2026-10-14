@@ -282,8 +282,8 @@ export default function ProformaInvoicePrintView({ proforma }) {
       <div style={{
         textAlign: 'center',
         borderTop: '1px solid #e2e8f0',
-        paddingTop: '16px',
-        marginTop: '20px',
+        paddingTop: '14px',
+        marginTop: '16px',
         fontSize: '10px',
         color: '#4b5563',
         lineHeight: '1.5'
@@ -292,6 +292,15 @@ export default function ProformaInvoicePrintView({ proforma }) {
         <div style={{ fontWeight: 800, color: '#0284c7', fontSize: '11px', marginTop: '4px', letterSpacing: '0.5px' }}>
           Thank You For Your Business!
         </div>
+      </div>
+
+      {/* ── Official Brand Vector Footer Banner ── */}
+      <div style={{ marginTop: '14px' }}>
+        <img 
+          src="/legacy_header.svg" 
+          alt="Legacy Clinics - Health for Life" 
+          style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '2px' }} 
+        />
       </div>
     </div>
   );

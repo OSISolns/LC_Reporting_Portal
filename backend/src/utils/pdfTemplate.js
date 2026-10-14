@@ -9,7 +9,11 @@ const loadAssetBase64 = (...segments) => {
   try {
     const assetPath = path.join(__dirname, '..', 'assets', ...segments);
     if (fs.existsSync(assetPath)) {
-      return `data:image/png;base64,${fs.readFileSync(assetPath).toString('base64')}`;
+      const ext = path.extname(assetPath).toLowerCase();
+      let mime = 'image/png';
+      if (ext === '.svg') mime = 'image/svg+xml';
+      else if (ext === '.jpg' || ext === '.jpeg') mime = 'image/jpeg';
+      return `data:${mime};base64,${fs.readFileSync(assetPath).toString('base64')}`;
     }
     console.error('PDF asset not found:', assetPath);
   } catch (err) {
@@ -19,6 +23,7 @@ const loadAssetBase64 = (...segments) => {
 };
 
 const logoBase64 = loadAssetBase64('logo.png');
+const footerBannerBase64 = loadAssetBase64('legacy_header.svg');
 const approvedStampBase64 = loadAssetBase64('stamps', 'approved.png');
 const rejectedStampBase64 = loadAssetBase64('stamps', 'rejected.png');
 const verifiedStampBase64 = loadAssetBase64('stamps', 'verified.png');
@@ -754,21 +759,34 @@ const getMedicalReportHTML = (type, data) => {
       width: 100%;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 15px;
-      border-bottom: 2px solid #f1f5f9;
-      padding-bottom: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #007b8a;
+      padding-bottom: 12px;
     }
 
     .hospital-info {
       display: flex;
-      align-items: center;
-      gap: 12px;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
     }
 
     .hospital-logo {
-      width: 180px;
-      height: auto;
+      height: 50px;
+      width: auto;
+      max-width: 230px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .hospital-tagline {
+      font-size: 6.5pt;
+      font-weight: 600;
+      color: #64748b;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-top: 2px;
     }
 
     .report-title-container {
@@ -942,57 +960,17 @@ const getMedicalReportHTML = (type, data) => {
     .footer {
       flex-shrink: 0;
       margin-top: auto; /* Pushes to bottom of page-wrapper */
-      padding-top: 10mm;
+      padding-top: 8mm;
       width: 100%;
       page-break-inside: avoid;
     }
-    
-    .footer-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      padding: 0 4px 5px 4px;
-      font-size: 6.5pt;
-      font-weight: 700;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.02em;
-    }
 
-    .brand-footer-bar {
-      display: flex;
-      height: 30px;
+    .footer-banner-svg {
       width: 100%;
-      color: #ffffff;
-    }
-
-    .footer-left-bar {
-      background-color: #a3cc54;
-      width: 45%;
-      display: flex;
-      align-items: center;
-      padding: 0 15px;
-      font-weight: 800;
-      font-size: 10pt;
-      letter-spacing: 0.05em;
-    }
-
-    .footer-right-bar {
-      background-color: #64748b;
-      width: 55%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 0 15px;
-      font-size: 5pt;
-      line-height: 1.1;
-      font-weight: 500;
-    }
-
-    .footer-right-bar div {
-      display: flex;
-      justify-content: flex-end;
-      text-align: right;
+      height: auto;
+      display: block;
+      border-radius: 2px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
     }
   </style>
 </head>
@@ -1001,6 +979,7 @@ const getMedicalReportHTML = (type, data) => {
     <div class="header-container">
       <div class="hospital-info">
         <img src="${logoBase64}" class="hospital-logo" alt="Legacy Clinics Logo" />
+        <div class="hospital-tagline">Speciality Clinic • Diagnostics • Dental</div>
       </div>
       <div class="report-title-container">
         <h1 class="report-title">${titleMap[type] || 'Medical Report'}</h1>
@@ -1008,8 +987,8 @@ const getMedicalReportHTML = (type, data) => {
           <span class="doc-id-label">Official Document ID</span>
           <span class="doc-id-value">${getDocId()}</span>
         </div>
-        <div style="font-size: 6pt; color: #94a3b8; margin-top: 4px;">
-          ISSUED: ${new Date().toLocaleString()}
+        <div style="font-size: 6.5pt; color: #64748b; margin-top: 4px; font-weight: 500;">
+          ISSUED: ${new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
     </div>
@@ -1019,18 +998,7 @@ const getMedicalReportHTML = (type, data) => {
     </div>
 
     <div class="footer">
-      <div class="footer-meta">
-        <span>Speciality Clinic | Diagnostics | Dental</span>
-        <span>Code: 103872011</span>
-      </div>
-      <div class="brand-footer-bar">
-        <div class="footer-left-bar">HEALTH FOR LIFE</div>
-        <div class="footer-right-bar">
-          <div>134 KK 3 Rd, KICUKIRO District, NYARUGUNGA Sector, Kigali, RWANDA</div>
-          <div>Tel: 8000 | 0788 122 100 | Whatsapp: 0788 382 000</div>
-          <div>info@legacyclinics.rw | www.legacyclinics.rw</div>
-        </div>
-      </div>
+      <img src="${footerBannerBase64}" class="footer-banner-svg" alt="Legacy Clinics - Health for Life" />
     </div>
   </div>
 </body>

@@ -1,8 +1,29 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const db = require('../config/db');
 const { logAction } = require('../middleware/audit');
 const { sendEmail, sendEmailFrom } = require('../services/emailService');
+
+const loadAssetBase64 = (...segments) => {
+  try {
+    const assetPath = path.join(__dirname, '..', 'assets', ...segments);
+    if (fs.existsSync(assetPath)) {
+      const ext = path.extname(assetPath).toLowerCase();
+      let mime = 'image/png';
+      if (ext === '.svg') mime = 'image/svg+xml';
+      else if (ext === '.jpg' || ext === '.jpeg') mime = 'image/jpeg';
+      return `data:${mime};base64,${fs.readFileSync(assetPath).toString('base64')}`;
+    }
+  } catch (err) {
+    console.error('Failed to load asset for sales controller:', err);
+  }
+  return '';
+};
+
+const logoBase64 = loadAssetBase64('logo.png');
+const footerBannerBase64 = loadAssetBase64('legacy_header.svg');
 
 const q  = async (sql, args = []) => (await db.query(sql, args)).rows;
 const q1 = async (sql, args = []) => (await db.query(sql, args)).rows[0] || null;
@@ -443,14 +464,16 @@ async function sendProformaEmail(req, res) {
     // ── Build the email HTML (inline) ──────────────────────────────────────
     const rowsHtml = items.map((it, idx) => `
       <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-        <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-size: 13px; color: #1e293b;">${it.description}</td>
-        <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-size: 13px; text-align: center; color: #1e293b;">${it.quantity}</td>
-        <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-size: 13px; text-align: right; color: #1e293b;">${Number(it.unit_price).toLocaleString()}</td>
-        <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-size: 13px; text-align: right; font-weight: 600; color: #1e293b;">${Number(it.amount).toLocaleString()}</td>
+        <td style="padding: 9px 12px; border: 1px solid #cbd5e1; font-size: 13px; text-align: center; color: #64748b;">${idx + 1}</td>
+        <td style="padding: 9px 12px; border: 1px solid #cbd5e1; font-size: 13px; color: #1e293b; font-weight: 600;">${it.description || ''}</td>
+        <td style="padding: 9px 12px; border: 1px solid #cbd5e1; font-size: 13px; text-align: center; color: #1e293b;">${it.quantity}</td>
+        <td style="padding: 9px 12px; border: 1px solid #cbd5e1; font-size: 13px; text-align: right; color: #1e293b;">${Number(it.unit_price).toLocaleString()}</td>
+        <td style="padding: 9px 12px; border: 1px solid #cbd5e1; font-size: 13px; text-align: right; font-weight: 700; color: #0f172a;">${Number(it.amount).toLocaleString()}</td>
       </tr>
     `).join('');
 
     const emailSubject = `Legacy Clinics — Proforma Invoice ${row.invoice_number} for ${row.customer_name}`;
+    const safeNum = (row.invoice_number || 'proforma').replace(/[\/\\:*?"<>|]/g, '-');
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -458,54 +481,88 @@ async function sendProformaEmail(req, res) {
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }
-          .container { max-width: 700px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
-          .header { padding: 24px 30px; border-bottom: 2px solid #0284c7; display: flex; justify-content: space-between; align-items: flex-start; }
-          .title { color: #0284c7; font-size: 26px; font-weight: 800; letter-spacing: 1px; margin: 0; }
-          .clinic-info { font-size: 12px; color: #64748b; line-height: 1.5; }
-          .content { padding: 24px 30px; }
-          .recip-box { background-color: #0284c7; color: #ffffff; padding: 6px 14px; font-weight: 700; font-size: 13px; letter-spacing: 0.5px; border-radius: 4px; margin-bottom: 8px; }
-          .client-name { font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-          th { background-color: #0284c7; color: #ffffff; padding: 8px 12px; font-size: 12px; text-align: left; border: 1px solid #0284c7; }
-          .totals-table { width: 300px; margin-left: auto; margin-top: 10px; }
-          .total-row { background-color: #e0f2fe; color: #0369a1; font-size: 15px; font-weight: 800; }
-          .payment-box { margin-top: 24px; padding: 14px 18px; border: 1px solid #94a3b8; border-radius: 6px; background-color: #f8fafc; font-size: 12px; line-height: 1.6; }
-          .footer { padding: 18px 30px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #64748b; }
+          body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px 12px; color: #1e293b; }
+          .container { max-width: 680px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+          .header { background: linear-gradient(135deg, #003b44 0%, #005f6e 100%); padding: 24px 32px; color: #ffffff; }
+          .header-table { width: 100%; border: none; margin: 0; }
+          .header-title { margin: 0; color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: 0.5px; }
+          .header-subtitle { margin: 4px 0 0; font-size: 12px; color: #cbd5e1; }
+          .header-meta { margin: 2px 0 0; font-size: 11px; color: #94a3b8; }
+          .badge { display: inline-block; background-color: #0284c7; color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 1px; padding: 4px 10px; border-radius: 4px; text-transform: uppercase; }
+          .content { padding: 28px 32px; }
+          .greeting { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+          .intro { font-size: 13.5px; color: #334155; line-height: 1.6; margin-bottom: 20px; }
+          .custom-msg { padding: 12px 16px; background-color: #f0fdf4; border-left: 4px solid #16a34a; border-radius: 4px; margin-bottom: 20px; font-size: 13px; color: #166534; line-height: 1.5; }
+          .info-card { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; }
+          .info-table { width: 100%; border-collapse: collapse; }
+          .info-table td { padding: 4px 8px; font-size: 12.5px; }
+          .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; border: 1px solid #cbd5e1; }
+          .items-table th { background-color: #0284c7; color: #ffffff; padding: 9px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #0284c7; }
+          .totals-table { width: 300px; margin-left: auto; border-collapse: collapse; margin-top: 10px; }
+          .totals-table td { padding: 6px 10px; font-size: 13px; }
+          .total-row { background-color: #e0f2fe; color: #0369a1; font-size: 14px; font-weight: 800; border-top: 2px solid #0284c7; }
+          .payment-box { margin-top: 24px; padding: 16px 20px; border: 1.5px solid #94a3b8; border-radius: 8px; background-color: #f8fafc; font-size: 12px; line-height: 1.6; color: #334155; }
+          .attachment-box { margin-top: 20px; padding: 12px 16px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; font-size: 12.5px; color: #1e40af; }
+          .footer { padding: 20px 32px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #64748b; line-height: 1.6; }
         </style>
       </head>
       <body>
         <div class="container">
-          <div style="background-color: #003b44; padding: 20px 30px; color: #ffffff;">
-            <table style="width: 100%; border: none; margin: 0;">
+          <div class="header">
+            <table class="header-table">
               <tr>
                 <td style="border: none; padding: 0;">
-                  <h2 style="margin: 0; color: #ffffff; font-size: 20px;">🏥 LEGACY CLINICS &amp; DIAGNOSTICS</h2>
-                  <p style="margin: 4px 0 0; font-size: 12px; color: #cbd5e1;">KG 3 RD 134, Nyarugunga Sector, Kigali - Rwanda | Phone: +250 788 122 100</p>
-                  <p style="margin: 2px 0 0; font-size: 11px; color: #94a3b8;">TIN: 103672011 | sales@legacyclinics.rw | www.legacyclinic.rw</p>
+                  <h2 class="header-title">LEGACY CLINICS &amp; DIAGNOSTICS</h2>
+                  <p class="header-subtitle">Speciality Clinic • Diagnostics • Dental</p>
+                  <p class="header-meta">KG 3 RD 134, Nyarugunga, Kigali | Phone: +250 788 122 100 | TIN: 103672011</p>
                 </td>
                 <td style="border: none; padding: 0; text-align: right; vertical-align: top;">
-                  <span style="font-size: 22px; font-weight: 800; color: #38bdf8; letter-spacing: 1.5px;">PROFORMA</span>
-                  <div style="font-size: 12px; color: #ffffff; margin-top: 4px;"><strong>INV #:</strong> ${row.invoice_number}</div>
-                  <div style="font-size: 12px; color: #cbd5e1;"><strong>DATE:</strong> ${row.invoice_date}</div>
+                  <span class="badge">PROFORMA INVOICE</span>
+                  <div style="font-size: 13px; color: #ffffff; margin-top: 6px; font-weight: 700;">INV #: ${row.invoice_number}</div>
+                  <div style="font-size: 12px; color: #cbd5e1;">DATE: ${row.invoice_date}</div>
                 </td>
               </tr>
             </table>
           </div>
 
           <div class="content">
-            ${custom_message ? `<div style="padding: 12px; background-color: #f0fdf4; border-left: 4px solid #16a34a; border-radius: 4px; margin-bottom: 18px; font-size: 13px; color: #166534;">${custom_message}</div>` : ''}
+            <div class="greeting">Dear ${row.customer_name},</div>
+            <div class="intro">
+              Thank you for trusting Legacy Clinics &amp; Diagnostics Ltd. Please find your official Proforma Invoice detailed below. An official printable PDF copy is attached to this email.
+            </div>
 
-            <div class="recip-box">PROFORMA INVOICE TO</div>
-            <div class="client-name">${row.customer_name} ${row.customer_phone ? `• ${row.customer_phone}` : ''}</div>
+            ${custom_message ? `<div class="custom-msg"><strong>Message from Sales Team:</strong><br>${custom_message}</div>` : ''}
 
-            <table>
+            <div class="info-card">
+              <table class="info-table">
+                <tr>
+                  <td style="width: 20%; color: #64748b; font-weight: 600;">Recipient:</td>
+                  <td style="width: 40%; font-weight: 700; color: #0f172a;">${row.customer_name}</td>
+                  <td style="width: 18%; color: #64748b; font-weight: 600;">Due Date:</td>
+                  <td style="width: 22%; font-weight: 700; color: #0284c7;">${row.due_date || 'Upon Presentation'}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; font-weight: 600;">Phone:</td>
+                  <td style="color: #334155;">${row.customer_phone || '—'}</td>
+                  <td style="color: #64748b; font-weight: 600;">TIN:</td>
+                  <td style="color: #334155;">${row.customer_tin || '—'}</td>
+                </tr>
+                ${row.customer_email ? `
+                <tr>
+                  <td style="color: #64748b; font-weight: 600;">Email:</td>
+                  <td colspan="3" style="color: #334155;">${row.customer_email}</td>
+                </tr>` : ''}
+              </table>
+            </div>
+
+            <table class="items-table">
               <thead>
                 <tr>
-                  <th style="width: 50%;">DESCRIPTION</th>
-                  <th style="width: 15%; text-align: center;">QUANTITY</th>
-                  <th style="width: 17%; text-align: right;">U.P (RWF)</th>
-                  <th style="width: 18%; text-align: right;">AMOUNT (RWF)</th>
+                  <th style="width: 8%; text-align: center;">#</th>
+                  <th style="width: 50%;">Description</th>
+                  <th style="width: 12%; text-align: center;">Qty</th>
+                  <th style="width: 15%; text-align: right;">U.P (RWF)</th>
+                  <th style="width: 15%; text-align: right;">Amount (RWF)</th>
                 </tr>
               </thead>
               <tbody>
@@ -515,44 +572,51 @@ async function sendProformaEmail(req, res) {
 
             <table class="totals-table">
               <tr>
-                <td style="padding: 6px 10px; font-size: 13px; color: #64748b;">Subtotal:</td>
-                <td style="padding: 6px 10px; font-size: 13px; text-align: right; font-weight: 700;">${Number(row.subtotal).toLocaleString()} RWF</td>
+                <td style="color: #64748b;">Subtotal:</td>
+                <td style="text-align: right; font-weight: 700;">${Number(row.subtotal).toLocaleString()} RWF</td>
               </tr>
               ${row.tax_due > 0 ? `
               <tr>
-                <td style="padding: 6px 10px; font-size: 13px; color: #64748b;">Tax / VAT:</td>
-                <td style="padding: 6px 10px; font-size: 13px; text-align: right;">${Number(row.tax_due).toLocaleString()} RWF</td>
+                <td style="color: #64748b;">Tax / VAT:</td>
+                <td style="text-align: right; color: #64748b;">${Number(row.tax_due).toLocaleString()} RWF</td>
               </tr>` : ''}
               ${row.other_fees > 0 ? `
               <tr>
-                <td style="padding: 6px 10px; font-size: 13px; color: #64748b;">Other:</td>
-                <td style="padding: 6px 10px; font-size: 13px; text-align: right;">${Number(row.other_fees).toLocaleString()} RWF</td>
+                <td style="color: #64748b;">Other:</td>
+                <td style="text-align: right; color: #64748b;">${Number(row.other_fees).toLocaleString()} RWF</td>
               </tr>` : ''}
               <tr class="total-row">
-                <td style="padding: 10px; font-weight: 800; border-top: 2px solid #0284c7;">TOTAL:</td>
-                <td style="padding: 10px; text-align: right; font-weight: 800; border-top: 2px solid #0284c7;">${Number(row.total_amount).toLocaleString()} RWF</td>
+                <td style="padding: 10px; font-weight: 800;">TOTAL AMOUNT:</td>
+                <td style="padding: 10px; text-align: right; font-weight: 800;">${Number(row.total_amount).toLocaleString()} RWF</td>
               </tr>
             </table>
 
             <div class="payment-box">
-              <strong style="color: #0f172a;">TERMS OF PAYMENT AND BANK DETAILS:</strong><br>
-              1. Please include the invoice number (<strong>${row.invoice_number}</strong>) on your check / transfer.<br>
-              2. Please share proof of payment to confirm reservation/service.<br>
-              3. Bank account: <strong>BK 00040-06933483-59</strong><br>
-              4. <strong>MOMO PAY CODE: 035884</strong> / Legacy Clinics<br>
+              <strong style="color: #0f172a; font-size: 13px;">TERMS OF PAYMENT AND BANK DETAILS:</strong><br>
+              1. Please include invoice number (<strong>${row.invoice_number}</strong>) on your check / bank transfer.<br>
+              2. Please share proof of payment to confirm reservation or service delivery.<br>
+              3. Bank Account: <strong>Bank of Kigali (BK) 00040-06933483-59</strong><br>
+              4. <strong>MTN MOMO PAY CODE: 035884</strong> / Legacy Clinics<br>
               <br>
               <span style="color: #64748b;">Please make all checks payable to <strong>Legacy Clinics &amp; Diagnostics Ltd</strong></span>
             </div>
 
-            <div style="margin-top: 20px; font-size: 12px; color: #475569;">
-              <strong>Prepared by:</strong> ${row.prepared_by_name || 'Sales Manager'} (${row.prepared_by_title || 'Sales Manager'})<br>
-              <strong>For:</strong> Legacy Clinics Management
+            <div class="attachment-box">
+              📎 <strong>Official PDF Attached:</strong> An official, stamped PDF copy (<strong>${safeNum}.pdf</strong>) is attached to this email for your accounting records.
+            </div>
+
+            <div style="margin-top: 22px; font-size: 12px; color: #475569; line-height: 1.5;">
+              Prepared by: <strong>${row.prepared_by_name || 'Sales Team'}</strong> ${row.prepared_by_title ? `(${row.prepared_by_title})` : ''}<br>
+              <strong>For Legacy Clinics Management</strong>
             </div>
           </div>
 
           <div class="footer">
-            <p style="margin: 0 0 6px;">${row.contact_person || 'If you have questions, please contact the Sales team, E-mail: sales@legacyclinics.rw'}</p>
+            <p style="margin: 0 0 6px;">${row.contact_person || 'If you have any questions, please contact our Sales team: sales@legacyclinics.rw | Tel: +250 788 122 100'}</p>
             <strong style="color: #0284c7; font-size: 13px;">Thank You For Your Business!</strong>
+            <div style="margin-top: 8px; font-size: 11px; color: #94a3b8;">
+              Legacy Clinics &amp; Diagnostics Ltd • Health for Life • Kigali, Rwanda
+            </div>
           </div>
         </div>
       </body>
@@ -562,120 +626,355 @@ async function sendProformaEmail(req, res) {
     // ── Generate PDF using Puppeteer ────────────────────────────────────────
     let pdfBuffer = null;
     try {
-      const puppeteer = require('puppeteer-core');
+      const puppeteerModule = (await import('puppeteer-core')).default;
 
-      // Build a self-contained PDF HTML (same as email HTML but optimised for print)
+      // Build a high-fidelity printable proforma PDF
       const pdfHtml = `
         <!DOCTYPE html>
         <html>
         <head>
           <meta charset="utf-8">
           <style>
-            @page { size: A4; margin: 18mm 16mm; }
+            @page {
+              size: A4 portrait;
+              margin: 10mm 12mm 10mm 12mm;
+            }
             * { box-sizing: border-box; }
-            body { font-family: 'Segoe UI', Arial, sans-serif; color: #111827; margin: 0; padding: 0; font-size: 11px; }
-            .header-bar { background-color: #003b44; color: #fff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-            .header-bar h2 { margin: 0; font-size: 16px; }
-            .header-bar p  { margin: 3px 0 0; font-size: 10px; color: #cbd5e1; }
-            .proforma-title { font-size: 22px; font-weight: 800; color: #38bdf8; letter-spacing: 2px; }
-            .meta-right { text-align: right; }
-            .meta-right div { font-size: 10px; color: #fff; margin-top: 2px; }
-            .recipient-label { background-color: #2563eb; color: #fff; font-weight: 800; font-size: 10px; letter-spacing: 1px; padding: 3px 10px; display: inline-block; text-transform: uppercase; }
-            .customer-name { font-size: 13px; font-weight: 800; color: #111827; margin: 4px 0 2px; text-transform: uppercase; }
-            .customer-meta { font-size: 10px; color: #4b5563; margin-bottom: 12px; }
-            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-            th { background-color: #2563eb; color: #fff; padding: 5px 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; border: 1px solid #1e3a8a; }
-            td { border: 1px solid #64748b; padding: 4px 8px; font-size: 10px; color: #111827; }
-            tr:nth-child(even) td { background-color: #f8fafc; }
-            .totals-table { width: 260px; margin-left: auto; margin-top: 8px; }
-            .totals-table td { border: none; padding: 3px 8px; }
-            .total-final td { background-color: #e0f2fe; color: #0369a1; font-weight: 800; font-size: 12px; border: 1px solid #bae6fd; }
-            .payment-box { border: 1px solid #475569; padding: 8px 12px; font-size: 10px; line-height: 1.6; margin-top: 10px; }
-            .payment-box strong { color: #0f172a; }
-            .footer-note { border-top: 1px solid #e2e8f0; margin-top: 16px; padding-top: 10px; text-align: center; font-size: 9px; color: #4b5563; }
-            .footer-note strong { color: #0284c7; font-size: 10px; }
+            html, body {
+              margin: 0;
+              padding: 0;
+              height: 100%;
+              background-color: #ffffff;
+              color: #111827;
+              font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+              font-size: 10.5px;
+              line-height: 1.35;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .page-container {
+              display: flex;
+              flex-direction: column;
+              min-height: 277mm;
+              padding: 0;
+              justify-content: space-between;
+            }
+            .header-section {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 16px;
+              padding-bottom: 12px;
+              border-bottom: 2px solid #0284c7;
+            }
+            .brand-left {
+              display: flex;
+              flex-direction: column;
+              gap: 3px;
+            }
+            .brand-logo {
+              height: 48px;
+              width: auto;
+              max-width: 220px;
+              object-fit: contain;
+              display: block;
+              margin-bottom: 4px;
+            }
+            .brand-address {
+              font-size: 8.5pt;
+              color: #374151;
+              line-height: 1.4;
+              font-weight: 500;
+            }
+            .meta-right {
+              width: 220px;
+              text-align: right;
+            }
+            .doc-title {
+              font-size: 26pt;
+              font-weight: 800;
+              color: #0284c7;
+              letter-spacing: 2px;
+              margin: 0 0 8px 0;
+              text-transform: uppercase;
+              font-family: serif;
+            }
+            .meta-table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 9pt;
+              border: 1px solid #64748b;
+              text-align: left;
+            }
+            .meta-table td {
+              border: 1px solid #64748b;
+              padding: 3.5px 7px;
+            }
+            .meta-label {
+              font-weight: 700;
+              width: 45%;
+              background-color: #f8fafc;
+            }
+            .meta-val {
+              text-align: center;
+              font-weight: 600;
+            }
+            .recipient-bar {
+              margin-bottom: 14px;
+            }
+            .recipient-badge {
+              background-color: #2563eb;
+              color: #ffffff;
+              font-weight: 800;
+              font-size: 9pt;
+              letter-spacing: 1px;
+              padding: 3.5px 10px;
+              display: inline-block;
+              width: 240px;
+              text-transform: uppercase;
+            }
+            .recipient-name {
+              padding: 5px 2px 2px 2px;
+              font-size: 11pt;
+              font-weight: 800;
+              color: #111827;
+              letter-spacing: 0.4px;
+            }
+            .recipient-details {
+              font-size: 8.5pt;
+              color: #374151;
+              line-height: 1.45;
+            }
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 12px 0;
+              border: 1px solid #64748b;
+            }
+            .items-table th {
+              background-color: #2563eb;
+              color: #ffffff;
+              padding: 5px 8px;
+              font-size: 8.5pt;
+              font-weight: 800;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              border: 1px solid #1e3a8a;
+            }
+            .items-table td {
+              border: 1px solid #64748b;
+              padding: 4px 8px;
+              font-size: 8.5pt;
+              color: #111827;
+            }
+            .items-table tr:nth-child(even) td {
+              background-color: #f8fafc;
+            }
+            .summary-section {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-top: 10px;
+              gap: 20px;
+            }
+            .terms-box {
+              flex: 1;
+              border: 1px solid #64748b;
+              padding: 8px 12px;
+              font-size: 8pt;
+              line-height: 1.5;
+              background-color: #ffffff;
+            }
+            .terms-box strong {
+              color: #0f172a;
+            }
+            .totals-table {
+              width: 250px;
+              border-collapse: collapse;
+              font-size: 8.5pt;
+            }
+            .totals-table td {
+              padding: 3px 8px;
+            }
+            .total-grand td {
+              padding: 6px 10px;
+              font-weight: 800;
+              font-size: 10pt;
+              background-color: #e0f2fe;
+              color: #0369a1;
+              border: 1px solid #bae6fd;
+            }
+            .signoff-section {
+              margin-top: 12px;
+              display: flex;
+              justify-content: space-between;
+              font-size: 8.5pt;
+              color: #1f2937;
+            }
+            .footer-note {
+              text-align: center;
+              border-top: 1px solid #e2e8f0;
+              padding-top: 8px;
+              margin-top: 12px;
+              font-size: 8pt;
+              color: #4b5563;
+              line-height: 1.4;
+            }
+            .footer-note strong {
+              color: #0284c7;
+              font-size: 8.5pt;
+            }
+            .footer-banner {
+              width: 100%;
+              height: auto;
+              display: block;
+              margin-top: 10px;
+              border-radius: 2px;
+            }
           </style>
         </head>
         <body>
-          <div class="header-bar">
+          <div class="page-container">
             <div>
-              <h2>🏥 LEGACY CLINICS &amp; DIAGNOSTICS</h2>
-              <p>KG 3 RD 134, Nyarugunga Sector, Kigali - Rwanda | Tel: +250 788 122 100</p>
-              <p>TIN: 103672011 | sales@legacyclinics.rw | www.legacyclinic.rw</p>
-            </div>
-            <div class="meta-right">
-              <div class="proforma-title">PROFORMA</div>
-              <div><strong>INV #:</strong> ${row.invoice_number}</div>
-              <div><strong>DATE:</strong> ${row.invoice_date}</div>
-              ${row.due_date && row.due_date !== 'N/A' ? `<div><strong>DUE:</strong> ${row.due_date}</div>` : ''}
-            </div>
-          </div>
+              <!-- Header with Official Logo -->
+              <div class="header-section">
+                <div class="brand-left">
+                  <img src="${logoBase64}" class="brand-logo" alt="Legacy Clinics Logo" />
+                  <div class="brand-address">
+                    <div>KG 3 RD 134, Nyarugunga Sector</div>
+                    <div>PO Box 1589 Kigali - Rwanda</div>
+                    <div>Phone: +250 788 122 100</div>
+                    <div>info@legacyclinics.rw | www.legacyclinic.rw</div>
+                    <div style="font-weight: 700; margin-top: 2px; color: #111827;">TIN: 103672011</div>
+                  </div>
+                </div>
 
-          <div class="recipient-label">PROFORMA INVOICE TO</div>
-          <div class="customer-name">${row.customer_name}</div>
-          <div class="customer-meta">
-            ${row.customer_phone ? `Tel: ${row.customer_phone} &nbsp;` : ''}
-            ${row.customer_email ? `Email: ${row.customer_email} &nbsp;` : ''}
-            ${row.customer_tin   ? `TIN: ${row.customer_tin}` : ''}
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th style="width:52%; text-align:left;">Description</th>
-                <th style="width:12%; text-align:center;">Qty</th>
-                <th style="width:18%; text-align:right;">U.P (RWF)</th>
-                <th style="width:18%; text-align:right;">Amount (RWF)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${items.map((it, i) => `
-                <tr>
-                  <td>${it.description || ''}</td>
-                  <td style="text-align:center;">${it.quantity}</td>
-                  <td style="text-align:right;">${Number(it.unit_price).toLocaleString()}</td>
-                  <td style="text-align:right; font-weight:700;">${Number(it.amount).toLocaleString()}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-
-          <table class="totals-table">
-            <tr><td style="color:#374151;">Subtotal</td><td style="text-align:right; font-weight:700;">${Number(row.subtotal).toLocaleString()} RWF</td></tr>
-            ${row.tax_due > 0 ? `<tr><td style="color:#6b7280;">Tax / VAT</td><td style="text-align:right; color:#6b7280;">${Number(row.tax_due).toLocaleString()} RWF</td></tr>` : ''}
-            ${row.other_fees > 0 ? `<tr><td style="color:#6b7280;">Other</td><td style="text-align:right; color:#6b7280;">${Number(row.other_fees).toLocaleString()} RWF</td></tr>` : ''}
-            <tr class="total-final"><td style="padding:6px 8px;">TOTAL</td><td style="text-align:right; padding:6px 8px;">${Number(row.total_amount).toLocaleString()} RWF</td></tr>
-          </table>
-
-          <div style="display:flex; justify-content:space-between; margin-top:16px; gap:20px;">
-            <div style="flex:1;">
-              <div class="payment-box">
-                <strong>TERMS OF PAYMENT AND BANK DETAILS</strong><br>
-                1. Please include the invoice number (${row.invoice_number}) on your transfer.<br>
-                2. Please share proof of payment to confirm reservation/service.<br>
-                3. Bank account: <strong>BK 00040-06933483-59</strong><br>
-                4. <strong>MOMO PAY CODE: 035884</strong> / Legacy Clinics
+                <div class="meta-right">
+                  <h1 class="doc-title">PROFORMA</h1>
+                  <table class="meta-table">
+                    <tbody>
+                      <tr>
+                        <td class="meta-label">DATE</td>
+                        <td class="meta-val">${row.invoice_date || '—'}</td>
+                      </tr>
+                      <tr>
+                        <td class="meta-label">INVOICE #</td>
+                        <td class="meta-val" style="font-weight: 700; color: #0369a1;">${row.invoice_number || '—'}</td>
+                      </tr>
+                      <tr>
+                        <td class="meta-label">CUSTOMER ID</td>
+                        <td class="meta-val">${row.customer_id || '—'}</td>
+                      </tr>
+                      <tr>
+                        <td class="meta-label">DUE DATE</td>
+                        <td class="meta-val" style="background-color: #e0f2fe; color: #0369a1; font-weight: 700;">${row.due_date || 'N/A'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <div style="margin-top:14px; font-size:10px; color:#1f2937;">
-                Prepared by: <strong>${row.prepared_by_name || 'Sales Manager'}</strong> ${row.prepared_by_title ? `(${row.prepared_by_title})` : ''}<br>
-                <strong>For Legacy Clinics Management</strong>
+
+              <!-- Recipient -->
+              <div class="recipient-bar">
+                <div class="recipient-badge">PROFORMA INVOICE TO</div>
+                <div class="recipient-name">${row.customer_name || 'Customer'}</div>
+                <div class="recipient-details">
+                  ${row.customer_phone ? `<div>Phone: ${row.customer_phone}</div>` : ''}
+                  ${row.customer_email ? `<div>Email: ${row.customer_email}</div>` : ''}
+                  ${row.customer_tin ? `<div>TIN: ${row.customer_tin}</div>` : ''}
+                  ${row.customer_address ? `<div>Address: ${row.customer_address}</div>` : ''}
+                </div>
+              </div>
+
+              <!-- Items Table -->
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th style="width: 8%; text-align: center;">Item #</th>
+                    <th style="width: 52%; text-align: left;">Description</th>
+                    <th style="width: 10%; text-align: center;">Qty</th>
+                    <th style="width: 15%; text-align: right;">Unit Price (RWF)</th>
+                    <th style="width: 15%; text-align: right;">Total (RWF)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${items.map((it, idx) => `
+                    <tr>
+                      <td style="text-align: center; color: #64748b;">${idx + 1}</td>
+                      <td style="font-weight: 600;">${it.description || ''}</td>
+                      <td style="text-align: center;">${it.quantity}</td>
+                      <td style="text-align: right;">${Number(it.unit_price).toLocaleString()}</td>
+                      <td style="text-align: right; font-weight: 700;">${Number(it.amount).toLocaleString()}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+
+              <!-- Summary & Terms -->
+              <div class="summary-section">
+                <div class="terms-box">
+                  <strong>TERMS OF PAYMENT AND BANK DETAILS:</strong><br>
+                  1. Please include invoice number (<strong>${row.invoice_number}</strong>) on your check / transfer.<br>
+                  2. Please share proof of payment to confirm reservation/service.<br>
+                  3. Bank Account: <strong>BK 00040-06933483-59</strong><br>
+                  4. <strong>MTN MOMO PAY CODE: 035884</strong> / Legacy Clinics
+                </div>
+
+                <div>
+                  <table class="totals-table">
+                    <tbody>
+                      <tr>
+                        <td style="color: #64748b;">Subtotal</td>
+                        <td style="text-align: right; font-weight: 700;">${Number(row.subtotal).toLocaleString()} RWF</td>
+                      </tr>
+                      ${row.tax_due > 0 ? `
+                      <tr>
+                        <td style="color: #64748b;">Tax / VAT</td>
+                        <td style="text-align: right; color: #64748b;">${Number(row.tax_due).toLocaleString()} RWF</td>
+                      </tr>` : ''}
+                      ${row.other_fees > 0 ? `
+                      <tr>
+                        <td style="color: #64748b;">Other</td>
+                        <td style="text-align: right; color: #64748b;">${Number(row.other_fees).toLocaleString()} RWF</td>
+                      </tr>` : ''}
+                      <tr class="total-grand">
+                        <td>TOTAL</td>
+                        <td style="text-align: right;">${Number(row.total_amount).toLocaleString()} RWF</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div style="font-size: 7.5pt; color: #1f2937; text-align: right; margin-top: 8px;">
+                    Please make all checks payable to<br>
+                    <strong style="color: #003b44;">Legacy Clinics &amp; Diagnostics Ltd</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Signoff -->
+              <div class="signoff-section">
+                <div>
+                  Prepared by: <strong>${row.prepared_by_name || 'Sales Manager'}</strong> ${row.prepared_by_title ? `(${row.prepared_by_title})` : ''}<br>
+                  <strong>For Legacy Clinics Management</strong>
+                </div>
+              </div>
+
+              <div class="footer-note">
+                <div>${row.contact_person || 'If you have any questions about this proforma, please contact Sofia, 0787363970, E-mail: sofia@legacyclinics.rw'}</div>
+                <strong>Thank You For Your Business!</strong>
               </div>
             </div>
-            <div style="font-size:10px; color:#1f2937; text-align:right; font-weight:600; padding-top:8px;">
-              Please make all checks payable to<br>
-              <strong style="color:#003b44;">Legacy Clinics &amp; Diagnostics Ltd</strong>
-            </div>
-          </div>
 
-          <div class="footer-note">
-            <div>${row.contact_person || 'For enquiries: sales@legacyclinics.rw | Tel: +250 788 122 100'}</div>
-            <strong>Thank You For Your Business!</strong>
+            <!-- Official Brand Vector Footer Banner -->
+            <div style="margin-top: auto; padding-top: 6px;">
+              <img src="${footerBannerBase64}" class="footer-banner" alt="Legacy Clinics - Health for Life" />
+            </div>
           </div>
         </body>
         </html>
       `;
 
-      const browser = await puppeteer.launch({
+      const browser = await puppeteerModule.launch({
         executablePath: process.env.CHROME_EXECUTABLE_PATH || '/usr/bin/google-chrome',
         headless: true,
         args: [
