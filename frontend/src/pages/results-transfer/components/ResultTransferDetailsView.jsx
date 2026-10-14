@@ -18,10 +18,15 @@ const ResultTransferDetailsView = ({ data, onReview, onApprove, onReject, onExpo
   if (!data) return null;
 
   const opsRoles = ['operations_staff', 'operations', 'operations_manager', 'ops_lead', 'coo', 'deputy_coo', 'admin'];
-  const approverRoles = ['lab_team_lead', 'lab_lead', 'lab_manager', 'lab_head', 'lab_supervisor', 'imaging_manager', 'imaging_tech', 'admin'];
+  const isImagingItem = (data.department || 'Laboratory').toLowerCase() === 'imaging';
+
+  const isImagingApprover = ['imaging_manager', 'imaging_tech', 'admin'].includes(user?.role);
+  const isLabApprover = ['lab_team_lead', 'lab_lead', 'lab_manager', 'lab_head', 'lab_supervisor', 'admin'].includes(user?.role);
 
   const isOperations = hasPermission('results_transfer', 'review') || opsRoles.includes(user?.role);
-  const isApprover   = hasPermission('results_transfer', 'approve') || approverRoles.includes(user?.role);
+  const isApprover   = isImagingItem
+    ? (isImagingApprover && (hasPermission('results_transfer', 'approve') || ['imaging_manager', 'admin'].includes(user?.role)))
+    : (isLabApprover && (hasPermission('results_transfer', 'approve') || ['lab_team_lead', 'lab_lead', 'lab_manager', 'admin'].includes(user?.role)));
 
   return (
     <div className="print-body-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>

@@ -1,4 +1,5 @@
 import { Info, Receipt, Save, RefreshCw } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 
 const inputStyle = {
   padding: '10px',
@@ -19,6 +20,15 @@ const sectionIconStyle = (color) => ({
 });
 
 const ResultTransferFormFields = ({ formData, handleChange, handleSubmit, onSaveDraft, loading, onCancel, hasRestoredDraft, onClearDraft }) => {
+  const { user } = useAuth();
+  const isImagingUser = ['imaging_tech', 'imaging_manager', 'sono', 'radiologist'].includes(user?.role);
+  const isLabUser = [
+    'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab',
+    'lab_head', 'lab_supervisor', 'lab_safety_officer', 'lab_stock_officer',
+    'head_microbiology', 'head_hematology'
+  ].includes(user?.role);
+  const isScoped = isImagingUser || isLabUser;
+
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
@@ -51,10 +61,20 @@ const ResultTransferFormFields = ({ formData, handleChange, handleSubmit, onSave
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
           <div style={fieldStyle}>
             <label style={labelStyle}>Department *</label>
-            <select name="department" value={formData.department || 'Laboratory'} onChange={handleChange} style={{ ...inputStyle, cursor: 'pointer' }}>
-              <option value="Laboratory">🧪 Laboratory</option>
-              <option value="Imaging">☢️ Imaging / Radiology</option>
-            </select>
+            {isScoped ? (
+              <input 
+                type="text" 
+                readOnly 
+                disabled
+                value={isImagingUser ? '☢️ Imaging / Radiology' : '🧪 Laboratory'} 
+                style={{ ...inputStyle, backgroundColor: '#f1f5f9', cursor: 'not-allowed', fontWeight: 600, color: isImagingUser ? '#4f46e5' : '#007B8A' }} 
+              />
+            ) : (
+              <select name="department" value={formData.department || 'Laboratory'} onChange={handleChange} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="Laboratory">🧪 Laboratory</option>
+                <option value="Imaging">☢️ Imaging / Radiology</option>
+              </select>
+            )}
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Date of Request *</label>

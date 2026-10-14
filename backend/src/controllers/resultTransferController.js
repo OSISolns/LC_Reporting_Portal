@@ -7,21 +7,49 @@ const Notification = require('../models/notification');
 const User = require('../models/user');
 
 
+const IMAGING_ROLES = ['imaging_tech', 'imaging_manager', 'sono', 'radiologist'];
+const LAB_ROLES = [
+  'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab',
+  'lab_head', 'lab_supervisor', 'lab_safety_officer', 'lab_stock_officer',
+  'head_microbiology', 'head_hematology', 'quality_manager', 'qm'
+];
+
+function getUserDepartmentScope(userRole) {
+  if (IMAGING_ROLES.includes(userRole)) return 'Imaging';
+  if (LAB_ROLES.includes(userRole)) return 'Laboratory';
+  return null; // Cross-department / administrative (admin, coo, deputy_coo, operations_staff, etc.)
+}
+
+function checkDepartmentAccess(userRole, itemDepartment) {
+  const scope = getUserDepartmentScope(userRole);
+  if (!scope) return true; // Admins, COO, Operations can access all
+  const itemDept = itemDepartment || 'Laboratory';
+  return scope.toLowerCase() === itemDept.toLowerCase();
+}
+
 exports.createRequest = async (req, res, next) => {
   try {
+    const deptScope = getUserDepartmentScope(req.user.role);
+    if (deptScope) {
+      req.body.department = deptScope; // Strictly enforce user's department
+    } else if (!req.body.department) {
+      req.body.department = 'Laboratory';
+    }
+
     const request = await ResultTransfer.create(req.body, req.user.id);
     if (request) {
       try { 
         await logAction(req, 'CREATE', 'result_transfer', request.id, { 
           old_sid: request.old_sid, 
-          new_sid: request.new_sid 
+          new_sid: request.new_sid,
+          department: request.department
         }); 
         
-        // Notify Lab/Imaging Lead and Management ONLY if submitted (not draft)
+        // Notify respective department management ONLY if submitted (not draft)
         if (request.status !== 'draft') {
           const rolesToNotify = request.department === 'Imaging'
             ? ['imaging_manager', 'sales_manager', 'coo', 'deputy_coo', 'admin']
-            : ['lab_team_lead', 'lab_lead', 'lab_manager', 'imaging_manager', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
+            : ['lab_team_lead', 'lab_lead', 'lab_manager', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
           const usersToNotify = [];
           
           for (const role of rolesToNotify) {
@@ -57,12 +85,19 @@ exports.updateRequest = async (req, res, next) => {
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
+    if (!checkDepartmentAccess(req.user.role, existing.department)) {
+      return res.status(403).json({ success: false, message: 'Access denied: You cannot edit transfers from another department.' });
+    }
     if (existing.status !== 'pending' && existing.status !== 'draft') {
       return res.status(400).json({ success: false, message: 'Only pending or draft requests can be edited.' });
     }
     const privilegedRoles = ['lab_team_lead', 'lab_lead', 'lab_manager', 'imaging_manager', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
     if (Number(existing.created_by) !== Number(req.user.id) && !privilegedRoles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Access denied: You can only edit your own pending or draft requests.' });
+    }
+    const deptScope = getUserDepartmentScope(req.user.role);
+    if (deptScope) {
+      req.body.department = deptScope;
     }
     const updated = await ResultTransfer.update(req.params.id, req.body);
     try { await logAction(req, 'UPDATE', 'result_transfer', updated.id); } catch (e) {}
@@ -74,6 +109,12 @@ exports.updateRequest = async (req, res, next) => {
 exports.getAllRequests = async (req, res, next) => {
   try {
     const filters = { ...req.query };
+    const deptScope = getUserDepartmentScope(req.user.role);
+    if (deptScope) {
+      // Hard enforce department isolation: Imaging users cannot see Lab, and Lab users cannot see Imaging!
+      filters.department = deptScope;
+    }
+
     const privilegedRoles = [
       'lab_team_lead', 'lab_lead', 'lab_manager', 
       'imaging_manager', 'imaging_tech',
@@ -96,6 +137,9 @@ exports.getRequestById = async (req, res, next) => {
   try {
     const request = await ResultTransfer.findById(req.params.id);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (!checkDepartmentAccess(req.user.role, request.department)) {
+      return res.status(403).json({ success: false, message: 'Access denied: You cannot view transfers from another department.' });
+    }
     res.json({ success: true, data: request });
   } catch (err) { next(err); }
 };
@@ -104,6 +148,9 @@ exports.reviewRequest = async (req, res, next) => {
   try {
     const existing = await ResultTransfer.findById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (!checkDepartmentAccess(req.user.role, existing.department)) {
+      return res.status(403).json({ success: false, message: 'Access denied: You cannot review transfers from another department.' });
+    }
     if (existing.status !== 'pending') {
       return res.status(400).json({ success: false, message: `Request is currently in '${existing.status}' status and cannot be reviewed.` });
     }
@@ -133,6 +180,19 @@ exports.approveRequest = async (req, res, next) => {
     const { editedByName } = req.body;
     const existing = await ResultTransfer.findById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (!checkDepartmentAccess(req.user.role, existing.department)) {
+      return res.status(403).json({ success: false, message: 'Access denied: You cannot approve transfers from another department.' });
+    }
+    
+    // Department role verification
+    const isImaging = (existing.department || 'Laboratory').toLowerCase() === 'imaging';
+    if (isImaging && LAB_ROLES.includes(req.user.role) && !['admin'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Laboratory leads cannot approve Imaging result transfers.' });
+    }
+    if (!isImaging && IMAGING_ROLES.includes(req.user.role) && !['admin'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Imaging staff cannot approve Laboratory result transfers.' });
+    }
+
     if (existing.status !== 'reviewed') {
       return res.status(400).json({ success: false, message: `Request must be reviewed by Operations before approval. Current status: '${existing.status}'` });
     }
@@ -162,6 +222,9 @@ exports.rejectRequest = async (req, res, next) => {
     const { comment } = req.body;
     const requestToCheck = await ResultTransfer.findById(req.params.id);
     if (!requestToCheck) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (!checkDepartmentAccess(req.user.role, requestToCheck.department)) {
+      return res.status(403).json({ success: false, message: 'Access denied: You cannot reject transfers from another department.' });
+    }
     if (req.user.role === 'coo' && requestToCheck.status === 'pending') {
       return res.status(403).json({ success: false, message: 'COO cannot reject a pending request before review' });
     }
@@ -190,6 +253,9 @@ exports.deleteRequest = async (req, res, next) => {
   try {
     const existing = await ResultTransfer.findById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (!checkDepartmentAccess(req.user.role, existing.department)) {
+      return res.status(403).json({ success: false, message: 'Access denied: You cannot delete transfers from another department.' });
+    }
     if (existing.status !== 'pending' && existing.status !== 'draft') {
       return res.status(400).json({ success: false, message: 'Only pending or draft requests can be deleted.' });
     }
@@ -210,6 +276,9 @@ exports.getPDF = async (req, res, next) => {
   try {
     const request = await ResultTransfer.findById(req.params.id);
     if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
+    if (!checkDepartmentAccess(req.user.role, request.department)) {
+      return res.status(403).json({ success: false, message: 'Access denied: You cannot export transfers from another department.' });
+    }
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="ResultTransfer_${request.old_sid}.pdf"`);

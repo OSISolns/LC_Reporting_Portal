@@ -25,7 +25,15 @@ const EMPTY_FORM = {
 const ResultTransferList = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isImagingUser = user?.role === 'imaging_tech' || user?.role === 'imaging_manager';
+  const isImagingUser = ['imaging_tech', 'imaging_manager', 'sono', 'radiologist'].includes(user?.role);
+  const isLabUser = [
+    'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab',
+    'lab_head', 'lab_supervisor', 'lab_safety_officer', 'lab_stock_officer',
+    'head_microbiology', 'head_hematology'
+  ].includes(user?.role);
+  const isScoped = isImagingUser || isLabUser;
+  const userDept = isImagingUser ? 'Imaging' : isLabUser ? 'Laboratory' : '';
+
   const initialForm = {
     ...EMPTY_FORM,
     department: isImagingUser ? 'Imaging' : 'Laboratory',
@@ -42,7 +50,7 @@ const ResultTransferList = () => {
   }, [user, navigate]);
 
   const [loading,         setLoading]        = useState(true);
-  const [filters,         setFilters]        = useState({ sid: '', status: '', department: '' });
+  const [filters,         setFilters]        = useState({ sid: '', status: '', department: userDept });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal,   setShowViewModal]   = useState(false);
   const [activeRequest,   setActiveRequest]   = useState(null);
@@ -186,14 +194,25 @@ const ResultTransferList = () => {
     }
   };
 
-  const canCreate = ['cashier', 'customer_care', 'operations_staff', 'operations', 'operations_manager', 'ops_lead', 'admin'].includes(user?.role);
+  const canCreate = hasPermission('results_transfer', 'create') || [
+    'cashier', 'customer_care', 'operations_staff', 'operations', 'operations_manager', 'ops_lead', 
+    'imaging_tech', 'imaging_manager', 'lab_team_lead', 'lab_lead', 'lab_manager', 'admin'
+  ].includes(user?.role);
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Results Transfers</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Manage and approve laboratory and imaging results transfers between SIDs.</p>
+          <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>
+            {isImagingUser ? 'Imaging Results Transfers' : isLabUser ? 'Laboratory Results Transfers' : 'Results Transfers'}
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
+            {isImagingUser 
+              ? 'Manage and approve imaging results transfers between SIDs.' 
+              : isLabUser 
+              ? 'Manage and approve laboratory results transfers between SIDs.' 
+              : 'Manage and approve results transfers between SIDs across departments.'}
+          </p>
         </div>
         {canCreate && (
           <button onClick={handleOpenCreate}
@@ -235,14 +254,16 @@ const ResultTransferList = () => {
             onChange={(e) => setFilters({ ...filters, sid: e.target.value })}
             style={{ width: '100%', padding: '12px 14px 12px 46px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem' }} />
         </div>
-        <div style={{ flex: 1, minWidth: '160px' }}>
-          <select value={filters.department || ''} onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-            style={{ width: '100%', padding: '12px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem', cursor: 'pointer' }}>
-            <option value="">Department: All</option>
-            <option value="Laboratory">🧪 Laboratory</option>
-            <option value="Imaging">☢️ Imaging</option>
-          </select>
-        </div>
+        {!isScoped && (
+          <div style={{ flex: 1, minWidth: '160px' }}>
+            <select value={filters.department || ''} onChange={(e) => setFilters({ ...filters, department: e.target.value })}
+              style={{ width: '100%', padding: '12px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem', cursor: 'pointer' }}>
+              <option value="">Department: All</option>
+              <option value="Laboratory">🧪 Laboratory</option>
+              <option value="Imaging">☢️ Imaging</option>
+            </select>
+          </div>
+        )}
         <div style={{ flex: 1, minWidth: '160px' }}>
           <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             style={{ width: '100%', padding: '12px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem', cursor: 'pointer' }}>
@@ -254,7 +275,7 @@ const ResultTransferList = () => {
             <option value="rejected">❌ Rejected</option>
           </select>
         </div>
-        <button onClick={() => setFilters({ sid: '', status: '', department: '' })}
+        <button onClick={() => setFilters({ sid: '', status: '', department: userDept })}
           style={{ 
             background: 'rgba(0,123,138,0.1)', 
             border: 'none', 
@@ -284,8 +305,11 @@ const ResultTransferList = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--bg-color)', backgroundColor: '#f8fafc' }}>
-                {['Old SID', 'New SID', 'Department', 'Submission Date', 'Status', 'Actions'].map((h, i) => (
-                  <th key={h} style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 5 ? 'right' : 'left' }}>
+                {(isScoped 
+                  ? ['Old SID', 'New SID', 'Submission Date', 'Status', 'Actions']
+                  : ['Old SID', 'New SID', 'Department', 'Submission Date', 'Status', 'Actions']
+                ).map((h, i) => (
+                  <th key={h} style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === (isScoped ? 4 : 5) ? 'right' : 'left' }}>
                     {h}
                   </th>
                 ))}
@@ -299,18 +323,20 @@ const ResultTransferList = () => {
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 600, color: 'var(--danger)' }}>{r.old_sid}</td>
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 600, color: '#059669' }}>{r.new_sid}</td>
-                  <td style={{ padding: '1.25rem 1.5rem' }}>
-                    <span style={{ 
-                      padding: '4px 10px', 
-                      borderRadius: '8px', 
-                      fontSize: '0.8rem', 
-                      fontWeight: 700,
-                      backgroundColor: r.department === 'Imaging' ? 'rgba(79, 70, 229, 0.1)' : 'rgba(0, 123, 138, 0.1)',
-                      color: r.department === 'Imaging' ? '#4f46e5' : '#007B8A'
-                    }}>
-                      {r.department === 'Imaging' ? '☢️ Imaging' : '🧪 Laboratory'}
-                    </span>
-                  </td>
+                  {!isScoped && (
+                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                      <span style={{ 
+                        padding: '4px 10px', 
+                        borderRadius: '8px', 
+                        fontSize: '0.8rem', 
+                        fontWeight: 700,
+                        backgroundColor: r.department === 'Imaging' ? 'rgba(79, 70, 229, 0.1)' : 'rgba(0, 123, 138, 0.1)',
+                        color: r.department === 'Imaging' ? '#4f46e5' : '#007B8A'
+                      }}>
+                        {r.department === 'Imaging' ? '☢️ Imaging' : '🧪 Laboratory'}
+                      </span>
+                    </td>
+                  )}
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                     {new Date(r.created_at).toLocaleDateString()}
                   </td>
