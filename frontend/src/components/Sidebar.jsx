@@ -80,7 +80,7 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'doctor_hub', name: 'Doctor Hub', icon: <Stethoscope size={18} />, path: '/doctor-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director', 'deputy_coo'] },
         { configKey: 'lab_hub', name: 'Laboratory Hub', icon: <FlaskConical size={18} />, path: '/lab', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
         { configKey: 'lab_units_hub', name: 'Lab Units & Benches', icon: <Microscope size={18} />, path: '/lab/units', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
-        { configKey: 'lab_manager_hub', name: 'Lab Manager Hub', icon: <BarChart3 size={18} />, path: '/lab-manager', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'] },
+        { configKey: 'lab_manager_hub', name: 'Lab Manager Hub', icon: <BarChart3 size={18} />, path: '/lab-manager', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'] },
         { configKey: 'lab_equipment', name: 'Equipment & PPM', icon: <Wrench size={18} />, path: '/lab/equipment', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
         { configKey: 'lab_archive', name: 'Document Archive', icon: <Archive size={18} />, path: '/lab/archive', requiredPerm: null, allowedRoles: ['lab_hod', 'head_histopathology', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'admin', 'deputy_coo', 'chairman'] },
         { configKey: 'ncr_hub', name: 'Non-Conformance (NCR)', icon: <AlertOctagon size={18} />, path: '/ncr', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
