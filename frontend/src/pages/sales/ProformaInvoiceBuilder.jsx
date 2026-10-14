@@ -10,39 +10,7 @@ import { searchPatients, getPatientByPid } from '../../api/patients';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
-// Sample items from the official Legacy Clinics image
-const SAMPLE_TEMPLATE_ITEMS = [
-  { description: 'Consultation', quantity: 1, unit_price: 8000, amount: 8000 },
-  { description: 'NFS / FBC', quantity: 1, unit_price: 12900, amount: 12900 },
-  { description: 'CRP', quantity: 1, unit_price: 5929, amount: 5929 },
-  { description: 'BLOOD GROUPING AND RH TYPING', quantity: 1, unit_price: 5829, amount: 5829 },
-  { description: 'Sodium', quantity: 1, unit_price: 7475, amount: 7475 },
-  { description: 'Potassium', quantity: 1, unit_price: 7475, amount: 7475 },
-  { description: 'Chlorides', quantity: 1, unit_price: 7475, amount: 7475 },
-  { description: 'Calcium', quantity: 1, unit_price: 3032, amount: 3032 },
-  { description: 'Magnesium', quantity: 1, unit_price: 7200, amount: 7200 },
-  { description: 'Acide Urique', quantity: 1, unit_price: 3032, amount: 3032 },
-  { description: 'Total Protein', quantity: 1, unit_price: 3032, amount: 3032 },
-  { description: 'VITESSE DE SEDIMENTATION', quantity: 1, unit_price: 1516, amount: 1516 },
-  { description: 'AST', quantity: 1, unit_price: 3032, amount: 3032 },
-  { description: 'ALT', quantity: 1, unit_price: 3032, amount: 3032 },
-  { description: 'LDH', quantity: 1, unit_price: 4430, amount: 4430 },
-  { description: 'AMYLASE', quantity: 1, unit_price: 9094, amount: 9094 },
-  { description: 'LIPASE', quantity: 1, unit_price: 11658, amount: 11658 },
-  { description: 'CHLAMYDIA TRACHOMATIS RAPID TEST (male)', quantity: 1, unit_price: 18262, amount: 18262 },
-  { description: 'HERPES IgM', quantity: 1, unit_price: 24900, amount: 24900 },
-  { description: 'HIV-RAPID TEST', quantity: 1, unit_price: 5000, amount: 5000 },
-  { description: 'VDRL - TPHA', quantity: 1, unit_price: 13747, amount: 13747 },
-  { description: 'URINE SEDIMENT', quantity: 1, unit_price: 2110, amount: 2110 },
-  { description: 'GRAM STAIN - URINE', quantity: 1, unit_price: 2343, amount: 2343 },
-  { description: 'URO CULTURE / URINE FOR CULTURE', quantity: 1, unit_price: 7255, amount: 7255 },
-  { description: 'URINE / ANTIBIOGRAM', quantity: 1, unit_price: 7757, amount: 7757 },
-  { description: 'IMMUNOGLOBULINE-S', quantity: 1, unit_price: 20900, amount: 20900 },
-  { description: 'MAST CELL TRYPTASE', quantity: 1, unit_price: 108900, amount: 108900 },
-  { description: 'GENEPROBE - GONOCOCCAL', quantity: 1, unit_price: 62900, amount: 62900 },
-  { description: 'CLOTTING FACTOR I (FIBRINOGEN)', quantity: 1, unit_price: 49900, amount: 49900 },
-  { description: 'SAMPLE COLLECTION', quantity: 1, unit_price: 1000, amount: 1000 }
-];
+
 
 export default function ProformaInvoiceBuilder({
   initialProforma = null,
@@ -323,17 +291,6 @@ export default function ProformaInvoiceBuilder({
     }));
   };
 
-  const handleLoadSampleFromImage = () => {
-    if (window.confirm('Load all 30 laboratory & consultation tests from the reference template? This will replace the current line items.')) {
-      setFormData(prev => ({
-        ...prev,
-        customer_name: 'TWAHIRWA SETAKO RONALD',
-        items: SAMPLE_TEMPLATE_ITEMS
-      }));
-      toast.success('Loaded 30 items from Legacy Clinics reference template!');
-    }
-  };
-
   const handleSave = async (status = null) => {
     if (!formData.customer_name?.trim()) {
       toast.error('Please enter the customer / client name');
@@ -519,27 +476,6 @@ export default function ProformaInvoiceBuilder({
               <Eye size={14} style={{ display: 'inline', marginRight: '4px' }} /> Preview Sheet
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={handleLoadSampleFromImage}
-            title="Load all items from the official sample image"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 12px',
-              backgroundColor: '#eff6ff',
-              color: '#1d4ed8',
-              border: '1px solid #bfdbfe',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '0.8rem',
-              cursor: 'pointer'
-            }}
-          >
-            <Sparkles size={14} /> Load Template Items
-          </button>
 
           <button
             type="button"
