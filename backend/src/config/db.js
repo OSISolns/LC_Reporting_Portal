@@ -1721,16 +1721,27 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.warn('⚠️ Physiotherapy roles sync warning:', err.message);
     }
 
-    // ─── Laboratory & Quality Roles Sync: ensure lab & QM roles exist in the roles table ───
+    // ─── Laboratory & Quality Roles Sync: ensure restructured lab roles exist in the roles table ───
     try {
       const labRolesFull = [
-        { name: 'lab_team_lead',   display_name: 'Lab Team Lead' },
-        { name: 'lab_lead',        display_name: 'Lab Lead' },
-        { name: 'lab_manager',     display_name: 'Laboratory Manager' },
-        { name: 'quality_manager', display_name: 'Quality Manager' },
-        { name: 'qm',              display_name: 'Quality Manager (QM)' },
-        { name: 'lab_tech',        display_name: 'Lab Technologist' },
-        { name: 'lab',             display_name: 'Laboratory Staff' },
+        { name: 'lab_hod',                 display_name: 'Head of Laboratory Department' },
+        { name: 'lab_manager',             display_name: 'Laboratory Manager' },
+        { name: 'quality_manager',         display_name: 'Quality Manager' },
+        { name: 'qm',                      display_name: 'Quality Manager (QM)' },
+        { name: 'lab_safety_officer',      display_name: 'Lab Safety Officer' },
+        { name: 'lab_stock_officer',       display_name: 'Lab Stock Officer' },
+        { name: 'head_microbiology',       display_name: 'Head of Microbiology' },
+        { name: 'head_hematology',         display_name: 'Head of Hematology' },
+        { name: 'head_histopathology',     display_name: 'Head of Histo/Cytology/Archive' },
+        { name: 'head_poct',               display_name: 'Head of POCT' },
+        { name: 'head_phlebotomy',         display_name: 'Head of Phlebotomy' },
+        { name: 'head_molecular_biology',  display_name: 'Head of Molecular Biology' },
+        { name: 'lab_micro_specialist',    display_name: 'Microbiology Specialist' },
+        { name: 'lab_scientist',           display_name: 'Lab Scientist' },
+        { name: 'lab_tech',                display_name: 'Lab Technologist' },
+        { name: 'lab_team_lead',           display_name: 'Lab Team Lead' },
+        { name: 'lab_lead',                display_name: 'Lab Lead' },
+        { name: 'lab',                     display_name: 'Laboratory Staff' },
       ];
       for (const r of labRolesFull) {
         await client.execute({
@@ -2170,6 +2181,38 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.log('✅ SQLite Schema Migration: created shift_rama_rssb_open and shift_rama_rssb_close tables');
     } catch (err) {
       console.warn('⚠️ SQLite Schema Migration Notice for RAMA/RSSB tables:', err.message);
+    }
+
+    try {
+      const helpdeskCols = [
+        'has_billed INTEGER DEFAULT 0',
+        'total_momo_transactions REAL DEFAULT 0',
+        'momo_pay_code TEXT',
+        'momo_pay_code_other TEXT',
+        'total_card_transactions REAL DEFAULT 0',
+        'card_bank_terminal TEXT',
+        'total_cash_usd REAL DEFAULT 0',
+        'total_cash_eur REAL DEFAULT 0',
+        'payments_all_successful INTEGER DEFAULT 1',
+        'failed_payment_status TEXT',
+        'failed_payment_amount REAL',
+        'failed_payment_action_taken TEXT',
+        'total_patients INTEGER DEFAULT 0',
+        'total_insured INTEGER DEFAULT 0',
+        'total_private INTEGER DEFAULT 0',
+        'insurances_used TEXT',
+      ];
+      for (const colDef of helpdeskCols) {
+        try {
+          await client.execute(`ALTER TABLE shift_helpdesk_close ADD COLUMN ${colDef}`);
+        } catch (err) {
+          if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+            console.warn('⚠️ SQLite Schema Migration Notice for shift_helpdesk_close:', err.message);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ SQLite Schema Migration Notice for shift_helpdesk_close:', err.message);
     }
 
     try {
@@ -4854,6 +4897,19 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         )
       `);
       await client.execute(`CREATE INDEX IF NOT EXISTS idx_sales_cat_name ON sales_service_catalog(name)`);
+
+      // Ensure tariff columns
+      const catalogCols = [
+        'ichi_code TEXT',
+        'price_polyclinic REAL DEFAULT 0',
+        'price_hospital REAL DEFAULT 0',
+        'price_general REAL DEFAULT 0',
+        'price_rama REAL DEFAULT 0',
+        'price_foreigner REAL DEFAULT 0'
+      ];
+      for (const colDef of catalogCols) {
+        try { await client.execute(`ALTER TABLE sales_service_catalog ADD COLUMN ${colDef}`); } catch (e) {}
+      }
 
       // Seed initial sales catalog if empty
       const catalogCount = await client.execute(`SELECT COUNT(*) as cnt FROM sales_service_catalog`);

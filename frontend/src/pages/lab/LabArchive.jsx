@@ -27,7 +27,10 @@ const DEPARTMENTS = [
   'Urinalysis', 'Blood Bank', 'Coagulation', 'Immunoassay', 'Molecular', 'General', 'Other'
 ];
 
-const MANAGER_ROLES = ['lab_manager', 'lab_lead', 'lab_team_lead', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo'];
+const MANAGER_ROLES = [
+  'lab_manager', 'lab_lead', 'lab_team_lead', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo',
+  'lab_hod', 'head_histopathology', 'head_microbiology', 'head_hematology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer'
+];
 
 const CLASSIFICATION_CONFIG = {
   Public:       { color: 'bg-slate-100 text-slate-700 border-slate-300',   icon: <Shield size={11} /> },

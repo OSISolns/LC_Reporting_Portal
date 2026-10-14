@@ -63,7 +63,7 @@ export default function LabManagerDashboard() {
   const tatTotal = (tat.pre_analytical_avg || 0) + (tat.analytical_avg || 0) + (tat.post_analytical_avg || 0);
 
   const userRole = (user?.role || '').toLowerCase();
-  const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'].includes(userRole);
+  const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'].includes(userRole);
 
   if (!isManager) {
     return (

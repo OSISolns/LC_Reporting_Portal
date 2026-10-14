@@ -36,6 +36,25 @@ export const CASHIER_STATIONS = [
   }
 ];
 
+export const HELPDESK_STATIONS = [
+  {
+    id: 'Ground-Floor',
+    name: 'Ground-Floor',
+    label: 'Ground-Floor',
+    description: 'Ground Floor Main Helpdesk / Triage Counter',
+    services: 'Helpdesk & Reception',
+    equipment: ['PC', 'Receipt Printer', 'Desk Phone', 'Waiting No. Stamp']
+  },
+  {
+    id: 'First-Floor',
+    name: 'First-Floor',
+    label: 'First-Floor',
+    description: 'First Floor Specialist Clinic Helpdesk',
+    services: 'Helpdesk & Patient Guidance',
+    equipment: ['PC', 'Receipt Printer', 'Desk Phone', 'Waiting No. Stamp']
+  }
+];
+
 export const NURSING_WARDS = [
   {
     id: 'STATION_1',

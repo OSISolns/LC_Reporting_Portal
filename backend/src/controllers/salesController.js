@@ -755,10 +755,34 @@ async function sendProformaEmail(req, res) {
  */
 async function getCatalog(req, res) {
   try {
-    const rows = await q(
-      `SELECT * FROM sales_service_catalog WHERE is_active = 1 ORDER BY department ASC, name ASC`
-    );
-    return res.json({ success: true, data: rows });
+    const { department, search, limit, offset } = req.query;
+    let sql = `SELECT * FROM sales_service_catalog WHERE is_active = 1`;
+    const params = [];
+
+    if (department && department !== 'All') {
+      sql += ` AND department = ?`;
+      params.push(department);
+    }
+
+    if (search && search.trim()) {
+      const term = `%${search.trim().toLowerCase()}%`;
+      sql += ` AND (LOWER(name) LIKE ? OR LOWER(code) LIKE ? OR LOWER(COALESCE(ichi_code, '')) LIKE ?)`;
+      params.push(term, term, term);
+    }
+
+    sql += ` ORDER BY department ASC, name ASC`;
+
+    if (limit) {
+      sql += ` LIMIT ?`;
+      params.push(Number(limit));
+      if (offset) {
+        sql += ` OFFSET ?`;
+        params.push(Number(offset));
+      }
+    }
+
+    const rows = await q(sql, params);
+    return res.json({ success: true, count: rows.length, data: rows });
   } catch (err) {
     console.error('Error in getCatalog:', err);
     return res.status(500).json({ success: false, message: 'Failed to fetch catalog', error: err.message });

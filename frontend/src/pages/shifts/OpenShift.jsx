@@ -29,7 +29,7 @@ import toast from 'react-hot-toast';
 import { openShift, getMyActiveShift } from '../../api/shifts';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
-import { SHIFT_ROLES, EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS, NURSING_WARDS, CASHIER_STATIONS, getItemStatusOptions, getDefaultItemStatus } from './shiftConfig';
+import { SHIFT_ROLES, EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS, NURSING_WARDS, CASHIER_STATIONS, HELPDESK_STATIONS, getItemStatusOptions, getDefaultItemStatus } from './shiftConfig';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const ROLE_ICONS = {
@@ -154,6 +154,7 @@ export default function OpenShift() {
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedWard, setSelectedWard] = useState('STATION 1');
   const [selectedCashierStation, setSelectedCashierStation] = useState('Ground-Floor');
+  const [selectedHelpdeskStation, setSelectedHelpdeskStation] = useState('Ground-Floor');
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
   const [startHour, setStartHour] = useState('');
@@ -196,6 +197,9 @@ export default function OpenShift() {
     } else if (role === 'cashier') {
       const stObj = CASHIER_STATIONS.find(s => s.name === selectedCashierStation) || CASHIER_STATIONS[0];
       setEquipment(stObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
+    } else if (role === 'helpdesk') {
+      const hdObj = HELPDESK_STATIONS.find(s => s.name === selectedHelpdeskStation) || HELPDESK_STATIONS[0];
+      setEquipment(hdObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
     } else {
       setEquipment(EQUIPMENT_BY_ROLE[role].map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
     }
@@ -214,6 +218,12 @@ export default function OpenShift() {
     setEquipment(stObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
   };
 
+  const handleHelpdeskStationSelect = (stationName) => {
+    setSelectedHelpdeskStation(stationName);
+    const hdObj = HELPDESK_STATIONS.find(s => s.name === stationName) || HELPDESK_STATIONS[0];
+    setEquipment(hdObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
+  };
+
   const handleEquipmentChange = (i, field, val) => {
     setEquipment(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: val } : item));
   };
@@ -229,6 +239,11 @@ export default function OpenShift() {
 
     if (selectedRole === 'cashier' && !selectedCashierStation) {
       toast.error('Please select your Cashier Station (Ground-Floor, First-Floor, or Paediatrics).');
+      return;
+    }
+
+    if (selectedRole === 'helpdesk' && !selectedHelpdeskStation) {
+      toast.error('Please select your Helpdesk Station (Ground-Floor or First-Floor).');
       return;
     }
 
@@ -260,7 +275,7 @@ export default function OpenShift() {
     try {
       const payload = {
         shift_role: selectedRole,
-        nursing_ward: selectedRole === 'nurse' ? selectedWard : selectedRole === 'cashier' ? selectedCashierStation : null,
+        nursing_ward: selectedRole === 'nurse' ? selectedWard : selectedRole === 'cashier' ? selectedCashierStation : selectedRole === 'helpdesk' ? selectedHelpdeskStation : null,
         equipment: equipment.map(e => ({ name: e.name, status: e.status, remarks: e.remarks || null })),
         password,
         start_hour: startHour,
@@ -480,6 +495,66 @@ export default function OpenShift() {
 
                             <p className="text-xs font-semibold text-slate-800 leading-snug">
                               {st.services}
+                            </p>
+                          </div>
+
+                          <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                            <span>{st.equipment.length} equipment items</span>
+                            <span className="font-medium text-[#007B8A]">Assigned</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {selectedRole === 'helpdesk' && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <Monitor size={16} className="text-[#007B8A]" />
+                        Select Helpdesk Station / Floor <span className="text-rose-500">*</span>
+                      </h3>
+                      <p className="text-slate-500 text-xs mt-0.5">
+                        Choose your assigned helpdesk location (Ground-Floor or First-Floor)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {HELPDESK_STATIONS.map((st) => {
+                      const isSelected = selectedHelpdeskStation === st.name;
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => handleHelpdeskStationSelect(st.name)}
+                          className={`relative flex flex-col justify-between p-4 rounded-xl border transition-all text-left ${
+                            isSelected
+                              ? 'bg-[#E6F4F6] border-[#007B8A] ring-1 ring-[#007B8A] shadow-xs'
+                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex justify-between items-center w-full mb-2">
+                              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md ${
+                                isSelected ? 'bg-[#007B8A] text-white' : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {st.label}
+                              </span>
+                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                isSelected ? 'bg-[#007B8A] border-[#007B8A]' : 'bg-white border-slate-300'
+                              }`}>
+                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                              </div>
+                            </div>
+
+                            <p className="text-xs font-semibold text-slate-800 leading-snug">
+                              {st.description}
+                            </p>
+                            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                              Services: {st.services}
                             </p>
                           </div>
 

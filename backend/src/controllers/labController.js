@@ -230,10 +230,17 @@ exports.updateStage = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'stage is required.' });
     }
 
-    // Role check: Only Team Leaders and Managers can advance an order to 'Verified'
+    // Role check: Only Team Leaders, Unit Heads and Managers can advance an order to 'Verified'
     if (stage === 'Verified') {
       const userRole = (req.user?.role || '').toLowerCase();
-      const allowedVerifierRoles = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead'];
+      const allowedVerifierRoles = [
+        'admin', 'deputy_coo', 'coo', 'general_manager', 'chairman',
+        'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+        'lab_team_lead', 'lab_lead', 'lab_safety_officer', 'lab_stock_officer',
+        'head_microbiology', 'head_hematology', 'head_histopathology',
+        'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+        'lab_micro_specialist'
+      ];
       if (!allowedVerifierRoles.includes(userRole)) {
         return res.status(403).json({
           success: false,
@@ -415,11 +422,18 @@ exports.verifyOrder = async (req, res, next) => {
     const { verified_by_name } = req.body;
 
     const userRole = (req.user?.role || '').toLowerCase();
-    const allowedVerifierRoles = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead'];
+    const allowedVerifierRoles = [
+      'admin', 'deputy_coo', 'coo', 'general_manager', 'chairman',
+      'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+      'lab_team_lead', 'lab_lead', 'lab_safety_officer', 'lab_stock_officer',
+      'head_microbiology', 'head_hematology', 'head_histopathology',
+      'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+      'lab_micro_specialist'
+    ];
     if (!allowedVerifierRoles.includes(userRole)) {
       return res.status(403).json({
         success: false,
-        message: 'Access Denied: Only Laboratory Managers, Team Leaders, and Authorized Leadership can verify diagnostic orders.'
+        message: 'Access Denied: Only Laboratory Managers, Unit Heads, and Authorized Leadership can verify diagnostic orders.'
       });
     }
     
@@ -434,8 +448,20 @@ exports.verifyOrder = async (req, res, next) => {
     }
 
     let roleTitle = 'Medical Technologist';
-    if (['lab_manager', 'quality_manager', 'qm'].includes(userRole)) roleTitle = 'Lab Manager';
+    if (['lab_hod'].includes(userRole)) roleTitle = 'Head of Laboratory';
+    else if (['lab_manager'].includes(userRole)) roleTitle = 'Lab Manager';
+    else if (['quality_manager', 'qm'].includes(userRole)) roleTitle = 'Quality Manager';
+    else if (['head_microbiology'].includes(userRole)) roleTitle = 'Head of Microbiology';
+    else if (['head_hematology'].includes(userRole)) roleTitle = 'Head of Hematology';
+    else if (['head_histopathology'].includes(userRole)) roleTitle = 'Head of Histo/Cytology/Archive';
+    else if (['head_poct'].includes(userRole)) roleTitle = 'Head of POCT';
+    else if (['head_phlebotomy'].includes(userRole)) roleTitle = 'Head of Phlebotomy';
+    else if (['head_molecular_biology'].includes(userRole)) roleTitle = 'Head of Molecular Biology';
+    else if (['lab_micro_specialist'].includes(userRole)) roleTitle = 'Microbiology Specialist';
+    else if (['lab_safety_officer'].includes(userRole)) roleTitle = 'Lab Safety Officer';
+    else if (['lab_stock_officer'].includes(userRole)) roleTitle = 'Lab Stock Officer';
     else if (['lab_team_lead', 'lab_lead'].includes(userRole)) roleTitle = 'Lab Team Lead';
+    else if (['lab_scientist'].includes(userRole)) roleTitle = 'Lab Scientist';
     else if (['admin', 'deputy_coo', 'coo'].includes(userRole)) roleTitle = 'Clinical Leadership';
 
     const verifier = req.user?.full_name
@@ -677,9 +703,9 @@ exports.updateNCR = async (req, res, next) => {
     }
 
     const userRole = (req.user?.role || '').toLowerCase();
-    const adminOrExec = ['admin', 'deputy_coo', 'coo'];
-    const lmRoles = [...adminOrExec, 'lab_manager', 'lab_lead', 'lab_team_lead', 'lab_head'];
-    const qmRoles = [...adminOrExec, 'quality_manager', 'qm'];
+    const adminOrExec = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman'];
+    const lmRoles = [...adminOrExec, 'lab_hod', 'lab_manager', 'lab_lead', 'lab_team_lead', 'lab_head'];
+    const qmRoles = [...adminOrExec, 'quality_manager', 'qm', 'lab_safety_officer'];
 
     // Check if new Lab Manager stamp is being applied
     const isNewLmStamp = (reviewed_by_lab_manager || verified_by_lab_manager) &&
@@ -756,7 +782,7 @@ exports.updateNCR = async (req, res, next) => {
 exports.deleteNCR = async (req, res, next) => {
   try {
     const userRole = (req.user?.role || '').toLowerCase();
-    const allowedDeleteRoles = ['admin', 'deputy_coo', 'coo', 'quality_manager', 'qm', 'lab_manager', 'lab_lead', 'lab_head'];
+    const allowedDeleteRoles = ['admin', 'deputy_coo', 'coo', 'quality_manager', 'qm', 'lab_hod', 'lab_manager', 'lab_lead', 'lab_head'];
     if (!allowedDeleteRoles.includes(userRole)) {
       return res.status(403).json({
         success: false,
@@ -992,7 +1018,7 @@ exports.updateAnalyzer = async (req, res, next) => {
 exports.deleteAnalyzer = async (req, res, next) => {
   try {
     const userRole = (req.user?.role || '').toLowerCase();
-    const allowedDeleteRoles = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'];
+    const allowedDeleteRoles = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'];
     if (!allowedDeleteRoles.includes(userRole)) {
       return res.status(403).json({
         success: false,
@@ -1232,7 +1258,7 @@ exports.updateInhandInventory = async (req, res, next) => {
 exports.deleteInhandInventory = async (req, res, next) => {
   try {
     const userRole = (req.user?.role || '').toLowerCase();
-    const allowedDeleteRoles = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'];
+    const allowedDeleteRoles = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_stock_officer'];
     if (!allowedDeleteRoles.includes(userRole)) {
       return res.status(403).json({
         success: false,

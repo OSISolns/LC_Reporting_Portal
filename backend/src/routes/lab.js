@@ -6,8 +6,23 @@ const { authMiddleware } = require('../middleware/auth');
 const authorizeRoles = require('../middleware/role');
 
 // Define role groups for lab operations
-const LAB_MANAGER_ROLES = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'];
-const LAB_LEAD_OR_MANAGER_ROLES = [...LAB_MANAGER_ROLES, 'lab_team_lead', 'lab_lead'];
+const LAB_EXECUTIVE_ROLES = [
+  'admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 
+  'lab_hod', 'lab_manager', 'quality_manager', 'qm'
+];
+const LAB_MANAGER_ROLES = LAB_EXECUTIVE_ROLES;
+const LAB_LEAD_OR_MANAGER_ROLES = [
+  ...LAB_EXECUTIVE_ROLES,
+  'lab_team_lead', 'lab_lead',
+  'lab_safety_officer', 'lab_stock_officer',
+  'head_microbiology', 'head_hematology', 'head_histopathology',
+  'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+  'lab_micro_specialist'
+];
+const ALL_LAB_ROLES = [
+  ...LAB_LEAD_OR_MANAGER_ROLES,
+  'lab_scientist', 'lab_tech', 'lab'
+];
 
 // Protect all routes with JWT Auth
 router.use(authMiddleware);

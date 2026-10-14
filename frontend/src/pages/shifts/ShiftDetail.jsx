@@ -390,6 +390,13 @@ export default function ShiftDetail() {
                 <InfoRow label="Personnel" value={shift.user_name} icon={<Users size={18} />} />
                 <InfoRow label="Access Email" value={shift.user_email} icon={<Mail size={18} />} />
                 <InfoRow label="Assigned Role" value={ROLE_LABELS[shift.shift_role]} icon={<Briefcase size={18} />} />
+                {shift.nursing_ward && (
+                  <InfoRow 
+                    label={shift.shift_role === 'cashier' ? 'Cashier Station' : shift.shift_role === 'helpdesk' ? 'Helpdesk Floor' : 'Assigned Ward'} 
+                    value={shift.nursing_ward} 
+                    icon={<Briefcase size={18} />} 
+                  />
+                )}
               </div>
             </div>
 
@@ -462,20 +469,60 @@ export default function ShiftDetail() {
           )}
 
           {!isPA && shift.shift_role === 'helpdesk' && cd && (
-            <div className="shift-card">
-              <h3 className="section-label">Functional Analytics</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-                <div className="bg-blue-50 border-4 border-blue-100 p-12 rounded-[48px] text-center group hover:bg-white transition-all">
-                  <div className="text-blue-600 flex justify-center mb-6 scale-150"><Users size={32} /></div>
-                  <div className="text-6xl font-black text-slate-900 mb-2">{cd.patient_walkin_queries}</div>
-                  <div className="text-[10px] font-black text-blue-600/50 uppercase tracking-[0.3em]">Patient Engagement</div>
-                </div>
-                <div className="bg-slate-50 border-4 border-slate-100 p-12 rounded-[48px] text-center group hover:bg-white transition-all">
-                  <div className="text-[#1b669d] flex justify-center mb-6 scale-150"><Briefcase size={32} /></div>
-                  <div className="text-6xl font-black text-slate-900 mb-2">{cd.internal_staff_queries}</div>
-                  <div className="text-[10px] font-black text-[#1b669d]/50 uppercase tracking-[0.3em]">Staff Consultation</div>
+            <div className="space-y-10">
+              <div className="shift-card">
+                <h3 className="section-label">Functional Analytics</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+                  <div className="bg-blue-50 border-4 border-blue-100 p-12 rounded-[48px] text-center group hover:bg-white transition-all">
+                    <div className="text-blue-600 flex justify-center mb-6 scale-150"><Users size={32} /></div>
+                    <div className="text-6xl font-black text-slate-900 mb-2">{cd.patient_walkin_queries}</div>
+                    <div className="text-[10px] font-black text-blue-600/50 uppercase tracking-[0.3em]">Patient Engagement</div>
+                  </div>
+                  <div className="bg-slate-50 border-4 border-slate-100 p-12 rounded-[48px] text-center group hover:bg-white transition-all">
+                    <div className="text-[#1b669d] flex justify-center mb-6 scale-150"><Briefcase size={32} /></div>
+                    <div className="text-6xl font-black text-slate-900 mb-2">{cd.internal_staff_queries}</div>
+                    <div className="text-[10px] font-black text-[#1b669d]/50 uppercase tracking-[0.3em]">Staff Consultation</div>
+                  </div>
                 </div>
               </div>
+
+              {Boolean(cd.has_billed) && (
+                <div className="space-y-10">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    <div className="shift-card">
+                      <h3 className="section-label">Patient Traffic Metrics</h3>
+                      <InfoRow label="Total Records" value={cd.total_patients} icon={<Users size={18} />} />
+                      <InfoRow label="Insured Patients" value={cd.total_insured} icon={<ShieldCheck size={18} />} />
+                      <InfoRow label="Private Clients" value={cd.total_private} icon={<Briefcase size={18} />} />
+                      <div className="mt-6 pt-6 border-t-2 border-slate-50">
+                        <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-4">Accepted Insurance Carriers</div>
+                        <div className="flex flex-wrap gap-3">
+                          {cd.insurances_used?.length > 0 ? (
+                            cd.insurances_used.map((ins) => (
+                              <span key={ins} className="px-4 py-2 rounded-2xl bg-slate-50 border-2 border-slate-100 text-xs font-black text-slate-600">{ins}</span>
+                            ))
+                          ) : (
+                            <span className="text-xs font-bold text-slate-400 italic">None selected</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="shift-card">
+                      <h3 className="section-label">Digital Payment Reconciliation</h3>
+                      <InfoRow label="Mobile Money" value={cd.total_momo_transactions ? Number(cd.total_momo_transactions).toLocaleString() + ' RWF' : '0 RWF'} icon={<Smartphone size={18} className="text-emerald-600" />} />
+                      <InfoRow label="Card Payments" value={cd.total_card_transactions ? Number(cd.total_card_transactions).toLocaleString() + ' RWF' : '0 RWF'} icon={<CreditCard size={18} className="text-blue-600" />} />
+                      <InfoRow label="Foreign Cash (USD)" value={cd.total_cash_usd ? `$${Number(cd.total_cash_usd).toLocaleString()}` : '$0.00'} icon={<CreditCard size={18} className="text-amber-600" />} />
+                      <InfoRow label="Foreign Cash (EUR)" value={cd.total_cash_eur ? `€${Number(cd.total_cash_eur).toLocaleString()}` : '€0.00'} icon={<CreditCard size={18} className="text-amber-600" />} />
+                      <div className={`mt-6 p-6 rounded-[32px] border-4 flex items-center justify-between ${cd.payments_all_successful ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Security Clearance</span>
+                        <span className={`text-xs font-black uppercase tracking-widest ${cd.payments_all_successful ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {cd.payments_all_successful ? '✅ All Clear' : '⚠ Anomaly Detected'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

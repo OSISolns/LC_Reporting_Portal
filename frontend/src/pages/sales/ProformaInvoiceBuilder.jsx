@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Save, Printer, Mail, Plus, Trash2, RefreshCw, Eye, CheckCircle2,
   FileSpreadsheet, Sparkles, Building2, User, Phone, DollarSign, Calendar,
@@ -68,22 +68,23 @@ export default function ProformaInvoiceBuilder({
   const [isPidLookingUp, setIsPidLookingUp] = useState(false);
   const sukraaRef = useRef(null);
 
-  // Form State
+  // Line Items Description Autocomplete State
+  const [activeAutocompleteRow, setActiveAutocompleteRow] = useState(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const autocompleteRef = useRef(null);
+
+  // Form State - Empty by default
   const [formData, setFormData] = useState({
     invoice_number: '',
     invoice_date: new Date().toISOString().split('T')[0],
     due_date: 'N/A',
     customer_id: '',
-    customer_name: 'TWAHIRWA SETAKO RONALD',
+    customer_name: '',
     customer_email: '',
     customer_phone: '',
     customer_tin: '',
     customer_address: '',
-    items: [
-      { description: 'Consultation', quantity: 1, unit_price: 8000, amount: 8000 },
-      { description: 'NFS / FBC', quantity: 1, unit_price: 12900, amount: 12900 },
-      { description: 'CRP', quantity: 1, unit_price: 5929, amount: 5929 }
-    ],
+    items: [],
     taxable_amount: 0,
     tax_due: 0,
     other_fees: 0,
@@ -113,11 +114,14 @@ export default function ProformaInvoiceBuilder({
       .catch(err => console.error('Failed to load service catalog:', err));
   }, []);
 
-  // ── Sukraa Patient Search & Selection Logic ──
+  // ── Click Outside Handler for Dropdowns ──
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (sukraaRef.current && !sukraaRef.current.contains(e.target)) {
         setShowSukraaDropdown(false);
+      }
+      if (autocompleteRef.current && !autocompleteRef.current.contains(e.target)) {
+        setActiveAutocompleteRow(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -210,6 +214,82 @@ export default function ProformaInvoiceBuilder({
     setFormData(prev => ({ ...prev, items: updated }));
   };
 
+  // Autocomplete suggestions matching current row description
+  const activeRowDescription = (activeAutocompleteRow !== null && formData.items[activeAutocompleteRow])
+    ? (formData.items[activeAutocompleteRow].description || '').trim().toLowerCase()
+    : '';
+
+  const autocompleteMatches = useMemo(() => {
+    if (!activeRowDescription || activeRowDescription.length < 1) return [];
+
+    const terms = activeRowDescription.split(/\s+/).filter(Boolean);
+    const results = [];
+
+    for (const item of catalog) {
+      const name = (item.name || '').toLowerCase();
+      const code = (item.code || '').toLowerCase();
+      const dept = (item.department || '').toLowerCase();
+      const cat = (item.category || '').toLowerCase();
+
+      // Check if all space-separated terms are matched
+      const matches = terms.every(term =>
+        name.includes(term) || code.includes(term) || dept.includes(term) || cat.includes(term)
+      );
+
+      if (matches) {
+        results.push(item);
+        if (results.length >= 30) break;
+      }
+    }
+    return results;
+  }, [catalog, activeRowDescription]);
+
+  const handleSelectAutocomplete = (rowIdx, catalogItem) => {
+    const updated = [...formData.items];
+    const current = updated[rowIdx] || { quantity: 1 };
+    const qty = Math.max(1, parseFloat(current.quantity) || 1);
+    const up = Math.max(0, parseFloat(catalogItem.default_price) || 0);
+
+    updated[rowIdx] = {
+      ...current,
+      description: catalogItem.name,
+      code: catalogItem.code || '',
+      department: catalogItem.department || '',
+      unit_price: up,
+      amount: qty * up
+    };
+
+    setFormData(prev => ({ ...prev, items: updated }));
+    setActiveAutocompleteRow(null);
+    setHighlightedIndex(0);
+  };
+
+  const handleDescriptionKeyDown = (e, rowIdx) => {
+    if (activeAutocompleteRow !== rowIdx || autocompleteMatches.length === 0) {
+      if (e.key === 'ArrowDown' && autocompleteMatches.length > 0) {
+        setActiveAutocompleteRow(rowIdx);
+        setHighlightedIndex(0);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev + 1) % autocompleteMatches.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev - 1 + autocompleteMatches.length) % autocompleteMatches.length);
+    } else if (e.key === 'Enter') {
+      if (autocompleteMatches[highlightedIndex]) {
+        e.preventDefault();
+        handleSelectAutocomplete(rowIdx, autocompleteMatches[highlightedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setActiveAutocompleteRow(null);
+    }
+  };
+
   const handleAddItem = (preset = null) => {
     const newItem = preset ? {
       description: preset.name,
@@ -223,10 +303,17 @@ export default function ProformaInvoiceBuilder({
       amount: 0
     };
 
-    setFormData(prev => ({
-      ...prev,
-      items: [...prev.items, newItem]
-    }));
+    setFormData(prev => {
+      const nextItems = [...prev.items, newItem];
+      if (!preset) {
+        setActiveAutocompleteRow(nextItems.length - 1);
+        setHighlightedIndex(0);
+      }
+      return {
+        ...prev,
+        items: nextItems
+      };
+    });
   };
 
   const handleRemoveItem = (index) => {
@@ -1024,7 +1111,11 @@ export default function ProformaInvoiceBuilder({
               </div>
 
               {/* Table */}
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{
+                overflowX: 'visible',
+                overflowY: 'visible',
+                minHeight: activeAutocompleteRow !== null && autocompleteMatches.length > 0 ? '300px' : 'auto'
+              }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#2563eb', color: '#ffffff' }}>
@@ -1039,8 +1130,39 @@ export default function ProformaInvoiceBuilder({
                   <tbody>
                     {formData.items.length === 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
-                          No line items. Click "+ Add Line Item" or choose from the catalog on the right.
+                        <td colSpan={6} style={{ padding: '36px 16px', textAlign: 'center', backgroundColor: '#fafbfc', borderRadius: '8px' }}>
+                          <div style={{ maxWidth: '380px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <FileSpreadsheet size={22} />
+                            </div>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>
+                              No Line Items in Proforma
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: 1.4 }}>
+                              Click below to add a line item with instant tariff autocomplete, or select services directly from the catalog.
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleAddItem()}
+                              style={{
+                                marginTop: '8px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '8px 18px',
+                                backgroundColor: '#0284c7',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontWeight: 700,
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 6px rgba(2,132,199,0.25)'
+                              }}
+                            >
+                              <Plus size={15} /> Add First Line Item
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -1049,22 +1171,148 @@ export default function ProformaInvoiceBuilder({
                           <td style={{ padding: '8px 6px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 600 }}>
                             {idx + 1}
                           </td>
-                          <td style={{ padding: '6px 8px' }}>
-                            <input
-                              type="text"
-                              value={item.description}
-                              placeholder="Test / procedure / service name"
-                              onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                              style={{
-                                width: '100%',
-                                padding: '6px 10px',
-                                borderRadius: '6px',
-                                border: '1px solid #cbd5e1',
-                                fontSize: '0.85rem',
-                                fontWeight: 600,
-                                outline: 'none'
-                              }}
-                            />
+                          <td style={{ padding: '6px 8px', position: 'relative' }}>
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                type="text"
+                                value={item.description}
+                                placeholder="Type to search tariff / test name..."
+                                onChange={(e) => {
+                                  handleItemChange(idx, 'description', e.target.value);
+                                  setActiveAutocompleteRow(idx);
+                                  setHighlightedIndex(0);
+                                }}
+                                onFocus={() => {
+                                  setActiveAutocompleteRow(idx);
+                                  setHighlightedIndex(0);
+                                }}
+                                onKeyDown={(e) => handleDescriptionKeyDown(e, idx)}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  borderRadius: '6px',
+                                  border: activeAutocompleteRow === idx && autocompleteMatches.length > 0 ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                                  fontSize: '0.85rem',
+                                  fontWeight: 600,
+                                  outline: 'none',
+                                  backgroundColor: '#ffffff'
+                                }}
+                              />
+
+                              {/* Autocomplete Dropdown Popover */}
+                              {activeAutocompleteRow === idx && autocompleteMatches.length > 0 && (
+                                <div
+                                  ref={autocompleteRef}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: 0,
+                                    right: 0,
+                                    minWidth: '380px',
+                                    maxWidth: '520px',
+                                    marginTop: '4px',
+                                    backgroundColor: '#ffffff',
+                                    borderRadius: '10px',
+                                    border: '1.5px solid #0284c7',
+                                    boxShadow: '0 12px 28px rgba(0,0,0,0.18)',
+                                    maxHeight: '270px',
+                                    overflowY: 'auto',
+                                    zIndex: 100
+                                  }}
+                                >
+                                  <div style={{
+                                    padding: '6px 10px',
+                                    backgroundColor: '#f0f9ff',
+                                    borderBottom: '1px solid #e0f2fe',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    color: '#0369a1',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                  }}>
+                                    <span>TARIFF MATCHES ({autocompleteMatches.length})</span>
+                                    <span style={{ fontSize: '0.65rem', color: '#64748b' }}>↑↓ to navigate, Enter to select</span>
+                                  </div>
+
+                                  {autocompleteMatches.map((catItem, mIdx) => {
+                                    const isHighlighted = mIdx === highlightedIndex;
+                                    return (
+                                      <div
+                                        key={catItem.id || catItem.code || mIdx}
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          handleSelectAutocomplete(idx, catItem);
+                                        }}
+                                        onMouseEnter={() => setHighlightedIndex(mIdx)}
+                                        style={{
+                                          padding: '8px 12px',
+                                          borderBottom: mIdx < autocompleteMatches.length - 1 ? '1px solid #f1f5f9' : 'none',
+                                          cursor: 'pointer',
+                                          backgroundColor: isHighlighted ? '#e0f2fe' : '#ffffff',
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          alignItems: 'center',
+                                          gap: '10px',
+                                          transition: 'background 0.1s'
+                                        }}
+                                      >
+                                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                          <div style={{
+                                            fontSize: '0.82rem',
+                                            fontWeight: 700,
+                                            color: isHighlighted ? '#0369a1' : '#0f172a',
+                                            lineHeight: 1.3
+                                          }}>
+                                            {catItem.name}
+                                          </div>
+                                          <div style={{
+                                            fontSize: '0.7rem',
+                                            color: '#64748b',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            marginTop: '2px'
+                                          }}>
+                                            {catItem.code && (
+                                              <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#475569' }}>
+                                                {catItem.code}
+                                              </span>
+                                            )}
+                                            {catItem.department && (
+                                              <span style={{
+                                                backgroundColor: '#f1f5f9',
+                                                padding: '1px 6px',
+                                                borderRadius: '4px',
+                                                fontSize: '0.65rem',
+                                                fontWeight: 600,
+                                                color: '#475569'
+                                              }}>
+                                                {catItem.department}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                          <span style={{
+                                            fontSize: '0.8rem',
+                                            fontWeight: 800,
+                                            color: '#0284c7',
+                                            backgroundColor: '#f0f9ff',
+                                            padding: '3px 8px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #bae6fd'
+                                          }}>
+                                            {Number(catItem.default_price).toLocaleString()} RWF
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td style={{ padding: '6px 8px' }}>
                             <input
@@ -1336,7 +1584,7 @@ export default function ProformaInvoiceBuilder({
                     No matching services found
                   </div>
                 ) : (
-                  filteredCatalog.map(item => (
+                  filteredCatalog.slice(0, 50).map(item => (
                     <div
                       key={item.id || item.code}
                       onClick={() => handleAddItem(item)}

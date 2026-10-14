@@ -556,7 +556,7 @@ export default function ShiftDashboard() {
     setTransferShift(shift);
     const initialRole = shift.shift_role || 'cashier';
     setTransferRole(initialRole);
-    if (initialRole === 'cashier') {
+    if (initialRole === 'cashier' || initialRole === 'helpdesk') {
       setTransferWard(shift.nursing_ward || 'Ground-Floor');
     } else if (initialRole === 'nurse') {
       setTransferWard(shift.nursing_ward || 'STATION 1');
@@ -588,7 +588,7 @@ export default function ShiftDashboard() {
     try {
       const payload = {
         new_shift_role: transferRole,
-        new_nursing_ward: (transferRole === 'cashier' || transferRole === 'nurse') ? transferWard : null,
+        new_nursing_ward: (transferRole === 'cashier' || transferRole === 'nurse' || transferRole === 'helpdesk') ? transferWard : null,
         transfer_reason: transferReason,
         password: transferPassword
       };
@@ -1678,7 +1678,7 @@ export default function ShiftDashboard() {
                 onChange={(e) => {
                   const role = e.target.value;
                   setTransferRole(role);
-                  if (role === 'cashier') setTransferWard('Ground-Floor');
+                  if (role === 'cashier' || role === 'helpdesk') setTransferWard('Ground-Floor');
                   else if (role === 'nurse') setTransferWard('STATION 1');
                   else setTransferWard('');
                 }}
@@ -1704,6 +1704,20 @@ export default function ShiftDashboard() {
                   <option value="Ground-Floor">Ground-Floor</option>
                   <option value="First-Floor">First-Floor</option>
                   <option value="Paediatrics">Paediatrics</option>
+                </Select>
+              </div>
+            )}
+
+            {transferRole === 'helpdesk' && (
+              <div className="space-y-1.5 text-left">
+                <Label className="text-xs font-bold text-slate-700">Helpdesk Floor Location</Label>
+                <Select
+                  value={transferWard}
+                  onChange={(e) => setTransferWard(e.target.value)}
+                  className="w-full"
+                >
+                  <option value="Ground-Floor">Ground-Floor</option>
+                  <option value="First-Floor">First-Floor</option>
                 </Select>
               </div>
             )}

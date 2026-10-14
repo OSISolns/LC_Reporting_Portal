@@ -21,15 +21,15 @@ export default function NCRManagement() {
 
   // Can perform Lab Manager Review
   const canReviewLM = adminOrExec.includes(userRole) ||
-    ['lab_manager', 'lab_lead', 'lab_team_lead', 'lab_head'].includes(userRole);
+    ['lab_manager', 'lab_lead', 'lab_team_lead', 'lab_head', 'lab_hod', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer'].includes(userRole);
 
   // Can perform Quality Manager Approval & Final Closure
   const canApproveQM = adminOrExec.includes(userRole) ||
-    ['quality_manager', 'qm'].includes(userRole);
+    ['quality_manager', 'qm', 'lab_safety_officer', 'lab_hod'].includes(userRole);
 
   // Can delete NCR records
   const canDeleteNCR = adminOrExec.includes(userRole) ||
-    ['quality_manager', 'qm', 'lab_manager', 'lab_lead', 'lab_head'].includes(userRole);
+    ['quality_manager', 'qm', 'lab_manager', 'lab_lead', 'lab_head', 'lab_hod'].includes(userRole);
 
   // Check edit capability for a given NCR (Closed NCRs must NEVER be edited)
   const canEditNCR = (ncr) => {

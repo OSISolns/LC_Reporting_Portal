@@ -376,6 +376,14 @@ export default function StaffShiftDashboard() {
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Workspace Mode</p>
                   <p className="font-black text-slate-800 text-lg uppercase tracking-wider">{activeShift.shift_role?.replace(/_/g, ' ')}</p>
                 </div>
+                {activeShift.nursing_ward && (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                      {activeShift.shift_role === 'cashier' ? 'Cashier Station' : activeShift.shift_role === 'helpdesk' ? 'Helpdesk Floor' : 'Assigned Ward'}
+                    </p>
+                    <p className="font-black text-slate-800 text-lg uppercase tracking-wider">{activeShift.nursing_ward}</p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="py-8 text-center space-y-4">

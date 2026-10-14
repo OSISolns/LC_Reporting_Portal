@@ -304,8 +304,8 @@ const LabHub = () => {
 
   // Role separation calculations
   const userRole = (user?.role || '').toLowerCase();
-  const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'].includes(userRole);
-  const isTeamLead = ['lab_team_lead', 'lab_lead'].includes(userRole);
+  const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm', 'lab_hod', 'lab_stock_officer'].includes(userRole);
+  const isTeamLead = ['lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer'].includes(userRole);
   const isLeadOrManager = isManager || isTeamLead;
 
   const [mainView, setMainView] = useState('worklist'); // 'worklist' | 'inhand_inventory'
@@ -868,7 +868,23 @@ const LabHub = () => {
         hil_index: selectedOrder.hil_index || 'Normal'
       });
 
-      const roleTitle = isManager ? 'Lab Manager' : isTeamLead ? 'Lab Team Lead' : 'Medical Technologist';
+      const roleTitleMap = {
+        lab_hod: 'Head of Laboratory',
+        lab_manager: 'Ag Lab Manager',
+        quality_manager: 'Quality Manager',
+        qm: 'Quality Manager',
+        lab_safety_officer: 'Lab Safety Officer',
+        lab_stock_officer: 'Lab Stock Officer',
+        head_microbiology: 'Head of Microbiology',
+        head_hematology: 'Head of Hematology',
+        head_histopathology: 'Head of Histopathology/Archive',
+        head_poct: 'Head of POCT',
+        head_phlebotomy: 'Head of Phlebotomy',
+        head_molecular_biology: 'Head of Molecular Biology',
+        lab_micro_specialist: 'Micro Specialist',
+        lab_scientist: 'Lab Scientist'
+      };
+      const roleTitle = roleTitleMap[userRole] || (isManager ? 'Lab Manager' : isTeamLead ? 'Lab Team Lead' : 'Medical Technologist');
       const verifierSign = user?.full_name ? `${user.full_name} (${roleTitle})` : roleTitle;
 
       const res = await api.post(`/lab/orders/${selectedOrder.id}/verify`, {

@@ -23,7 +23,7 @@ import {
   Briefcase, Search, PhoneCall, PhoneForwarded,
   ListPlus, StickyNote, Timer, Sun, Moon, Sunrise,
   BadgeCheck, Home, Crown, Stethoscope, Pill, Activity,
-  ShieldAlert, Plus, Trash2, ArrowLeftRight
+  ShieldAlert, Plus, Trash2, ArrowLeftRight, XCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -253,6 +253,12 @@ function ShiftClosingSummary({ shift, closedData, onExit }) {
       { label: 'Staff Queries', val: h.internal_staff_queries || 0, icon: <Briefcase size={18} />, color: 'emerald' },
       { label: 'Total Assisted', val: (h.patient_walkin_queries||0)+(h.internal_staff_queries||0), icon: <CheckCircle2 size={18} />, color: 'violet' },
     );
+    if (h.has_billed) {
+      stats.push(
+        { label: 'MoMo Payments', val: `${(h.total_momo_transactions||0).toLocaleString()} RWF`, icon: <Smartphone size={18} />, color: 'emerald' },
+        { label: 'Card Payments', val: `${(h.total_card_transactions||0).toLocaleString()} RWF`, icon: <CreditCard size={18} />, color: 'violet' },
+      );
+    }
   } else if (shift.shift_role === 'call_center' && closedData?.callcenter) {
     const cc = closedData.callcenter;
     stats.push(
@@ -797,33 +803,99 @@ const BillingCloseForm = ({ data, onChange }) => {
 
 // ─── Helpdesk Close Form ──────────────────────────────────────────────────────
 const HelpdeskCloseForm = ({ data, onChange }) => (
-  <div className="shift-card">
-    <div className="flex items-center gap-4 mb-10">
-      <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-600">
-        <Search size={24} />
+  <div className="space-y-8">
+    <div className="shift-card">
+      <div className="flex items-center gap-4 mb-10">
+        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-600">
+          <Search size={24} />
+        </div>
+        <div>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Query Metrics</h3>
+          <p className="text-slate-400 text-xs font-bold mt-1">Helpdesk reception and orientation activity</p>
+        </div>
       </div>
-      <h3 className="text-2xl font-black text-slate-900 tracking-tight">Query Metrics</h3>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {[
+          { k: 'patient_walkin_queries', l: 'Patient Walk-ins', i: <Users size={20} className="text-blue-500" /> },
+          { k: 'internal_staff_queries', l: 'Internal Staff Queries', i: <Briefcase size={20} className="text-[#1b669d]" /> }
+        ].map(({ k, l, i }) => (
+          <div key={k} className="bg-slate-50 p-8 rounded-[32px] border-2 border-slate-100 group hover:border-[#1b669d]/20 transition-all">
+            <label className="field-label flex items-center gap-3 text-slate-500 group-hover:text-[#1b669d] transition-colors mb-4">
+              {i} {l}
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={data[k] || 0}
+              onChange={(e) => onChange(k, parseInt(e.target.value) || 0)}
+              className="w-full bg-transparent border-none text-5xl font-black text-slate-900 outline-none"
+            />
+          </div>
+        ))}
+      </div>
     </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-      {[
-        { k: 'patient_walkin_queries', l: 'Patient Walk-ins', i: <Users size={20} className="text-blue-500" /> },
-        { k: 'internal_staff_queries', l: 'Internal Staff Queries', i: <Briefcase size={20} className="text-[#1b669d]" /> }
-      ].map(({ k, l, i }) => (
-        <div key={k} className="bg-slate-50 p-8 rounded-[32px] border-2 border-slate-100 group hover:border-[#1b669d]/20 transition-all">
-          <label className="field-label flex items-center gap-3 text-slate-500 group-hover:text-[#1b669d] transition-colors mb-4">
-            {i} {l}
-          </label>
-          <input
-            type="number"
-            min="0"
-            value={data[k] || 0}
-            onChange={(e) => onChange(k, parseInt(e.target.value) || 0)}
-            className="w-full bg-transparent border-none text-5xl font-black text-slate-900 outline-none"
-          />
+    {/* Financial Reporting Assessment */}
+    <div className="shift-card">
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+          <CreditCard size={24} />
         </div>
-      ))}
+        <div>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Shift Financial Reporting</h3>
+          <p className="text-slate-400 text-xs font-bold mt-1">Direct billing and payment collection assessment</p>
+        </div>
+      </div>
+
+      <div className="p-8 rounded-[32px] bg-slate-50 border-2 border-slate-100 space-y-5">
+        <div>
+          <label className="field-label text-slate-800 text-base font-black mb-1">
+            Have you billed today? <span className="text-rose-500">*</span>
+          </label>
+          <p className="text-xs font-medium text-slate-500">
+            Confirm if any patient invoices, card payments, MoMo codes, or cash receipts were handled at your helpdesk counter.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => onChange('has_billed', true)}
+            className={`py-5 px-6 rounded-2xl font-black text-sm border-2 transition-all flex items-center justify-center gap-3 ${
+              data.has_billed
+                ? 'bg-emerald-600 border-emerald-600 text-white shadow-xl shadow-emerald-600/20'
+                : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-100/50'
+            }`}
+          >
+            <CheckCircle2 size={20} /> Yes, I have billed today
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange('has_billed', false)}
+            className={`py-5 px-6 rounded-2xl font-black text-sm border-2 transition-all flex items-center justify-center gap-3 ${
+              !data.has_billed
+                ? 'bg-slate-700 border-slate-700 text-white shadow-lg'
+                : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-100/50'
+            }`}
+          >
+            <XCircle size={20} /> No billing today
+          </button>
+        </div>
+
+        {!data.has_billed && (
+          <div className="pt-2 flex items-center gap-2 text-xs font-bold text-slate-400 italic">
+            <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
+            No billing performed. Continuing as normal without financial report.
+          </div>
+        )}
+      </div>
     </div>
+
+    {/* Financial & Payment Reconciliation Form if Billed */}
+    {data.has_billed && (
+      <BillingCloseForm data={data} onChange={onChange} />
+    )}
   </div>
 );
 
@@ -1776,7 +1848,26 @@ export default function CloseShift() {
   const [password, setPassword] = useState('');
   const [closingError, setClosingError] = useState('');
   const [billingClose, setBillingClose] = useState({ payments_all_successful: true, insurances_used: [], total_momo_transactions: 0, total_card_transactions: 0 });
-  const [helpdeskClose, setHelpdeskClose] = useState({ patient_walkin_queries: 0, internal_staff_queries: 0 });
+  const [helpdeskClose, setHelpdeskClose] = useState({
+    patient_walkin_queries: 0,
+    internal_staff_queries: 0,
+    has_billed: false,
+    total_patients: 0,
+    total_insured: 0,
+    total_private: 0,
+    insurances_used: [],
+    total_momo_transactions: 0,
+    momo_breakdown: {},
+    momo_pay_code_other: '',
+    total_card_transactions: 0,
+    card_breakdown: {},
+    total_cash_usd: 0,
+    total_cash_eur: 0,
+    payments_all_successful: true,
+    failed_payment_status: '',
+    failed_payment_amount: 0,
+    failed_payment_action_taken: ''
+  });
   const [callcenterClose, setCallcenterClose] = useState({ call_top_reasons: [], has_pending_followups: false, followup_details: [] });
   const [nursingClose, setNursingClose] = useState({
     total_assessments: 0,
@@ -1837,7 +1928,25 @@ export default function CloseShift() {
         if ((s.shift_role === 'cashier' || s.shift_role === 'rama_rssb') && s.role_data?.closing) {
           setBillingClose({ ...billingClose, ...s.role_data.closing, payments_all_successful: !!s.role_data.closing.payments_all_successful });
         }
-        if (s.shift_role === 'helpdesk' && s.role_data?.closing) setHelpdeskClose(s.role_data.closing);
+        if (s.shift_role === 'helpdesk' && s.role_data?.closing) {
+          const c = s.role_data.closing;
+          let mb = c.momo_breakdown || {};
+          if (typeof mb === 'string') { try { mb = JSON.parse(mb); } catch(e) { mb = {}; } }
+          let cb = c.card_breakdown || {};
+          if (typeof cb === 'string') { try { cb = JSON.parse(cb); } catch(e) { cb = {}; } }
+          let ins = c.insurances_used || [];
+          if (typeof ins === 'string') { try { ins = JSON.parse(ins); } catch(e) { ins = []; } }
+
+          setHelpdeskClose(prev => ({
+            ...prev,
+            ...c,
+            has_billed: !!c.has_billed,
+            momo_breakdown: mb,
+            card_breakdown: cb,
+            insurances_used: Array.isArray(ins) ? ins : [],
+            payments_all_successful: c.payments_all_successful !== 0 && c.payments_all_successful !== false,
+          }));
+        }
         if (s.shift_role === 'call_center' && s.role_data?.closing) setCallcenterClose(s.role_data.closing);
         if (s.shift_role === 'nurse' && s.role_data?.closing) {
           let criticalDetails = s.role_data.closing.critical_patients_details || [];

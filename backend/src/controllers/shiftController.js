@@ -259,6 +259,10 @@ exports.openShift = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please select a Cashier Station (Ground-Floor, First-Floor, or Paediatrics) before opening shift.' });
     }
 
+    if (shift_role === 'helpdesk' && !nursing_ward) {
+      return res.status(400).json({ success: false, message: 'Please select a Helpdesk Station (Ground-Floor or First-Floor) before opening shift.' });
+    }
+
     // Wave Allocation Validation for all roles
     if (!start_hour) {
       return res.status(400).json({ success: false, message: 'Starting hour is required for wave allocation.' });
@@ -463,6 +467,11 @@ exports.closeShift = async (req, res, next) => {
     if (shift.shift_role === 'cashier' || shift.shift_role === 'rama_rssb') {
       const closeTable = shift.shift_role === 'rama_rssb' ? 'shift_rama_rssb_close' : 'shift_cashier_close';
       cashierCloseRow = await q1(`SELECT * FROM ${closeTable} WHERE shift_id = ?`, [id]);
+    } else if (shift.shift_role === 'helpdesk') {
+      const helpdeskCloseRow = await q1(`SELECT * FROM shift_helpdesk_close WHERE shift_id = ?`, [id]);
+      if (helpdeskCloseRow && helpdeskCloseRow.has_billed) {
+        cashierCloseRow = helpdeskCloseRow;
+      }
     }
     const { is_flagged, flag_reasons } = evaluateFlags(allEquip, cashierCloseRow);
 
@@ -621,8 +630,8 @@ exports.transferStation = async (req, res, next) => {
     // 4. Open NEW shift for the staff member
     const newWave = currentShift.wave || 'Wave 1';
     const newStartHour = currentShift.start_hour || '07:00';
-    const ward = (new_shift_role === 'nurse' || new_shift_role === 'cashier') 
-      ? (new_nursing_ward || currentShift.nursing_ward || (new_shift_role === 'cashier' ? 'Ground-Floor' : 'STATION 1')) 
+    const ward = (new_shift_role === 'nurse' || new_shift_role === 'cashier' || new_shift_role === 'helpdesk') 
+      ? (new_nursing_ward || currentShift.nursing_ward || (new_shift_role === 'nurse' ? 'STATION 1' : 'Ground-Floor')) 
       : null;
 
     const insertResult = await db.query(
@@ -878,7 +887,27 @@ async function enrichShiftDetail(shift) {
         : null,
     };
   } else if (shift.shift_role === 'helpdesk') {
-    roleData = { closing: await q1(`SELECT * FROM shift_helpdesk_close WHERE shift_id = ?`, [shift.id]) };
+    const row = await q1(`SELECT * FROM shift_helpdesk_close WHERE shift_id = ?`, [shift.id]);
+    let momoBreakdown = null;
+    let cardBreakdown = null;
+    if (row && row.momo_pay_code) {
+      try { momoBreakdown = JSON.parse(row.momo_pay_code); } catch (e) { momoBreakdown = null; }
+    }
+    if (row && row.card_bank_terminal) {
+      try { cardBreakdown = JSON.parse(row.card_bank_terminal); } catch (e) { cardBreakdown = null; }
+    }
+    roleData = {
+      closing: row
+        ? {
+          ...row,
+          has_billed: !!row.has_billed,
+          momo_breakdown: momoBreakdown,
+          card_breakdown: cardBreakdown,
+          insurances_used: row.insurances_used ? JSON.parse(row.insurances_used) : [],
+          payments_all_successful: row.payments_all_successful !== 0 && row.payments_all_successful !== false,
+        }
+        : null,
+    };
   } else if (shift.shift_role === 'call_center') {
     const row = await q1(`SELECT * FROM shift_callcenter_close WHERE shift_id = ?`, [shift.id]);
     roleData = {
@@ -939,7 +968,17 @@ async function enrichShiftDetail(shift) {
         const closeData = await q1(`SELECT * FROM ${closeTable} WHERE shift_id = ?`, [prevShift.id]);
         prevRoleData = { opening: openData, closing: closeData };
       } else if (prevShift.shift_role === 'helpdesk') {
-        prevRoleData = { closing: await q1(`SELECT * FROM shift_helpdesk_close WHERE shift_id = ?`, [prevShift.id]) };
+        const row = await q1(`SELECT * FROM shift_helpdesk_close WHERE shift_id = ?`, [prevShift.id]);
+        prevRoleData = {
+          closing: row
+            ? {
+              ...row,
+              has_billed: !!row.has_billed,
+              insurances_used: row.insurances_used ? JSON.parse(row.insurances_used) : [],
+              payments_all_successful: row.payments_all_successful !== 0 && row.payments_all_successful !== false,
+            }
+            : null
+        };
       } else if (prevShift.shift_role === 'call_center') {
         prevRoleData = { closing: await q1(`SELECT * FROM shift_callcenter_close WHERE shift_id = ?`, [prevShift.id]) };
       } else if (prevShift.shift_role === 'nurse') {
@@ -1038,13 +1077,93 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
     const existing = await q1(`SELECT id FROM shift_helpdesk_close WHERE shift_id = ?`, [shiftId]);
     if (existing) {
       await db.query(
-        `UPDATE shift_helpdesk_close SET patient_walkin_queries = ?, internal_staff_queries = ?, updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) WHERE shift_id = ?`,
-        [h.patient_walkin_queries || 0, h.internal_staff_queries || 0, shiftId]
+        `UPDATE shift_helpdesk_close SET 
+          patient_walkin_queries = ?, 
+          internal_staff_queries = ?, 
+          has_billed = ?,
+          total_momo_transactions = ?,
+          momo_pay_code = ?,
+          momo_pay_code_other = ?,
+          total_card_transactions = ?,
+          card_bank_terminal = ?,
+          total_cash_usd = ?,
+          total_cash_eur = ?,
+          payments_all_successful = ?,
+          failed_payment_status = ?,
+          failed_payment_amount = ?,
+          failed_payment_action_taken = ?,
+          total_patients = ?,
+          total_insured = ?,
+          total_private = ?,
+          insurances_used = ?,
+          updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) 
+        WHERE shift_id = ?`,
+        [
+          h.patient_walkin_queries || 0,
+          h.internal_staff_queries || 0,
+          h.has_billed ? 1 : 0,
+          h.has_billed ? (h.total_momo_transactions || 0) : 0,
+          h.has_billed && h.momo_breakdown ? JSON.stringify(h.momo_breakdown) : (h.momo_pay_code || null),
+          h.has_billed ? (h.momo_pay_code_other || null) : null,
+          h.has_billed ? (h.total_card_transactions || 0) : 0,
+          h.has_billed && h.card_breakdown ? JSON.stringify(h.card_breakdown) : (h.card_bank_terminal || null),
+          h.has_billed ? (h.total_cash_usd || 0) : 0,
+          h.has_billed ? (h.total_cash_eur || 0) : 0,
+          h.has_billed ? (h.payments_all_successful ? 1 : 0) : 1,
+          h.has_billed ? (h.failed_payment_status || null) : null,
+          h.has_billed ? (h.failed_payment_amount || null) : null,
+          h.has_billed ? (h.failed_payment_action_taken || null) : null,
+          h.has_billed ? (h.total_patients || 0) : 0,
+          h.has_billed ? (h.total_insured || 0) : 0,
+          h.has_billed ? (h.total_private || 0) : 0,
+          h.has_billed ? JSON.stringify(h.insurances_used || []) : JSON.stringify([]),
+          shiftId,
+        ]
       );
     } else {
       await db.query(
-        `INSERT INTO shift_helpdesk_close (shift_id, patient_walkin_queries, internal_staff_queries) VALUES (?,?,?)`,
-        [shiftId, h.patient_walkin_queries || 0, h.internal_staff_queries || 0]
+        `INSERT INTO shift_helpdesk_close (
+          shift_id, 
+          patient_walkin_queries, 
+          internal_staff_queries,
+          has_billed,
+          total_momo_transactions,
+          momo_pay_code,
+          momo_pay_code_other,
+          total_card_transactions,
+          card_bank_terminal,
+          total_cash_usd,
+          total_cash_eur,
+          payments_all_successful,
+          failed_payment_status,
+          failed_payment_amount,
+          failed_payment_action_taken,
+          total_patients,
+          total_insured,
+          total_private,
+          insurances_used
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          shiftId,
+          h.patient_walkin_queries || 0,
+          h.internal_staff_queries || 0,
+          h.has_billed ? 1 : 0,
+          h.has_billed ? (h.total_momo_transactions || 0) : 0,
+          h.has_billed && h.momo_breakdown ? JSON.stringify(h.momo_breakdown) : (h.momo_pay_code || null),
+          h.has_billed ? (h.momo_pay_code_other || null) : null,
+          h.has_billed ? (h.total_card_transactions || 0) : 0,
+          h.has_billed && h.card_breakdown ? JSON.stringify(h.card_breakdown) : (h.card_bank_terminal || null),
+          h.has_billed ? (h.total_cash_usd || 0) : 0,
+          h.has_billed ? (h.total_cash_eur || 0) : 0,
+          h.has_billed ? (h.payments_all_successful ? 1 : 0) : 1,
+          h.has_billed ? (h.failed_payment_status || null) : null,
+          h.has_billed ? (h.failed_payment_amount || null) : null,
+          h.has_billed ? (h.failed_payment_action_taken || null) : null,
+          h.has_billed ? (h.total_patients || 0) : 0,
+          h.has_billed ? (h.total_insured || 0) : 0,
+          h.has_billed ? (h.total_private || 0) : 0,
+          h.has_billed ? JSON.stringify(h.insurances_used || []) : JSON.stringify([])
+        ]
       );
     }
   }

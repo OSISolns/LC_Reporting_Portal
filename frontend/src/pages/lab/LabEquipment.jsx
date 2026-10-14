@@ -299,8 +299,8 @@ export default function LabEquipment() {
   const { user } = useAuth();
 
   const userRole = (user?.role || '').toLowerCase();
-  const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'].includes(userRole);
-  const isTeamLead = ['lab_team_lead', 'lab_lead'].includes(userRole);
+  const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm', 'lab_hod'].includes(userRole);
+  const isTeamLead = ['lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer'].includes(userRole);
   const isLeadOrManager = isManager || isTeamLead;
 
   const [equipmentList, setEquipmentList] = useState([]);

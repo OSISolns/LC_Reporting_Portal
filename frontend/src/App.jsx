@@ -56,6 +56,7 @@ import LabManagerDashboard from './pages/lab/LabManagerDashboard';
 import LabAnalyzers from './pages/lab/LabAnalyzers';
 import LabEquipment from './pages/lab/LabEquipment';
 import LabArchive from './pages/lab/LabArchive';
+import LabUnitsHub from './pages/lab/LabUnitsHub';
 import DentalHub from './pages/dental/DentalHub';
 import OdontogramDetailsPage from './pages/dental/OdontogramDetailsPage';
 import PhysioHub from './pages/physio/PhysioHub';
@@ -179,15 +180,29 @@ function App() {
 
             <Route path="/lab" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'
+                'admin', 'deputy_coo', 'coo', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+                'lab_safety_officer', 'lab_stock_officer', 'head_microbiology', 'head_hematology',
+                'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+                'lab_micro_specialist', 'lab_scientist', 'lab_tech', 'lab_team_lead', 'lab_lead', 'lab'
               ]}>
                 <LabHub />
               </ProtectedRoute>
             } />
 
+            <Route path="/lab/units" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'coo', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+                'lab_safety_officer', 'lab_stock_officer', 'head_microbiology', 'head_hematology',
+                'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+                'lab_micro_specialist', 'lab_scientist', 'lab_tech', 'lab_team_lead', 'lab_lead', 'lab'
+              ]}>
+                <LabUnitsHub />
+              </ProtectedRoute>
+            } />
+
             <Route path="/lab-manager" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm'
+                'admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'
               ]}>
                 <LabManagerDashboard />
               </ProtectedRoute>
@@ -195,7 +210,10 @@ function App() {
 
             <Route path="/ncr" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'hsfp'
+                'admin', 'deputy_coo', 'lab_hod', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm',
+                'lab_safety_officer', 'lab_stock_officer', 'head_microbiology', 'head_hematology',
+                'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+                'lab_tech', 'lab', 'hsfp'
               ]}>
                 <NCRManagement />
               </ProtectedRoute>
@@ -203,7 +221,8 @@ function App() {
 
             <Route path="/lab/analyzers" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm'
+                'admin', 'deputy_coo', 'coo', 'lab_hod', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm',
+                'lab_stock_officer', 'head_microbiology', 'head_hematology', 'head_molecular_biology'
               ]}>
                 <LabAnalyzers />
               </ProtectedRoute>
@@ -211,7 +230,8 @@ function App() {
 
             <Route path="/lab/equipment" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab'
+                'admin', 'deputy_coo', 'coo', 'lab_hod', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm',
+                'lab_safety_officer', 'lab_stock_officer', 'lab_tech', 'lab'
               ]}>
                 <LabEquipment />
               </ProtectedRoute>
@@ -219,7 +239,7 @@ function App() {
 
             <Route path="/lab/archive" element={
               <ProtectedRoute allowedRoles={[
-                'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab'
+                'admin', 'deputy_coo', 'lab_hod', 'head_histopathology', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab'
               ]}>
                 <LabArchive />
               </ProtectedRoute>
