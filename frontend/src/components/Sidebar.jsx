@@ -34,7 +34,7 @@ const ALL_ROLES = [
 ];
 
 const ALL_LAB_ROLES = [
-  'admin', 'deputy_coo', 'coo', 'chairman',
+  'admin', 'deputy_coo', 'chairman',
   'lab_hod', 'lab_manager', 'quality_manager', 'qm',
   'lab_safety_officer', 'lab_stock_officer',
   'head_microbiology', 'head_hematology', 'head_histopathology',
@@ -149,7 +149,8 @@ const Sidebar = ({ onClose }) => {
     const roleCfg = sidebarConfigState[user?.role];
     if (roleCfg && item.configKey && roleCfg[item.configKey] === false) {
       const isHsfpsCore = user?.role === 'hsfp' && ['incidents', 'safety', 'risk', 'infection', 'compliance'].includes(item.configKey);
-      if (!isHsfpsCore) return false;
+      const isCooSalesCore = ['coo', 'deputy_coo'].includes(user?.role) && item.configKey === 'sales_hub';
+      if (!isHsfpsCore && !isCooSalesCore) return false;
     }
     return true;
   };

@@ -8,7 +8,7 @@ import {
   MessageSquare, Activity, Building, ShieldAlert, TrendingDown, ShieldCheck,
   Server, Database, Sliders, UserCheck, CheckSquare, Square, RotateCcw,
   FlaskConical, Heart, Dumbbell, Settings, ScanLine, ArrowRight,
-  Layers, Truck, Menu, UserPlus, FileSpreadsheet
+  Layers, Truck, Menu, UserPlus, FileSpreadsheet, Microscope
 } from 'lucide-react';
 import {
   getModules, getRoleMatrix, updateRolePermissions, createRole,
@@ -124,7 +124,8 @@ const SIDEBAR_ITEMS = [
   { key: 'nursing_hub',       name: 'Nursing Hub',          Icon: Stethoscope,     allowedRoles: ['nurse','admin','chef-nurse','coo','deputy_coo'] },
   { key: 'doctor_hub',        name: 'Doctor Hub',           Icon: Stethoscope,     allowedRoles: ['doctor','consultant','admin','medical_director','coo','deputy_coo'] },
   { key: 'imaging',           name: 'Imaging Hub',          Icon: ScanLine,        allowedRoles: ['imaging_tech','imaging_manager','admin','medical_director','coo','deputy_coo'] },
-  { key: 'lab_hub',           name: 'Laboratory Hub',       Icon: FlaskConical,    allowedRoles: ['admin','deputy_coo','coo','lab_team_lead','lab_lead','lab_manager','lab_tech','lab'] },
+  { key: 'lab_hub',           name: 'Laboratory Hub',       Icon: FlaskConical,    allowedRoles: ['admin','deputy_coo','lab_team_lead','lab_lead','lab_manager','lab_tech','lab'] },
+  { key: 'lab_units_hub',     name: 'Lab Units & Benches',  Icon: Microscope,      allowedRoles: ['admin','deputy_coo','lab_team_lead','lab_lead','lab_manager','lab_tech','lab'] },
   { key: 'dental_hub',        name: 'Dental Hub',           Icon: Heart,           allowedRoles: ['admin','deputy_coo','coo','dental','dentist','dental_tech','dental_hod','dental_lab_manager'] },
   { key: 'physio_hub',        name: 'Physio Hub',           Icon: Dumbbell,        allowedRoles: ['admin','deputy_coo','coo','physiotherapist','physio','physio_manager'] },
   { key: 'operations_hub',    name: 'Operations Hub',       Icon: Settings,        allowedRoles: ['admin','deputy_coo','operations_staff','operations','coo'] },
