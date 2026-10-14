@@ -9,6 +9,7 @@ import { createProforma, updateProforma, getSalesCatalog, sendProformaEmail } fr
 import { searchPatients, getPatientByPid } from '../../api/patients';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { printProformaDocument } from './printUtils';
 
 
 
@@ -329,7 +330,7 @@ export default function ProformaInvoiceBuilder({
   };
 
   const handlePrint = () => {
-    window.print();
+    printProformaDocument('proforma-printable-sheet', `Proforma_${formData.invoice_number || 'Legacy_Clinics'}`);
   };
 
   const handleSendEmail = async (e) => {
@@ -544,28 +545,69 @@ export default function ProformaInvoiceBuilder({
         </div>
       </div>
 
-      {/* ── Content View ── */}
-      {activeViewTab === 'preview' ? (
-        /* Preview / Printable View */
+      {/* ── Print Isolation Style (Hides application layout during print) ── */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #proforma-printable-sheet,
+          #proforma-printable-sheet * {
+            visibility: visible !important;
+          }
+          #proforma-printable-sheet {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm 10mm 12mm;
+          }
+        }
+      `}</style>
+
+      {/* ── Proforma Printable Document (Always in DOM for instant printing) ── */}
+      <div
+        id="proforma-printable-sheet"
+        style={
+          activeViewTab === 'preview'
+            ? {
+                backgroundColor: '#f8fafc',
+                padding: '24px',
+                borderRadius: '16px',
+                border: '1px solid #e2e8f0',
+                boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)'
+              }
+            : {
+                position: 'fixed',
+                left: '-9999px',
+                top: '-9999px',
+                width: '820px',
+                pointerEvents: 'none'
+              }
+        }
+      >
         <div style={{
-          backgroundColor: '#f8fafc',
-          padding: '24px',
-          borderRadius: '16px',
-          border: '1px solid #e2e8f0',
-          boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)'
+          maxWidth: '860px',
+          margin: '0 auto',
+          backgroundColor: '#ffffff',
+          boxShadow: activeViewTab === 'preview' ? '0 4px 20px rgba(0,0,0,0.08)' : 'none',
+          borderRadius: '4px'
         }}>
-          <div style={{
-            maxWidth: '860px',
-            margin: '0 auto',
-            backgroundColor: '#ffffff',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-            borderRadius: '4px'
-          }}>
-            <ProformaInvoicePrintView proforma={{ ...formData, subtotal, total_amount: totalAmount }} />
-          </div>
+          <ProformaInvoicePrintView proforma={{ ...formData, subtotal, total_amount: totalAmount }} />
         </div>
-      ) : (
-        /* Form Editor View */
+      </div>
+
+      {/* ── Form Editor View (Visible only when in Editor tab) ── */}
+      {activeViewTab === 'editor' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px', alignItems: 'start' }}>
           {/* Main Form (Left) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

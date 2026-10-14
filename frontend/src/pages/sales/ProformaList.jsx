@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { getProformas, deleteProforma, updateProforma, sendProformaEmail } from '../../api/sales';
 import ProformaInvoicePrintView from './ProformaInvoicePrintView';
+import { printProformaDocument } from './printUtils';
 import toast from 'react-hot-toast';
 
 export default function ProformaList({
@@ -502,7 +503,7 @@ export default function ProformaList({
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() => printProformaDocument('proforma-list-modal-sheet', `Proforma_${selectedForPreview?.invoice_number || 'Legacy_Clinics'}`)}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -538,13 +539,16 @@ export default function ProformaList({
 
             {/* Modal Body: Printable sheet */}
             <div style={{ overflowY: 'auto', padding: '24px', backgroundColor: '#f1f5f9' }}>
-              <div style={{
-                maxWidth: '820px',
-                margin: '0 auto',
-                backgroundColor: '#ffffff',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.06)',
-                borderRadius: '4px'
-              }}>
+              <div
+                id="proforma-list-modal-sheet"
+                style={{
+                  maxWidth: '820px',
+                  margin: '0 auto',
+                  backgroundColor: '#ffffff',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.06)',
+                  borderRadius: '4px'
+                }}
+              >
                 <ProformaInvoicePrintView proforma={selectedForPreview} />
               </div>
             </div>
