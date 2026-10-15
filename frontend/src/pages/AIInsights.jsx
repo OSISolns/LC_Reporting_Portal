@@ -52,7 +52,6 @@ const CLASSIFIABLE_MODULES = {
 const LINE_MANAGER_ROLES = [
   'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
   'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager',
-  'lab_manager', 'lab_team_lead', 'lab_lead',
   'imaging_manager', 'dental_hod', 'dental_lab_manager',
   'physio_manager', 'logistics_manager', 'logistics_officer',
   'procurement-manager', 'it_officer', 'hsfp', 'stock-manager', 'sales_manager',
@@ -62,7 +61,6 @@ const LINE_MANAGER_ROLES = [
 const EXEC_ROLES = [
   'admin', 'chairman', 'coo', 'deputy_coo', 'medical_director', 'pa',
   'sales_manager', 'consultant', 'quality_accreditation_officer',
-  'quality_manager', 'qm',
 ];
 const SECURITY_ROLES = ['admin'];
 
@@ -131,7 +129,7 @@ const DEPARTMENTS = [
   {
     id: 'laboratory', label: 'Laboratory', icon: <FlaskConical size={14} />,
     description: 'Lab sessions, NCR management, analyzer status & quality metrics.',
-    allowedRoles: [...EXEC_ROLES, 'lab_manager', 'lab_team_lead', 'lab_lead', 'hsfp'],
+    allowedRoles: [...EXEC_ROLES, 'hsfp'],
     kpiMap: [
       { key: 'sessions',    label: 'Lab Sessions' },
       { key: 'ncrs_total',  label: 'Total NCRs' },

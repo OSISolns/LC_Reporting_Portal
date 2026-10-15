@@ -511,81 +511,13 @@ const LabHub = () => {
     toast.success(`Selected patient ${pat.full_name} (${pat.pid})`);
   };
 
-  // Default initial specimen orders fallback
-  const DEFAULT_LAB_ORDERS = useMemo(() => [
-    {
-      id: 'ord-101',
-      accession_number: 'ACC-2026-0801',
-      patient_id: 'PID-98421',
-      patient_name: 'Sarah Jenkins',
-      patient_age: '34',
-      patient_gender: 'Female',
-      test_name: 'Full Blood Count (FBC)',
-      specimen_type: 'Venous Blood',
-      tube_type: 'Purple EDTA',
-      urgency: 'In-House STAT (1h)',
-      stage: 'Sample Collected',
-      phase: 'pre-analytical',
-      specimen_barcode: 'BAR-847291',
-      created_at: new Date(Date.now() - 25 * 60000).toISOString()
-    },
-    {
-      id: 'ord-102',
-      accession_number: 'ACC-2026-0802',
-      patient_id: 'PID-73019',
-      patient_name: 'Robert Chen',
-      patient_age: '52',
-      patient_gender: 'Male',
-      test_name: 'Urine Analysis (Urinalysis)',
-      specimen_type: 'Midstream Urine',
-      tube_type: 'Yellow Urine Cup',
-      urgency: 'In-House Routine (6h)',
-      stage: 'In Analysis',
-      phase: 'analytical',
-      specimen_barcode: 'BAR-910248',
-      created_at: new Date(Date.now() - 140 * 60000).toISOString()
-    },
-    {
-      id: 'ord-103',
-      accession_number: 'ACC-2026-0803',
-      patient_id: 'PID-54120',
-      patient_name: 'Amanda Taylor',
-      patient_age: '29',
-      patient_gender: 'Female',
-      test_name: 'NIPT Chromosomal Screen',
-      specimen_type: 'Whole Blood',
-      tube_type: 'NIPT Tube',
-      urgency: 'Outsourced Reference Lab (7 Days)',
-      stage: 'Order Placed',
-      phase: 'pre-analytical',
-      specimen_barcode: 'BAR-338291',
-      created_at: new Date(Date.now() - 3600 * 60000).toISOString()
-    },
-    {
-      id: 'ord-104',
-      accession_number: 'ACC-2026-0804',
-      patient_id: 'PID-11930',
-      patient_name: 'David Miller',
-      patient_age: '61',
-      patient_gender: 'Male',
-      test_name: 'Stool Examination (Fecal Analysis)',
-      specimen_type: 'Stool Sample',
-      tube_type: 'Redtop',
-      urgency: 'In-House Routine (6h)',
-      stage: 'Sample Collected',
-      phase: 'pre-analytical',
-      specimen_barcode: 'BAR-771204',
-      created_at: new Date(Date.now() - 45 * 60000).toISOString()
-    }
-  ], []);
-
-  // Fetch Orders with seamless local fallback
+  // Fetch Orders from backend or registered local storage
   const fetchOrders = async () => {
     setLoading(true);
     let loadedOrders = [];
     try {
       const res = await api.get('/lab/orders');
-      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      if (res.data?.success && Array.isArray(res.data.data)) {
         loadedOrders = res.data.data;
       }
     } catch (err) {
@@ -604,13 +536,16 @@ const LabHub = () => {
       } catch {}
     }
 
-    if (!loadedOrders || loadedOrders.length === 0) {
-      loadedOrders = DEFAULT_LAB_ORDERS;
-    }
+    // Strip out any previously stored hardcoded sample orders (e.g., ACC-2026-080X, ord-101..104)
+    const cleanOrders = (loadedOrders || []).filter(o => 
+      !String(o.accession_number || '').startsWith('ACC-2026-080') && 
+      !['ord-101', 'ord-102', 'ord-103', 'ord-104'].includes(o.id) &&
+      !['Sarah Jenkins', 'Robert Chen', 'Amanda Taylor', 'David Miller', 'Jean-Pierre Habimana', 'Clarisse Uwase'].includes(o.patient_name)
+    );
 
-    setOrders(loadedOrders);
-    syncOrderStorage(loadedOrders);
-    try { localStorage.setItem('lc_lab_registered_orders', JSON.stringify(loadedOrders)); } catch {}
+    setOrders(cleanOrders);
+    syncOrderStorage(cleanOrders);
+    try { localStorage.setItem('lc_lab_registered_orders', JSON.stringify(cleanOrders)); } catch {}
     setLoading(false);
   };
 

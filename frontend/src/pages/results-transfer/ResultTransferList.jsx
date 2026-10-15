@@ -23,9 +23,12 @@ const EMPTY_FORM = {
 };
 
 const ResultTransferList = () => {
-  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
-  const isImagingUser = ['imaging_tech', 'imaging_manager', 'sono', 'radiologist'].includes(user?.role);
+  const { user, hasPermission } = useAuth();
+  const isImagingUser = ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging'].includes(user?.role?.toLowerCase()) || 
+    String(user?.role || '').toLowerCase().includes('imaging') || 
+    String(user?.role || '').toLowerCase().includes('radio') || 
+    String(user?.role || '').toLowerCase().includes('sono');
   const isLabUser = [
     'lab_hod', 'lab_manager', 'quality_manager', 'qm',
     'lab_team_lead', 'lab_lead', 'lab_tech', 'lab',
@@ -197,14 +200,13 @@ const ResultTransferList = () => {
     }
   };
 
-  const canCreate = (typeof hasPermission === 'function' && hasPermission('results_transfer', 'create')) || [
+  const canCreate = !isImagingUser && ((typeof hasPermission === 'function' && hasPermission('results_transfer', 'create')) || [
     'cashier', 'customer_care', 'operations_staff', 'operations', 'operations_manager', 'ops_lead', 
-    'imaging_tech', 'imaging_manager', 'sono', 'radiologist',
     'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_hod', 'quality_manager', 'qm',
     'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct',
     'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist',
     'lab_safety_officer', 'lab_stock_officer', 'lab_tech', 'lab', 'admin'
-  ].includes(user?.role);
+  ].includes(user?.role?.toLowerCase()));
 
   return (
     <div>
@@ -221,7 +223,7 @@ const ResultTransferList = () => {
               : 'Manage and approve results transfers between SIDs across departments.'}
           </p>
         </div>
-        {canCreate && (
+        {!isImagingUser && canCreate && (
           <button onClick={handleOpenCreate}
             style={{ 
               display: 'flex', 

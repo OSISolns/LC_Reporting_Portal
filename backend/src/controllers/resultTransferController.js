@@ -32,6 +32,13 @@ function checkDepartmentAccess(userRole, itemDepartment) {
 
 exports.createRequest = async (req, res, next) => {
   try {
+    if (IMAGING_ROLES.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Imaging department cannot initiate new result transfers.'
+      });
+    }
+
     const deptScope = getUserDepartmentScope(req.user.role);
     if (deptScope) {
       req.body.department = deptScope; // Strictly enforce user's department

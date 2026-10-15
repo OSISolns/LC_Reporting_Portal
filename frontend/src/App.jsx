@@ -139,10 +139,9 @@ function App() {
               // Financial/Operations oversight
               'sales_manager', 'principal_cashier', 'consultant',
               // Quality & Accreditation
-              'quality_accreditation_officer', 'quality_manager', 'qm', 'hsfp',
+              'quality_accreditation_officer', 'hsfp',
               // Department Managers
               'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
-              'lab_manager', 'lab_team_lead', 'lab_lead',
               'imaging_manager',
               'dental_hod', 'dental_lab_manager',
               'physio_manager',
@@ -151,8 +150,8 @@ function App() {
             ]}><AIInsights /></ProtectedRoute>} />
 
             
-            <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', ...ALL_LAB_ROLES]}><CancellationList /></ProtectedRoute>} />
-            <Route path="/cancellations/:id" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', ...ALL_LAB_ROLES]}><CancellationList /></ProtectedRoute>} />
+            <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><CancellationList /></ProtectedRoute>} />
+            <Route path="/cancellations/:id" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><CancellationList /></ProtectedRoute>} />
             
             <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><RefundList /></ProtectedRoute>} />
             <Route path="/refunds/:id" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><RefundList /></ProtectedRoute>} />
@@ -302,7 +301,7 @@ function App() {
 
             <Route path="/roster-generator" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'operations_staff', 'operations', 'chairman', ...ALL_LAB_ROLES
+                'admin', 'deputy_coo', 'coo', 'operations_staff', 'operations', 'chairman'
               ]}>
                 <RosterGenerator />
               </ProtectedRoute>
@@ -318,18 +317,18 @@ function App() {
 
             {/* ── Shift Module ── */}
             <Route path="/shifts/open" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','admin','deputy_coo','staff', 'nurse', 'chef-nurse', 'chairman', ...ALL_LAB_ROLES]}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','admin','deputy_coo','staff', 'nurse', 'chef-nurse', 'chairman']}>
                 <OpenShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/close/:id" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','admin','deputy_coo','staff', 'nurse', 'chef-nurse', 'chairman', ...ALL_LAB_ROLES]}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','admin','deputy_coo','staff', 'nurse', 'chef-nurse', 'chairman']}>
                 <CloseShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/:id" element={<ShiftDetail />} />
             <Route path="/shifts" element={
-              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'operations_staff', 'nurse', 'cashier', 'customer_care', 'chef-nurse', 'pa', 'chairman', ...ALL_LAB_ROLES]}>
+              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'operations_staff', 'nurse', 'cashier', 'customer_care', 'chef-nurse', 'pa', 'chairman']}>
                 <ShiftDashboardRedirect />
               </ProtectedRoute>
             } />

@@ -127,7 +127,12 @@ async function seed() {
       ['nurse', 'Clinical Nurse'],
       ['medical_director', 'Medical Director'],
       ['logistics_manager', 'Logistics Manager'],
-      ['logistics_officer', 'Logistics Officer']
+      ['logistics_officer', 'Logistics Officer'],
+      ['imaging_manager', 'Imaging Department Manager'],
+      ['imaging_tech', 'Imaging Technologist (Radiographer)'],
+      ['radiologist', 'Consultant Radiologist'],
+      ['sono', 'Sonographer (Ultrasound)'],
+      ['imaging', 'Imaging Staff']
     ];
 
 
