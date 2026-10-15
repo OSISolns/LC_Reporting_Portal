@@ -74,6 +74,16 @@ const CHEF_NURSE_ROLES = [
   'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
 ];
 
+const ALL_LAB_ROLES = [
+  'admin', 'deputy_coo', 'chairman',
+  'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+  'lab_safety_officer', 'lab_stock_officer',
+  'head_microbiology', 'head_hematology', 'head_histopathology',
+  'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+  'lab_micro_specialist', 'lab_scientist',
+  'lab_team_lead', 'lab_lead', 'lab_tech', 'lab'
+];
+
 const isChefNurseRole = (role) => {
   if (!role) return false;
   const r = role.toLowerCase();
@@ -141,8 +151,8 @@ function App() {
             ]}><AIInsights /></ProtectedRoute>} />
 
             
-            <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><CancellationList /></ProtectedRoute>} />
-            <Route path="/cancellations/:id" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><CancellationList /></ProtectedRoute>} />
+            <Route path="/cancellations" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', ...ALL_LAB_ROLES]}><CancellationList /></ProtectedRoute>} />
+            <Route path="/cancellations/:id" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant', ...ALL_LAB_ROLES]}><CancellationList /></ProtectedRoute>} />
             
             <Route path="/refunds" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><RefundList /></ProtectedRoute>} />
             <Route path="/refunds/:id" element={<ProtectedRoute allowedRoles={['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant']}><RefundList /></ProtectedRoute>} />
@@ -169,7 +179,7 @@ function App() {
             <Route path="/consumables-log" element={
               <ProtectedRoute allowedRoles={[
                 'admin', 'deputy_coo', 'chef-nurse', 'nurse',
-                'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab',
+                ...ALL_LAB_ROLES,
                 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager',
                 'imaging_tech', 'imaging_manager', 'sono', 'radiologist',
                 'physiotherapist', 'physio', 'physio_manager', 'operations_staff', 'coo'
@@ -179,12 +189,7 @@ function App() {
             } />
 
             <Route path="/lab" element={
-              <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm',
-                'lab_safety_officer', 'lab_stock_officer', 'head_microbiology', 'head_hematology',
-                'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology',
-                'lab_micro_specialist', 'lab_scientist', 'lab_tech', 'lab_team_lead', 'lab_lead', 'lab'
-              ]}>
+              <ProtectedRoute allowedRoles={ALL_LAB_ROLES}>
                 <LabHub />
               </ProtectedRoute>
             } />
@@ -212,38 +217,25 @@ function App() {
             } />
 
             <Route path="/ncr" element={
-              <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'lab_hod', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm',
-                'lab_safety_officer', 'lab_stock_officer', 'head_microbiology', 'head_hematology',
-                'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology',
-                'lab_tech', 'lab', 'hsfp'
-              ]}>
+              <ProtectedRoute allowedRoles={[...ALL_LAB_ROLES, 'hsfp']}>
                 <NCRManagement />
               </ProtectedRoute>
             } />
 
             <Route path="/lab/analyzers" element={
-              <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'lab_hod', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm',
-                'lab_stock_officer', 'head_microbiology', 'head_hematology', 'head_molecular_biology'
-              ]}>
+              <ProtectedRoute allowedRoles={ALL_LAB_ROLES}>
                 <LabAnalyzers />
               </ProtectedRoute>
             } />
 
             <Route path="/lab/equipment" element={
-              <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'lab_hod', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm',
-                'lab_safety_officer', 'lab_stock_officer', 'lab_tech', 'lab'
-              ]}>
+              <ProtectedRoute allowedRoles={ALL_LAB_ROLES}>
                 <LabEquipment />
               </ProtectedRoute>
             } />
 
             <Route path="/lab/archive" element={
-              <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'lab_hod', 'head_histopathology', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab'
-              ]}>
+              <ProtectedRoute allowedRoles={ALL_LAB_ROLES}>
                 <LabArchive />
               </ProtectedRoute>
             } />
@@ -310,7 +302,7 @@ function App() {
 
             <Route path="/roster-generator" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'operations_staff', 'operations', 'chairman'
+                'admin', 'deputy_coo', 'coo', 'operations_staff', 'operations', 'chairman', ...ALL_LAB_ROLES
               ]}>
                 <RosterGenerator />
               </ProtectedRoute>
@@ -326,18 +318,18 @@ function App() {
 
             {/* ── Shift Module ── */}
             <Route path="/shifts/open" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','lab_team_lead','lab_tech','lab','admin','deputy_coo','staff', 'nurse', 'chef-nurse', 'chairman']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','admin','deputy_coo','staff', 'nurse', 'chef-nurse', 'chairman', ...ALL_LAB_ROLES]}>
                 <OpenShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/close/:id" element={
-              <ProtectedRoute allowedRoles={['cashier','customer_care','lab_team_lead','lab_tech','lab','admin','deputy_coo','staff', 'nurse', 'chef-nurse', 'chairman']}>
+              <ProtectedRoute allowedRoles={['cashier','customer_care','admin','deputy_coo','staff', 'nurse', 'chef-nurse', 'chairman', ...ALL_LAB_ROLES]}>
                 <CloseShift />
               </ProtectedRoute>
             } />
             <Route path="/shifts/:id" element={<ShiftDetail />} />
             <Route path="/shifts" element={
-              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'operations_staff', 'nurse', 'cashier', 'customer_care', 'chef-nurse', 'pa', 'chairman']}>
+              <ProtectedRoute allowedRoles={['principal_cashier','sales_manager','deputy_coo','coo','admin', 'operations_staff', 'nurse', 'cashier', 'customer_care', 'chef-nurse', 'pa', 'chairman', ...ALL_LAB_ROLES]}>
                 <ShiftDashboardRedirect />
               </ProtectedRoute>
             } />
