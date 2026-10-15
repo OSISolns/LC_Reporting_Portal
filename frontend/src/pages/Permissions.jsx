@@ -8,7 +8,7 @@ import {
   MessageSquare, Activity, Building, ShieldAlert, TrendingDown, ShieldCheck,
   Server, Database, Sliders, UserCheck, CheckSquare, Square, RotateCcw,
   FlaskConical, Heart, Dumbbell, Settings, ScanLine, ArrowRight,
-  Layers, Truck, Menu, UserPlus, FileSpreadsheet, BarChart3
+  Layers, Truck, Menu, UserPlus, FileSpreadsheet, BarChart3, Microscope
 } from 'lucide-react';
 import {
   getModules, getRoleMatrix, updateRolePermissions, createRole,
@@ -125,6 +125,7 @@ const SIDEBAR_ITEMS = [
   { key: 'doctor_hub',        name: 'Doctor Hub',           Icon: Stethoscope,     allowedRoles: ['doctor','consultant','admin','medical_director','coo','deputy_coo'] },
   { key: 'imaging',           name: 'Imaging Hub',          Icon: ScanLine,        allowedRoles: ['imaging_tech','imaging_manager','admin','medical_director','coo','deputy_coo'] },
   { key: 'lab_hub',           name: 'Laboratory Hub',       Icon: FlaskConical,    allowedRoles: ['admin','deputy_coo','lab_team_lead','lab_lead','lab_manager','lab_tech','lab'] },
+  { key: 'lab_team_lead_hub', name: 'Lab Team Lead Hub',    Icon: Microscope,      allowedRoles: ['admin','deputy_coo','general_manager','chairman','lab_hod','lab_manager','quality_manager','qm','lab_team_lead','lab_lead','head_microbiology','head_hematology','head_histopathology','head_poct','head_phlebotomy','head_molecular_biology','lab_safety_officer','lab_stock_officer','lab_micro_specialist'] },
   { key: 'lab_manager_hub',   name: 'Lab Manager Hub',      Icon: BarChart3,       allowedRoles: ['admin','deputy_coo','general_manager','chairman','lab_hod','lab_manager','quality_manager','qm'] },
   { key: 'dental_hub',        name: 'Dental Hub',           Icon: Heart,           allowedRoles: ['admin','deputy_coo','coo','dental','dentist','dental_tech','dental_hod','dental_lab_manager'] },
   { key: 'physio_hub',        name: 'Physio Hub',           Icon: Dumbbell,        allowedRoles: ['admin','deputy_coo','coo','physiotherapist','physio','physio_manager'] },

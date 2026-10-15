@@ -6,7 +6,7 @@ import {
   AlertTriangle, XCircle, CheckCircle as CheckCircleIcon, TrendingUp,
   ChevronDown, Pencil, Trash2, X, AlertOctagon, Shield,
   ListChecks, BarChart2, FilePlus2, Wrench, Settings, FolderArchive,
-  Package, Sun, Snowflake, Box, Layers, Filter, Edit3
+  Package, Sun, Snowflake, Box, Layers, Filter, Edit3, Microscope
 } from 'lucide-react';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -1058,10 +1058,20 @@ const LabHub = () => {
         >
           <Package size={14} /> In-Hand Inventory
         </button>
+        {isLeadOrManager && (
+          <button
+            onClick={() => navigate('/lab-team-lead')}
+            className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-[#0d47a1] bg-blue-50/90 hover:bg-blue-100 hover:text-blue-950 ml-auto border border-blue-200/80 shadow-2xs"
+          >
+            <Microscope size={14} /> Team Lead Hub
+          </button>
+        )}
         {isManager && (
           <button
             onClick={() => navigate('/lab-manager')}
-            className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-blue-800 bg-blue-50/80 hover:bg-blue-100 hover:text-blue-950 ml-auto border border-blue-200/60"
+            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-indigo-800 bg-indigo-50/80 hover:bg-indigo-100 hover:text-indigo-950 border border-indigo-200/60 ${
+              isLeadOrManager ? '' : 'ml-auto'
+            }`}
           >
             <BarChart2 size={14} /> Manager Dashboard
           </button>

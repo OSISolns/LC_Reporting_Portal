@@ -56,6 +56,10 @@ router.post('/storage-assignments', labController.saveStorageAssignment);
 // Lab Manager Executive Dashboard Route - Strictly Manager / Leadership Level
 router.get('/manager-summary', authorizeRoles(LAB_MANAGER_ROLES), labController.getManagerSummary);
 
+// Lab Team Leader Operational Dashboard Routes - Accessible by Team Leads & Managers
+router.get('/team-lead-summary', authorizeRoles(LAB_LEAD_OR_MANAGER_ROLES), labController.getTeamLeadSummary);
+router.post('/batch-verify', authorizeRoles(LAB_LEAD_OR_MANAGER_ROLES), labController.batchVerifyOrders);
+
 // Analyzer Management Routes - Configuration by Lead/Manager, Deletion by Manager only
 router.get('/analyzers', labController.getAnalyzers);
 router.post('/analyzers', authorizeRoles(LAB_LEAD_OR_MANAGER_ROLES), labController.createAnalyzer);

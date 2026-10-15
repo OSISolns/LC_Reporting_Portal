@@ -53,6 +53,7 @@ import ImagingHub from './pages/imaging/ImagingHub';
 import LabHub from './pages/lab/LabHub';
 import NCRManagement from './pages/lab/NCRManagement';
 import LabManagerDashboard from './pages/lab/LabManagerDashboard';
+import LabTeamLeadDashboard from './pages/lab/LabTeamLeadDashboard';
 import LabAnalyzers from './pages/lab/LabAnalyzers';
 import LabEquipment from './pages/lab/LabEquipment';
 import LabArchive from './pages/lab/LabArchive';
@@ -189,6 +190,18 @@ function App() {
             } />
 
             <Route path="/lab/units" element={<Navigate to="/lab" replace />} />
+
+            <Route path="/lab-team-lead" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+                'lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology',
+                'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer',
+                'lab_micro_specialist'
+              ]}>
+                <LabTeamLeadDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/lab/team-lead" element={<Navigate to="/lab-team-lead" replace />} />
 
             <Route path="/lab-manager" element={
               <ProtectedRoute allowedRoles={[

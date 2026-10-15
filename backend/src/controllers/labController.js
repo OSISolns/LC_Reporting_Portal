@@ -1275,4 +1275,220 @@ exports.deleteInhandInventory = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ─── Laboratory Team Leader Operational Dashboard Controllers ──────────────────
+
+// GET /api/lab/team-lead-summary
+exports.getTeamLeadSummary = async (req, res, next) => {
+  try {
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+
+    // 1. Fetch Orders
+    const { rows: allOrders } = await db.query('SELECT * FROM lab_orders ORDER BY created_at DESC');
+    
+    // 2. Fetch Results for all orders to attach parameter details
+    const { rows: allResults } = await db.query('SELECT * FROM lab_results ORDER BY order_id, id');
+    const resultsByOrder = new Map();
+    for (const r of allResults) {
+      if (!resultsByOrder.has(r.order_id)) resultsByOrder.set(r.order_id, []);
+      resultsByOrder.get(r.order_id).push(r);
+    }
+
+    // 3. Compute Metrics
+    let metrics = {
+      total_active: 0,
+      stat_pending: 0,
+      awaiting_verification: 0,
+      critical_alerts: 0,
+      tat_breaches: 0,
+      pre_analytical_exceptions: 0,
+      verified_today: 0,
+      auto_verified_today: 0,
+      qc_compliance_rate: 100
+    };
+
+    const statQueue = [];
+    const verificationQueue = [];
+    const preAnalyticalExceptions = [];
+    const benchMap = {
+      'Phlebotomy': { total: 0, pending: 0, in_testing: 0, verified: 0 },
+      'Hematology': { total: 0, pending: 0, in_testing: 0, verified: 0 },
+      'Clinical Chemistry': { total: 0, pending: 0, in_testing: 0, verified: 0 },
+      'Microbiology': { total: 0, pending: 0, in_testing: 0, verified: 0 },
+      'Immunoassay': { total: 0, pending: 0, in_testing: 0, verified: 0 },
+      'Histopathology': { total: 0, pending: 0, in_testing: 0, verified: 0 },
+      'POCT': { total: 0, pending: 0, in_testing: 0, verified: 0 },
+      'Molecular Biology': { total: 0, pending: 0, in_testing: 0, verified: 0 }
+    };
+
+    for (const o of allOrders) {
+      const orderResults = resultsByOrder.get(o.id) || [];
+      const hasCriticalResult = orderResults.some(r => r.is_critical === 1 || r.is_critical === true);
+      const isCritical = o.critical_alert === 1 || o.critical_alert === true || hasCriticalResult;
+      
+      let tatRemainingMins = null;
+      let isOverdue = false;
+      if (o.tat_deadline) {
+        const deadline = new Date(o.tat_deadline);
+        tatRemainingMins = Math.round((deadline - now) / 60000);
+        if (tatRemainingMins < 0 && !['Verified', 'Reported', 'Notified'].includes(o.stage)) {
+          isOverdue = true;
+          metrics.tat_breaches++;
+        }
+      }
+
+      const isCompletedOrVerified = ['Verified', 'Reported', 'Notified'].includes(o.stage);
+      if (!isCompletedOrVerified) {
+        metrics.total_active++;
+      }
+
+      // Pre-analytical issues
+      const isBadSample = o.sample_integrity && o.sample_integrity !== 'Good';
+      if (isBadSample || (o.hil_index && o.hil_index !== 'Normal')) {
+        metrics.pre_analytical_exceptions++;
+        if (!isCompletedOrVerified) {
+          preAnalyticalExceptions.push({
+            ...o,
+            issue: isBadSample ? o.sample_integrity : `HIL: ${o.hil_index}`,
+            tat_remaining_mins: tatRemainingMins
+          });
+        }
+      }
+
+      // STAT pending
+      if (o.urgency === 'STAT' && !isCompletedOrVerified) {
+        metrics.stat_pending++;
+        statQueue.push({
+          ...o,
+          tat_remaining_mins: tatRemainingMins,
+          is_overdue: isOverdue,
+          results: orderResults,
+          is_critical: isCritical
+        });
+      }
+
+      // Awaiting Verification (results entered or in Analyzing/Testing stage, not yet Verified)
+      const hasResults = orderResults.length > 0 && orderResults.every(r => r.parameter_value !== null && r.parameter_value !== '');
+      if ((['Analyzing', 'Testing', 'Completed'].includes(o.stage) || hasResults) && !isCompletedOrVerified) {
+        metrics.awaiting_verification++;
+        verificationQueue.push({
+          ...o,
+          tat_remaining_mins: tatRemainingMins,
+          is_overdue: isOverdue,
+          results: orderResults,
+          is_critical: isCritical
+        });
+      }
+
+      // Critical alerts
+      if (isCritical) {
+        metrics.critical_alerts++;
+      }
+
+      // Completed / verified today
+      const isToday = o.updated_at && String(o.updated_at).startsWith(todayStr);
+      if (isToday && isCompletedOrVerified) {
+        metrics.verified_today++;
+        if (o.auto_verified === 1 || o.auto_verified === true) {
+          metrics.auto_verified_today++;
+        }
+      }
+
+      // Bench aggregation
+      let bench = 'Hematology';
+      const testLower = (o.test_name || '').toLowerCase();
+      if (testLower.includes('cbc') || testLower.includes('fbc') || testLower.includes('inr') || testLower.includes('pt') || testLower.includes('blood film') || testLower.includes('esr')) bench = 'Hematology';
+      else if (testLower.includes('glucose') || testLower.includes('lipid') || testLower.includes('lft') || testLower.includes('rft') || testLower.includes('crp') || testLower.includes('urea') || testLower.includes('creatinine')) bench = 'Clinical Chemistry';
+      else if (testLower.includes('culture') || testLower.includes('urine') || testLower.includes('gram') || testLower.includes('antimicrobial') || testLower.includes('stool')) bench = 'Microbiology';
+      else if (testLower.includes('hiv') || testLower.includes('hepatitis') || testLower.includes('tsh') || testLower.includes('troponin') || testLower.includes('bhcg')) bench = 'Immunoassay';
+      else if (testLower.includes('biopsy') || testLower.includes('cyto') || testLower.includes('pap')) bench = 'Histopathology';
+      else if (testLower.includes('pcr') || testLower.includes('dna') || testLower.includes('rna') || testLower.includes('viral')) bench = 'Molecular Biology';
+      else if (testLower.includes('rapid') || testLower.includes('poct') || testLower.includes('glucometer')) bench = 'POCT';
+      else if (o.stage === 'Accessioning' || o.stage === 'Registered') bench = 'Phlebotomy';
+
+      if (benchMap[bench]) {
+        benchMap[bench].total++;
+        if (isCompletedOrVerified) benchMap[bench].verified++;
+        else if (['Analyzing', 'Centrifuged', 'Testing'].includes(o.stage)) benchMap[bench].in_testing++;
+        else benchMap[bench].pending++;
+      }
+    }
+
+    // 4. Fetch QC Surveillance Logs
+    const { rows: qcRows } = await db.query('SELECT * FROM lab_qc_logs ORDER BY created_at DESC LIMIT 20');
+    const todayQc = qcRows.filter(q => q.created_at && String(q.created_at).startsWith(todayStr));
+    const rejectedQc = todayQc.filter(q => q.status === 'Rejected');
+    if (todayQc.length > 0) {
+      metrics.qc_compliance_rate = Math.round(((todayQc.length - rejectedQc.length) / todayQc.length) * 100);
+    }
+
+    // 5. Fetch Active Analyzers
+    const { rows: analyzers } = await db.query('SELECT * FROM lab_analyzers ORDER BY status ASC, name ASC');
+
+    // 6. Fetch Active Lab Personnel (for shift bench roster)
+    const { rows: personnel } = await db.query(`
+      SELECT u.id, u.username, u.full_name, r.name as role, r.display_name as role_name
+      FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE r.name LIKE '%lab%' OR r.name LIKE '%head_%' OR r.name = 'quality_manager'
+      ORDER BY r.name, u.full_name
+    `);
+
+    // 7. Active NCRs for Team Lead Awareness
+    const { rows: activeNcrs } = await db.query(`
+      SELECT id, ncr_number, title, unit, significance, status, occurred_at 
+      FROM lab_ncr 
+      WHERE status != 'closed' 
+      ORDER BY occurred_at DESC LIMIT 5
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        metrics,
+        stat_queue: statQueue.slice(0, 10),
+        verification_queue: verificationQueue.slice(0, 25),
+        pre_analytical_exceptions: preAnalyticalExceptions.slice(0, 10),
+        bench_breakdown: Object.keys(benchMap).map(k => ({ bench: k, ...benchMap[k] })),
+        qc_surveillance: qcRows.slice(0, 10),
+        analyzers,
+        personnel,
+        active_ncrs: activeNcrs
+      }
+    });
+  } catch (err) { next(err); }
+};
+
+// POST /api/lab/batch-verify
+exports.batchVerifyOrders = async (req, res, next) => {
+  try {
+    const { orderIds, verification_note } = req.body;
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Please select at least one order to verify.' });
+    }
+
+    const verifierName = req.user?.full_name || req.user?.username || 'Laboratory Team Leader';
+    const stamp = `${verifierName} (Lab Team Leader)`;
+
+    for (const id of orderIds) {
+      await db.query(
+        `UPDATE lab_orders 
+         SET stage = 'Verified', phase = 'post-analytical', status = 'verified',
+             verified_by_name = ?, verified_at = CURRENT_TIMESTAMP,
+             notes = CASE WHEN ? IS NOT NULL AND ? != '' THEN COALESCE(notes || ' | ', '') || ? ELSE notes END,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [stamp, verification_note || null, verification_note || null, verification_note || null, id]
+      );
+      await logAction(req, 'LAB_BATCH_VERIFY', 'lab_orders', id, { verifier: stamp, note: verification_note });
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully verified and signed off ${orderIds.length} diagnostic specimen order(s).`
+    });
+  } catch (err) { next(err); }
+};
+
+
 

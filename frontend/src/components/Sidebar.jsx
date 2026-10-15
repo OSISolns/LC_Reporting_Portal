@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ChevronLeft, ChevronRight, LayoutDashboard, FileText, ReceiptText,
   AlertTriangle, Users, UserCheck, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine, ClipboardList, FlaskConical, Heart, Dumbbell, Settings, PackageCheck, AlertOctagon, Archive,
-  Truck, Zap, Wrench, Package, DollarSign, BarChart3, BadgeDollarSign, FileSpreadsheet
+  Truck, Zap, Wrench, Package, DollarSign, BarChart3, BadgeDollarSign, FileSpreadsheet, Microscope
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -79,6 +79,7 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'clinical_sheets_nav', name: 'Clinical Sheets', icon: <FileText size={18} />, path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director', 'deputy_coo'] },
         { configKey: 'doctor_hub', name: 'Doctor Hub', icon: <Stethoscope size={18} />, path: '/doctor-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director', 'deputy_coo'] },
         { configKey: 'lab_hub', name: 'Laboratory Hub', icon: <FlaskConical size={18} />, path: '/lab', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
+        { configKey: 'lab_team_lead_hub', name: 'Lab Team Lead Hub', icon: <Microscope size={18} />, path: '/lab-team-lead', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer', 'lab_micro_specialist'] },
         { configKey: 'lab_manager_hub', name: 'Lab Manager Hub', icon: <BarChart3 size={18} />, path: '/lab-manager', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'] },
         { configKey: 'lab_equipment', name: 'Equipment & PPM', icon: <Wrench size={18} />, path: '/lab/equipment', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
         { configKey: 'lab_archive', name: 'Document Archive', icon: <Archive size={18} />, path: '/lab/archive', requiredPerm: null, allowedRoles: ['lab_hod', 'head_histopathology', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'admin', 'deputy_coo', 'chairman'] },
