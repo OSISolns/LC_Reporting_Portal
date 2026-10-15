@@ -63,6 +63,9 @@ export default function ProformaInvoiceBuilder({
           if (parsed && parsed.formData) {
             return {
               ...parsed.formData,
+              contact_person: (!parsed.formData.contact_person || parsed.formData.contact_person.includes('sales@'))
+                ? 'Sofia, 0787363970, E-mail: sofia@legacyclinics.rw'
+                : parsed.formData.contact_person,
               items: Array.isArray(parsed.formData.items) ? parsed.formData.items : []
             };
           }
@@ -89,7 +92,7 @@ export default function ProformaInvoiceBuilder({
       currency: 'RWF',
       prepared_by_title: userRoleFormatted,
       prepared_by_name: userFullName,
-      contact_person: `${userFullName || 'Sales Officer'}, 0787363970, E-mail: sales@legacyclinics.rw`,
+      contact_person: 'Sofia, 0787363970, E-mail: sofia@legacyclinics.rw',
       notes: '',
       status: 'Draft'
     };
@@ -121,7 +124,7 @@ export default function ProformaInvoiceBuilder({
             ...prev,
             prepared_by_name: name,
             prepared_by_title: prev.prepared_by_title || role,
-            contact_person: prev.contact_person || `${name || 'Sales Officer'}, 0787363970, E-mail: sales@legacyclinics.rw`
+            contact_person: prev.contact_person || 'Sofia, 0787363970, E-mail: sofia@legacyclinics.rw'
           };
         }
         return prev;
@@ -186,7 +189,7 @@ export default function ProformaInvoiceBuilder({
           currency: 'RWF',
           prepared_by_title: userRoleFormatted,
           prepared_by_name: userFullName,
-          contact_person: `${userFullName || 'Sales Officer'}, 0787363970, E-mail: sales@legacyclinics.rw`,
+          contact_person: 'Sofia, 0787363970, E-mail: sofia@legacyclinics.rw',
           notes: '',
           status: 'Draft'
         });
@@ -1701,7 +1704,7 @@ export default function ProformaInvoiceBuilder({
                   </label>
                   <input
                     type="text"
-                    value={formData.contact_person}
+                    value={formData.contact_person || 'Sofia, 0787363970, E-mail: sofia@legacyclinics.rw'}
                     onChange={(e) => setFormData(p => ({ ...p, contact_person: e.target.value }))}
                     style={{
                       width: '100%',

@@ -303,7 +303,9 @@ export default function ProformaInvoicePrintView({ proforma }) {
         color: '#4b5563',
         lineHeight: '1.5'
       }}>
-        <div>{proforma.contact_person || 'If you have any questions about this proforma, please contact Sofia, 0787363970, E-mail: sofia@legacyclinics.rw'}</div>
+        <div>
+          If you have any questions about this proforma, please contact {proforma.contact_person && !proforma.contact_person.includes('sales@') && !proforma.contact_person.includes('Sales Officer') ? (proforma.contact_person.replace(/^If you have any questions about this proforma,\s*(please\s*)?contact\s*/i, '')) : 'Sofia, 0787363970, E-mail: sofia@legacyclinics.rw'}
+        </div>
         <div style={{ fontWeight: 800, color: '#0284c7', fontSize: '11px', marginTop: '4px', letterSpacing: '0.5px' }}>
           Thank You For Your Business!
         </div>
