@@ -3,7 +3,7 @@ import {
   FlaskConical, Activity, Clock, AlertTriangle, ShieldCheck,
   RefreshCw, CheckCircle2, ChevronRight, AlertOctagon, UserCheck,
   Zap, Layers, BarChart2, CheckSquare, Square, Microscope,
-  ArrowRight, Search, Filter, ShieldAlert, Cpu, Bell, Send,
+  ArrowRight, Search, Filter, ShieldAlert, Cpu, Send,
   FileCheck, Users, HelpCircle, AlertCircle, PlusCircle, ExternalLink
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -38,11 +38,6 @@ export default function LabTeamLeadDashboard() {
     corrective_action: ''
   });
 
-  // Bench Handover / Broadcast note (saved in local storage)
-  const [handoverNote, setHandoverNote] = useState(() => {
-    return localStorage.getItem('lc_lab_lead_handover_notes') || 'Morning Shift: All main hematology and chemistry analyzers calibrated. Stat turnaround time benchmark active.';
-  });
-  const [isEditingNote, setIsEditingNote] = useState(false);
 
   // Bench assignments (local state saved in localStorage for the shift)
   const [benchAssignments, setBenchAssignments] = useState(() => {
@@ -176,11 +171,6 @@ export default function LabTeamLeadDashboard() {
     toast.success(`Bench assignment updated: ${bench} → ${personName}`);
   };
 
-  const saveHandoverNote = () => {
-    localStorage.setItem('lc_lab_lead_handover_notes', handoverNote);
-    setIsEditingNote(false);
-    toast.success('Shift handover notes broadcast updated.');
-  };
 
   if (!isAuthorizedLead) {
     return (
@@ -273,55 +263,6 @@ export default function LabTeamLeadDashboard() {
         </div>
       </div>
 
-      {/* ── BROADCAST HANDOVER NOTIFICATION ── */}
-      <div className="p-4 bg-amber-50/90 rounded-2xl border border-amber-200/80 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-amber-100 text-amber-800 rounded-xl mt-0.5">
-            <Bell size={18} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-xs font-black text-amber-900 uppercase tracking-wide">Shift Handover & Bench Directives</h4>
-              <span className="text-[10px] text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-full font-bold">Team Lead Broadcast</span>
-            </div>
-            {isEditingNote ? (
-              <div className="mt-2 flex flex-col gap-2">
-                <textarea
-                  value={handoverNote}
-                  onChange={(e) => setHandoverNote(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-amber-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-sans"
-                  rows={2}
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={saveHandoverNote}
-                    className="px-3 py-1 bg-amber-800 hover:bg-amber-900 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
-                  >
-                    Save & Broadcast
-                  </button>
-                  <button
-                    onClick={() => setIsEditingNote(false)}
-                    className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-amber-800 mt-0.5 font-medium leading-relaxed">{handoverNote}</p>
-            )}
-          </div>
-        </div>
-
-        {!isEditingNote && (
-          <button
-            onClick={() => setIsEditingNote(true)}
-            className="text-[11px] font-bold text-amber-900 bg-amber-200/50 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap self-end sm:self-auto"
-          >
-            Edit Directives
-          </button>
-        )}
-      </div>
 
       {/* ── KPI METRICS CARDS ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">

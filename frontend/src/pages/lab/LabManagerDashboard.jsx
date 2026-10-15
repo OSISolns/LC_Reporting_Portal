@@ -75,12 +75,20 @@ export default function LabManagerDashboard() {
             This executive dashboard contains departmental turnaround times, analyzer uptime, and manager quality approvals reserved for Laboratory Managers and Leadership.
           </p>
         </div>
-        <button
-          onClick={() => navigate('/lab')}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-        >
-          Return to Laboratory Hub
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
+          <button
+            onClick={() => navigate('/lab-team-lead')}
+            className="px-4 py-2 bg-[#0d47a1] hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+          >
+            Open Team Leader Dashboard
+          </button>
+          <button
+            onClick={() => navigate('/lab')}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+          >
+            Return to Laboratory Hub
+          </button>
+        </div>
       </div>
     );
   }
