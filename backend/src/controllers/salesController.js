@@ -59,7 +59,10 @@ async function generateNextInvoiceNumber() {
  */
 async function getProformas(req, res) {
   try {
-    const { status, search, limit = 50, offset = 0 } = req.query;
+    const { status, search, startDate, endDate, from_date, to_date, limit = 50, offset = 0 } = req.query;
+
+    const from = startDate || from_date;
+    const to = endDate || to_date;
 
     let sql = `SELECT * FROM proforma_invoices WHERE 1=1`;
     const params = [];
@@ -69,14 +72,27 @@ async function getProformas(req, res) {
       params.push(status);
     }
 
+    if (from) {
+      sql += ` AND invoice_date >= ?`;
+      params.push(from);
+    }
+
+    if (to) {
+      sql += ` AND invoice_date <= ?`;
+      params.push(to);
+    }
+
     if (search && search.trim()) {
       const term = `%${search.trim().toLowerCase()}%`;
       sql += ` AND (LOWER(invoice_number) LIKE ? OR LOWER(customer_name) LIKE ? OR LOWER(customer_email) LIKE ? OR LOWER(customer_phone) LIKE ?)`;
       params.push(term, term, term, term);
     }
 
-    sql += ` ORDER BY id DESC LIMIT ? OFFSET ?`;
-    params.push(Number(limit), Number(offset));
+    sql += ` ORDER BY id DESC`;
+
+    const parsedLimit = (limit === 'all' || limit === '0' || Number(limit) === 0) ? 10000 : Number(limit);
+    sql += ` LIMIT ? OFFSET ?`;
+    params.push(parsedLimit, Number(offset));
 
     const rows = await q(sql, params);
 
@@ -95,6 +111,14 @@ async function getProformas(req, res) {
       countSql += ` AND status = ?`;
       countParams.push(status);
     }
+    if (from) {
+      countSql += ` AND invoice_date >= ?`;
+      countParams.push(from);
+    }
+    if (to) {
+      countSql += ` AND invoice_date <= ?`;
+      countParams.push(to);
+    }
     if (search && search.trim()) {
       const term = `%${search.trim().toLowerCase()}%`;
       countSql += ` AND (LOWER(invoice_number) LIKE ? OR LOWER(customer_name) LIKE ? OR LOWER(customer_email) LIKE ? OR LOWER(customer_phone) LIKE ?)`;
@@ -106,7 +130,7 @@ async function getProformas(req, res) {
       success: true,
       data: proformas,
       total: countRow?.total || 0,
-      limit: Number(limit),
+      limit: parsedLimit,
       offset: Number(offset)
     });
   } catch (err) {
