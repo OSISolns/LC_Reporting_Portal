@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Search, Filter, Plus, Printer, Mail, Edit3, Trash2, Eye, Download,
-  CheckCircle2, Clock, XCircle, FileSpreadsheet, RefreshCw, Copy, Send
+  CheckCircle2, Clock, XCircle, FileSpreadsheet, RefreshCw, Copy, Send, X
 } from 'lucide-react';
 import { getProformas, deleteProforma, updateProforma, sendProformaEmail } from '../../api/sales';
 import ProformaInvoicePrintView from './ProformaInvoicePrintView';
@@ -44,6 +44,18 @@ export default function ProformaList({
     }, 200);
     return () => clearTimeout(timer);
   }, [search, statusFilter]);
+
+  // Handle Escape key to close open modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedForPreview(null);
+        setSelectedForEmail(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleDelete = async (p) => {
     if (!window.confirm(`Are you sure you want to delete proforma ${p.invoice_number} for ${p.customer_name}?`)) {
@@ -461,27 +473,69 @@ export default function ProformaList({
 
       {/* ── Modal: Preview & Print ── */}
       {selectedForPreview && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(0,0,0,0.65)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '20px'
-        }}>
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedForPreview(null);
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '32px 16px',
+            overflowY: 'auto'
+          }}
+        >
           <div style={{
+            position: 'relative',
             backgroundColor: '#ffffff',
             borderRadius: '16px',
-            maxWidth: '900px',
+            maxWidth: '920px',
             width: '100%',
-            maxHeight: '92vh',
             display: 'flex',
             flexDirection: 'column',
-            overflow: 'hidden',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.3)'
+            boxShadow: '0 25px 60px rgba(0,0,0,0.35)',
+            marginBottom: '40px'
           }}>
+            {/* Floating circular (X) close button */}
+            <button
+              type="button"
+              onClick={() => setSelectedForPreview(null)}
+              title="Close Preview (Esc)"
+              aria-label="Close"
+              style={{
+                position: 'absolute',
+                top: '-14px',
+                right: '-14px',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: '#ffffff',
+                border: '2px solid #cbd5e1',
+                boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#1e293b',
+                zIndex: 100,
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f1f5f9';
+                e.currentTarget.style.transform = 'scale(1.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#ffffff';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <X size={22} strokeWidth={2.5} />
+            </button>
+
             {/* Modal Header */}
             <div style={{
               display: 'flex',
@@ -489,7 +543,9 @@ export default function ProformaList({
               alignItems: 'center',
               padding: '16px 24px',
               borderBottom: '1px solid #e2e8f0',
-              backgroundColor: '#f8fafc'
+              backgroundColor: '#f8fafc',
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '16px'
             }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
@@ -523,22 +579,28 @@ export default function ProformaList({
                 <button
                   type="button"
                   onClick={() => setSelectedForPreview(null)}
+                  title="Close (Esc)"
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '1.4rem',
-                    color: '#64748b',
-                    cursor: 'pointer',
-                    padding: '0 4px'
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#f1f5f9',
+                    fontSize: '0.85rem',
+                    color: '#334155',
+                    fontWeight: 700,
+                    cursor: 'pointer'
                   }}
                 >
-                  ×
+                  <X size={16} /> Close
                 </button>
               </div>
             </div>
 
             {/* Modal Body: Printable sheet */}
-            <div style={{ overflowY: 'auto', padding: '24px', backgroundColor: '#f1f5f9' }}>
+            <div style={{ padding: '24px', backgroundColor: '#f1f5f9' }}>
               <div
                 id="proforma-list-modal-sheet"
                 style={{
@@ -551,6 +613,58 @@ export default function ProformaList({
               >
                 <ProformaInvoicePrintView proforma={selectedForPreview} />
               </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 24px',
+              borderTop: '1px solid #e2e8f0',
+              backgroundColor: '#f8fafc',
+              borderBottomLeftRadius: '16px',
+              borderBottomRightRadius: '16px'
+            }}>
+              <button
+                type="button"
+                onClick={() => printProformaDocument('proforma-list-modal-sheet', `Proforma_${selectedForPreview?.invoice_number || 'Legacy_Clinics'}`)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: '#003b44',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <Printer size={15} /> Print / PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedForPreview(null)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: '#ffffff',
+                  color: '#475569',
+                  border: '1px solid #cbd5e1',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={16} /> Close
+              </button>
             </div>
           </div>
         </div>

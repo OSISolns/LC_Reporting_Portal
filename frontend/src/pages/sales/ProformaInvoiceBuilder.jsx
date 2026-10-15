@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Save, Printer, Mail, Plus, Trash2, RefreshCw, Eye, CheckCircle2,
   FileSpreadsheet, Sparkles, Building2, User, Phone, DollarSign, Calendar,
-  ChevronDown, AlertCircle, ArrowLeft, Send, Copy, Search, Shield, Check, UserCheck
+  ChevronDown, AlertCircle, ArrowLeft, Send, Copy, Search, Shield, Check, UserCheck, X
 } from 'lucide-react';
 import ProformaInvoicePrintView from './ProformaInvoicePrintView';
 import { createProforma, updateProforma, getSalesCatalog, sendProformaEmail } from '../../api/sales';
@@ -42,28 +42,158 @@ export default function ProformaInvoiceBuilder({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const autocompleteRef = useRef(null);
 
-  // Form State - Empty by default
-  const [formData, setFormData] = useState({
-    invoice_number: '',
-    invoice_date: new Date().toISOString().split('T')[0],
-    due_date: 'N/A',
-    customer_id: '',
-    customer_name: '',
-    customer_email: '',
-    customer_phone: '',
-    customer_tin: '',
-    customer_address: '',
-    items: [],
-    taxable_amount: 0,
-    tax_due: 0,
-    other_fees: 0,
-    currency: 'RWF',
-    prepared_by_title: 'Sales Manager',
-    prepared_by_name: user?.fullName || user?.full_name || 'Sofia (Sales Manager)',
-    contact_person: 'Sofia, 0787363970, E-mail: sofia@legacyclinics.rw',
-    notes: '',
-    status: 'Draft'
+  // Dynamic user display name & role
+  const userFullName = user?.fullName || user?.full_name || user?.name || user?.username || '';
+  const userRoleFormatted = user?.role ? user.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Sales Manager';
+
+  // Storage key for autosaving drafts
+  const draftStorageKey = useMemo(() => {
+    return initialProforma?.id 
+      ? `lc_proforma_draft_${initialProforma.id}` 
+      : 'lc_proforma_draft_new';
+  }, [initialProforma?.id]);
+
+  // Form State - Empty by default, restored from draft if available
+  const [formData, setFormData] = useState(() => {
+    if (!initialProforma) {
+      try {
+        const savedDraft = localStorage.getItem('lc_proforma_draft_new');
+        if (savedDraft) {
+          const parsed = JSON.parse(savedDraft);
+          if (parsed && parsed.formData) {
+            return {
+              ...parsed.formData,
+              items: Array.isArray(parsed.formData.items) ? parsed.formData.items : []
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Could not restore proforma draft:', err);
+      }
+    }
+
+    return {
+      invoice_number: '',
+      invoice_date: new Date().toISOString().split('T')[0],
+      due_date: 'N/A',
+      customer_id: '',
+      customer_name: '',
+      customer_email: '',
+      customer_phone: '',
+      customer_tin: '',
+      customer_address: '',
+      items: [],
+      taxable_amount: 0,
+      tax_due: 0,
+      other_fees: 0,
+      currency: 'RWF',
+      prepared_by_title: userRoleFormatted,
+      prepared_by_name: userFullName,
+      contact_person: `${userFullName || 'Sales Officer'}, 0787363970, E-mail: sales@legacyclinics.rw`,
+      notes: '',
+      status: 'Draft'
+    };
   });
+
+  // Autosave Status state
+  const [autosaveStatus, setAutosaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
+  const [lastAutosavedAt, setLastAutosavedAt] = useState(() => {
+    try {
+      const saved = localStorage.getItem(initialProforma?.id ? `lc_proforma_draft_${initialProforma.id}` : 'lc_proforma_draft_new');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed?.savedAt ? new Date(parsed.savedAt) : null;
+      }
+    } catch (e) {}
+    return null;
+  });
+
+  const isInitialMount = useRef(true);
+
+  // Sync logged in user if field was empty
+  useEffect(() => {
+    if (!initialProforma && user) {
+      const name = user.fullName || user.full_name || user.name || user.username || '';
+      const role = user.role ? user.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Sales Manager';
+      setFormData(prev => {
+        if (!prev.prepared_by_name) {
+          return {
+            ...prev,
+            prepared_by_name: name,
+            prepared_by_title: prev.prepared_by_title || role,
+            contact_person: prev.contact_person || `${name || 'Sales Officer'}, 0787363970, E-mail: sales@legacyclinics.rw`
+          };
+        }
+        return prev;
+      });
+    }
+  }, [user, initialProforma]);
+
+  // Debounced Autosave effect
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    setAutosaveStatus('saving');
+    const timer = setTimeout(() => {
+      try {
+        const payload = {
+          formData,
+          savedAt: new Date().toISOString()
+        };
+        localStorage.setItem(draftStorageKey, JSON.stringify(payload));
+        setAutosaveStatus('saved');
+        setLastAutosavedAt(new Date());
+      } catch (e) {
+        console.error('Autosave failed:', e);
+        setAutosaveStatus('idle');
+      }
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [formData, draftStorageKey]);
+
+  const handleDiscardDraft = () => {
+    if (window.confirm('Discard your unsaved draft and reset all fields?')) {
+      try {
+        localStorage.removeItem(draftStorageKey);
+      } catch (e) {}
+      setLastAutosavedAt(null);
+      setAutosaveStatus('idle');
+
+      if (initialProforma) {
+        setFormData({
+          ...initialProforma,
+          items: Array.isArray(initialProforma.items) ? initialProforma.items : []
+        });
+      } else {
+        setFormData({
+          invoice_number: '',
+          invoice_date: new Date().toISOString().split('T')[0],
+          due_date: 'N/A',
+          customer_id: '',
+          customer_name: '',
+          customer_email: '',
+          customer_phone: '',
+          customer_tin: '',
+          customer_address: '',
+          items: [],
+          taxable_amount: 0,
+          tax_due: 0,
+          other_fees: 0,
+          currency: 'RWF',
+          prepared_by_title: userRoleFormatted,
+          prepared_by_name: userFullName,
+          contact_person: `${userFullName || 'Sales Officer'}, 0787363970, E-mail: sales@legacyclinics.rw`,
+          notes: '',
+          status: 'Draft'
+        });
+      }
+      toast.success('Unsaved draft discarded');
+    }
+  };
 
   useEffect(() => {
     if (initialProforma) {
@@ -320,6 +450,11 @@ export default function ProformaInvoiceBuilder({
         toast.success(`Proforma ${res.data.data.invoice_number} created successfully!`);
         setFormData(res.data.data);
       }
+      try {
+        localStorage.removeItem(draftStorageKey);
+      } catch (e) {}
+      setLastAutosavedAt(null);
+      setAutosaveStatus('idle');
       onSaved(res.data.data);
     } catch (err) {
       console.error(err);
@@ -411,7 +546,7 @@ export default function ProformaInvoiceBuilder({
             </button>
           )}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
                 {formData.id ? `Edit Proforma #${formData.invoice_number}` : 'New Proforma Invoice'}
               </h2>
@@ -425,6 +560,58 @@ export default function ProformaInvoiceBuilder({
               }}>
                 {formData.status || 'Draft'}
               </span>
+
+              {/* Autosave Status Badge */}
+              {autosaveStatus === 'saving' && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.73rem',
+                  fontWeight: 600,
+                  backgroundColor: '#f1f5f9',
+                  color: '#475569',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <RefreshCw size={11} className="animate-spin text-blue-500" /> Autosaving...
+                </span>
+              )}
+              {autosaveStatus !== 'saving' && lastAutosavedAt && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.73rem',
+                    fontWeight: 600,
+                    backgroundColor: '#f0fdf4',
+                    color: '#15803d',
+                    border: '1px solid #bbf7d0'
+                  }}>
+                    <CheckCircle2 size={11} /> Autosaved {lastAutosavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDiscardDraft}
+                    style={{
+                      fontSize: '0.72rem',
+                      color: '#dc2626',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      padding: '2px 4px'
+                    }}
+                    title="Discard saved draft and reset fields"
+                  >
+                    Discard Draft
+                  </button>
+                </div>
+              )}
             </div>
             <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
               Official Legacy Clinics &amp; Diagnostics Quotation &amp; Proforma Invoice Generator
@@ -580,6 +767,7 @@ export default function ProformaInvoiceBuilder({
         style={
           activeViewTab === 'preview'
             ? {
+                position: 'relative',
                 backgroundColor: '#f8fafc',
                 padding: '24px',
                 borderRadius: '16px',
@@ -595,13 +783,115 @@ export default function ProformaInvoiceBuilder({
               }
         }
       >
+        {activeViewTab === 'preview' && (
+          <div style={{
+            maxWidth: '860px',
+            margin: '0 auto 16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#ffffff',
+            padding: '12px 18px',
+            borderRadius: '12px',
+            border: '1px solid #cbd5e1',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a' }}>
+                Preview Mode
+              </span>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Showing official A4 quotation sheet
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => printProformaDocument('proforma-printable-sheet', `Proforma_${formData.invoice_number || 'Legacy_Clinics'}`)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: '#003b44',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <Printer size={14} /> Print / Save PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveViewTab('editor')}
+                title="Close Preview (X)"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: '#f1f5f9',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={15} /> Close Preview
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{
+          position: 'relative',
           maxWidth: '860px',
           margin: '0 auto',
           backgroundColor: '#ffffff',
           boxShadow: activeViewTab === 'preview' ? '0 4px 20px rgba(0,0,0,0.08)' : 'none',
           borderRadius: '4px'
         }}>
+          {activeViewTab === 'preview' && (
+            <button
+              type="button"
+              onClick={() => setActiveViewTab('editor')}
+              title="Close Preview (X)"
+              aria-label="Close Preview"
+              style={{
+                position: 'absolute',
+                top: '-12px',
+                right: '-12px',
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                backgroundColor: '#ffffff',
+                border: '2px solid #cbd5e1',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#0f172a',
+                zIndex: 50,
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f1f5f9';
+                e.currentTarget.style.transform = 'scale(1.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#ffffff';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <X size={20} strokeWidth={2.5} />
+            </button>
+          )}
           <ProformaInvoicePrintView proforma={{ ...formData, subtotal, total_amount: totalAmount }} />
         </div>
       </div>

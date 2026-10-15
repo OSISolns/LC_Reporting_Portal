@@ -1,10 +1,12 @@
 import React from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * Pixel-perfect printable Proforma Invoice component matching the official
  * Legacy Clinics & Diagnostics Ltd layout.
  */
 export default function ProformaInvoicePrintView({ proforma }) {
+  const { user } = useAuth() || {};
   if (!proforma) return null;
 
   const items = Array.isArray(proforma.items) ? proforma.items : [];
@@ -13,6 +15,19 @@ export default function ProformaInvoicePrintView({ proforma }) {
     const num = Number(val);
     return isNaN(num) ? val : num.toLocaleString();
   };
+
+  // Dynamic User & Role formatting
+  let displayName = proforma.prepared_by_name || user?.fullName || user?.full_name || user?.username || 'Staff';
+  let displayTitle = proforma.prepared_by_title || (user?.role ? user.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Sales Manager');
+
+  // Handle case where role was included inside the name string, e.g. "Name (Role)"
+  const roleMatch = displayName.match(/^(.*?)\s*\((.*?)\)$/);
+  if (roleMatch) {
+    displayName = roleMatch[1].trim();
+    if (!proforma.prepared_by_title) {
+      displayTitle = roleMatch[2].trim();
+    }
+  }
 
   return (
     <div className="proforma-print-container" style={{
@@ -209,7 +224,7 @@ export default function ProformaInvoicePrintView({ proforma }) {
           {/* Prepared by signatures */}
           <div style={{ marginTop: '20px', fontSize: '11px', color: '#1f2937', lineHeight: '1.6' }}>
             <div>
-              Prepared by: <strong>{proforma.prepared_by_name || 'Sales Manager'}</strong> {proforma.prepared_by_title ? `(${proforma.prepared_by_title})` : ''}
+              Prepared by: <strong>{displayName}</strong> {displayTitle ? `(${displayTitle})` : ''}
             </div>
             <div style={{ fontWeight: 700, color: '#0f172a', marginTop: '6px' }}>
               For Legacy Clinics Management

@@ -8,7 +8,8 @@ import {
   MessageSquare, Activity, Building, ShieldAlert, TrendingDown, ShieldCheck,
   Server, Database, Sliders, UserCheck, CheckSquare, Square, RotateCcw,
   FlaskConical, Heart, Dumbbell, Settings, ScanLine, ArrowRight,
-  Layers, Truck, Menu, UserPlus, FileSpreadsheet, BarChart3, Microscope
+  Layers, Truck, Menu, UserPlus, FileSpreadsheet, BarChart3, Microscope,
+  AlertOctagon
 } from 'lucide-react';
 import {
   getModules, getRoleMatrix, updateRolePermissions, createRole,
