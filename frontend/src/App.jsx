@@ -56,7 +56,6 @@ import LabManagerDashboard from './pages/lab/LabManagerDashboard';
 import LabAnalyzers from './pages/lab/LabAnalyzers';
 import LabEquipment from './pages/lab/LabEquipment';
 import LabArchive from './pages/lab/LabArchive';
-import LabUnitsHub from './pages/lab/LabUnitsHub';
 import DentalHub from './pages/dental/DentalHub';
 import OdontogramDetailsPage from './pages/dental/OdontogramDetailsPage';
 import PhysioHub from './pages/physio/PhysioHub';
@@ -189,16 +188,7 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/lab/units" element={
-              <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm',
-                'lab_safety_officer', 'lab_stock_officer', 'head_microbiology', 'head_hematology',
-                'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology',
-                'lab_micro_specialist', 'lab_scientist', 'lab_tech', 'lab_team_lead', 'lab_lead', 'lab'
-              ]}>
-                <LabUnitsHub />
-              </ProtectedRoute>
-            } />
+            <Route path="/lab/units" element={<Navigate to="/lab" replace />} />
 
             <Route path="/lab-manager" element={
               <ProtectedRoute allowedRoles={[
