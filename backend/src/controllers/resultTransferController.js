@@ -9,9 +9,12 @@ const User = require('../models/user');
 
 const IMAGING_ROLES = ['imaging_tech', 'imaging_manager', 'sono', 'radiologist'];
 const LAB_ROLES = [
-  'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab',
+  'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+  'lab_team_lead', 'lab_lead', 'lab_tech', 'lab',
   'lab_head', 'lab_supervisor', 'lab_safety_officer', 'lab_stock_officer',
-  'head_microbiology', 'head_hematology', 'quality_manager', 'qm'
+  'head_microbiology', 'head_hematology', 'head_histopathology',
+  'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+  'lab_micro_specialist', 'lab_scientist'
 ];
 
 function getUserDepartmentScope(userRole) {
@@ -91,7 +94,12 @@ exports.updateRequest = async (req, res, next) => {
     if (existing.status !== 'pending' && existing.status !== 'draft') {
       return res.status(400).json({ success: false, message: 'Only pending or draft requests can be edited.' });
     }
-    const privilegedRoles = ['lab_team_lead', 'lab_lead', 'lab_manager', 'imaging_manager', 'sales_manager', 'coo', 'deputy_coo', 'admin'];
+    const privilegedRoles = [
+      'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+      'lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology',
+      'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+      'lab_micro_specialist', 'imaging_manager', 'sales_manager', 'coo', 'deputy_coo', 'admin'
+    ];
     if (Number(existing.created_by) !== Number(req.user.id) && !privilegedRoles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Access denied: You can only edit your own pending or draft requests.' });
     }
@@ -116,10 +124,13 @@ exports.getAllRequests = async (req, res, next) => {
     }
 
     const privilegedRoles = [
-      'lab_team_lead', 'lab_lead', 'lab_manager', 
-      'imaging_manager', 'imaging_tech',
+      'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+      'lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology',
+      'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+      'lab_micro_specialist', 'lab_scientist', 'lab_safety_officer', 'lab_tech', 'lab',
+      'imaging_manager', 'imaging_tech', 'sono', 'radiologist',
       'sales_manager', 'coo', 'deputy_coo', 'admin', 'chairman', 
-      'principal_cashier', 'operations_staff'
+      'principal_cashier', 'operations_staff', 'operations'
     ];
     const isPrivileged = privilegedRoles.includes(req.user.role);
     if (!isPrivileged) {

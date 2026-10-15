@@ -23,13 +23,16 @@ const EMPTY_FORM = {
 };
 
 const ResultTransferList = () => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
   const isImagingUser = ['imaging_tech', 'imaging_manager', 'sono', 'radiologist'].includes(user?.role);
   const isLabUser = [
-    'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab',
+    'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+    'lab_team_lead', 'lab_lead', 'lab_tech', 'lab',
     'lab_head', 'lab_supervisor', 'lab_safety_officer', 'lab_stock_officer',
-    'head_microbiology', 'head_hematology'
+    'head_microbiology', 'head_hematology', 'head_histopathology',
+    'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+    'lab_micro_specialist', 'lab_scientist'
   ].includes(user?.role);
   const isScoped = isImagingUser || isLabUser;
   const userDept = isImagingUser ? 'Imaging' : isLabUser ? 'Laboratory' : '';
@@ -194,9 +197,13 @@ const ResultTransferList = () => {
     }
   };
 
-  const canCreate = hasPermission('results_transfer', 'create') || [
+  const canCreate = (typeof hasPermission === 'function' && hasPermission('results_transfer', 'create')) || [
     'cashier', 'customer_care', 'operations_staff', 'operations', 'operations_manager', 'ops_lead', 
-    'imaging_tech', 'imaging_manager', 'lab_team_lead', 'lab_lead', 'lab_manager', 'admin'
+    'imaging_tech', 'imaging_manager', 'sono', 'radiologist',
+    'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_hod', 'quality_manager', 'qm',
+    'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct',
+    'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist',
+    'lab_safety_officer', 'lab_stock_officer', 'lab_tech', 'lab', 'admin'
   ].includes(user?.role);
 
   return (

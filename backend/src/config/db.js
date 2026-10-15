@@ -4016,13 +4016,18 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         args: ['medical_director']
       });
       if (roles.length > 0) {
-        await client.execute({
-          sql: `INSERT INTO users (full_name, username, email, password_hash, role_id) 
-                VALUES (?, ?, ?, ?, ?) 
-                ON CONFLICT (username) DO NOTHING`,
-          args: ['Dr. Miranda Bailey', 'director_miranda', 'miranda@legacyclinics.rw', passwordHash, roles[0].id]
+        const { rows: existingMiranda } = await client.execute({
+          sql: 'SELECT id FROM users WHERE username = ?',
+          args: ['director_miranda']
         });
-        console.log('✅ SQLite Schema Migration: registered test Medical Director user (director_miranda)');
+        if (existingMiranda.length === 0) {
+          await client.execute({
+            sql: `INSERT INTO users (full_name, username, email, password_hash, role_id) 
+                  VALUES (?, ?, ?, ?, ?)`,
+            args: ['Dr. Miranda Bailey', 'director_miranda', 'miranda@legacyclinics.rw', passwordHash, roles[0].id]
+          });
+          console.log('✅ SQLite Schema Migration: registered test Medical Director user (director_miranda)');
+        }
       }
     } catch (err) {
       console.error('❌ Failed to setup medical_director role/permissions:', err);
@@ -4487,13 +4492,18 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         args: ['procurement-manager']
       });
       if (pmRoles.length > 0) {
-        await client.execute({
-          sql: `INSERT INTO users (full_name, username, email, password_hash, role_id) 
-                VALUES (?, ?, ?, ?, ?) 
-                ON CONFLICT (username) DO NOTHING`,
-          args: ['Jean Procurement', 'procurement_jean', 'jean@legacyclinics.rw', passwordHash, pmRoles[0].id]
+        const { rows: existingJean } = await client.execute({
+          sql: 'SELECT id FROM users WHERE username = ?',
+          args: ['procurement_jean']
         });
-        console.log('✅ SQLite Schema Migration: registered test Procurement Manager user (procurement_jean)');
+        if (existingJean.length === 0) {
+          await client.execute({
+            sql: `INSERT INTO users (full_name, username, email, password_hash, role_id) 
+                  VALUES (?, ?, ?, ?, ?)`,
+            args: ['Jean Procurement', 'procurement_jean', 'jean@legacyclinics.rw', passwordHash, pmRoles[0].id]
+          });
+          console.log('✅ SQLite Schema Migration: registered test Procurement Manager user (procurement_jean)');
+        }
       }
     } catch (err) {
       console.error('❌ Failed to setup procurement-manager role/permissions:', err);

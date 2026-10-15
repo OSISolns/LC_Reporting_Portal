@@ -1436,7 +1436,7 @@ exports.getTeamLeadSummary = async (req, res, next) => {
 
     // 7. Active NCRs for Team Lead Awareness
     const { rows: activeNcrs } = await db.query(`
-      SELECT id, ncr_number, title, unit, significance, status, occurred_at 
+      SELECT id, ncr_number, description as title, unit, significance, status, occurred_at 
       FROM lab_ncr 
       WHERE status != 'closed' 
       ORDER BY occurred_at DESC LIMIT 5

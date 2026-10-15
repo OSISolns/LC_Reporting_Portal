@@ -35,6 +35,13 @@ const MODULES = [
   { name: 'physio',           display: 'Physiotherapy Portal',                       actions: ['view','create','edit','delete'] },
   { name: 'operations',       display: 'Operations Portal',                          actions: ['view','create','edit','delete'] },
   { name: 'logistics',        display: 'Logistics Portal & Hub',                     actions: ['view','create','edit','approve','delete'] },
+  { name: 'sales',            display: 'Sales & Invoicing Hub',                      actions: ['view','create','edit','delete'] },
+  { name: 'roster',           display: 'Roster & Scheduling Generator',              actions: ['view','create','edit','delete'] },
+  { name: 'archive',          display: 'Document Archive & Records',                 actions: ['view','create','download','delete'] },
+  { name: 'providers',        display: 'Healthcare Providers Directory',             actions: ['view','create','edit','delete'] },
+  { name: 'consumables',      display: 'Consumables & Reagents Log',                 actions: ['view','create','edit'] },
+  { name: 'supplier_portal',  display: 'Supplier Portal & Vendor Management',        actions: ['view','create','edit','delete'] },
+  { name: 'ncr',              display: 'Non-Conformance Reports (NCR)',              actions: ['view','create','edit','review','approve','delete'] },
 ];
 
 /**
@@ -69,6 +76,13 @@ const ROLE_DEFAULTS = {
     physio:           { view:1, create:1, edit:1, delete:1 },
     operations:       { view:1, create:1, edit:1, delete:1 },
     logistics:        { view:1, create:1, edit:1, approve:1, delete:1 },
+    sales:            { view:1, create:1, edit:1, delete:1 },
+    roster:           { view:1, create:1, edit:1, delete:1 },
+    archive:          { view:1, create:1, download:1, delete:1 },
+    providers:        { view:1, create:1, edit:1, delete:1 },
+    consumables:      { view:1, create:1, edit:1 },
+    supplier_portal:  { view:1, create:1, edit:1, delete:1 },
+    ncr:              { view:1, create:1, edit:1, review:1, approve:1, delete:1 },
   },
   logistics_manager: {
     incident_reports: { view:1, create:1, edit:1, approve:1 },
@@ -867,6 +881,33 @@ const ROLE_DEFAULTS = {
     patients:         { view:1, create:0 },
     imaging:          { view:1, create:1, edit:1, acquire:1, report:1, verify:1, delete:1 },
   },
+  radiologist: {
+    results_transfer: { view:1, create:1, edit:1, review:1, approve:1, reject:1 },
+    incident_reports: { view:1, create:1, edit:1, approve:0 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    inventory:        { view:1, create:0, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:0 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
+    imaging:          { view:1, create:1, edit:1, acquire:1, report:1, verify:1, delete:0 },
+    archive:          { view:1, create:1, download:1, delete:0 },
+    consumables:      { view:1, create:1, edit:0 },
+  },
+  sono: {
+    results_transfer: { view:1, create:1, edit:1, review:0, approve:0, reject:0 },
+    incident_reports: { view:1, create:1, edit:0, approve:0 },
+    reports:          { view:1, download:1 },
+    staff_performance:{ view:1, create:0 },
+    shifts:           { view:1, create:0, edit:0, review:0, delete:0 },
+    inventory:        { view:1, create:0, edit:0, delete:0 },
+    daily_stock:      { view:1, edit:1 },
+    it_support:       { view:1, create:1 },
+    patients:         { view:1, create:1 },
+    imaging:          { view:1, create:1, edit:1, acquire:1, report:1, verify:0, delete:0 },
+    consumables:      { view:1, create:1, edit:0 },
+  },
 
   // ── Dental Department Roles ──────────────────────────────────────────────
   dental_hod: {
@@ -916,6 +957,7 @@ const ROLE_DEFAULTS = {
     dental:           { view:1, create:1, edit:1, delete:0 },
   },
   lab_tech: {
+    results_transfer: { view:1, create:1, edit:0, approve:0, reject:0 },
     incident_reports: { view:1, create:1, edit:0, approve:0 },
     reports:          { view:0, download:0 },
     staff_performance:{ view:0, create:0 },
@@ -925,8 +967,12 @@ const ROLE_DEFAULTS = {
     shifts:           { view:1, create:1, edit:1, review:0, delete:0 },
     inventory:        { view:1, create:0, edit:0, delete:0 },
     daily_stock:      { view:1, edit:1 },
+    archive:          { view:1, create:0, download:1, delete:0 },
+    consumables:      { view:1, create:1, edit:0 },
+    ncr:              { view:1, create:1, edit:0, review:0, approve:0, delete:0 },
   },
   lab: {
+    results_transfer: { view:1, create:1, edit:0, approve:0, reject:0 },
     incident_reports: { view:1, create:1, edit:0, approve:0 },
     reports:          { view:0, download:0 },
     staff_performance:{ view:0, create:0 },
@@ -936,6 +982,9 @@ const ROLE_DEFAULTS = {
     shifts:           { view:1, create:1, edit:1, review:0, delete:0 },
     inventory:        { view:1, create:0, edit:0, delete:0 },
     daily_stock:      { view:1, edit:1 },
+    archive:          { view:1, create:0, download:1, delete:0 },
+    consumables:      { view:1, create:1, edit:0 },
+    ncr:              { view:1, create:1, edit:0, review:0, approve:0, delete:0 },
   },
 
   // ── Physiotherapy Department Roles (Manager & Therapist) ───────────────────
