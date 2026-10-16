@@ -863,3 +863,90 @@ model vendors {
   is_active      Int?            @default(1)
   stock_batches  stock_batches[]
 }
+
+model risk_register {
+  id         Int       @id @default(autoincrement())
+  risk_code  String    @unique
+  title      String
+  category   String
+  likelihood Int
+  impact     Int
+  status     String    @default("Active")
+  owner      String
+  mitigation String?   @default("")
+  date       String
+  created_by Int?
+  created_at DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+}
+
+model infection_cases {
+  id                  Int       @id @default(autoincrement())
+  case_code           String    @unique
+  infection_type      String
+  department          String
+  patient_identifier  String?   @default("")
+  date                String
+  severity            String    @default("Medium")
+  status              String    @default("Active")
+  investigation_notes String?   @default("")
+  corrective_actions  String?   @default("")
+  created_by          Int?
+  created_at          DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at          DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+}
+
+model hygiene_audits {
+  id                   Int       @id @default(autoincrement())
+  audit_code           String    @unique
+  department           String
+  auditor_name         String
+  compliance_score     Float
+  total_opportunities  Int?      @default(0)
+  missed_opportunities Int?      @default(0)
+  sterilization_passed Int?      @default(1)
+  observations         String?   @default("")
+  corrective_actions   String?   @default("")
+  audit_date           String
+  created_by           Int?
+  created_at           DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+}
+
+model hsfp_inspections {
+  id                      Int       @id @default(autoincrement())
+  inspection_code         String    @unique
+  department              String
+  inspector_id            Int?
+  inspector_name          String
+  inspection_date         String
+  area_inspected          String?   @default("")
+  ppe_compliance_pct      Float     @default(100.0)
+  fire_safety_passed      Int?      @default(1)
+  waste_management_passed Int?      @default(1)
+  sharps_safety_passed    Int?      @default(1)
+  spill_kit_verified      Int?      @default(1)
+  hazard_notes            String?   @default("")
+  corrective_actions      String?   @default("")
+  status                  String    @default("Passed")
+  created_at              DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at              DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+}
+
+model hsfp_hazard_logs {
+  id                Int       @id @default(autoincrement())
+  log_code          String    @unique
+  incident_id       Int?
+  affected_staff    String
+  department        String
+  exposure_type     String
+  exposure_date     String
+  pep_initiated     Int?      @default(0)
+  source_patient_id String?   @default("")
+  immediate_actions String?   @default("")
+  follow_up_date    String?   @default("")
+  status            String    @default("Open")
+  created_by        Int?
+  created_at        DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+  updated_at        DateTime? @default(dbgenerated("strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"))
+}
+

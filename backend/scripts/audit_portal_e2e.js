@@ -34,7 +34,8 @@ async function runE2EPortalAudit() {
     const requiredTables = [
       'users', 'roles', 'role_permissions', 'permission_modules',
       'cancellation_requests', 'refund_requests', 'incident_reports',
-      'risk_register', 'infection_cases', 'hygiene_audits',
+      'safety_reports', 'risk_register', 'infection_cases', 'hygiene_audits',
+      'hsfp_inspections', 'hsfp_hazard_logs',
       'lab_orders', 'lab_results', 'lab_qc_logs', 'lab_ncr',
       'lab_analyzers', 'lab_equipment', 'lab_inhand_inventory',
       'lab_storage_units', 'lab_specimen_storage', 'lab_documents',
@@ -113,6 +114,45 @@ async function runE2EPortalAudit() {
     const createdAudit = testAuditRes.rows[0];
     assert(createdAudit && createdAudit.id, 'Logged test hygiene & sterilization audit');
     await db.query('DELETE FROM hygiene_audits WHERE id = ?', [createdAudit.id]);
+
+    // Test Workplace Health & Safety Inspection
+    const testInspRes = await db.query(
+      `INSERT INTO hsfp_inspections (
+        inspection_code, department, inspector_name, inspection_date, area_inspected,
+        ppe_compliance_pct, fire_safety_passed, waste_management_passed, sharps_safety_passed, spill_kit_verified, status
+      ) VALUES ('INSP-TEST-99', 'Emergency', 'HSFP Auditor', '2026-10-16', 'Resuscitation Unit', 98.5, 1, 1, 1, 1, 'Passed')
+       RETURNING *`
+    );
+    const createdInsp = testInspRes.rows[0];
+    assert(createdInsp && createdInsp.id, 'Logged test workplace health & safety inspection in hsfp_inspections');
+    const { rows: fetchedInsp } = await db.query('SELECT ppe_compliance_pct FROM hsfp_inspections WHERE id = ?', [createdInsp.id]);
+    assert(Math.round(fetchedInsp[0]?.ppe_compliance_pct) === 99 || fetchedInsp[0]?.ppe_compliance_pct === 98.5, 'PPE compliance percentage verified');
+    await db.query('DELETE FROM hsfp_inspections WHERE id = ?', [createdInsp.id]);
+
+    // Test Occupational Hazard & Sharps Exposure Log
+    const testHazRes = await db.query(
+      `INSERT INTO hsfp_hazard_logs (
+        log_code, affected_staff, department, exposure_type, exposure_date, pep_initiated, status
+      ) VALUES ('HAZ-TEST-99', 'Staff Nurse E2E', 'Laboratory', 'Needle Stick / Sharps Injury', '2026-10-16', 1, 'Open')
+       RETURNING *`
+    );
+    const createdHaz = testHazRes.rows[0];
+    assert(createdHaz && createdHaz.id, 'Logged test occupational hazard/exposure in hsfp_hazard_logs');
+    await db.query(`UPDATE hsfp_hazard_logs SET status = 'Closed - Safe' WHERE id = ?`, [createdHaz.id]);
+    const { rows: fetchedHaz } = await db.query('SELECT status FROM hsfp_hazard_logs WHERE id = ?', [createdHaz.id]);
+    assert(fetchedHaz[0]?.status === 'Closed - Safe', 'Updated hazard exposure status to Closed - Safe');
+    await db.query('DELETE FROM hsfp_hazard_logs WHERE id = ?', [createdHaz.id]);
+
+    // Test Safety Management Consolidated Report
+    const testReportRes = await db.query(
+      `INSERT INTO safety_reports (
+        title, period_start, period_end, executive_summary, key_findings, recommendations, status
+      ) VALUES ('E2E Q3 Safety Audit', '2026-07-01', '2026-09-30', 'Executive summary of clinical safety', 'Zero sentinel events', 'Maintain quarterly drills', 'published')
+       RETURNING *`
+    );
+    const createdReport = testReportRes.rows[0];
+    assert(createdReport && createdReport.id, 'Published consolidated clinical safety report in safety_reports');
+    await db.query('DELETE FROM safety_reports WHERE id = ?', [createdReport.id]);
 
     // ── 5. LABORATORY WORKFLOW ENGINE ──────────────────────────────────────
     console.log('\n🔬 PHASE 5: Laboratory Workflows, Panels & Quality Control Engine');

@@ -112,6 +112,119 @@ async function seed() {
       );
     `);
 
+    // HSFP Portal Tables
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS safety_reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        period_start TEXT NOT NULL,
+        period_end TEXT NOT NULL,
+        executive_summary TEXT NOT NULL DEFAULT '',
+        key_findings TEXT NOT NULL DEFAULT '',
+        recommendations TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'published',
+        created_by INTEGER REFERENCES users(id),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS risk_register (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        risk_code TEXT UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        category TEXT NOT NULL,
+        likelihood INTEGER NOT NULL,
+        impact INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'Active',
+        owner TEXT NOT NULL,
+        mitigation TEXT DEFAULT '',
+        date TEXT NOT NULL,
+        created_by INTEGER REFERENCES users(id),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS infection_cases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        case_code TEXT UNIQUE NOT NULL,
+        infection_type TEXT NOT NULL,
+        department TEXT NOT NULL,
+        patient_identifier TEXT DEFAULT '',
+        date TEXT NOT NULL,
+        severity TEXT NOT NULL DEFAULT 'Medium',
+        status TEXT NOT NULL DEFAULT 'Active',
+        investigation_notes TEXT DEFAULT '',
+        corrective_actions TEXT DEFAULT '',
+        created_by INTEGER REFERENCES users(id),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS hygiene_audits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        audit_code TEXT UNIQUE NOT NULL,
+        department TEXT NOT NULL,
+        auditor_name TEXT NOT NULL,
+        compliance_score REAL NOT NULL,
+        total_opportunities INTEGER DEFAULT 0,
+        missed_opportunities INTEGER DEFAULT 0,
+        sterilization_passed INTEGER DEFAULT 1,
+        observations TEXT DEFAULT '',
+        corrective_actions TEXT DEFAULT '',
+        audit_date TEXT NOT NULL,
+        created_by INTEGER REFERENCES users(id),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS hsfp_inspections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        inspection_code TEXT UNIQUE NOT NULL,
+        department TEXT NOT NULL,
+        inspector_id INTEGER REFERENCES users(id),
+        inspector_name TEXT NOT NULL,
+        inspection_date TEXT NOT NULL,
+        area_inspected TEXT DEFAULT '',
+        ppe_compliance_pct REAL DEFAULT 100.0,
+        fire_safety_passed INTEGER DEFAULT 1,
+        waste_management_passed INTEGER DEFAULT 1,
+        sharps_safety_passed INTEGER DEFAULT 1,
+        spill_kit_verified INTEGER DEFAULT 1,
+        hazard_notes TEXT DEFAULT '',
+        corrective_actions TEXT DEFAULT '',
+        status TEXT DEFAULT 'Passed',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS hsfp_hazard_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        log_code TEXT UNIQUE NOT NULL,
+        incident_id INTEGER REFERENCES incident_reports(id),
+        affected_staff TEXT NOT NULL,
+        department TEXT NOT NULL,
+        exposure_type TEXT NOT NULL,
+        exposure_date TEXT NOT NULL,
+        pep_initiated INTEGER DEFAULT 0,
+        source_patient_id TEXT DEFAULT '',
+        immediate_actions TEXT DEFAULT '',
+        follow_up_date TEXT DEFAULT '',
+        status TEXT DEFAULT 'Open',
+        created_by INTEGER REFERENCES users(id),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // 2. Seed Roles
     console.log('🎭 Seeding roles...');
     const roles = [
@@ -195,12 +308,21 @@ async function seed() {
     ];
 
     for (const u of users) {
-      await client.execute({
-        sql: `INSERT INTO users (full_name, username, email, password_hash, role_id) 
-              VALUES (?, ?, ?, ?, ?) 
-              ON CONFLICT (username) DO UPDATE SET full_name = excluded.full_name, role_id = excluded.role_id`,
-        args: [u.name, u.username, u.email, u.pass, roleMap[u.role]]
+      const { rows: existing } = await client.execute({
+        sql: 'SELECT id FROM users WHERE username = ?',
+        args: [u.username]
       });
+      if (existing.length > 0) {
+        await client.execute({
+          sql: 'UPDATE users SET full_name = ?, email = ?, password_hash = ?, role_id = ? WHERE username = ?',
+          args: [u.name, u.email, u.pass, roleMap[u.role], u.username]
+        });
+      } else {
+        await client.execute({
+          sql: 'INSERT INTO users (full_name, username, email, password_hash, role_id) VALUES (?, ?, ?, ?, ?)',
+          args: [u.name, u.username, u.email, u.pass, roleMap[u.role]]
+        });
+      }
       console.log(`✅ User synced: ${u.username}`);
     }
 
@@ -239,6 +361,117 @@ async function seed() {
       console.log('✅ Inventory items seeded.');
     } else {
       console.log('ℹ️ Inventory table is not empty, skipping seeding.');
+    }
+
+    // 5. Seed HSFP Portal Default Baseline Datasets
+    console.log('🛡️ Seeding HSFP Portal baseline datasets...');
+    
+    // Risk Register
+    const { rows: riskCount } = await client.execute("SELECT COUNT(*) as cnt FROM risk_register");
+    if (riskCount[0].cnt === 0) {
+      const defaultRisks = [
+        ['RSK-001', 'Delayed Critical Diagnostic Result Escalation', 'Clinical', 3, 4, 'Mitigated', 'Clinical Director / HOD Lab', 'Implemented automated SMS & High-Priority critical phone alert logbook in Lumina LIS.', '2026-10-01'],
+        ['RSK-002', 'Power Interruption to Cold Chain Specimen Storage', 'Operational', 2, 5, 'Active', 'Facilities Manager / HSFP', 'Backup generator automated transfer switch + continuous IoT temperature telemetry alerts.', '2026-10-05'],
+        ['RSK-003', 'Accidental Sharps / Needle Stick Injuries in Phlebotomy', 'Occupational Safety', 3, 3, 'Mitigated', 'HSFP Officer / Lead Nurse', 'Introduced retractable safety vacutainer needles, mandatory PPE drills, and 24/7 PEP protocol.', '2026-10-08'],
+        ['RSK-004', 'Hazardous Chemical / Reagent Splashes in Clinical Lab', 'Environmental', 2, 4, 'Mitigated', 'Safety Officer', 'Installed certified eye-wash stations, spill kits, and mandatory face shield protocols.', '2026-10-10']
+      ];
+      for (const [code, title, cat, lik, imp, stat, owner, mit, dt] of defaultRisks) {
+        await client.execute({
+          sql: `INSERT OR IGNORE INTO risk_register (risk_code, title, category, likelihood, impact, status, owner, mitigation, date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [code, title, cat, lik, imp, stat, owner, mit, dt]
+        });
+      }
+      console.log('✅ Risk Register baseline seeded.');
+    }
+
+    // Infection Cases
+    const { rows: infectionCount } = await client.execute("SELECT COUNT(*) as cnt FROM infection_cases");
+    if (infectionCount[0].cnt === 0) {
+      const defaultInfections = [
+        ['HAI-2026-001', 'Surgical Site Infection (SSI)', 'Surgery', 'MRN-89211', '2026-10-02', 'High', 'Resolved', 'Superficial incisional erythema at surgical wound site on post-op day 4.', 'Wound culture, targeted antibiotic regimen according to antibiogram, resolved without dehiscence.'],
+        ['HAI-2026-002', 'Catheter-Associated UTI (CAUTI)', 'Inpatient Ward A', 'MRN-78432', '2026-10-08', 'Medium', 'Resolved', 'Foley catheter in situ > 5 days; patient developed fever and dysuria.', 'Catheter removed immediately, urine culture collected, prompt hydration and targeted therapy.'],
+        ['HAI-2026-003', 'Multi-Drug Resistant Organism (MDRO)', 'ICU', 'MRN-65109', '2026-10-12', 'Critical', 'Under Investigation', 'Screening swab detected ESBL-producing Klebsiella pneumoniae in respiratory secretions.', 'Contact isolation precautions enforced, dedicated equipment assigned, daily environmental decontamination.']
+      ];
+      for (const [code, type, dept, mrn, dt, sev, stat, notes, actions] of defaultInfections) {
+        await client.execute({
+          sql: `INSERT OR IGNORE INTO infection_cases (case_code, infection_type, department, patient_identifier, date, severity, status, investigation_notes, corrective_actions)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [code, type, dept, mrn, dt, sev, stat, notes, actions]
+        });
+      }
+      console.log('✅ Infection Surveillance baseline seeded.');
+    }
+
+    // Hygiene & Sterilization Audits
+    const { rows: hygieneCount } = await client.execute("SELECT COUNT(*) as cnt FROM hygiene_audits");
+    if (hygieneCount[0].cnt === 0) {
+      const defaultAudits = [
+        ['AUD-2026-001', 'Surgery & OT Suite', 'Dr. Focal Person', 97.5, 40, 1, 1, 'Strict hand hygiene observed across all WHO 5 moments. Autoclave spore test verified negative.', 'Stocked alcohol rubs at scrub bay 2.', '2026-10-03'],
+        ['AUD-2026-002', 'CSSD / Sterilization Unit', 'HSFP Officer', 100.0, 30, 0, 1, 'All chemical indicator strips showed complete color transition. Bowie-Dick test passed.', 'Routine validation verified.', '2026-10-09'],
+        ['AUD-2026-003', 'Emergency & Triage', 'Lead Nurse Auditor', 94.0, 50, 3, 1, 'High volume patient inflow; hand rub usage consistent before aseptic procedures.', 'Added 2 wall-mounted dispensers in triage waiting area.', '2026-10-14']
+      ];
+      for (const [code, dept, auditor, score, opps, missed, passed, obs, actions, dt] of defaultAudits) {
+        await client.execute({
+          sql: `INSERT OR IGNORE INTO hygiene_audits (audit_code, department, auditor_name, compliance_score, total_opportunities, missed_opportunities, sterilization_passed, observations, corrective_actions, audit_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [code, dept, auditor, score, opps, missed, passed, obs, actions, dt]
+        });
+      }
+      console.log('✅ Hygiene & Sterilization Audits baseline seeded.');
+    }
+
+    // HSFP Inspections
+    const { rows: inspCount } = await client.execute("SELECT COUNT(*) as cnt FROM hsfp_inspections");
+    if (inspCount[0].cnt === 0) {
+      const defaultInspections = [
+        ['INSP-HSFP-001', 'Surgery & CSSD', 'HSFP Focal Officer', '2026-10-04', 'Operating Theatres 1 & 2', 98.0, 1, 1, 1, 1, 'All emergency fire exits unobstructed; biohazard waste bins labeled correctly.', 'Scheduled bi-monthly eye-wash inspection.', 'Passed'],
+        ['INSP-HSFP-002', 'Laboratory & Phlebotomy', 'HSFP Focal Officer', '2026-10-11', 'Main Lab & Phlebotomy Stations', 96.5, 1, 1, 1, 1, 'Chemical storage ventilated; sharps containers replaced at 3/4 fill line.', 'Updated chemical safety data sheet (MSDS) binder.', 'Passed']
+      ];
+      for (const [code, dept, insp, dt, area, ppe, fire, waste, sharps, spill, notes, actions, stat] of defaultInspections) {
+        await client.execute({
+          sql: `INSERT OR IGNORE INTO hsfp_inspections (inspection_code, department, inspector_name, inspection_date, area_inspected, ppe_compliance_pct, fire_safety_passed, waste_management_passed, sharps_safety_passed, spill_kit_verified, hazard_notes, corrective_actions, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [code, dept, insp, dt, area, ppe, fire, waste, sharps, spill, notes, actions, stat]
+        });
+      }
+      console.log('✅ Workplace Health & Safety Inspections seeded.');
+    }
+
+    // HSFP Hazard Exposure Logs
+    const { rows: hazCount } = await client.execute("SELECT COUNT(*) as cnt FROM hsfp_hazard_logs");
+    if (hazCount[0].cnt === 0) {
+      const defaultHazards = [
+        ['HAZ-EXP-001', 'Clinical Staff Nurse', 'Inpatient Ward B', 'Needle Stick / Sharps Injury', '2026-10-07', 1, 'MRN-78012', 'Immediate wound cleansing with running water & povidone iodine; rapid HIV/HBV source screening non-reactive; prophylactic PEP started within 45 mins.', '2026-11-07', 'Closed - Safe'],
+        ['HAZ-EXP-002', 'Laboratory Technologist', 'Chemistry Section', 'Chemical Exposure', '2026-10-13', 0, '', 'Minor reagent splash to gloved forearm during analyzer maintenance; zero dermal contact; emergency eye-wash verified.', '2026-10-20', 'Closed - Safe']
+      ];
+      for (const [code, staff, dept, exp, dt, pep, src, act, fup, stat] of defaultHazards) {
+        await client.execute({
+          sql: `INSERT OR IGNORE INTO hsfp_hazard_logs (log_code, affected_staff, department, exposure_type, exposure_date, pep_initiated, source_patient_id, immediate_actions, follow_up_date, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [code, staff, dept, exp, dt, pep, src, act, fup, stat]
+        });
+      }
+      console.log('✅ Occupational Hazard & Sharps Exposure Logs seeded.');
+    }
+
+    // Safety Reports
+    const { rows: reportCount } = await client.execute("SELECT COUNT(*) as cnt FROM safety_reports");
+    if (reportCount[0].cnt === 0) {
+      await client.execute({
+        sql: `INSERT OR IGNORE INTO safety_reports (title, period_start, period_end, executive_summary, key_findings, recommendations, status)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          'Q3 Institutional Patient Safety & Risk Report',
+          '2026-07-01',
+          '2026-09-30',
+          'Executive review of safety indicators, infection prevention protocols, and workplace occupational safety compliance at Legacy Clinics.',
+          'Hygiene audit compliance remained above 96.0%. Total reported clinical near-misses increased due to improved transparent safety reporting culture.',
+          '1. Standardize quarterly emergency spill kit simulations across all diagnostic units.\n2. Maintain weekly infection control rounding in high-acuity wards.',
+          'published'
+        ]
+      });
+      console.log('✅ Consolidated Safety Reports baseline seeded.');
     }
  
     console.log('✨ Turso Seeding Completed Successfully!');

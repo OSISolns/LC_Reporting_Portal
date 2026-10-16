@@ -277,3 +277,62 @@ exports.createHygieneAudit = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.getWorkplaceInspections = async (req, res, next) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM hsfp_inspections ORDER BY inspection_date DESC, created_at DESC LIMIT 100');
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+exports.createWorkplaceInspection = async (req, res, next) => {
+  try {
+    const { department, inspection_date, area_inspected, ppe_compliance_pct, fire_safety_passed, waste_management_passed, sharps_safety_passed, spill_kit_verified, hazard_notes, corrective_actions, status } = req.body;
+    if (!department) {
+      return res.status(400).json({ success: false, message: 'Department is required.' });
+    }
+    const { rows: countRows } = await db.query('SELECT COUNT(*) as cnt FROM hsfp_inspections');
+    const nextNum = (countRows[0]?.cnt || 0) + 1;
+    const inspCode = `INSP-HSFP-${String(nextNum).padStart(3, '0')}`;
+    const dateStr = inspection_date || new Date().toISOString().split('T')[0];
+    const inspector = req.user?.full_name || 'HSFP Inspector';
+
+    const { rows } = await db.query(
+      `INSERT INTO hsfp_inspections (inspection_code, department, inspector_id, inspector_name, inspection_date, area_inspected, ppe_compliance_pct, fire_safety_passed, waste_management_passed, sharps_safety_passed, spill_kit_verified, hazard_notes, corrective_actions, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       RETURNING *`,
+      [inspCode, department, req.user?.id || null, inspector, dateStr, area_inspected || '', parseFloat(ppe_compliance_pct) || 100.0, fire_safety_passed === false || fire_safety_passed === 0 ? 0 : 1, waste_management_passed === false || waste_management_passed === 0 ? 0 : 1, sharps_safety_passed === false || sharps_safety_passed === 0 ? 0 : 1, spill_kit_verified === false || spill_kit_verified === 0 ? 0 : 1, hazard_notes || '', corrective_actions || '', status || 'Passed']
+    );
+    await logAction(req, 'CREATE', 'hsfp_inspection', rows[0]?.id, { inspection_code: inspCode, department });
+    res.status(201).json({ success: true, data: rows[0] });
+  } catch (err) { next(err); }
+};
+
+exports.getHazardLogs = async (req, res, next) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM hsfp_hazard_logs ORDER BY exposure_date DESC, created_at DESC LIMIT 100');
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+exports.createHazardLog = async (req, res, next) => {
+  try {
+    const { affected_staff, department, exposure_type, exposure_date, pep_initiated, source_patient_id, immediate_actions, follow_up_date, status, incident_id } = req.body;
+    if (!affected_staff || !department || !exposure_type) {
+      return res.status(400).json({ success: false, message: 'Affected staff, department, and exposure type are required.' });
+    }
+    const { rows: countRows } = await db.query('SELECT COUNT(*) as cnt FROM hsfp_hazard_logs');
+    const nextNum = (countRows[0]?.cnt || 0) + 1;
+    const logCode = `HAZ-EXP-${String(nextNum).padStart(3, '0')}`;
+    const dateStr = exposure_date || new Date().toISOString().split('T')[0];
+
+    const { rows } = await db.query(
+      `INSERT INTO hsfp_hazard_logs (log_code, incident_id, affected_staff, department, exposure_type, exposure_date, pep_initiated, source_patient_id, immediate_actions, follow_up_date, status, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING *`,
+      [logCode, incident_id || null, affected_staff, department, exposure_type, dateStr, pep_initiated ? 1 : 0, source_patient_id || '', immediate_actions || '', follow_up_date || '', status || 'Open', req.user?.id || null]
+    );
+    await logAction(req, 'CREATE', 'hsfp_hazard_log', rows[0]?.id, { log_code: logCode, affected_staff, exposure_type });
+    res.status(201).json({ success: true, data: rows[0] });
+  } catch (err) { next(err); }
+};
+

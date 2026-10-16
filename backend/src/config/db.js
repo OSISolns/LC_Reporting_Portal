@@ -614,7 +614,27 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create doctor_schedules:', err.message);
       });
 
-      console.log('⚙️ Running risk_register table migration...');
+      console.log('⚙️ Running HSFP Portal tables migration (safety_reports, risk_register, infection_cases, hygiene_audits, hsfp_inspections, hsfp_hazard_logs)...');
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS safety_reports (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          period_start TEXT NOT NULL,
+          period_end TEXT NOT NULL,
+          executive_summary TEXT NOT NULL DEFAULT '',
+          key_findings TEXT NOT NULL DEFAULT '',
+          recommendations TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'published',
+          created_by INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).then(() => {
+        console.log('  ✅ Table safety_reports created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create safety_reports:', err.message);
+      });
+
       await client.execute(`
         CREATE TABLE IF NOT EXISTS risk_register (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -637,7 +657,6 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create risk_register:', err.message);
       });
 
-      console.log('⚙️ Running infection_cases & hygiene_audits table migration...');
       await client.execute(`
         CREATE TABLE IF NOT EXISTS infection_cases (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -680,6 +699,56 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.log('  ✅ Table hygiene_audits created/verified.');
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create hygiene_audits:', err.message);
+      });
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS hsfp_inspections (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          inspection_code TEXT UNIQUE NOT NULL,
+          department TEXT NOT NULL,
+          inspector_id INTEGER,
+          inspector_name TEXT NOT NULL,
+          inspection_date TEXT NOT NULL,
+          area_inspected TEXT DEFAULT '',
+          ppe_compliance_pct REAL DEFAULT 100.0,
+          fire_safety_passed INTEGER DEFAULT 1,
+          waste_management_passed INTEGER DEFAULT 1,
+          sharps_safety_passed INTEGER DEFAULT 1,
+          spill_kit_verified INTEGER DEFAULT 1,
+          hazard_notes TEXT DEFAULT '',
+          corrective_actions TEXT DEFAULT '',
+          status TEXT DEFAULT 'Passed',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).then(() => {
+        console.log('  ✅ Table hsfp_inspections created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create hsfp_inspections:', err.message);
+      });
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS hsfp_hazard_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          log_code TEXT UNIQUE NOT NULL,
+          incident_id INTEGER,
+          affected_staff TEXT NOT NULL,
+          department TEXT NOT NULL,
+          exposure_type TEXT NOT NULL,
+          exposure_date TEXT NOT NULL,
+          pep_initiated INTEGER DEFAULT 0,
+          source_patient_id TEXT DEFAULT '',
+          immediate_actions TEXT DEFAULT '',
+          follow_up_date TEXT DEFAULT '',
+          status TEXT DEFAULT 'Open',
+          created_by INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).then(() => {
+        console.log('  ✅ Table hsfp_hazard_logs created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create hsfp_hazard_logs:', err.message);
       });
 
       console.log('⚙️ Running operations_task_logs table migration...');

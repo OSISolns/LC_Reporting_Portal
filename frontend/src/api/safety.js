@@ -21,4 +21,8 @@ export const updateInfectionCaseStatus = (id, data) => api.patch(`/safety/infect
 export const getHygieneAudits = () => api.get('/safety/infection-control/audits');
 export const createHygieneAudit = (data) => api.post('/safety/infection-control/audits', data);
 
-
+// Workplace Health & Safety Inspections & Hazard Exposure
+export const getInspections = () => api.get('/safety/inspections');
+export const createInspection = (data) => api.post('/safety/inspections', data);
+export const getHazardLogs = () => api.get('/safety/hazard-logs');
+export const createHazardLog = (data) => api.post('/safety/hazard-logs', data);

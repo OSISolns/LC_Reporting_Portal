@@ -24,6 +24,12 @@ router.patch('/infection-control/cases/:id/status', checkPermission('safety', 'e
 router.get('/infection-control/audits', checkPermission('safety', 'view'), safetyController.getHygieneAudits);
 router.post('/infection-control/audits', checkPermission('safety', 'create'), safetyController.createHygieneAudit);
 
+// --- Workplace Health & Safety Inspections & Hazard Exposure Logs ---
+router.get('/inspections', checkPermission('safety', 'view'), safetyController.getWorkplaceInspections);
+router.post('/inspections', checkPermission('safety', 'create'), safetyController.createWorkplaceInspection);
+router.get('/hazard-logs', checkPermission('safety', 'view'), safetyController.getHazardLogs);
+router.post('/hazard-logs', checkPermission('safety', 'create'), safetyController.createHazardLog);
+
 router.get('/:id', checkPermission('safety', 'view'), safetyController.getReport);
 router.get('/:id/pdf', checkPermission('safety', 'view'), safetyController.getPDF);
 router.delete('/:id', checkPermission('safety', 'delete'), safetyController.deleteReport);
