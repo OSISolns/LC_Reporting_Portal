@@ -1439,8 +1439,33 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
           updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         )
-      `).then(() => {
+      `).then(async () => {
         console.log('  ✅ Table lab_analyzers created/verified.');
+        try {
+          const { rows } = await client.execute('SELECT COUNT(*) as cnt FROM lab_analyzers');
+          const count = Number(rows[0]?.cnt || 0);
+          if (count <= 1) {
+            const analyzersSeed = [
+              ['Sysmex XN-550', 'Sysmex Corporation', 'XN-550', 'Hematology', 'SYS-XN550-2024-089', 'Operational', '2026-06-01', '2026-09-01', '5-part differential automated hematology analyzer with compact autoloader.', 'Laboratory Team Lead'],
+              ['Mindray BS-240', 'Mindray Bio-Medical', 'BS-240', 'Biochemistry', 'MDR-BS240-8812', 'Operational', '2026-06-10', '2026-09-10', 'Floor-standing random access clinical chemistry system, 200 tests/hour.', 'Laboratory Team Lead'],
+              ['Abbott Architect ci4100', 'Abbott Diagnostics', 'Architect ci4100', 'Immunoassay', 'ABT-CI4100-5541', 'Operational', '2026-05-15', '2026-08-15', 'Integrated clinical chemistry and immunoassay platform with CHEMIFLEX technology.', 'Laboratory Team Lead'],
+              ['Roche Cobas c 311', 'Roche Diagnostics', 'Cobas c 311', 'Biochemistry', 'RCH-C311-9014', 'Operational', '2026-06-05', '2026-09-05', 'Automated discrete clinical chemistry analyzer with ultrasonic mixing.', 'Laboratory Team Lead'],
+              ['Roche Cobas e 411', 'Roche Diagnostics', 'Cobas e 411', 'Immunoassay', 'RCH-E411-7731', 'Operational', '2026-05-20', '2026-08-20', 'Electrochemiluminescence (ECLIA) immunoassay analyzer for thyroid and cardiac markers.', 'Laboratory Team Lead'],
+              ['Stago STA Satellite', 'Diagnostica Stago', 'STA Satellite', 'Coagulation', 'STG-SAT-3319', 'Operational', '2026-06-12', '2026-09-12', 'Automated benchtop hemostasis analyzer utilizing mechanical clot detection.', 'Laboratory Team Lead'],
+              ['Cepheid GeneXpert XVI', 'Cepheid', 'GeneXpert XVI', 'Molecular', 'CPH-GX16-1092', 'Operational', '2026-04-10', '2026-10-10', 'Automated cartridge-based real-time PCR platform with 16 modular test bays.', 'Laboratory Team Lead'],
+              ['Mindray UA-66', 'Mindray Bio-Medical', 'UA-66', 'Urinalysis', 'MDR-UA66-4402', 'Operational', '2026-06-08', '2026-09-08', 'Automated urine test strip chemistry analyzer with cold light reflection.', 'Laboratory Team Lead']
+            ];
+            for (const a of analyzersSeed) {
+              await client.execute({
+                sql: `INSERT INTO lab_analyzers (name, manufacturer, model, department, serial_number, status, last_calibrated, next_calibration_due, notes, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                args: a
+              });
+            }
+            console.log('  ✅ Seeded baseline clinical analyzers into lab_analyzers.');
+          }
+        } catch (sErr) {
+          console.warn('  ⚠️ Could not seed lab_analyzers:', sErr.message);
+        }
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_analyzers:', err.message);
       });

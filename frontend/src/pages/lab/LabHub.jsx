@@ -117,6 +117,84 @@ const TEST_ASSAYS = [
       'Strict WHO Standardization: Full laboratory compliance with WHO 6th Edition Manual Guidelines (min 4% normal morphology, progressive motility, and 15 million/mL concentration).',
       'Time & Temperature Sensitivity: Critical post-collection window where analysis must begin within 30–60 mins after liquefaction at room/body temp to prevent false reductions in viability.'
     ]
+  },
+  {
+    id: 'Lipid Profile (Lipids)',
+    name: 'Lipid Profile (Lipids)',
+    category: 'Biochemistry & Cardiology',
+    defaultTube: 'SST Gold Gel',
+    defaultSpecimen: 'Venous Blood (12h Fasting)',
+    focus: 'Comprehensive cardiovascular atherogenic dyslipidemia risk profiling.',
+    pathologies: 'Atherosclerosis, Coronary Artery Disease, Hypercholesterolemia, Pancreatitis.',
+    essayPoints: [
+      'Lipoprotein Fractionation: Spectrophotometric measurement of Total Cholesterol, Triglycerides, direct HDL-C, and calculated/direct LDL-C via Friedewald equation.',
+      'Pre-analytical Fasting: Strict 10-12 hour fasting requirement to avoid postprandial chylomicronemia artifact elevations in triglycerides.'
+    ]
+  },
+  {
+    id: 'Thyroid Function Panel (TFT)',
+    name: 'Thyroid Function Panel (TFT)',
+    category: 'Endocrinology & Immunoassay',
+    defaultTube: 'SST Gold Gel',
+    defaultSpecimen: 'Venous Blood',
+    focus: 'Hypothalamic-pituitary-thyroid axis evaluation of metabolic homeostasis.',
+    pathologies: 'Hypothyroidism (Hashimoto), Hyperthyroidism (Graves disease), Thyroid Nodules.',
+    essayPoints: [
+      'ECLIA / CLIA Chemiluminescence: High-sensitivity quantification of 3rd-generation TSH with unbound biologically active Free T3 and Free T4.',
+      'Hormone Feedback Dynamics: Log-linear relationship between TSH and FT4 enables early detection of subclinical thyroid dysfunction.'
+    ]
+  },
+  {
+    id: 'Coagulation Profile (PT/INR/APTT)',
+    name: 'Coagulation Profile (PT/INR/APTT)',
+    category: 'Hematology & Hemostasis',
+    defaultTube: 'Blue Citrate',
+    defaultSpecimen: 'Citrated Plasma (9:1 blood to citrate ratio)',
+    focus: 'Intrinsic, extrinsic, and common coagulation cascade pathways and fibrinolysis.',
+    pathologies: 'Pre-operative Bleeding Risk, Disseminated Intravascular Coagulation (DIC), DVT/PE, Warfarin/Heparin Monitoring.',
+    essayPoints: [
+      'Order of Draw & Fill Ratio: Sodium Citrate (Light Blue Top) must be drawn first/early and filled precisely to the indicator line to avoid citrate excess artifact prolongations.',
+      'Clot Detection: Photo-optical and mechanical viscosity-based clot detection of Prothrombin Time (PT/INR), APTT, and Quantitative D-Dimer.'
+    ]
+  },
+  {
+    id: 'Infectious Disease Serology Screen',
+    name: 'Infectious Disease Serology Screen',
+    category: 'Serology & Virology',
+    defaultTube: 'Redtop',
+    defaultSpecimen: 'Serum',
+    focus: 'Multiplex screening for transfusion-transmissible and chronic infectious blood-borne pathogens.',
+    pathologies: 'Hepatitis B, Hepatitis C, HIV 1/2 Infection, Syphilis (Treponema pallidum).',
+    essayPoints: [
+      '4th Generation Ag/Ab Testing: Simultaneous detection of HIV-1 p24 antigen and anti-HIV antibodies drastically shortens diagnostic window period.',
+      'Quality Controls: Dual positive/negative calibrators verified against external proficiency testing (EQA/PT).'
+    ]
+  },
+  {
+    id: 'Diabetes & Glycemic Panel (HbA1c & Fasting Glucose)',
+    name: 'Diabetes & Glycemic Panel (HbA1c & Fasting Glucose)',
+    category: 'Biochemistry & Diabetes',
+    defaultTube: 'Purple EDTA',
+    defaultSpecimen: 'Venous Whole Blood & Fluoride Plasma',
+    focus: 'Long-term 90-day glycemic control and acute glycemic status.',
+    pathologies: 'Type 1 and Type 2 Diabetes Mellitus, Gestational Diabetes, Impaired Fasting Glucose.',
+    essayPoints: [
+      'HPLC & Immunoassay Standardization: NGSP certified and IFCC traceable HbA1c measurement reflecting non-enzymatic glycosylation of hemoglobin.',
+      'Glycolysis Inhibition: Sodium Fluoride/Potassium Oxalate tube prevents in vitro glucose consumption by erythrocytes prior to centrifugation.'
+    ]
+  },
+  {
+    id: 'Inflammatory & Sepsis Markers (hs-CRP & PCT)',
+    name: 'Inflammatory & Sepsis Markers (hs-CRP & PCT)',
+    category: 'Emergency & Critical Care',
+    defaultTube: 'SST Gold Gel',
+    defaultSpecimen: 'Venous Blood',
+    focus: 'High-acuity systemic inflammatory response and bacterial sepsis discrimination.',
+    pathologies: 'Bacterial Sepsis, Septic Shock, Acute Appendicitis, Autoimmune Flare-ups.',
+    essayPoints: [
+      'Bacterial Specificity of Procalcitonin: PCT levels surge rapidly (>2.0 ng/mL in severe sepsis) within 2-4 hours of systemic bacterial endotoxin exposure.',
+      'High-Sensitivity CRP: Immunoturbidimetric quantification sensitive down to 0.1 mg/L for micro-vascular inflammation and coronary risk.'
+    ]
   }
 ];
 
@@ -992,6 +1070,13 @@ const LabHub = () => {
           }`}
         >
           <Package size={14} /> In-Hand Inventory
+        </button>
+        <button
+          onClick={() => navigate('/ncr')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60"
+          title="Log and review laboratory Non-Conformance Reports (ISO 15189)"
+        >
+          <AlertOctagon size={14} className="text-rose-500" /> Non-Conformance (NCR)
         </button>
         <button
           onClick={() => navigate('/incidents')}

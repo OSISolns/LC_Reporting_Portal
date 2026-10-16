@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ChevronLeft, ChevronRight, LayoutDashboard, FileText, ReceiptText,
   AlertTriangle, Users, UserCheck, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine, ClipboardList, FlaskConical, Heart, Dumbbell, Settings, PackageCheck, AlertOctagon, Archive,
-  Truck, Zap, Wrench, Package, DollarSign, BarChart3, BadgeDollarSign, FileSpreadsheet, Microscope
+  Truck, Zap, Wrench, Package, DollarSign, BarChart3, BadgeDollarSign, FileSpreadsheet, Microscope, Cpu
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -82,6 +82,7 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'lab_team_lead_hub', name: 'Lab Team Lead Hub', icon: <Microscope size={18} />, path: '/lab-team-lead', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer', 'lab_micro_specialist'] },
         { configKey: 'lab_manager_hub', name: 'Lab Manager Hub', icon: <BarChart3 size={18} />, path: '/lab-manager', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'] },
         { configKey: 'lab_equipment', name: 'Equipment & PPM', icon: <Wrench size={18} />, path: '/lab/equipment', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
+        { configKey: 'lab_analyzers', name: 'Analyzers & QC', icon: <Cpu size={18} />, path: '/lab/analyzers', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
         { configKey: 'lab_archive', name: 'Document Archive', icon: <Archive size={18} />, path: '/lab/archive', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
         { configKey: 'ncr_hub', name: 'Non-Conformance (NCR)', icon: <AlertOctagon size={18} />, path: '/ncr', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
         { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'admin', 'deputy_coo', 'chairman'] },

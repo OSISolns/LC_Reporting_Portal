@@ -166,6 +166,86 @@ exports.registerSpecimen = async (req, res, next) => {
         { name: 'Troponin I (High-Sensitivity)', unit: 'ng/L', range: '0 - 14' },
         { name: 'CK-MB', unit: 'ng/mL', range: '0.5 - 5.0' }
       ];
+    } else if (tName.includes('urine') || tName.includes('urinalysis')) {
+      parameters = [
+        { name: 'Color', unit: '', range: 'Straw / Amber' },
+        { name: 'Clarity / Appearance', unit: '', range: 'Clear' },
+        { name: 'Specific Gravity', unit: '', range: '1.005 - 1.030' },
+        { name: 'pH', unit: '', range: '5.0 - 8.0' },
+        { name: 'Protein (Dipstick)', unit: '', range: 'Negative' },
+        { name: 'Glucose (Dipstick)', unit: '', range: 'Negative' },
+        { name: 'Ketones', unit: '', range: 'Negative' },
+        { name: 'Blood / Hemoglobin', unit: '', range: 'Negative' },
+        { name: 'Bilirubin', unit: '', range: 'Negative' },
+        { name: 'Urobilinogen', unit: 'EU/dL', range: '0.2 - 1.0' },
+        { name: 'Nitrite', unit: '', range: 'Negative' },
+        { name: 'Leukocyte Esterase', unit: '', range: 'Negative' },
+        { name: 'Microscopy: WBCs', unit: '/HPF', range: '0 - 5' },
+        { name: 'Microscopy: RBCs', unit: '/HPF', range: '0 - 3' },
+        { name: 'Epithelial Cells', unit: '/HPF', range: '0 - 5' }
+      ];
+    } else if (tName.includes('stool') || tName.includes('fecal')) {
+      parameters = [
+        { name: 'Macroscopic Appearance', unit: '', range: 'Brown / Formed' },
+        { name: 'Consistency', unit: '', range: 'Soft / Formed' },
+        { name: 'Occult Blood (FOBT/FIT)', unit: '', range: 'Negative' },
+        { name: 'Ova & Parasites (O&P)', unit: '', range: 'Not Seen' },
+        { name: 'Pus Cells (WBCs)', unit: '/HPF', range: '0 - 2' },
+        { name: 'Red Blood Cells (RBCs)', unit: '/HPF', range: 'Nil' }
+      ];
+    } else if (tName.includes('semen') || tName.includes('andrology')) {
+      parameters = [
+        { name: 'Liquefaction Time', unit: 'min', range: '15 - 60' },
+        { name: 'Volume', unit: 'mL', range: '1.5 - 5.0' },
+        { name: 'pH', unit: '', range: '7.2 - 8.0' },
+        { name: 'Sperm Concentration', unit: '10^6/mL', range: '15.0 - 200.0' },
+        { name: 'Total Motility (PR + NP)', unit: '%', range: '40 - 100' },
+        { name: 'Progressive Motility (PR)', unit: '%', range: '32 - 100' },
+        { name: 'Normal Morphology (WHO 6th)', unit: '%', range: '4 - 100' },
+        { name: 'Vitality', unit: '%', range: '58 - 100' }
+      ];
+    } else if (tName.includes('lipid')) {
+      parameters = [
+        { name: 'Total Cholesterol', unit: 'mg/dL', range: '100 - 200' },
+        { name: 'Triglycerides', unit: 'mg/dL', range: '50 - 150' },
+        { name: 'HDL Cholesterol', unit: 'mg/dL', range: '40 - 60' },
+        { name: 'LDL Cholesterol', unit: 'mg/dL', range: '50 - 100' },
+        { name: 'VLDL Cholesterol', unit: 'mg/dL', range: '10 - 30' },
+        { name: 'Chol / HDL Ratio', unit: '', range: '2.5 - 4.5' }
+      ];
+    } else if (tName.includes('thyroid') || tName.includes('tft')) {
+      parameters = [
+        { name: 'TSH (Thyroid Stimulating Hormone)', unit: 'uIU/mL', range: '0.27 - 4.20' },
+        { name: 'Free T3 (FT3)', unit: 'pg/mL', range: '2.0 - 4.4' },
+        { name: 'Free T4 (FT4)', unit: 'ng/dL', range: '0.93 - 1.70' }
+      ];
+    } else if (tName.includes('coagulation') || tName.includes('pt') || tName.includes('inr') || tName.includes('aptt')) {
+      parameters = [
+        { name: 'Prothrombin Time (PT)', unit: 'sec', range: '11.0 - 13.5' },
+        { name: 'INR (International Normalized Ratio)', unit: '', range: '0.8 - 1.2' },
+        { name: 'APTT (Partial Thromboplastin Time)', unit: 'sec', range: '25.0 - 35.0' },
+        { name: 'Fibrinogen', unit: 'mg/dL', range: '200 - 400' },
+        { name: 'D-Dimer (Quantitative FEU)', unit: 'ug/mL', range: '0.0 - 0.50' }
+      ];
+    } else if (tName.includes('serology') || tName.includes('infectious') || tName.includes('hepatitis') || tName.includes('hiv')) {
+      parameters = [
+        { name: 'HBsAg (Hepatitis B Surface Antigen)', unit: '', range: 'Non-Reactive' },
+        { name: 'Anti-HCV (Hepatitis C Total Ab)', unit: '', range: 'Non-Reactive' },
+        { name: 'HIV 1/2 Ag/Ab 4th Gen Combo', unit: '', range: 'Non-Reactive' },
+        { name: 'Syphilis RPR / VDRL Screen', unit: '', range: 'Non-Reactive' }
+      ];
+    } else if (tName.includes('hba1c') || tName.includes('glycated') || tName.includes('diabetes') || tName.includes('glucose')) {
+      parameters = [
+        { name: 'Fasting Blood Glucose', unit: 'mg/dL', range: '70 - 99' },
+        { name: 'HbA1c (Glycated Hemoglobin)', unit: '%', range: '4.0 - 5.6' },
+        { name: 'Estimated Average Glucose (eAG)', unit: 'mg/dL', range: '68 - 126' }
+      ];
+    } else if (tName.includes('crp') || tName.includes('inflammation') || tName.includes('esr') || tName.includes('sepsis')) {
+      parameters = [
+        { name: 'C-Reactive Protein (hs-CRP)', unit: 'mg/L', range: '0.0 - 3.0' },
+        { name: 'Procalcitonin (PCT)', unit: 'ng/mL', range: '0.0 - 0.50' },
+        { name: 'ESR (Westergren)', unit: 'mm/hr', range: '0 - 20' }
+      ];
     } else {
       parameters = [
         { name: 'General Diagnostic Marker', unit: 'mg/dL', range: '1.0 - 5.0' }
@@ -342,8 +422,14 @@ exports.saveResults = async (req, res, next) => {
       const paramLower = (r.parameter_name || '').toLowerCase();
       if (paramLower.includes('potassium') && (valNum < 2.8 || valNum > 6.0)) isCritical = true;
       if (paramLower.includes('troponin') && valNum > 14.0) isCritical = true;
-      if (paramLower.includes('wbc') && valNum > 30.0) isCritical = true;
-      if (paramLower.includes('platelet') && valNum < 50.0) isCritical = true;
+      if (paramLower.includes('wbc') && (valNum < 1.5 || valNum > 30.0)) isCritical = true;
+      if (paramLower.includes('platelet') && (valNum < 50.0 || valNum > 1000.0)) isCritical = true;
+      if (paramLower.includes('hemoglobin') && (valNum < 7.0 || valNum > 20.0)) isCritical = true;
+      if (paramLower.includes('glucose') && (valNum < 45 || valNum > 400)) isCritical = true;
+      if (paramLower.includes('sodium') && (valNum < 120 || valNum > 160)) isCritical = true;
+      if (paramLower.includes('inr') && valNum > 4.5) isCritical = true;
+      if (paramLower.includes('d-dimer') && valNum > 5.0) isCritical = true;
+      if (paramLower.includes('procalcitonin') && valNum > 2.0) isCritical = true;
 
       // 2. Delta Check Evaluation (25% variance from prior baseline)
       if (priorMap.has(r.parameter_name) && !isNaN(valNum)) {
