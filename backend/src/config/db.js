@@ -614,6 +614,74 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create doctor_schedules:', err.message);
       });
 
+      console.log('⚙️ Running risk_register table migration...');
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS risk_register (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          risk_code TEXT UNIQUE NOT NULL,
+          title TEXT NOT NULL,
+          category TEXT NOT NULL,
+          likelihood INTEGER NOT NULL,
+          impact INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'Active',
+          owner TEXT NOT NULL,
+          mitigation TEXT DEFAULT '',
+          date TEXT NOT NULL,
+          created_by INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).then(() => {
+        console.log('  ✅ Table risk_register created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create risk_register:', err.message);
+      });
+
+      console.log('⚙️ Running infection_cases & hygiene_audits table migration...');
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS infection_cases (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          case_code TEXT UNIQUE NOT NULL,
+          infection_type TEXT NOT NULL,
+          department TEXT NOT NULL,
+          patient_identifier TEXT DEFAULT '',
+          date TEXT NOT NULL,
+          severity TEXT NOT NULL DEFAULT 'Medium',
+          status TEXT NOT NULL DEFAULT 'Active',
+          investigation_notes TEXT DEFAULT '',
+          corrective_actions TEXT DEFAULT '',
+          created_by INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).then(() => {
+        console.log('  ✅ Table infection_cases created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create infection_cases:', err.message);
+      });
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS hygiene_audits (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          audit_code TEXT UNIQUE NOT NULL,
+          department TEXT NOT NULL,
+          auditor_name TEXT NOT NULL,
+          compliance_score REAL NOT NULL,
+          total_opportunities INTEGER DEFAULT 0,
+          missed_opportunities INTEGER DEFAULT 0,
+          sterilization_passed INTEGER DEFAULT 1,
+          observations TEXT DEFAULT '',
+          corrective_actions TEXT DEFAULT '',
+          audit_date TEXT NOT NULL,
+          created_by INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).then(() => {
+        console.log('  ✅ Table hygiene_audits created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create hygiene_audits:', err.message);
+      });
+
       console.log('⚙️ Running operations_task_logs table migration...');
       await client.execute(`
         CREATE TABLE IF NOT EXISTS operations_task_logs (
