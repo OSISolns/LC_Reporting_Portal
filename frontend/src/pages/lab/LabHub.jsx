@@ -993,6 +993,13 @@ const LabHub = () => {
         >
           <Package size={14} /> In-Hand Inventory
         </button>
+        <button
+          onClick={() => navigate('/incidents')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60"
+          title="View and report incidents"
+        >
+          <AlertTriangle size={14} className="text-amber-500" /> Incident Reports
+        </button>
         {isLeadOrManager && (
           <button
             onClick={() => navigate('/lab-team-lead')}

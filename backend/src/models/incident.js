@@ -35,7 +35,7 @@ class Incident {
     `;
     const params = [];
 
-    // Access control: Executive, safety, and line managers / department leads can view all incident reports
+    // Access control: Executive, safety, line managers / department leads, and all Laboratory staff can view incident reports
     const LINE_MANAGER_ROLES = [
       'coo', 'deputy_coo', 'admin', 'it_officer', 'principal_cashier', 'sales_manager', 'hsfp', 'medical_director',
       'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
@@ -47,7 +47,22 @@ class Incident {
       'procurement-manager',
       'quality_manager', 'qm', 'quality_accreditation_officer'
     ];
-    if (user && !LINE_MANAGER_ROLES.includes(user.role)) {
+    const ALL_LAB_ROLES = [
+      'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+      'lab_safety_officer', 'lab_stock_officer',
+      'head_microbiology', 'head_hematology', 'head_histopathology',
+      'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+      'lab_micro_specialist', 'lab_scientist',
+      'lab_team_lead', 'lab_lead', 'lab_tech', 'lab',
+      'lab_head', 'lab_supervisor'
+    ];
+    const isLabStaff = user && (
+      ALL_LAB_ROLES.includes(user.role?.toLowerCase()) ||
+      String(user.role || '').toLowerCase().startsWith('lab_') ||
+      String(user.department || '').toLowerCase().includes('lab')
+    );
+
+    if (user && !LINE_MANAGER_ROLES.includes(user.role) && !isLabStaff) {
       params.push(user.id);
       query += ` AND i.created_by = $${params.length}`;
     }
