@@ -3146,6 +3146,25 @@ exports.createRequisition = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Department and at least one item are required.' });
     }
 
+    // ── Laboratory Authority Check: Only Laboratory Stock Officer can manage requisitions ──
+    const deptId = parseInt(department_id, 10);
+    const { rows: deptRows } = await db.query('SELECT name FROM departments WHERE id = $1', [deptId]);
+    const deptName = (deptRows[0]?.name || '').toUpperCase();
+    const isLabDept = deptName.includes('LABORATORY') || deptName === 'LAB';
+
+    const userRole = (req.user?.role || '').toLowerCase();
+    const isLabRole = userRole.includes('lab') || userRole === 'qm' || userRole.startsWith('head_');
+
+    if (isLabDept || isLabRole) {
+      const allowedLabReqRoles = ['lab_stock_officer', 'admin', 'deputy_coo', 'coo', 'chairman'];
+      if (!allowedLabReqRoles.includes(userRole)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: In Laboratory, only the Laboratory Stock Officer is authorized to submit inventory requisitions.'
+        });
+      }
+    }
+
     // ── Lumina AI: block requisition if any item is still "In Use" (qty=0, no finished_at) ──
     // Dental/Physio/Lab cannot request more stock for an item that is still open/in-use.
     const requestedItemIds = items.map(i => parseInt(i.item_id, 10)).filter(Boolean);

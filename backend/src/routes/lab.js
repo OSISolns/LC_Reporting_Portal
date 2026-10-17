@@ -71,10 +71,12 @@ router.get('/equipment', labController.getEquipment);
 router.post('/equipment', authorizeRoles(LAB_LEAD_OR_MANAGER_ROLES), labController.createEquipment);
 router.put('/equipment/:id', authorizeRoles(LAB_LEAD_OR_MANAGER_ROLES), labController.updateEquipment);
 
-// In-Hand Reagent Inventory Routes - Delete restricted to Manager Level
+const LAB_STOCK_OFFICER_ROLES = ['lab_stock_officer', 'admin', 'deputy_coo', 'coo', 'chairman'];
+
+// In-Hand Reagent Inventory Routes - Restricted exclusively to Laboratory Stock Officer & Administrators
 router.get('/inhand-inventory', labController.getInhandInventory);
-router.post('/inhand-inventory', labController.saveInhandInventory);
-router.put('/inhand-inventory/:id', labController.updateInhandInventory);
-router.delete('/inhand-inventory/:id', authorizeRoles(LAB_MANAGER_ROLES), labController.deleteInhandInventory);
+router.post('/inhand-inventory', authorizeRoles(LAB_STOCK_OFFICER_ROLES), labController.saveInhandInventory);
+router.put('/inhand-inventory/:id', authorizeRoles(LAB_STOCK_OFFICER_ROLES), labController.updateInhandInventory);
+router.delete('/inhand-inventory/:id', authorizeRoles(LAB_STOCK_OFFICER_ROLES), labController.deleteInhandInventory);
 
 module.exports = router;

@@ -1166,8 +1166,27 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     return (activeDeptObj?.name || defaultDeptName || '').toUpperCase();
   }, [userDept, filterDept, formDept, departments, defaultDeptName]);
 
+  const isLabDept = useMemo(() => {
+    return activeDeptName.includes('LABORATORY') || activeDeptName === 'LAB';
+  }, [activeDeptName]);
+
+  const isLabStockOfficer = useMemo(() => {
+    return user?.role === 'lab_stock_officer' || ['admin', 'chairman', 'coo', 'deputy_coo'].includes(user?.role);
+  }, [user]);
+
+  const isLabRestrictedToConsumptionOnly = useMemo(() => {
+    return isLabDept && !isLabStockOfficer;
+  }, [isLabDept, isLabStockOfficer]);
+
   // Tabs
   const [activeSubTab, setActiveSubTab] = useState('history'); // 'history', 'stock', 'requisitions', 'deactivated', 'fridges'
+
+  useEffect(() => {
+    if (isLabRestrictedToConsumptionOnly && activeSubTab !== 'history') {
+      setActiveSubTab('history');
+    }
+  }, [isLabRestrictedToConsumptionOnly, activeSubTab]);
+
   const [stockTab, setStockTab] = useState('local'); // 'local', 'central'
   const [stockSearchTerm, setStockSearchTerm] = useState('');
 
@@ -3140,7 +3159,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
             {/* Tabs switcher */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4 gap-3 flex-wrap">
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap items-center">
                 <button
                   onClick={() => setActiveSubTab('history')}
                   className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer ${activeSubTab === 'history'
@@ -3150,65 +3169,75 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                 >
                   Consumption History
                 </button>
-                <button
-                  onClick={() => setActiveSubTab('stock')}
-                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer ${activeSubTab === 'stock'
-                      ? 'bg-teal-700 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
-                    }`}
-                >
-                  Available Items
-                </button>
-                <button
-                  onClick={() => setActiveSubTab('requisitions')}
-                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'requisitions'
-                      ? 'bg-teal-700 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
-                    }`}
-                >
-                  <ArrowRight size={14} /> Requisitions
-                </button>
-                <button
-                  onClick={() => setActiveSubTab('deactivated')}
-                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'deactivated'
-                      ? 'bg-teal-700 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
-                    }`}
-                >
-                  <AlertTriangle size={14} /> Deactivated & Expired
-                  {deactivatedItems.length > 0 && (
-                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-700 font-extrabold">
-                      {deactivatedItems.length}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveSubTab('stats')}
-                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'stats'
-                      ? 'bg-teal-700 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
-                    }`}
-                >
-                  <BarChart3 size={14} /> Statistics & Analytics
-                </button>
-                {/* Configure Fridges tab — Lab department only */}
-                {(() => {
-                  const _aD = userDept ? userDept.id : formDept;
-                  const _dObj = departments.find(d => String(d.id) === String(_aD));
-                  const _dName = (_dObj?.name || defaultDeptName || '').toUpperCase();
-                  const isLabDeptTab = _dName.includes('LABORATORY') || _dName === 'LAB';
-                  return isLabDeptTab ? (
+
+                {isLabRestrictedToConsumptionOnly ? (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
+                    <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                    <span>Laboratory Staff Consumption Mode — Stock adjustments &amp; requisitions are managed exclusively by the Laboratory Stock Officer</span>
+                  </div>
+                ) : (
+                  <>
                     <button
-                      onClick={() => setActiveSubTab('fridges')}
-                      className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'fridges'
-                          ? 'bg-sky-700 text-white shadow-sm'
+                      onClick={() => setActiveSubTab('stock')}
+                      className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer ${activeSubTab === 'stock'
+                          ? 'bg-teal-700 text-white shadow-sm'
                           : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
                         }`}
                     >
-                      <Thermometer size={14} /> Configure Fridges
+                      Available Items
                     </button>
-                  ) : null;
-                })()}
+                    <button
+                      onClick={() => setActiveSubTab('requisitions')}
+                      className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'requisitions'
+                          ? 'bg-teal-700 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
+                        }`}
+                    >
+                      <ArrowRight size={14} /> Requisitions
+                    </button>
+                    <button
+                      onClick={() => setActiveSubTab('deactivated')}
+                      className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'deactivated'
+                          ? 'bg-teal-700 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
+                        }`}
+                    >
+                      <AlertTriangle size={14} /> Deactivated &amp; Expired
+                      {deactivatedItems.length > 0 && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-700 font-extrabold">
+                          {deactivatedItems.length}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setActiveSubTab('stats')}
+                      className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'stats'
+                          ? 'bg-teal-700 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
+                        }`}
+                    >
+                      <BarChart3 size={14} /> Statistics &amp; Analytics
+                    </button>
+                    {/* Configure Fridges tab — Lab department only */}
+                    {(() => {
+                      const _aD = userDept ? userDept.id : formDept;
+                      const _dObj = departments.find(d => String(d.id) === String(_aD));
+                      const _dName = (_dObj?.name || defaultDeptName || '').toUpperCase();
+                      const isLabDeptTab = _dName.includes('LABORATORY') || _dName === 'LAB';
+                      return isLabDeptTab ? (
+                        <button
+                          onClick={() => setActiveSubTab('fridges')}
+                          className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'fridges'
+                              ? 'bg-sky-700 text-white shadow-sm'
+                              : 'bg-slate-100 text-slate-650 hover:bg-slate-200'
+                            }`}
+                        >
+                          <Thermometer size={14} /> Configure Fridges
+                        </button>
+                      ) : null;
+                    })()}
+                  </>
+                )}
               </div>
 
               <div className="flex items-center gap-2">

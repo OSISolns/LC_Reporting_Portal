@@ -73,7 +73,7 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onApprove, onReject
             </tr>
             <tr>
               <th>Insurance / Payer</th>
-              <td>{data.insurance_payer}</td>
+              <td>{data.insurance_payer === 'Cash / Private (Out-of-Pocket)' || data.insurance_payer === 'Private / Walk-in' ? 'Private' : (data.insurance_payer || 'Private')}</td>
             </tr>
           </tbody>
         </table>

@@ -52,7 +52,7 @@ const RefundDetailsView = ({ data, onExport, onVerify, onApprove, onReject, onUp
             <tr><th>PID Number</th><td>{data.pid_number}</td></tr>
             <tr><th>SID Number</th><td>{data.sid_number || 'N/A'}</td></tr>
             <tr><th>Telephone Number</th><td>{data.telephone_number || 'N/A'}</td></tr>
-            <tr><th>Insurance / Payer</th><td>{data.insurance_payer || 'Private / Walk-in'}</td></tr>
+            <tr><th>Insurance / Payer</th><td>{data.insurance_payer === 'Cash / Private (Out-of-Pocket)' || data.insurance_payer === 'Private / Walk-in' ? 'Private' : (data.insurance_payer || 'Private')}</td></tr>
 
           </tbody>
         </table>

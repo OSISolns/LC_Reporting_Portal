@@ -213,7 +213,7 @@ const getMedicalReportHTML = (type, data) => {
           <tr><th>PID number</th><td>${data.pid_number}</td></tr>
           <tr><th>SID number</th><td>${data.sid_number || 'N/A'}</td></tr>
           <tr><th>Telephone number</th><td>${data.telephone_number || 'N/A'}</td></tr>
-          <tr><th>Insurance / Payer</th><td>${data.insurance_payer || 'Private / Walk-in'}</td></tr>
+          <tr><th>Insurance / Payer</th><td>${data.insurance_payer === 'Cash / Private (Out-of-Pocket)' || data.insurance_payer === 'Private / Walk-in' ? 'Private' : (data.insurance_payer || 'Private')}</td></tr>
           ${data.billed_by_name ? `<tr><th>Billed by</th><td>${data.billed_by_name}</td></tr>` : ''}
         </table>
 
@@ -268,7 +268,7 @@ const getMedicalReportHTML = (type, data) => {
           <tr><th>Telephone number</th><td>${data.telephone_number || 'N/A'}</td></tr>
           <tr><th>SID number</th><td>${data.old_sid_number || 'N/A'}</td></tr>
           ${data.new_sid_number ? `<tr><th>Replacement SID</th><td>${data.new_sid_number}</td></tr>` : ''}
-          <tr><th>Insurance / Payer</th><td>${data.insurance_payer}</td></tr>
+          <tr><th>Insurance / Payer</th><td>${data.insurance_payer === 'Cash / Private (Out-of-Pocket)' || data.insurance_payer === 'Private / Walk-in' ? 'Private' : (data.insurance_payer || 'Private')}</td></tr>
         </table>
 
         <div class="section-head">Section 2: TRANSACTION DETAILS</div>

@@ -385,6 +385,7 @@ const LabHub = () => {
   const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm', 'lab_hod', 'lab_stock_officer'].includes(userRole);
   const isTeamLead = ['lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer'].includes(userRole);
   const isLeadOrManager = isManager || isTeamLead;
+  const isLabStockOfficer = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_stock_officer'].includes(userRole);
 
   const [mainView, setMainView] = useState('worklist'); // 'worklist' | 'inhand_inventory'
   const [phaseFilter, setPhaseFilter] = useState('all');
@@ -1070,6 +1071,13 @@ const LabHub = () => {
           }`}
         >
           <Package size={14} /> In-Hand Inventory
+        </button>
+        <button
+          onClick={() => navigate('/consumables-log')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-teal-800 bg-teal-50 hover:bg-teal-100 hover:text-teal-950 border border-teal-200/80 shadow-2xs"
+          title="Open Consumables Log to record clinical consumption"
+        >
+          <ClipboardList size={14} className="text-teal-700" /> Log Consumption
         </button>
         <button
           onClick={() => navigate('/ncr')}
@@ -1886,12 +1894,18 @@ const LabHub = () => {
                 </h2>
                 <p className="text-xs text-amber-700 mt-0.5">Laboratory reagents stored at Room Temperature (20°C–25°C) &amp; Cold Chain (2°C–8°C)</p>
               </div>
-              <button
-                onClick={() => { setEditInhandItem(null); setInhandForm({ item_name: '', category: 'Reagents', equipment_group: '', department: 'Biochemistry', storage_temp: 'room_temp', storage_unit_id: 'room_temp_1', quantity_in_hand: '', unit_of_measure: 'pack', min_threshold: '5', expiry_date: '', lot_number: '' }); setShowAddInhandModal(true); }}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm"
-              >
-                <Plus size={14} /> Add New Item
-              </button>
+              {isLabStockOfficer ? (
+                <button
+                  onClick={() => { setEditInhandItem(null); setInhandForm({ item_name: '', category: 'Reagents', equipment_group: '', department: 'Biochemistry', storage_temp: 'room_temp', storage_unit_id: 'room_temp_1', quantity_in_hand: '', unit_of_measure: 'pack', min_threshold: '5', expiry_date: '', lot_number: '' }); setShowAddInhandModal(true); }}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm"
+                >
+                  <Plus size={14} /> Add New Item
+                </button>
+              ) : (
+                <span className="text-[11px] font-semibold px-3 py-1.5 rounded-xl bg-amber-100/80 text-amber-900 border border-amber-200">
+                  Inventory managed by Laboratory Stock Officer
+                </span>
+              )}
             </div>
 
             {/* Stats Cards */}
@@ -2020,18 +2034,20 @@ const LabHub = () => {
                                 <td className="py-2 px-3 text-slate-500 font-mono text-[10px]">{item.expiry_date || '—'}</td>
                                 <td className="py-2 px-3 text-slate-400 font-mono text-[10px]">{item.lot_number || '—'}</td>
                                 <td className="py-2 px-3 text-right">
-                                  <div className="flex items-center gap-1 justify-end">
-                                    <button onClick={() => openEditInhandModal(item)}
-                                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer" title="Edit">
-                                      <Edit3 size={12} />
-                                    </button>
-                                    {isManager && (
+                                  {isLabStockOfficer ? (
+                                    <div className="flex items-center gap-1 justify-end">
+                                      <button onClick={() => openEditInhandModal(item)}
+                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer" title="Edit">
+                                        <Edit3 size={12} />
+                                      </button>
                                       <button onClick={() => handleDeleteInhandItem(item.id)}
-                                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md cursor-pointer" title="Delete (Manager Only)">
+                                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md cursor-pointer" title="Delete">
                                         <Trash2 size={12} />
                                       </button>
-                                    )}
-                                  </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400 font-medium italic">Read-only</span>
+                                  )}
                                 </td>
                               </tr>
                             );

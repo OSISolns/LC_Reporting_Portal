@@ -15,9 +15,12 @@ router.post('/inventory/supplier-portal/upload', clinicalController.supplierPort
 router.use(authenticateToken);
 router.use(authorizeRoles([
   'nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_coo', 'stock-manager', 
-  'pa', 'medical_director', 'procurement-manager', 'lab_team_lead', 'lab_tech', 'lab', 
+  'pa', 'medical_director', 'procurement-manager', 
+  'lab_stock_officer', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'lab_manager', 'lab_hod',
+  'quality_manager', 'qm', 'lab_safety_officer', 'head_microbiology', 'head_hematology',
+  'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist',
   'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'physiotherapist', 'physio', 'physio_manager', 'manager', 'operations_staff', 
-  'imaging_tech', 'imaging_manager', 'hsfp', 'coo', 'quality_accreditation_officer'
+  'imaging_tech', 'imaging_manager', 'hsfp', 'coo', 'quality_accreditation_officer', 'chairman'
 ]));
 
 // Helper: Allow clinical department roles to view/edit inventory transactions for their own log modules
@@ -25,10 +28,13 @@ const checkInventoryOrClinicalRole = (action) => {
   return async (req, res, next) => {
     if (req.user?.role === 'admin') return next();
     const CLINICAL_ROLES = [
-      'nurse', 'chef-nurse', 'lab_team_lead', 'lab_tech', 'lab', 
+      'nurse', 'chef-nurse', 
+      'lab_stock_officer', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'lab_manager', 'lab_hod',
+      'quality_manager', 'qm', 'lab_safety_officer', 'head_microbiology', 'head_hematology',
+      'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist',
       'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'imaging_tech', 'imaging_manager', 
       'physiotherapist', 'physio', 'physio_manager', 'manager', 'operations_staff', 'hsfp',
-      'coo', 'deputy_coo', 'stock-manager', 'procurement-manager'
+      'coo', 'deputy_coo', 'stock-manager', 'procurement-manager', 'chairman'
     ];
     if (CLINICAL_ROLES.includes(req.user?.role)) {
       return next();

@@ -1,6 +1,6 @@
 export const INSURANCES = [
   // ── Most Common (Rwandan Public / National Schemes) ──────────────────────
-  "Cash / Private (Out-of-Pocket)",
+  "Private",
   "RSSB (Community)",
   "RSSB (RAMA)",
   "RSSB (Indigent / Mutuelle)",
