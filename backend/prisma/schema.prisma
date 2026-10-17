@@ -114,6 +114,21 @@ model compliance_licenses {
   status       String
 }
 
+model compliance_statutory_calendar {
+  id                  Int       @id @default(autoincrement())
+  title               String
+  frequency           String
+  due_date_rule       String
+  authority           String?
+  description         String?
+  focal_person        String?
+  status              String?   @default("Upcoming")
+  next_due_date       String?
+  last_submitted_date String?
+  created_at          DateTime? @default(now())
+  updated_at          DateTime? @default(now())
+}
+
 model daily_procedure_logs {
   id           Int     @id @default(autoincrement())
   report_date  String

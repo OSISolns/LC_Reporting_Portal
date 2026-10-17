@@ -204,3 +204,103 @@ exports.deleteFacilityCert = async (req, res, next) => {
     next(err);
   }
 };
+
+// --- Statutory Reporting Calendar ---
+exports.getCalendar = async (req, res, next) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM compliance_statutory_calendar ORDER BY id ASC');
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.createCalendarItem = async (req, res, next) => {
+  try {
+    const { title, frequency, due_date_rule, authority, description, focal_person, status, next_due_date, last_submitted_date } = req.body;
+
+    if (!title || !frequency || !due_date_rule) {
+      return res.status(400).json({ success: false, message: 'Filing title, frequency, and due date schedule are required.' });
+    }
+
+    await db.query(
+      `INSERT INTO compliance_statutory_calendar (title, frequency, due_date_rule, authority, description, focal_person, status, next_due_date, last_submitted_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        title,
+        frequency,
+        due_date_rule,
+        authority || null,
+        description || null,
+        focal_person || null,
+        status || 'Upcoming',
+        next_due_date || null,
+        last_submitted_date || null
+      ]
+    );
+
+    const { rows: inserted } = await db.query(
+      'SELECT * FROM compliance_statutory_calendar WHERE title = ? ORDER BY id DESC LIMIT 1',
+      [title]
+    );
+
+    res.json({ success: true, data: inserted[0] });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateCalendarItem = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { title, frequency, due_date_rule, authority, description, focal_person, status, next_due_date, last_submitted_date } = req.body;
+
+    const { rows: existing } = await db.query('SELECT * FROM compliance_statutory_calendar WHERE id = ?', [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Statutory calendar filing record not found.' });
+    }
+
+    const updatedTitle = title || existing[0].title;
+    const updatedFrequency = frequency || existing[0].frequency;
+    const updatedDueDateRule = due_date_rule || existing[0].due_date_rule;
+    const updatedAuthority = authority !== undefined ? authority : existing[0].authority;
+    const updatedDesc = description !== undefined ? description : existing[0].description;
+    const updatedFocal = focal_person !== undefined ? focal_person : existing[0].focal_person;
+    const updatedStatus = status !== undefined ? status : existing[0].status;
+    const updatedNextDue = next_due_date !== undefined ? next_due_date : existing[0].next_due_date;
+    const updatedLastSubmitted = last_submitted_date !== undefined ? last_submitted_date : existing[0].last_submitted_date;
+
+    await db.query(
+      `UPDATE compliance_statutory_calendar 
+       SET title = ?, frequency = ?, due_date_rule = ?, authority = ?, description = ?, focal_person = ?, status = ?, next_due_date = ?, last_submitted_date = ?, updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+       WHERE id = ?`,
+      [
+        updatedTitle,
+        updatedFrequency,
+        updatedDueDateRule,
+        updatedAuthority,
+        updatedDesc,
+        updatedFocal,
+        updatedStatus,
+        updatedNextDue,
+        updatedLastSubmitted,
+        id
+      ]
+    );
+
+    const { rows: updatedRows } = await db.query('SELECT * FROM compliance_statutory_calendar WHERE id = ?', [id]);
+    res.json({ success: true, data: updatedRows[0] });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteCalendarItem = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM compliance_statutory_calendar WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Statutory calendar filing deleted successfully.' });
+  } catch (err) {
+    next(err);
+  }
+};

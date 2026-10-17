@@ -82,6 +82,7 @@ export default function CompliancePortal() {
   const [licenses, setLicenses] = useState([]);
   const [certs, setCerts] = useState([]);
   const [audits, setAudits] = useState([]);
+  const [calendarItems, setCalendarItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -96,15 +97,22 @@ export default function CompliancePortal() {
   const [certSearch, setCertSearch] = useState('');
   const [certStatusFilter, setCertStatusFilter] = useState('all');
 
+  // Filters for Statutory Calendar
+  const [calendarSearch, setCalendarSearch] = useState('');
+  const [calendarFreqFilter, setCalendarFreqFilter] = useState('all');
+  const [calendarStatusFilter, setCalendarStatusFilter] = useState('all');
+
   // Modals
   const [showLicenseModal, setShowLicenseModal] = useState(false);
   const [showCertModal, setShowCertModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
 
   // Editing state
   const [editingLicense, setEditingLicense] = useState(null);
   const [editingCert, setEditingCert] = useState(null);
   const [editingAudit, setEditingAudit] = useState(null);
+  const [editingCalendarItem, setEditingCalendarItem] = useState(null);
 
   // Form states
   const [licenseForm, setLicenseForm] = useState({
@@ -136,25 +144,40 @@ export default function CompliancePortal() {
     status: 'Scheduled'
   });
 
+  const [calendarForm, setCalendarForm] = useState({
+    title: '',
+    frequency: 'Monthly Filing',
+    due_date_rule: '',
+    authority: 'Ministry of Health (MOH) Rwanda',
+    description: '',
+    focal_person: '',
+    status: 'Upcoming',
+    next_due_date: '',
+    last_submitted_date: ''
+  });
+
   // Fetch compliance data
   const fetchData = async (isManual = false) => {
     if (isManual) setRefreshing(true);
     else setLoading(true);
     setError(null);
     try {
-      const [licRes, certRes, auditRes] = await Promise.all([
+      const [licRes, certRes, auditRes, calRes] = await Promise.all([
         api.get('/compliance/licenses'),
         api.get('/compliance/facility-certs'),
-        api.get('/compliance/audits')
+        api.get('/compliance/audits'),
+        api.get('/compliance/calendar')
       ]);
 
       const fetchedLicenses = licRes.data.data || [];
       const fetchedCerts = certRes.data.data || [];
       const fetchedAudits = auditRes.data.data || [];
+      const fetchedCalendar = calRes.data.data || [];
 
       setLicenses(fetchedLicenses);
       setCerts(fetchedCerts);
       setAudits(fetchedAudits);
+      setCalendarItems(fetchedCalendar);
     } catch (err) {
       console.error('Failed to fetch compliance records:', err);
       setError('Unable to synchronize with the compliance database. Please verify your connection.');
@@ -214,6 +237,30 @@ export default function CompliancePortal() {
       return matchesSearch && matchesStatus;
     });
   }, [certs, certSearch, certStatusFilter]);
+
+  // Filtered statutory calendar items
+  const filteredCalendarItems = useMemo(() => {
+    return calendarItems.filter(item => {
+      const term = calendarSearch.toLowerCase();
+      const matchesSearch =
+        !term ||
+        (item.title && item.title.toLowerCase().includes(term)) ||
+        (item.authority && item.authority.toLowerCase().includes(term)) ||
+        (item.focal_person && item.focal_person.toLowerCase().includes(term)) ||
+        (item.description && item.description.toLowerCase().includes(term)) ||
+        (item.due_date_rule && item.due_date_rule.toLowerCase().includes(term));
+
+      const matchesFreq =
+        calendarFreqFilter === 'all' ||
+        (item.frequency && item.frequency.toLowerCase().includes(calendarFreqFilter.toLowerCase()));
+
+      const matchesStatus =
+        calendarStatusFilter === 'all' ||
+        item.status === calendarStatusFilter;
+
+      return matchesSearch && matchesFreq && matchesStatus;
+    });
+  }, [calendarItems, calendarSearch, calendarFreqFilter, calendarStatusFilter]);
 
   // Executive KPI calculations
   const kpis = useMemo(() => {
@@ -483,6 +530,94 @@ export default function CompliancePortal() {
     }
   };
 
+  // --- Handlers: Statutory Calendar ---
+  const handleOpenAddCalendar = () => {
+    setEditingCalendarItem(null);
+    setCalendarForm({
+      title: '',
+      frequency: 'Monthly Filing',
+      due_date_rule: '',
+      authority: 'Ministry of Health (MOH) Rwanda',
+      description: '',
+      focal_person: '',
+      status: 'Upcoming',
+      next_due_date: '',
+      last_submitted_date: ''
+    });
+    setShowCalendarModal(true);
+  };
+
+  const handleOpenEditCalendar = (item) => {
+    setEditingCalendarItem(item);
+    setCalendarForm({
+      title: item.title || '',
+      frequency: item.frequency || 'Monthly Filing',
+      due_date_rule: item.due_date_rule || '',
+      authority: item.authority || 'Ministry of Health (MOH) Rwanda',
+      description: item.description || '',
+      focal_person: item.focal_person || '',
+      status: item.status || 'Upcoming',
+      next_due_date: item.next_due_date || '',
+      last_submitted_date: item.last_submitted_date || ''
+    });
+    setShowCalendarModal(true);
+  };
+
+  const handleSaveCalendar = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingCalendarItem) {
+        const res = await api.put(`/compliance/calendar/${editingCalendarItem.id}`, calendarForm);
+        if (res.data.success) {
+          setCalendarItems(calendarItems.map(c => c.id === editingCalendarItem.id ? res.data.data : c));
+        }
+      } else {
+        const res = await api.post('/compliance/calendar', calendarForm);
+        if (res.data.success) {
+          setCalendarItems([...calendarItems, res.data.data]);
+        }
+      }
+      setShowCalendarModal(false);
+      setEditingCalendarItem(null);
+    } catch (err) {
+      console.error('Error saving statutory calendar filing:', err);
+      alert('Failed to save statutory reporting schedule.');
+    }
+  };
+
+  const handleDeleteCalendar = async (id) => {
+    if (!window.confirm('Are you sure you want to remove this statutory filing from the calendar?')) return;
+    try {
+      const res = await api.delete(`/compliance/calendar/${id}`);
+      if (res.data.success) {
+        setCalendarItems(calendarItems.filter(c => c.id !== id));
+      }
+    } catch (err) {
+      console.error('Error deleting statutory calendar filing:', err);
+      alert('Failed to delete statutory reporting schedule.');
+    }
+  };
+
+  const handleToggleCalendarSubmitted = async (item) => {
+    const isSubmitted = item.status === 'Compliant' || item.status === 'Submitted';
+    const newStatus = isSubmitted ? 'Pending Submission' : 'Compliant';
+    const today = new Date().toISOString().slice(0, 10);
+    const updatedPayload = {
+      ...item,
+      status: newStatus,
+      last_submitted_date: isSubmitted ? '' : today
+    };
+    try {
+      const res = await api.put(`/compliance/calendar/${item.id}`, updatedPayload);
+      if (res.data.success) {
+        setCalendarItems(calendarItems.map(c => c.id === item.id ? res.data.data : c));
+      }
+    } catch (err) {
+      console.error('Error updating submission status:', err);
+      alert('Failed to update submission status.');
+    }
+  };
+
   // Export CSV summary
   const handleExportCSV = () => {
     if (activeTab === 'staff') {
@@ -504,7 +639,7 @@ export default function CompliancePortal() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } else {
+    } else if (activeTab === 'facility') {
       const headers = ['Permit Name', 'Issuing Authority', 'Permit Number', 'Authorized Scope', 'Inspection Cycle', 'Expiry Date', 'Status'];
       const rows = filteredCerts.map(c => [
         `"${c.name || ''}"`,
@@ -520,6 +655,45 @@ export default function CompliancePortal() {
       const link = document.createElement('a');
       link.setAttribute('href', encodedUri);
       link.setAttribute('download', `legacy_clinics_facility_permits_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (activeTab === 'audits') {
+      const headers = ['Inspection Title', 'Category', 'Scheduled Date', 'Readiness Score', 'Status', 'Description'];
+      const rows = audits.map(a => [
+        `"${a.title || ''}"`,
+        `"${a.category || ''}"`,
+        `"${a.scheduled_date || ''}"`,
+        `"${a.readiness_score || 0}%"`,
+        `"${a.status || ''}"`,
+        `"${(a.description || '').replace(/"/g, '""')}"`
+      ]);
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `legacy_clinics_statutory_audits_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      const headers = ['Filing Title', 'Frequency', 'Due Date Rule', 'Next Due Date', 'Regulatory Authority', 'Focal Person', 'Status', 'Last Submitted Date', 'Description'];
+      const rows = filteredCalendarItems.map(item => [
+        `"${item.title || ''}"`,
+        `"${item.frequency || ''}"`,
+        `"${item.due_date_rule || ''}"`,
+        `"${item.next_due_date || ''}"`,
+        `"${item.authority || ''}"`,
+        `"${item.focal_person || ''}"`,
+        `"${item.status || ''}"`,
+        `"${item.last_submitted_date || ''}"`,
+        `"${(item.description || '').replace(/"/g, '""')}"`
+      ]);
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `legacy_clinics_statutory_calendar_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -804,6 +978,9 @@ export default function CompliancePortal() {
           >
             <Calendar size={16} />
             <span>Statutory Reporting Calendar</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200">
+              {calendarItems.length}
+            </span>
           </button>
         </div>
       </div>
@@ -1147,18 +1324,28 @@ export default function CompliancePortal() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'audits' && (
         <div className="space-y-4">
-          <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
-            <div className="relative z-10 max-w-3xl space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-teal-400 bg-teal-950/80 px-2.5 py-1 rounded-full border border-teal-800">
-                Rwanda Health Quality Directorate
-              </span>
-              <h2 className="text-xl sm:text-2xl font-black text-white">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="max-w-3xl">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                  Quality Directorate
+                </span>
+              </div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <CheckSquare size={18} className="text-teal-700" />
                 Statutory Audits &amp; Accreditation Assessment Schedule
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300">
+              <p className="text-xs text-slate-500 mt-1">
                 Official surveillance timeline for statutory inspections and accreditation standards assessments.
               </p>
             </div>
+            <button
+              onClick={handleOpenAddAudit}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-all shadow-xs shrink-0 cursor-pointer self-start sm:self-center"
+            >
+              <Plus size={14} />
+              <span>Schedule Inspection</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1251,75 +1438,235 @@ export default function CompliancePortal() {
       {/* ── TAB 4: STATUTORY REPORTING CALENDAR ── */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'calendar' && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
-          <div className="max-w-3xl">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Calendar size={18} className="text-teal-700" /> Statutory Filings &amp; Mandatory Reporting Schedule
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Statutory deadlines for clinical reporting, occupational health surveillance, and radiation monitoring submissions required by Rwandan regulatory authorities.
-            </p>
+        <div className="space-y-4">
+          
+          {/* Header Action Bar */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                  Regulatory Filings
+                </span>
+              </div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Calendar size={18} className="text-teal-700" />
+                Statutory Reporting &amp; Mandatory Filings Schedule
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Regulatory return calendar for clinical registries, occupational health, and radiation safety submissions.
+              </p>
+            </div>
+            <button
+              onClick={handleOpenAddCalendar}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-all shadow-xs shrink-0 cursor-pointer self-start sm:self-center"
+            >
+              <Plus size={14} />
+              <span>Schedule Filing</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            <div className="border border-slate-200 rounded-xl p-4 space-y-2 bg-slate-50/50">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-800 bg-teal-100 px-2 py-0.5 rounded">Monthly Filing</span>
-                <span className="text-xs font-bold text-emerald-700">Due 5th of Month</span>
-              </div>
-              <h3 className="font-extrabold text-sm text-slate-900">MoH HMIS / DHIS-2 Clinical Data Return</h3>
-              <p className="text-xs text-slate-600">
-                Monthly electronic aggregation of outpatient consultations, inpatient admissions, laboratory tests, surgical procedures, and mortality data to the Ministry of Health.
-              </p>
-              <div className="text-[11px] font-bold text-slate-500 pt-2 border-t border-slate-200">
-                Focal Person: <span className="text-slate-800">Lead Health Records &amp; Medical Director</span>
-              </div>
+          {/* Filters Bar */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search filings, authorities, focal officers, or reporting scope..."
+                value={calendarSearch}
+                onChange={e => setCalendarSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 text-slate-800"
+              />
+              {calendarSearch && (
+                <button onClick={() => setCalendarSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <X size={13} />
+                </button>
+              )}
             </div>
 
-            <div className="border border-slate-200 rounded-xl p-4 space-y-2 bg-slate-50/50">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-800 bg-blue-100 px-2 py-0.5 rounded">Quarterly Filing</span>
-                <span className="text-xs font-bold text-blue-700">Due End of Q2/Q4</span>
-              </div>
-              <h3 className="font-extrabold text-sm text-slate-900">RURA Personal Radiation Dosimetry Badges</h3>
-              <p className="text-xs text-slate-600">
-                Quarterly submission of staff TLD thermoluminescent dosimeter badges from Imaging &amp; Radiology (X-Ray, CT) to the RURA Radiation Safety Directorate for dose evaluation.
-              </p>
-              <div className="text-[11px] font-bold text-slate-500 pt-2 border-t border-slate-200">
-                Focal Person: <span className="text-slate-800">Radiation Safety Officer (RSO) &amp; HSFP</span>
-              </div>
-            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={calendarFreqFilter}
+                onChange={e => setCalendarFreqFilter(e.target.value)}
+                className="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:border-teal-700"
+              >
+                <option value="all">All Frequencies</option>
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Quarterly</option>
+                <option value="Event-Driven">Event-Driven / Bi-Monthly</option>
+                <option value="Annual">Annual</option>
+              </select>
 
-            <div className="border border-slate-200 rounded-xl p-4 space-y-2 bg-slate-50/50">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded">Event-Driven / Bi-Monthly</span>
-                <span className="text-xs font-bold text-amber-700">Within 48h of event</span>
-              </div>
-              <h3 className="font-extrabold text-sm text-slate-900">Rwanda FDA Pharmacovigilance &amp; ADR Reporting</h3>
-              <p className="text-xs text-slate-600">
-                Reporting of suspected adverse drug reactions (ADR), product quality defects, and medical device incidents to the Rwanda Food and Drugs Authority portal.
-              </p>
-              <div className="text-[11px] font-bold text-slate-500 pt-2 border-t border-slate-200">
-                Focal Person: <span className="text-slate-800">Superintendent Pharmacist</span>
-              </div>
+              <select
+                value={calendarStatusFilter}
+                onChange={e => setCalendarStatusFilter(e.target.value)}
+                className="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:border-teal-700"
+              >
+                <option value="all">All Statuses</option>
+                <option value="Upcoming">Upcoming</option>
+                <option value="Compliant">Compliant / Filed</option>
+                <option value="Pending Submission">Pending Submission</option>
+                <option value="Overdue">Overdue</option>
+              </select>
             </div>
-
-            <div className="border border-slate-200 rounded-xl p-4 space-y-2 bg-slate-50/50">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-800 bg-purple-100 px-2 py-0.5 rounded">Quarterly Filing</span>
-                <span className="text-xs font-bold text-purple-700">Q3 Schedule</span>
-              </div>
-              <h3 className="font-extrabold text-sm text-slate-900">Occupational Health &amp; Sharps Injury Surveillance</h3>
-              <p className="text-xs text-slate-600">
-                Quarterly reporting of needlestick exposures, biological splash incidents, and post-exposure prophylaxis (PEP) protocol adherence to the District Health Quality team.
-              </p>
-              <div className="text-[11px] font-bold text-slate-500 pt-2 border-t border-slate-200">
-                Focal Person: <span className="text-slate-800">Health &amp; Safety Focal Person (HSFP)</span>
-              </div>
-            </div>
-
           </div>
+
+          {/* Table Container */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    <th className="py-3 px-4">Statutory Filing / Mandatory Return</th>
+                    <th className="py-3 px-4">Regulatory Authority</th>
+                    <th className="py-3 px-4">Filing Frequency</th>
+                    <th className="py-3 px-4">Due Date Schedule</th>
+                    <th className="py-3 px-4">Focal Person / Officer</th>
+                    <th className="py-3 px-4 text-center">Filing Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {filteredCalendarItems.length > 0 ? (
+                    filteredCalendarItems.map(item => {
+                      const isCompliant = item.status === 'Compliant' || item.status === 'Submitted';
+                      const isPending = item.status === 'Pending Submission';
+                      const isOverdue = item.status === 'Overdue';
+
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-3.5 px-4 max-w-xs">
+                            <div className="font-extrabold text-slate-900">{item.title}</div>
+                            {item.description && (
+                              <div className="text-[11px] text-slate-500 font-medium line-clamp-2 mt-0.5" title={item.description}>
+                                {item.description}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-slate-800">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-[11px]">
+                              <Landmark size={12} className="text-slate-500" />
+                              {item.authority || 'MoH / Regulatory Body'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-extrabold tracking-wide uppercase ${
+                              item.frequency?.includes('Monthly')
+                                ? 'bg-teal-50 text-teal-800 border border-teal-200'
+                                : item.frequency?.includes('Quarterly')
+                                ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                                : item.frequency?.includes('Annual')
+                                ? 'bg-purple-50 text-purple-800 border border-purple-200'
+                                : 'bg-amber-50 text-amber-800 border border-amber-200'
+                            }`}>
+                              {item.frequency || 'Scheduled Filing'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-slate-900">{item.due_date_rule}</div>
+                            {item.next_due_date && (
+                              <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                <Clock size={11} className="text-teal-700" />
+                                <span>Next: <strong>{item.next_due_date}</strong></span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-semibold text-slate-800">{item.focal_person || 'Assigned Lead'}</div>
+                            {item.last_submitted_date && (
+                              <div className="text-[10px] text-emerald-700 font-medium mt-0.5 flex items-center gap-1">
+                                <CheckCircle2 size={10} />
+                                <span>Filed on {item.last_submitted_date}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold border ${
+                              isCompliant
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : isPending
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : isOverdue
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-slate-50 text-slate-700 border-slate-200'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                isCompliant ? 'bg-emerald-500' : isPending ? 'bg-amber-500' : isOverdue ? 'bg-rose-500' : 'bg-slate-400'
+                              }`} />
+                              {item.status || 'Upcoming'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleToggleCalendarSubmitted(item)}
+                                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
+                                  isCompliant
+                                    ? 'border-slate-200 text-slate-600 hover:bg-slate-100'
+                                    : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                                }`}
+                                title={isCompliant ? 'Mark as Pending' : 'Mark as Filed'}
+                              >
+                                {isCompliant ? 'Reopen' : 'Mark Filed'}
+                              </button>
+                              <button
+                                onClick={() => handleOpenEditCalendar(item)}
+                                className="p-1.5 text-slate-500 hover:text-teal-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                title="Edit Schedule"
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCalendar(item.id)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Delete Filing"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="py-12 px-4 text-center">
+                        <div className="max-w-md mx-auto space-y-3">
+                          <div className="w-12 h-12 mx-auto rounded-full bg-teal-50 flex items-center justify-center text-teal-700">
+                            <Calendar size={22} />
+                          </div>
+                          <div className="font-bold text-sm text-slate-800">
+                            {calendarItems.length === 0 ? 'No Statutory Filings Scheduled' : 'No Filings Match Your Criteria'}
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            {calendarItems.length === 0
+                              ? 'There are currently no active statutory reporting filings or regulatory return schedules on file. Register mandatory filings to track submission deadlines.'
+                              : 'Try adjusting your search keywords, filing frequency filter, or status selection.'}
+                          </p>
+                          {calendarItems.length === 0 ? (
+                            <button
+                              onClick={handleOpenAddCalendar}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-all shadow-xs cursor-pointer"
+                            >
+                              <Plus size={14} />
+                              <span>Schedule Filing</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => { setCalendarSearch(''); setCalendarFreqFilter('all'); setCalendarStatusFilter('all'); }}
+                              className="text-xs font-bold text-teal-700 hover:underline cursor-pointer"
+                            >
+                              Reset filters
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -1663,6 +2010,159 @@ export default function CompliancePortal() {
                   className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold cursor-pointer transition-colors shadow-xs"
                 >
                   {editingAudit ? 'Update Audit Record' : 'Schedule Audit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* ── MODAL: STATUTORY CALENDAR FILING FORM ── */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {showCalendarModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-black text-base text-slate-900">
+                  {editingCalendarItem ? 'Edit Statutory Filing Schedule' : 'Schedule Statutory Mandatory Filing'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {editingCalendarItem ? 'Update statutory filing schedule and responsible lead' : 'Register statutory reporting deadline and regulatory authority'}
+                </p>
+              </div>
+              <button onClick={() => setShowCalendarModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCalendar} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Filing / Mandatory Return Title *</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. MoH HMIS / DHIS-2 Clinical Data Return"
+                  value={calendarForm.title}
+                  onChange={e => setCalendarForm({ ...calendarForm, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700 font-semibold text-slate-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Regulatory Authority</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. MoH, RURA, Rwanda FDA"
+                    value={calendarForm.authority}
+                    onChange={e => setCalendarForm({ ...calendarForm, authority: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Filing Frequency *</label>
+                  <select
+                    value={calendarForm.frequency}
+                    onChange={e => setCalendarForm({ ...calendarForm, frequency: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700 bg-white"
+                  >
+                    <option value="Monthly Filing">Monthly Filing</option>
+                    <option value="Quarterly Filing">Quarterly Filing</option>
+                    <option value="Event-Driven / Bi-Monthly">Event-Driven / Bi-Monthly</option>
+                    <option value="Semi-Annual Filing">Semi-Annual Filing</option>
+                    <option value="Annual Filing">Annual Filing</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Due Date Schedule / Rule *</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. Due 5th of each month"
+                    value={calendarForm.due_date_rule}
+                    onChange={e => setCalendarForm({ ...calendarForm, due_date_rule: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Next Specific Due Date</label>
+                  <input
+                    type="date"
+                    value={calendarForm.next_due_date || ''}
+                    onChange={e => setCalendarForm({ ...calendarForm, next_due_date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Responsible Focal Officer</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Lead Health Records & Medical Director"
+                    value={calendarForm.focal_person}
+                    onChange={e => setCalendarForm({ ...calendarForm, focal_person: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Filing Status</label>
+                  <select
+                    value={calendarForm.status}
+                    onChange={e => setCalendarForm({ ...calendarForm, status: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700 bg-white"
+                  >
+                    <option value="Upcoming">Upcoming</option>
+                    <option value="Compliant">Compliant / Filed</option>
+                    <option value="Pending Submission">Pending Submission</option>
+                    <option value="Overdue">Overdue</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Last Submitted Date</label>
+                <input
+                  type="date"
+                  value={calendarForm.last_submitted_date || ''}
+                  onChange={e => setCalendarForm({ ...calendarForm, last_submitted_date: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Filing Description &amp; Scope</label>
+                <textarea
+                  rows={3}
+                  placeholder="Summary of required data return, submission portal, or verification guidelines..."
+                  value={calendarForm.description}
+                  onChange={e => setCalendarForm({ ...calendarForm, description: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCalendarModal(false)}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold cursor-pointer transition-colors shadow-xs"
+                >
+                  {editingCalendarItem ? 'Update Filing Schedule' : 'Schedule Filing'}
                 </button>
               </div>
             </form>

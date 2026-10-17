@@ -6,9 +6,30 @@ const emailService = require('../services/emailService');
 const { decryptField } = require('../utils/crypto');
 const bcrypt = require('bcryptjs');
 
+// Permitted staff roles for IT Officer management (Operations, Customer Care, Laboratory, Dental staff - managers & above excluded)
+const IT_PERMITTED_ROLES = [
+  'operations_staff',
+  'operations',
+  'cashier',
+  'principal_cashier',
+  'customer_care',
+  'lab_tech',
+  'lab_scientist',
+  'lab',
+  'lab_safety_officer',
+  'lab_stock_officer',
+  'dental_tech',
+  'dental'
+];
+
+const IT_UNAUTHORIZED_MESSAGE = 'IT Officer is only permitted to manage Operations, Customer Care, Laboratory, and Dental staff users (managers and above excluded).';
+
 exports.getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.getAll();
+    let users = await User.getAll();
+    if (req.user && req.user.role === 'it_officer') {
+      users = users.filter(u => IT_PERMITTED_ROLES.includes(u.role_key || u.role));
+    }
     res.json({ success: true, data: users });
   } catch (err) {
     next(err);
@@ -19,8 +40,8 @@ exports.createUser = async (req, res, next) => {
   try {
     if (req.user.role === 'it_officer') {
       const { rows: targetRoleRows } = await db.query('SELECT name FROM roles WHERE id = $1', [req.body.roleId]);
-      if (targetRoleRows.length === 0 || !['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetRoleRows[0].name)) {
-        return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care Officers, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+      if (targetRoleRows.length === 0 || !IT_PERMITTED_ROLES.includes(targetRoleRows[0].name)) {
+        return res.status(403).json({ success: false, message: IT_UNAUTHORIZED_MESSAGE });
       }
     }
 
@@ -60,13 +81,13 @@ exports.updateUser = async (req, res, next) => {
     if (req.user.role === 'it_officer') {
       const targetUser = await User.findById(req.params.id);
       if (!targetUser) return res.status(404).json({ success: false, message: 'User not found' });
-      if (!['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetUser.role)) {
-        return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+      if (!IT_PERMITTED_ROLES.includes(targetUser.role)) {
+        return res.status(403).json({ success: false, message: IT_UNAUTHORIZED_MESSAGE });
       }
       if (req.body.roleId) {
         const { rows: targetRoleRows } = await db.query('SELECT name FROM roles WHERE id = $1', [req.body.roleId]);
-        if (targetRoleRows.length === 0 || !['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetRoleRows[0].name)) {
-          return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+        if (targetRoleRows.length === 0 || !IT_PERMITTED_ROLES.includes(targetRoleRows[0].name)) {
+          return res.status(403).json({ success: false, message: IT_UNAUTHORIZED_MESSAGE });
         }
       }
     }
@@ -93,8 +114,8 @@ exports.deleteUser = async (req, res, next) => {
     if (req.user.role === 'it_officer') {
       const targetUser = await User.findById(req.params.id);
       if (!targetUser) return res.status(404).json({ success: false, message: 'User not found' });
-      if (!['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetUser.role)) {
-        return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+      if (!IT_PERMITTED_ROLES.includes(targetUser.role)) {
+        return res.status(403).json({ success: false, message: IT_UNAUTHORIZED_MESSAGE });
       }
     }
 
@@ -125,8 +146,8 @@ exports.resetPassword = async (req, res, next) => {
     if (req.user.role === 'it_officer') {
       const targetUser = await User.findById(req.params.id);
       if (!targetUser) return res.status(404).json({ success: false, message: 'User not found' });
-      if (!['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'].includes(targetUser.role)) {
-        return res.status(403).json({ success: false, message: 'IT Officer is only permitted to manage Customer Care, Operations, Cashier, Principal Cashier, and Sales Manager staff.' });
+      if (!IT_PERMITTED_ROLES.includes(targetUser.role)) {
+        return res.status(403).json({ success: false, message: IT_UNAUTHORIZED_MESSAGE });
       }
     }
 
@@ -164,7 +185,10 @@ exports.resetPassword = async (req, res, next) => {
 exports.getRoles = async (req, res, next) => {
   try {
     const { rows } = await db.query('SELECT id, name, display_name FROM roles ORDER BY id');
-    res.json({ success: true, data: rows });
+    const filteredRows = req.user && req.user.role === 'it_officer'
+      ? rows.filter(r => IT_PERMITTED_ROLES.includes(r.name))
+      : rows;
+    res.json({ success: true, data: filteredRows });
   } catch (err) {
     next(err);
   }
@@ -196,7 +220,6 @@ exports.bulkSendCredentials = async (req, res, next) => {
 
     const defaultInitialPass = password && password.trim().length >= 6 ? password.trim() : 'Legacy@2026';
     const isItOfficer = req.user.role === 'it_officer';
-    const itPermittedRoles = ['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'];
 
     const results = [];
     let successCount = 0;
@@ -214,7 +237,7 @@ exports.bulkSendCredentials = async (req, res, next) => {
           continue;
         }
 
-        if (isItOfficer && !itPermittedRoles.includes(user.role)) {
+        if (isItOfficer && !IT_PERMITTED_ROLES.includes(user.role)) {
           results.push({ id, username: user.username, success: false, message: 'Unauthorized role for IT Officer' });
           failedCount++;
           continue;
@@ -311,9 +334,8 @@ exports.sendSingleCredentials = async (req, res, next) => {
     }
 
     if (req.user.role === 'it_officer') {
-      const itPermittedRoles = ['customer_care', 'operations_staff', 'cashier', 'principal_cashier', 'sales_manager'];
-      if (!itPermittedRoles.includes(user.role)) {
-        return res.status(403).json({ success: false, message: 'Unauthorized role for IT Officer' });
+      if (!IT_PERMITTED_ROLES.includes(user.role)) {
+        return res.status(403).json({ success: false, message: IT_UNAUTHORIZED_MESSAGE });
       }
     }
 

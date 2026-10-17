@@ -26,4 +26,10 @@ router.post('/facility-certs', checkPermission('compliance', 'create'), complian
 router.put('/facility-certs/:id', checkPermission('compliance', 'edit'), compliance.updateFacilityCert);
 router.delete('/facility-certs/:id', checkPermission('compliance', 'delete'), compliance.deleteFacilityCert);
 
+// --- Statutory Reporting Calendar ---
+router.get('/calendar', checkPermission('compliance', 'view'), compliance.getCalendar);
+router.post('/calendar', checkPermission('compliance', 'create'), compliance.createCalendarItem);
+router.put('/calendar/:id', checkPermission('compliance', 'edit'), compliance.updateCalendarItem);
+router.delete('/calendar/:id', checkPermission('compliance', 'delete'), compliance.deleteCalendarItem);
+
 module.exports = router;

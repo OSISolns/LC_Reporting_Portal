@@ -3978,6 +3978,24 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     `);
       console.log('✅ SQLite Schema Migration: created/verified compliance_audits table');
 
+      await client.execute(`
+      CREATE TABLE IF NOT EXISTS compliance_statutory_calendar (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        title               TEXT NOT NULL,
+        frequency           TEXT NOT NULL,
+        due_date_rule       TEXT NOT NULL,
+        authority           TEXT,
+        description         TEXT,
+        focal_person        TEXT,
+        status              TEXT DEFAULT 'Upcoming',
+        next_due_date       TEXT,
+        last_submitted_date TEXT,
+        created_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+      console.log('✅ SQLite Schema Migration: created/verified compliance_statutory_calendar table');
+
       // Safe column additions for existing installs
       await client.execute("ALTER TABLE compliance_licenses ADD COLUMN department TEXT").catch(() => {});
       await client.execute("ALTER TABLE compliance_licenses ADD COLUMN council_reg_no TEXT").catch(() => {});
@@ -3991,6 +4009,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       await client.execute("DELETE FROM compliance_licenses WHERE staff_name IN ('Dr. Jane Smith', 'Nurse John Doe', 'Dr. Alan Wake', 'Dr. Jean-Paul Habimana', 'Dr. Eric Gakuba', 'Dr. Sandrine Mutoni', 'Fabrice Mugisha', 'Sr. Grace Uwase', 'Clarisse Umutoni', 'Phn. Aline Mukamana', 'Dr. Kevin Ntwari')").catch(() => {});
       await client.execute("DELETE FROM compliance_facility_certs WHERE name IN ('Fire Safety Certificate', 'Radiation Safety (X-Ray)', 'MoH Comprehensive Healthcare Facility Operating License', 'Rwanda FDA Pharmaceutical Premises & Reagent Cold-Chain License', 'RURA Ionizing Radiation Protection Operating License', 'National Police Fire & Life Safety Clearance Certificate', 'CSSD Steam Autoclave & Pressure Vessel Safety Certification', 'Biomedical Hazardous Waste Management & Environmental Permit')").catch(() => {});
       await client.execute("DELETE FROM compliance_audits WHERE title IN ('MOH Annual Facility Inspection', 'MOH Annual Health Quality & Patient Safety Inspection', 'Rwanda FDA Good Pharmacy & Distribution Practice (GDP) Audit', 'ISO 15189:2022 Medical Laboratory Quality Surveillance Assessment', 'Quarterly EHS & Fire Marshall Safety Rounding')").catch(() => {});
+      await client.execute("DELETE FROM compliance_statutory_calendar WHERE title IN ('MoH HMIS / DHIS-2 Clinical Data Return', 'RURA Personal Radiation Dosimetry Badges', 'Rwanda FDA Pharmacovigilance & ADR Reporting', 'Occupational Health & Sharps Injury Surveillance')").catch(() => {});
     } catch (err) {
       console.error('❌ Failed to initialize Compliance tables:', err);
     }
