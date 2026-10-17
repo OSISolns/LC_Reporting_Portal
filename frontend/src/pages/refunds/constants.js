@@ -1,9 +1,7 @@
 export const INSURANCES = [
   // ── Most Common (Rwandan Public / National Schemes) ──────────────────────
   "Private",
-  "RSSB (Community)",
   "RSSB (RAMA)",
-  "RSSB (Indigent / Mutuelle)",
   "MMI (Military Medical Insurance)",
   "RAMA",
   // ── Private & Corporate Insurers ─────────────────────────────────────────
