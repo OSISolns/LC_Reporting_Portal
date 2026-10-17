@@ -221,15 +221,15 @@ export default function CompliancePortal() {
     const validLicenses = licenses.filter(l => l.status === 'Valid').length;
     const expiringLicenses = licenses.filter(l => l.status === 'Expiring Soon').length;
     const criticalLicenses = licenses.filter(l => l.status === 'Critical').length;
-    const licenseRate = totalLicenses > 0 ? Math.round((validLicenses / totalLicenses) * 100) : 100;
+    const licenseRate = totalLicenses > 0 ? Math.round((validLicenses / totalLicenses) * 100) : 0;
 
     const totalCerts = certs.length;
     const validCerts = certs.filter(c => c.status === 'Valid').length;
-    const certRate = totalCerts > 0 ? Math.round((validCerts / totalCerts) * 100) : 100;
+    const certRate = totalCerts > 0 ? Math.round((validCerts / totalCerts) * 100) : 0;
 
     const upcomingAudit = audits.length > 0 
       ? [...audits].sort((a,b) => new Date(a.scheduled_date) - new Date(b.scheduled_date))[0]
-      : { title: 'MoH Quality Standards Inspection', scheduled_date: '2026-07-05', readiness_score: 88 };
+      : null;
 
     return {
       licenseRate,
@@ -422,6 +422,19 @@ export default function CompliancePortal() {
   };
 
   // --- Handlers: Audits ---
+  const handleOpenAddAudit = () => {
+    setEditingAudit(null);
+    setAuditForm({
+      title: '',
+      category: 'Statutory Quality',
+      scheduled_date: '',
+      readiness_score: 80,
+      description: '',
+      status: 'Scheduled'
+    });
+    setShowAuditModal(true);
+  };
+
   const handleOpenEditAudit = (audit) => {
     setEditingAudit(audit);
     setAuditForm({
@@ -437,17 +450,36 @@ export default function CompliancePortal() {
 
   const handleSaveAudit = async (e) => {
     e.preventDefault();
-    if (!editingAudit) return;
     try {
-      const res = await api.put(`/compliance/audits/${editingAudit.id}`, auditForm);
+      if (editingAudit) {
+        const res = await api.put(`/compliance/audits/${editingAudit.id}`, auditForm);
+        if (res.data.success) {
+          setAudits(audits.map(a => a.id === editingAudit.id ? res.data.data : a));
+        }
+      } else {
+        const res = await api.post('/compliance/audits', auditForm);
+        if (res.data.success) {
+          setAudits([...audits, res.data.data]);
+        }
+      }
+      setShowAuditModal(false);
+      setEditingAudit(null);
+    } catch (err) {
+      console.error('Error saving audit inspection:', err);
+      alert('Failed to save audit inspection record.');
+    }
+  };
+
+  const handleDeleteAudit = async (id) => {
+    if (!window.confirm('Are you sure you want to remove this scheduled inspection from the roadmap?')) return;
+    try {
+      const res = await api.delete(`/compliance/audits/${id}`);
       if (res.data.success) {
-        setAudits(audits.map(a => a.id === editingAudit.id ? res.data.data : a));
-        setShowAuditModal(false);
-        setEditingAudit(null);
+        setAudits(audits.filter(a => a.id !== id));
       }
     } catch (err) {
-      console.error('Error updating audit inspection:', err);
-      alert('Failed to update audit inspection record.');
+      console.error('Error deleting audit inspection:', err);
+      alert('Failed to delete scheduled inspection.');
     }
   };
 
@@ -522,8 +554,7 @@ export default function CompliancePortal() {
             Compliance &amp; Regulatory Oversight
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-3xl">
-            Statutory hospital operating permits, health authority inspections (MoH Rwanda, Rwanda FDA, RURA) 
-            and clinical staff council licensure registers (RMDC, NCNM, RAHPC).
+            Statutory hospital operating permits, health authority inspections, and clinical staff council licensure registers.
           </p>
         </div>
 
@@ -555,7 +586,7 @@ export default function CompliancePortal() {
               <Plus size={14} />
               <span>Register Practitioner</span>
             </button>
-          ) : (
+          ) : activeTab === 'facility' ? (
             <button
               onClick={handleOpenAddCert}
               className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-all shadow-xs cursor-pointer"
@@ -563,7 +594,15 @@ export default function CompliancePortal() {
               <Plus size={14} />
               <span>Add Operating Permit</span>
             </button>
-          )}
+          ) : activeTab === 'audits' ? (
+            <button
+              onClick={handleOpenAddAudit}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-all shadow-xs cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Schedule Inspection</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -587,8 +626,14 @@ export default function CompliancePortal() {
               <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Facility Accreditations</p>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-2xl font-black text-slate-900">{kpis.validCerts}/{kpis.totalCerts}</span>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  {kpis.certRate}% Current
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                  kpis.totalCerts === 0 
+                    ? 'text-slate-600 bg-slate-50 border-slate-200' 
+                    : kpis.certRate >= 90 
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200' 
+                    : 'text-amber-700 bg-amber-50 border-amber-200'
+                }`}>
+                  {kpis.totalCerts === 0 ? 'None on File' : `${kpis.certRate}% Current`}
                 </span>
               </div>
             </div>
@@ -597,8 +642,8 @@ export default function CompliancePortal() {
             </div>
           </div>
           <p className="text-[11px] text-slate-500 mt-3 pt-3 border-t border-slate-100 flex items-center gap-1.5">
-            <CheckCircle2 size={13} className="text-emerald-600" />
-            <span>MoH, RFDA, RURA &amp; Police Fire Cleared</span>
+            <CheckCircle2 size={13} className={kpis.totalCerts > 0 ? "text-emerald-600" : "text-slate-400"} />
+            <span>{kpis.totalCerts > 0 ? 'MoH, RFDA, RURA & Police Fire Cleared' : 'No facility permits registered'}</span>
           </p>
         </div>
 
@@ -609,8 +654,14 @@ export default function CompliancePortal() {
               <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Practitioner Licensure</p>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-2xl font-black text-slate-900">{kpis.validLicenses}/{kpis.totalLicenses}</span>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  {kpis.licenseRate}% Active
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                  kpis.totalLicenses === 0 
+                    ? 'text-slate-600 bg-slate-50 border-slate-200' 
+                    : kpis.licenseRate >= 90 
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200' 
+                    : 'text-amber-700 bg-amber-50 border-amber-200'
+                }`}>
+                  {kpis.totalLicenses === 0 ? 'None on File' : `${kpis.licenseRate}% Active`}
                 </span>
               </div>
             </div>
@@ -619,8 +670,8 @@ export default function CompliancePortal() {
             </div>
           </div>
           <p className="text-[11px] text-slate-500 mt-3 pt-3 border-t border-slate-100 flex items-center gap-1.5">
-            <Award size={13} className="text-blue-600" />
-            <span>RMDC, NCNM, RAHPC verified</span>
+            <Award size={13} className={kpis.totalLicenses > 0 ? "text-blue-600" : "text-slate-400"} />
+            <span>{kpis.totalLicenses > 0 ? 'RMDC, NCNM, RAHPC verified' : 'No practitioner licenses registered'}</span>
           </p>
         </div>
 
@@ -630,9 +681,11 @@ export default function CompliancePortal() {
             <div>
               <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Next Statutory Audit</p>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-2xl font-black text-slate-900">{kpis.upcomingAudit.readiness_score}%</span>
+                <span className="text-2xl font-black text-slate-900">
+                  {kpis.upcomingAudit ? `${kpis.upcomingAudit.readiness_score}%` : '—'}
+                </span>
                 <span className="text-xs font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-                  Readiness
+                  {kpis.upcomingAudit ? 'Readiness' : 'None Scheduled'}
                 </span>
               </div>
             </div>
@@ -640,8 +693,14 @@ export default function CompliancePortal() {
               <Landmark size={20} />
             </div>
           </div>
-          <p className="text-[11px] text-slate-500 mt-3 pt-3 border-t border-slate-100 truncate" title={kpis.upcomingAudit.title}>
-            <span className="font-semibold text-slate-700">{kpis.upcomingAudit.scheduled_date}</span>: {kpis.upcomingAudit.title}
+          <p className="text-[11px] text-slate-500 mt-3 pt-3 border-t border-slate-100 truncate" title={kpis.upcomingAudit ? kpis.upcomingAudit.title : 'No upcoming audits'}>
+            {kpis.upcomingAudit ? (
+              <>
+                <span className="font-semibold text-slate-700">{kpis.upcomingAudit.scheduled_date}</span>: {kpis.upcomingAudit.title}
+              </>
+            ) : (
+              <span className="text-slate-400">No statutory inspections on file</span>
+            )}
           </p>
         </div>
 
@@ -659,7 +718,7 @@ export default function CompliancePortal() {
                     ? 'text-amber-800 bg-amber-50 border-amber-200' 
                     : 'text-slate-600 bg-slate-50 border-slate-200'
                 }`}>
-                  {kpis.criticalLicenses > 0 ? `${kpis.criticalLicenses} Overdue` : 'Attention Items'}
+                  {kpis.totalActions === 0 ? 'All Clear' : `${kpis.totalActions} Action Items`}
                 </span>
               </div>
             </div>
@@ -675,9 +734,13 @@ export default function CompliancePortal() {
             {kpis.criticalLicenses > 0 ? (
               <AlertCircle size={13} className="text-rose-600 shrink-0" />
             ) : (
-              <Clock size={13} className="text-amber-600 shrink-0" />
+              <Clock size={13} className="text-slate-400 shrink-0" />
             )}
-            <span>{kpis.expiringLicenses} in next 60d, {kpis.criticalLicenses} pending council submission</span>
+            <span>
+              {kpis.totalActions === 0 
+                ? '0 overdue or expiring permits' 
+                : `${kpis.expiringLicenses} in next 60d, ${kpis.criticalLicenses} overdue`}
+            </span>
           </p>
         </div>
 
@@ -893,7 +956,19 @@ export default function CompliancePortal() {
                   ) : (
                     <tr>
                       <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
-                        No practitioner licensure records match the specified filters.
+                        {licenses.length === 0 ? (
+                          <div className="space-y-3">
+                            <div className="w-12 h-12 mx-auto rounded-full bg-teal-50 flex items-center justify-center text-teal-700">
+                              <UserCheck size={24} />
+                            </div>
+                            <div className="font-bold text-sm text-slate-800">No Practitioner Licensure Records on File</div>
+                            <p className="text-xs text-slate-500 max-w-md mx-auto">
+                              There are currently no staff practicing licenses registered. Click "Register Practitioner" above to record a clinical license.
+                            </p>
+                          </div>
+                        ) : (
+                          'No practitioner licensure records match the specified filters.'
+                        )}
                       </td>
                     </tr>
                   )}
@@ -1040,8 +1115,27 @@ export default function CompliancePortal() {
                 );
               })
             ) : (
-              <div className="col-span-full py-12 text-center text-slate-400 font-medium bg-white rounded-2xl border border-slate-200">
-                No facility certifications match the search criteria.
+              <div className="col-span-full py-12 px-4 text-center bg-white rounded-2xl border border-slate-200 space-y-3">
+                <div className="w-12 h-12 mx-auto rounded-full bg-teal-50 flex items-center justify-center text-teal-700">
+                  <Building2 size={24} />
+                </div>
+                <div className="font-bold text-sm text-slate-800">
+                  {certs.length === 0 ? 'No Facility Operating Permits on File' : 'No Facility Permits Found'}
+                </div>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  {certs.length === 0 
+                    ? 'There are currently no institutional operating permits or health authority certificates recorded. Click "Add Operating Permit" to record facility accreditation.'
+                    : 'No facility certifications match the specified search or status filters.'}
+                </p>
+                {certs.length === 0 && (
+                  <button
+                    onClick={handleOpenAddCert}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-all shadow-xs cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    <span>Add Operating Permit</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1062,66 +1156,93 @@ export default function CompliancePortal() {
                 Statutory Audits &amp; Accreditation Assessment Schedule
               </h2>
               <p className="text-xs sm:text-sm text-slate-300">
-                Official surveillance timeline for the Ministry of Health (MOH), Rwanda FDA, RURA Radiation Protection,
-                and international laboratory accreditation standards (ISO 15189:2022).
+                Official surveillance timeline for statutory inspections and accreditation standards assessments.
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {audits.map(audit => (
-              <div key={audit.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:border-slate-300 transition-all space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                      {audit.category || 'Statutory Quality'}
-                    </span>
-                    <h3 className="font-extrabold text-base text-slate-900 mt-2">
-                      {audit.title}
-                    </h3>
+            {audits.length > 0 ? (
+              audits.map(audit => (
+                <div key={audit.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:border-slate-300 transition-all space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                        {audit.category || 'Statutory Quality'}
+                      </span>
+                      <h3 className="font-extrabold text-base text-slate-900 mt-2">
+                        {audit.title}
+                      </h3>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-2xl font-black text-teal-700">{audit.readiness_score}%</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Readiness</span>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-2xl font-black text-teal-700">{audit.readiness_score}%</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Readiness</span>
+
+                  <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    {audit.description || 'Statutory review covering clinical documentation, emergency protocols, and medical device maintenance.'}
+                  </p>
+
+                  {/* Readiness Progress Bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                      <span>Audit Preparation Index</span>
+                      <span>{audit.readiness_score}% Completed</span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          audit.readiness_score >= 90 ? 'bg-emerald-600' : audit.readiness_score >= 75 ? 'bg-teal-600' : 'bg-amber-500'
+                        }`}
+                        style={{ width: `${audit.readiness_score}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Footer Details */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5 text-slate-600 font-semibold">
+                      <Calendar size={14} className="text-teal-700" />
+                      <span>Inspection Date: <strong className="text-slate-900">{audit.scheduled_date}</strong></span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEditAudit(audit)}
+                        className="px-3 py-1.5 text-xs font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Update Readiness
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAudit(audit.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="Delete Inspection"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  {audit.description || 'Statutory review covering clinical documentation, emergency protocols, and medical device maintenance.'}
+              ))
+            ) : (
+              <div className="col-span-full py-12 px-4 text-center bg-white rounded-2xl border border-slate-200 space-y-3">
+                <div className="w-12 h-12 mx-auto rounded-full bg-teal-50 flex items-center justify-center text-teal-700">
+                  <CheckSquare size={24} />
+                </div>
+                <div className="font-bold text-sm text-slate-800">No Statutory Audits or Inspections Scheduled</div>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  There are currently no active statutory quality audits or surveillance reviews on file. Schedule an inspection to track institutional readiness metrics.
                 </p>
-
-                {/* Readiness Progress Bar */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                    <span>Audit Preparation Index</span>
-                    <span>{audit.readiness_score}% Completed</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        audit.readiness_score >= 90 ? 'bg-emerald-600' : audit.readiness_score >= 75 ? 'bg-teal-600' : 'bg-amber-500'
-                      }`}
-                      style={{ width: `${audit.readiness_score}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Footer Details */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5 text-slate-600 font-semibold">
-                    <Calendar size={14} className="text-teal-700" />
-                    <span>Inspection Date: <strong className="text-slate-900">{audit.scheduled_date}</strong></span>
-                  </div>
-
-                  <button
-                    onClick={() => handleOpenEditAudit(audit)}
-                    className="px-3 py-1.5 text-xs font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors cursor-pointer"
-                  >
-                    Update Readiness
-                  </button>
-                </div>
+                <button
+                  onClick={handleOpenAddAudit}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-all shadow-xs cursor-pointer"
+                >
+                  <Plus size={14} />
+                  <span>Schedule Inspection</span>
+                </button>
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}
@@ -1459,9 +1580,11 @@ export default function CompliancePortal() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-black text-base text-slate-900">
-                  Update Inspection Readiness Metrics
+                  {editingAudit ? 'Update Inspection Readiness Metrics' : 'Schedule Statutory Audit / Inspection'}
                 </h3>
-                <p className="text-xs text-slate-500">Statutory Audit Quality Controls</p>
+                <p className="text-xs text-slate-500">
+                  {editingAudit ? 'Statutory Audit Quality Controls' : 'Plan and track upcoming statutory inspections'}
+                </p>
               </div>
               <button onClick={() => setShowAuditModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
                 <X size={18} />
@@ -1470,10 +1593,11 @@ export default function CompliancePortal() {
 
             <form onSubmit={handleSaveAudit} className="space-y-3.5 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Inspection / Audit Title</label>
+                <label className="font-bold text-slate-700 block mb-1">Inspection / Audit Title *</label>
                 <input
                   required
                   type="text"
+                  placeholder="e.g. MoH Annual Health Facility Inspection"
                   value={auditForm.title}
                   onChange={e => setAuditForm({ ...auditForm, title: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700 font-semibold text-slate-800"
@@ -1508,6 +1632,7 @@ export default function CompliancePortal() {
                 <label className="font-bold text-slate-700 block mb-1">Audit Category</label>
                 <input
                   type="text"
+                  placeholder="e.g. Statutory Quality, Radiation Safety, Laboratory Accreditation"
                   value={auditForm.category}
                   onChange={e => setAuditForm({ ...auditForm, category: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700"
@@ -1518,6 +1643,7 @@ export default function CompliancePortal() {
                 <label className="font-bold text-slate-700 block mb-1">Scope &amp; Preparation Description</label>
                 <textarea
                   rows={3}
+                  placeholder="Detailed inspection focus and statutory requirements..."
                   value={auditForm.description}
                   onChange={e => setAuditForm({ ...auditForm, description: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-teal-700"
@@ -1536,7 +1662,7 @@ export default function CompliancePortal() {
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold cursor-pointer transition-colors shadow-xs"
                 >
-                  Update Audit Record
+                  {editingAudit ? 'Update Audit Record' : 'Schedule Audit'}
                 </button>
               </div>
             </form>

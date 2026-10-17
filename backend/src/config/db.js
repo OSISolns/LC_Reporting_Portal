@@ -3987,70 +3987,10 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       await client.execute("ALTER TABLE compliance_audits ADD COLUMN category TEXT").catch(() => {});
       await client.execute("ALTER TABLE compliance_audits ADD COLUMN status TEXT").catch(() => {});
 
-      // Check if licenses contain mock or are empty; populate with authentic Rwanda healthcare data
-      const { rows: licRows } = await client.execute("SELECT staff_name FROM compliance_licenses LIMIT 1");
-      const hasGenericLic = licRows.length > 0 && licRows[0].staff_name.includes('Dr. Jane Smith');
-      if (licRows.length === 0 || hasGenericLic) {
-        await client.execute("DELETE FROM compliance_licenses WHERE staff_name LIKE 'Dr. Jane Smith%' OR staff_name LIKE 'Nurse John Doe%' OR staff_name LIKE 'Dr. Alan Wake%'").catch(() => {});
-        const realStaffLicenses = [
-          ['Dr. Jean-Paul Habimana', 'Consultant Physician', 'RMDC Full Practicing License', '2027-04-30', 'Valid', 'Internal Medicine', 'RMDC/2018/0941'],
-          ['Dr. Eric Gakuba', 'Consultant General Surgeon', 'RMDC Specialist Practice License', '2026-12-15', 'Valid', 'Surgery & Theater', 'RMDC/2016/0412'],
-          ['Dr. Sandrine Mutoni', 'Consultant Pediatrician', 'RMDC Full Practicing License', '2026-07-15', 'Expiring Soon', 'Pediatrics & OPD', 'RMDC/2020/1208'],
-          ['Fabrice Mugisha', 'Senior Medical Lab Technologist', 'RAHPC Annual Practicing Certificate', '2027-01-31', 'Valid', 'Laboratory', 'RAHPC/MLT/2019/0432'],
-          ['Sr. Grace Uwase', 'Head Nurse & Clinical Quality', 'NCNM Practicing License', '2026-11-20', 'Valid', 'Nursing & Inpatient', 'NCNM/RN/2017/1892'],
-          ['Clarisse Umutoni', 'Senior Radiographer & CT Specialist', 'RAHPC Practicing License', '2026-10-31', 'Valid', 'Imaging & Radiology', 'RAHPC/RAD/2021/0187'],
-          ['Phn. Aline Mukamana', 'Superintendent Pharmacist', 'Rwanda FDA Registered Pharmacist', '2027-03-31', 'Valid', 'Pharmacy Services', 'RFDA/RPH/2019/0064'],
-          ['Dr. Kevin Ntwari', 'Dental Surgeon', 'RMDC Dental Practicing License', '2026-06-18', 'Critical', 'Dental Clinic', 'RMDC/DDS/2022/0154']
-        ];
-        for (const [sName, role, lType, exp, st, dept, reg] of realStaffLicenses) {
-          await client.execute({
-            sql: "INSERT INTO compliance_licenses (staff_name, role, license_type, expiry_date, status, department, council_reg_no) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            args: [sName, role, lType, exp, st, dept, reg]
-          });
-        }
-        console.log('🌱 Seeded authentic Rwanda healthcare staff licenses.');
-      }
-
-      // Check facility certs; populate with authentic facility licenses
-      const { rows: certRows } = await client.execute("SELECT name FROM compliance_facility_certs LIMIT 1");
-      const hasGenericCert = certRows.length > 0 && certRows[0].name === 'Fire Safety Certificate';
-      if (certRows.length === 0 || hasGenericCert) {
-        await client.execute("DELETE FROM compliance_facility_certs WHERE name = 'Fire Safety Certificate' OR name = 'Radiation Safety (X-Ray)'").catch(() => {});
-        const realFacilityCerts = [
-          ['MoH Comprehensive Healthcare Facility Operating License', 'Ministry of Health (MOH) Rwanda', '2027-02-28', 'Valid', 'MOH/HOSP/2025/082', 'Outpatient Consultations, Inpatient Hospitalization, Day Surgery, Diagnostics & 24/7 Emergency', 'Annual MOH Inspection'],
-          ['Rwanda FDA Pharmaceutical Premises & Reagent Cold-Chain License', 'Rwanda Food and Drugs Authority (RFDA)', '2026-12-31', 'Valid', 'RFDA/MED/2025/119', 'Hospital Pharmacy Dispensation, Cold Chain (2°C–8°C) Vaccines & Diagnostic Reagents', 'Bi-Annual GDP Audit'],
-          ['RURA Ionizing Radiation Protection Operating License', 'Rwanda Utilities Regulatory Authority (RURA)', '2026-08-05', 'Expiring Soon', 'RURA/RAD/2024/044', 'Digital Radiology (X-Ray), 64-Slice CT Scanner, Dental Panoramic OPG & Staff Dosimetry', 'Annual Radiation Audit'],
-          ['National Police Fire & Life Safety Clearance Certificate', 'Rwanda National Police Fire & Rescue Command', '2027-01-10', 'Valid', 'RNP/FRB/2025/381', 'Automatic Sprinkler Network, Fire Hydrants, Smoke Alarms & Emergency Evacuation Clearances', 'Annual Drill Assessment'],
-          ['CSSD Steam Autoclave & Pressure Vessel Safety Certification', 'MIFOTRA Labor Inspectorate', '2026-11-15', 'Valid', 'MIFOTRA/PV/2025/091', 'Central Sterile Services Department (CSSD) High-Pressure Autoclaves & Steam Vessels', 'Annual Hydrostatic Test'],
-          ['Biomedical Hazardous Waste Management & Environmental Permit', 'Rwanda Environment Management Authority (REMA)', '2027-03-31', 'Valid', 'REMA/BMW/2025/014', 'Infectious Clinical Waste Segregation, Color-Coded Disposal & Regulated Incineration', 'Annual Environmental Audit']
-        ];
-        for (const [name, issuer, exp, st, pNo, scope, cycle] of realFacilityCerts) {
-          await client.execute({
-            sql: "INSERT INTO compliance_facility_certs (name, issuer, expiry_date, status, permit_no, scope, inspection_cycle) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            args: [name, issuer, exp, st, pNo, scope, cycle]
-          });
-        }
-        console.log('🌱 Seeded authentic Rwanda healthcare facility certs.');
-      }
-
-      // Check audits; populate with comprehensive audits
-      const { rows: auditRows } = await client.execute("SELECT count(*) as cnt FROM compliance_audits");
-      if (Number(auditRows[0].cnt) <= 1) {
-        await client.execute("DELETE FROM compliance_audits").catch(() => {});
-        const realAudits = [
-          ['MOH Annual Health Quality & Patient Safety Inspection', '2026-07-05', 88, 'Comprehensive statutory inspection covering clinical governance, IPC guidelines, and emergency resuscitation readiness.', 'Statutory Quality', 'Scheduled'],
-          ['Rwanda FDA Good Pharmacy & Distribution Practice (GDP) Audit', '2026-09-18', 92, 'Temperature logging verification, cold chain dual-backup power systems, and controlled narcotic dispensation logs.', 'Pharmacy & Cold-Chain', 'Upcoming'],
-          ['ISO 15189:2022 Medical Laboratory Quality Surveillance Assessment', '2026-11-12', 85, 'CLSI standards surveillance, IQC/EQA proficiency testing documentation, and reagent lot traceability verification.', 'Diagnostic Quality', 'Upcoming'],
-          ['Quarterly EHS & Fire Marshall Safety Rounding', '2026-12-08', 95, 'Fire extinguisher inspection tags, eyewash stations water pressure, chemical spill kits, and emergency exit pathway clearance.', 'Environmental & Safety', 'Scheduled']
-        ];
-        for (const [title, date, score, desc, cat, st] of realAudits) {
-          await client.execute({
-            sql: "INSERT INTO compliance_audits (title, scheduled_date, readiness_score, description, category, status) VALUES (?, ?, ?, ?, ?, ?)",
-            args: [title, date, score, desc, cat, st]
-          });
-        }
-        console.log('🌱 Seeded authentic Rwanda healthcare audit roadmap.');
-      }
+      // Purge any historical mock compliance data
+      await client.execute("DELETE FROM compliance_licenses WHERE staff_name IN ('Dr. Jane Smith', 'Nurse John Doe', 'Dr. Alan Wake', 'Dr. Jean-Paul Habimana', 'Dr. Eric Gakuba', 'Dr. Sandrine Mutoni', 'Fabrice Mugisha', 'Sr. Grace Uwase', 'Clarisse Umutoni', 'Phn. Aline Mukamana', 'Dr. Kevin Ntwari')").catch(() => {});
+      await client.execute("DELETE FROM compliance_facility_certs WHERE name IN ('Fire Safety Certificate', 'Radiation Safety (X-Ray)', 'MoH Comprehensive Healthcare Facility Operating License', 'Rwanda FDA Pharmaceutical Premises & Reagent Cold-Chain License', 'RURA Ionizing Radiation Protection Operating License', 'National Police Fire & Life Safety Clearance Certificate', 'CSSD Steam Autoclave & Pressure Vessel Safety Certification', 'Biomedical Hazardous Waste Management & Environmental Permit')").catch(() => {});
+      await client.execute("DELETE FROM compliance_audits WHERE title IN ('MOH Annual Facility Inspection', 'MOH Annual Health Quality & Patient Safety Inspection', 'Rwanda FDA Good Pharmacy & Distribution Practice (GDP) Audit', 'ISO 15189:2022 Medical Laboratory Quality Surveillance Assessment', 'Quarterly EHS & Fire Marshall Safety Rounding')").catch(() => {});
     } catch (err) {
       console.error('❌ Failed to initialize Compliance tables:', err);
     }

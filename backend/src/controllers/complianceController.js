@@ -46,6 +46,37 @@ exports.updateAuditReadiness = async (req, res, next) => {
   }
 };
 
+exports.createAudit = async (req, res, next) => {
+  try {
+    const { title, scheduled_date, readiness_score, description, category, status } = req.body;
+    if (!title || !scheduled_date) {
+      return res.status(400).json({ success: false, message: 'Audit title and scheduled date are required.' });
+    }
+    await db.query(
+      `INSERT INTO compliance_audits (title, scheduled_date, readiness_score, description, category, status) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [title, scheduled_date, readiness_score !== undefined ? readiness_score : 80, description || null, category || 'Statutory Quality', status || 'Scheduled']
+    );
+    const { rows } = await db.query(
+      'SELECT * FROM compliance_audits WHERE title = ? AND scheduled_date = ? ORDER BY id DESC LIMIT 1',
+      [title, scheduled_date]
+    );
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteAudit = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM compliance_audits WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Audit record deleted successfully.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // --- Staff Credentials & Licenses ---
 exports.getLicenses = async (req, res, next) => {
   try {

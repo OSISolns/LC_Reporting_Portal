@@ -10,7 +10,9 @@ router.use(authMiddleware);
 
 // --- Audits & Readiness ---
 router.get('/audits', checkPermission('compliance', 'view'), compliance.getAudits);
+router.post('/audits', checkPermission('compliance', 'create'), compliance.createAudit);
 router.put('/audits/:id', checkPermission('compliance', 'edit'), compliance.updateAuditReadiness);
+router.delete('/audits/:id', checkPermission('compliance', 'delete'), compliance.deleteAudit);
 
 // --- Staff Licenses ---
 router.get('/licenses', checkPermission('compliance', 'view'), compliance.getLicenses);
