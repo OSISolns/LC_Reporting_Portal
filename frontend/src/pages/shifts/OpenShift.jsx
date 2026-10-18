@@ -38,6 +38,7 @@ const ROLE_ICONS = {
   helpdesk: <Monitor size={36} className="text-[#1b669d]" />,
   call_center: <Phone size={36} className="text-[#1b669d]" />,
   nurse: <Stethoscope size={36} className="text-[#1b669d]" />,
+  rn_midwife: <Stethoscope size={36} className="text-[#1b669d]" />,
   vip_lounge: <Crown size={36} className="text-[#1b669d]" />,
 };
 
@@ -163,10 +164,10 @@ export default function OpenShift() {
 
   const visibleRoles = SHIFT_ROLES.filter(role => {
     if (['admin', 'it_officer', 'operations_staff', 'coo', 'deputy_coo'].includes(user?.role)) return true;
-    if (user?.role === 'nurse' || user?.role === 'chef-nurse') return role.value === 'nurse';
+    if (user?.role === 'nurse' || user?.role === 'rn_midwife' || user?.role === 'chef-nurse') return role.value === 'nurse' || role.value === 'rn_midwife';
     if (user?.role === 'vip_lounge') return role.value === 'vip_lounge';
     if (user?.role === 'customer_care' || user?.role === 'cashier') return ['vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb'].includes(role.value);
-    return role.value !== 'nurse' && role.value !== 'vip_lounge';
+    return role.value !== 'nurse' && role.value !== 'rn_midwife' && role.value !== 'vip_lounge';
   });
   const [password, setPassword] = useState('');
   const [activationError, setActivationError] = useState('');
@@ -191,7 +192,7 @@ export default function OpenShift() {
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
-    if (role === 'nurse') {
+    if (role === 'nurse' || role === 'rn_midwife') {
       const wardObj = NURSING_WARDS.find(w => w.name === selectedWard) || NURSING_WARDS[0];
       setEquipment(wardObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
     } else if (role === 'cashier') {
@@ -232,7 +233,7 @@ export default function OpenShift() {
     e.preventDefault();
     if (loading) return;
 
-    if (selectedRole === 'nurse' && !selectedWard) {
+    if ((selectedRole === 'nurse' || selectedRole === 'rn_midwife') && !selectedWard) {
       toast.error('Please select your assigned Nursing Ward (STATION 1, STATION 2, MINOR SURGERY, or PAEDIATRICS).');
       return;
     }
@@ -275,7 +276,7 @@ export default function OpenShift() {
     try {
       const payload = {
         shift_role: selectedRole,
-        nursing_ward: selectedRole === 'nurse' ? selectedWard : selectedRole === 'cashier' ? selectedCashierStation : selectedRole === 'helpdesk' ? selectedHelpdeskStation : null,
+        nursing_ward: (selectedRole === 'nurse' || selectedRole === 'rn_midwife') ? selectedWard : selectedRole === 'cashier' ? selectedCashierStation : selectedRole === 'helpdesk' ? selectedHelpdeskStation : null,
         equipment: equipment.map(e => ({ name: e.name, status: e.status, remarks: e.remarks || null })),
         password,
         start_hour: startHour,
@@ -392,7 +393,7 @@ export default function OpenShift() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Nursing Ward / Station Selector */}
-              {selectedRole === 'nurse' && (
+              {(selectedRole === 'nurse' || selectedRole === 'rn_midwife') && (
                 <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
                   <div className="flex items-center justify-between">
                     <div>

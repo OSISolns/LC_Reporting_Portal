@@ -38,7 +38,7 @@ class Incident {
     // Access control: Executive, safety, line managers / department leads, and all Laboratory staff can view incident reports
     const LINE_MANAGER_ROLES = [
       'coo', 'deputy_coo', 'admin', 'it_officer', 'principal_cashier', 'sales_manager', 'hsfp', 'medical_director',
-      'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
+      'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
       'lab_team_lead', 'lab_lead', 'lab_manager',
       'dental_hod', 'dental_lab_manager',
       'imaging_manager',

@@ -6,7 +6,8 @@ const PatientAutocomplete = ({
   value,
   onChange,
   onPatientSelect,
-  placeholder = "Start typing name, phone, or PID...",
+  placeholder = "",
+  className = "",
   inputStyle = {},
   required = false,
   name
@@ -106,7 +107,7 @@ const PatientAutocomplete = ({
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', width: '100%' }}>
         <input
           ref={inputRef}
           type="text"
@@ -116,16 +117,23 @@ const PatientAutocomplete = ({
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          style={{ ...inputStyle, paddingRight: '36px' }}
+          className={className || "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#1B669E] focus:ring-2 focus:ring-[#1B669E]/20 transition-all"}
+          style={{
+            width: '100%',
+            height: '46px',
+            boxSizing: 'border-box',
+            ...inputStyle,
+            paddingRight: '40px'
+          }}
         />
         <Search
-          size={16}
+          size={18}
           style={{
             position: 'absolute',
-            right: '12px',
+            right: '14px',
             top: '50%',
             transform: 'translateY(-50%)',
-            color: '#94a3b8',
+            color: '#64748b',
             pointerEvents: 'none'
           }}
         />

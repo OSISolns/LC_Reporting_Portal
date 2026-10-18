@@ -4610,6 +4610,90 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to setup lab roles/permissions:', err);
     }
 
+    // ─── Nursing Roles Sync: ensure RN / Midwife role exists and has permissions ───
+    try {
+      await client.execute({
+        sql: "INSERT INTO roles (name, display_name) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET display_name = EXCLUDED.display_name",
+        args: ['rn_midwife', 'RN / Midwife']
+      });
+      console.log('✅ SQLite Schema Migration: registered rn_midwife role');
+
+      const { ROLE_DEFAULTS } = require('./permissions');
+      const rnPerms = ROLE_DEFAULTS['rn_midwife'];
+      if (rnPerms) {
+        for (const [moduleName, actions] of Object.entries(rnPerms)) {
+          for (const [action, granted] of Object.entries(actions)) {
+            await client.execute({
+              sql: `
+                INSERT INTO role_permissions (role_name, module, action, granted, updated_by)
+                VALUES (?, ?, ?, ?, 1)
+                ON CONFLICT(role_name, module, action) DO UPDATE 
+                SET granted = EXCLUDED.granted
+              `,
+              args: ['rn_midwife', moduleName, action, granted ? 1 : 0]
+            }).catch(() => {});
+          }
+        }
+      }
+      console.log('✅ SQLite Schema Migration: synced rn_midwife permissions');
+    } catch (err) {
+      console.warn('⚠️ Nursing roles sync warning:', err.message);
+    }
+
+    // ─── Antenatal Care (ANC) & Midwifery Register Table Migration ──────────────
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS anc_register (
+          id                        INTEGER PRIMARY KEY AUTOINCREMENT,
+          entry_no                  INTEGER,
+          reg_date                  TEXT NOT NULL,
+          patient_name              TEXT NOT NULL,
+          patient_id                TEXT,
+          age                       INTEGER,
+          sex                       TEXT DEFAULT 'F',
+          case_type                 TEXT NOT NULL DEFAULT 'New case',
+          insurance                 TEXT,
+          gestational_age_weeks     INTEGER,
+          parity_gravida            TEXT,
+          edd                       TEXT,
+          attended_by               TEXT,
+          attended_by_id            INTEGER,
+          ind_1_new_reg             INTEGER DEFAULT 0,
+          ind_2_under_15            INTEGER DEFAULT 0,
+          ind_3_15_19               INTEGER DEFAULT 0,
+          ind_4_20_24               INTEGER DEFAULT 0,
+          ind_5_25_plus             INTEGER DEFAULT 0,
+          ind_6_first_trim          INTEGER DEFAULT 0,
+          ind_7_with_partner        INTEGER DEFAULT 0,
+          ind_8_four_visits         INTEGER DEFAULT 0,
+          ind_9_high_risk_detected  INTEGER DEFAULT 0,
+          ind_10_high_risk_referred INTEGER DEFAULT 0,
+          ind_11_tt1                INTEGER DEFAULT 0,
+          ind_12_tt2_to_5           INTEGER DEFAULT 0,
+          ind_13_tt_protected       INTEGER DEFAULT 0,
+          ind_14_iron_folic         INTEGER DEFAULT 0,
+          ind_15_severe_anaemia     INTEGER DEFAULT 0,
+          ind_16_syphilis_tested    INTEGER DEFAULT 0,
+          ind_17_syphilis_positive  INTEGER DEFAULT 0,
+          ind_18_syphilis_treated   INTEGER DEFAULT 0,
+          ind_19_hiv_tested         INTEGER DEFAULT 0,
+          ind_20_hiv_positive       INTEGER DEFAULT 0,
+          ind_21_hiv_result_received INTEGER DEFAULT 0,
+          ind_22_hiv_arv_started    INTEGER DEFAULT 0,
+          ind_23_partner_hiv_tested INTEGER DEFAULT 0,
+          ind_24_partner_hiv_positive INTEGER DEFAULT 0,
+          ind_25_malaria_screened   INTEGER DEFAULT 0,
+          ind_26_ultrasound_other   INTEGER DEFAULT 0,
+          clinical_notes            TEXT,
+          created_at                DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at                DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('✅ SQLite Schema Migration: anc_register table ensured');
+    } catch (err) {
+      console.warn('⚠️ ANC Register migration warning:', err.message);
+    }
+
     // ─── Dental Cases Table Migration ─────────────────────────────────────────
     try {
       await client.execute(`

@@ -220,7 +220,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isNurse = ['nurse', 'chef-nurse'].includes(user?.role);
+  const isNurse = ['nurse', 'rn_midwife', 'chef-nurse'].includes(user?.role);
   const queryParams = new URLSearchParams(location.search);
 
   const patientId = embeddedPatientId || params.patientId;

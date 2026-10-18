@@ -64,6 +64,7 @@ INSERT INTO roles (name, display_name) VALUES ('pa', 'Chairman''s Personal Assis
 INSERT INTO roles (name, display_name) VALUES ('staff', 'General Staff') ON CONFLICT(name) DO UPDATE SET display_name = excluded.display_name;
 INSERT INTO roles (name, display_name) VALUES ('hsfp', 'Health & Safety Focal Person (HSFP)') ON CONFLICT(name) DO UPDATE SET display_name = excluded.display_name;
 INSERT INTO roles (name, display_name) VALUES ('nurse', 'Registered Nurse') ON CONFLICT(name) DO UPDATE SET display_name = excluded.display_name;
+INSERT INTO roles (name, display_name) VALUES ('rn_midwife', 'RN / Midwife') ON CONFLICT(name) DO UPDATE SET display_name = excluded.display_name;
 INSERT INTO roles (name, display_name) VALUES ('chef-nurse', 'Chef Nurse') ON CONFLICT(name) DO UPDATE SET display_name = excluded.display_name;
 INSERT INTO roles (name, display_name) VALUES ('chief_nurse', 'Chief Nurse') ON CONFLICT(name) DO UPDATE SET display_name = excluded.display_name;
 INSERT INTO roles (name, display_name) VALUES ('head_nurse', 'Head Nurse') ON CONFLICT(name) DO UPDATE SET display_name = excluded.display_name;

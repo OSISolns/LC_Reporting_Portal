@@ -19,6 +19,7 @@ import LabTeamLeadDashboard from './lab/LabTeamLeadDashboard';
 import LabHub from './lab/LabHub';
 import LogisticsDashboard from './logistics/LogisticsDashboard';
 import LogisticsStatsDashboard from './logistics/LogisticsStatsDashboard';
+import MidwifeDashboard from './MidwifeDashboard';
 
 import { 
   FlaskConical, AlertTriangle, Activity, Stethoscope, 
@@ -57,6 +58,7 @@ const Dashboard = () => {
   if (['dental_lab_manager', 'dental_tech', 'dental_lab'].includes(role)) return <DentalLabDashboard />;
   if (role === 'physio_manager') return <PhysioManagerDashboard />;
   if (['physiotherapist', 'physio'].includes(role)) return <PhysiotherapistDashboard />;
+  if (role === 'rn_midwife') return <MidwifeDashboard />;
   if (['doctor', 'consultant', 'medical_director'].includes(role)) return <DoctorDashboard />;
   if (MGMT_ROLES.includes(role)) return <ManagementDashboard />;
   if (STAFF_ROLES.includes(role)) return <StaffDashboard />;

@@ -56,7 +56,6 @@ export const INSURANCES = [
   "PRICE WATER HOUSE (PWC)",
   "PRIME INSURANCE LTD",
   "Private Sector Federation",
-  "Private",
   "Radiant Insurance Company",
   "Rwanda Bar Association",
   "Rwanda Events Group",

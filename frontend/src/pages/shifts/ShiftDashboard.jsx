@@ -297,7 +297,6 @@ export default function ShiftDashboard() {
   const navigate = useNavigate();
   const isChefNurse = [
     'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
-    'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head',
     'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
   ].some(r => user?.role?.toLowerCase()?.includes(r) || user?.role?.toLowerCase() === r);
   const isSupervisor = ['admin', 'deputy_coo', 'coo'].includes(user?.role) || isChefNurse;
@@ -646,7 +645,7 @@ export default function ShiftDashboard() {
 
         {/* Right toolbar */}
         <div className="flex items-center gap-3">
-          {(isChefNurse || user?.role === 'nurse') && (
+          {(isChefNurse || user?.role === 'nurse' || user?.role === 'rn_midwife') && (
             <Button
               variant="outline"
               size="sm"

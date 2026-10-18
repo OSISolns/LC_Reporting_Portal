@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const clinicalController = require('../controllers/clinicalController');
+const ancController = require('../controllers/ancController');
 const { authMiddleware: authenticateToken } = require('../middleware/auth');
 const authorizeRoles = require('../middleware/role');
 const checkPermission = require('../middleware/permission');
@@ -14,7 +15,7 @@ router.post('/inventory/supplier-portal/upload', clinicalController.supplierPort
 
 router.use(authenticateToken);
 router.use(authorizeRoles([
-  'nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_coo', 'stock-manager', 
+  'nurse', 'rn_midwife', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_coo', 'stock-manager', 
   'pa', 'medical_director', 'procurement-manager', 
   'lab_stock_officer', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'lab_manager', 'lab_hod',
   'quality_manager', 'qm', 'lab_safety_officer', 'head_microbiology', 'head_hematology',
@@ -28,7 +29,7 @@ const checkInventoryOrClinicalRole = (action) => {
   return async (req, res, next) => {
     if (req.user?.role === 'admin') return next();
     const CLINICAL_ROLES = [
-      'nurse', 'chef-nurse', 
+      'nurse', 'rn_midwife', 'chef-nurse', 
       'lab_stock_officer', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'lab_manager', 'lab_hod',
       'quality_manager', 'qm', 'lab_safety_officer', 'head_microbiology', 'head_hematology',
       'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist',
@@ -164,7 +165,7 @@ router.get('/inventory/nursing-store-stock', checkPermission('inventory', 'view'
 // /inventory/items is a shared reference lookup used broadly (nursing MAR,
 // e-prescriptions autocomplete) -- left on its existing role list rather
 // than folded into daily_stock, so prescribing roles keep access.
-router.get('/inventory/items', authorizeRoles(['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'medical_director', 'pa', 'stock-manager', 'procurement-manager']), clinicalController.getInventoryItems);
+router.get('/inventory/items', authorizeRoles(['nurse', 'rn_midwife', 'chef-nurse', 'admin', 'doctor', 'consultant', 'medical_director', 'pa', 'stock-manager', 'procurement-manager']), clinicalController.getInventoryItems);
 router.post('/inventory/bulk', checkPermission('inventory', 'edit'), clinicalController.saveInventoryBulk);
 router.get('/inventory/deleted-items', checkPermission('inventory', 'view'), clinicalController.getDeletedItems);
 router.post('/inventory/deleted-items', checkPermission('inventory', 'edit'), clinicalController.saveDeletedItems);
@@ -179,8 +180,6 @@ router.get('/inventory/change-logs', checkPermission('inventory', 'view'), clini
 // Shared medication-name reference lookup (FDA cache) -- same reasoning as
 // /inventory/items above, left open to the broad router-level gate.
 router.get('/medications/search', clinicalController.searchFdaMedications);
-
-module.exports = router;
 
 // --- Procurement Hub Expansion Routes (module: procurement) ---
 
@@ -233,4 +232,14 @@ router.post('/physio/sessions', clinicalController.createPhysioSession);
 router.put('/physio/sessions/:id/status', clinicalController.updatePhysioSessionStatus);
 router.get('/physio/assessments', clinicalController.getPhysioAssessments);
 router.post('/physio/assessments', clinicalController.createPhysioAssessment);
+
+// --- Antenatal Care (ANC) / Midwifery Statutory Register Routes ---
+router.get('/anc-register', checkPermission('clinical_observation', 'view'), ancController.getAncEntries);
+router.get('/anc-register/stats', checkPermission('clinical_observation', 'view'), ancController.getAncStats);
+router.get('/anc-register/export', checkPermission('clinical_observation', 'view'), ancController.exportAncExcel);
+router.post('/anc-register', checkPermission('clinical_observation', 'create'), ancController.createAncEntry);
+router.put('/anc-register/:id', checkPermission('clinical_observation', 'edit'), ancController.updateAncEntry);
+router.delete('/anc-register/:id', checkPermission('clinical_observation', 'delete'), ancController.deleteAncEntry);
+
+module.exports = router;
 

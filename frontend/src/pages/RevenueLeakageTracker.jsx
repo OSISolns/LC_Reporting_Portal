@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   TrendingDown, DollarSign, AlertCircle, FileSearch, 
-  CheckCircle, ArrowRight, Activity, Plus, Trash2, Edit2, Loader2, RefreshCw
+  CheckCircle, Activity, Plus, Trash2, Edit2, Loader2, Search, X
 } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
-import { Button, Card, Badge, Input, Select, Label, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/index.jsx';
+import { Button, Input, Select, Label, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/index.jsx';
 import toast from 'react-hot-toast';
 
 const RevenueLeakageTracker = () => {
@@ -14,6 +14,7 @@ const RevenueLeakageTracker = () => {
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [filter, setFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modals
   const [showLogModal, setShowLogModal] = useState(false);
@@ -55,8 +56,7 @@ const RevenueLeakageTracker = () => {
     try {
       const res = await api.post('/revenue-leakage/scan');
       if (res.data.success) {
-        toast.success(res.data.message || 'Scan complete! Discrepancy found.', { id: 'scan' });
-        // Re-fetch data
+        toast.success(res.data.message || 'Scan complete! Discrepancies updated.', { id: 'scan' });
         const freshRes = await api.get('/revenue-leakage');
         setData(freshRes.data.data || []);
       }
@@ -72,14 +72,18 @@ const RevenueLeakageTracker = () => {
   const handleSaveLeakage = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...form,
+        value: Number(form.value) || 0
+      };
       if (editingLeakage) {
-        const res = await api.put(`/revenue-leakage/${editingLeakage.id}`, form);
+        const res = await api.put(`/revenue-leakage/${editingLeakage.id}`, payload);
         if (res.data.success) {
           setData(data.map(d => d.id === editingLeakage.id ? res.data.data : d));
           toast.success('Discrepancy record updated.');
         }
       } else {
-        const res = await api.post('/revenue-leakage', form);
+        const res = await api.post('/revenue-leakage', payload);
         if (res.data.success) {
           setData([res.data.data, ...data]);
           toast.success('Discrepancy record logged successfully.');
@@ -150,33 +154,64 @@ const RevenueLeakageTracker = () => {
   };
 
   // Computed metrics
-  const totalLeakage = data.filter(d => d.status === 'Unresolved').reduce((acc, curr) => acc + curr.value, 0);
-  const recovered = data.filter(d => d.status === 'Recovered').reduce((acc, curr) => acc + curr.value, 0);
-  const pendingAudits = data.filter(d => d.status === 'Unresolved').length;
+  const totalLeakage = useMemo(() => {
+    return data.filter(d => d.status === 'Unresolved').reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
+  }, [data]);
 
-  const filteredData = filter === 'All' ? data : data.filter(d => d.status === filter);
+  const recovered = useMemo(() => {
+    return data.filter(d => d.status === 'Recovered').reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
+  }, [data]);
+
+  const pendingAudits = useMemo(() => {
+    return data.filter(d => d.status === 'Unresolved').length;
+  }, [data]);
+
+  const recoveryRate = useMemo(() => {
+    const total = totalLeakage + recovered;
+    return total > 0 ? Math.round((recovered / total) * 100) : 0;
+  }, [totalLeakage, recovered]);
+
+  const filteredData = useMemo(() => {
+    return data.filter(d => {
+      const matchesStatus = filter === 'All' || d.status === filter;
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = !q || 
+        (d.patient || '').toLowerCase().includes(q) ||
+        (d.service || '').toLowerCase().includes(q) ||
+        (d.id || '').toLowerCase().includes(q) ||
+        (d.billing_log || '').toLowerCase().includes(q) ||
+        (d.clinical_log || '').toLowerCase().includes(q);
+      return matchesStatus && matchesSearch;
+    });
+  }, [data, filter, searchQuery]);
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-20 space-y-4">
-        <Loader2 className="w-10 h-10 animate-spin text-rose-600" />
-        <p className="text-slate-500 font-bold uppercase tracking-widest text-sm">Loading Financial Leakage Data...</p>
+        <Loader2 className="w-10 h-10 animate-spin text-[#1C69A0]" />
+        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Loading Financial Assurance Data...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
+    <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* ── Header ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Financial Intelligence & Assurance</p>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            <TrendingDown size={32} className="text-rose-600" /> Revenue Leakage Tracker
-          </h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center flex-shrink-0 border border-rose-100">
+            <TrendingDown size={24} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 tracking-tight">Revenue Leakage Tracker</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Financial assurance auditing clinical events against Sukraa billing invoices
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button 
+        <div className="flex items-center gap-2.5">
+          <button 
+            type="button"
             onClick={() => {
               setEditingLeakage(null);
               setForm({
@@ -190,144 +225,200 @@ const RevenueLeakageTracker = () => {
               });
               setShowLogModal(true);
             }}
-            variant="outline"
-            className="flex items-center gap-1.5"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs"
           >
-            <Plus size={16} /> Log Discrepancy
-          </Button>
-          <Button 
+            <Plus size={14} /> Log Discrepancy
+          </button>
+          <button 
+            type="button"
             onClick={handleSystemScan}
             disabled={scanning}
-            className="flex items-center gap-1.5 bg-slate-900 text-white hover:bg-slate-800"
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-[#1C69A0] hover:bg-[#15527d] rounded-xl transition-colors shadow-xs disabled:opacity-50"
           >
-            {scanning ? <Loader2 size={16} className="animate-spin" /> : <FileSearch size={16} />} 
+            {scanning ? <Loader2 size={14} className="animate-spin" /> : <FileSearch size={14} />} 
             Run Full System Scan
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-[24px] border-2 border-slate-100 flex items-center gap-5 shadow-sm">
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
-            <AlertCircle size={24} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex items-center gap-4">
+          <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0 border border-rose-100">
+            <AlertCircle size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">IDENTIFIED LEAKAGE</p>
-            <p className="text-2xl font-black text-rose-600">RWF {totalLeakage.toLocaleString()}</p>
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Identified Leakage</p>
+            <p className="text-lg font-bold text-rose-600 tabular-nums">RWF {totalLeakage.toLocaleString()}</p>
           </div>
         </div>
         
-        <div className="bg-white p-6 rounded-[24px] border-2 border-slate-100 flex items-center gap-5 shadow-sm">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <DollarSign size={24} />
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex items-center gap-4">
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
+            <DollarSign size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">RECOVERED REVENUE</p>
-            <p className="text-2xl font-black text-emerald-600">RWF {recovered.toLocaleString()}</p>
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Recovered Revenue</p>
+            <p className="text-lg font-bold text-emerald-600 tabular-nums">RWF {recovered.toLocaleString()}</p>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-[24px] border-2 border-slate-100 flex items-center gap-5 shadow-sm">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#1b669d] flex items-center justify-center">
-            <Activity size={24} />
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex items-center gap-4">
+          <div className="w-11 h-11 rounded-xl bg-sky-50 text-[#1C69A0] flex items-center justify-center flex-shrink-0 border border-sky-100">
+            <Activity size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">PENDING AUDITS</p>
-            <p className="text-2xl font-black text-slate-900">{pendingAudits}</p>
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Pending Audits</p>
+            <p className="text-lg font-bold text-slate-800 tabular-nums">{pendingAudits} Cases</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex items-center gap-4">
+          <div className="w-11 h-11 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center flex-shrink-0 border border-slate-200">
+            <CheckCircle size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Recovery Rate</p>
+            <p className="text-lg font-bold text-slate-800 tabular-nums">{recoveryRate}%</p>
           </div>
         </div>
       </div>
 
       {/* ── Data Table Card ── */}
-      <Card className="p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5 mb-5">
-          <h2 className="text-lg font-black text-slate-900">Discrepancy Matrix</h2>
-          <div className="flex items-center gap-3">
-            <Label className="mb-0 mr-1">Filter Status</Label>
-            <Select 
-              value={filter} 
-              onChange={e => setFilter(e.target.value)} 
-              className="w-44"
-            >
-              <option value="All">All Statuses</option>
-              <option value="Unresolved">Unresolved</option>
-              <option value="Recovered">Recovered</option>
-            </Select>
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+        {/* Table Filter & Search Toolbar */}
+        <div className="p-4 border-b border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-slate-800">Discrepancy Matrix</h2>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 font-mono">
+              {filteredData.length}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Quick Status Pills */}
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-2xs">
+              {['All', 'Unresolved', 'Recovered'].map(st => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setFilter(st)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                    filter === st 
+                      ? 'bg-[#1C69A0] text-white shadow-2xs' 
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
+
+            {/* Instant Search Bar (Clean, no placeholder) */}
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-56 pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#1C69A0] focus:ring-1 focus:ring-sky-100 transition-all font-medium"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
+        {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[1150px]">
             <thead>
-              <tr className="border-b-2 border-slate-100 pb-3">
-                <th className="py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Reference / Patient</th>
-                <th className="py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Clinical Event</th>
-                <th className="py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Billing Status</th>
-                <th className="py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Value At Risk</th>
-                <th className="py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                <th className="py-3.5 px-6 w-[15%] min-w-[150px]">Reference & Date</th>
+                <th className="py-3.5 px-6 w-[18%] min-w-[180px]">Patient</th>
+                <th className="py-3.5 px-6 w-[28%] min-w-[280px]">Clinical Event</th>
+                <th className="py-3.5 px-6 w-[23%] min-w-[240px]">Billing Status</th>
+                <th className="py-3.5 px-6 w-[10%] min-w-[120px]">Value At Risk</th>
+                <th className="py-3.5 px-6 w-[6%] min-w-[110px] text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {filteredData.map(row => (
-                <tr 
-                  key={row.id} 
-                  className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors"
-                  style={{ opacity: row.status === 'Recovered' ? 0.65 : 1 }}
-                >
-                  <td className="py-4 px-4">
-                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">{row.id} · {row.date}</div>
-                    <div className="font-black text-slate-800">{row.patient}</div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="font-bold text-slate-800 text-sm">{row.service}</div>
-                    <div className="text-xs text-emerald-600 font-bold flex items-center gap-1 mt-1">
-                      <CheckCircle size={12} /> {row.clinical_log}
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <span className={`inline-flex items-center gap-1 text-xs font-bold ${row.status === 'Recovered' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {row.status === 'Recovered' ? <CheckCircle size={14} /> : <AlertCircle size={14} />} {row.billing_log}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-sm font-black text-slate-900">
-                    RWF {row.value.toLocaleString()}
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {row.status === 'Unresolved' && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => handleResolveLeakage(row)}
-                          className="h-8 text-[11px] bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300"
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {filteredData.map(row => {
+                const isRecovered = row.status === 'Recovered';
+                return (
+                  <tr 
+                    key={row.id} 
+                    className={`hover:bg-slate-50/70 transition-colors ${isRecovered ? 'bg-slate-50/30' : ''}`}
+                  >
+                    <td className="py-4 px-6">
+                      <div className="font-mono text-xs font-bold text-slate-700">{row.id}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">{row.date}</div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="font-bold text-slate-800 text-xs">{row.patient}</div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="font-semibold text-slate-800 text-xs">{row.service}</div>
+                      <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1.5 mt-1.5">
+                        <CheckCircle size={12} className="flex-shrink-0" />
+                        <span className="text-slate-600 font-medium leading-relaxed">{row.clinical_log}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                        isRecovered 
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}>
+                        <span className="shrink-0">{isRecovered ? <CheckCircle size={12} /> : <AlertCircle size={12} />}</span>
+                        <span>{row.billing_log}</span>
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 font-bold text-slate-900 tabular-nums whitespace-nowrap text-sm">
+                      RWF {row.value?.toLocaleString()}
+                    </td>
+                    <td className="py-4 px-6 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {!isRecovered && (
+                          <button 
+                            type="button"
+                            onClick={() => handleResolveLeakage(row)}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors shadow-2xs"
+                          >
+                            Resolve
+                          </button>
+                        )}
+                        <button 
+                          type="button"
+                          onClick={() => handleEditLeakage(row)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                          title="Edit Discrepancy"
                         >
-                          Resolve
-                        </Button>
-                      )}
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="h-8 w-8 text-slate-400 hover:text-slate-600"
-                        onClick={() => handleEditLeakage(row)}
-                      >
-                        <Edit2 size={14} />
-                      </Button>
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="h-8 w-8 text-rose-400 hover:text-rose-600"
-                        onClick={() => handleDeleteLeakage(row.id)}
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                          <Edit2 size={13} />
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => handleDeleteLeakage(row.id)}
+                          className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="Delete Record"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {filteredData.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="py-12 text-center text-slate-400 font-bold">
+                  <td colSpan="6" className="py-12 text-center text-slate-400 font-semibold">
                     No discrepancy records found matching criteria.
                   </td>
                 </tr>
@@ -335,11 +426,11 @@ const RevenueLeakageTracker = () => {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
 
       {/* ── Discrepancy Dialog Modal ── */}
       <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingLeakage ? 'Edit Discrepancy' : 'Log Discrepancy'}</DialogTitle>
             <DialogDescription>Record clinical procedures missing matching billing invoices.</DialogDescription>
@@ -373,7 +464,6 @@ const RevenueLeakageTracker = () => {
             <div>
               <Label>Clinical Log Details</Label>
               <Input 
-                placeholder="e.g. Procedure logged by Doctor / Lab report complete"
                 value={form.clinical_log} 
                 onChange={(e) => setForm({ ...form, clinical_log: e.target.value })} 
                 required 
@@ -382,7 +472,6 @@ const RevenueLeakageTracker = () => {
             <div>
               <Label>Billing Log / Status Description</Label>
               <Input 
-                placeholder="e.g. Missing Invoice / Underbilled by 10,000"
                 value={form.billing_log} 
                 onChange={(e) => setForm({ ...form, billing_log: e.target.value })} 
                 required 
@@ -407,9 +496,11 @@ const RevenueLeakageTracker = () => {
                 <option value="Recovered">Recovered</option>
               </Select>
             </div>
-            <div className="flex justify-end gap-3 pt-4 border-t">
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
               <Button type="button" variant="outline" onClick={() => setShowLogModal(false)}>Cancel</Button>
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" className="bg-[#1C69A0] hover:bg-[#15527d] text-white font-bold">
+                {editingLeakage ? 'Save Changes' : 'Log Discrepancy'}
+              </Button>
             </div>
           </form>
         </DialogContent>

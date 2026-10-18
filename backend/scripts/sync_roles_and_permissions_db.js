@@ -46,6 +46,7 @@ const ROLE_DISPLAY_NAMES = {
   staff: 'General Staff',
   hsfp: 'Health & Safety Focal Person (HSFP)',
   nurse: 'Registered Nurse',
+  rn_midwife: 'RN / Midwife',
   'chef-nurse': 'Chef Nurse',
   radiologist: 'Radiologist',
   radiographer: 'Radiographer',

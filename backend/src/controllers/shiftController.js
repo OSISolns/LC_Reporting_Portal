@@ -9,8 +9,7 @@ const { exportToExcel } = require('../utils/excel');
 const MAX_SHIFT_HOURS  = 8;   // Auto-close threshold
 const MIN_SHIFT_HOURS  = 6;   // Agent self-close minimum (general)
 const EVENING_MIN_HOURS = 5;  // Special minimum for 3PM-8PM shift
-const COOLDOWN_HOURS   = 0;  // Required rest between shifts (temporarily 0 as requested by user to bypass false blocks)
-const CHEF_NURSE_ROLES = ['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'deputy_head_nurse'];
+const CHEF_NURSE_ROLES = ['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'];
 
 const isChefNurseRole = (role) => {
   const r = String(role || '').toLowerCase();
@@ -733,7 +732,7 @@ exports.getAllShifts = async (req, res, next) => {
     let where = "1=1";
     if (isChefNurseRole(req.user.role)) {
       where = role ? "1=1" : "s.shift_role = 'nurse'";
-    } else if (req.user.role === 'nurse') {
+    } else if (req.user.role === 'nurse' || req.user.role === 'rn_midwife') {
       where = "s.shift_role = 'nurse'";
     }
     const args = [];
@@ -811,7 +810,7 @@ exports.getLatestHandover = async (req, res, next) => {
     
     // Authorization check
     const isSupervisor = ['admin', 'coo', 'deputy_coo', 'chef-nurse', 'medical_director'].includes(req.user.role);
-    const clinicalRoles = ['nurse', 'chef-nurse', 'doctor', 'consultant', 'pa', 'medical_director'];
+    const clinicalRoles = ['nurse', 'rn_midwife', 'chef-nurse', 'doctor', 'consultant', 'pa', 'medical_director'];
     let isAuthorized = isSupervisor;
     if (!isAuthorized) {
       if (req.user.role === shiftRole || (shiftRole === 'nurse' && clinicalRoles.includes(req.user.role))) {
@@ -1542,7 +1541,7 @@ exports.exportExcel = async (req, res, next) => {
     let where = "1=1";
     if (isChefNurseRole(req.user.role)) {
       where = role ? "1=1" : "s.shift_role = 'nurse'";
-    } else if (req.user.role === 'nurse') {
+    } else if (req.user.role === 'nurse' || req.user.role === 'rn_midwife') {
       where = "s.shift_role = 'nurse'";
     }
     const args = [];

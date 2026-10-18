@@ -85,6 +85,11 @@ export default function NursingHub() {
       return;
     }
 
+    if (submodule === 'ANC Register') {
+      navigate('/nursing-hub/anc-register');
+      return;
+    }
+
     if (submodule === 'ICD-11 Browser') {
       setIsIcd11BrowserOpen(true);
       return;
@@ -128,16 +133,16 @@ export default function NursingHub() {
             <div style={{ padding: '6px 10px', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: '8px', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Stethoscope size={18} className="text-white" />
               <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#ffffff' }}>
-                {['doctor', 'consultant'].includes(user?.role) ? 'Integrated Doctors Node' : 'Integrated Nursing Node'}
+                {['doctor', 'consultant'].includes(user?.role) ? 'Integrated Doctors Node' : user?.role === 'rn_midwife' ? 'Midwifery & Antenatal Node' : 'Integrated Nursing Node'}
               </span>
             </div>
           </div>
           
           <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 800, tracking: '-0.025em', color: '#ffffff' }}>
-            {greeting.text}, {['doctor', 'consultant'].includes(user?.role) ? 'Dr.' : user?.role === 'chef-nurse' ? 'Chief Nurse' : 'Nurse'} {user?.fullName?.split(' ')[0] || 'Officer'}
+            {greeting.text}, {['doctor', 'consultant'].includes(user?.role) ? 'Dr.' : user?.role === 'chef-nurse' ? 'Chief Nurse' : user?.role === 'rn_midwife' ? 'Midwife' : 'Nurse'} {user?.fullName?.split(' ')[0] || 'Officer'}
           </h1>
           <p style={{ marginTop: '0.4rem', fontSize: '0.9rem', color: '#ffffff', opacity: 0.9, fontWeight: 500, maxWidth: '640px' }}>
-            {greeting.sub} • Clinical assessment, triage, and patient MAR documentation.
+            {greeting.sub} • Clinical assessment, triage, antenatal care, and patient MAR documentation.
           </p>
         </div>
       </div>
@@ -419,6 +424,14 @@ export default function NursingHub() {
                   color: '#0284c7', 
                   bg: '#e0f2fe',
                   cta: 'Open Report'
+                },
+                { 
+                  title: 'ANC Register', 
+                  desc: 'Official Antenatal Care (ANC) & Midwifery statutory register. Record 26 HMIS indicators, maternal demographics, and export MoH reports.',
+                  icon: <Heart size={22} />, 
+                  color: '#db2777', 
+                  bg: '#fdf2f8',
+                  cta: 'Open ANC Register'
                 },
                 { 
                   title: 'ICD-11 Browser', 

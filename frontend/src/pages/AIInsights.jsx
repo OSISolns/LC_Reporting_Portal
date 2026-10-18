@@ -51,7 +51,7 @@ const CLASSIFIABLE_MODULES = {
 // ── Line manager roles ────────────────────────────────────────────────────────
 const LINE_MANAGER_ROLES = [
   'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
-  'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager',
+  'chef_nurse', 'chief_nurse', 'chief-nurse',
   'imaging_manager', 'dental_hod', 'dental_lab_manager',
   'physio_manager', 'logistics_manager', 'logistics_officer',
   'procurement-manager', 'it_officer', 'hsfp', 'stock-manager', 'sales_manager',
@@ -68,7 +68,7 @@ const DEPARTMENTS = [
   {
     id: 'clinical_docs', label: 'Clinical Documentation', icon: <ClipboardList size={14} />,
     description: 'Patient observations, clinical sheets, vitals & diagnostic reports.',
-    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'hsfp'],
+    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'hsfp'],
     kpiMap: [
       { key: 'total_sheets',     label: 'Clinical Sheets' },
       { key: 'verified',         label: 'Verified / Signed' },
@@ -116,7 +116,7 @@ const DEPARTMENTS = [
   {
     id: 'nursing', label: 'Nursing', icon: <HeartPulse size={14} />,
     description: 'Clinical sheets, ward reports, stock levels & incident tracking.',
-    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'hsfp'],
+    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'hsfp'],
     kpiMap: [
       { key: 'clinical_sheets', label: 'Clinical Sheets' },
       { key: 'daily_reports',   label: 'Daily Ward Reports' },
@@ -149,7 +149,7 @@ const DEPARTMENTS = [
   {
     id: 'stock', label: 'Stock', icon: <Package size={14} />,
     description: 'Central store stock levels, replenishment alerts & consumables log.',
-    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'stock-manager'],
+    allowedRoles: [...EXEC_ROLES, 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'stock-manager'],
     kpiMap: [
       { key: 'total',              label: 'Total Stock Records' },
       { key: 'ok',                 label: 'Adequate Stock' },

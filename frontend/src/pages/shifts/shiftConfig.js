@@ -6,6 +6,7 @@ export const SHIFT_ROLES = [
   { value: 'helpdesk', label: 'Helpdesk', icon: 'Monitor' },
   { value: 'call_center', label: 'Call Center Agent', icon: 'Phone' },
   { value: 'nurse', label: 'Registered Nurse', icon: 'Stethoscope' },
+  { value: 'rn_midwife', label: 'RN / Midwife', icon: 'Stethoscope' },
   { value: 'vip_lounge', label: 'VIP Lounge', icon: 'Crown' },
 ];
 
@@ -98,6 +99,7 @@ export const EQUIPMENT_BY_ROLE = {
   helpdesk: ['PC', 'Receipt Printer', 'Desk Phone', 'Waiting No. Stamp'],
   call_center: ['PC', 'Headset', 'Desk Phone'],
   nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
+  rn_midwife: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter', 'Doppler / Foetal Stethoscope', 'Measuring Tape'],
   vip_lounge: ['PC', 'Desk Phone'],
 };
 
@@ -202,10 +204,10 @@ export const CALL_REASON_OPTIONS = [
 ];
 
 // ─── Reviewer roles (must match backend) ─────────────────────────────────────
-export const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'pa', 'operations_staff', 'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'deputy_head_nurse'];
+export const REVIEWER_ROLES = ['principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'it_officer', 'pa', 'operations_staff', 'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'];
 
 // ─── Staff roles that can open shifts ────────────────────────────────────────
-export const STAFF_SHIFT_ROLES = ['cashier', 'customer_care', 'operations_staff', 'nurse', 'rama_rssb'];
+export const STAFF_SHIFT_ROLES = ['cashier', 'customer_care', 'operations_staff', 'nurse', 'rn_midwife', 'rama_rssb'];
 
 // ─── VIP Position Dropdown Options ──────────────────────────────────────────
 export const VIP_POSITIONS_CONFIG = {

@@ -57,7 +57,6 @@ export default function NurseShiftDashboard() {
 
   const isManagerOrChefNurse = [
     'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
-    'head_nurse', 'nursing_lead', 'nurse_manager', 'nursing_head',
     'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
     'admin', 'deputy_coo', 'coo'
   ].some(r => user?.role?.toLowerCase()?.includes(r) || user?.role?.toLowerCase() === r);
