@@ -63,40 +63,63 @@ exports.INDICATOR_LABELS = {
 
 exports.getAncEntries = async (req, res, next) => {
   try {
-    const { date_from, date_to, case_type, insurance, high_risk, search } = req.query;
+    const { date_from, date_to, startDate, endDate, case_type, insurance, high_risk, search } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 25);
+    const offset = (page - 1) * limit;
 
-    let sql = 'SELECT * FROM anc_register WHERE 1=1';
+    const fromDate = date_from || startDate;
+    const toDate = date_to || endDate;
+
+    let baseSql = 'FROM anc_register WHERE 1=1';
     const params = [];
 
-    if (date_from) {
-      sql += ' AND reg_date >= ?';
-      params.push(date_from);
+    if (fromDate) {
+      baseSql += ' AND reg_date >= ?';
+      params.push(fromDate);
     }
-    if (date_to) {
-      sql += ' AND reg_date <= ?';
-      params.push(date_to);
+    if (toDate) {
+      baseSql += ' AND reg_date <= ?';
+      params.push(toDate);
     }
     if (case_type && case_type !== 'all') {
-      sql += ' AND case_type = ?';
+      baseSql += ' AND case_type = ?';
       params.push(case_type);
     }
     if (insurance && insurance !== 'all') {
-      sql += ' AND LOWER(insurance) = LOWER(?)';
+      baseSql += ' AND LOWER(insurance) = LOWER(?)';
       params.push(insurance);
     }
-    if (high_risk === '1') {
-      sql += ' AND (ind_9_high_risk_detected = 1 OR ind_10_high_risk_referred = 1)';
+    if (high_risk === '1' || high_risk === 'true') {
+      baseSql += ' AND (ind_9_high_risk_detected = 1 OR ind_10_high_risk_referred = 1)';
     }
     if (search && search.trim()) {
       const q = `%${search.trim()}%`;
-      sql += ' AND (patient_name LIKE ? OR patient_id LIKE ? OR insurance LIKE ?)';
+      baseSql += ' AND (patient_name LIKE ? OR patient_id LIKE ? OR insurance LIKE ?)';
       params.push(q, q, q);
     }
 
-    sql += ' ORDER BY reg_date DESC, id DESC';
+    // Get total count for pagination
+    const countSql = `SELECT COUNT(*) as total ${baseSql}`;
+    const { rows: countRows } = await db.query(countSql, params);
+    const total = countRows[0]?.total || 0;
 
-    const { rows } = await db.query(sql, params);
-    res.json({ success: true, count: rows.length, data: rows });
+    // Get paginated rows
+    const dataSql = `SELECT * ${baseSql} ORDER BY reg_date DESC, id DESC LIMIT ? OFFSET ?`;
+    const { rows } = await db.query(dataSql, [...params, limit, offset]);
+
+    res.json({
+      success: true,
+      count: rows.length,
+      total,
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (err) {
     next(err);
   }
@@ -104,17 +127,19 @@ exports.getAncEntries = async (req, res, next) => {
 
 exports.getAncStats = async (req, res, next) => {
   try {
-    const { date_from, date_to } = req.query;
+    const { date_from, date_to, startDate, endDate } = req.query;
+    const fromDate = date_from || startDate;
+    const toDate = date_to || endDate;
     let sql = 'SELECT * FROM anc_register WHERE 1=1';
     const params = [];
 
-    if (date_from) {
+    if (fromDate) {
       sql += ' AND reg_date >= ?';
-      params.push(date_from);
+      params.push(fromDate);
     }
-    if (date_to) {
+    if (toDate) {
       sql += ' AND reg_date <= ?';
-      params.push(date_to);
+      params.push(toDate);
     }
 
     const { rows } = await db.query(sql, params);
@@ -403,17 +428,19 @@ exports.deleteAncEntry = async (req, res, next) => {
 
 exports.exportAncExcel = async (req, res, next) => {
   try {
-    const { date_from, date_to } = req.query;
+    const { date_from, date_to, startDate, endDate } = req.query;
+    const fromDate = date_from || startDate;
+    const toDate = date_to || endDate;
     let sql = 'SELECT * FROM anc_register WHERE 1=1';
     const params = [];
 
-    if (date_from) {
+    if (fromDate) {
       sql += ' AND reg_date >= ?';
-      params.push(date_from);
+      params.push(fromDate);
     }
-    if (date_to) {
+    if (toDate) {
       sql += ' AND reg_date <= ?';
-      params.push(date_to);
+      params.push(toDate);
     }
     sql += ' ORDER BY reg_date ASC, id ASC';
 

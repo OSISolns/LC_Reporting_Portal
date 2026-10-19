@@ -320,7 +320,11 @@ const client = {
           }
         }
 
-        return { rows: filteredRows, rowsAffected: result.rowsAffected || filteredRows.length };
+        return {
+          rows: filteredRows,
+          rowsAffected: result.rowsAffected || filteredRows.length,
+          lastInsertRowid: result.lastInsertRowid != null ? Number(result.lastInsertRowid) : undefined
+        };
       } else {
         if (isSelect) {
           const result = await prisma.$queryRawUnsafe(transformedSql, ...finalArgs);
@@ -415,26 +419,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.log('🔌 DATABASE: Successfully connected to local SQLite database (via Prisma).');
       }
       
-      // ─── Purge is_mock Columns Migration ──────────────────────────────────────────────
-      try {
-        const { rows: tables } = await client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
-        console.log(`⚙️ Running is_mock column purge migration. Checking ${tables.length} tables...`);
-        for (const table of tables) {
-          const tableName = table.name;
-          const { rows: columns } = await client.execute(`PRAGMA table_info(${tableName})`);
-          const hasIsMock = columns.some(col => col.name === 'is_mock');
-          if (hasIsMock) {
-            console.log(`  🗑️ Table '${tableName}' contains 'is_mock'. Dropping column...`);
-            await client.execute(`ALTER TABLE ${tableName} DROP COLUMN is_mock`).then(() => {
-              console.log(`  ✅ Successfully dropped 'is_mock' from table '${tableName}'`);
-            }).catch((err) => {
-              console.warn(`  ⚠️ Failed to drop 'is_mock' from table '${tableName}':`, err.message);
-            });
-          }
-        }
-      } catch (err) {
-        console.error('❌ Failed to run is_mock column purge migration:', err.message);
-      }
+      // is_mock purge migration completed previously.
       
       // ─── IT Tickets Column Migration ──────────────────────────────────────────────────
       try {
@@ -5277,7 +5262,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
  */
 const query = async (sql, params = []) => {
   try {
-    const { rows, rowsAffected } = await client.execute({ sql, args: params });
+    const execRes = await client.execute({ sql, args: params });
+    const { rows, rowsAffected, lastInsertRowid } = execRes;
 
     // Auto-fix SQLite date strings to ISO UTC format for frontend compatibility
     const fixedRows = rows.map(row => {
@@ -5293,7 +5279,8 @@ const query = async (sql, params = []) => {
 
     return {
       rows: fixedRows,
-      rowCount: rowsAffected || fixedRows.length
+      rowCount: rowsAffected || fixedRows.length,
+      lastInsertRowid: lastInsertRowid != null ? Number(lastInsertRowid) : undefined
     };
   } catch (err) {
     console.error('💥 Prisma Query Error:', err.message);

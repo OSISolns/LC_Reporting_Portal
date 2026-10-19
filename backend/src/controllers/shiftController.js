@@ -72,6 +72,7 @@ const EQUIPMENT_MAP = {
   customer_care: ['PC', 'Receipt Printer', 'Desk Phone', 'Waiting No. Stamp'],
   call_center: ['PC', 'Headset', 'Desk Phone'],
   nurse: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter'],
+  rn_midwife: ['PC', 'Thermometer', 'Stethoscope', 'BP Machine', 'Pulse Oximeter', 'Doppler / Foetal Stethoscope', 'Measuring Tape'],
   vip_lounge: ['PC', 'Desk Phone'],
   imaging: ['PC / Workstation', 'Modality Console', 'Reader / Printer', 'Archiving System'],
 };
@@ -245,12 +246,12 @@ exports.openShift = async (req, res, next) => {
     }
 
     // Validate shift role
-    if (!['cashier', 'helpdesk', 'call_center', 'nurse', 'vip_lounge', 'imaging', 'rama_rssb'].includes(shift_role)) {
+    if (!['cashier', 'helpdesk', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb'].includes(shift_role)) {
       return res.status(400).json({ success: false, message: 'Invalid shift role.' });
     }
 
     // Station Validation
-    if (shift_role === 'nurse' && !nursing_ward) {
+    if ((shift_role === 'nurse' || shift_role === 'rn_midwife') && !nursing_ward) {
       return res.status(400).json({ success: false, message: 'Please select a Nursing Ward (STATION 1, STATION 2, MINOR SURGERY, or PAEDIATRICS) before opening shift.' });
     }
 
@@ -289,16 +290,15 @@ exports.openShift = async (req, res, next) => {
 
     // Insert shift session
     const shiftResult = await db.query(
-      `INSERT INTO shift_sessions (user_id, shift_role, status, start_hour, wave, nursing_ward) VALUES (?, ?, 'open', ?, ?, ?)`,
+      `INSERT INTO shift_sessions (user_id, shift_role, status, start_hour, wave, nursing_ward) VALUES (?, ?, 'open', ?, ?, ?) RETURNING id`,
       [userId, shift_role, start_hour || null, wave, nursing_ward || null]
     );
 
-    // Resolve inserted ID reliably — prefer the row returned by the driver,
-    // fall back to last_insert_rowid() (SQLite/LibSQL). Do NOT do a secondary
-    // SELECT which could return a different row under concurrent inserts.
+    // Resolve inserted ID reliably
     const resolvedId =
       shiftResult.rows[0]?.id ??
-      (await q1(`SELECT last_insert_rowid() AS id`))?.id;
+      shiftResult.lastInsertRowid ??
+      (await q1(`SELECT id FROM shift_sessions WHERE user_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1`, [userId]))?.id;
 
     // Insert equipment checklist (open snapshot)
     if (equipment && Array.isArray(equipment) && equipment.length > 0) {
@@ -629,8 +629,8 @@ exports.transferStation = async (req, res, next) => {
     // 4. Open NEW shift for the staff member
     const newWave = currentShift.wave || 'Wave 1';
     const newStartHour = currentShift.start_hour || '07:00';
-    const ward = (new_shift_role === 'nurse' || new_shift_role === 'cashier' || new_shift_role === 'helpdesk') 
-      ? (new_nursing_ward || currentShift.nursing_ward || (new_shift_role === 'nurse' ? 'STATION 1' : 'Ground-Floor')) 
+    const ward = (new_shift_role === 'nurse' || new_shift_role === 'rn_midwife' || new_shift_role === 'cashier' || new_shift_role === 'helpdesk') 
+      ? (new_nursing_ward || currentShift.nursing_ward || ((new_shift_role === 'nurse' || new_shift_role === 'rn_midwife') ? 'STATION 1' : 'Ground-Floor')) 
       : null;
 
     const insertResult = await db.query(
@@ -733,7 +733,7 @@ exports.getAllShifts = async (req, res, next) => {
     if (isChefNurseRole(req.user.role)) {
       where = role ? "1=1" : "s.shift_role = 'nurse'";
     } else if (req.user.role === 'nurse' || req.user.role === 'rn_midwife') {
-      where = "s.shift_role = 'nurse'";
+      where = "s.shift_role IN ('nurse', 'rn_midwife')";
     }
     const args = [];
 
@@ -813,7 +813,7 @@ exports.getLatestHandover = async (req, res, next) => {
     const clinicalRoles = ['nurse', 'rn_midwife', 'chef-nurse', 'doctor', 'consultant', 'pa', 'medical_director'];
     let isAuthorized = isSupervisor;
     if (!isAuthorized) {
-      if (req.user.role === shiftRole || (shiftRole === 'nurse' && clinicalRoles.includes(req.user.role))) {
+      if (req.user.role === shiftRole || ((shiftRole === 'nurse' || shiftRole === 'rn_midwife') && clinicalRoles.includes(req.user.role))) {
         isAuthorized = true;
       } else if (['customer_care', 'cashier'].includes(req.user.role) && ['customer_care', 'vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb'].includes(shiftRole)) {
         isAuthorized = true;
@@ -919,7 +919,7 @@ async function enrichShiftDetail(shift) {
         }
         : null,
     };
-  } else if (shift.shift_role === 'nurse') {
+  } else if (shift.shift_role === 'nurse' || shift.shift_role === 'rn_midwife') {
     const row = await q1(`SELECT * FROM shift_nurse_close WHERE shift_id = ?`, [shift.id]);
     roleData = {
       closing: row
@@ -980,7 +980,7 @@ async function enrichShiftDetail(shift) {
         };
       } else if (prevShift.shift_role === 'call_center') {
         prevRoleData = { closing: await q1(`SELECT * FROM shift_callcenter_close WHERE shift_id = ?`, [prevShift.id]) };
-      } else if (prevShift.shift_role === 'nurse') {
+      } else if (prevShift.shift_role === 'nurse' || prevShift.shift_role === 'rn_midwife') {
         prevRoleData = { closing: await q1(`SELECT * FROM shift_nurse_close WHERE shift_id = ?`, [prevShift.id]) };
       } else if (prevShift.shift_role === 'vip_lounge') {
         prevRoleData = { closing: await q1(`SELECT * FROM shift_viplounge_close WHERE shift_id = ?`, [prevShift.id]) };
@@ -1199,7 +1199,7 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
     }
   }
   
-  if (shift_role === 'nurse' && nurse_close) {
+  if ((shift_role === 'nurse' || shift_role === 'rn_midwife') && nurse_close) {
     const n = nurse_close;
     const existing = await q1(`SELECT id FROM shift_nurse_close WHERE shift_id = ?`, [shiftId]);
     const criticalPatientsStr = Array.isArray(n.critical_patients_details)
@@ -1542,7 +1542,7 @@ exports.exportExcel = async (req, res, next) => {
     if (isChefNurseRole(req.user.role)) {
       where = role ? "1=1" : "s.shift_role = 'nurse'";
     } else if (req.user.role === 'nurse' || req.user.role === 'rn_midwife') {
-      where = "s.shift_role = 'nurse'";
+      where = "s.shift_role IN ('nurse', 'rn_midwife')";
     }
     const args = [];
 
