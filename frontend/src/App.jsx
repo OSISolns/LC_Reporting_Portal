@@ -56,6 +56,7 @@ import LabHub from './pages/lab/LabHub';
 import NCRManagement from './pages/lab/NCRManagement';
 import LabManagerDashboard from './pages/lab/LabManagerDashboard';
 import LabTeamLeadDashboard from './pages/lab/LabTeamLeadDashboard';
+import LabStockOfficerDashboard from './pages/lab/LabStockOfficerDashboard';
 import LabAnalyzers from './pages/lab/LabAnalyzers';
 import LabEquipment from './pages/lab/LabEquipment';
 import LabArchive from './pages/lab/LabArchive';
@@ -209,6 +210,17 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/lab/team-lead" element={<Navigate to="/lab-team-lead" replace />} />
+
+            <Route path="/lab-stock" element={
+              <ProtectedRoute allowedRoles={[
+                'admin', 'deputy_coo', 'coo', 'general_manager', 'chairman',
+                'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+                'lab_stock_officer', 'stock-manager', 'stock_manager'
+              ]}>
+                <LabStockOfficerDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/lab/stock" element={<Navigate to="/lab-stock" replace />} />
 
             <Route path="/lab-manager" element={
               <ProtectedRoute allowedRoles={[

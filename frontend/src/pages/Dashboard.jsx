@@ -16,6 +16,7 @@ import PhysiotherapistDashboard from './physio/PhysiotherapistDashboard';
 import PhysioManagerDashboard from './physio/PhysioManagerDashboard';
 import LabManagerDashboard from './lab/LabManagerDashboard';
 import LabTeamLeadDashboard from './lab/LabTeamLeadDashboard';
+import LabStockOfficerDashboard from './lab/LabStockOfficerDashboard';
 import LabHub from './lab/LabHub';
 import LogisticsDashboard from './logistics/LogisticsDashboard';
 import LogisticsStatsDashboard from './logistics/LogisticsStatsDashboard';
@@ -39,7 +40,10 @@ const Dashboard = () => {
   if (['logistics_manager', 'logistics_officer', 'logistics'].includes(role)) {
     return <LogisticsStatsDashboard />;
   }
-  if (['lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer', 'lab_micro_specialist'].includes(role)) {
+  if (role === 'lab_stock_officer') {
+    return <LabStockOfficerDashboard />;
+  }
+  if (['lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_micro_specialist'].includes(role)) {
     return <LabTeamLeadDashboard />;
   }
   if (['lab_manager', 'lab_hod', 'quality_manager', 'qm'].includes(role)) {
