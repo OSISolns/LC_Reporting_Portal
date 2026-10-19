@@ -9,6 +9,7 @@ const { exportToExcel } = require('../utils/excel');
 const MAX_SHIFT_HOURS  = 8;   // Auto-close threshold
 const MIN_SHIFT_HOURS  = 6;   // Agent self-close minimum (general)
 const EVENING_MIN_HOURS = 5;  // Special minimum for 3PM-8PM shift
+const COOLDOWN_HOURS   = 12;  // Required rest between shifts
 const CHEF_NURSE_ROLES = ['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'];
 
 const isChefNurseRole = (role) => {
@@ -18,6 +19,7 @@ const isChefNurseRole = (role) => {
 
 const SUPERVISOR_ROLES = ['admin', 'deputy_coo', 'coo', 'medical_director', ...CHEF_NURSE_ROLES];
 
+exports.COOLDOWN_HOURS   = COOLDOWN_HOURS;
 exports.CHEF_NURSE_ROLES = CHEF_NURSE_ROLES;
 exports.isChefNurseRole = isChefNurseRole;
 exports.SUPERVISOR_ROLES = SUPERVISOR_ROLES;
