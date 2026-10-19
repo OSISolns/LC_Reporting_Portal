@@ -110,22 +110,30 @@ const EquipmentChecklist = ({ items, onChange }) => (
             </div>
 
             <div className="flex flex-wrap gap-1.5">
-              {statusOptions.map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => onChange(i, 'status', status)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
-                    item.status === status
-                      ? (status === 'Working' || status === 'Available') ? 'bg-emerald-600 text-white' :
-                        status === 'Needs Repair' ? 'bg-amber-600 text-white' :
-                        'bg-rose-600 text-white'
-                      : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
+              {statusOptions.map((status) => {
+                const isSelected = item.status === status ||
+                  (status === 'Available' && item.status === 'Working') ||
+                  (status === 'Working' && item.status === 'Available') ||
+                  (status === 'Broken' && item.status === 'Broken/Missing') ||
+                  (status === 'Missing' && item.status === 'Broken/Missing');
+
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => onChange(i, 'status', status)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                      isSelected
+                        ? (status === 'Working' || status === 'Available') ? 'bg-emerald-600 text-white' :
+                          status === 'Needs Repair' ? 'bg-amber-600 text-white' :
+                          'bg-rose-600 text-white'
+                        : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

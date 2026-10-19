@@ -29,6 +29,19 @@ exports.SUPERVISOR_ROLES = SUPERVISOR_ROLES;
 const q = async (sql, args = []) => (await db.query(sql, args)).rows;
 const q1 = async (sql, args = []) => (await db.query(sql, args)).rows[0] || null;
 
+/**
+ * Normalize equipment status to satisfy Turso database CHECK constraint:
+ * CHECK (equipment_status IN ('Working', 'Needs Repair', 'Broken/Missing'))
+ */
+const normalizeEquipmentStatus = (status) => {
+  if (!status) return 'Working';
+  const s = String(status).trim().toLowerCase();
+  if (s === 'available' || s === 'working') return 'Working';
+  if (s === 'needs repair' || s === 'needs_repair') return 'Needs Repair';
+  if (s === 'broken' || s === 'missing' || s === 'broken/missing' || s === 'broken_missing') return 'Broken/Missing';
+  return 'Working';
+};
+
 function getWaveConfig(shift) {
   if (!shift) return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
   
@@ -308,7 +321,7 @@ exports.openShift = async (req, res, next) => {
         await db.query(
           `INSERT INTO shift_equipment_logs (shift_id, snapshot, equipment_name, equipment_status, remarks)
            VALUES (?, 'open', ?, ?, ?)`,
-          [resolvedId, item.name, item.status, item.remarks || null]
+          [resolvedId, item.name, normalizeEquipmentStatus(item.status), item.remarks || null]
         );
       }
     }
@@ -368,7 +381,7 @@ exports.saveDraft = async (req, res, next) => {
         await db.query(
           `INSERT INTO shift_equipment_logs (shift_id, snapshot, equipment_name, equipment_status, remarks)
            VALUES (?, 'close', ?, ?, ?)`,
-          [id, item.name, item.status, item.remarks || null]
+          [id, item.name, normalizeEquipmentStatus(item.status), item.remarks || null]
         );
       }
     }
@@ -452,7 +465,7 @@ exports.closeShift = async (req, res, next) => {
         await db.query(
           `INSERT INTO shift_equipment_logs (shift_id, snapshot, equipment_name, equipment_status, remarks)
            VALUES (?, 'close', ?, ?, ?)`,
-          [id, item.name, item.status, item.remarks || null]
+          [id, item.name, normalizeEquipmentStatus(item.status), item.remarks || null]
         );
       }
     }

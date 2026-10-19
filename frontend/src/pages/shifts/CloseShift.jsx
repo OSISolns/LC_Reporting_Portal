@@ -422,21 +422,29 @@ const EquipmentChecklist = ({ items, onChange }) => (
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {statusOptions.map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => onChange(i, 'status', status)}
-                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${item.status === status
-                        ? (status === 'Working' || status === 'Available') ? 'bg-emerald-600 text-white shadow-lg' :
-                          status === 'Needs Repair' ? 'bg-amber-600 text-white shadow-lg' :
-                            'bg-rose-600 text-white shadow-lg'
-                        : 'bg-white border-2 border-slate-100 text-slate-400 hover:border-slate-200'
-                      }`}
-                  >
-                    {status}
-                  </button>
-                ))}
+                {statusOptions.map((status) => {
+                  const isSelected = item.status === status ||
+                    (status === 'Available' && item.status === 'Working') ||
+                    (status === 'Working' && item.status === 'Available') ||
+                    (status === 'Broken' && item.status === 'Broken/Missing') ||
+                    (status === 'Missing' && item.status === 'Broken/Missing');
+
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => onChange(i, 'status', status)}
+                      className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${isSelected
+                          ? (status === 'Working' || status === 'Available') ? 'bg-emerald-600 text-white shadow-lg' :
+                            status === 'Needs Repair' ? 'bg-amber-600 text-white shadow-lg' :
+                              'bg-rose-600 text-white shadow-lg'
+                          : 'bg-white border-2 border-slate-100 text-slate-400 hover:border-slate-200'
+                        }`}
+                    >
+                      {status}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1921,9 +1929,30 @@ export default function CloseShift() {
         const s = res.data.data;
         setShift(s);
         setHandoverNotes(s.handover_notes || '');
+        const mapEquipmentStatusForUi = (name, status) => {
+          const isStamp = name === 'Waiting No. Stamp' || name === 'Paid Stamp' || (name && name.toLowerCase().includes('stamp'));
+          if (isStamp) {
+            if (status === 'Working' || status === 'Available') return 'Available';
+            return 'Missing';
+          }
+          if (status === 'Broken/Missing') return 'Broken';
+          return status || 'Working';
+        };
+
         const closeEquip = s.equipment?.close?.length
-          ? s.equipment.close.map((e) => ({ name: e.equipment_name, status: e.equipment_status, remarks: e.remarks || '' }))
-          : EQUIPMENT_BY_ROLE[s.shift_role].map((name) => ({ name, status: getDefaultItemStatus(name), remarks: '' }));
+          ? s.equipment.close.map((e) => ({
+              name: e.equipment_name,
+              status: mapEquipmentStatusForUi(e.equipment_name, e.equipment_status),
+              remarks: e.remarks || ''
+            }))
+          : (s.equipment?.open?.length
+              ? s.equipment.open.map((e) => ({
+                  name: e.equipment_name,
+                  status: mapEquipmentStatusForUi(e.equipment_name, e.equipment_status),
+                  remarks: ''
+                }))
+              : (EQUIPMENT_BY_ROLE[s.shift_role] || []).map((name) => ({ name, status: getDefaultItemStatus(name), remarks: '' }))
+            );
         setEquipment(closeEquip);
         if ((s.shift_role === 'cashier' || s.shift_role === 'rama_rssb') && s.role_data?.closing) {
           setBillingClose({ ...billingClose, ...s.role_data.closing, payments_all_successful: !!s.role_data.closing.payments_all_successful });
