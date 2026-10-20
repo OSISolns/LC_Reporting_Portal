@@ -1783,6 +1783,43 @@ exports.generalManagerReviewLabRequisition = async (req, res, next) => {
       [newStatus, action, gmName, action, rejection_reason || null, id]
     );
 
+    if (action === 'approve') {
+      const { rows: reqItems } = await db.query('SELECT * FROM lab_requisition_items WHERE requisition_id = ?', [id]);
+      for (const item of reqItems) {
+        const approvedQty = Number(item.approved_quantity || item.requested_quantity || 0);
+        if (approvedQty > 0) {
+          const { rows: existingUnitStock } = await db.query(
+            'SELECT id, quantity_in_use FROM lab_unit_stock_in_use WHERE unit_name = ? AND item_name = ?',
+            [req_.requesting_unit, item.item_name]
+          );
+          if (existingUnitStock.length > 0) {
+            const newQty = existingUnitStock[0].quantity_in_use + approvedQty;
+            await db.query(
+              'UPDATE lab_unit_stock_in_use SET quantity_in_use = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+              [newQty, existingUnitStock[0].id]
+            );
+            await db.query(
+              `INSERT INTO lab_unit_consumption_logs (unit_stock_id, unit_name, item_name, action_type, quantity, remaining_balance, purpose_remarks, recorded_by_name)
+               VALUES (?, ?, ?, 'RESTOCK_RECEIVED', ?, ?, ?, ?)`,
+              [existingUnitStock[0].id, req_.requesting_unit, item.item_name, approvedQty, newQty, `General Store Requisition #${req_.ref_number} approved`, gmName]
+            );
+          } else {
+            const { rows: inserted } = await db.query(
+              `INSERT INTO lab_unit_stock_in_use (unit_name, item_name, category, quantity_in_use, unit_of_measure, min_threshold, storage_location, last_updated_by)
+               VALUES (?, ?, ?, ?, ?, 5, 'Bench', ?) RETURNING id`,
+              [req_.requesting_unit, item.item_name, item.item_category || 'Consumables', approvedQty, item.unit_of_measure || 'pack', gmName]
+            );
+            const newUnitStockId = inserted[0]?.id;
+            await db.query(
+              `INSERT INTO lab_unit_consumption_logs (unit_stock_id, unit_name, item_name, action_type, quantity, remaining_balance, purpose_remarks, recorded_by_name)
+               VALUES (?, ?, ?, 'RESTOCK_RECEIVED', ?, ?, ?, ?)`,
+              [newUnitStockId, req_.requesting_unit, item.item_name, approvedQty, approvedQty, `General Store Requisition #${req_.ref_number} approved`, gmName]
+            );
+          }
+        }
+      }
+    }
+
     await logAction(req, 'LAB_REQ_GM_REVIEW', 'lab_requisitions', id, { action, gm: gmName, new_status: newStatus });
 
     res.json({ success: true, message: `Lab requisition ${action === 'approve' ? 'approved' : 'rejected'} by General Stock Manager.` });
