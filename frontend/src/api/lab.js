@@ -22,5 +22,21 @@ export const deleteInhandInventory = (id) => api.delete(`/lab/inhand-inventory/$
 export const getStorageUnits = () => api.get('/lab/storage-units');
 export const saveStorageUnit = (data) => api.post('/lab/storage-units', data);
 
+// Legacy / general stock requisition integration
 export const getLabRequisitions = (params) => api.get('/clinical/inventory/requisitions', { params });
 export const createLabRequisition = (data) => api.post('/clinical/inventory/requisitions', data);
+
+// ── Lab Unit Internal Requisitions ──────────────────────────────────────────
+export const getUnitRequisitions = (params) => api.get('/lab/requisitions', { params });
+export const getUnitRequisitionItems = (id) => api.get(`/lab/requisitions/${id}/items`);
+export const createUnitRequisition = (data) => api.post('/lab/requisitions', data);
+export const labManagerReview = (id, data) => api.post(`/lab/requisitions/${id}/lab-review`, data);
+export const generalManagerReview = (id, data) => api.post(`/lab/requisitions/${id}/general-review`, data);
+
+// ── Lab Unit Stock-in-Use & Consumption ────────────────────────────────────
+export const getUnitStockInUse = (params) => api.get('/lab/unit-stock', { params });
+export const addUnitStockItem = (data) => api.post('/lab/unit-stock', data);
+export const consumeUnitStockItem = (id, data) => api.post(`/lab/unit-stock/${id}/consume`, data);
+export const getUnitConsumptionLogs = (params) => api.get('/lab/unit-stock/logs', { params });
+
+

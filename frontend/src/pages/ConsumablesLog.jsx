@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
+import LabConsumablesWorkspace from './lab/LabConsumablesWorkspace';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -1166,26 +1167,42 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     return (activeDeptObj?.name || defaultDeptName || '').toUpperCase();
   }, [userDept, filterDept, formDept, departments, defaultDeptName]);
 
+  const isLabRole = useMemo(() => {
+    const r = (user?.role || '').toLowerCase();
+    return [
+      'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+      'lab_safety_officer', 'lab_stock_officer',
+      'head_microbiology', 'head_hematology', 'head_histopathology',
+      'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+      'lab_micro_specialist', 'lab_scientist',
+      'lab_team_lead', 'lab_lead', 'lab_tech', 'lab'
+    ].includes(r);
+  }, [user]);
+
   const isLabDept = useMemo(() => {
     return activeDeptName.includes('LABORATORY') || activeDeptName === 'LAB';
   }, [activeDeptName]);
+
+  const showLabConsumablesWorkspace = useMemo(() => {
+    const activeD = filterDept || formDept;
+    if (activeD) {
+      const activeDeptObj = departments.find(d => String(d.id) === String(activeD));
+      const activeName = (activeDeptObj?.name || '').toUpperCase();
+      if (!activeName.includes('LAB') && !activeName.includes('LABORATORY')) {
+        return false;
+      }
+    }
+    return isLabDept || isLabRole;
+  }, [isLabDept, isLabRole, filterDept, formDept, departments]);
 
   const isLabStockOfficer = useMemo(() => {
     return user?.role === 'lab_stock_officer' || ['admin', 'chairman', 'coo', 'deputy_coo'].includes(user?.role);
   }, [user]);
 
-  const isLabRestrictedToConsumptionOnly = useMemo(() => {
-    return isLabDept && !isLabStockOfficer;
-  }, [isLabDept, isLabStockOfficer]);
+  const isLabRestrictedToConsumptionOnly = false;
 
   // Tabs
   const [activeSubTab, setActiveSubTab] = useState('history'); // 'history', 'stock', 'requisitions', 'deactivated', 'fridges'
-
-  useEffect(() => {
-    if (isLabRestrictedToConsumptionOnly && activeSubTab !== 'history') {
-      setActiveSubTab('history');
-    }
-  }, [isLabRestrictedToConsumptionOnly, activeSubTab]);
 
   const [stockTab, setStockTab] = useState('local'); // 'local', 'central'
   const [stockSearchTerm, setStockSearchTerm] = useState('');
@@ -2654,6 +2671,64 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       <div className="flex h-96 flex-col items-center justify-center gap-4">
         <Loader2 className="h-12 w-12 animate-spin text-teal-600" />
         <p className="text-slate-500 font-semibold animate-pulse">Loading Consumables Log…</p>
+      </div>
+    );
+  }
+
+  if (showLabConsumablesWorkspace) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-800 p-6 md:p-10 font-sans">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header */}
+          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-200 pb-5">
+            <div className="flex items-center gap-3">
+              <span className="p-2.5 bg-teal-50 text-teal-700 border border-teal-200 rounded-2xl shadow-sm">
+                <FlaskConical size={26} />
+              </span>
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">Laboratory Consumables &amp; Bench Stock</h1>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-teal-100 text-teal-800 border border-teal-200">
+                    6 Operational Units
+                  </span>
+                </div>
+                <p className="text-sm text-slate-500 mt-0.5 font-medium">
+                  Operational bench stock in use, daily test consumption logging, and replenishment requisitions for Laboratory staff.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Department switcher if user is admin / multi-dept */}
+              {!userDept && departments.length > 1 && (
+                <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs">
+                  <Building size={14} className="text-slate-400" />
+                  <span className="text-xs font-bold text-slate-500">Dept:</span>
+                  <select
+                    value={formDept || filterDept}
+                    onChange={(e) => {
+                      setFormDept(e.target.value);
+                      setFilterDept(e.target.value);
+                    }}
+                    className="bg-transparent text-xs font-extrabold text-slate-800 outline-none cursor-pointer"
+                  >
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <button onClick={() => loadData(true)}
+                className="p-2.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-slate-600 transition-all shadow-xs cursor-pointer">
+                <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Laboratory Consumables Workspace */}
+          <LabConsumablesWorkspace user={user} />
+        </div>
       </div>
     );
   }

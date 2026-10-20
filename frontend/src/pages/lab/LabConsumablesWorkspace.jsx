@@ -1,0 +1,1227 @@
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  ClipboardList, Package, Plus, RefreshCw, Search, X, Check,
+  AlertTriangle, CheckCircle2, Clock, Droplet, Microscope,
+  Activity, Archive, Dna, FlaskConical, Download, Layers,
+  ChevronRight, ArrowRight, ArrowUpRight, ShieldCheck, Zap
+} from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import {
+  getUnitStockInUse, consumeUnitStockItem, addUnitStockItem,
+  getUnitConsumptionLogs, getUnitRequisitions, getUnitRequisitionItems,
+  createUnitRequisition
+} from '../../api/lab';
+
+// ── The 6 Exact Laboratory Units ──────────────────────────────────────────────
+const LAB_UNITS = [
+  { id: 'Biochemistry', label: 'Biochemistry', icon: FlaskConical, color: '#1B669E', bgColor: '#e0f0fb' },
+  { id: 'Hematology', label: 'Hematology', icon: Activity, color: '#dc2626', bgColor: '#fee2e2' },
+  { id: 'Microbiology', label: 'Microbiology', icon: Microscope, color: '#059669', bgColor: '#d1fae5' },
+  { id: 'Phlebotomy', label: 'Phlebotomy', icon: Droplet, color: '#0284c7', bgColor: '#e0f2fe' },
+  { id: 'Histopathology', label: 'Histopathology', icon: Archive, color: '#d97706', bgColor: '#fef3c7' },
+  { id: 'Molecular Biology', label: 'Molecular Biology', icon: Dna, color: '#7c3aed', bgColor: '#ede9fe' },
+];
+
+const ITEM_CATEGORIES = [
+  'All',
+  'Reagents',
+  'Controls',
+  'Calibrators',
+  'Rapid Tests',
+  'Consumables',
+  'Stains & Buffers',
+  'Specimen Containers'
+];
+
+const UOM_OPTIONS = ['pack', 'kit', 'bot', 'box', 'pcs', 'tubes', 'vials', 'cartridges', 'tests', 'plates', 'racks'];
+
+export default function LabConsumablesWorkspace({ user }) {
+  // Determine default unit based on user role if applicable
+  const defaultUnitId = useMemo(() => {
+    const r = (user?.role || '').toLowerCase();
+    if (r.includes('hema')) return 'Hematology';
+    if (r.includes('micro')) return 'Microbiology';
+    if (r.includes('phleb')) return 'Phlebotomy';
+    if (r.includes('histo') || r.includes('patho')) return 'Histopathology';
+    if (r.includes('molec') || r.includes('pcr')) return 'Molecular Biology';
+    return 'Biochemistry';
+  }, [user]);
+
+  const [activeUnit, setActiveUnit] = useState(defaultUnitId);
+  const [activeTab, setActiveTab] = useState('stock'); // 'stock' | 'requisitions' | 'logs'
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Stock In Use State
+  const [unitStock, setUnitStock] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+
+  // Consumption Modal State
+  const [consumeModalItem, setConsumeModalItem] = useState(null);
+  const [consumeQty, setConsumeQty] = useState(1);
+  const [consumeRemarks, setConsumeRemarks] = useState('');
+  const [consuming, setConsuming] = useState(false);
+
+  // Add Bench Item Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addingItem, setAddingItem] = useState(false);
+  const [newItemForm, setNewItemForm] = useState({
+    item_name: '',
+    category: 'Reagents',
+    quantity_in_use: 5,
+    unit_of_measure: 'kit',
+    min_threshold: 2,
+    storage_location: 'Main Unit Bench'
+  });
+
+  // Requisitions State
+  const [requisitions, setRequisitions] = useState([]);
+  const [isReqModalOpen, setIsReqModalOpen] = useState(false);
+  const [submittingReq, setSubmittingReq] = useState(false);
+  const [reqForm, setReqForm] = useState({
+    urgency: 'Normal',
+    notes: '',
+    items: [{ item_name: '', requested_quantity: 5, unit_of_measure: 'kit', item_category: 'Reagents' }]
+  });
+
+  // Requisition Detail Drawer
+  const [selectedReq, setSelectedReq] = useState(null);
+  const [reqItems, setReqItems] = useState([]);
+  const [loadingReqItems, setLoadingReqItems] = useState(false);
+
+  // Consumption Logs State
+  const [consumptionLogs, setConsumptionLogs] = useState([]);
+
+  // ── Data Fetching ──────────────────────────────────────────────────────────
+  const fetchWorkspaceData = useCallback(async (isManual = false) => {
+    if (isManual) setRefreshing(true);
+    else setLoading(true);
+
+    try {
+      const [stockRes, reqRes, logsRes] = await Promise.allSettled([
+        getUnitStockInUse({ unit: activeUnit }),
+        getUnitRequisitions({ unit: activeUnit }),
+        getUnitConsumptionLogs({ unit: activeUnit, limit: 100 })
+      ]);
+
+      if (stockRes.status === 'fulfilled' && stockRes.value.data?.success) {
+        setUnitStock(stockRes.value.data.data || []);
+      }
+      if (reqRes.status === 'fulfilled' && reqRes.value.data?.success) {
+        setRequisitions(reqRes.value.data.data || []);
+      }
+      if (logsRes.status === 'fulfilled' && logsRes.value.data?.success) {
+        setConsumptionLogs(logsRes.value.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load lab workspace data:', err);
+      toast.error('Failed to update laboratory bench data.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [activeUnit]);
+
+  useEffect(() => {
+    fetchWorkspaceData();
+  }, [fetchWorkspaceData]);
+
+  // ── Filtered Stock ─────────────────────────────────────────────────────────
+  const filteredStock = useMemo(() => {
+    return unitStock.filter(item => {
+      if (categoryFilter !== 'All' && item.category !== categoryFilter) return false;
+      if (showLowStockOnly && (item.quantity_in_use > item.min_threshold)) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesName = item.item_name?.toLowerCase().includes(q);
+        const matchesLoc = item.storage_location?.toLowerCase().includes(q);
+        return matchesName || matchesLoc;
+      }
+      return true;
+    });
+  }, [unitStock, categoryFilter, showLowStockOnly, searchQuery]);
+
+  // ── Metrics for Active Unit ────────────────────────────────────────────────
+  const metrics = useMemo(() => {
+    const totalItems = unitStock.length;
+    const depleted = unitStock.filter(i => (Number(i.quantity_in_use) || 0) <= 0).length;
+    const lowStock = unitStock.filter(i => {
+      const q = Number(i.quantity_in_use) || 0;
+      const m = Number(i.min_threshold) || 0;
+      return q > 0 && q <= m;
+    }).length;
+    const adequate = totalItems - depleted - lowStock;
+    const pendingReqs = requisitions.filter(r => r.status === 'Pending' || r.status === 'Forwarded').length;
+
+    return { totalItems, depleted, lowStock, adequate, pendingReqs };
+  }, [unitStock, requisitions]);
+
+  // ── Handler: Log Consumption ───────────────────────────────────────────────
+  const handleOpenConsume = (item) => {
+    setConsumeModalItem(item);
+    setConsumeQty(1);
+    setConsumeRemarks('');
+  };
+
+  const handleSubmitConsume = async (e) => {
+    e.preventDefault();
+    if (!consumeModalItem) return;
+    const qty = Number(consumeQty);
+    if (!qty || qty <= 0) {
+      toast.error('Please enter a valid quantity consumed.');
+      return;
+    }
+
+    setConsuming(true);
+    try {
+      const res = await consumeUnitStockItem(consumeModalItem.id, {
+        quantity: qty,
+        purpose_remarks: consumeRemarks.trim() || 'Shift patient test run'
+      });
+      if (res.data?.success) {
+        toast.success(`Logged ${qty} ${consumeModalItem.unit_of_measure} consumed for ${consumeModalItem.item_name}`);
+        setConsumeModalItem(null);
+        fetchWorkspaceData(true);
+      }
+    } catch (err) {
+      console.error('Failed to log consumption:', err);
+      toast.error(err.response?.data?.message || 'Error recording consumption.');
+    } finally {
+      setConsuming(false);
+    }
+  };
+
+  // ── Handler: Add Bench Item ────────────────────────────────────────────────
+  const handleAddBenchItem = async (e) => {
+    e.preventDefault();
+    if (!newItemForm.item_name.trim()) {
+      toast.error('Item name is required.');
+      return;
+    }
+
+    setAddingItem(true);
+    try {
+      const res = await addUnitStockItem({
+        ...newItemForm,
+        unit_name: activeUnit
+      });
+      if (res.data?.success) {
+        toast.success(`Added ${newItemForm.item_name} to ${activeUnit} stock in use.`);
+        setIsAddModalOpen(false);
+        setNewItemForm({
+          item_name: '',
+          category: 'Reagents',
+          quantity_in_use: 5,
+          unit_of_measure: 'kit',
+          min_threshold: 2,
+          storage_location: 'Main Unit Bench'
+        });
+        fetchWorkspaceData(true);
+      }
+    } catch (err) {
+      console.error('Failed to add bench item:', err);
+      toast.error(err.response?.data?.message || 'Failed to add item.');
+    } finally {
+      setAddingItem(false);
+    }
+  };
+
+  // ── Handler: Pre-fill Requisition from Item ─────────────────────────────────
+  const handleQuickRequisition = (item) => {
+    setReqForm({
+      urgency: 'Normal',
+      notes: `Restock request for depleted/low bench stock: ${item.item_name}`,
+      items: [{
+        item_name: item.item_name,
+        requested_quantity: Math.max(5, (item.min_threshold || 2) * 2),
+        unit_of_measure: item.unit_of_measure || 'kit',
+        item_category: item.category || 'Reagents',
+        inventory_ref_id: item.inventory_ref_id || null
+      }]
+    });
+    setIsReqModalOpen(true);
+  };
+
+  // ── Handler: Submit Unit Requisition ───────────────────────────────────────
+  const handleAddReqLine = () => {
+    setReqForm(prev => ({
+      ...prev,
+      items: [...prev.items, { item_name: '', requested_quantity: 5, unit_of_measure: 'kit', item_category: 'Reagents' }]
+    }));
+  };
+
+  const handleRemoveReqLine = (idx) => {
+    if (reqForm.items.length <= 1) return;
+    setReqForm(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== idx)
+    }));
+  };
+
+  const handleReqLineChange = (idx, field, value) => {
+    setReqForm(prev => {
+      const updated = [...prev.items];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return { ...prev, items: updated };
+    });
+  };
+
+  const handleSubmitRequisition = async (e) => {
+    e.preventDefault();
+    const validLines = reqForm.items.filter(i => i.item_name.trim() && Number(i.requested_quantity) > 0);
+    if (validLines.length === 0) {
+      toast.error('Please enter at least one valid item name and quantity.');
+      return;
+    }
+
+    setSubmittingReq(true);
+    try {
+      const payload = {
+        requesting_unit: activeUnit,
+        urgency: reqForm.urgency,
+        notes: reqForm.notes || `Requisition from ${activeUnit} unit`,
+        stock_source: 'lab_stock',
+        items: validLines
+      };
+
+      const res = await createUnitRequisition(payload);
+      if (res.data?.success) {
+        toast.success(`Requisition submitted to Laboratory Stock Manager! (Ref: ${res.data.ref_number || 'OK'})`);
+        setIsReqModalOpen(false);
+        setReqForm({
+          urgency: 'Normal',
+          notes: '',
+          items: [{ item_name: '', requested_quantity: 5, unit_of_measure: 'kit', item_category: 'Reagents' }]
+        });
+        fetchWorkspaceData(true);
+        setActiveTab('requisitions');
+      }
+    } catch (err) {
+      console.error('Failed to submit requisition:', err);
+      toast.error(err.response?.data?.message || 'Failed to submit requisition.');
+    } finally {
+      setSubmittingReq(false);
+    }
+  };
+
+  // ── Handler: Open Requisition Details ──────────────────────────────────────
+  const handleOpenReqDetails = async (req) => {
+    setSelectedReq(req);
+    setLoadingReqItems(true);
+    try {
+      const res = await getUnitRequisitionItems(req.id);
+      setReqItems(res.data?.data || []);
+    } catch (err) {
+      console.error('Error fetching requisition items:', err);
+      toast.error('Failed to load item lines.');
+    } finally {
+      setLoadingReqItems(false);
+    }
+  };
+
+  // ── Handler: Export CSV ────────────────────────────────────────────────────
+  const handleExportLogsCSV = () => {
+    try {
+      const headers = ['Timestamp', 'Laboratory Unit', 'Item Name', 'Action', 'Quantity', 'Remaining Balance', 'Purpose / Remarks', 'Recorded By'];
+      const rows = consumptionLogs.map(l => [
+        l.created_at ? new Date(l.created_at).toLocaleString() : '',
+        l.unit_name || activeUnit,
+        l.item_name,
+        l.action_type,
+        l.quantity,
+        l.remaining_balance,
+        l.purpose_remarks || '',
+        l.recorded_by_name || 'Staff'
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Lab_${activeUnit}_Consumption_Log_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Consumption audit log exported.');
+    } catch (err) {
+      console.error('Export error:', err);
+      toast.error('Failed to export CSV.');
+    }
+  };
+
+  const currentUnitConfig = LAB_UNITS.find(u => u.id === activeUnit) || LAB_UNITS[0];
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Operational Unit Header & Unit Switcher ── */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                MoH Rwanda Standard • ISO 15189
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                Staff Consumables &amp; Bench Stock
+              </span>
+              <span className="text-[11px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                Active Unit: {activeUnit}
+              </span>
+            </div>
+
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <currentUnitConfig.icon size={22} style={{ color: currentUnitConfig.color }} />
+              <span>{activeUnit} Laboratory Bench Workspace</span>
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Manage in-use bench reagents, record test run consumption, and requisition replenishment to the Laboratory Stock Manager.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => fetchWorkspaceData(true)}
+              disabled={refreshing}
+              className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+              <span>Refresh</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setReqForm({
+                  urgency: 'Normal',
+                  notes: '',
+                  items: [{ item_name: '', requested_quantity: 5, unit_of_measure: 'kit', item_category: 'Reagents' }]
+                });
+                setIsReqModalOpen(true);
+              }}
+              className="px-3.5 py-1.5 bg-[#1B669E] hover:bg-[#155280] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+            >
+              <Plus size={14} />
+              <span>New Requisition</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ── The 6 Exact Laboratory Units Selection Pills ── */}
+        <div className="pt-2 border-t border-slate-100 flex items-center gap-2 overflow-x-auto pb-1">
+          <span className="text-xs font-bold text-slate-400 shrink-0 mr-1">Switch Unit:</span>
+          {LAB_UNITS.map(unit => {
+            const isSelected = activeUnit === unit.id;
+            const Icon = unit.icon;
+            return (
+              <button
+                key={unit.id}
+                onClick={() => setActiveUnit(unit.id)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+                  isSelected
+                    ? 'text-white shadow-xs'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+                style={isSelected ? { backgroundColor: unit.color } : {}}
+              >
+                <Icon size={14} />
+                <span>{unit.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Unit Operational KPI Cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">In-Use Bench Items</span>
+          <div className="text-2xl font-black text-slate-900 mt-1">{metrics.totalItems}</div>
+          <span className="text-[11px] text-slate-500 font-medium">Active reagents &amp; consumables</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+          <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block">Stock Adequate</span>
+          <div className="text-2xl font-black text-emerald-700 mt-1">{metrics.adequate}</div>
+          <span className="text-[11px] text-slate-500 font-medium">Above minimum threshold</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+          <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block">Low Stock Alert</span>
+          <div className="text-2xl font-black text-amber-700 mt-1">{metrics.lowStock}</div>
+          <span className="text-[11px] text-slate-500 font-medium">Requisition advised</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+          <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">Active Requisitions</span>
+          <div className="text-2xl font-black text-blue-700 mt-1">{metrics.pendingReqs}</div>
+          <span className="text-[11px] text-slate-500 font-medium">Pending with Lab Stock Manager</span>
+        </div>
+      </div>
+
+      {/* ── Sub-Tabs Navigation Bar ── */}
+      <div className="bg-white p-1.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={() => setActiveTab('stock')}
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${
+              activeTab === 'stock'
+                ? 'bg-[#1B669E] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Package size={14} />
+            <span>Stock In Use ({filteredStock.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('requisitions')}
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${
+              activeTab === 'requisitions'
+                ? 'bg-[#1B669E] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <ClipboardList size={14} />
+            <span>Unit Requisitions ({requisitions.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${
+              activeTab === 'logs'
+                ? 'bg-[#1B669E] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Clock size={14} />
+            <span>Consumption Audit Logs ({consumptionLogs.length})</span>
+          </button>
+        </div>
+
+        {activeTab === 'stock' && (
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-3 py-1.5 text-xs font-semibold text-[#1B669E] bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg flex items-center gap-1 transition-colors"
+          >
+            <Plus size={13} /> Add Bench Item
+          </button>
+        )}
+
+        {activeTab === 'logs' && (
+          <button
+            onClick={handleExportLogsCSV}
+            className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg flex items-center gap-1 transition-colors"
+          >
+            <Download size={13} /> Export CSV
+          </button>
+        )}
+      </div>
+
+      {/* ── TAB 1: STOCK IN USE (BENCH STOCK) ── */}
+      {activeTab === 'stock' && (
+        <div className="space-y-4">
+          {/* Filters Bar */}
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative flex-1 w-full sm:max-w-xs">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder={`Search ${activeUnit} bench reagents...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:border-[#1B669E] text-slate-800"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="py-1.5 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 focus:bg-white focus:outline-none focus:border-[#1B669E]"
+              >
+                {ITEM_CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>
+                ))}
+              </select>
+
+              <button
+                onClick={() => setShowLowStockOnly(v => !v)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1.5 ${
+                  showLowStockOnly
+                    ? 'bg-amber-500 text-white border-amber-600'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <AlertTriangle size={13} />
+                <span>Low Stock Only</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Stock Table */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+            {loading ? (
+              <div className="p-12 text-center text-xs text-slate-500">
+                <RefreshCw size={24} className="animate-spin text-[#1B669E] mx-auto mb-2" />
+                Loading {activeUnit} bench stock...
+              </div>
+            ) : filteredStock.length === 0 ? (
+              <div className="p-12 text-center space-y-2">
+                <Package size={32} className="text-slate-300 mx-auto" />
+                <p className="text-xs font-bold text-slate-700">No items match the current filter in {activeUnit}.</p>
+                <p className="text-[11px] text-slate-400">Add a new bench item or submit a requisition to the Laboratory Stock Manager.</p>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg mt-2 inline-flex items-center gap-1.5"
+                >
+                  <Plus size={13} /> Register In-Use Item
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3 px-4">Item &amp; Category</th>
+                      <th className="py-3 px-4">Bench Location</th>
+                      <th className="py-3 px-4 text-center">In-Use Balance</th>
+                      <th className="py-3 px-4">Min. Threshold</th>
+                      <th className="py-3 px-4">Stock Status</th>
+                      <th className="py-3 px-4">Last Consumed</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {filteredStock.map(item => {
+                      const qty = Number(item.quantity_in_use) || 0;
+                      const min = Number(item.min_threshold) || 0;
+                      const isDepleted = qty <= 0;
+                      const isLow = qty > 0 && qty <= min;
+
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-3 px-4">
+                            <span className="font-bold text-slate-900 block">{item.item_name}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">{item.category}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-xs text-slate-600 font-medium">{item.storage_location || 'Bench'}</span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="text-sm font-black text-slate-900">{qty}</span>
+                            <span className="text-[10px] text-slate-400 ml-1 font-semibold">{item.unit_of_measure}</span>
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-slate-600">
+                            {min} {item.unit_of_measure}
+                          </td>
+                          <td className="py-3 px-4">
+                            {isDepleted ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                Depleted (0)
+                              </span>
+                            ) : isLow ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                Low Stock
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Adequate
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-[11px] text-slate-500">
+                            {item.last_consumed_at ? (
+                              <div>
+                                <span>{new Date(item.last_consumed_at).toLocaleDateString()}</span>
+                                <span className="text-[10px] text-slate-400 block font-medium">
+                                  {item.last_consumed_qty || ''} {item.unit_of_measure} by {item.last_updated_by}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic">No usage recorded</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenConsume(item)}
+                                disabled={qty <= 0}
+                                className="px-2.5 py-1 text-xs font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg transition-colors shadow-2xs disabled:opacity-40"
+                                title="Record patient test run usage"
+                              >
+                                Log Usage
+                              </button>
+                              <button
+                                onClick={() => handleQuickRequisition(item)}
+                                className="px-2.5 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200"
+                                title="Requisition from Laboratory Stock Manager"
+                              >
+                                + Reorder
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 2: UNIT REQUISITIONS TO LAB STOCK MANAGER ── */}
+      {activeTab === 'requisitions' && (
+        <div className="space-y-4">
+          <div className="bg-white p-4.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <ClipboardList className="text-[#1B669E]" size={16} />
+                {activeUnit} Replenishment Requisitions
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Orders submitted to Laboratory Stock Manager. If in stock, approved directly; if general store, reviewed and forwarded.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setReqForm({
+                  urgency: 'Normal',
+                  notes: '',
+                  items: [{ item_name: '', requested_quantity: 5, unit_of_measure: 'kit', item_category: 'Reagents' }]
+                });
+                setIsReqModalOpen(true);
+              }}
+              className="px-3.5 py-2 text-xs font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg transition-colors shadow-xs flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <Plus size={14} /> New Requisition
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+            {requisitions.length === 0 ? (
+              <div className="p-12 text-center space-y-2">
+                <ClipboardList size={30} className="text-slate-300 mx-auto" />
+                <p className="text-xs font-bold text-slate-700">No requisitions currently submitted for {activeUnit}.</p>
+                <p className="text-[11px] text-slate-400">Submit an order when bench reagent levels fall below threshold.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3 px-4">Req #</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Urgency</th>
+                      <th className="py-3 px-4">Notes / Justification</th>
+                      <th className="py-3 px-4">Stock Source</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {requisitions.map(r => (
+                      <tr key={r.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3 px-4 font-mono font-bold text-[#1B669E]">{r.ref_number || `REQ-${r.id}`}</td>
+                        <td className="py-3 px-4">{r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A'}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                            r.urgency === 'STAT' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                            r.urgency === 'Urgent' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            'bg-slate-50 text-slate-600 border-slate-200'
+                          }`}>
+                            {r.urgency || 'Normal'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 max-w-xs truncate">{r.notes || 'Routine restock'}</td>
+                        <td className="py-3 px-4">
+                          <span className="text-[11px] font-medium text-slate-600">
+                            {r.stock_source === 'general_stock' ? 'General Central Store' : 'Laboratory Stock'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            r.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            r.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                            r.status === 'Forwarded' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                            'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {r.status === 'Pending' ? 'Pending Lab Review' :
+                             r.status === 'Forwarded' ? 'Forwarded to General Manager' :
+                             r.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => handleOpenReqDetails(r)}
+                            className="text-xs font-semibold text-[#1B669E] hover:underline"
+                          >
+                            View Items →
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 3: CONSUMPTION AUDIT LOGS ── */}
+      {activeTab === 'logs' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+            {consumptionLogs.length === 0 ? (
+              <div className="p-12 text-center text-xs text-slate-400">
+                No consumption logs recorded yet for {activeUnit}.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3 px-4">Timestamp</th>
+                      <th className="py-3 px-4">Item Name</th>
+                      <th className="py-3 px-4">Action</th>
+                      <th className="py-3 px-4 text-center">Quantity</th>
+                      <th className="py-3 px-4 text-center">Remaining Balance</th>
+                      <th className="py-3 px-4">Purpose / Remarks</th>
+                      <th className="py-3 px-4">Logged By</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {consumptionLogs.map(log => (
+                      <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
+                          {log.created_at ? new Date(log.created_at).toLocaleString() : '—'}
+                        </td>
+                        <td className="py-3 px-4 font-semibold text-slate-900">{log.item_name}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            log.action_type === 'CONSUMPTION' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            log.action_type === 'RESTOCK_RECEIVED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}>
+                            {log.action_type === 'CONSUMPTION' ? 'Usage Logged' : 'Restock Received'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center font-bold text-slate-800">{log.quantity}</td>
+                        <td className="py-3 px-4 text-center font-bold text-slate-800">{log.remaining_balance}</td>
+                        <td className="py-3 px-4 text-slate-600 max-w-xs truncate">{log.purpose_remarks || 'Routine'}</td>
+                        <td className="py-3 px-4 font-medium text-slate-700">{log.recorded_by_name || 'Lab Staff'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Log Item Consumption ── */}
+      {consumeModalItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <Package className="text-[#1B669E]" size={16} />
+                Log Usage: {consumeModalItem.item_name}
+              </h3>
+              <button onClick={() => setConsumeModalItem(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitConsume} className="p-5 space-y-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Unit Bench:</span>
+                  <span className="font-bold text-slate-800">{activeUnit}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Current In-Use Balance:</span>
+                  <span className="font-black text-[#1B669E]">{consumeModalItem.quantity_in_use} {consumeModalItem.unit_of_measure}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Quantity Consumed ({consumeModalItem.unit_of_measure}) *
+                </label>
+                <input
+                  type="number"
+                  min="0.1"
+                  max={consumeModalItem.quantity_in_use}
+                  step="any"
+                  required
+                  value={consumeQty}
+                  onChange={(e) => setConsumeQty(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:border-[#1B669E] text-slate-900 font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Purpose / Shift Remarks</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Morning routine patient test run, STAT emergency triage"
+                  value={consumeRemarks}
+                  onChange={(e) => setConsumeRemarks(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:border-[#1B669E] text-slate-800"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConsumeModalItem(null)}
+                  className="px-3.5 py-1.5 font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={consuming}
+                  className="px-4 py-1.5 font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg disabled:opacity-50"
+                >
+                  {consuming ? 'Recording...' : 'Confirm Consumption'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Add New Bench Item ── */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <Plus className="text-[#1B669E]" size={16} />
+                Register Bench Item for {activeUnit}
+              </h3>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddBenchItem} className="p-5 space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Item / Consumable Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Sysmex Cellclean Solution, EDTA Tubes"
+                  value={newItemForm.item_name}
+                  onChange={(e) => setNewItemForm({ ...newItemForm, item_name: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:border-[#1B669E] text-slate-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Category</label>
+                  <select
+                    value={newItemForm.category}
+                    onChange={(e) => setNewItemForm({ ...newItemForm, category: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                  >
+                    {ITEM_CATEGORIES.filter(c => c !== 'All').map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Unit of Measure (UOM)</label>
+                  <select
+                    value={newItemForm.unit_of_measure}
+                    onChange={(e) => setNewItemForm({ ...newItemForm, unit_of_measure: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                  >
+                    {UOM_OPTIONS.map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Initial In-Use Balance</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={newItemForm.quantity_in_use}
+                    onChange={(e) => setNewItemForm({ ...newItemForm, quantity_in_use: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Minimum Alert Threshold</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={newItemForm.min_threshold}
+                    onChange={(e) => setNewItemForm({ ...newItemForm, min_threshold: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Storage / Bench Location</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sysmex Bench, Phlebotomy Station A, Fridge 4°C"
+                  value={newItemForm.storage_location}
+                  onChange={(e) => setNewItemForm({ ...newItemForm, storage_location: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-3.5 py-1.5 font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingItem}
+                  className="px-4 py-1.5 font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg disabled:opacity-50"
+                >
+                  {addingItem ? 'Adding...' : 'Save Bench Item'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Create New Unit Requisition ── */}
+      {isReqModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-2xl overflow-hidden my-8">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <ClipboardList className="text-[#1B669E]" size={16} />
+                Create Requisition to Lab Stock Manager ({activeUnit})
+              </h3>
+              <button onClick={() => setIsReqModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitRequisition} className="p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Requesting Laboratory Unit</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={activeUnit}
+                    className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg font-bold text-slate-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Urgency Level</label>
+                  <select
+                    value={reqForm.urgency}
+                    onChange={(e) => setReqForm({ ...reqForm, urgency: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                  >
+                    <option value="Normal">Normal (Routine Replenishment)</option>
+                    <option value="Urgent">Urgent (Low Buffer Stock)</option>
+                    <option value="STAT">STAT (Emergency / Critical Run)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Order Justification / Run Notes</label>
+                <textarea
+                  rows="2"
+                  placeholder="e.g. Depleted Hematology diluent and smear stain for routine clinical run."
+                  value={reqForm.notes}
+                  onChange={(e) => setReqForm({ ...reqForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="font-bold text-slate-700">Requested Reagent &amp; Item Lines *</label>
+                  <button
+                    type="button"
+                    onClick={handleAddReqLine}
+                    className="text-xs font-semibold text-[#1B669E] hover:underline"
+                  >
+                    + Add Item Line
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {reqForm.items.map((line, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
+                      <input
+                        type="text"
+                        placeholder="Reagent or Consumable Name"
+                        required
+                        value={line.item_name}
+                        onChange={(e) => handleReqLineChange(idx, 'item_name', e.target.value)}
+                        className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        placeholder="Qty"
+                        value={line.requested_quantity}
+                        onChange={(e) => handleReqLineChange(idx, 'requested_quantity', Number(e.target.value))}
+                        className="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold"
+                      />
+                      <select
+                        value={line.unit_of_measure}
+                        onChange={(e) => handleReqLineChange(idx, 'unit_of_measure', e.target.value)}
+                        className="w-24 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                      >
+                        {UOM_OPTIONS.map(u => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                      {reqForm.items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReqLine(idx)}
+                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsReqModalOpen(false)}
+                  className="px-4 py-2 font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReq}
+                  className="px-4 py-2 font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg disabled:opacity-50 shadow-xs"
+                >
+                  {submittingReq ? 'Submitting...' : 'Submit to Lab Stock Manager'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── DRAWER / MODAL: View Requisition Items ── */}
+      {selectedReq && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
+              <div>
+                <h3 className="font-bold text-sm text-slate-900">
+                  Requisition #{selectedReq.ref_number || selectedReq.id}
+                </h3>
+                <span className="text-[11px] text-slate-500 font-medium">{selectedReq.requesting_unit} Unit</span>
+              </div>
+              <button onClick={() => setSelectedReq(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Status:</span>
+                  <span className="font-bold text-slate-900">{selectedReq.status}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Urgency:</span>
+                  <span className="font-semibold text-slate-800">{selectedReq.urgency}</span>
+                </div>
+                {selectedReq.notes && (
+                  <div>
+                    <span className="text-slate-500 block">Notes:</span>
+                    <span className="text-slate-800 font-medium">{selectedReq.notes}</span>
+                  </div>
+                )}
+                {selectedReq.rejection_reason && (
+                  <div className="text-rose-700 bg-rose-50 p-2 rounded border border-rose-200">
+                    <span className="font-bold block">Rejection Reason:</span>
+                    <span>{selectedReq.rejection_reason}</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-800 mb-2">Item Lines:</h4>
+                {loadingReqItems ? (
+                  <div className="text-center py-4 text-slate-400">Loading item lines...</div>
+                ) : reqItems.length === 0 ? (
+                  <div className="text-center py-4 text-slate-400">No item lines found.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {reqItems.map(item => (
+                      <div key={item.id} className="p-2.5 rounded-lg border border-slate-200 flex justify-between items-center bg-white">
+                        <div>
+                          <span className="font-bold text-slate-900 block">{item.item_name}</span>
+                          <span className="text-[10px] text-slate-400">{item.item_category}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-slate-800">{item.requested_quantity} {item.unit_of_measure}</span>
+                          {item.approved_quantity !== null && item.approved_quantity !== undefined && (
+                            <span className="text-[10px] text-emerald-600 block font-semibold">
+                              Approved: {item.approved_quantity} {item.unit_of_measure}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => setSelectedReq(null)}
+                  className="px-4 py-1.5 font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

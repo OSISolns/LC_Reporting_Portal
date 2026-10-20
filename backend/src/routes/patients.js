@@ -171,6 +171,144 @@ router.get('/search', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── POST /api/patients/bulk-lookup ───────────────────────────────────────────
+// Batch lookups of patient records and phone numbers by PID list
+router.post('/bulk-lookup', async (req, res, next) => {
+  try {
+    let rawPids = req.body.pids;
+    if (typeof rawPids === 'string') {
+      rawPids = rawPids.split(/[\r\n,;\t]+/).map(s => s.trim()).filter(Boolean);
+    }
+    if (!Array.isArray(rawPids) || rawPids.length === 0) {
+      return res.status(400).json({ success: false, message: 'Please provide an array of PIDs in the "pids" property.' });
+    }
+
+    // Clean, sanitize and deduplicate
+    const cleanPids = [...new Set(rawPids.map(p => String(p).trim()).filter(Boolean))];
+    if (cleanPids.length > 2500) {
+      return res.status(400).json({ success: false, message: 'Maximum 2,500 PIDs allowed per bulk lookup.' });
+    }
+
+    const cachedPatientsMap = new Map();
+    const CHUNK_SIZE = 150;
+    for (let i = 0; i < cleanPids.length; i += CHUNK_SIZE) {
+      const chunk = cleanPids.slice(i, i + CHUNK_SIZE);
+      const placeholders = chunk.map(() => '?').join(',');
+      const sql = `SELECT pid, full_name, phone, gender, age, dob, insurance, ref_type, referrer_name, synced_at 
+                   FROM sukraa_patients 
+                   WHERE pid IN (${placeholders})`;
+      const qRes = await db.query(sql, chunk);
+      const rows = qRes.rows || qRes || [];
+      for (const row of rows) {
+        cachedPatientsMap.set(String(row.pid).trim(), row);
+      }
+    }
+
+    // Optional live fallback for missing PIDs
+    const includeLiveSearch = req.body.includeLiveSearch === true;
+    if (includeLiveSearch) {
+      const missingPids = cleanPids.filter(pid => {
+        const p = cachedPatientsMap.get(pid);
+        return !p || !p.phone;
+      });
+
+      // Limit live external calls to 60 at a time to prevent timeout
+      const toSearchLive = missingPids.slice(0, 60);
+      const newlyFound = [];
+      for (const mPid of toSearchLive) {
+        try {
+          const liveResults = await searchPatients(mPid, 2);
+          if (liveResults && liveResults.length > 0) {
+            const match = liveResults.find(r => String(r.pid).trim() === mPid) || liveResults[0];
+            if (match && match.pid) {
+              cachedPatientsMap.set(String(match.pid).trim(), { ...match, source: 'live' });
+              newlyFound.push(match);
+            }
+          }
+        } catch (liveErr) {
+          console.warn(`[BulkLookup] Live search error for PID ${mPid}:`, liveErr.message);
+        }
+      }
+
+      if (newlyFound.length > 0) {
+        upsertPatients(newlyFound).catch(err => {
+          console.error('[BulkLookup] Auto-cache failed:', err.message);
+        });
+      }
+    }
+
+    // Assemble final ordered results
+    let foundCount = 0;
+    let withPhoneCount = 0;
+    let liveCount = 0;
+    let cacheCount = 0;
+
+    const results = cleanPids.map(pid => {
+      const rec = cachedPatientsMap.get(pid);
+      if (!rec) {
+        return {
+          pid,
+          found: false,
+          source: 'none',
+          full_name: '',
+          phone: '',
+          formatted_phone: '',
+          age: '',
+          gender: '',
+          dob: '',
+          insurance: '',
+          referrer_name: ''
+        };
+      }
+
+      foundCount++;
+      const isLive = rec.source === 'live';
+      if (isLive) liveCount++;
+      else cacheCount++;
+
+      let phone = rec.phone ? String(rec.phone).trim() : '';
+      let formattedPhone = phone;
+      // Normalise 9-digit Rwandan mobile numbers: 7XXXXXXXX -> 07XXXXXXXX
+      if (/^7\d{8}$/.test(formattedPhone)) {
+        formattedPhone = '0' + formattedPhone;
+      }
+      if (formattedPhone) withPhoneCount++;
+
+      return {
+        pid,
+        found: true,
+        source: isLive ? 'live' : 'cache',
+        full_name: rec.full_name || '',
+        phone: phone,
+        formatted_phone: formattedPhone,
+        age: rec.age || '',
+        gender: rec.gender || '',
+        dob: rec.dob || '',
+        insurance: rec.insurance || rec.ref_type || '',
+        referrer_name: rec.referrer_name || ''
+      };
+    });
+
+    const stats = {
+      total_requested: cleanPids.length,
+      total_found: foundCount,
+      with_phone: withPhoneCount,
+      missing_phone: foundCount - withPhoneCount,
+      not_found: cleanPids.length - foundCount,
+      from_cache: cacheCount,
+      from_live: liveCount
+    };
+
+    return res.json({
+      success: true,
+      data: results,
+      stats
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/patients/:pid ────────────────────────────────────────────────────
 router.get('/:pid', async (req, res, next) => {
   try {

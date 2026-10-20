@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 const LAB_UNITS = [
   {
     id: 'phlebotomy',
-    name: 'Phlebotomy & Sample Reception',
+    name: 'Phlebotomy',
     icon: Droplet,
     color: '#0284c7',
     bgColor: '#e0f2fe',
@@ -30,7 +30,7 @@ const LAB_UNITS = [
   },
   {
     id: 'hematology',
-    name: 'Hematology & Coagulation',
+    name: 'Hematology',
     icon: Activity,
     color: '#dc2626',
     bgColor: '#fee2e2',
@@ -49,7 +49,7 @@ const LAB_UNITS = [
   },
   {
     id: 'microbiology',
-    name: 'Microbiology & Antimicrobial Resistance',
+    name: 'Microbiology',
     icon: Microscope,
     color: '#059669',
     bgColor: '#d1fae5',
@@ -69,7 +69,7 @@ const LAB_UNITS = [
   },
   {
     id: 'molecular',
-    name: 'Molecular Biology & PCR',
+    name: 'Molecular Biology',
     icon: Dna,
     color: '#7c3aed',
     bgColor: '#ede9fe',
@@ -88,7 +88,7 @@ const LAB_UNITS = [
   },
   {
     id: 'histopathology',
-    name: 'Histopathology, Cytology & Archive',
+    name: 'Histopathology',
     icon: Archive,
     color: '#d97706',
     bgColor: '#fef3c7',
@@ -150,7 +150,7 @@ const LAB_UNITS = [
     color: '#4f46e5',
     bgColor: '#e0e7ff',
     headName: 'HIRWA Ganza David',
-    headRole: 'Lab Stock Officer',
+    headRole: 'Lab stock Manager',
     headEmail: 'hirwa@legacyclinics.rw',
     headUsername: 'lc_hirwa',
     benchFocus: 'Reagent test-pack lot control, cold chain verification, expiration alerts & store replenishment.',

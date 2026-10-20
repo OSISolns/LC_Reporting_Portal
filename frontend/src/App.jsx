@@ -41,6 +41,7 @@ import ANCRegister from './pages/ANCRegister';
 import MidwifeDashboard from './pages/MidwifeDashboard';
 import DoctorHub from './pages/DoctorHub';
 import PatientRecords from './pages/PatientRecords';
+import PatientSukraaLookup from './pages/PatientSukraaLookup';
 import FeedbackList from './pages/feedbacks/FeedbackList';
 import EPrescriptions from './pages/EPrescriptions';
 import DailyOperationalReport from './pages/DailyOperationalReport';
@@ -60,6 +61,7 @@ import LabStockOfficerDashboard from './pages/lab/LabStockOfficerDashboard';
 import LabAnalyzers from './pages/lab/LabAnalyzers';
 import LabEquipment from './pages/lab/LabEquipment';
 import LabArchive from './pages/lab/LabArchive';
+import LabRequisitionHub from './pages/lab/LabRequisitionHub';
 import DentalHub from './pages/dental/DentalHub';
 import OdontogramDetailsPage from './pages/dental/OdontogramDetailsPage';
 import PhysioHub from './pages/physio/PhysioHub';
@@ -128,6 +130,7 @@ function App() {
             <Route path="/providers" element={<ProtectedRoute allowedRoles={['admin', 'coo', 'deputy_coo', 'medical_director']}><Providers /></ProtectedRoute>} />
             <Route path="/permissions" element={<ProtectedRoute allowedRoles={['admin']}><Permissions /></ProtectedRoute>} />
             <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['admin', 'it_officer', 'quality_accreditation_officer']}><AuditLogs /></ProtectedRoute>} />
+            <Route path="/admin/patient-lookup" element={<ProtectedRoute allowedRoles={['admin', 'it_officer', 'coo', 'deputy_coo', 'chairman', 'customer_care', 'principal_cashier', 'sales_manager']}><PatientSukraaLookup /></ProtectedRoute>} />
             <Route path="/safety-management" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><SafetyManagement /></ProtectedRoute>} />
             <Route path="/risk-register" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><RiskRegister /></ProtectedRoute>} />
             <Route path="/infection-control" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><InfectionControlTracker /></ProtectedRoute>} />
@@ -221,6 +224,15 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/lab/stock" element={<Navigate to="/lab-stock" replace />} />
+
+            <Route path="/lab-requisitions" element={
+              <ProtectedRoute allowedRoles={[
+                ...ALL_LAB_ROLES,
+                'stock-manager', 'stock_manager', 'general_manager'
+              ]}>
+                <LabRequisitionHub />
+              </ProtectedRoute>
+            } />
 
             <Route path="/lab-manager" element={
               <ProtectedRoute allowedRoles={[

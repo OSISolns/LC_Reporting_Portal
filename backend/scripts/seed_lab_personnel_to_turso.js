@@ -24,24 +24,24 @@ const turso = createClient({
 });
 
 const LAB_ROLES = [
-  { name: 'lab_hod',                 display_name: 'Head of Laboratory Department' },
-  { name: 'lab_manager',             display_name: 'Laboratory Manager' },
-  { name: 'quality_manager',         display_name: 'Quality Manager' },
-  { name: 'qm',                      display_name: 'Quality Manager (QM)' },
-  { name: 'lab_safety_officer',      display_name: 'Lab Safety Officer' },
-  { name: 'lab_stock_officer',       display_name: 'Lab Stock Officer' },
-  { name: 'head_microbiology',       display_name: 'Head of Microbiology' },
-  { name: 'head_hematology',         display_name: 'Head of Hematology' },
-  { name: 'head_histopathology',     display_name: 'Head of Histo/Cytology/Archive' },
-  { name: 'head_poct',               display_name: 'Head of POCT' },
-  { name: 'head_phlebotomy',         display_name: 'Head of Phlebotomy' },
-  { name: 'head_molecular_biology',  display_name: 'Head of Molecular Biology' },
-  { name: 'lab_micro_specialist',    display_name: 'Microbiology Specialist' },
-  { name: 'lab_scientist',           display_name: 'Lab Scientist' },
-  { name: 'lab_tech',                display_name: 'Lab Technologist' },
-  { name: 'lab_team_lead',           display_name: 'Lab Team Lead' },
-  { name: 'lab_lead',                display_name: 'Lab Lead' },
-  { name: 'lab',                     display_name: 'Laboratory Staff' }
+  { name: 'lab_hod', display_name: 'Head of Laboratory Department' },
+  { name: 'lab_manager', display_name: 'Laboratory Manager' },
+  { name: 'quality_manager', display_name: 'Quality Manager' },
+  { name: 'qm', display_name: 'Quality Manager (QM)' },
+  { name: 'lab_safety_officer', display_name: 'Lab Safety Officer' },
+  { name: 'lab_stock_officer', display_name: 'Lab stock Manager' },
+  { name: 'head_microbiology', display_name: 'Head of Microbiology' },
+  { name: 'head_hematology', display_name: 'Head of Hematology' },
+  { name: 'head_histopathology', display_name: 'Head of Histo/Cytology/Archive' },
+  { name: 'head_poct', display_name: 'Head of POCT' },
+  { name: 'head_phlebotomy', display_name: 'Head of Phlebotomy' },
+  { name: 'head_molecular_biology', display_name: 'Head of Molecular Biology' },
+  { name: 'lab_micro_specialist', display_name: 'Microbiology Specialist' },
+  { name: 'lab_scientist', display_name: 'Lab Scientist' },
+  { name: 'lab_tech', display_name: 'Lab Technologist' },
+  { name: 'lab_team_lead', display_name: 'Lab Team Lead' },
+  { name: 'lab_lead', display_name: 'Lab Lead' },
+  { name: 'lab', display_name: 'Laboratory Staff' }
 ];
 
 const LAB_PERSONNEL = [
@@ -85,7 +85,7 @@ const LAB_PERSONNEL = [
     name: 'HIRWA Ganza David',
     username: 'lc_hirwa',
     email: 'hirwa@legacyclinics.rw',
-    position: 'Lab Stock Officer',
+    position: 'Lab stock Manager',
     roleKey: 'lab_stock_officer'
   },
   {

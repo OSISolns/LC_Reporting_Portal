@@ -72,19 +72,19 @@ exports.listOrders = async (req, res, next) => {
 // 2. Register a new specimen / CPOE order
 exports.registerSpecimen = async (req, res, next) => {
   try {
-    const { 
-      patient_id, 
-      patient_name, 
-      patient_age, 
-      patient_gender, 
-      referring_provider, 
-      specimen_type, 
-      specimen_barcode, 
-      test_name, 
-      urgency, 
+    const {
+      patient_id,
+      patient_name,
+      patient_age,
+      patient_gender,
+      referring_provider,
+      specimen_type,
+      specimen_barcode,
+      test_name,
+      urgency,
       tube_type,
       volume_ml,
-      notes 
+      notes
     } = req.body;
 
     if (!patient_id || !specimen_type || !specimen_barcode) {
@@ -93,7 +93,7 @@ exports.registerSpecimen = async (req, res, next) => {
 
     const accession = generateAccession();
     const orderUrgency = (urgency || 'Routine').toUpperCase() === 'STAT' ? 'STAT' : (urgency || 'Routine');
-    
+
     // Calculate TAT Deadline based on operational benchmarks
     // STAT: 45 min | Routine: 4 hours (240 min) | Specialized: 24 hours (1440 min)
     let tatMinutes = 240; // default routine 4 hours
@@ -122,7 +122,7 @@ exports.registerSpecimen = async (req, res, next) => {
         notes, status, created_by
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pre-analytical', 'Collected', ?, ?, ?, ?, ?, 'Collected', ?)`,
       [
-        accession, patient_id, patient_name, patient_age, patient_gender, 
+        accession, patient_id, patient_name, patient_age, patient_gender,
         referring_provider, specimen_type, specimen_barcode, orderUrgency.toLowerCase(), orderUrgency,
         tatDeadline, tube_type || 'Purple EDTA', drawStep, volume_ml || 3.0,
         notes, req.user?.id
@@ -260,7 +260,7 @@ exports.registerSpecimen = async (req, res, next) => {
     }
 
     await logAction(req, 'LAB_REGISTER_SPECIMEN', 'lab_orders', orderId, { accession, patient_id, barcode: specimen_barcode, urgency: orderUrgency });
-    
+
     res.status(201).json({ success: true, message: 'Specimen registered successfully.', data: { id: orderId, accession_number: accession } });
   } catch (err) { next(err); }
 };
@@ -273,9 +273,9 @@ exports.getOrderDetails = async (req, res, next) => {
     if (orderRows.length === 0) {
       return res.status(404).json({ success: false, message: 'Lab order not found.' });
     }
-    
+
     const { rows: resultRows } = await db.query('SELECT * FROM lab_results WHERE order_id = ?', [id]);
-    
+
     // Fetch prior historical order for delta check comparison
     const order = orderRows[0];
     const { rows: priorOrders } = await db.query(
@@ -288,7 +288,7 @@ exports.getOrderDetails = async (req, res, next) => {
       const { rows: pRes } = await db.query('SELECT parameter_name, parameter_value FROM lab_results WHERE order_id = ?', [priorOrders[0].id]);
       priorResults = pRes;
     }
-    
+
     res.json({
       success: true,
       data: {
@@ -361,7 +361,7 @@ exports.saveResults = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { results, hil_index } = req.body;
-    
+
     if (!Array.isArray(results)) {
       return res.status(400).json({ success: false, message: 'results array is required.' });
     }
@@ -487,10 +487,10 @@ exports.saveResults = async (req, res, next) => {
 
     await logAction(req, 'LAB_SAVE_RESULTS', 'lab_orders', id, { autoVerified, hasCriticalPanic, hasDeltaCheck });
 
-    res.json({ 
-      success: true, 
-      message: autoVerified 
-        ? '✅ Results auto-verified and released by LIS Engine.' 
+    res.json({
+      success: true,
+      message: autoVerified
+        ? '✅ Results auto-verified and released by LIS Engine.'
         : 'Results saved. Flagged for manual technologist sign-off.',
       data: {
         auto_verified: autoVerified,
@@ -522,7 +522,7 @@ exports.verifyOrder = async (req, res, next) => {
         message: 'Access Denied: Only Laboratory Managers, Unit Heads, and Authorized Leadership can verify diagnostic orders.'
       });
     }
-    
+
     const { rows: results } = await db.query('SELECT id, parameter_value FROM lab_results WHERE order_id = ?', [id]);
     if (results.length === 0) {
       return res.status(400).json({ success: false, message: 'No parameters configured for this order.' });
@@ -545,7 +545,7 @@ exports.verifyOrder = async (req, res, next) => {
     else if (['head_molecular_biology'].includes(userRole)) roleTitle = 'Head of Molecular Biology';
     else if (['lab_micro_specialist'].includes(userRole)) roleTitle = 'Microbiology Specialist';
     else if (['lab_safety_officer'].includes(userRole)) roleTitle = 'Lab Safety Officer';
-    else if (['lab_stock_officer'].includes(userRole)) roleTitle = 'Lab Stock Officer';
+    else if (['lab_stock_officer'].includes(userRole)) roleTitle = 'Lab stock Manager';
     else if (['lab_team_lead', 'lab_lead'].includes(userRole)) roleTitle = 'Lab Team Lead';
     else if (['lab_scientist'].includes(userRole)) roleTitle = 'Lab Scientist';
     else if (['admin', 'deputy_coo', 'coo'].includes(userRole)) roleTitle = 'Clinical Leadership';
@@ -558,7 +558,7 @@ exports.verifyOrder = async (req, res, next) => {
       `UPDATE lab_orders 
        SET stage = 'Verified', phase = 'post-analytical', status = 'Completed',
            verified_by_name = ?, verified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = ?`, 
+       WHERE id = ?`,
       [verifier, id]
     );
 
@@ -571,14 +571,14 @@ exports.verifyOrder = async (req, res, next) => {
 exports.notifyPatient = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
+
     await db.query(
       `UPDATE lab_orders 
        SET stage = 'Notified', phase = 'completed',
            reported_at = COALESCE(reported_at, CURRENT_TIMESTAMP),
            notified_at = CURRENT_TIMESTAMP,
            updated_at = CURRENT_TIMESTAMP 
-       WHERE id = ?`, 
+       WHERE id = ?`,
       [id]
     );
 
@@ -598,7 +598,7 @@ exports.getQCLogs = async (req, res, next) => {
 exports.recordQCRun = async (req, res, next) => {
   try {
     const { analyzer_name, parameter_name, control_level, mean_target, sd_target, measured_value, corrective_action } = req.body;
-    
+
     if (!analyzer_name || !parameter_name || measured_value === undefined) {
       return res.status(400).json({ success: false, message: 'analyzer_name, parameter_name and measured_value are required.' });
     }
@@ -606,7 +606,7 @@ exports.recordQCRun = async (req, res, next) => {
     const mean = Number(mean_target) || 100.0;
     const sd = Number(sd_target) || 5.0;
     const val = Number(measured_value);
-    
+
     // Z-score calculation: Z = (x - mean) / SD
     const zScore = Number(((val - mean) / sd).toFixed(2));
 
@@ -635,8 +635,8 @@ exports.recordQCRun = async (req, res, next) => {
       ]
     );
 
-    res.status(201).json({ 
-      success: true, 
+    res.status(201).json({
+      success: true,
       message: status === 'Passed' ? 'QC Run passed successfully.' : `⚠️ QC REJECTED: ${ruleBreach} detected!`,
       data: { z_score: zScore, westgard_rule_breach: ruleBreach, status }
     });
@@ -946,7 +946,7 @@ exports.saveStorageAssignment = async (req, res, next) => {
     await db.query(
       'UPDATE lab_orders SET storage_unit = ?, storage_rack = ?, storage_box = ? WHERE id = ? OR accession_number = ?',
       [unit_id, rack_number || 'Rack 1', box_number || 'Box A', order_id, order_id]
-    ).catch(() => {});
+    ).catch(() => { });
 
     logAction(req, 'ASSIGN_SPECIMEN_STORAGE', `Specimen ${order_id} stored in ${unit_id}`);
     res.json({ success: true, message: 'Specimen storage assignment updated.' });
@@ -968,7 +968,7 @@ exports.getManagerSummary = async (req, res, next) => {
         ordersCount.total = orders.length;
         ordersCount.stat = orders.filter(o => o.urgency === 'STAT').length;
         ordersCount.auto_verified = orders.filter(o => o.auto_verified === 1 || o.auto_verified === true).length;
-        
+
         orders.forEach(o => {
           if (o.tat_deadline) {
             const deadline = new Date(o.tat_deadline);
@@ -1094,7 +1094,7 @@ exports.updateAnalyzer = async (req, res, next) => {
        status = ?, last_calibrated = ?, next_calibration_due = ?, notes = ?,
        updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE id = ?`,
       [name, manufacturer || null, model || null, department || null, serial_number || null,
-       status || 'Operational', last_calibrated || null, next_calibration_due || null, notes || null, id]
+        status || 'Operational', last_calibrated || null, next_calibration_due || null, notes || null, id]
     );
     await logAction(req, 'UPDATE_ANALYZER', 'lab_analyzers', id, { name, status });
     res.json({ success: true, message: 'Analyzer updated successfully.' });
@@ -1371,7 +1371,7 @@ exports.getTeamLeadSummary = async (req, res, next) => {
 
     // 1. Fetch Orders
     const { rows: allOrders } = await db.query('SELECT * FROM lab_orders ORDER BY created_at DESC');
-    
+
     // 2. Fetch Results for all orders to attach parameter details
     const { rows: allResults } = await db.query('SELECT * FROM lab_results ORDER BY order_id, id');
     const resultsByOrder = new Map();
@@ -1411,7 +1411,7 @@ exports.getTeamLeadSummary = async (req, res, next) => {
       const orderResults = resultsByOrder.get(o.id) || [];
       const hasCriticalResult = orderResults.some(r => r.is_critical === 1 || r.is_critical === true);
       const isCritical = o.critical_alert === 1 || o.critical_alert === true || hasCriticalResult;
-      
+
       let tatRemainingMins = null;
       let isOverdue = false;
       if (o.tat_deadline) {
@@ -1576,5 +1576,349 @@ exports.batchVerifyOrders = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+
+// ─── Lab Unit Internal Requisitions ──────────────────────────────────────────
+
+// Generate a lab requisition reference number: LRQ-YYMMDD-XXXX
+const generateLabReqRef = () => {
+  const d = new Date().toISOString().slice(0, 10).replace(/-/g, '').slice(2);
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `LRQ-${d}-${rand}`;
+};
+
+// GET /api/lab/requisitions
+exports.getLabRequisitions = async (req, res, next) => {
+  try {
+    const { unit, status, source } = req.query;
+    const conditions = [];
+    const params = [];
+
+    if (unit) { conditions.push('r.requesting_unit = ?'); params.push(unit); }
+    if (status) { conditions.push('r.status = ?'); params.push(status); }
+    if (source) { conditions.push('r.stock_source = ?'); params.push(source); }
+
+    const where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
+    const { rows } = await db.query(
+      `SELECT r.*,
+         (SELECT COUNT(*) FROM lab_requisition_items li WHERE li.requisition_id = r.id) AS items_count
+       FROM lab_requisitions r${where} ORDER BY r.created_at DESC`,
+      params
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+// GET /api/lab/requisitions/:id/items
+exports.getLabRequisitionItems = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(
+      `SELECT li.*, inv.quantity_in_hand AS in_hand_qty, inv.unit_of_measure AS inv_uom, inv.storage_temp
+       FROM lab_requisition_items li
+       LEFT JOIN lab_inhand_inventory inv ON li.inventory_ref_id = inv.id
+       WHERE li.requisition_id = ?`,
+      [id]
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+// POST /api/lab/requisitions
+exports.createLabRequisition = async (req, res, next) => {
+  try {
+    const { requesting_unit, urgency, notes, stock_source, items } = req.body;
+    if (!requesting_unit || !items || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Requesting unit and at least one item are required.' });
+    }
+
+    const requestedBy = req.user?.id || null;
+    const requestedByName = req.user?.full_name || req.user?.username || 'Lab User';
+    const refNumber = generateLabReqRef();
+    const source = stock_source || 'lab_stock'; // 'lab_stock' or 'general_stock'
+
+    const { rows: newReq } = await db.query(
+      `INSERT INTO lab_requisitions (ref_number, requesting_unit, requested_by, requested_by_name, urgency, notes, status, stock_source)
+       VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?) RETURNING id`,
+      [refNumber, requesting_unit, requestedBy, requestedByName, urgency || 'Normal', notes || null, source]
+    );
+    const reqId = newReq[0].id;
+
+    for (const item of items) {
+      await db.query(
+        `INSERT INTO lab_requisition_items (requisition_id, item_name, item_category, unit_of_measure, requested_quantity, inventory_ref_id, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [reqId, item.item_name, item.item_category || 'Reagents', item.unit_of_measure || 'pack',
+          item.requested_quantity || 1, item.inventory_ref_id || null, item.notes || null]
+      );
+    }
+
+    await logAction(req, 'LAB_REQ_SUBMIT', 'lab_requisitions', reqId, {
+      ref: refNumber, unit: requesting_unit, items: items.length, source
+    });
+
+    res.json({ success: true, message: `Requisition ${refNumber} submitted successfully.`, id: reqId, ref_number: refNumber });
+  } catch (err) { next(err); }
+};
+
+// POST /api/lab/requisitions/:id/lab-review
+// Lab Stock Manager reviews: can approve (if in lab stock) or forward to General Stock Manager
+exports.labReviewRequisition = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { action, approved_items, notes, stock_source_override } = req.body;
+    // action: 'approve' | 'forward_to_general' | 'reject'
+
+    const { rows: reqRows } = await db.query('SELECT * FROM lab_requisitions WHERE id = ?', [id]);
+    if (reqRows.length === 0) return res.status(404).json({ success: false, message: 'Requisition not found.' });
+    const req_ = reqRows[0];
+
+    if (req_.status !== 'Pending' && req_.status !== 'Lab_Reviewed') {
+      return res.status(400).json({ success: false, message: `Requisition is already ${req_.status}.` });
+    }
+
+    const managerName = req.user?.full_name || req.user?.username || 'Lab Stock Manager';
+    let newStatus;
+
+    if (action === 'approve') {
+      newStatus = 'Approved';
+      // Update approved quantities on items
+      if (approved_items && Array.isArray(approved_items)) {
+        for (const ai of approved_items) {
+          await db.query(
+            'UPDATE lab_requisition_items SET approved_quantity = ? WHERE id = ? AND requisition_id = ?',
+            [ai.approved_quantity || ai.requested_quantity, ai.id, id]
+          );
+        }
+        // Deduct from lab_inhand_inventory & credit to requesting unit's stock in use
+        const { rows: reqItems } = await db.query('SELECT * FROM lab_requisition_items WHERE requisition_id = ?', [id]);
+        for (const item of reqItems) {
+          if (item.inventory_ref_id && item.approved_quantity > 0) {
+            await db.query(
+              'UPDATE lab_inhand_inventory SET quantity_in_hand = MAX(0, quantity_in_hand - ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+              [item.approved_quantity, item.inventory_ref_id]
+            );
+          }
+          if (item.approved_quantity > 0) {
+            const { rows: existingUnitStock } = await db.query(
+              'SELECT id, quantity_in_use FROM lab_unit_stock_in_use WHERE unit_name = ? AND item_name = ?',
+              [req_.requesting_unit, item.item_name]
+            );
+            if (existingUnitStock.length > 0) {
+              const newQty = existingUnitStock[0].quantity_in_use + item.approved_quantity;
+              await db.query(
+                'UPDATE lab_unit_stock_in_use SET quantity_in_use = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [newQty, existingUnitStock[0].id]
+              );
+              await db.query(
+                `INSERT INTO lab_unit_consumption_logs (unit_stock_id, unit_name, item_name, action_type, quantity, remaining_balance, purpose_remarks, recorded_by_name)
+                 VALUES (?, ?, ?, 'RESTOCK_RECEIVED', ?, ?, ?, ?)`,
+                [existingUnitStock[0].id, req_.requesting_unit, item.item_name, item.approved_quantity, newQty, `Requisition #${req_.ref_number} approved`, managerName]
+              );
+            } else {
+              const { rows: inserted } = await db.query(
+                `INSERT INTO lab_unit_stock_in_use (unit_name, item_name, category, quantity_in_use, unit_of_measure, min_threshold, storage_location, last_updated_by)
+                 VALUES (?, ?, ?, ?, ?, 5, 'Bench', ?) RETURNING id`,
+                [req_.requesting_unit, item.item_name, item.item_category || 'Reagents', item.approved_quantity, item.unit_of_measure || 'pack', managerName]
+              );
+              const newUnitStockId = inserted[0]?.id;
+              await db.query(
+                `INSERT INTO lab_unit_consumption_logs (unit_stock_id, unit_name, item_name, action_type, quantity, remaining_balance, purpose_remarks, recorded_by_name)
+                 VALUES (?, ?, ?, 'RESTOCK_RECEIVED', ?, ?, ?, ?)`,
+                [newUnitStockId, req_.requesting_unit, item.item_name, item.approved_quantity, item.approved_quantity, `Requisition #${req_.ref_number} approved`, managerName]
+              );
+            }
+          }
+        }
+      }
+    } else if (action === 'forward_to_general') {
+      newStatus = 'Forwarded';
+      const source = stock_source_override || 'general_stock';
+      await db.query(
+        'UPDATE lab_requisitions SET stock_source = ?, notes = COALESCE(notes || " | " || ?, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [source, notes, notes, id]
+      );
+    } else if (action === 'reject') {
+      newStatus = 'Rejected';
+      await db.query(
+        'UPDATE lab_requisitions SET rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [notes || 'Rejected by Lab Stock Manager', id]
+      );
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid action. Use: approve, forward_to_general, or reject.' });
+    }
+
+    await db.query(
+      `UPDATE lab_requisitions SET status = ?, lab_manager_action = ?, lab_manager_name = ?, lab_manager_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [newStatus, action, managerName, id]
+    );
+
+    await logAction(req, 'LAB_REQ_REVIEW', 'lab_requisitions', id, { action, manager: managerName, new_status: newStatus });
+
+    res.json({ success: true, message: `Requisition ${action === 'approve' ? 'approved' : action === 'forward_to_general' ? 'forwarded to General Stock Manager' : 'rejected'}.` });
+  } catch (err) { next(err); }
+};
+
+// POST /api/lab/requisitions/:id/general-review
+// General Stock Manager approves or rejects a forwarded lab requisition
+exports.generalManagerReviewLabRequisition = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { action, rejection_reason } = req.body;
+    // action: 'approve' | 'reject'
+
+    const { rows: reqRows } = await db.query('SELECT * FROM lab_requisitions WHERE id = ?', [id]);
+    if (reqRows.length === 0) return res.status(404).json({ success: false, message: 'Requisition not found.' });
+    const req_ = reqRows[0];
+
+    if (req_.status !== 'Forwarded') {
+      return res.status(400).json({ success: false, message: `This requisition is not pending General Manager review (status: ${req_.status}).` });
+    }
+
+    const gmName = req.user?.full_name || req.user?.username || 'General Stock Manager';
+    const newStatus = action === 'approve' ? 'Approved' : 'Rejected';
+
+    await db.query(
+      `UPDATE lab_requisitions SET status = ?, general_manager_action = ?, general_manager_name = ?, general_manager_at = CURRENT_TIMESTAMP,
+       rejection_reason = CASE WHEN ? = 'reject' THEN ? ELSE rejection_reason END, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [newStatus, action, gmName, action, rejection_reason || null, id]
+    );
+
+    await logAction(req, 'LAB_REQ_GM_REVIEW', 'lab_requisitions', id, { action, gm: gmName, new_status: newStatus });
+
+    res.json({ success: true, message: `Lab requisition ${action === 'approve' ? 'approved' : 'rejected'} by General Stock Manager.` });
+  } catch (err) { next(err); }
+};
+
+// ─── Laboratory Unit Stock-In-Use & Consumption Controllers ──────────────────
+
+// GET /api/lab/unit-stock
+exports.getUnitStockInUse = async (req, res, next) => {
+  try {
+    const { unit, category, search, low_stock } = req.query;
+    const conditions = [];
+    const params = [];
+
+    if (unit && unit !== 'All') {
+      conditions.push('unit_name = ?');
+      params.push(unit);
+    }
+    if (category && category !== 'All') {
+      conditions.push('category = ?');
+      params.push(category);
+    }
+    if (search && search.trim()) {
+      conditions.push('(item_name LIKE ? OR storage_location LIKE ?)');
+      params.push(`%${search.trim()}%`, `%${search.trim()}%`);
+    }
+    if (low_stock === 'true') {
+      conditions.push('quantity_in_use <= min_threshold');
+    }
+
+    const where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
+    const { rows } = await db.query(
+      `SELECT * FROM lab_unit_stock_in_use${where} ORDER BY unit_name ASC, item_name ASC`,
+      params
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
+// POST /api/lab/unit-stock
+exports.addUnitStockItem = async (req, res, next) => {
+  try {
+    const { unit_name, item_name, category, quantity_in_use, unit_of_measure, min_threshold, storage_location, inventory_ref_id } = req.body;
+    if (!unit_name || !item_name) {
+      return res.status(400).json({ success: false, message: 'Unit name and item name are required.' });
+    }
+
+    const userName = req.user?.full_name || req.user?.username || 'Lab Staff';
+    const qty = Number(quantity_in_use) || 0;
+
+    const { rows: inserted } = await db.query(
+      `INSERT INTO lab_unit_stock_in_use 
+       (unit_name, item_name, category, quantity_in_use, unit_of_measure, min_threshold, storage_location, inventory_ref_id, last_updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+      [unit_name, item_name, category || 'Reagents', qty, unit_of_measure || 'pack', Number(min_threshold) || 5, storage_location || 'Bench', inventory_ref_id || null, userName]
+    );
+
+    const newItem = inserted[0];
+    if (qty > 0) {
+      await db.query(
+        `INSERT INTO lab_unit_consumption_logs 
+         (unit_stock_id, unit_name, item_name, action_type, quantity, remaining_balance, purpose_remarks, recorded_by_id, recorded_by_name)
+         VALUES (?, ?, ?, 'RESTOCK_RECEIVED', ?, ?, 'Initial bench stock addition', ?, ?)`,
+        [newItem.id, unit_name, item_name, qty, qty, req.user?.id || null, userName]
+      );
+    }
+
+    res.json({ success: true, message: `Added ${item_name} to ${unit_name} stock in use.`, data: newItem });
+  } catch (err) { next(err); }
+};
+
+// POST /api/lab/unit-stock/:id/consume
+exports.consumeUnitStockItem = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { quantity, purpose_remarks } = req.body;
+    const consumeQty = Number(quantity);
+    if (!consumeQty || consumeQty <= 0) {
+      return res.status(400).json({ success: false, message: 'Please specify a valid quantity consumed (> 0).' });
+    }
+
+    const { rows: itemRows } = await db.query('SELECT * FROM lab_unit_stock_in_use WHERE id = ?', [id]);
+    if (itemRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Stock item not found.' });
+    }
+
+    const item = itemRows[0];
+    const newQty = Math.max(0, (item.quantity_in_use || 0) - consumeQty);
+    const userName = req.user?.full_name || req.user?.username || 'Lab Staff';
+
+    await db.query(
+      `UPDATE lab_unit_stock_in_use 
+       SET quantity_in_use = ?, last_consumed_at = CURRENT_TIMESTAMP, last_consumed_qty = ?, last_updated_by = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [newQty, consumeQty, userName, id]
+    );
+
+    const remarks = purpose_remarks || 'Daily operational / patient test run consumption';
+
+    await db.query(
+      `INSERT INTO lab_unit_consumption_logs 
+       (unit_stock_id, unit_name, item_name, action_type, quantity, remaining_balance, purpose_remarks, recorded_by_id, recorded_by_name)
+       VALUES (?, ?, ?, 'CONSUMPTION', ?, ?, ?, ?, ?)`,
+      [id, item.unit_name, item.item_name, consumeQty, newQty, remarks, req.user?.id || null, userName]
+    );
+
+    res.json({
+      success: true,
+      message: `Logged consumption of ${consumeQty} ${item.unit_of_measure} for ${item.item_name}. Remaining: ${newQty}`,
+      remaining_balance: newQty
+    });
+  } catch (err) { next(err); }
+};
+
+// GET /api/lab/unit-stock/logs
+exports.getUnitConsumptionLogs = async (req, res, next) => {
+  try {
+    const { unit, limit = 50 } = req.query;
+    const conditions = [];
+    const params = [];
+
+    if (unit && unit !== 'All') {
+      conditions.push('unit_name = ?');
+      params.push(unit);
+    }
+
+    const where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
+    params.push(Number(limit));
+
+    const { rows } = await db.query(
+      `SELECT * FROM lab_unit_consumption_logs${where} ORDER BY created_at DESC LIMIT ?`,
+      params
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
 
 

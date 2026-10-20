@@ -79,4 +79,29 @@ router.post('/inhand-inventory', authorizeRoles(LAB_STOCK_OFFICER_ROLES), labCon
 router.put('/inhand-inventory/:id', authorizeRoles(LAB_STOCK_OFFICER_ROLES), labController.updateInhandInventory);
 router.delete('/inhand-inventory/:id', authorizeRoles(LAB_STOCK_OFFICER_ROLES), labController.deleteInhandInventory);
 
+
+// ── Lab Unit Requisitions Routes ──────────────────────────────────────────────
+// Roles that CAN submit a lab requisition (all lab unit heads & staff)
+const LAB_UNIT_REQUISITION_ROLES = [
+  ...ALL_LAB_ROLES,
+  'stock-manager', 'stock_manager', 'general_manager'
+];
+// Lab Stock Manager can review/approve/forward
+const LAB_STOCK_MANAGER_ROLES = ['lab_stock_officer', 'admin', 'deputy_coo', 'coo', 'chairman', 'lab_manager', 'lab_hod'];
+// General Stock Manager role
+const GENERAL_STOCK_MANAGER_ROLES = ['stock-manager', 'stock_manager', 'admin', 'deputy_coo', 'coo', 'chairman'];
+
+router.get('/requisitions', authorizeRoles(LAB_UNIT_REQUISITION_ROLES), labController.getLabRequisitions);
+router.get('/requisitions/:id/items', authorizeRoles(LAB_UNIT_REQUISITION_ROLES), labController.getLabRequisitionItems);
+router.post('/requisitions', authorizeRoles(LAB_UNIT_REQUISITION_ROLES), labController.createLabRequisition);
+router.post('/requisitions/:id/lab-review', authorizeRoles(LAB_STOCK_MANAGER_ROLES), labController.labReviewRequisition);
+router.post('/requisitions/:id/general-review', authorizeRoles(GENERAL_STOCK_MANAGER_ROLES), labController.generalManagerReviewLabRequisition);
+
+// ── Lab Unit Stock in Use Routes ──────────────────────────────────────────────
+router.get('/unit-stock', authorizeRoles([...ALL_LAB_ROLES, 'stock-manager', 'stock_manager']), labController.getUnitStockInUse);
+router.post('/unit-stock', authorizeRoles(ALL_LAB_ROLES), labController.addUnitStockItem);
+router.post('/unit-stock/:id/consume', authorizeRoles(ALL_LAB_ROLES), labController.consumeUnitStockItem);
+router.get('/unit-stock/logs', authorizeRoles([...ALL_LAB_ROLES, 'stock-manager', 'stock_manager']), labController.getUnitConsumptionLogs);
+
 module.exports = router;
+

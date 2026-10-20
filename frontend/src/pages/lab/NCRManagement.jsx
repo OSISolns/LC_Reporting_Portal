@@ -383,7 +383,7 @@ export default function NCRManagement() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 font-sans text-slate-800 antialiased bg-slate-50/50 min-h-screen">
-      
+
       {/* ── EXECUTIVE BLUE HEADER ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#1B669E] p-6 rounded-2xl text-white shadow-xs border border-[#155280]">
         <div className="space-y-1">
@@ -399,7 +399,7 @@ export default function NCRManagement() {
                 </span>
               </h1>
               <p className="text-xs text-blue-200/80 font-normal">
-                Lumina Quality Audit Suite — Ref: LEG/PATHLAB/MSD/FM-12-VERS-004
+                LEG/PATHLAB/MSD/FM-12-VERS-004
               </p>
             </div>
           </div>
@@ -491,30 +491,27 @@ export default function NCRManagement() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setNcrQueueFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                ncrQueueFilter === 'all' ? 'bg-blue-900 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${ncrQueueFilter === 'all' ? 'bg-blue-900 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
             >
               All ({ncrList.length})
             </button>
             <button
               onClick={() => setNcrQueueFilter('lm_pending')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 border ${
-                ncrQueueFilter === 'lm_pending'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 border ${ncrQueueFilter === 'lm_pending'
                   ? 'bg-blue-800 text-white border-blue-800 shadow-2xs'
                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
+                }`}
             >
               <UserCheck size={13} />
               Pending Lab Manager Review ({pendingLmReviews.length})
             </button>
             <button
               onClick={() => setNcrQueueFilter('qm_pending')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 border ${
-                ncrQueueFilter === 'qm_pending'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 border ${ncrQueueFilter === 'qm_pending'
                   ? 'bg-blue-800 text-white border-blue-800 shadow-2xs'
                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
+                }`}
             >
               <Shield size={13} />
               Pending QM Approval ({pendingQmApprovals.length})
@@ -579,15 +576,14 @@ export default function NCRManagement() {
             <div className="flex items-center gap-3">
               {/* Status Filter Chips */}
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                {['all','open','in_progress','closed'].map(s => (
+                {['all', 'open', 'in_progress', 'closed'].map(s => (
                   <button
                     key={s}
                     onClick={() => setNcrStatusFilter(s)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium capitalize cursor-pointer transition-all ${
-                      ncrStatusFilter === s ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium capitalize cursor-pointer transition-all ${ncrStatusFilter === s ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
                   >
-                    {s.replace('_',' ')}
+                    {s.replace('_', ' ')}
                   </button>
                 ))}
               </div>
@@ -644,9 +640,9 @@ export default function NCRManagement() {
                   const qmApproved = Boolean(ncr.approved_by_qm || ncr.reviewed_by_qm);
 
                   const statusCfg = {
-                    open:        { label: 'Open',        cls: 'bg-slate-100 text-slate-700 border-slate-200' },
+                    open: { label: 'Open', cls: 'bg-slate-100 text-slate-700 border-slate-200' },
                     in_progress: { label: 'In Progress', cls: 'bg-slate-200 text-slate-800 border-slate-300' },
-                    closed:      { label: 'Closed / Approved', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+                    closed: { label: 'Closed / Approved', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
                   }[ncr.status] || { label: ncr.status, cls: 'bg-slate-100 text-slate-600 border-slate-200' };
 
                   const canEditThis = canEditNCR(ncr);
@@ -667,9 +663,8 @@ export default function NCRManagement() {
                       <td className="py-3 px-4 font-medium text-slate-800">{ncr.unit}</td>
                       <td className="py-3 px-4 text-slate-500">{ncr.nc_category || '—'}</td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-medium capitalize border ${
-                          ncr.significance === 'major' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-blue-50 text-blue-800 border-blue-200'
-                        }`}>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-medium capitalize border ${ncr.significance === 'major' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-blue-50 text-blue-800 border-blue-200'
+                          }`}>
                           {ncr.significance === 'major' ? <AlertTriangle size={10} /> : <Shield size={10} />}
                           {ncr.significance}
                         </span>
@@ -679,14 +674,13 @@ export default function NCRManagement() {
                       {/* Stepper Dots */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1">
-                          {[1,2,3,4].map(s => (
+                          {[1, 2, 3, 4].map(s => (
                             <div
                               key={s}
-                              className={`h-2 rounded-full transition-all ${
-                                s <= step
+                              className={`h-2 rounded-full transition-all ${s <= step
                                   ? s === 4 ? 'w-5 bg-emerald-700' : s === 3 ? 'w-5 bg-blue-800' : 'w-5 bg-blue-600'
                                   : 'w-2 bg-slate-200'
-                              }`}
+                                }`}
                               title={`Step ${s}`}
                             />
                           ))}
@@ -709,11 +703,10 @@ export default function NCRManagement() {
                             <button
                               onClick={() => handleLabManagerReviewStamp(ncr)}
                               disabled={!canReviewLM}
-                              className={`px-2.5 py-1 font-bold text-[10px] rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
-                                canReviewLM
+                              className={`px-2.5 py-1 font-bold text-[10px] rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${canReviewLM
                                   ? 'bg-blue-50 hover:bg-blue-100 text-blue-900 border-blue-300 shadow-2xs'
                                   : 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
-                              }`}
+                                }`}
                               title={canReviewLM ? "Stamp Lab Manager Review" : "Requires Lab Manager or Executive Role"}
                             >
                               {canReviewLM ? <UserCheck size={11} /> : <Lock size={10} />} LM Review
@@ -723,11 +716,10 @@ export default function NCRManagement() {
                             <button
                               onClick={() => handleQMApprovalStamp(ncr)}
                               disabled={!canApproveQM}
-                              className={`px-2.5 py-1 font-bold text-[10px] rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
-                                canApproveQM
+                              className={`px-2.5 py-1 font-bold text-[10px] rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${canApproveQM
                                   ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300 shadow-2xs'
                                   : 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
-                              }`}
+                                }`}
                               title={canApproveQM ? "Stamp Quality Manager Approval & Closure" : "Requires Quality Manager Role"}
                             >
                               {canApproveQM ? <Stamp size={11} /> : <Lock size={10} />} QM Approve
@@ -752,7 +744,7 @@ export default function NCRManagement() {
                           >
                             <Eye size={14} />
                           </button>
-                          
+
                           {canEditThis ? (
                             <button
                               onClick={() => handleNCREdit(ncr)}
@@ -790,7 +782,7 @@ export default function NCRManagement() {
       {/* ── 4-STEP GUIDED WIZARD FORM ── */}
       {ncrView === 'wizard' && (
         <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden max-w-3xl mx-auto space-y-0">
-          
+
           {/* Header */}
           <div className="bg-[#1B669E] p-5 text-white flex items-center justify-between">
             <div>
@@ -821,13 +813,11 @@ export default function NCRManagement() {
                 <button
                   key={s.step}
                   onClick={() => setFormStep(s.step)}
-                  className={`flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all ${
-                    formStep === s.step ? 'text-blue-950 font-bold' : formStep > s.step ? 'text-blue-800' : 'text-slate-400'
-                  }`}
+                  className={`flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all ${formStep === s.step ? 'text-blue-950 font-bold' : formStep > s.step ? 'text-blue-800' : 'text-slate-400'
+                    }`}
                 >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${
-                    formStep === s.step ? 'bg-blue-900 text-white' : formStep > s.step ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-500'
-                  }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${formStep === s.step ? 'bg-blue-900 text-white' : formStep > s.step ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}>
                     {formStep > s.step ? '✓' : s.step}
                   </div>
                   <span className="hidden sm:inline">{s.label}</span>
@@ -838,7 +828,7 @@ export default function NCRManagement() {
 
           {/* Form Body */}
           <form onSubmit={handleNCRSubmit} className="p-6 space-y-5 text-xs">
-            
+
             {/* STEP 1 */}
             {formStep === 1 && (
               <div className="space-y-4">
@@ -890,7 +880,7 @@ export default function NCRManagement() {
                       onChange={e => handleNCRFieldChange('unit', e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-500 text-slate-900 text-xs"
                     >
-                      {['Hematology','Biochemistry','Microbiology','Serology / Immunology','Molecular / PCR','Coagulation','Urinalysis','Blood Bank','Reception / Pre-Analytical','Quality Control','General Laboratory','Administration'].map(u => (
+                      {['Hematology', 'Biochemistry', 'Microbiology', 'Serology / Immunology', 'Molecular / PCR', 'Coagulation', 'Urinalysis', 'Blood Bank', 'Reception / Pre-Analytical', 'Quality Control', 'General Laboratory', 'Administration'].map(u => (
                         <option key={u} value={u}>{u}</option>
                       ))}
                     </select>
@@ -903,7 +893,7 @@ export default function NCRManagement() {
                       onChange={e => handleNCRFieldChange('nc_category', e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-500 text-slate-900 text-xs"
                     >
-                      {['Pre-analytical','Analytical','Post-analytical','Administrative','Equipment / Instrumentation','Reagent / Consumable','Personnel','Facility / Environment'].map(c => (
+                      {['Pre-analytical', 'Analytical', 'Post-analytical', 'Administrative', 'Equipment / Instrumentation', 'Reagent / Consumable', 'Personnel', 'Facility / Environment'].map(c => (
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
@@ -916,11 +906,10 @@ export default function NCRManagement() {
                     <button
                       type="button"
                       onClick={() => handleNCRFieldChange('significance', 'minor')}
-                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                        ncrForm.significance === 'minor'
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${ncrForm.significance === 'minor'
                           ? 'border-slate-800 bg-slate-50 text-slate-900 font-bold'
                           : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <p className="text-xs font-bold">Minor Non-Conformance</p>
                       <p className="text-[10px] text-slate-500 font-normal">Isolated procedural discrepancy with low clinical risk</p>
@@ -929,11 +918,10 @@ export default function NCRManagement() {
                     <button
                       type="button"
                       onClick={() => handleNCRFieldChange('significance', 'major')}
-                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                        ncrForm.significance === 'major'
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${ncrForm.significance === 'major'
                           ? 'border-rose-300 bg-rose-50/60 text-rose-900 font-bold'
                           : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <p className="text-xs font-bold text-rose-800">Major Non-Conformance</p>
                       <p className="text-[10px] text-rose-700 font-normal">Critical breakdown affecting diagnostic outcome or safety</p>
@@ -973,9 +961,8 @@ export default function NCRManagement() {
                           key={m}
                           type="button"
                           onClick={() => handleNCRRcaToggle(m)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                            isSel ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                          }`}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${isSel ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
                         >
                           {isSel ? '✓ ' : '+ '}{m}
                         </button>
@@ -1088,9 +1075,8 @@ export default function NCRManagement() {
                           }
                           handleNCRFieldChange('reviewed_by_lab_manager', `${user?.full_name || 'Lab Manager'} (${new Date().toLocaleDateString('en-GB')})`);
                         }}
-                        className={`px-2.5 py-1 text-white rounded-md font-bold text-[10px] cursor-pointer shadow-2xs ${
-                          canReviewLM ? 'bg-slate-900 hover:bg-slate-800' : 'bg-slate-400 cursor-not-allowed'
-                        }`}
+                        className={`px-2.5 py-1 text-white rounded-md font-bold text-[10px] cursor-pointer shadow-2xs ${canReviewLM ? 'bg-slate-900 hover:bg-slate-800' : 'bg-slate-400 cursor-not-allowed'
+                          }`}
                       >
                         Stamp Review
                       </button>
@@ -1120,9 +1106,8 @@ export default function NCRManagement() {
                           }
                           handleNCRFieldChange('approved_by_qm', `${user?.full_name || 'Quality Manager'} (${new Date().toLocaleDateString('en-GB')})`);
                         }}
-                        className={`px-2.5 py-1 text-white rounded-md font-bold text-[10px] cursor-pointer shadow-2xs ${
-                          canApproveQM ? 'bg-slate-900 hover:bg-slate-800' : 'bg-slate-400 cursor-not-allowed'
-                        }`}
+                        className={`px-2.5 py-1 text-white rounded-md font-bold text-[10px] cursor-pointer shadow-2xs ${canApproveQM ? 'bg-slate-900 hover:bg-slate-800' : 'bg-slate-400 cursor-not-allowed'
+                          }`}
                       >
                         Stamp Approval
                       </button>
@@ -1152,13 +1137,12 @@ export default function NCRManagement() {
                           type="button"
                           disabled={isDisabled}
                           onClick={() => handleNCRFieldChange('status', st.status)}
-                          className={`p-3 rounded-xl border text-center font-bold text-xs cursor-pointer transition-all ${
-                            ncrForm.status === st.status
+                          className={`p-3 rounded-xl border text-center font-bold text-xs cursor-pointer transition-all ${ncrForm.status === st.status
                               ? 'border-slate-900 bg-slate-900 text-white shadow-2xs'
                               : isDisabled
-                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                          }`}
+                                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                            }`}
                         >
                           {st.label}
                         </button>
@@ -1209,7 +1193,7 @@ export default function NCRManagement() {
       {ncrView === 'detail' && ncrSelected && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-3xl w-full overflow-hidden space-y-0 max-h-[90vh] flex flex-col">
-            
+
             {/* Header */}
             <div className="bg-[#1B669E] p-5 text-white flex items-center justify-between">
               <div>
@@ -1218,11 +1202,10 @@ export default function NCRManagement() {
                 </span>
                 <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
                   {ncrSelected.ncr_number}
-                  <span className={`text-xs px-2.5 py-0.5 rounded-md font-sans font-bold border ${
-                    ncrSelected.status === 'closed'
+                  <span className={`text-xs px-2.5 py-0.5 rounded-md font-sans font-bold border ${ncrSelected.status === 'closed'
                       ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                       : 'bg-blue-800 text-blue-100 border-blue-700'
-                  }`}>
+                    }`}>
                     {ncrSelected.status.toUpperCase()}
                   </span>
                 </h2>
@@ -1237,7 +1220,7 @@ export default function NCRManagement() {
 
             {/* Body */}
             <div className="p-6 space-y-5 overflow-y-auto text-xs flex-1">
-              
+
               {/* Stepper Progress */}
               <div className="bg-blue-50/40 p-4 rounded-xl border border-blue-200 space-y-1.5">
                 <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Quality Audit Workflow Progress</p>
@@ -1303,13 +1286,12 @@ export default function NCRManagement() {
               <div className="pt-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Official Verification & Approval Stamps</span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  
+
                   {/* LAB MANAGER REVIEW STAMP */}
-                  <div className={`p-4 rounded-xl border relative overflow-hidden ${
-                    ncrSelected.reviewed_by_lab_manager || ncrSelected.verified_by_lab_manager
+                  <div className={`p-4 rounded-xl border relative overflow-hidden ${ncrSelected.reviewed_by_lab_manager || ncrSelected.verified_by_lab_manager
                       ? 'bg-blue-50/80 border-blue-300 text-blue-950 shadow-2xs'
                       : 'bg-slate-50 border-slate-200 text-slate-400'
-                  }`}>
+                    }`}>
                     {(ncrSelected.reviewed_by_lab_manager || ncrSelected.verified_by_lab_manager) && (
                       <img
                         src="/stamps/verified.png"
@@ -1335,11 +1317,10 @@ export default function NCRManagement() {
                   </div>
 
                   {/* QUALITY MANAGER APPROVAL STAMP */}
-                  <div className={`p-4 rounded-xl border relative overflow-hidden ${
-                    ncrSelected.approved_by_qm || ncrSelected.reviewed_by_qm || ncrSelected.status === 'closed'
+                  <div className={`p-4 rounded-xl border relative overflow-hidden ${ncrSelected.approved_by_qm || ncrSelected.reviewed_by_qm || ncrSelected.status === 'closed'
                       ? 'bg-emerald-50/90 border-emerald-400 text-emerald-950 shadow-2xs'
                       : 'bg-slate-50 border-slate-200 text-slate-400'
-                  }`}>
+                    }`}>
                     {(ncrSelected.approved_by_qm || ncrSelected.reviewed_by_qm || ncrSelected.status === 'closed') && (
                       <img
                         src="/stamps/approved.png"
@@ -1377,9 +1358,8 @@ export default function NCRManagement() {
                   <button
                     onClick={() => handleLabManagerReviewStamp(ncrSelected)}
                     disabled={!canReviewLM}
-                    className={`px-3.5 py-2 font-bold text-xs rounded-lg cursor-pointer flex items-center gap-1.5 shadow-2xs ${
-                      canReviewLM ? 'bg-blue-900 hover:bg-blue-800 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    }`}
+                    className={`px-3.5 py-2 font-bold text-xs rounded-lg cursor-pointer flex items-center gap-1.5 shadow-2xs ${canReviewLM ? 'bg-blue-900 hover:bg-blue-800 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
                   >
                     {canReviewLM ? <UserCheck size={14} /> : <Lock size={14} />} Stamp Lab Manager Review
                   </button>
@@ -1390,9 +1370,8 @@ export default function NCRManagement() {
                   <button
                     onClick={() => handleQMApprovalStamp(ncrSelected)}
                     disabled={!canApproveQM}
-                    className={`px-3.5 py-2 font-bold text-xs rounded-lg cursor-pointer flex items-center gap-1.5 shadow-2xs ${
-                      canApproveQM ? 'bg-emerald-800 hover:bg-emerald-900 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    }`}
+                    className={`px-3.5 py-2 font-bold text-xs rounded-lg cursor-pointer flex items-center gap-1.5 shadow-2xs ${canApproveQM ? 'bg-emerald-800 hover:bg-emerald-900 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
                   >
                     {canApproveQM ? <Stamp size={14} /> : <Lock size={14} />} Stamp QM Approval & Close
                   </button>
@@ -1589,7 +1568,7 @@ export default function NCRManagement() {
                 5. Quality Sign-off & Official Stamps
               </h2>
               <div className="grid grid-cols-2 gap-4 pt-1">
-                
+
                 {/* LAB MANAGER REVIEW STAMP BOX */}
                 <div className="border-2 p-3 rounded-md text-center space-y-1 bg-slate-50/60 relative overflow-hidden" style={{ borderColor: '#003B44' }}>
                   {(ncrSelected.reviewed_by_lab_manager || ncrSelected.verified_by_lab_manager) && (

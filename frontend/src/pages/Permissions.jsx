@@ -23,19 +23,19 @@ import toast from 'react-hot-toast';
 
 // ─── Action Metadata ────────────────────────────────────────────────────────
 const ACTION_META = {
-  view:     { label: 'View',     onClass: 'bg-blue-500 text-white',    offClass: 'bg-slate-100 text-slate-300 hover:bg-blue-50 hover:text-blue-400',      headerClass: 'text-blue-700 bg-blue-50'     },
-  create:   { label: 'Create',   onClass: 'bg-emerald-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-emerald-50 hover:text-emerald-400', headerClass: 'text-emerald-700 bg-emerald-50' },
-  edit:     { label: 'Edit',     onClass: 'bg-amber-500 text-white',   offClass: 'bg-slate-100 text-slate-300 hover:bg-amber-50 hover:text-amber-400',     headerClass: 'text-amber-700 bg-amber-50'   },
-  review:   { label: 'Review',   onClass: 'bg-violet-500 text-white',  offClass: 'bg-slate-100 text-slate-300 hover:bg-violet-50 hover:text-violet-400',   headerClass: 'text-violet-700 bg-violet-50' },
-  approve:  { label: 'Approve',  onClass: 'bg-teal-500 text-white',    offClass: 'bg-slate-100 text-slate-300 hover:bg-teal-50 hover:text-teal-400',       headerClass: 'text-teal-700 bg-teal-50'     },
-  reject:   { label: 'Reject',   onClass: 'bg-red-500 text-white',     offClass: 'bg-slate-100 text-slate-300 hover:bg-red-50 hover:text-red-400',         headerClass: 'text-red-700 bg-red-50'       },
-  delete:   { label: 'Delete',   onClass: 'bg-rose-600 text-white',    offClass: 'bg-slate-100 text-slate-300 hover:bg-rose-50 hover:text-rose-400',       headerClass: 'text-rose-700 bg-rose-50'     },
-  download: { label: 'Download', onClass: 'bg-sky-500 text-white',     offClass: 'bg-slate-100 text-slate-300 hover:bg-sky-50 hover:text-sky-400',         headerClass: 'text-sky-700 bg-sky-50'       },
-  acquire:  { label: 'Acquire',  onClass: 'bg-purple-500 text-white',  offClass: 'bg-slate-100 text-slate-300 hover:bg-purple-50 hover:text-purple-400',   headerClass: 'text-purple-700 bg-purple-50' },
-  report:   { label: 'Report',   onClass: 'bg-indigo-500 text-white',  offClass: 'bg-slate-100 text-slate-300 hover:bg-indigo-50 hover:text-indigo-400',   headerClass: 'text-indigo-700 bg-indigo-50' },
-  verify:   { label: 'Verify',   onClass: 'bg-cyan-500 text-white',    offClass: 'bg-slate-100 text-slate-300 hover:bg-cyan-50 hover:text-cyan-400',       headerClass: 'text-cyan-700 bg-cyan-50'     },
+  view: { label: 'View', onClass: 'bg-blue-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-blue-50 hover:text-blue-400', headerClass: 'text-blue-700 bg-blue-50' },
+  create: { label: 'Create', onClass: 'bg-emerald-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-emerald-50 hover:text-emerald-400', headerClass: 'text-emerald-700 bg-emerald-50' },
+  edit: { label: 'Edit', onClass: 'bg-amber-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-amber-50 hover:text-amber-400', headerClass: 'text-amber-700 bg-amber-50' },
+  review: { label: 'Review', onClass: 'bg-violet-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-violet-50 hover:text-violet-400', headerClass: 'text-violet-700 bg-violet-50' },
+  approve: { label: 'Approve', onClass: 'bg-teal-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-teal-50 hover:text-teal-400', headerClass: 'text-teal-700 bg-teal-50' },
+  reject: { label: 'Reject', onClass: 'bg-red-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-red-50 hover:text-red-400', headerClass: 'text-red-700 bg-red-50' },
+  delete: { label: 'Delete', onClass: 'bg-rose-600 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-rose-50 hover:text-rose-400', headerClass: 'text-rose-700 bg-rose-50' },
+  download: { label: 'Download', onClass: 'bg-sky-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-sky-50 hover:text-sky-400', headerClass: 'text-sky-700 bg-sky-50' },
+  acquire: { label: 'Acquire', onClass: 'bg-purple-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-purple-50 hover:text-purple-400', headerClass: 'text-purple-700 bg-purple-50' },
+  report: { label: 'Report', onClass: 'bg-indigo-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-indigo-50 hover:text-indigo-400', headerClass: 'text-indigo-700 bg-indigo-50' },
+  verify: { label: 'Verify', onClass: 'bg-cyan-500 text-white', offClass: 'bg-slate-100 text-slate-300 hover:bg-cyan-50 hover:text-cyan-400', headerClass: 'text-cyan-700 bg-cyan-50' },
 };
-const ACTION_ORDER = ['view','create','edit','review','approve','reject','delete','download','acquire','report','verify'];
+const ACTION_ORDER = ['view', 'create', 'edit', 'review', 'approve', 'reject', 'delete', 'download', 'acquire', 'report', 'verify'];
 
 // ─── Role Aliases (Canonical Normalization — prevents duplicate listings) ────
 const ROLE_ALIASES = {
@@ -143,62 +143,62 @@ const ROLE_COLORS = {
 
 // ─── Module Groups ────────────────────────────────────────────────────────────
 const MODULE_GROUPS = {
-  'Core System & Admin':      ['user_management', 'audit_logs', 'reports', 'ai_insights', 'it_support', 'providers'],
-  'Clinical & Patient Care':  ['clinical_observation', 'patients', 'incident_reports', 'feedbacks', 'staff_performance'],
+  'Core System & Admin': ['user_management', 'audit_logs', 'reports', 'ai_insights', 'it_support', 'providers'],
+  'Clinical & Patient Care': ['clinical_observation', 'patients', 'incident_reports', 'feedbacks', 'staff_performance'],
   'Diagnostics & Speciality': ['lab', 'ncr', 'imaging', 'dental', 'physio', 'results_transfer', 'archive'],
-  'Operations & Logistics':   ['operations', 'shifts', 'roster', 'inventory', 'daily_stock', 'consumables', 'procurement', 'supplier_portal', 'logistics', 'sales', 'cancellations', 'refunds'],
-  'Quality & Governance':     ['safety', 'compliance', 'revenue_leakage'],
+  'Operations & Logistics': ['operations', 'shifts', 'roster', 'inventory', 'daily_stock', 'consumables', 'procurement', 'supplier_portal', 'logistics', 'sales', 'cancellations', 'refunds'],
+  'Quality & Governance': ['safety', 'compliance', 'revenue_leakage'],
 };
 
 // ─── Sidebar Items ────────────────────────────────────────────────────────────
 const SIDEBAR_ITEMS = [
-  { key: 'dashboard',         name: 'Dashboard',            Icon: LayoutDashboard, allowedRoles: BASE_ALL_ROLES },
-  { key: 'sales_hub',         name: 'Sales Hub',            Icon: FileSpreadsheet, allowedRoles: ['sales_manager','principal_cashier','cashier','admin','coo','deputy_coo','chairman'] },
-  { key: 'cancellations',     name: 'Cancellations',        Icon: FileText,        allowedRoles: ['cashier','principal_cashier','customer_care','operations_staff','sales_manager','coo','chairman','admin','deputy_coo','consultant'] },
-  { key: 'refunds',           name: 'Refunds',              Icon: ReceiptText,     allowedRoles: ['cashier','principal_cashier','customer_care','operations_staff','sales_manager','coo','chairman','admin','deputy_coo','consultant'] },
-  { key: 'incidents',         name: 'Incident Reports',     Icon: AlertTriangle,   allowedRoles: ['nurse','rn_midwife','admin','doctor','consultant','hsfp','operations_staff','customer_care','it_officer','chef-nurse','deputy_chef_nurse','pa','stock-manager','coo','deputy_coo','medical_director','procurement-manager','lab_team_lead','lab_manager','dental_hod','dental_lab_manager','imaging_manager','physio_manager','logistics_manager','quality_manager','quality_accreditation_officer'] },
-  { key: 'safety',            name: 'Safety Workspace',     Icon: PenTool,         allowedRoles: ['hsfp','admin','deputy_coo','medical_director','quality_accreditation_officer'] },
-  { key: 'risk',              name: 'Risk Register',        Icon: ShieldAlert,     allowedRoles: ['hsfp','admin','deputy_coo','medical_director','quality_accreditation_officer'] },
-  { key: 'infection',         name: 'Infection Control',    Icon: Activity,        allowedRoles: ['hsfp','admin','deputy_coo','medical_director','quality_accreditation_officer'] },
-  { key: 'results',           name: 'Result Transfers',     Icon: RefreshCw,       allowedRoles: ['cashier','principal_cashier','customer_care','operations_staff','operations','lab_team_lead','lab_lead','lab_manager','lab_hod','head_microbiology','head_hematology','head_histopathology','head_poct','head_phlebotomy','head_molecular_biology','lab_micro_specialist','lab_scientist','lab_safety_officer','lab_stock_officer','lab_tech','lab','imaging_tech','imaging_manager','sono','radiologist','quality_manager','qm','sales_manager','coo','chairman','admin','deputy_coo','consultant'] },
-  { key: 'performance',       name: 'Staff Performance',    Icon: Award,           allowedRoles: ['sales_manager','coo','chairman','admin','deputy_coo','cashier','principal_cashier','customer_care','chef-nurse','medical_director'] },
-  { key: 'nursing_hub',       name: 'Nursing Hub',          Icon: Stethoscope,     allowedRoles: ['nurse','admin','chef-nurse','coo','deputy_coo'] },
-  { key: 'doctor_hub',        name: 'Doctor Hub',           Icon: Stethoscope,     allowedRoles: ['doctor','consultant','admin','medical_director','coo','deputy_coo'] },
-  { key: 'imaging',           name: 'Imaging Hub',          Icon: ScanLine,        allowedRoles: ['imaging_tech','imaging_manager','sono','radiologist','admin','medical_director','coo','deputy_coo'] },
-  { key: 'lab_hub',           name: 'Laboratory Hub',       Icon: FlaskConical,    allowedRoles: ['admin','deputy_coo','lab_team_lead','lab_lead','lab_manager','lab_hod','head_microbiology','head_hematology','head_histopathology','head_poct','head_phlebotomy','head_molecular_biology','lab_micro_specialist','lab_scientist','lab_safety_officer','lab_stock_officer','lab_tech','lab'] },
-  { key: 'lab_team_lead_hub', name: 'Lab Team Lead Hub',    Icon: Microscope,      allowedRoles: ['admin','deputy_coo','general_manager','chairman','lab_hod','lab_manager','quality_manager','qm','lab_team_lead','lab_lead','head_microbiology','head_hematology','head_histopathology','head_poct','head_phlebotomy','head_molecular_biology','lab_safety_officer','lab_stock_officer','lab_micro_specialist'] },
-  { key: 'lab_manager_hub',   name: 'Lab Manager Hub',      Icon: BarChart3,       allowedRoles: ['admin','deputy_coo','general_manager','chairman','lab_hod','lab_manager','quality_manager','qm'] },
-  { key: 'lab_equipment',     name: 'Lab Equipment & PPM',  Icon: Sliders,         allowedRoles: ['admin','deputy_coo','chairman','lab_hod','lab_manager','quality_manager','qm','lab_team_lead','lab_lead','lab_tech','lab'] },
-  { key: 'lab_archive',       name: 'Document Archive',     Icon: Database,        allowedRoles: ['lab_hod','head_histopathology','lab_team_lead','lab_lead','lab_manager','lab_tech','lab','admin','deputy_coo','chairman'] },
-  { key: 'ncr_hub',           name: 'Non-Conformance (NCR)', Icon: AlertOctagon,   allowedRoles: ['admin','deputy_coo','chairman','lab_hod','lab_manager','quality_manager','qm','lab_team_lead','lab_lead','head_microbiology','head_hematology','head_histopathology','head_poct','head_phlebotomy','head_molecular_biology','lab_micro_specialist','lab_scientist','lab_tech','lab'] },
-  { key: 'dental_hub',        name: 'Dental Hub',           Icon: Heart,           allowedRoles: ['admin','deputy_coo','coo','dental','dentist','dental_tech','dental_hod','dental_lab_manager'] },
-  { key: 'physio_hub',        name: 'Physio Hub',           Icon: Dumbbell,        allowedRoles: ['admin','deputy_coo','coo','physiotherapist','physio','physio_manager'] },
-  { key: 'operations_hub',    name: 'Operations Hub',       Icon: Settings,        allowedRoles: ['admin','deputy_coo','operations_staff','operations','coo'] },
-  { key: 'central_store',     name: 'General Store',        Icon: Database,        allowedRoles: ['admin','deputy_coo','coo','stock-manager'] },
-  { key: 'master',            name: 'Master Module',        Icon: Database,        allowedRoles: ['admin','stock-manager','coo','deputy_coo'] },
-  { key: 'consumables',       name: 'Consumables Log',      Icon: CheckSquare,     allowedRoles: ['admin','deputy_coo','chef-nurse','deputy_chef_nurse','deputy-chef-nurse','deputy_chief_nurse','nurse','lab_team_lead','lab_lead','lab_manager','quality_manager','qm','lab_tech','lab','dental','dentist','dental_tech','dental_hod','dental_lab_manager','imaging_tech','imaging_manager','sono','radiologist','physiotherapist','physio','physio_manager','operations_staff','coo','hsfp','chairman'] },
-  { key: 'procurement',       name: 'Procurement Hub',      Icon: Building,        allowedRoles: ['admin','procurement-manager','deputy_coo','coo'] },
-  { key: 'supplier',          name: 'Supplier Portal',      Icon: Building,        allowedRoles: ['admin','procurement-manager','deputy_coo','coo'] },
-  { key: 'logistics_hub',     name: 'Logistics Hub',        Icon: Truck,           allowedRoles: ['admin','logistics_manager','logistics_officer','deputy_coo','coo'] },
-  { key: 'daily_report',      name: 'Daily Op. Report',     Icon: Activity,        allowedRoles: ['nurse','chef-nurse','admin','coo','deputy_coo'] },
-  { key: 'daily_board',       name: 'Reports Board',        Icon: FileText,        allowedRoles: ['sales_manager','coo','chairman','admin','deputy_coo','principal_cashier','consultant','chef-nurse','pa','medical_director'] },
-  { key: 'clinical_sheets_nav',   name: 'Clinical Sheets',      Icon: FileText,        allowedRoles: ['nurse','admin','doctor','consultant','chef-nurse','medical_director','coo','deputy_coo'] },
-  { key: 'insights',          name: 'AI Insights',          Icon: Brain,           allowedRoles: ['sales_manager','coo','chairman','admin','deputy_coo','principal_cashier','consultant','medical_director','quality_accreditation_officer','chef-nurse','deputy_chef_nurse','deputy-chef-nurse','deputy_chief_nurse','chef_nurse','chief_nurse','chief-nurse'] },
-  { key: 'revenue',           name: 'Revenue Tracker',      Icon: TrendingDown,    allowedRoles: ['sales_manager','chairman','admin','principal_cashier','deputy_coo'] },
-  { key: 'compliance',        name: 'Compliance Portal',    Icon: ShieldCheck,     allowedRoles: ['admin','hsfp','quality_accreditation_officer','coo','deputy_coo'] },
-  { key: 'it_hub',            name: 'IT Support',           Icon: Server,          allowedRoles: BASE_ALL_ROLES },
-  { key: 'users',             name: 'User Management',      Icon: Users,           allowedRoles: ['admin','it_officer'] },
-  { key: 'providers',         name: 'Provider Management',  Icon: UserCheck,       allowedRoles: ['admin','coo','deputy_coo','medical_director'] },
-  { key: 'permissions',       name: 'Permissions',          Icon: Shield,          allowedRoles: ['admin'] },
-  { key: 'audit_logs',        name: 'Audit Logs',           Icon: History,         allowedRoles: ['admin','quality_accreditation_officer'] },
-  { key: 'shifts',            name: 'Shifts',               Icon: Clock,           allowedRoles: ['cashier','customer_care','nurse','principal_cashier','sales_manager','deputy_coo','coo','admin','operations_staff','chef-nurse','pa'] },
-  { key: 'roster_generator',  name: 'Roster Generator',     Icon: FileText,        allowedRoles: ['admin','deputy_coo','coo','operations_staff','operations'] },
-  { key: 'feedbacks',         name: 'Internal Feedback',    Icon: MessageSquare,   allowedRoles: ['coo','deputy_coo','chef-nurse','medical_director','quality_accreditation_officer'] },
+  { key: 'dashboard', name: 'Dashboard', Icon: LayoutDashboard, allowedRoles: BASE_ALL_ROLES },
+  { key: 'sales_hub', name: 'Sales Hub', Icon: FileSpreadsheet, allowedRoles: ['sales_manager', 'principal_cashier', 'cashier', 'admin', 'coo', 'deputy_coo', 'chairman'] },
+  { key: 'cancellations', name: 'Cancellations', Icon: FileText, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
+  { key: 'refunds', name: 'Refunds', Icon: ReceiptText, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
+  { key: 'incidents', name: 'Incident Reports', Icon: AlertTriangle, allowedRoles: ['nurse', 'rn_midwife', 'admin', 'doctor', 'consultant', 'hsfp', 'operations_staff', 'customer_care', 'it_officer', 'chef-nurse', 'deputy_chef_nurse', 'pa', 'stock-manager', 'coo', 'deputy_coo', 'medical_director', 'procurement-manager', 'lab_team_lead', 'lab_manager', 'dental_hod', 'dental_lab_manager', 'imaging_manager', 'physio_manager', 'logistics_manager', 'quality_manager', 'quality_accreditation_officer'] },
+  { key: 'safety', name: 'Safety Workspace', Icon: PenTool, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_accreditation_officer'] },
+  { key: 'risk', name: 'Risk Register', Icon: ShieldAlert, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_accreditation_officer'] },
+  { key: 'infection', name: 'Infection Control', Icon: Activity, allowedRoles: ['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_accreditation_officer'] },
+  { key: 'results', name: 'Result Transfers', Icon: RefreshCw, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'operations', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_hod', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist', 'lab_safety_officer', 'lab_stock_officer', 'lab_tech', 'lab', 'imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'quality_manager', 'qm', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
+  { key: 'performance', name: 'Staff Performance', Icon: Award, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'chef-nurse', 'medical_director'] },
+  { key: 'nursing_hub', name: 'Nursing Hub', Icon: Stethoscope, allowedRoles: ['nurse', 'admin', 'chef-nurse', 'coo', 'deputy_coo'] },
+  { key: 'doctor_hub', name: 'Doctor Hub', Icon: Stethoscope, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director', 'coo', 'deputy_coo'] },
+  { key: 'imaging', name: 'Imaging Hub', Icon: ScanLine, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'admin', 'medical_director', 'coo', 'deputy_coo'] },
+  { key: 'lab_hub', name: 'Laboratory Hub', Icon: FlaskConical, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_hod', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist', 'lab_safety_officer', 'lab_stock_officer', 'lab_tech', 'lab'] },
+  { key: 'lab_team_lead_hub', name: 'Lab Team Lead Hub', Icon: Microscope, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer', 'lab_micro_specialist'] },
+  { key: 'lab_manager_hub', name: 'Lab Manager Hub', Icon: BarChart3, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'] },
+  { key: 'lab_equipment', name: 'Lab Equipment & PPM', Icon: Sliders, allowedRoles: ['admin', 'deputy_coo', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab'] },
+  { key: 'lab_archive', name: 'Document Archive', Icon: Database, allowedRoles: ['lab_hod', 'head_histopathology', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'admin', 'deputy_coo', 'chairman'] },
+  { key: 'ncr_hub', name: 'Non-Conformance (NCR)', Icon: AlertOctagon, allowedRoles: ['admin', 'deputy_coo', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist', 'lab_tech', 'lab'] },
+  { key: 'dental_hub', name: 'Dental Hub', Icon: Heart, allowedRoles: ['admin', 'deputy_coo', 'coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager'] },
+  { key: 'physio_hub', name: 'Physio Hub', Icon: Dumbbell, allowedRoles: ['admin', 'deputy_coo', 'coo', 'physiotherapist', 'physio', 'physio_manager'] },
+  { key: 'operations_hub', name: 'Operations Hub', Icon: Settings, allowedRoles: ['admin', 'deputy_coo', 'operations_staff', 'operations', 'coo'] },
+  { key: 'central_store', name: 'General Store', Icon: Database, allowedRoles: ['admin', 'deputy_coo', 'coo', 'stock-manager'] },
+  { key: 'master', name: 'Master Module', Icon: Database, allowedRoles: ['admin', 'stock-manager', 'coo', 'deputy_coo'] },
+  { key: 'consumables', name: 'Consumables Log', Icon: CheckSquare, allowedRoles: ['admin', 'deputy_coo', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'nurse', 'lab_team_lead', 'lab_lead', 'lab_manager', 'quality_manager', 'qm', 'lab_tech', 'lab', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'physiotherapist', 'physio', 'physio_manager', 'operations_staff', 'coo', 'hsfp', 'chairman'] },
+  { key: 'procurement', name: 'Procurement Hub', Icon: Building, allowedRoles: ['admin', 'procurement-manager', 'deputy_coo', 'coo'] },
+  { key: 'supplier', name: 'Supplier Portal', Icon: Building, allowedRoles: ['admin', 'procurement-manager', 'deputy_coo', 'coo'] },
+  { key: 'logistics_hub', name: 'Logistics Hub', Icon: Truck, allowedRoles: ['admin', 'logistics_manager', 'logistics_officer', 'deputy_coo', 'coo'] },
+  { key: 'daily_report', name: 'Daily Op. Report', Icon: Activity, allowedRoles: ['nurse', 'chef-nurse', 'admin', 'coo', 'deputy_coo'] },
+  { key: 'daily_board', name: 'Reports Board', Icon: FileText, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'chef-nurse', 'pa', 'medical_director'] },
+  { key: 'clinical_sheets_nav', name: 'Clinical Sheets', Icon: FileText, allowedRoles: ['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'coo', 'deputy_coo'] },
+  { key: 'insights', name: 'AI Insights', Icon: Brain, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'medical_director', 'quality_accreditation_officer', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse'] },
+  { key: 'revenue', name: 'Revenue Tracker', Icon: TrendingDown, allowedRoles: ['sales_manager', 'chairman', 'admin', 'principal_cashier', 'deputy_coo'] },
+  { key: 'compliance', name: 'Compliance Portal', Icon: ShieldCheck, allowedRoles: ['admin', 'hsfp', 'quality_accreditation_officer', 'coo', 'deputy_coo'] },
+  { key: 'it_hub', name: 'IT Support', Icon: Server, allowedRoles: BASE_ALL_ROLES },
+  { key: 'users', name: 'User Management', Icon: Users, allowedRoles: ['admin', 'it_officer'] },
+  { key: 'providers', name: 'Provider Management', Icon: UserCheck, allowedRoles: ['admin', 'coo', 'deputy_coo', 'medical_director'] },
+  { key: 'permissions', name: 'Permissions', Icon: Shield, allowedRoles: ['admin'] },
+  { key: 'audit_logs', name: 'Audit Logs', Icon: History, allowedRoles: ['admin', 'quality_accreditation_officer'] },
+  { key: 'shifts', name: 'Shifts', Icon: Clock, allowedRoles: ['cashier', 'customer_care', 'nurse', 'principal_cashier', 'sales_manager', 'deputy_coo', 'coo', 'admin', 'operations_staff', 'chef-nurse', 'pa'] },
+  { key: 'roster_generator', name: 'Roster Generator', Icon: FileText, allowedRoles: ['admin', 'deputy_coo', 'coo', 'operations_staff', 'operations'] },
+  { key: 'feedbacks', name: 'Internal Feedback', Icon: MessageSquare, allowedRoles: ['coo', 'deputy_coo', 'chef-nurse', 'medical_director', 'quality_accreditation_officer'] },
 ];
 
 // ─── Sidebar Config Persistence ───────────────────────────────────────────────
 const SIDEBAR_CONFIG_KEY = 'lc_sidebar_config';
-const loadSidebarConfig  = () => { try { return JSON.parse(localStorage.getItem(SIDEBAR_CONFIG_KEY) || '{}'); } catch { return {}; } };
+const loadSidebarConfig = () => { try { return JSON.parse(localStorage.getItem(SIDEBAR_CONFIG_KEY) || '{}'); } catch { return {}; } };
 const persistSidebarConfig = (cfg) => { localStorage.setItem(SIDEBAR_CONFIG_KEY, JSON.stringify(cfg)); window.dispatchEvent(new CustomEvent('sidebar-config-changed')); };
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ const ROLE_LABELS = {
   lab_micro_specialist: 'Microbiology Specialist',
   lab_scientist: 'Laboratory Scientist',
   lab_safety_officer: 'Lab Safety Officer',
-  lab_stock_officer: 'Lab Stock Officer',
+  lab_stock_officer: 'Lab stock Manager',
   radiologist: 'Radiologist',
   sono: 'Sonographer',
 };
@@ -233,7 +233,7 @@ const fmt = (r) => {
   const canonical = ROLE_ALIASES[r] || r;
   if (ROLE_LABELS[canonical]) return ROLE_LABELS[canonical];
   if (ROLE_LABELS[r]) return ROLE_LABELS[r];
-  return r.replace(/_/g,  ' ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  return r.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -279,61 +279,61 @@ export default function Permissions() {
   const [activeTab, setActiveTab] = useState('roles');
 
   // Matrix
-  const [modules,        setModules]        = useState([]);
-  const [roleMatrix,     setRoleMatrix]     = useState({});
-  const [origMatrix,     setOrigMatrix]     = useState({});
-  const [selectedRole,   setSelectedRole]   = useState('nurse');
-  const [loading,        setLoading]        = useState(true);
-  const [saving,         setSaving]         = useState(false);
-  const [roleSearch,     setRoleSearch]     = useState('');
+  const [modules, setModules] = useState([]);
+  const [roleMatrix, setRoleMatrix] = useState({});
+  const [origMatrix, setOrigMatrix] = useState({});
+  const [selectedRole, setSelectedRole] = useState('nurse');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [roleSearch, setRoleSearch] = useState('');
   const [roleDeptFilter, setRoleDeptFilter] = useState('All');
-  const [moduleSearch,   setModuleSearch]   = useState('');
-  const [selCategory,    setSelCategory]    = useState('All');
-  const [expandedGrps,   setExpandedGrps]   = useState({});
+  const [moduleSearch, setModuleSearch] = useState('');
+  const [selCategory, setSelCategory] = useState('All');
+  const [expandedGrps, setExpandedGrps] = useState({});
 
   // Diff Review Modal
   const [isDiffReviewOpen, setIsDiffReviewOpen] = useState(false);
-  const [diffRoleFilter,   setDiffRoleFilter]   = useState('all');
+  const [diffRoleFilter, setDiffRoleFilter] = useState('all');
 
   // Copy / Reset modals
-  const [isCopyOpen,    setIsCopyOpen]    = useState(false);
-  const [copySource,    setCopySource]    = useState('');
-  const [isResetOpen,   setIsResetOpen]   = useState(false);
-  const [adminPw,       setAdminPw]       = useState('');
-  const [showAdminPw,   setShowAdminPw]   = useState(false);
-  const [resetting,     setResetting]     = useState(false);
+  const [isCopyOpen, setIsCopyOpen] = useState(false);
+  const [copySource, setCopySource] = useState('');
+  const [isResetOpen, setIsResetOpen] = useState(false);
+  const [adminPw, setAdminPw] = useState('');
+  const [showAdminPw, setShowAdminPw] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // Sidebar Config
-  const [sidebarCfg,     setSidebarCfg]     = useState(() => loadSidebarConfig());
+  const [sidebarCfg, setSidebarCfg] = useState(() => loadSidebarConfig());
   const [sidebarChanged, setSidebarChanged] = useState(false);
-  const [sidebarGroup,   setSidebarGroup]   = useState(BASE_ROLE_GROUPS[0].name);
+  const [sidebarGroup, setSidebarGroup] = useState(BASE_ROLE_GROUPS[0].name);
 
   // User Overrides
-  const [usersList,         setUsersList]         = useState([]);
-  const [selectedUser,      setSelectedUser]      = useState(null);
-  const [userEffPerms,      setUserEffPerms]      = useState({});
-  const [loadingUserPerms,  setLoadingUserPerms]  = useState(false);
-  const [overrideReason,    setOverrideReason]    = useState('');
-  const [userSearch,        setUserSearch]        = useState('');
+  const [usersList, setUsersList] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userEffPerms, setUserEffPerms] = useState({});
+  const [loadingUserPerms, setLoadingUserPerms] = useState(false);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [userSearch, setUserSearch] = useState('');
 
   // Simulator
-  const [evalRole,   setEvalRole]   = useState('nurse');
+  const [evalRole, setEvalRole] = useState('nurse');
   const [evalModule, setEvalModule] = useState('');
   const [evalAction, setEvalAction] = useState('view');
 
   // Policies
-  const [restrictPast,       setRestrictPast]       = useState(true);
-  const [loadingSettings,    setLoadingSettings]    = useState(false);
-  const [updatingSettings,   setUpdatingSettings]   = useState(false);
+  const [restrictPast, setRestrictPast] = useState(true);
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [updatingSettings, setUpdatingSettings] = useState(false);
 
   // Role Studio / Custom Role Builder State
-  const [newRoleTitle,     setNewRoleTitle]     = useState('');
-  const [newRoleKey,       setNewRoleKey]       = useState('');
-  const [newRoleGroup,     setNewRoleGroup]     = useState(BASE_ROLE_GROUPS[0].name);
-  const [newRoleDesc,      setNewRoleDesc]      = useState('');
-  const [newRoleColor,     setNewRoleColor]     = useState('#4f46e5');
-  const [newRolePerms,     setNewRolePerms]     = useState({});
-  const [creatingRole,     setCreatingRole]     = useState(false);
+  const [newRoleTitle, setNewRoleTitle] = useState('');
+  const [newRoleKey, setNewRoleKey] = useState('');
+  const [newRoleGroup, setNewRoleGroup] = useState(BASE_ROLE_GROUPS[0].name);
+  const [newRoleDesc, setNewRoleDesc] = useState('');
+  const [newRoleColor, setNewRoleColor] = useState('#4f46e5');
+  const [newRolePerms, setNewRolePerms] = useState({});
+  const [creatingRole, setCreatingRole] = useState(false);
 
   // Dynamic role groups calculation
   const computedRoleGroups = useMemo(() => {
@@ -493,14 +493,14 @@ export default function Permissions() {
       ]);
       // Defensive unwrap: both API fns return response.data = {success, data: payload}
       // So result.data gives the actual payload.
-      const modsRaw   = modResult?.data   ?? modResult   ?? [];
+      const modsRaw = modResult?.data ?? modResult ?? [];
       const matrixRaw = matrixResult?.data ?? matrixResult ?? {};
 
       const mods = (Array.isArray(modsRaw) ? modsRaw : []).map(m => ({
         ...m,
         display: m.display_name || m.display || m.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       }));
-      const mat  = (typeof matrixRaw === 'object' && !Array.isArray(matrixRaw)) ? matrixRaw : {};
+      const mat = (typeof matrixRaw === 'object' && !Array.isArray(matrixRaw)) ? matrixRaw : {};
 
       // Filter out excluded / defunct roles
       const cleanedMat = {};
@@ -821,8 +821,8 @@ export default function Permissions() {
     return usersList.filter(u => (u.full_name || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q) || (u.role || '').toLowerCase().includes(q));
   }, [usersList, userSearch]);
 
-  const evalModObj   = useMemo(() => modules.find(m => m.name === evalModule), [modules, evalModule]);
-  const evalModActs  = evalModObj?.actions || [];
+  const evalModObj = useMemo(() => modules.find(m => m.name === evalModule), [modules, evalModule]);
+  const evalModActs = evalModObj?.actions || [];
 
   useEffect(() => {
     if (evalModActs.length > 0 && !evalModActs.includes(evalAction)) setEvalAction(evalModActs[0]);
@@ -913,12 +913,12 @@ export default function Permissions() {
       {/* ── Tab Nav ── */}
       <div className="flex items-center gap-1 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xs overflow-x-auto">
         {[
-          { id: 'roles',     label: 'Role Permissions', icon: Shield },
-          { id: 'overrides', label: 'User Overrides',   icon: UserCheck },
-          { id: 'builder',   label: 'Role Studio & Creator', icon: UserPlus },
-          { id: 'sidebar',   label: 'Sidebar Config',   icon: Menu },
+          { id: 'roles', label: 'Role Permissions', icon: Shield },
+          { id: 'overrides', label: 'User Overrides', icon: UserCheck },
+          { id: 'builder', label: 'Role Studio & Creator', icon: UserPlus },
+          { id: 'sidebar', label: 'Sidebar Config', icon: Menu },
           { id: 'evaluator', label: 'Access Simulator', icon: Zap },
-          { id: 'policies',  label: 'System Policies',  icon: Sliders },
+          { id: 'policies', label: 'System Policies', icon: Sliders },
         ].map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setActiveTab(id)}
             className={`inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${activeTab === id ? 'bg-[#1C69A0] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
@@ -982,11 +982,10 @@ export default function Permissions() {
                     <button
                       key={dept}
                       onClick={() => setRoleDeptFilter(dept)}
-                      className={`px-2 py-0.5 text-[9px] font-bold rounded-lg transition-colors whitespace-nowrap ${
-                        isSel
+                      className={`px-2 py-0.5 text-[9px] font-bold rounded-lg transition-colors whitespace-nowrap ${isSel
                           ? 'bg-slate-800 text-white shadow-2xs'
                           : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       {label}
                     </button>
@@ -1023,11 +1022,10 @@ export default function Permissions() {
                               <button
                                 key={role}
                                 onClick={() => setSelectedRole(role)}
-                                className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all ${
-                                  sel
+                                className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all ${sel
                                     ? 'bg-blue-600 text-white shadow-sm font-bold'
                                     : 'text-slate-700 hover:bg-slate-50 font-semibold'
-                                }`}
+                                  }`}
                               >
                                 <span
                                   className="w-2 h-2 rounded-full flex-shrink-0"
@@ -1036,11 +1034,10 @@ export default function Permissions() {
                                 <span className="text-xs flex-1 truncate">{fmt(role)}</span>
                                 {stagedCount > 0 && (
                                   <span
-                                    className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border flex-shrink-0 ${
-                                      sel
+                                    className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border flex-shrink-0 ${sel
                                         ? 'bg-amber-400 text-slate-900 border-amber-300'
                                         : 'bg-amber-100 text-amber-800 border-amber-300'
-                                    }`}
+                                      }`}
                                   >
                                     +{stagedCount}
                                   </span>
@@ -1182,9 +1179,8 @@ export default function Permissions() {
                       <button
                         key={cat}
                         onClick={() => setSelCategory(cat)}
-                        className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1 ${
-                          selCategory === cat ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1 ${selCategory === cat ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
                       >
                         <span>{label}</span>
                         <span className={`text-[9px] px-1 py-0.2 rounded-full ${selCategory === cat ? 'bg-white/20' : 'bg-slate-200/80 text-slate-500'}`}>
@@ -1313,7 +1309,7 @@ export default function Permissions() {
                                   {visibleActions.map(act => {
                                     if (!m.actions.includes(act)) return <td key={act} className="px-2 py-2.5 text-center"><span className="text-slate-200">·</span></td>;
                                     const checked = !!cur[act];
-                                    const isDiff  = !!cur[act] !== !!org[act];
+                                    const isDiff = !!cur[act] !== !!org[act];
                                     return (
                                       <td key={act} className={`px-2 py-2.5 text-center ${isDiff ? 'bg-amber-50/50' : ''}`}>
                                         <div className="flex justify-center">
@@ -1468,7 +1464,7 @@ export default function Permissions() {
                                 <td className="px-4 py-2.5 text-center">
                                   <div className="flex items-center justify-center gap-1.5">
                                     <button onClick={() => handleForceGrant(m.name, act)} className="px-2 py-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors">Force Grant</button>
-                                    <button onClick={() => handleForceDeny(m.name, act)}  className="px-2 py-1 text-[10px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors">Force Deny</button>
+                                    <button onClick={() => handleForceDeny(m.name, act)} className="px-2 py-1 text-[10px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors">Force Deny</button>
                                     {isOverride && <button onClick={() => handleRevert(m.name, act)} className="px-2 py-1 text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors">Revert</button>}
                                   </div>
                                 </td>
@@ -1534,9 +1530,9 @@ export default function Permissions() {
                         </div>
                       </td>
                       {sidebarGroupRoles.map(role => {
-                        const allowed  = item.allowedRoles.includes(role);
-                        const hidden   = (sidebarCfg[role] || {})[item.key] === false;
-                        const visible  = allowed && !hidden;
+                        const allowed = item.allowedRoles.includes(role);
+                        const hidden = (sidebarCfg[role] || {})[item.key] === false;
+                        const visible = allowed && !hidden;
                         return (
                           <td key={role} className="px-3 py-2.5 text-center">
                             {allowed ? (
@@ -2056,18 +2052,16 @@ export default function Permissions() {
               <button
                 type="button"
                 onClick={() => setDiffRoleFilter('all')}
-                className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-colors ${
-                  diffRoleFilter === 'all' ? 'bg-slate-800 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-colors ${diffRoleFilter === 'all' ? 'bg-slate-800 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
               >
                 All Roles ({allDiffs.length})
               </button>
               <button
                 type="button"
                 onClick={() => setDiffRoleFilter('active')}
-                className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-colors ${
-                  diffRoleFilter === 'active' ? 'bg-slate-800 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-colors ${diffRoleFilter === 'active' ? 'bg-slate-800 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
               >
                 {fmt(selectedRole)} ({activeRoleDiffs.length})
               </button>
@@ -2117,11 +2111,10 @@ export default function Permissions() {
                             </span>
                           </td>
                           <td className="px-3 py-2.5 text-center">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${
-                              diff.to
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${diff.to
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : 'bg-red-50 text-red-700 border-red-200'
-                            }`}>
+                              }`}>
                               {diff.to ? <Check size={11} strokeWidth={3} /> : <X size={11} strokeWidth={3} />}
                               {diff.to ? 'Granted' : 'Denied'}
                             </span>

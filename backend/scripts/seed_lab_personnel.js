@@ -43,7 +43,7 @@ const LAB_PERSONNEL = [
     name: 'HIRWA Ganza David',
     username: 'lc_hirwa',
     email: 'hirwa@legacyclinics.rw',
-    position: 'Lab Stock Officer',
+    position: 'Lab stock Manager',
     roleKey: 'lab_team_lead',
     roleId: 37
   },
@@ -221,7 +221,7 @@ const LAB_PERSONNEL = [
 
 async function seedLabPersonnel() {
   console.log('🧪 Starting Laboratory Personnel seeding...');
-  
+
   const defaultPassword = 'Legacy@2026';
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(defaultPassword, salt);

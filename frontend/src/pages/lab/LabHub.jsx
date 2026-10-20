@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-  FlaskConical, ClipboardList, Activity, Search, Plus, CheckCircle, 
-  Save, Barcode, Play, Clock, ShieldCheck, RefreshCw, Printer, 
+import {
+  FlaskConical, ClipboardList, Activity, Search, Plus, CheckCircle,
+  Save, Barcode, Play, Clock, ShieldCheck, RefreshCw, Printer,
   Send, Droplet, FileText, CheckCircle2, ArrowRight, Thermometer,
   AlertTriangle, XCircle, CheckCircle as CheckCircleIcon, TrendingUp,
   ChevronDown, Pencil, Trash2, X, AlertOctagon, Shield,
@@ -343,8 +343,8 @@ const TatCounter = ({ order }) => {
 
   if (remainingMins < 0) {
     const overdueMins = Math.abs(remainingMins);
-    const overdueStr = overdueMins >= 1440 
-      ? `+${Math.floor(overdueMins / 1440)}d` 
+    const overdueStr = overdueMins >= 1440
+      ? `+${Math.floor(overdueMins / 1440)}d`
       : overdueMins >= 60 ? `+${Math.floor(overdueMins / 60)}h` : `+${overdueMins}m`;
     badgeStyle = 'bg-rose-100 text-rose-800 border-rose-300 font-extrabold animate-pulse';
     statusText = `Overdue (${overdueStr})`;
@@ -353,8 +353,8 @@ const TatCounter = ({ order }) => {
     (targetMins <= 360 && remainingMins <= 60) ||
     (targetMins > 360 && remainingMins <= 1440)
   ) {
-    const remStr = remainingMins >= 1440 
-      ? `${Math.floor(remainingMins / 1440)}d left` 
+    const remStr = remainingMins >= 1440
+      ? `${Math.floor(remainingMins / 1440)}d left`
       : remainingMins >= 60 ? `${Math.floor(remainingMins / 60)}h left` : `${remainingMins}m left`;
     badgeStyle = 'bg-amber-100 text-amber-800 border-amber-300 font-bold';
     statusText = remStr;
@@ -409,7 +409,7 @@ const LabHub = () => {
     quantity_in_hand: '', unit_of_measure: 'pack', min_threshold: '5',
     expiry_date: '', lot_number: ''
   });
-  
+
   // Registration Form State
   const [showRegModal, setShowRegModal] = useState(false);
   const [patientId, setPatientId] = useState('');
@@ -436,14 +436,14 @@ const LabHub = () => {
     { id: 'room_temp_1', label: 'Room Temp Unit 1 - Biochemistry Shelf (20°C to 25°C)', type: 'room_temp' },
     { id: 'room_temp_2', label: 'Room Temp Unit 2 - Hematology & Micro Cabinet (20°C to 25°C)', type: 'room_temp' },
     { id: 'room_temp_3', label: 'Room Temp Unit 3 - General Reagents Rack (20°C to 25°C)', type: 'room_temp' },
-    { id: 'fridge_1',  label: 'Fridge 1 (STAT / Rapid Storage)',  type: 'fridge' },
-    { id: 'fridge_2',  label: 'Fridge 2 (Routine Samples - 6h)',  type: 'fridge' },
-    { id: 'fridge_3',  label: 'Fridge 3 (Reagents & Media)',      type: 'fridge' },
-    { id: 'fridge_4',  label: 'Fridge 4 (Chemistry Stock)',       type: 'fridge' },
-    { id: 'fridge_5',  label: 'Fridge 5 (Hematology Stock)',      type: 'fridge' },
-    { id: 'fridge_6',  label: 'Fridge 6 (Microbiology)',          type: 'fridge' },
-    { id: 'fridge_7',  label: 'Fridge 7 (Molecular Storage)',     type: 'fridge' },
-    { id: 'fridge_8',  label: 'Fridge 8 (General Stock)',         type: 'fridge' },
+    { id: 'fridge_1', label: 'Fridge 1 (STAT / Rapid Storage)', type: 'fridge' },
+    { id: 'fridge_2', label: 'Fridge 2 (Routine Samples - 6h)', type: 'fridge' },
+    { id: 'fridge_3', label: 'Fridge 3 (Reagents & Media)', type: 'fridge' },
+    { id: 'fridge_4', label: 'Fridge 4 (Chemistry Stock)', type: 'fridge' },
+    { id: 'fridge_5', label: 'Fridge 5 (Hematology Stock)', type: 'fridge' },
+    { id: 'fridge_6', label: 'Fridge 6 (Microbiology)', type: 'fridge' },
+    { id: 'fridge_7', label: 'Fridge 7 (Molecular Storage)', type: 'fridge' },
+    { id: 'fridge_8', label: 'Fridge 8 (General Stock)', type: 'fridge' },
     { id: 'freezer_1', label: 'Freezer 1 (-20°C / -80°C Sample Bank)', type: 'freezer' }
   ]);
 
@@ -612,19 +612,19 @@ const LabHub = () => {
             loadedOrders = parsed;
           }
         }
-      } catch {}
+      } catch { }
     }
 
     // Strip out any previously stored hardcoded sample orders (e.g., ACC-2026-080X, ord-101..104)
-    const cleanOrders = (loadedOrders || []).filter(o => 
-      !String(o.accession_number || '').startsWith('ACC-2026-080') && 
+    const cleanOrders = (loadedOrders || []).filter(o =>
+      !String(o.accession_number || '').startsWith('ACC-2026-080') &&
       !['ord-101', 'ord-102', 'ord-103', 'ord-104'].includes(o.id) &&
       !['Sarah Jenkins', 'Robert Chen', 'Amanda Taylor', 'David Miller', 'Jean-Pierre Habimana', 'Clarisse Uwase'].includes(o.patient_name)
     );
 
     setOrders(cleanOrders);
     syncOrderStorage(cleanOrders);
-    try { localStorage.setItem('lc_lab_registered_orders', JSON.stringify(cleanOrders)); } catch {}
+    try { localStorage.setItem('lc_lab_registered_orders', JSON.stringify(cleanOrders)); } catch { }
     setLoading(false);
   };
 
@@ -806,7 +806,7 @@ const LabHub = () => {
 
     const updatedOrders = [createdOrder, ...orders.filter(o => o.id !== createdOrder.id)];
     setOrders(updatedOrders);
-    try { localStorage.setItem('lc_lab_registered_orders', JSON.stringify(updatedOrders)); } catch {}
+    try { localStorage.setItem('lc_lab_registered_orders', JSON.stringify(updatedOrders)); } catch { }
 
     const targetUnit = selectedRegStorageUnit || getRecommendedStorageUnit(createdOrder);
     handleAssignOrderStorage(createdOrder.id, targetUnit);
@@ -835,7 +835,7 @@ const LabHub = () => {
     }
     const updated = orders.map(o => o.id === orderId ? { ...o, stage: newStage } : o);
     setOrders(updated);
-    try { localStorage.setItem('lc_lab_registered_orders', JSON.stringify(updated)); } catch {}
+    try { localStorage.setItem('lc_lab_registered_orders', JSON.stringify(updated)); } catch { }
     if (selectedOrder?.id === orderId) {
       setSelectedOrder(prev => ({ ...prev, stage: newStage }));
     }
@@ -888,7 +888,7 @@ const LabHub = () => {
         quality_manager: 'Quality Manager',
         qm: 'Quality Manager',
         lab_safety_officer: 'Lab Safety Officer',
-        lab_stock_officer: 'Lab Stock Officer',
+        lab_stock_officer: 'Lab stock Manager',
         head_microbiology: 'Head of Microbiology',
         head_hematology: 'Head of Hematology',
         head_histopathology: 'Head of Histopathology/Archive',
@@ -939,7 +939,7 @@ const LabHub = () => {
     if (!selectedOrder) {
       return toast.error('Please select an active specimen order first.');
     }
-    
+
     setAnalyzerStatus('Ingesting');
     setTimeout(() => {
       setResultParams(prev => prev.map(p => {
@@ -1010,10 +1010,10 @@ const LabHub = () => {
   const filteredOrders = useMemo(() => {
     return orders.filter(o => {
       const q = searchQuery.toLowerCase();
-      const matchesSearch = !q.trim() || 
-        o.patient_name?.toLowerCase().includes(q) || 
-        o.patient_id?.toLowerCase().includes(q) || 
-        o.accession_number?.toLowerCase().includes(q) || 
+      const matchesSearch = !q.trim() ||
+        o.patient_name?.toLowerCase().includes(q) ||
+        o.patient_id?.toLowerCase().includes(q) ||
+        o.accession_number?.toLowerCase().includes(q) ||
         o.specimen_barcode?.toLowerCase().includes(q);
 
       const matchesPhase = phaseFilter === 'all' || o.phase === phaseFilter;
@@ -1066,11 +1066,17 @@ const LabHub = () => {
         </button>
         <button
           onClick={() => { setMainView(mainView === 'inhand_inventory' ? 'worklist' : 'inhand_inventory'); }}
-          className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
-            mainView === 'inhand_inventory' ? 'bg-amber-500 text-white shadow-sm' : 'text-amber-700 hover:bg-amber-50'
-          }`}
+          className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${mainView === 'inhand_inventory' ? 'bg-amber-500 text-white shadow-sm' : 'text-amber-700 hover:bg-amber-50'
+            }`}
         >
           <Package size={14} /> In-Hand Inventory
+        </button>
+        <button
+          onClick={() => navigate('/lab-stock')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-[#1B669E] bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60"
+          title="Laboratory Stock Officer Hub: In-Hand Inventory, Connected Analyzers, Cold Chain & Unit Requisitions"
+        >
+          <Package size={14} /> Lab Stock Hub
         </button>
         <button
           onClick={() => navigate('/consumables-log')}
@@ -1104,9 +1110,8 @@ const LabHub = () => {
         {isManager && (
           <button
             onClick={() => navigate('/lab-manager')}
-            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-indigo-800 bg-indigo-50/80 hover:bg-indigo-100 hover:text-indigo-950 border border-indigo-200/60 ${
-              isLeadOrManager ? '' : 'ml-auto'
-            }`}
+            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-indigo-800 bg-indigo-50/80 hover:bg-indigo-100 hover:text-indigo-950 border border-indigo-200/60 ${isLeadOrManager ? '' : 'ml-auto'
+              }`}
           >
             <BarChart2 size={14} /> Manager Dashboard
           </button>
@@ -1222,9 +1227,8 @@ const LabHub = () => {
             <button
               key={p}
               onClick={() => setPhaseFilter(p)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium capitalize cursor-pointer transition-colors ${
-                phaseFilter === p ? 'bg-slate-900 text-white font-semibold' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium capitalize cursor-pointer transition-colors ${phaseFilter === p ? 'bg-slate-900 text-white font-semibold' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                }`}
             >
               {p}
             </button>
@@ -1233,388 +1237,384 @@ const LabHub = () => {
       </div>
 
       {/* ── SPECIMEN WORKLIST GRID ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Left Table */}
-          <div className="lg:col-span-2 space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search patient, Accession No, barcode..."
-                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200/80 rounded-lg text-xs font-normal focus:outline-none focus:border-slate-400 shadow-2xs"
-              />
-            </div>
-
-            <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-2xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-200/80">
-                    <tr>
-                      <th className="py-2.5 px-3">Patient / Accession No</th>
-                      <th className="py-2.5 px-3">Specimen / Tube</th>
-                      <th className="py-2.5 px-3">Target TAT</th>
-                      <th className="py-2.5 px-3">TAT Counter</th>
-                      <th className="py-2.5 px-3">Storage Unit (Fridge/Freezer)</th>
-                      <th className="py-2.5 px-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-normal text-slate-700">
-                    {filteredOrders.length === 0 ? (
-                      <tr>
-                        <td colSpan="6" className="py-8 text-center text-slate-400">
-                          No specimen orders found.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredOrders.map(order => {
-                        const isSelected = selectedOrder?.id === order.id;
-                        return (
-                          <tr 
-                            key={order.id} 
-                            onClick={() => handleSelectOrder(order)}
-                            className={`cursor-pointer transition-colors ${
-                              isSelected ? 'bg-slate-100/70 border-l-2 border-l-slate-900' : 'hover:bg-slate-50'
-                            }`}
-                          >
-                            <td className="py-2.5 px-3">
-                              <span className="font-semibold text-slate-900 block">{order.patient_name}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">PID: {order.patient_id} • Accession No: {order.accession_number}</span>
-                            </td>
-
-                            <td className="py-2.5 px-3">
-                              <span className="font-medium text-slate-800 block">{order.specimen_type}</span>
-                              <span className="text-[10px] text-slate-500 font-mono">
-                                {order.tube_type || 'Purple EDTA'}
-                              </span>
-                            </td>
-
-                            <td className="py-2.5 px-3">
-                              <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded-md bg-slate-100 text-slate-700 border border-slate-200">
-                                {order.stage || 'Collected'}
-                              </span>
-                              {order.auto_verified === 1 && (
-                                <span className="ml-1 text-[9px] font-semibold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
-                                  AUTO
-                                </span>
-                              )}
-                            </td>
-
-                            <td className="py-2.5 px-3">
-                              {order.urgency?.includes('STAT') || order.urgency?.includes('1h') ? (
-                                <span className="font-bold text-rose-600 text-[11px] bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
-                                  In-House STAT (1h)
-                                </span>
-                              ) : order.urgency?.includes('Special') || order.urgency?.includes('1 Month') ? (
-                                <span className="font-bold text-purple-700 text-[11px] bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
-                                  Outsourced Special (1m)
-                                </span>
-                              ) : order.urgency?.includes('Outsourced') || order.urgency?.includes('7 Day') ? (
-                                <span className="font-medium text-amber-700 text-[11px] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                                  Outsourced (7d)
-                                </span>
-                              ) : (
-                                <span className="text-slate-600 text-[11px] bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                  In-House Routine (6h)
-                                </span>
-                              )}
-                            </td>
-
-                            <td className="py-2.5 px-3">
-                              <TatCounter order={order} />
-                            </td>
-
-                            <td className="py-2.5 px-3">
-                              {(() => {
-                                const assignedUnitId = storageAssignments[order.id] || getRecommendedStorageUnit(order);
-                                const unit = availableStorageUnits.find(u => u.id === assignedUnitId);
-                                const isFreezer = unit?.type === 'freezer' || String(assignedUnitId).includes('freezer');
-                                return (
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 w-fit ${
-                                      isFreezer 
-                                        ? 'bg-sky-50 text-sky-800 border-sky-200' 
-                                        : 'bg-indigo-50 text-indigo-800 border-indigo-200'
-                                    }`}>
-                                      <Thermometer size={11} className="text-slate-500 shrink-0" /> {unit?.label ? unit.label.split('(')[0].trim() : 'Fridge 1'}
-                                    </span>
-                                    <span className="text-[9px] text-slate-400 font-mono">
-                                      {storageRacks[order.id] || 'Shelf 2'}
-                                    </span>
-                                  </div>
-                                );
-                              })()}
-                            </td>
-
-                            <td className="py-2.5 px-3.5 text-right">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleSelectOrder(order); }}
-                                className="px-2.5 py-1 text-slate-700 hover:text-slate-900 hover:bg-slate-100 text-[11px] font-medium rounded transition-colors cursor-pointer border border-slate-200"
-                              >
-                                View
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left Table */}
+        <div className="lg:col-span-2 space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search patient, Accession No, barcode..."
+              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200/80 rounded-lg text-xs font-normal focus:outline-none focus:border-slate-400 shadow-2xs"
+            />
           </div>
 
-          {/* Right Action Sidebar */}
-          <div className="space-y-4">
-            {selectedOrder ? (
-              <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs space-y-4">
-                <div className="flex justify-between items-start border-b border-slate-100 pb-3">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Selected Specimen</span>
-                    <h3 className="text-sm font-bold text-slate-900">{selectedOrder.patient_name}</h3>
-                    <p className="text-xs text-slate-500 font-mono mt-0.5">Barcode: {selectedOrder.specimen_barcode}</p>
-                  </div>
-                  <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                    Accession No: {selectedOrder.accession_number}
-                  </span>
-                </div>
+          <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-200/80">
+                  <tr>
+                    <th className="py-2.5 px-3">Patient / Accession No</th>
+                    <th className="py-2.5 px-3">Specimen / Tube</th>
+                    <th className="py-2.5 px-3">Target TAT</th>
+                    <th className="py-2.5 px-3">TAT Counter</th>
+                    <th className="py-2.5 px-3">Storage Unit (Fridge/Freezer)</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-normal text-slate-700">
+                  {filteredOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-8 text-center text-slate-400">
+                        No specimen orders found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOrders.map(order => {
+                      const isSelected = selectedOrder?.id === order.id;
+                      return (
+                        <tr
+                          key={order.id}
+                          onClick={() => handleSelectOrder(order)}
+                          className={`cursor-pointer transition-colors ${isSelected ? 'bg-slate-100/70 border-l-2 border-l-slate-900' : 'hover:bg-slate-50'
+                            }`}
+                        >
+                          <td className="py-2.5 px-3">
+                            <span className="font-semibold text-slate-900 block">{order.patient_name}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">PID: {order.patient_id} • Accession No: {order.accession_number}</span>
+                          </td>
 
-                {/* Live TAT Monitor Card */}
-                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-1.5">
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="font-bold text-slate-500 uppercase tracking-wider">Live TAT Monitor</span>
-                    <span className={`px-1.5 py-0.5 rounded font-bold ${
-                      selectedOrder.urgency === 'STAT' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-800'
-                    }`}>
-                      {selectedOrder.urgency || 'Routine'} ({selectedOrder.urgency === 'STAT' ? '45m target' : '120m target'})
-                    </span>
-                  </div>
-                  <TatCounter order={selectedOrder} />
-                </div>
+                          <td className="py-2.5 px-3">
+                            <span className="font-medium text-slate-800 block">{order.specimen_type}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {order.tube_type || 'Purple EDTA'}
+                            </span>
+                          </td>
 
-                {/* ── ADVANCED LIFECYCLE STEPPER ── */}
-                {(() => {
-                  const currentIdx = LIFECYCLE_STAGES.findIndex(s => s.id === selectedOrder.stage);
-                  const effectiveIdx = currentIdx === -1 ? 0 : currentIdx;
-                  const nextStage = LIFECYCLE_STAGES[effectiveIdx + 1];
-                  const isCompleted = effectiveIdx === LIFECYCLE_STAGES.length - 1;
+                          <td className="py-2.5 px-3">
+                            <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                              {order.stage || 'Collected'}
+                            </span>
+                            {order.auto_verified === 1 && (
+                              <span className="ml-1 text-[9px] font-semibold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                                AUTO
+                              </span>
+                            )}
+                          </td>
 
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Specimen Lifecycle</span>
-                        <span className="text-[9px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                          Step {effectiveIdx + 1} / {LIFECYCLE_STAGES.length}
-                        </span>
-                      </div>
+                          <td className="py-2.5 px-3">
+                            {order.urgency?.includes('STAT') || order.urgency?.includes('1h') ? (
+                              <span className="font-bold text-rose-600 text-[11px] bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                                In-House STAT (1h)
+                              </span>
+                            ) : order.urgency?.includes('Special') || order.urgency?.includes('1 Month') ? (
+                              <span className="font-bold text-purple-700 text-[11px] bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                                Outsourced Special (1m)
+                              </span>
+                            ) : order.urgency?.includes('Outsourced') || order.urgency?.includes('7 Day') ? (
+                              <span className="font-medium text-amber-700 text-[11px] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                Outsourced (7d)
+                              </span>
+                            ) : (
+                              <span className="text-slate-600 text-[11px] bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                In-House Routine (6h)
+                              </span>
+                            )}
+                          </td>
 
-                      {/* Vertical stepper */}
-                      <div className="relative pl-5 space-y-0">
-                        {/* Vertical connector line */}
-                        <div className="absolute left-[9px] top-2 bottom-2 w-px bg-slate-200" />
+                          <td className="py-2.5 px-3">
+                            <TatCounter order={order} />
+                          </td>
 
-                        {LIFECYCLE_STAGES.map((st, idx) => {
-                          const isDone = idx < effectiveIdx;
-                          const isCurrent = idx === effectiveIdx;
-                          const isNext = idx === effectiveIdx + 1;
-                          const isLocked = idx > effectiveIdx + 1;
-
-                          return (
-                            <div key={st.id} className="relative flex gap-3 pb-2 last:pb-0">
-                              {/* Node dot */}
-                              <div
-                                className="absolute -left-5 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 z-10"
-                                style={{
-                                  backgroundColor: isDone ? st.phaseColor : isCurrent ? st.phaseColor : '#e2e8f0',
-                                  borderColor: isDone ? st.phaseColor : isCurrent ? st.phaseColor : '#cbd5e1',
-                                }}
-                              >
-                                {isDone ? (
-                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                    <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
-                                ) : isCurrent ? (
-                                  <div className="w-2 h-2 rounded-full bg-white" />
-                                ) : (
-                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                                )}
-                              </div>
-
-                              {/* Stage card */}
-                              <div
-                                className={`w-full rounded-lg border text-[11px] transition-all ${
-                                  isCurrent
-                                    ? 'shadow-sm'
-                                    : isDone
-                                    ? 'opacity-60'
-                                    : isNext
-                                    ? 'border-dashed'
-                                    : 'opacity-30'
-                                }`}
-                                style={{
-                                  borderColor: isCurrent ? st.phaseColor : isNext ? st.phaseColor + '60' : '#e2e8f0',
-                                  backgroundColor: isCurrent ? st.phaseBg : isNext ? st.phaseBg + 'aa' : '#f8fafc',
-                                }}
-                              >
-                                <div className="p-2 space-y-1">
-                                  <div className="flex items-center justify-between gap-1">
-                                    <span
-                                      className="font-bold text-[11px]"
-                                      style={{ color: isCurrent || isDone ? st.phaseColor : '#94a3b8' }}
-                                    >
-                                      {st.label}
-                                    </span>
-                                    <span
-                                      className="text-[8px] font-mono uppercase px-1.5 py-0.5 rounded"
-                                      style={{
-                                        backgroundColor: isCurrent ? st.phaseColor + '20' : '#f1f5f9',
-                                        color: isCurrent ? st.phaseColor : '#94a3b8',
-                                      }}
-                                    >
-                                      {st.phase}
-                                    </span>
-                                  </div>
-
-                                  {(isCurrent || isNext) && (
-                                    <p className="text-[10px] text-slate-500 leading-snug">{st.description}</p>
-                                  )}
-
-                                  {isCurrent && (
-                                    <div className="mt-1.5 pt-1.5 border-t border-dashed" style={{ borderColor: st.phaseColor + '40' }}>
-                                      <p className="text-[10px] font-semibold" style={{ color: st.phaseColor }}>
-                                        Action Required:
-                                      </p>
-                                      <p className="text-[10px] text-slate-600 leading-snug mt-0.5">{st.actionHint}</p>
-                                    </div>
-                                  )}
+                          <td className="py-2.5 px-3">
+                            {(() => {
+                              const assignedUnitId = storageAssignments[order.id] || getRecommendedStorageUnit(order);
+                              const unit = availableStorageUnits.find(u => u.id === assignedUnitId);
+                              const isFreezer = unit?.type === 'freezer' || String(assignedUnitId).includes('freezer');
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 w-fit ${isFreezer
+                                      ? 'bg-sky-50 text-sky-800 border-sky-200'
+                                      : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                                    }`}>
+                                    <Thermometer size={11} className="text-slate-500 shrink-0" /> {unit?.label ? unit.label.split('(')[0].trim() : 'Fridge 1'}
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 font-mono">
+                                    {storageRacks[order.id] || 'Shelf 2'}
+                                  </span>
                                 </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                              );
+                            })()}
+                          </td>
 
-                      {/* Advance button */}
-                      {!isCompleted && nextStage ? (
-                        nextStage.id === 'Verified' && !isLeadOrManager ? (
-                          <div className="w-full mt-1.5 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-[11px] flex items-center gap-2">
-                            <Shield size={14} className="text-amber-600 shrink-0" />
-                            <div>
-                              <span className="font-bold block">Sign-Off Restricted</span>
-                              <span className="text-[10px] text-amber-700">Verification requires Laboratory Team Leader or Manager authorization.</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleUpdateStage(selectedOrder.id, nextStage.id)}
-                            className="w-full mt-1 py-2.5 rounded-xl text-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:opacity-90 active:scale-[0.98]"
-                            style={{ backgroundColor: nextStage.phaseColor }}
-                          >
-                            <ArrowRight size={13} />
-                            Advance to: {nextStage.label}
-                          </button>
-                        )
-                      ) : isCompleted ? (
-                        <div className="w-full mt-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5">
-                          <CheckCircle2 size={13} className="text-emerald-600" />
-                          Lifecycle Complete
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })()}
-
-                {/* Storage Unit Assignment Panel */}
-                <div className="space-y-3 pt-3 border-t border-slate-100">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <Droplet size={14} className="text-indigo-600" /> Sample Storage Location
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-medium">TAT Storage Rule</span>
-                  </div>
-
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2.5 text-xs">
-                    <div>
-                      <label className="text-[10px] font-semibold text-slate-500 block mb-1">Target Storage Unit</label>
-                      <select
-                        value={storageAssignments[selectedOrder.id] || getRecommendedStorageUnit(selectedOrder)}
-                        onChange={e => handleAssignOrderStorage(selectedOrder.id, e.target.value)}
-                        className="w-full p-2 bg-white border border-slate-200 rounded font-semibold text-slate-900 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
-                      >
-                        {availableStorageUnits.map(unit => (
-                          <option key={unit.id} value={unit.id}>
-                            {unit.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Recommendation Callout */}
-                    <div className="text-[10px] bg-indigo-50/80 border border-indigo-100 text-indigo-900 p-2 rounded-lg space-y-0.5">
-                      <p className="font-bold">TAT Recommended Storage:</p>
-                      <p className="text-indigo-700">
-                        {getStorageRecommendationText(selectedOrder)}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-[10px]">
-                      <div>
-                        <label className="text-slate-500 font-medium block mb-1">Shelf / Rack</label>
-                        <input
-                          type="text"
-                          value={storageRacks[selectedOrder.id] || 'Shelf 2 (Rack B)'}
-                          onChange={e => {
-                            const val = e.target.value;
-                            const next = { ...storageRacks, [selectedOrder.id]: val };
-                            setStorageRacks(next);
-                            try { localStorage.setItem('lc_lab_specimen_racks', JSON.stringify(next)); } catch {}
-                          }}
-                          placeholder="e.g. Rack A-04"
-                          className="w-full p-1.5 bg-white border border-slate-200 rounded font-mono font-medium text-slate-900 text-[11px]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-slate-500 font-medium block mb-1">Box / Slot #</label>
-                        <input
-                          type="text"
-                          value={storageBoxes[selectedOrder.id] || 'Box #12'}
-                          onChange={e => {
-                            const val = e.target.value;
-                            const next = { ...storageBoxes, [selectedOrder.id]: val };
-                            setStorageBoxes(next);
-                            try { localStorage.setItem('lc_lab_specimen_boxes', JSON.stringify(next)); } catch {}
-                          }}
-                          placeholder="e.g. Slot 08"
-                          className="w-full p-1.5 bg-white border border-slate-200 rounded font-mono font-medium text-slate-900 text-[11px]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      const currentUnit = storageAssignments[selectedOrder.id] || getRecommendedStorageUnit(selectedOrder);
-                      handleAssignOrderStorage(selectedOrder.id, currentUnit);
-                      toast.success(`Sample stored in ${getUnitLabel(currentUnit)}`);
-                    }}
-                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
-                  >
-                    <Save size={14} /> Store Sample in Unit
-                  </button>
-                </div>
-
-
-              </div>
-            ) : (
-              <div className="bg-white border border-slate-200/80 rounded-xl p-6 text-center text-slate-400 space-y-1">
-                <FlaskConical className="mx-auto text-slate-300 mb-1" size={24} />
-                <p className="text-xs font-medium text-slate-600">No Specimen Selected</p>
-                <p className="text-[11px] text-slate-400">Click an order from the table to view details.</p>
-              </div>
-            )}
+                          <td className="py-2.5 px-3.5 text-right">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleSelectOrder(order); }}
+                              className="px-2.5 py-1 text-slate-700 hover:text-slate-900 hover:bg-slate-100 text-[11px] font-medium rounded transition-colors cursor-pointer border border-slate-200"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
+
+        {/* Right Action Sidebar */}
+        <div className="space-y-4">
+          {selectedOrder ? (
+            <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs space-y-4">
+              <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Selected Specimen</span>
+                  <h3 className="text-sm font-bold text-slate-900">{selectedOrder.patient_name}</h3>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">Barcode: {selectedOrder.specimen_barcode}</p>
+                </div>
+                <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                  Accession No: {selectedOrder.accession_number}
+                </span>
+              </div>
+
+              {/* Live TAT Monitor Card */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-1.5">
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="font-bold text-slate-500 uppercase tracking-wider">Live TAT Monitor</span>
+                  <span className={`px-1.5 py-0.5 rounded font-bold ${selectedOrder.urgency === 'STAT' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-800'
+                    }`}>
+                    {selectedOrder.urgency || 'Routine'} ({selectedOrder.urgency === 'STAT' ? '45m target' : '120m target'})
+                  </span>
+                </div>
+                <TatCounter order={selectedOrder} />
+              </div>
+
+              {/* ── ADVANCED LIFECYCLE STEPPER ── */}
+              {(() => {
+                const currentIdx = LIFECYCLE_STAGES.findIndex(s => s.id === selectedOrder.stage);
+                const effectiveIdx = currentIdx === -1 ? 0 : currentIdx;
+                const nextStage = LIFECYCLE_STAGES[effectiveIdx + 1];
+                const isCompleted = effectiveIdx === LIFECYCLE_STAGES.length - 1;
+
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Specimen Lifecycle</span>
+                      <span className="text-[9px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                        Step {effectiveIdx + 1} / {LIFECYCLE_STAGES.length}
+                      </span>
+                    </div>
+
+                    {/* Vertical stepper */}
+                    <div className="relative pl-5 space-y-0">
+                      {/* Vertical connector line */}
+                      <div className="absolute left-[9px] top-2 bottom-2 w-px bg-slate-200" />
+
+                      {LIFECYCLE_STAGES.map((st, idx) => {
+                        const isDone = idx < effectiveIdx;
+                        const isCurrent = idx === effectiveIdx;
+                        const isNext = idx === effectiveIdx + 1;
+                        const isLocked = idx > effectiveIdx + 1;
+
+                        return (
+                          <div key={st.id} className="relative flex gap-3 pb-2 last:pb-0">
+                            {/* Node dot */}
+                            <div
+                              className="absolute -left-5 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 z-10"
+                              style={{
+                                backgroundColor: isDone ? st.phaseColor : isCurrent ? st.phaseColor : '#e2e8f0',
+                                borderColor: isDone ? st.phaseColor : isCurrent ? st.phaseColor : '#cbd5e1',
+                              }}
+                            >
+                              {isDone ? (
+                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                  <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              ) : isCurrent ? (
+                                <div className="w-2 h-2 rounded-full bg-white" />
+                              ) : (
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                              )}
+                            </div>
+
+                            {/* Stage card */}
+                            <div
+                              className={`w-full rounded-lg border text-[11px] transition-all ${isCurrent
+                                  ? 'shadow-sm'
+                                  : isDone
+                                    ? 'opacity-60'
+                                    : isNext
+                                      ? 'border-dashed'
+                                      : 'opacity-30'
+                                }`}
+                              style={{
+                                borderColor: isCurrent ? st.phaseColor : isNext ? st.phaseColor + '60' : '#e2e8f0',
+                                backgroundColor: isCurrent ? st.phaseBg : isNext ? st.phaseBg + 'aa' : '#f8fafc',
+                              }}
+                            >
+                              <div className="p-2 space-y-1">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span
+                                    className="font-bold text-[11px]"
+                                    style={{ color: isCurrent || isDone ? st.phaseColor : '#94a3b8' }}
+                                  >
+                                    {st.label}
+                                  </span>
+                                  <span
+                                    className="text-[8px] font-mono uppercase px-1.5 py-0.5 rounded"
+                                    style={{
+                                      backgroundColor: isCurrent ? st.phaseColor + '20' : '#f1f5f9',
+                                      color: isCurrent ? st.phaseColor : '#94a3b8',
+                                    }}
+                                  >
+                                    {st.phase}
+                                  </span>
+                                </div>
+
+                                {(isCurrent || isNext) && (
+                                  <p className="text-[10px] text-slate-500 leading-snug">{st.description}</p>
+                                )}
+
+                                {isCurrent && (
+                                  <div className="mt-1.5 pt-1.5 border-t border-dashed" style={{ borderColor: st.phaseColor + '40' }}>
+                                    <p className="text-[10px] font-semibold" style={{ color: st.phaseColor }}>
+                                      Action Required:
+                                    </p>
+                                    <p className="text-[10px] text-slate-600 leading-snug mt-0.5">{st.actionHint}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Advance button */}
+                    {!isCompleted && nextStage ? (
+                      nextStage.id === 'Verified' && !isLeadOrManager ? (
+                        <div className="w-full mt-1.5 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-[11px] flex items-center gap-2">
+                          <Shield size={14} className="text-amber-600 shrink-0" />
+                          <div>
+                            <span className="font-bold block">Sign-Off Restricted</span>
+                            <span className="text-[10px] text-amber-700">Verification requires Laboratory Team Leader or Manager authorization.</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleUpdateStage(selectedOrder.id, nextStage.id)}
+                          className="w-full mt-1 py-2.5 rounded-xl text-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:opacity-90 active:scale-[0.98]"
+                          style={{ backgroundColor: nextStage.phaseColor }}
+                        >
+                          <ArrowRight size={13} />
+                          Advance to: {nextStage.label}
+                        </button>
+                      )
+                    ) : isCompleted ? (
+                      <div className="w-full mt-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5">
+                        <CheckCircle2 size={13} className="text-emerald-600" />
+                        Lifecycle Complete
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })()}
+
+              {/* Storage Unit Assignment Panel */}
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <Droplet size={14} className="text-indigo-600" /> Sample Storage Location
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">TAT Storage Rule</span>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2.5 text-xs">
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-500 block mb-1">Target Storage Unit</label>
+                    <select
+                      value={storageAssignments[selectedOrder.id] || getRecommendedStorageUnit(selectedOrder)}
+                      onChange={e => handleAssignOrderStorage(selectedOrder.id, e.target.value)}
+                      className="w-full p-2 bg-white border border-slate-200 rounded font-semibold text-slate-900 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    >
+                      {availableStorageUnits.map(unit => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Recommendation Callout */}
+                  <div className="text-[10px] bg-indigo-50/80 border border-indigo-100 text-indigo-900 p-2 rounded-lg space-y-0.5">
+                    <p className="font-bold">TAT Recommended Storage:</p>
+                    <p className="text-indigo-700">
+                      {getStorageRecommendationText(selectedOrder)}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[10px]">
+                    <div>
+                      <label className="text-slate-500 font-medium block mb-1">Shelf / Rack</label>
+                      <input
+                        type="text"
+                        value={storageRacks[selectedOrder.id] || 'Shelf 2 (Rack B)'}
+                        onChange={e => {
+                          const val = e.target.value;
+                          const next = { ...storageRacks, [selectedOrder.id]: val };
+                          setStorageRacks(next);
+                          try { localStorage.setItem('lc_lab_specimen_racks', JSON.stringify(next)); } catch { }
+                        }}
+                        placeholder="e.g. Rack A-04"
+                        className="w-full p-1.5 bg-white border border-slate-200 rounded font-mono font-medium text-slate-900 text-[11px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-500 font-medium block mb-1">Box / Slot #</label>
+                      <input
+                        type="text"
+                        value={storageBoxes[selectedOrder.id] || 'Box #12'}
+                        onChange={e => {
+                          const val = e.target.value;
+                          const next = { ...storageBoxes, [selectedOrder.id]: val };
+                          setStorageBoxes(next);
+                          try { localStorage.setItem('lc_lab_specimen_boxes', JSON.stringify(next)); } catch { }
+                        }}
+                        placeholder="e.g. Slot 08"
+                        className="w-full p-1.5 bg-white border border-slate-200 rounded font-mono font-medium text-slate-900 text-[11px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    const currentUnit = storageAssignments[selectedOrder.id] || getRecommendedStorageUnit(selectedOrder);
+                    handleAssignOrderStorage(selectedOrder.id, currentUnit);
+                    toast.success(`Sample stored in ${getUnitLabel(currentUnit)}`);
+                  }}
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                >
+                  <Save size={14} /> Store Sample in Unit
+                </button>
+              </div>
+
+
+            </div>
+          ) : (
+            <div className="bg-white border border-slate-200/80 rounded-xl p-6 text-center text-slate-400 space-y-1">
+              <FlaskConical className="mx-auto text-slate-300 mb-1" size={24} />
+              <p className="text-xs font-medium text-slate-600">No Specimen Selected</p>
+              <p className="text-[11px] text-slate-400">Click an order from the table to view details.</p>
+            </div>
+          )}
+        </div>
+      </div>
 
 
       {/* ── REGISTRATION MODAL ── */}
@@ -1871,9 +1871,9 @@ const LabHub = () => {
       {/* ── IN-HAND INVENTORY PANEL ── */}
       {mainView === 'inhand_inventory' && (() => {
         const allGroups = [...new Set(inhandItems.map(i => i.equipment_group).filter(Boolean))].sort();
-        const allDepts  = [...new Set(inhandItems.map(i => i.department).filter(Boolean))].sort();
+        const allDepts = [...new Set(inhandItems.map(i => i.department).filter(Boolean))].sort();
         const roomTempCount = inhandItems.filter(i => i.storage_temp === 'room_temp').length;
-        const fridgeCount   = inhandItems.filter(i => i.storage_temp === 'refrigerator').length;
+        const fridgeCount = inhandItems.filter(i => i.storage_temp === 'refrigerator').length;
         const lowStockCount = inhandItems.filter(i => Number(i.quantity_in_hand) <= Number(i.min_threshold)).length;
 
         // Group items by equipment_group for display
@@ -1944,11 +1944,10 @@ const LabHub = () => {
             <div className="flex flex-wrap gap-2 items-center bg-white border border-slate-200 rounded-xl px-4 py-3">
               <Filter size={13} className="text-slate-400" />
               <span className="text-[11px] font-semibold text-slate-500 mr-1">Filter:</span>
-              {['all','room_temp','refrigerator'].map(f => (
+              {['all', 'room_temp', 'refrigerator'].map(f => (
                 <button key={f} onClick={() => setInhandStorageFilter(f)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer ${
-                    inhandStorageFilter === f ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}>
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer ${inhandStorageFilter === f ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}>
                   {f === 'all' ? 'All Storage' : f === 'room_temp' ? '🌡 Room Temp' : '❄️ Refrigerator'}
                 </button>
               ))}
@@ -2079,28 +2078,28 @@ const LabHub = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Item Name *</label>
-                  <input required value={inhandForm.item_name} onChange={e => setInhandForm(f => ({...f, item_name: e.target.value}))}
+                  <input required value={inhandForm.item_name} onChange={e => setInhandForm(f => ({ ...f, item_name: e.target.value }))}
                     placeholder="e.g. Assay tip Elecsys 2010"
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Equipment Group</label>
-                  <input value={inhandForm.equipment_group} onChange={e => setInhandForm(f => ({...f, equipment_group: e.target.value}))}
+                  <input value={inhandForm.equipment_group} onChange={e => setInhandForm(f => ({ ...f, equipment_group: e.target.value }))}
                     placeholder="e.g. Cobas C311 Reagents"
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Department</label>
-                  <select value={inhandForm.department} onChange={e => setInhandForm(f => ({...f, department: e.target.value}))}
+                  <select value={inhandForm.department} onChange={e => setInhandForm(f => ({ ...f, department: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none">
-                    {['Biochemistry','Hematology','Microbiology','Molecular','General'].map(d => <option key={d}>{d}</option>)}
+                    {['Biochemistry', 'Hematology', 'Microbiology', 'Molecular', 'General'].map(d => <option key={d}>{d}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Storage Temperature</label>
                   <select value={inhandForm.storage_temp} onChange={e => {
                     const val = e.target.value;
-                    setInhandForm(f => ({...f, storage_temp: val, storage_unit_id: val === 'room_temp' ? 'room_temp_1' : val === 'refrigerator' ? 'fridge_1' : 'freezer_1'}));
+                    setInhandForm(f => ({ ...f, storage_temp: val, storage_unit_id: val === 'room_temp' ? 'room_temp_1' : val === 'refrigerator' ? 'fridge_1' : 'freezer_1' }));
                   }} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none">
                     <option value="room_temp">🌡 Room Temp (20°C–25°C)</option>
                     <option value="refrigerator">❄️ Refrigerator (2°C–8°C)</option>
@@ -2109,7 +2108,7 @@ const LabHub = () => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Storage Unit</label>
-                  <select value={inhandForm.storage_unit_id} onChange={e => setInhandForm(f => ({...f, storage_unit_id: e.target.value}))}
+                  <select value={inhandForm.storage_unit_id} onChange={e => setInhandForm(f => ({ ...f, storage_unit_id: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none">
                     {availableStorageUnits
                       .filter(u => inhandForm.storage_temp === 'room_temp' ? u.type === 'room_temp' : inhandForm.storage_temp === 'refrigerator' ? u.type === 'fridge' : u.type === 'freezer')
@@ -2118,29 +2117,29 @@ const LabHub = () => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Quantity In Hand *</label>
-                  <input required type="number" min="0" value={inhandForm.quantity_in_hand} onChange={e => setInhandForm(f => ({...f, quantity_in_hand: e.target.value}))}
+                  <input required type="number" min="0" value={inhandForm.quantity_in_hand} onChange={e => setInhandForm(f => ({ ...f, quantity_in_hand: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Unit of Measure</label>
-                  <select value={inhandForm.unit_of_measure} onChange={e => setInhandForm(f => ({...f, unit_of_measure: e.target.value}))}
+                  <select value={inhandForm.unit_of_measure} onChange={e => setInhandForm(f => ({ ...f, unit_of_measure: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none">
-                    {['pack','pcs','box','kit','bot','kg','ml','L'].map(u => <option key={u}>{u}</option>)}
+                    {['pack', 'pcs', 'box', 'kit', 'bot', 'kg', 'ml', 'L'].map(u => <option key={u}>{u}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Min Threshold</label>
-                  <input type="number" min="0" value={inhandForm.min_threshold} onChange={e => setInhandForm(f => ({...f, min_threshold: e.target.value}))}
+                  <input type="number" min="0" value={inhandForm.min_threshold} onChange={e => setInhandForm(f => ({ ...f, min_threshold: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Expiry Date</label>
-                  <input type="date" value={inhandForm.expiry_date} onChange={e => setInhandForm(f => ({...f, expiry_date: e.target.value}))}
+                  <input type="date" value={inhandForm.expiry_date} onChange={e => setInhandForm(f => ({ ...f, expiry_date: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Lot / Batch Number</label>
-                  <input value={inhandForm.lot_number} onChange={e => setInhandForm(f => ({...f, lot_number: e.target.value}))}
+                  <input value={inhandForm.lot_number} onChange={e => setInhandForm(f => ({ ...f, lot_number: e.target.value }))}
                     placeholder="e.g. LOT-2026-ABC"
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
                 </div>

@@ -78,7 +78,7 @@ function encryptParams(sql, params) {
         });
       }
     }
-    
+
     // Case 2 & 3: UPDATE / SELECT exact matches
     const regex = /(\w+)\s*=\s*(?:\$(\d+)|(\?))/gi;
     let match;
@@ -140,7 +140,7 @@ const interceptAndFilterQuery = (sql, params) => {
 
   const likeRegex = /(?:(\w+)\.)?(\w+)\s+(?:I)?LIKE\s+(?:\$(\d+)|\?)/gi;
   let matches = [...sql.matchAll(likeRegex)];
-  
+
   if (matches.length > 0) {
     for (const m of matches) {
       const colName = m[2].toLowerCase();
@@ -278,7 +278,7 @@ const client = {
 
     const { newSql, inMemoryFilters, placeholdersUsed, postLimit, postOffset } = interceptAndFilterQuery(sql, args);
     const encryptedArgs = encryptParams(newSql, args);
-    
+
     let finalArgsBeforeTransform = encryptedArgs;
     if (placeholdersUsed.length > 0) {
       const usesDollar = sql.includes('$');
@@ -418,9 +418,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       } else {
         console.log('🔌 DATABASE: Successfully connected to local SQLite database (via Prisma).');
       }
-      
+
       // is_mock purge migration completed previously.
-      
+
       // ─── IT Tickets Column Migration ──────────────────────────────────────────────────
       try {
         await client.execute("ALTER TABLE it_tickets ADD COLUMN user_id INTEGER REFERENCES users(id)").catch((err) => {
@@ -454,7 +454,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       } catch (err) {
         console.error('❌ Fleet trip_type column migration error:', err.message);
       }
-      
+
       console.log('⚙️ Running custom department cleanup migration...');
       // Rename CENTRAL STORE to GENERAL STORE if it exists in the database
       await client.execute("UPDATE departments SET name = 'GENERAL STORE' WHERE name = 'CENTRAL STORE'");
@@ -466,11 +466,11 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       // to attach requisitions/department_stock rows to. Without it here, it
       // would get deleted by this same cleanup pass as a "non-target" dept.
       const targetDepts = ['DENTAL', 'PHYSIO', 'NURSING', 'OPERATIONS', 'LABORATORY', 'IMAGING', 'GENERAL STORE', 'DENTAL LAB', 'DENTAL CLINIC'];
-      
+
       // Get all current departments
       const { rows: depts } = await client.execute("SELECT id, name FROM departments");
       console.log('Current departments in DB:', depts.map(d => `${d.name} (${d.id})`));
-      
+
       // 1. Standardize and merge duplicates for target departments
       for (const target of targetDepts) {
         const matches = depts.filter(d => d.name.toUpperCase().trim() === target);
@@ -485,21 +485,21 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           for (let i = 1; i < matches.length; i++) {
             const dup = matches[i];
             console.log(`Merging duplicate department: "${dup.name}" (id: ${dup.id}) into "${keeper.name}" (id: ${keeper.id})`);
-            
+
             await client.execute({
               sql: "UPDATE department_stock SET department_id = ? WHERE department_id = ?",
               args: [keeper.id, dup.id]
-            }).catch(() => {});
-            
+            }).catch(() => { });
+
             // daily_report_metrics no longer uses department_id
-            
+
             await client.execute({
               sql: "UPDATE requisitions SET department_id = ? WHERE department_id = ?",
               args: [keeper.id, dup.id]
-            }).catch(() => {});
-            
+            }).catch(() => { });
+
             // Note: providers no longer use department_id (replaced by specialization_id)
-            
+
             await client.execute({
               sql: "DELETE FROM departments WHERE id = ?",
               args: [dup.id]
@@ -520,38 +520,38 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           console.log(`Inserted missing target department: "${target}"`);
         }
       }
-      
+
       // Re-fetch departments after standardizing targets
       const { rows: updatedDepts } = await client.execute("SELECT id, name FROM departments");
-      
+
       // 2. Delete non-target departments and clean up their associations
       for (const d of updatedDepts) {
         const nameUpper = d.name.toUpperCase().trim();
         if (!targetDepts.includes(nameUpper)) {
           console.log(`Removing non-target department: "${d.name}" (id: ${d.id})`);
-          
+
           // Manually handle dependent rows to avoid orphan entries if FK constraints aren't active
           await client.execute({
             sql: "DELETE FROM department_stock WHERE department_id = ?",
             args: [d.id]
-          }).catch(() => {});
-          
+          }).catch(() => { });
+
           // daily_report_metrics no longer uses department_id
-          
+
           await client.execute({
             sql: "DELETE FROM requisitions WHERE department_id = ?",
             args: [d.id]
-          }).catch(() => {});
-          
+          }).catch(() => { });
+
           // Note: providers no longer use department_id — no action needed here
-          
+
           await client.execute({
             sql: "DELETE FROM departments WHERE id = ?",
             args: [d.id]
           });
         }
       }
-      
+
       console.log('✅ Custom department cleanup migration complete.');
 
       console.log('⚙️ Running dental_clinic_cases table migration...');
@@ -594,7 +594,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       `).then(async () => {
         console.log('  ✅ Table doctor_schedules created/verified.');
         // Purge historical non-roster files accidentally saved to doctor_schedules
-        await client.execute(`DELETE FROM doctor_schedules WHERE file_name LIKE '%Handover%' OR file_name LIKE '%Social Media%' OR parsed_json = '[]' OR parsed_json IS NULL`).catch(() => {});
+        await client.execute(`DELETE FROM doctor_schedules WHERE file_name LIKE '%Handover%' OR file_name LIKE '%Social Media%' OR parsed_json = '[]' OR parsed_json IS NULL`).catch(() => { });
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create doctor_schedules:', err.message);
       });
@@ -1031,7 +1031,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
           FOREIGN KEY (created_by) REFERENCES users(id)
         )
-      `).catch(() => {});
+      `).catch(() => { });
 
       await client.execute(`
         CREATE TABLE IF NOT EXISTS imaging_studies (
@@ -1062,9 +1062,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         )
       `).then(async () => {
         console.log('  ✅ Table imaging_studies created/verified.');
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_studies_status ON imaging_studies(status)').catch(() => {});
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_studies_modality ON imaging_studies(modality)').catch(() => {});
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_studies_patient ON imaging_studies(patient_id)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_studies_status ON imaging_studies(status)').catch(() => { });
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_studies_modality ON imaging_studies(modality)').catch(() => { });
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_studies_patient ON imaging_studies(patient_id)').catch(() => { });
 
         for (const col of [
           'referring_provider TEXT',
@@ -1077,7 +1077,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           'patient_sex TEXT',
           'acquisition_params_json TEXT'
         ]) {
-          try { await client.execute(`ALTER TABLE imaging_studies ADD COLUMN ${col}`); } catch (e) {}
+          try { await client.execute(`ALTER TABLE imaging_studies ADD COLUMN ${col}`); } catch (e) { }
         }
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create imaging_studies:', err.message);
@@ -1095,7 +1095,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
           FOREIGN KEY (study_id) REFERENCES imaging_studies(id)
         )
-      `).catch(() => {});
+      `).catch(() => { });
 
       await client.execute(`
         CREATE TABLE IF NOT EXISTS imaging_instances (
@@ -1107,7 +1107,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
           FOREIGN KEY (series_id) REFERENCES imaging_series(id)
         )
-      `).catch(() => {});
+      `).catch(() => { });
 
       await client.execute(`
         CREATE TABLE IF NOT EXISTS imaging_reports (
@@ -1133,8 +1133,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           FOREIGN KEY (verified_by) REFERENCES users(id)
         )
       `).then(async () => {
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_reports_study ON imaging_reports(study_id)').catch(() => {});
-      }).catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_reports_study ON imaging_reports(study_id)').catch(() => { });
+      }).catch(() => { });
 
       console.log('⚙️ Running lab_orders, lab_results, and lab_qc_logs table migrations...');
       await client.execute(`
@@ -1175,7 +1175,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       `).then(async () => {
         console.log('  ✅ Table lab_orders created/verified.');
         const safeAddCol = async (colDef) => {
-          try { await client.execute(`ALTER TABLE lab_orders ADD COLUMN ${colDef}`); } catch (e) {}
+          try { await client.execute(`ALTER TABLE lab_orders ADD COLUMN ${colDef}`); } catch (e) { }
         };
         await safeAddCol("urgency TEXT DEFAULT 'Routine'");
         await safeAddCol("phase TEXT DEFAULT 'pre-analytical'");
@@ -1195,10 +1195,10 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         await safeAddCol("notified_at DATETIME");
         await safeAddCol("test_name TEXT");
 
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_status ON lab_orders(status)').catch(() => {});
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_phase ON lab_orders(phase)').catch(() => {});
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_stage ON lab_orders(stage)').catch(() => {});
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_patient ON lab_orders(patient_id)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_status ON lab_orders(status)').catch(() => { });
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_phase ON lab_orders(phase)').catch(() => { });
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_stage ON lab_orders(stage)').catch(() => { });
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_orders_patient ON lab_orders(patient_id)').catch(() => { });
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_orders:', err.message);
       });
@@ -1221,7 +1221,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         )
       `).then(async () => {
         console.log('  ✅ Table lab_results created/verified.');
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_results_order ON lab_results(order_id)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_results_order ON lab_results(order_id)').catch(() => { });
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_results:', err.message);
       });
@@ -1245,7 +1245,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         )
       `).then(async () => {
         console.log('  ✅ Table lab_qc_logs created/verified.');
-        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_qc_logs_analyzer ON lab_qc_logs(analyzer_name)').catch(() => {});
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_lab_qc_logs_analyzer ON lab_qc_logs(analyzer_name)').catch(() => { });
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_qc_logs:', err.message);
       });
@@ -1287,7 +1287,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           "updated_at TEXT DEFAULT (datetime('now'))"
         ];
         for (const colDef of ncrAlterCols) {
-          try { await client.execute(`ALTER TABLE lab_ncr ADD COLUMN ${colDef}`); } catch (e) {}
+          try { await client.execute(`ALTER TABLE lab_ncr ADD COLUMN ${colDef}`); } catch (e) { }
         }
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_ncr:', err.message);
@@ -1306,24 +1306,22 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       `).then(async () => {
         console.log('  ✅ Table lab_storage_units created/verified.');
         const initialUnits = [
-          { id: 'room_temp_1', label: 'Room Temp Unit 1 - Biochemistry Shelf (20°C to 25°C)', type: 'room_temp', temp_range: '20°C to 25°C' },
-          { id: 'room_temp_2', label: 'Room Temp Unit 2 - Hematology & Micro Cabinet (20°C to 25°C)', type: 'room_temp', temp_range: '20°C to 25°C' },
-          { id: 'room_temp_3', label: 'Room Temp Unit 3 - General Reagents Rack (20°C to 25°C)', type: 'room_temp', temp_range: '20°C to 25°C' },
-          { id: 'fridge_1',  label: 'Fridge 1 (STAT / Rapid Storage)',  type: 'fridge',  temp_range: '2°C to 8°C' },
-          { id: 'fridge_2',  label: 'Fridge 2 (Routine Samples - 6h)',  type: 'fridge',  temp_range: '2°C to 8°C' },
-          { id: 'fridge_3',  label: 'Fridge 3 (Reagents & Media)',      type: 'fridge',  temp_range: '2°C to 8°C' },
-          { id: 'fridge_4',  label: 'Fridge 4 (Chemistry Stock)',       type: 'fridge',  temp_range: '2°C to 8°C' },
-          { id: 'fridge_5',  label: 'Fridge 5 (Hematology Stock)',      type: 'fridge',  temp_range: '2°C to 8°C' },
-          { id: 'fridge_6',  label: 'Fridge 6 (Microbiology)',          type: 'fridge',  temp_range: '2°C to 8°C' },
-          { id: 'fridge_7',  label: 'Fridge 7 (Molecular Storage)',     type: 'fridge',  temp_range: '2°C to 8°C' },
-          { id: 'fridge_8',  label: 'Fridge 8 (General Stock)',         type: 'fridge',  temp_range: '2°C to 8°C' },
-          { id: 'freezer_1', label: 'Freezer 1 (-20°C / -80°C Sample Bank)', type: 'freezer', temp_range: '-20°C to -80°C' }
+          { id: 'fridge_biochem', label: 'Refrigerator 1 - Biochemistry & ECLIA Reagents', type: 'fridge', temp_range: '2°C to 8°C' },
+          { id: 'fridge_hema', label: 'Refrigerator 2 - Hematology & Blood Bank Controls', type: 'fridge', temp_range: '2°C to 8°C' },
+          { id: 'fridge_micro', label: 'Refrigerator 3 - Microbiology & VITEK 2 Cards', type: 'fridge', temp_range: '2°C to 8°C' },
+          { id: 'fridge_serology', label: 'Refrigerator 4 - Serology & Rapid Diagnostic Kits', type: 'fridge', temp_range: '2°C to 8°C' },
+          { id: 'fridge_samples', label: 'Refrigerator 5 - Clinical Specimen Pre/Post-Hold', type: 'fridge', temp_range: '2°C to 8°C' },
+          { id: 'freezer_controls', label: 'Deep Freezer 1 - Lyophilized QC & Calibrators', type: 'freezer', temp_range: '-20°C to -80°C' },
+          { id: 'room_temp_biochem', label: 'Room Temp Shelf 1 - Biochemistry Wash & Diluents', type: 'room_temp', temp_range: '20°C to 25°C' },
+          { id: 'room_temp_hema', label: 'Room Temp Cabinet 2 - Hematology Dyes & Lysing', type: 'room_temp', temp_range: '20°C to 25°C' },
+          { id: 'room_temp_micro', label: 'Room Temp Bench 3 - Microbiology Saline & Consumables', type: 'room_temp', temp_range: '20°C to 25°C' },
+          { id: 'room_temp_general', label: 'Room Temp Rack 4 - General Diagnostic Consumables', type: 'room_temp', temp_range: '20°C to 25°C' }
         ];
         for (const u of initialUnits) {
           await client.execute({
             sql: `INSERT INTO lab_storage_units (id, label, type, temp_range) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET label = EXCLUDED.label, temp_range = EXCLUDED.temp_range`,
             args: [u.id, u.label, u.type, u.temp_range]
-          }).catch(() => {});
+          }).catch(() => { });
         }
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_storage_units:', err.message);
@@ -1373,81 +1371,81 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         if (Number(count) === 0) {
           console.log('  🌱 Seeding lab_inhand_inventory from Room Temp and Refrigerator Reagent sheets...');
           const roomTempItems = [
-            { name: 'Assay Buf Elecsys Pro-Cell', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 15, uom: 'pcs' },
-            { name: 'Clean-Sol Elecsys Clean-Cell', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 12, uom: 'pcs' },
-            { name: 'Assay tip Elecsys 2010 *IM', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 25, uom: 'box' },
-            { name: 'Assay cup Elecsys 2010 *IM', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 30, uom: 'box' },
-            { name: 'Sample cup', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 50, uom: 'pack' },
-            { name: 'Cell wash solution II Acid wash Solution 2x1.8 L', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'bot' },
-            { name: 'C311 Sample Cleaner 2, 68 ML', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'bot' },
-            { name: 'Cartridge CL', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'pcs' },
-            { name: 'Cartridge K', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'pcs' },
-            { name: 'Cartridge NA', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'pcs' },
-            { name: 'Cobas Integra ALB Gen 2, 300 Tests (Blood)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'kit' },
-            { name: 'Cobas Integra TP Gen.2, 300 tests', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'kit' },
-            { name: 'CREAJ Gen.2, 700Test, cobas c, Integra', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 5, uom: 'kit' },
+            { name: 'Assay Buf Elecsys Pro-Cell', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 21, uom: 'pcs' },
+            { name: 'Clean-Sol Elecsys Clean-Cell', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 22, uom: 'pcs' },
+            { name: 'Assay tip Elecsys 2010 *IM', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 11, uom: 'box' },
+            { name: 'Assay cup Elecsys 2010 *IM', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'box' },
+            { name: 'Sample cup', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'pack' },
+            { name: 'Cell wash solution II Acid wash Solution 2x1.8 L', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 2, uom: 'bot' },
+            { name: 'C311 Sample Cleaner 2, 68 ML', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 1, uom: 'bot' },
+            { name: 'Cartridge CL', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'pcs' },
+            { name: 'Cartridge K', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'pcs' },
+            { name: 'Cartridge NA', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'pcs' },
+            { name: 'Cobas Integra ALB Gen 2, 300 Tests (Blood)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'kit' },
+            { name: 'Cobas Integra TP Gen.2, 300 tests', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 7, uom: 'kit' },
+            { name: 'CREAJ Gen.2, 700Test, cobas c, Integra', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 9, uom: 'kit' },
             { name: 'Ecotergent (HITERGENT) C311, 60ml (ECO-D)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'bot' },
-            { name: 'Halogen lamp', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 3, uom: 'pcs' },
-            { name: 'ISE Diluent int.stand Gen.2, cobas c, Hitachi, 5x300ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'box' },
-            { name: 'ISE Internal Stand. Gen.2, cobas c, Hitachi, 5x600ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'box' },
-            { name: 'ISE Reference Electrolyte 5x300ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'box' },
-            { name: 'ISE Standard high 10x3 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'box' },
-            { name: 'ISE Standard low 10x3 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'box' },
-            { name: 'MG Gen II, 250 tests, Cobas 6000', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 3, uom: 'kit' },
-            { name: 'Multiclean, cobas c (Sample cleaner 1), 12x59 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 5, uom: 'box' },
-            { name: 'NaOH-D, cobas c, 66 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'bot' },
+            { name: 'Halogen lamp', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'pcs' },
+            { name: 'ISE Diluent int.stand Gen.2, cobas c, Hitachi, 5x300ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'box' },
+            { name: 'ISE Internal Stand. Gen.2, cobas c, Hitachi, 5x600ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 9, uom: 'box' },
+            { name: 'ISE Reference Electrolyte 5x300ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'box' },
+            { name: 'ISE Standard high 10x3 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'box' },
+            { name: 'ISE Standard low 10x3 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 5, uom: 'box' },
+            { name: 'MG Gen II, 250 tests, Cobas 6000', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'kit' },
+            { name: 'Multiclean, cobas c (Sample cleaner 1), 12x59 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 1, uom: 'box' },
+            { name: 'NaOH-D, cobas c, 66 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 19, uom: 'bot' },
             { name: 'Cell wash NaOH-D - Basic Wash 2x1.8 L', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'bot' },
-            { name: 'Reaction cell sets (Pack of 3x6 pcs)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 15, uom: 'pack' },
-            { name: 'Reference Electrode', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 2, uom: 'pcs' },
-            { name: 'SMS, cobas c, 50 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'bot' },
-            { name: 'BROXO 6-15 VACUUMSALT (1KG)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'kg' },
-            { name: 'DAYLIFF 10 " BLUE BODY', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 5, uom: 'pcs' },
-            { name: 'PRETREATMENT MODULE AMB', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'pcs' },
+            { name: 'Reaction cell sets (Pack of 3x6 pcs)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 1, uom: 'pack' },
+            { name: 'Reference Electrode', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'pcs' },
+            { name: 'SMS, cobas c, 50 ml', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 9, uom: 'bot' },
+            { name: 'BROXO 6-15 VACUUMSALT (1KG)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 35, uom: 'kg' },
+            { name: 'DAYLIFF 10 " BLUE BODY', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'pcs' },
+            { name: 'PRETREATMENT MODULE AMB', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 1, uom: 'pcs' },
             { name: 'RO MEMBRAN (OLD 2083)', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 2, uom: 'pcs' },
-            { name: 'CONDITIONING MODULE', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 3, uom: 'pcs' },
-            { name: 'UV Replacement Lamp for 60 l Tank', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 2, uom: 'pcs' },
-            { name: 'DAYLIFF 20 "1 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'pcs' },
-            { name: 'DAYLIFF 20 "5 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'pcs' },
-            { name: 'DAYLIFF 20 "10 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'pcs' },
-            { name: 'DAYLIFF 20 "20 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'pcs' },
-            { name: 'AMH Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'kit' },
-            { name: 'D-DIMER Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 15, uom: 'kit' },
-            { name: 'FERRITIN Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 12, uom: 'kit' },
-            { name: 'TROPONIN I Rapid Test', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 20, uom: 'kit' },
-            { name: 'B HCG Rapid Cassette', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 30, uom: 'kit' },
-            { name: 'CRP Rapid Quant', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 15, uom: 'kit' },
-            { name: 'AFP Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'kit' },
-            { name: 'HBA1C Rapid Cartridge', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 18, uom: 'kit' },
-            { name: 'NT-PROBNP Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'kit' },
-            { name: 'T PSA Quantitative Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 12, uom: 'kit' },
-            { name: 'VITAMIN D Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 14, uom: 'kit' },
-            { name: 'FREE PSA Quantitative Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'kit' },
-            { name: 'TSH Quantitative Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 15, uom: 'kit' },
-            { name: 'Prolactin Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'kit' },
-            { name: 'TOXO IgG/IgM Rapid Test', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 25, uom: 'kit' },
-            { name: 'Progesteron Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'kit' },
-            { name: 'Probe Clean (Mispa i3)', group: 'Mispa i3 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'bot' },
-            { name: 'Washing Solution (Mispa i3)', group: 'Mispa i3 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 10, uom: 'bot' },
-            { name: 'Deionized water (Mispa i3)', group: 'Mispa i3 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 20, uom: 'bot' },
-            { name: 'CD8 Reagent (Mindray BS-430)', group: 'Mindray BS-430 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 5, uom: 'bot' },
-            { name: 'DS-DILUENT (BC-780)', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 8, uom: 'box' },
-            { name: 'M-6 LD LYSE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 10, uom: 'bot' },
-            { name: 'M-6 LH LYSE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 10, uom: 'bot' },
-            { name: 'M-6 DR DILUENT', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 6, uom: 'box' },
+            { name: 'CONDITIONING MODULE', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 1, uom: 'pcs' },
+            { name: 'UV Replacement Lamp for 60 l Tank', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 1, uom: 'pcs' },
+            { name: 'DAYLIFF 20 "1 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 4, uom: 'pcs' },
+            { name: 'DAYLIFF 20 "5 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 3, uom: 'pcs' },
+            { name: 'DAYLIFF 20 "10 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 1, uom: 'pcs' },
+            { name: 'DAYLIFF 20 "20 MIC Wound sediment cartidge', group: 'Cobas C311 and e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 5, uom: 'pcs' },
+            { name: 'AMH Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 1, uom: 'kit' },
+            { name: 'D-DIMER Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'kit' },
+            { name: 'FERRITIN Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 6, uom: 'kit' },
+            { name: 'TROPONIN I Rapid Test', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'kit' },
+            { name: 'B HCG Rapid Cassette', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'kit' },
+            { name: 'CRP Rapid Quant', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'kit' },
+            { name: 'AFP Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'kit' },
+            { name: 'HBA1C Rapid Cartridge', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'kit' },
+            { name: 'NT-PROBNP Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 2, uom: 'kit' },
+            { name: 'T PSA Quantitative Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 3, uom: 'kit' },
+            { name: 'VITAMIN D Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'kit' },
+            { name: 'FREE PSA Quantitative Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'kit' },
+            { name: 'TSH Quantitative Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 2, uom: 'kit' },
+            { name: 'Prolactin Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'kit' },
+            { name: 'TOXO IgG/IgM Rapid Test', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'kit' },
+            { name: 'Progesteron Rapid Kit', group: 'VITEK 2 Compact Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 1, uom: 'kit' },
+            { name: 'Probe Clean (Mispa i3)', group: 'Mispa i3 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'bot' },
+            { name: 'Washing Solution (Mispa i3)', group: 'Mispa i3 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 2, uom: 'bot' },
+            { name: 'Deionized water (Mispa i3)', group: 'Mispa i3 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 0, uom: 'bot' },
+            { name: 'CD8 Reagent (Mindray BS-430)', group: 'Mindray BS-430 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 8, uom: 'bot' },
+            { name: 'DS-DILUENT (BC-780)', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 0, uom: 'box' },
+            { name: 'M-6 LD LYSE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 0, uom: 'bot' },
+            { name: 'M-6 LH LYSE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 2, uom: 'bot' },
+            { name: 'M-6 DR DILUENT', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 0, uom: 'box' },
             { name: 'M-6 FD DYE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 5, uom: 'bot' },
-            { name: 'M-6 FR DYE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 5, uom: 'bot' },
-            { name: 'ESR SOLUTION', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 12, uom: 'bot' },
-            { name: 'PROBE CLEANSER', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 15, uom: 'bot' },
-            { name: 'SALINE SOLUTION (Microbiology)', group: 'VITEK 2 Compact Reagents', dept: 'Microbiology', unit: 'room_temp_2', qty: 25, uom: 'bot' },
-            { name: 'UNSENSITIZED TUBES', group: 'VITEK 2 Compact Reagents', dept: 'Microbiology', unit: 'room_temp_2', qty: 50, uom: 'pack' }
+            { name: 'M-6 FR DYE', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 1, uom: 'bot' },
+            { name: 'ESR SOLUTION', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 0, uom: 'bot' },
+            { name: 'PROBE CLEANSER', group: 'Mindray Bc-780 Reagents', dept: 'Hematology', unit: 'room_temp_2', qty: 0, uom: 'bot' },
+            { name: 'SALINE SOLUTION (Microbiology)', group: 'VITEK 2 Compact Reagents', dept: 'Microbiology', unit: 'room_temp_2', qty: 12, uom: 'bot' },
+            { name: 'UNSENSITIZED TUBES', group: 'VITEK 2 Compact Reagents', dept: 'Microbiology', unit: 'room_temp_2', qty: 1, uom: 'pack' }
           ];
 
           for (const item of roomTempItems) {
             await client.execute({
               sql: `INSERT INTO lab_inhand_inventory (item_name, category, equipment_group, department, storage_temp, storage_unit_id, quantity_in_hand, unit_of_measure, min_threshold, expiry_date, lot_number)
-                    VALUES (?, 'Reagents', ?, ?, 'room_temp', ?, ?, ?, 5, '2027-12-31', 'LOT-2026-RT')`,
+                    VALUES (?, 'Reagents', ?, ?, 'room_temp', ?, ?, ?, 5, NULL, NULL)`,
               args: [item.name, item.group, item.dept, item.unit, item.qty, item.uom]
-            }).catch(() => {});
+            }).catch(() => { });
           }
 
           const fridgeItems = [
@@ -1465,9 +1463,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           for (const item of fridgeItems) {
             await client.execute({
               sql: `INSERT INTO lab_inhand_inventory (item_name, category, equipment_group, department, storage_temp, storage_unit_id, quantity_in_hand, unit_of_measure, min_threshold, expiry_date, lot_number)
-                    VALUES (?, 'Reagents', ?, ?, 'refrigerator', ?, ?, ?, 5, '2027-06-30', 'LOT-2026-RF')`,
+                    VALUES (?, 'Reagents', ?, ?, 'refrigerator', ?, ?, ?, 5, NULL, NULL)`,
               args: [item.name, item.group, item.dept, item.unit, item.qty, item.uom]
-            }).catch(() => {});
+            }).catch(() => { });
           }
 
           console.log('  ✅ Seeding of lab_inhand_inventory complete.');
@@ -1500,14 +1498,14 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           const count = Number(rows[0]?.cnt || 0);
           if (count <= 1) {
             const analyzersSeed = [
-              ['Sysmex XN-550', 'Sysmex Corporation', 'XN-550', 'Hematology', 'SYS-XN550-2024-089', 'Operational', '2026-06-01', '2026-09-01', '5-part differential automated hematology analyzer with compact autoloader.', 'Laboratory Team Lead'],
-              ['Mindray BS-240', 'Mindray Bio-Medical', 'BS-240', 'Biochemistry', 'MDR-BS240-8812', 'Operational', '2026-06-10', '2026-09-10', 'Floor-standing random access clinical chemistry system, 200 tests/hour.', 'Laboratory Team Lead'],
-              ['Abbott Architect ci4100', 'Abbott Diagnostics', 'Architect ci4100', 'Immunoassay', 'ABT-CI4100-5541', 'Operational', '2026-05-15', '2026-08-15', 'Integrated clinical chemistry and immunoassay platform with CHEMIFLEX technology.', 'Laboratory Team Lead'],
-              ['Roche Cobas c 311', 'Roche Diagnostics', 'Cobas c 311', 'Biochemistry', 'RCH-C311-9014', 'Operational', '2026-06-05', '2026-09-05', 'Automated discrete clinical chemistry analyzer with ultrasonic mixing.', 'Laboratory Team Lead'],
-              ['Roche Cobas e 411', 'Roche Diagnostics', 'Cobas e 411', 'Immunoassay', 'RCH-E411-7731', 'Operational', '2026-05-20', '2026-08-20', 'Electrochemiluminescence (ECLIA) immunoassay analyzer for thyroid and cardiac markers.', 'Laboratory Team Lead'],
-              ['Stago STA Satellite', 'Diagnostica Stago', 'STA Satellite', 'Coagulation', 'STG-SAT-3319', 'Operational', '2026-06-12', '2026-09-12', 'Automated benchtop hemostasis analyzer utilizing mechanical clot detection.', 'Laboratory Team Lead'],
-              ['Cepheid GeneXpert XVI', 'Cepheid', 'GeneXpert XVI', 'Molecular', 'CPH-GX16-1092', 'Operational', '2026-04-10', '2026-10-10', 'Automated cartridge-based real-time PCR platform with 16 modular test bays.', 'Laboratory Team Lead'],
-              ['Mindray UA-66', 'Mindray Bio-Medical', 'UA-66', 'Urinalysis', 'MDR-UA66-4402', 'Operational', '2026-06-08', '2026-09-08', 'Automated urine test strip chemistry analyzer with cold light reflection.', 'Laboratory Team Lead']
+              ['Cobas C 311', 'Roche Diagnostics', 'Cobas C 311', 'Biochemistry', 'RCH-C311-9014', 'Operational', '2026-06-05', '2026-09-05', 'Automated discrete clinical chemistry analyzer with ultrasonic mixing.', 'Laboratory Team Lead'],
+              ['Cobas e411', 'Roche Diagnostics', 'Cobas e411', 'Biochemistry', 'RCH-E411-7731', 'Operational', '2026-05-20', '2026-08-20', 'Electrochemiluminescence (ECLIA) immunoassay analyzer for thyroid, fertility, and cardiac markers.', 'Laboratory Team Lead'],
+              ['VITEK 2 Compact', 'bioMérieux', 'VITEK 2 Compact', 'Biochemistry', 'BMX-VTK2-4412', 'Operational', '2026-06-12', '2026-09-12', 'Automated platform for rapid diagnostic testing and quantitative cartridges.', 'Laboratory Team Lead'],
+              ['Mispa i3', 'Agappe Diagnostics', 'Mispa i3', 'Biochemistry', 'AGP-MI3-8105', 'Operational', '2026-06-15', '2026-09-15', 'Cartridge-based specific protein analyzer utilizing rate-based nephelometry.', 'Laboratory Team Lead'],
+              ['Mindray BS-430', 'Mindray Bio-Medical', 'BS-430', 'Biochemistry', 'MDR-BS430-6721', 'Operational', '2026-06-10', '2026-09-10', 'Floor-standing discrete random-access clinical chemistry system with CD8 wash monitoring.', 'Laboratory Team Lead'],
+              ['Mindray Bc-780', 'Mindray Bio-Medical', 'Bc-780', 'Hematology', 'MDR-BC780-3190', 'Operational', '2026-06-01', '2026-09-01', 'Automated hematology analyzer with integrated ESR and 5-part differential.', 'Laboratory Team Lead'],
+              ['VITEK 2 Compact (Microbiology)', 'bioMérieux', 'VITEK 2 Compact', 'Microbiology', 'BMX-VTK2-4413', 'Operational', '2026-06-12', '2026-09-12', 'Automated microbial identification and antibiotic susceptibility testing (ID/AST) system.', 'Laboratory Team Lead'],
+              ['Sysmex XN-330', 'Sysmex Corporation', 'XN-330', 'Hematology', 'SYS-XN330-5521', 'Operational', '2026-06-08', '2026-09-08', 'Automated 5-part differential compact hematology analyzer with open tube sampling.', 'Laboratory Team Lead']
             ];
             for (const a of analyzersSeed) {
               await client.execute({
@@ -1515,13 +1513,61 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
                 args: a
               });
             }
-            console.log('  ✅ Seeded baseline clinical analyzers into lab_analyzers.');
+            console.log('  ✅ Seeded actual clinical analyzers into lab_analyzers.');
           }
         } catch (sErr) {
           console.warn('  ⚠️ Could not seed lab_analyzers:', sErr.message);
         }
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create lab_analyzers:', err.message);
+      });
+
+      // ── Lab Internal Requisitions Table ────────────────────────────────────
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_requisitions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          ref_number TEXT NOT NULL,
+          requesting_unit TEXT NOT NULL,
+          requesting_unit_head TEXT,
+          requested_by TEXT,
+          requested_by_name TEXT,
+          urgency TEXT DEFAULT 'Normal',
+          notes TEXT,
+          status TEXT DEFAULT 'Pending',
+          stock_source TEXT DEFAULT 'lab_stock',
+          lab_manager_action TEXT,
+          lab_manager_name TEXT,
+          lab_manager_at DATETIME,
+          general_manager_action TEXT,
+          general_manager_name TEXT,
+          general_manager_at DATETIME,
+          rejection_reason TEXT,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+      `).then(() => {
+        console.log('  ✅ Table lab_requisitions created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_requisitions:', err.message);
+      });
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS lab_requisition_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          requisition_id INTEGER NOT NULL,
+          item_name TEXT NOT NULL,
+          item_category TEXT DEFAULT 'Reagents',
+          unit_of_measure TEXT DEFAULT 'pack',
+          requested_quantity INTEGER DEFAULT 0,
+          approved_quantity INTEGER DEFAULT 0,
+          inventory_ref_id INTEGER,
+          notes TEXT,
+          FOREIGN KEY (requisition_id) REFERENCES lab_requisitions(id) ON DELETE CASCADE
+        )
+      `).then(() => {
+        console.log('  ✅ Table lab_requisition_items created/verified.');
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create lab_requisition_items:', err.message);
       });
 
       // ── Lab Equipment & Planned Preventive Maintenance (PPM) Table ────────
@@ -1638,7 +1684,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       });
 
       const safeAddDocCol = async (colDef) => {
-        try { await client.execute(`ALTER TABLE lab_documents ADD COLUMN ${colDef}`); } catch (e) {}
+        try { await client.execute(`ALTER TABLE lab_documents ADD COLUMN ${colDef}`); } catch (e) { }
       };
       await safeAddDocCol("storage_provider TEXT DEFAULT 'database'");
       await safeAddDocCol("file_url TEXT");
@@ -1662,18 +1708,18 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
 
       // Add storage_unit columns to lab_orders if not present
       const safeAddOrderCol = async (colDef) => {
-        try { await client.execute(`ALTER TABLE lab_orders ADD COLUMN ${colDef}`); } catch (e) {}
+        try { await client.execute(`ALTER TABLE lab_orders ADD COLUMN ${colDef}`); } catch (e) { }
       };
       await safeAddOrderCol("storage_unit TEXT DEFAULT 'fridge_1'");
       await safeAddOrderCol("storage_rack TEXT DEFAULT 'Rack 1'");
       await safeAddOrderCol("storage_box TEXT DEFAULT 'Box A'");
 
       // Ensure lab_orders table is ready (no mock orders seeded)
-      await client.execute("SELECT COUNT(*) as cnt FROM lab_orders").catch(() => {});
+      await client.execute("SELECT COUNT(*) as cnt FROM lab_orders").catch(() => { });
 
       const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
       console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));
-      
+
     } catch (err) {
       console.error('❌ FATAL: Could not connect to Turso Cloud or run custom migrations. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.', err.message);
       // Note: Do not call process.exit(1) here as it will crash the Vercel build if it executes during pre-rendering.
@@ -1721,8 +1767,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     // ─── Dental Roles Sync: ensure Dental HoD, Dental Tech, Dental Lab Manager roles exist ───
     try {
       const dentalRoles = [
-        { name: 'dental_hod',         display_name: 'Dental HoD' },
-        { name: 'dental_tech',        display_name: 'Dental Tech' },
+        { name: 'dental_hod', display_name: 'Dental HoD' },
+        { name: 'dental_tech', display_name: 'Dental Tech' },
         { name: 'dental_lab_manager', display_name: 'Dental Lab Manager' },
       ];
       for (const r of dentalRoles) {
@@ -1740,7 +1786,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     try {
       const physioRoles = [
         { name: 'physio_manager', display_name: 'Physiotherapy Manager' },
-        { name: 'physio',         display_name: 'Physiotherapist' },
+        { name: 'physio', display_name: 'Physiotherapist' },
       ];
       for (const r of physioRoles) {
         await client.execute({
@@ -1756,24 +1802,24 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     // ─── Laboratory & Quality Roles Sync: ensure restructured lab roles exist in the roles table ───
     try {
       const labRolesFull = [
-        { name: 'lab_hod',                 display_name: 'Head of Laboratory Department' },
-        { name: 'lab_manager',             display_name: 'Laboratory Manager' },
-        { name: 'quality_manager',         display_name: 'Quality Manager' },
-        { name: 'qm',                      display_name: 'Quality Manager (QM)' },
-        { name: 'lab_safety_officer',      display_name: 'Lab Safety Officer' },
-        { name: 'lab_stock_officer',       display_name: 'Lab Stock Officer' },
-        { name: 'head_microbiology',       display_name: 'Head of Microbiology' },
-        { name: 'head_hematology',         display_name: 'Head of Hematology' },
-        { name: 'head_histopathology',     display_name: 'Head of Histo/Cytology/Archive' },
-        { name: 'head_poct',               display_name: 'Head of POCT' },
-        { name: 'head_phlebotomy',         display_name: 'Head of Phlebotomy' },
-        { name: 'head_molecular_biology',  display_name: 'Head of Molecular Biology' },
-        { name: 'lab_micro_specialist',    display_name: 'Microbiology Specialist' },
-        { name: 'lab_scientist',           display_name: 'Lab Scientist' },
-        { name: 'lab_tech',                display_name: 'Lab Technologist' },
-        { name: 'lab_team_lead',           display_name: 'Lab Team Lead' },
-        { name: 'lab_lead',                display_name: 'Lab Lead' },
-        { name: 'lab',                     display_name: 'Laboratory Staff' },
+        { name: 'lab_hod', display_name: 'Head of Laboratory Department' },
+        { name: 'lab_manager', display_name: 'Laboratory Manager' },
+        { name: 'quality_manager', display_name: 'Quality Manager' },
+        { name: 'qm', display_name: 'Quality Manager (QM)' },
+        { name: 'lab_safety_officer', display_name: 'Lab Safety Officer' },
+        { name: 'lab_stock_officer', display_name: 'Lab stock Manager' },
+        { name: 'head_microbiology', display_name: 'Head of Microbiology' },
+        { name: 'head_hematology', display_name: 'Head of Hematology' },
+        { name: 'head_histopathology', display_name: 'Head of Histo/Cytology/Archive' },
+        { name: 'head_poct', display_name: 'Head of POCT' },
+        { name: 'head_phlebotomy', display_name: 'Head of Phlebotomy' },
+        { name: 'head_molecular_biology', display_name: 'Head of Molecular Biology' },
+        { name: 'lab_micro_specialist', display_name: 'Microbiology Specialist' },
+        { name: 'lab_scientist', display_name: 'Lab Scientist' },
+        { name: 'lab_tech', display_name: 'Lab Technologist' },
+        { name: 'lab_team_lead', display_name: 'Lab Team Lead' },
+        { name: 'lab_lead', display_name: 'Lab Lead' },
+        { name: 'lab', display_name: 'Laboratory Staff' },
       ];
       for (const r of labRolesFull) {
         await client.execute({
@@ -1842,80 +1888,80 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       // IMPORTANT: Only UPDATE statements. Never DELETE. IDs and metrics are untouched.
       const providerUpdates = [
         // ── GYNECOLOGY ──
-        ['Dr Gakindi',              'Dr Gakindi Leonard',                        'Obstetrician & Gynaecologist'],
-        ['Dr SITINI BERTIN',        'DR SITINI BERTIN',                          'Obstetrician & Gynaecologist'],
-        ['Dr NKUBITO',              'Dr NKUBITO GATERA VALENS',                  'Obstetrician & Gynaecologist'],
-        ['Dr NTIRUSHWA',            'Dr Ntirushwa David',                        'Obstetrician & Gynaecologist'],
-        ['BUTOYI ALPHONSE',         'DR BUTOYI ALPHONSE',                        'Obstetrician & Gynaecologist'],
+        ['Dr Gakindi', 'Dr Gakindi Leonard', 'Obstetrician & Gynaecologist'],
+        ['Dr SITINI BERTIN', 'DR SITINI BERTIN', 'Obstetrician & Gynaecologist'],
+        ['Dr NKUBITO', 'Dr NKUBITO GATERA VALENS', 'Obstetrician & Gynaecologist'],
+        ['Dr NTIRUSHWA', 'Dr Ntirushwa David', 'Obstetrician & Gynaecologist'],
+        ['BUTOYI ALPHONSE', 'DR BUTOYI ALPHONSE', 'Obstetrician & Gynaecologist'],
 
         // ── GENERAL MEDECINE ──
-        ['Dr Fabrice N.',           'NGABO NTAGANDA FABRICE',                    'General Practitioner'],
-        ['Dr Yves L. Bizimana',     'Dr BIZIMANA YVES LAURENT',                  'General Practitioner'],
-        ['Dr Gihana Jacques',       'Dr. NKERAGUTABARA Gihana Jacques',           'Family Physician'],
+        ['Dr Fabrice N.', 'NGABO NTAGANDA FABRICE', 'General Practitioner'],
+        ['Dr Yves L. Bizimana', 'Dr BIZIMANA YVES LAURENT', 'General Practitioner'],
+        ['Dr Gihana Jacques', 'Dr. NKERAGUTABARA Gihana Jacques', 'Family Physician'],
 
         // ── INTERNAL MEDECINE ──
-        ['Dr. Masaisa florence',    'Dr Masaisa Florence',                       'Hematologist'],
-        ['DR SHEMA NSHUTI D.',      'Dr NSHUTI SHEMA DAVID',                     'Internist'],
-        ['DR DUFATANYE DARIUS',     'DR DUFATANYE DARIUS',                       'Cardiologist'],
-        ['Dr Ganza G. JMV',         'Dr GAPIRA GANZA JEAN MARIE VIANNEY',        'Cardiologist'],
-        ['DR RUTAGANDA Eric',       'Dr Rutaganda Eric',                         'Internist'],
-        ['DR BAZATSINDA A.',        'DR BAZATSINDA ANTHONY',                     'Internist'],
-        ['DR MBABAZI Maguy',        'DR MBABAZI MAGUY',                          'Internist'],
-        ['DR HABYARIMANA O.',       'DR HABYARIMANA OSWALD',                     'Internist'],
-        ['KABAKAMBIRA J.Damascene', 'Dr KABAKAMBIRA JEAN DAMASCENE',             'Internist'],
-        ['DR SEBATUNZI Osee',       'DR SEBATUNZI OSEE',                         'Internist'],
+        ['Dr. Masaisa florence', 'Dr Masaisa Florence', 'Hematologist'],
+        ['DR SHEMA NSHUTI D.', 'Dr NSHUTI SHEMA DAVID', 'Internist'],
+        ['DR DUFATANYE DARIUS', 'DR DUFATANYE DARIUS', 'Cardiologist'],
+        ['Dr Ganza G. JMV', 'Dr GAPIRA GANZA JEAN MARIE VIANNEY', 'Cardiologist'],
+        ['DR RUTAGANDA Eric', 'Dr Rutaganda Eric', 'Internist'],
+        ['DR BAZATSINDA A.', 'DR BAZATSINDA ANTHONY', 'Internist'],
+        ['DR MBABAZI Maguy', 'DR MBABAZI MAGUY', 'Internist'],
+        ['DR HABYARIMANA O.', 'DR HABYARIMANA OSWALD', 'Internist'],
+        ['KABAKAMBIRA J.Damascene', 'Dr KABAKAMBIRA JEAN DAMASCENE', 'Internist'],
+        ['DR SEBATUNZI Osee', 'DR SEBATUNZI OSEE', 'Internist'],
 
         // ── PEDIATRICS ──
-        ['Dr KABAYIZA JC',          'Dr Kabayiza Jean Claude',                   'Pediatrician'],
-        ['Dr Aimable K.',           'Dr Kanyamuhunga Aimable',                   'Pediatrician'],
-        ['Dr Christian Muhoza',     'Dr Umuhoza Christian',                      'Pediatrician'],
-        ['Dr Mukaruziga Agnes',     'DR MUKARUZIGA AGNES',                       'Pediatrician'],
-        ['Dr Karangwa Valens',      'DR KARANGWA VALENS',                        'Pediatrician'],
+        ['Dr KABAYIZA JC', 'Dr Kabayiza Jean Claude', 'Pediatrician'],
+        ['Dr Aimable K.', 'Dr Kanyamuhunga Aimable', 'Pediatrician'],
+        ['Dr Christian Muhoza', 'Dr Umuhoza Christian', 'Pediatrician'],
+        ['Dr Mukaruziga Agnes', 'DR MUKARUZIGA AGNES', 'Pediatrician'],
+        ['Dr Karangwa Valens', 'DR KARANGWA VALENS', 'Pediatrician'],
 
         // ── NEUROLOGY ──
-        ['DR KAREKEZI CLAIRE',      'Dr. KAREKEZI CLAIRE',                       'Neurologist'],
-        ['DR MUTUNGIREHE SYLVES',   'DR MUTUNGIREHE SYLVESTRE',                  'Neurologist'],
+        ['DR KAREKEZI CLAIRE', 'Dr. KAREKEZI CLAIRE', 'Neurologist'],
+        ['DR MUTUNGIREHE SYLVES', 'DR MUTUNGIREHE SYLVESTRE', 'Neurologist'],
 
         // ── UROLOGY ──
-        ['Dr Afrika G.',            'Dr Afrika Gasana',                          'Urologist'],
-        ['Dr NYIRIMODOKA ALEXANDRE','DR NYIRIMODOKA ALEXANDRE',                  'Urologist'],
+        ['Dr Afrika G.', 'Dr Afrika Gasana', 'Urologist'],
+        ['Dr NYIRIMODOKA ALEXANDRE', 'DR NYIRIMODOKA ALEXANDRE', 'Urologist'],
 
         // ── ORTHO / GENERAL SURGERY ──
-        ['Dr KWESIGA STEPHEN',      'Dr KWESIGA STEPHEN',                        'Orthopedic Surgeon'],
-        ['KANSAYISA MARIE GRACE',   'Dr Kansayisa Marie Grace',                  'Orthopedic Surgeon'],
-        ['RUBANGUKA Desire',        'Dr Desire Rubanguka',                       'General Surgeon'],
-        ['DR INGABIRE Allen JDC',   'Dr. INGABIRE Allen Jean De La Croix',       'Orthopedic Surgeon'],
+        ['Dr KWESIGA STEPHEN', 'Dr KWESIGA STEPHEN', 'Orthopedic Surgeon'],
+        ['KANSAYISA MARIE GRACE', 'Dr Kansayisa Marie Grace', 'Orthopedic Surgeon'],
+        ['RUBANGUKA Desire', 'Dr Desire Rubanguka', 'General Surgeon'],
+        ['DR INGABIRE Allen JDC', 'Dr. INGABIRE Allen Jean De La Croix', 'Orthopedic Surgeon'],
 
         // ── ENT ──
-        ['DR HAKIZIMANA ARISTOTE',  'DR HAKIZIMANA ARISTOTE',                    'Consultant ENT'],
-        ['DR Dushimiyimana jmv',    'DR DUSHIMIYIMANA JMV',                      'Consultant ENT'],
+        ['DR HAKIZIMANA ARISTOTE', 'DR HAKIZIMANA ARISTOTE', 'Consultant ENT'],
+        ['DR Dushimiyimana jmv', 'DR DUSHIMIYIMANA JMV', 'Consultant ENT'],
 
         // ── CHIRO ──
-        ['Dr Kanyabutembo Noella',  'Dr Noella Kanyabutembo',                    'Chiropractitioner'],
+        ['Dr Kanyabutembo Noella', 'Dr Noella Kanyabutembo', 'Chiropractitioner'],
 
         // ── MENTAL HEALTH ──
-        ['Innocent Nsengiyumva',    'Mr NSENGIYUMVA INNOCENT',                   'Clinical Psychologist'],
+        ['Innocent Nsengiyumva', 'Mr NSENGIYUMVA INNOCENT', 'Clinical Psychologist'],
 
         // ── DENTAL ──
-        ['Dr NYIRANEZA Esperence',  'Dr Nyiraneza Esperance',                    'Dental Surgeon'],
-        ['DR ANAMALI Rogers',       'Dr ANAMALI ROGER',                          'Dental Surgeon'],
-        ['Dr MUGESERA Ernest',      'DR MUGESERA ERNEST',                        'Dental Surgeon'],
-        ['Dr BANA Bede',            'Dr Bede Bana',                              'Dental Surgeon'],
-        ['JAYAKAR G.Sargunar',      'DR. JAYKAR G SARGUNAR',                     'Orthodontist'],
-        ['Sanddeep Goyal',          'Dr. SANDEEP GOYAL',                         'Orthodontist'],
-        ['DR MICONGWE Moses',       'Dr MICONGWE MOSES ISYAGI',                  'Dental Surgeon & Oral Pathologist'],
-        ['Mr NDAYISENGA KALISA Gilbert', 'Mr NDAYISENGA KALISA Gilbert',         'Dentistry'],
-        ['Mr ERIC RUTAGANDA',       'Mr ERIC RUTAGANDA',                         'Dentistry'],
-        ['ISHIMWE GILBERT',         'Mr ISHIMWE GILBERT',                        'Dentistry'],
+        ['Dr NYIRANEZA Esperence', 'Dr Nyiraneza Esperance', 'Dental Surgeon'],
+        ['DR ANAMALI Rogers', 'Dr ANAMALI ROGER', 'Dental Surgeon'],
+        ['Dr MUGESERA Ernest', 'DR MUGESERA ERNEST', 'Dental Surgeon'],
+        ['Dr BANA Bede', 'Dr Bede Bana', 'Dental Surgeon'],
+        ['JAYAKAR G.Sargunar', 'DR. JAYKAR G SARGUNAR', 'Orthodontist'],
+        ['Sanddeep Goyal', 'Dr. SANDEEP GOYAL', 'Orthodontist'],
+        ['DR MICONGWE Moses', 'Dr MICONGWE MOSES ISYAGI', 'Dental Surgeon & Oral Pathologist'],
+        ['Mr NDAYISENGA KALISA Gilbert', 'Mr NDAYISENGA KALISA Gilbert', 'Dentistry'],
+        ['Mr ERIC RUTAGANDA', 'Mr ERIC RUTAGANDA', 'Dentistry'],
+        ['ISHIMWE GILBERT', 'Mr ISHIMWE GILBERT', 'Dentistry'],
 
         // ── PHYSIO ──
-        ['Mr NAZE Thierry',         'Mr NAZE Thierry',                           'PHYSIO'],
-        ['Miss FRANCINE M.',        'Miss FRANCINE M.',                          'PHYSIO'],
-        ['Mr KARIMWABO Jean Claude','Mr KARIMWABO Jean Claude',                  'PHYSIO'],
-        ['Mr NSENGIMANA Emmanuel',  'Mr NSENGIMANA Emmanuel',                    'PHYSIO'],
-        ['Miss LEAH MUTESI',        'Miss LEAH MUTESI',                          'PHYSIO'],
-        ['Miss UWAMAHORO Sarah',    'Miss UWAMAHORO Sarah',                      'PHYSIO'],
-        ['INGABIRE J. Paul',        'Mr Ingabire J. Paul',                       'PHYSIO'],
+        ['Mr NAZE Thierry', 'Mr NAZE Thierry', 'PHYSIO'],
+        ['Miss FRANCINE M.', 'Miss FRANCINE M.', 'PHYSIO'],
+        ['Mr KARIMWABO Jean Claude', 'Mr KARIMWABO Jean Claude', 'PHYSIO'],
+        ['Mr NSENGIMANA Emmanuel', 'Mr NSENGIMANA Emmanuel', 'PHYSIO'],
+        ['Miss LEAH MUTESI', 'Miss LEAH MUTESI', 'PHYSIO'],
+        ['Miss UWAMAHORO Sarah', 'Miss UWAMAHORO Sarah', 'PHYSIO'],
+        ['INGABIRE J. Paul', 'Mr Ingabire J. Paul', 'PHYSIO'],
       ];
 
       for (const [oldName, verifiedName, specialization] of providerUpdates) {
@@ -2054,7 +2100,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       try {
         await client.execute("PRAGMA legacy_alter_table = OFF");
         await client.execute("PRAGMA foreign_keys = ON");
-      } catch (_) {}
+      } catch (_) { }
     }
     try {
       const { rows: brokenTables } = await client.execute("SELECT name, sql FROM sqlite_master WHERE type='table' AND (sql LIKE '%shift_sessions_old%' OR sql LIKE '%shift_sessions_bak%')");
@@ -2319,8 +2365,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     try {
       const dateOnlyTables = [
         { table: 'cancellation_requests', cols: ['initial_transaction_date', 'rectified_date'] },
-        { table: 'refund_requests',       cols: ['transaction_date', 'refund_date'] },
-        { table: 'results_transfers',     cols: ['transfer_date'] },
+        { table: 'refund_requests', cols: ['transaction_date', 'refund_date'] },
+        { table: 'results_transfers', cols: ['transfer_date'] },
       ];
       for (const { table, cols } of dateOnlyTables) {
         // Check if table exists before trying to update
@@ -3278,9 +3324,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       )
     `);
 
-      await client.execute("ALTER TABLE vendors ADD COLUMN category TEXT DEFAULT 'Medical'").catch(() => {});
-      await client.execute("ALTER TABLE vendors ADD COLUMN email TEXT").catch(() => {});
-      await client.execute("ALTER TABLE vendors ADD COLUMN phone TEXT").catch(() => {});
+      await client.execute("ALTER TABLE vendors ADD COLUMN category TEXT DEFAULT 'Medical'").catch(() => { });
+      await client.execute("ALTER TABLE vendors ADD COLUMN email TEXT").catch(() => { });
+      await client.execute("ALTER TABLE vendors ADD COLUMN phone TEXT").catch(() => { });
 
       await client.execute(`
       CREATE TABLE IF NOT EXISTS master_inventory (
@@ -3642,8 +3688,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         access_count     INTEGER DEFAULT 0
       )
     `);
-      await client.execute("ALTER TABLE supplier_portal_sessions ADD COLUMN last_accessed_at DATETIME").catch(() => {});
-      await client.execute("ALTER TABLE supplier_portal_sessions ADD COLUMN access_count INTEGER DEFAULT 0").catch(() => {});
+      await client.execute("ALTER TABLE supplier_portal_sessions ADD COLUMN last_accessed_at DATETIME").catch(() => { });
+      await client.execute("ALTER TABLE supplier_portal_sessions ADD COLUMN access_count INTEGER DEFAULT 0").catch(() => { });
       console.log('✅ SQLite Schema Migration: created/verified supplier_portal_sessions table');
     } catch (err) {
       console.error('❌ Failed to initialize supplier_portal_sessions table:', err);
@@ -3982,19 +4028,19 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.log('✅ SQLite Schema Migration: created/verified compliance_statutory_calendar table');
 
       // Safe column additions for existing installs
-      await client.execute("ALTER TABLE compliance_licenses ADD COLUMN department TEXT").catch(() => {});
-      await client.execute("ALTER TABLE compliance_licenses ADD COLUMN council_reg_no TEXT").catch(() => {});
-      await client.execute("ALTER TABLE compliance_facility_certs ADD COLUMN permit_no TEXT").catch(() => {});
-      await client.execute("ALTER TABLE compliance_facility_certs ADD COLUMN scope TEXT").catch(() => {});
-      await client.execute("ALTER TABLE compliance_facility_certs ADD COLUMN inspection_cycle TEXT").catch(() => {});
-      await client.execute("ALTER TABLE compliance_audits ADD COLUMN category TEXT").catch(() => {});
-      await client.execute("ALTER TABLE compliance_audits ADD COLUMN status TEXT").catch(() => {});
+      await client.execute("ALTER TABLE compliance_licenses ADD COLUMN department TEXT").catch(() => { });
+      await client.execute("ALTER TABLE compliance_licenses ADD COLUMN council_reg_no TEXT").catch(() => { });
+      await client.execute("ALTER TABLE compliance_facility_certs ADD COLUMN permit_no TEXT").catch(() => { });
+      await client.execute("ALTER TABLE compliance_facility_certs ADD COLUMN scope TEXT").catch(() => { });
+      await client.execute("ALTER TABLE compliance_facility_certs ADD COLUMN inspection_cycle TEXT").catch(() => { });
+      await client.execute("ALTER TABLE compliance_audits ADD COLUMN category TEXT").catch(() => { });
+      await client.execute("ALTER TABLE compliance_audits ADD COLUMN status TEXT").catch(() => { });
 
       // Purge any historical mock compliance data
-      await client.execute("DELETE FROM compliance_licenses WHERE staff_name IN ('Dr. Jane Smith', 'Nurse John Doe', 'Dr. Alan Wake', 'Dr. Jean-Paul Habimana', 'Dr. Eric Gakuba', 'Dr. Sandrine Mutoni', 'Fabrice Mugisha', 'Sr. Grace Uwase', 'Clarisse Umutoni', 'Phn. Aline Mukamana', 'Dr. Kevin Ntwari')").catch(() => {});
-      await client.execute("DELETE FROM compliance_facility_certs WHERE name IN ('Fire Safety Certificate', 'Radiation Safety (X-Ray)', 'MoH Comprehensive Healthcare Facility Operating License', 'Rwanda FDA Pharmaceutical Premises & Reagent Cold-Chain License', 'RURA Ionizing Radiation Protection Operating License', 'National Police Fire & Life Safety Clearance Certificate', 'CSSD Steam Autoclave & Pressure Vessel Safety Certification', 'Biomedical Hazardous Waste Management & Environmental Permit')").catch(() => {});
-      await client.execute("DELETE FROM compliance_audits WHERE title IN ('MOH Annual Facility Inspection', 'MOH Annual Health Quality & Patient Safety Inspection', 'Rwanda FDA Good Pharmacy & Distribution Practice (GDP) Audit', 'ISO 15189:2022 Medical Laboratory Quality Surveillance Assessment', 'Quarterly EHS & Fire Marshall Safety Rounding')").catch(() => {});
-      await client.execute("DELETE FROM compliance_statutory_calendar WHERE title IN ('MoH HMIS / DHIS-2 Clinical Data Return', 'RURA Personal Radiation Dosimetry Badges', 'Rwanda FDA Pharmacovigilance & ADR Reporting', 'Occupational Health & Sharps Injury Surveillance')").catch(() => {});
+      await client.execute("DELETE FROM compliance_licenses WHERE staff_name IN ('Dr. Jane Smith', 'Nurse John Doe', 'Dr. Alan Wake', 'Dr. Jean-Paul Habimana', 'Dr. Eric Gakuba', 'Dr. Sandrine Mutoni', 'Fabrice Mugisha', 'Sr. Grace Uwase', 'Clarisse Umutoni', 'Phn. Aline Mukamana', 'Dr. Kevin Ntwari')").catch(() => { });
+      await client.execute("DELETE FROM compliance_facility_certs WHERE name IN ('Fire Safety Certificate', 'Radiation Safety (X-Ray)', 'MoH Comprehensive Healthcare Facility Operating License', 'Rwanda FDA Pharmaceutical Premises & Reagent Cold-Chain License', 'RURA Ionizing Radiation Protection Operating License', 'National Police Fire & Life Safety Clearance Certificate', 'CSSD Steam Autoclave & Pressure Vessel Safety Certification', 'Biomedical Hazardous Waste Management & Environmental Permit')").catch(() => { });
+      await client.execute("DELETE FROM compliance_audits WHERE title IN ('MOH Annual Facility Inspection', 'MOH Annual Health Quality & Patient Safety Inspection', 'Rwanda FDA Good Pharmacy & Distribution Practice (GDP) Audit', 'ISO 15189:2022 Medical Laboratory Quality Surveillance Assessment', 'Quarterly EHS & Fire Marshall Safety Rounding')").catch(() => { });
+      await client.execute("DELETE FROM compliance_statutory_calendar WHERE title IN ('MoH HMIS / DHIS-2 Clinical Data Return', 'RURA Personal Radiation Dosimetry Badges', 'Rwanda FDA Pharmacovigilance & ADR Reporting', 'Occupational Health & Sharps Injury Surveillance')").catch(() => { });
     } catch (err) {
       console.error('❌ Failed to initialize Compliance tables:', err);
     }
@@ -4049,7 +4095,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
                 SET granted = EXCLUDED.granted
               `,
               args: ['medical_director', moduleName, action, granted ? 1 : 0]
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
         console.log('✅ SQLite Schema Migration: synced medical_director permissions');
@@ -4101,7 +4147,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
                 SET granted = EXCLUDED.granted
               `,
               args: ['quality_accreditation_officer', moduleName, action, granted ? 1 : 0]
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
         console.log('✅ SQLite Schema Migration: synced quality_accreditation_officer permissions');
@@ -4126,7 +4172,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
                   SET granted = EXCLUDED.granted
                 `,
                 args: [execRole, moduleName, action, granted ? 1 : 0]
-              }).catch(() => {});
+              }).catch(() => { });
             }
           }
         }
@@ -4211,7 +4257,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         }
         console.log('🌱 Seeded initial purchase orders');
       }
-      
+
       await client.execute(`
         CREATE TABLE IF NOT EXISTS supplier_returns (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4421,7 +4467,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           updated_at     DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         )
       `);
-      try { await client.execute(`ALTER TABLE rfqs ADD COLUMN department TEXT`); } catch (e) {}
+      try { await client.execute(`ALTER TABLE rfqs ADD COLUMN department TEXT`); } catch (e) { }
       await client.execute(`CREATE INDEX IF NOT EXISTS idx_rfqs_status ON rfqs(status)`);
       await client.execute(`CREATE INDEX IF NOT EXISTS idx_rfqs_category ON rfqs(category)`);
 
@@ -4525,7 +4571,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
                 SET granted = EXCLUDED.granted
               `,
               args: ['procurement-manager', moduleName, action, granted ? 1 : 0]
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
         console.log('✅ SQLite Schema Migration: synced procurement-manager permissions');
@@ -4585,7 +4631,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
                   SET granted = EXCLUDED.granted
                 `,
                 args: [r.name, moduleName, action, granted ? 1 : 0]
-              }).catch(() => {});
+              }).catch(() => { });
             }
           }
         }
@@ -4616,7 +4662,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
                 SET granted = EXCLUDED.granted
               `,
               args: ['rn_midwife', moduleName, action, granted ? 1 : 0]
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
       }
@@ -4972,7 +5018,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         "ALTER TABLE incident_reports ADD COLUMN corrective_actions_json TEXT"
       ];
       for (const colStmt of incCols) {
-        await client.execute(colStmt).catch(() => {});
+        await client.execute(colStmt).catch(() => { });
       }
       console.log('✅ SQLite Schema Migration: incident_reports columns verified.');
     } catch (err) {
@@ -4995,7 +5041,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         "ALTER TABLE refund_requests ADD COLUMN supporting_document_uploaded_by INTEGER"
       ];
       for (const colStmt of suppCols) {
-        await client.execute(colStmt).catch(() => {});
+        await client.execute(colStmt).catch(() => { });
       }
       console.log('✅ SQLite Schema Migration: cancellation_requests & refund_requests supporting document columns verified.');
       // ─── Proforma Invoices & Sales Service Catalog ──────────────────────────────
@@ -5058,7 +5104,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         'price_foreigner REAL DEFAULT 0'
       ];
       for (const colDef of catalogCols) {
-        try { await client.execute(`ALTER TABLE sales_service_catalog ADD COLUMN ${colDef}`); } catch (e) {}
+        try { await client.execute(`ALTER TABLE sales_service_catalog ADD COLUMN ${colDef}`); } catch (e) { }
       }
 
       // Seed initial sales catalog if empty
@@ -5068,180 +5114,180 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         // Rwanda Health Services Tariff 2025-2027 — Private Facilities
         const initialServices = [
           // CONSULTATION
-          ['CONS-GP','Consultation – General Practitioner','Consultation',8000],
-          ['CONS-SPE','Consultation – Specialist','Consultation',20000],
-          ['CONS-SUPE','Consultation – Super Specialist','Consultation',35000],
-          ['CONS-EMRG','Emergency Consultation','Consultation',15000],
-          ['CONS-FOLL','Follow-Up Consultation (same specialist)','Consultation',10000],
-          ['CONS-NUT','Nutrition / Dietetics Consultation','Consultation',12000],
-          ['CONS-PSYCH','Psychiatric / Mental Health Consultation','Consultation',25000],
-          ['CONS-PED','Pediatric Consultation','Consultation',12000],
-          ['CONS-GYN','Gynecology Consultation','Consultation',20000],
+          ['CONS-GP', 'Consultation – General Practitioner', 'Consultation', 8000],
+          ['CONS-SPE', 'Consultation – Specialist', 'Consultation', 20000],
+          ['CONS-SUPE', 'Consultation – Super Specialist', 'Consultation', 35000],
+          ['CONS-EMRG', 'Emergency Consultation', 'Consultation', 15000],
+          ['CONS-FOLL', 'Follow-Up Consultation (same specialist)', 'Consultation', 10000],
+          ['CONS-NUT', 'Nutrition / Dietetics Consultation', 'Consultation', 12000],
+          ['CONS-PSYCH', 'Psychiatric / Mental Health Consultation', 'Consultation', 25000],
+          ['CONS-PED', 'Pediatric Consultation', 'Consultation', 12000],
+          ['CONS-GYN', 'Gynecology Consultation', 'Consultation', 20000],
           // NURSING
-          ['NURS-INJ','Injection (IV/IM/SC)','Nursing',2000],
-          ['NURS-DRS','Wound Dressing (simple)','Nursing',3000],
-          ['NURS-DRSC','Wound Dressing (complex)','Nursing',8000],
-          ['NURS-SUTR','Suturing (per suture)','Nursing',5000],
-          ['NURS-CATH','Urinary Catheterization','Nursing',10000],
-          ['NURS-NBLZ','Nebulization','Nursing',4000],
-          ['NURS-OXY','Oxygen Therapy (per hour)','Nursing',3000],
-          ['NURS-ECG','ECG / 12-lead Electrocardiogram','Nursing',15000],
-          ['NURS-GLUC','Blood Glucose Monitoring (glucometer)','Nursing',2000],
-          ['NURS-SAMP','Sample Collection','Nursing',1000],
+          ['NURS-INJ', 'Injection (IV/IM/SC)', 'Nursing', 2000],
+          ['NURS-DRS', 'Wound Dressing (simple)', 'Nursing', 3000],
+          ['NURS-DRSC', 'Wound Dressing (complex)', 'Nursing', 8000],
+          ['NURS-SUTR', 'Suturing (per suture)', 'Nursing', 5000],
+          ['NURS-CATH', 'Urinary Catheterization', 'Nursing', 10000],
+          ['NURS-NBLZ', 'Nebulization', 'Nursing', 4000],
+          ['NURS-OXY', 'Oxygen Therapy (per hour)', 'Nursing', 3000],
+          ['NURS-ECG', 'ECG / 12-lead Electrocardiogram', 'Nursing', 15000],
+          ['NURS-GLUC', 'Blood Glucose Monitoring (glucometer)', 'Nursing', 2000],
+          ['NURS-SAMP', 'Sample Collection', 'Nursing', 1000],
           // HAEMATOLOGY
-          ['LAB-NFS','NFS / FBC (Full Blood Count)','Laboratory - Haematology',12900],
-          ['LAB-HB','Haemoglobin (Hb)','Laboratory - Haematology',4500],
-          ['LAB-PLT','Platelet Count','Laboratory - Haematology',5500],
-          ['LAB-BG','Blood Grouping and Rh Typing (ABO + Rh)','Laboratory - Haematology',5829],
-          ['LAB-VS','ESR / Vitesse de Sedimentation (VS)','Laboratory - Haematology',1516],
-          ['LAB-PT','Prothrombin Time (PT)','Laboratory - Haematology',9000],
-          ['LAB-APTT','APTT (Activated Partial Thromboplastin Time)','Laboratory - Haematology',9000],
-          ['LAB-INR','INR (International Normalized Ratio)','Laboratory - Haematology',9000],
-          ['LAB-CLOT','Clotting Factor I – Fibrinogen','Laboratory - Haematology',49900],
-          ['LAB-DDI','D-Dimer','Laboratory - Haematology',35000],
-          ['LAB-PS','Peripheral Blood Smear / Film','Laboratory - Haematology',8000],
-          ['LAB-MALA','Malaria RDT','Laboratory - Haematology',5000],
+          ['LAB-NFS', 'NFS / FBC (Full Blood Count)', 'Laboratory - Haematology', 12900],
+          ['LAB-HB', 'Haemoglobin (Hb)', 'Laboratory - Haematology', 4500],
+          ['LAB-PLT', 'Platelet Count', 'Laboratory - Haematology', 5500],
+          ['LAB-BG', 'Blood Grouping and Rh Typing (ABO + Rh)', 'Laboratory - Haematology', 5829],
+          ['LAB-VS', 'ESR / Vitesse de Sedimentation (VS)', 'Laboratory - Haematology', 1516],
+          ['LAB-PT', 'Prothrombin Time (PT)', 'Laboratory - Haematology', 9000],
+          ['LAB-APTT', 'APTT (Activated Partial Thromboplastin Time)', 'Laboratory - Haematology', 9000],
+          ['LAB-INR', 'INR (International Normalized Ratio)', 'Laboratory - Haematology', 9000],
+          ['LAB-CLOT', 'Clotting Factor I – Fibrinogen', 'Laboratory - Haematology', 49900],
+          ['LAB-DDI', 'D-Dimer', 'Laboratory - Haematology', 35000],
+          ['LAB-PS', 'Peripheral Blood Smear / Film', 'Laboratory - Haematology', 8000],
+          ['LAB-MALA', 'Malaria RDT', 'Laboratory - Haematology', 5000],
           // BIOCHEMISTRY
-          ['BIO-GLU','Fasting Blood Glucose','Laboratory - Biochemistry',3032],
-          ['BIO-HBA1C','HbA1c (Glycated Haemoglobin)','Laboratory - Biochemistry',12000],
-          ['BIO-CR','Creatinine','Laboratory - Biochemistry',3032],
-          ['BIO-UREA','Blood Urea Nitrogen (BUN) / Urea','Laboratory - Biochemistry',3032],
-          ['BIO-AU','Uric Acid (Acide Urique)','Laboratory - Biochemistry',3032],
-          ['BIO-NA','Sodium (Na)','Laboratory - Biochemistry',7475],
-          ['BIO-K','Potassium (K)','Laboratory - Biochemistry',7475],
-          ['BIO-CL','Chloride (Cl)','Laboratory - Biochemistry',7475],
-          ['BIO-CA','Calcium (Ca)','Laboratory - Biochemistry',3032],
-          ['BIO-MG','Magnesium (Mg)','Laboratory - Biochemistry',7200],
-          ['BIO-TP','Total Protein','Laboratory - Biochemistry',3032],
-          ['BIO-ALB','Albumin','Laboratory - Biochemistry',3032],
-          ['BIO-BILI','Total Bilirubin','Laboratory - Biochemistry',4430],
-          ['BIO-AST','AST (SGOT)','Laboratory - Biochemistry',3032],
-          ['BIO-ALT','ALT (SGPT)','Laboratory - Biochemistry',3032],
-          ['BIO-GGT','Gamma GT (GGT)','Laboratory - Biochemistry',4430],
-          ['BIO-ALP','Alkaline Phosphatase (ALP)','Laboratory - Biochemistry',4430],
-          ['BIO-LDH','Lactate Dehydrogenase (LDH)','Laboratory - Biochemistry',4430],
-          ['BIO-AMY','Amylase','Laboratory - Biochemistry',9094],
-          ['BIO-LIP','Lipase','Laboratory - Biochemistry',11658],
-          ['BIO-LIPID','Lipid Profile (Cholesterol + HDL + LDL + TG)','Laboratory - Biochemistry',18000],
-          ['BIO-CRP','CRP (C-Reactive Protein)','Laboratory - Biochemistry',5929],
-          ['BIO-TROPP','Troponin I (Cardiac)','Laboratory - Biochemistry',25000],
-          ['BIO-FER','Ferritin','Laboratory - Biochemistry',10000],
-          ['BIO-VITD','Vitamin D (25-OH)','Laboratory - Biochemistry',25000],
-          ['BIO-VITB12','Vitamin B12','Laboratory - Biochemistry',15000],
-          ['BIO-IMM','Immunoglobulins (IgA, IgM, IgG)','Laboratory - Biochemistry',20900],
-          ['BIO-MAST','Mast Cell Tryptase','Laboratory - Biochemistry',108900],
+          ['BIO-GLU', 'Fasting Blood Glucose', 'Laboratory - Biochemistry', 3032],
+          ['BIO-HBA1C', 'HbA1c (Glycated Haemoglobin)', 'Laboratory - Biochemistry', 12000],
+          ['BIO-CR', 'Creatinine', 'Laboratory - Biochemistry', 3032],
+          ['BIO-UREA', 'Blood Urea Nitrogen (BUN) / Urea', 'Laboratory - Biochemistry', 3032],
+          ['BIO-AU', 'Uric Acid (Acide Urique)', 'Laboratory - Biochemistry', 3032],
+          ['BIO-NA', 'Sodium (Na)', 'Laboratory - Biochemistry', 7475],
+          ['BIO-K', 'Potassium (K)', 'Laboratory - Biochemistry', 7475],
+          ['BIO-CL', 'Chloride (Cl)', 'Laboratory - Biochemistry', 7475],
+          ['BIO-CA', 'Calcium (Ca)', 'Laboratory - Biochemistry', 3032],
+          ['BIO-MG', 'Magnesium (Mg)', 'Laboratory - Biochemistry', 7200],
+          ['BIO-TP', 'Total Protein', 'Laboratory - Biochemistry', 3032],
+          ['BIO-ALB', 'Albumin', 'Laboratory - Biochemistry', 3032],
+          ['BIO-BILI', 'Total Bilirubin', 'Laboratory - Biochemistry', 4430],
+          ['BIO-AST', 'AST (SGOT)', 'Laboratory - Biochemistry', 3032],
+          ['BIO-ALT', 'ALT (SGPT)', 'Laboratory - Biochemistry', 3032],
+          ['BIO-GGT', 'Gamma GT (GGT)', 'Laboratory - Biochemistry', 4430],
+          ['BIO-ALP', 'Alkaline Phosphatase (ALP)', 'Laboratory - Biochemistry', 4430],
+          ['BIO-LDH', 'Lactate Dehydrogenase (LDH)', 'Laboratory - Biochemistry', 4430],
+          ['BIO-AMY', 'Amylase', 'Laboratory - Biochemistry', 9094],
+          ['BIO-LIP', 'Lipase', 'Laboratory - Biochemistry', 11658],
+          ['BIO-LIPID', 'Lipid Profile (Cholesterol + HDL + LDL + TG)', 'Laboratory - Biochemistry', 18000],
+          ['BIO-CRP', 'CRP (C-Reactive Protein)', 'Laboratory - Biochemistry', 5929],
+          ['BIO-TROPP', 'Troponin I (Cardiac)', 'Laboratory - Biochemistry', 25000],
+          ['BIO-FER', 'Ferritin', 'Laboratory - Biochemistry', 10000],
+          ['BIO-VITD', 'Vitamin D (25-OH)', 'Laboratory - Biochemistry', 25000],
+          ['BIO-VITB12', 'Vitamin B12', 'Laboratory - Biochemistry', 15000],
+          ['BIO-IMM', 'Immunoglobulins (IgA, IgM, IgG)', 'Laboratory - Biochemistry', 20900],
+          ['BIO-MAST', 'Mast Cell Tryptase', 'Laboratory - Biochemistry', 108900],
           // THYROID
-          ['THY-TSH','TSH (Thyroid Stimulating Hormone)','Laboratory - Thyroid',12000],
-          ['THY-FT4','Free T4 (FT4)','Laboratory - Thyroid',12000],
-          ['THY-FT3','Free T3 (FT3)','Laboratory - Thyroid',12000],
-          ['THY-PANEL','Thyroid Function Panel (TSH + FT3 + FT4)','Laboratory - Thyroid',30000],
+          ['THY-TSH', 'TSH (Thyroid Stimulating Hormone)', 'Laboratory - Thyroid', 12000],
+          ['THY-FT4', 'Free T4 (FT4)', 'Laboratory - Thyroid', 12000],
+          ['THY-FT3', 'Free T3 (FT3)', 'Laboratory - Thyroid', 12000],
+          ['THY-PANEL', 'Thyroid Function Panel (TSH + FT3 + FT4)', 'Laboratory - Thyroid', 30000],
           // HORMONES
-          ['HORM-BHCG','Beta-HCG (Pregnancy Test – Quantitative)','Laboratory - Hormones',10000],
-          ['HORM-FSH','FSH (Follicle Stimulating Hormone)','Laboratory - Hormones',15000],
-          ['HORM-LH','LH (Luteinizing Hormone)','Laboratory - Hormones',15000],
-          ['HORM-PRL','Prolactin','Laboratory - Hormones',15000],
-          ['HORM-TEST','Testosterone (Total)','Laboratory - Hormones',15000],
-          ['HORM-CORT','Cortisol','Laboratory - Hormones',18000],
-          ['HORM-AMH','AMH (Anti-Mullerian Hormone)','Laboratory - Hormones',45000],
+          ['HORM-BHCG', 'Beta-HCG (Pregnancy Test – Quantitative)', 'Laboratory - Hormones', 10000],
+          ['HORM-FSH', 'FSH (Follicle Stimulating Hormone)', 'Laboratory - Hormones', 15000],
+          ['HORM-LH', 'LH (Luteinizing Hormone)', 'Laboratory - Hormones', 15000],
+          ['HORM-PRL', 'Prolactin', 'Laboratory - Hormones', 15000],
+          ['HORM-TEST', 'Testosterone (Total)', 'Laboratory - Hormones', 15000],
+          ['HORM-CORT', 'Cortisol', 'Laboratory - Hormones', 18000],
+          ['HORM-AMH', 'AMH (Anti-Mullerian Hormone)', 'Laboratory - Hormones', 45000],
           // SEROLOGY
-          ['SERO-HIV','HIV Rapid Test','Laboratory - Serology',5000],
-          ['SERO-HBsAG','Hepatitis B Surface Antigen (HBsAg)','Laboratory - Serology',7000],
-          ['SERO-HCVAB','Anti-HCV (Hepatitis C Antibody)','Laboratory - Serology',10000],
-          ['SERO-VDRL','VDRL / TPHA (Syphilis)','Laboratory - Serology',13747],
-          ['SERO-TOXO','Toxoplasma IgG / IgM','Laboratory - Serology',15000],
-          ['SERO-HERP','Herpes Simplex IgG / IgM (HSV 1+2)','Laboratory - Serology',24900],
-          ['SERO-TORCH','TORCH Panel (Toxo + Rubella + CMV + HSV)','Laboratory - Serology',55000],
-          ['SERO-WIDAL','Widal Test (Typhoid)','Laboratory - Serology',8000],
-          ['SERO-CHLAM','Chlamydia Trachomatis Rapid Test','Laboratory - Serology',18262],
-          ['SERO-GONOC','GeneProbe – Gonococcal','Laboratory - Serology',62900],
+          ['SERO-HIV', 'HIV Rapid Test', 'Laboratory - Serology', 5000],
+          ['SERO-HBsAG', 'Hepatitis B Surface Antigen (HBsAg)', 'Laboratory - Serology', 7000],
+          ['SERO-HCVAB', 'Anti-HCV (Hepatitis C Antibody)', 'Laboratory - Serology', 10000],
+          ['SERO-VDRL', 'VDRL / TPHA (Syphilis)', 'Laboratory - Serology', 13747],
+          ['SERO-TOXO', 'Toxoplasma IgG / IgM', 'Laboratory - Serology', 15000],
+          ['SERO-HERP', 'Herpes Simplex IgG / IgM (HSV 1+2)', 'Laboratory - Serology', 24900],
+          ['SERO-TORCH', 'TORCH Panel (Toxo + Rubella + CMV + HSV)', 'Laboratory - Serology', 55000],
+          ['SERO-WIDAL', 'Widal Test (Typhoid)', 'Laboratory - Serology', 8000],
+          ['SERO-CHLAM', 'Chlamydia Trachomatis Rapid Test', 'Laboratory - Serology', 18262],
+          ['SERO-GONOC', 'GeneProbe – Gonococcal', 'Laboratory - Serology', 62900],
           // MICROBIOLOGY
-          ['MICRO-UCLT','Urine Culture (Uroculture)','Laboratory - Microbiology',7255],
-          ['MICRO-UAST','Urine Antibiogram (Sensitivity)','Laboratory - Microbiology',7757],
-          ['MICRO-USED','Urine Sediment / Dipstick + Microscopy','Laboratory - Microbiology',2110],
-          ['MICRO-UGRAM','Gram Stain – Urine','Laboratory - Microbiology',2343],
-          ['MICRO-BCLT','Blood Culture','Laboratory - Microbiology',25000],
-          ['MICRO-ZIEHL','Ziehl-Neelsen Stain (AFB / TB)','Laboratory - Microbiology',8000],
-          ['MICRO-STOOL','Stool Examination (Microscopy)','Laboratory - Microbiology',4000],
-          ['MICRO-HLPY','H. Pylori Rapid Antigen Test','Laboratory - Microbiology',8000],
+          ['MICRO-UCLT', 'Urine Culture (Uroculture)', 'Laboratory - Microbiology', 7255],
+          ['MICRO-UAST', 'Urine Antibiogram (Sensitivity)', 'Laboratory - Microbiology', 7757],
+          ['MICRO-USED', 'Urine Sediment / Dipstick + Microscopy', 'Laboratory - Microbiology', 2110],
+          ['MICRO-UGRAM', 'Gram Stain – Urine', 'Laboratory - Microbiology', 2343],
+          ['MICRO-BCLT', 'Blood Culture', 'Laboratory - Microbiology', 25000],
+          ['MICRO-ZIEHL', 'Ziehl-Neelsen Stain (AFB / TB)', 'Laboratory - Microbiology', 8000],
+          ['MICRO-STOOL', 'Stool Examination (Microscopy)', 'Laboratory - Microbiology', 4000],
+          ['MICRO-HLPY', 'H. Pylori Rapid Antigen Test', 'Laboratory - Microbiology', 8000],
           // MOLECULAR
-          ['MOLEC-HIVVL','HIV Viral Load (PCR)','Laboratory - Molecular',60000],
-          ['MOLEC-TBPCR','TB GeneXpert MTB/RIF','Laboratory - Molecular',35000],
-          ['MOLEC-COVAG','COVID-19 Antigen Rapid Test','Laboratory - Molecular',8000],
+          ['MOLEC-HIVVL', 'HIV Viral Load (PCR)', 'Laboratory - Molecular', 60000],
+          ['MOLEC-TBPCR', 'TB GeneXpert MTB/RIF', 'Laboratory - Molecular', 35000],
+          ['MOLEC-COVAG', 'COVID-19 Antigen Rapid Test', 'Laboratory - Molecular', 8000],
           // TUMOUR MARKERS
-          ['TUM-PSA','PSA (Prostate Specific Antigen)','Laboratory - Tumour Markers',15000],
-          ['TUM-CEA','CEA (Carcinoembryonic Antigen)','Laboratory - Tumour Markers',18000],
-          ['TUM-CA125','CA-125 (Ovarian Marker)','Laboratory - Tumour Markers',18000],
-          ['TUM-AFP','AFP (Alpha-Fetoprotein)','Laboratory - Tumour Markers',18000],
+          ['TUM-PSA', 'PSA (Prostate Specific Antigen)', 'Laboratory - Tumour Markers', 15000],
+          ['TUM-CEA', 'CEA (Carcinoembryonic Antigen)', 'Laboratory - Tumour Markers', 18000],
+          ['TUM-CA125', 'CA-125 (Ovarian Marker)', 'Laboratory - Tumour Markers', 18000],
+          ['TUM-AFP', 'AFP (Alpha-Fetoprotein)', 'Laboratory - Tumour Markers', 18000],
           // IMAGING - X-RAY
-          ['IMG-CXR','Chest X-Ray PA View','Imaging - X-Ray',25000],
-          ['IMG-CXR2','Chest X-Ray AP + Lateral','Imaging - X-Ray',35000],
-          ['IMG-ABXR','Abdominal X-Ray (AXR)','Imaging - X-Ray',25000],
-          ['IMG-SPINEXR','Spine X-Ray (any region)','Imaging - X-Ray',30000],
-          ['IMG-BXRAY','Bone X-Ray (limb)','Imaging - X-Ray',20000],
-          ['IMG-OPG','Orthopantomogram (OPG / Panoramic Dental)','Imaging - X-Ray',35000],
+          ['IMG-CXR', 'Chest X-Ray PA View', 'Imaging - X-Ray', 25000],
+          ['IMG-CXR2', 'Chest X-Ray AP + Lateral', 'Imaging - X-Ray', 35000],
+          ['IMG-ABXR', 'Abdominal X-Ray (AXR)', 'Imaging - X-Ray', 25000],
+          ['IMG-SPINEXR', 'Spine X-Ray (any region)', 'Imaging - X-Ray', 30000],
+          ['IMG-BXRAY', 'Bone X-Ray (limb)', 'Imaging - X-Ray', 20000],
+          ['IMG-OPG', 'Orthopantomogram (OPG / Panoramic Dental)', 'Imaging - X-Ray', 35000],
           // IMAGING - ULTRASOUND
-          ['IMG-USAB','Abdominal Ultrasound','Imaging - Ultrasound',35000],
-          ['IMG-USPELV','Pelvic Ultrasound','Imaging - Ultrasound',30000],
-          ['IMG-USOB','Obstetric Ultrasound (any trimester)','Imaging - Ultrasound',30000],
-          ['IMG-USTHYR','Thyroid Ultrasound','Imaging - Ultrasound',30000],
-          ['IMG-USBST','Breast Ultrasound','Imaging - Ultrasound',35000],
-          ['IMG-USDOPP','Doppler Ultrasound (any site)','Imaging - Ultrasound',55000],
-          ['IMG-ECHO','Echocardiogram (Echo)','Imaging - Ultrasound',80000],
-          ['IMG-USCOMP','Complete Abdo-Pelvic Ultrasound','Imaging - Ultrasound',55000],
+          ['IMG-USAB', 'Abdominal Ultrasound', 'Imaging - Ultrasound', 35000],
+          ['IMG-USPELV', 'Pelvic Ultrasound', 'Imaging - Ultrasound', 30000],
+          ['IMG-USOB', 'Obstetric Ultrasound (any trimester)', 'Imaging - Ultrasound', 30000],
+          ['IMG-USTHYR', 'Thyroid Ultrasound', 'Imaging - Ultrasound', 30000],
+          ['IMG-USBST', 'Breast Ultrasound', 'Imaging - Ultrasound', 35000],
+          ['IMG-USDOPP', 'Doppler Ultrasound (any site)', 'Imaging - Ultrasound', 55000],
+          ['IMG-ECHO', 'Echocardiogram (Echo)', 'Imaging - Ultrasound', 80000],
+          ['IMG-USCOMP', 'Complete Abdo-Pelvic Ultrasound', 'Imaging - Ultrasound', 55000],
           // IMAGING - CT SCAN
-          ['IMG-CTHEAD','CT Scan – Brain / Head','Imaging - CT Scan',120000],
-          ['IMG-CTCHEST','CT Scan – Chest','Imaging - CT Scan',150000],
-          ['IMG-CTAB','CT Scan – Abdomen','Imaging - CT Scan',150000],
-          ['IMG-CTABPE','CT Scan – Abdomino-Pelvic','Imaging - CT Scan',200000],
-          ['IMG-CTCONT','CT Scan with IV Contrast (any site)','Imaging - CT Scan',180000],
-          ['IMG-CTA','CT Angiography (any vessel)','Imaging - CT Scan',300000],
+          ['IMG-CTHEAD', 'CT Scan – Brain / Head', 'Imaging - CT Scan', 120000],
+          ['IMG-CTCHEST', 'CT Scan – Chest', 'Imaging - CT Scan', 150000],
+          ['IMG-CTAB', 'CT Scan – Abdomen', 'Imaging - CT Scan', 150000],
+          ['IMG-CTABPE', 'CT Scan – Abdomino-Pelvic', 'Imaging - CT Scan', 200000],
+          ['IMG-CTCONT', 'CT Scan with IV Contrast (any site)', 'Imaging - CT Scan', 180000],
+          ['IMG-CTA', 'CT Angiography (any vessel)', 'Imaging - CT Scan', 300000],
           // DENTISTRY
-          ['DENT-CONS','Dental Consultation and Examination','Dentistry',15000],
-          ['DENT-SCAL','Scaling and Polishing (Prophylaxis)','Dentistry',35000],
-          ['DENT-FILL','Tooth Filling (Composite / Amalgam)','Dentistry',25000],
-          ['DENT-EXT','Simple Tooth Extraction','Dentistry',20000],
-          ['DENT-SEXT','Surgical Extraction','Dentistry',40000],
-          ['DENT-RCT','Root Canal Treatment (per canal)','Dentistry',60000],
-          ['DENT-CRWN','Dental Crown','Dentistry',150000],
+          ['DENT-CONS', 'Dental Consultation and Examination', 'Dentistry', 15000],
+          ['DENT-SCAL', 'Scaling and Polishing (Prophylaxis)', 'Dentistry', 35000],
+          ['DENT-FILL', 'Tooth Filling (Composite / Amalgam)', 'Dentistry', 25000],
+          ['DENT-EXT', 'Simple Tooth Extraction', 'Dentistry', 20000],
+          ['DENT-SEXT', 'Surgical Extraction', 'Dentistry', 40000],
+          ['DENT-RCT', 'Root Canal Treatment (per canal)', 'Dentistry', 60000],
+          ['DENT-CRWN', 'Dental Crown', 'Dentistry', 150000],
           // PHYSIOTHERAPY
-          ['PHYS-CONS','Physiotherapy Consultation / Assessment','Physiotherapy',15000],
-          ['PHYS-SES','Physiotherapy Session (30 min)','Physiotherapy',20000],
-          ['PHYS-SES60','Physiotherapy Session (60 min)','Physiotherapy',35000],
-          ['PHYS-ULTRA','Ultrasound Therapy','Physiotherapy',12000],
-          ['PHYS-ELECT','Electrotherapy (TENS / IFT / EMS)','Physiotherapy',12000],
-          ['PHYS-MASS','Therapeutic Massage','Physiotherapy',20000],
-          ['PHYS-MANIP','Manual Therapy / Joint Manipulation','Physiotherapy',25000],
-          ['PHYS-NEURO','Neurological Physiotherapy Session','Physiotherapy',30000],
+          ['PHYS-CONS', 'Physiotherapy Consultation / Assessment', 'Physiotherapy', 15000],
+          ['PHYS-SES', 'Physiotherapy Session (30 min)', 'Physiotherapy', 20000],
+          ['PHYS-SES60', 'Physiotherapy Session (60 min)', 'Physiotherapy', 35000],
+          ['PHYS-ULTRA', 'Ultrasound Therapy', 'Physiotherapy', 12000],
+          ['PHYS-ELECT', 'Electrotherapy (TENS / IFT / EMS)', 'Physiotherapy', 12000],
+          ['PHYS-MASS', 'Therapeutic Massage', 'Physiotherapy', 20000],
+          ['PHYS-MANIP', 'Manual Therapy / Joint Manipulation', 'Physiotherapy', 25000],
+          ['PHYS-NEURO', 'Neurological Physiotherapy Session', 'Physiotherapy', 30000],
           // OPHTHALMOLOGY
-          ['OPH-CONS','Eye Consultation','Ophthalmology',15000],
-          ['OPH-REFR','Refraction (Glasses Prescription)','Ophthalmology',10000],
-          ['OPH-FUND','Fundoscopy','Ophthalmology',10000],
-          ['OPH-GLAU','Glaucoma Screening','Ophthalmology',15000],
+          ['OPH-CONS', 'Eye Consultation', 'Ophthalmology', 15000],
+          ['OPH-REFR', 'Refraction (Glasses Prescription)', 'Ophthalmology', 10000],
+          ['OPH-FUND', 'Fundoscopy', 'Ophthalmology', 10000],
+          ['OPH-GLAU', 'Glaucoma Screening', 'Ophthalmology', 15000],
           // MATERNITY
-          ['MAT-ANC','Antenatal Care (ANC) Visit','Maternity',10000],
-          ['MAT-DELV','Normal Vaginal Delivery','Maternity',200000],
-          ['MAT-CS','Caesarean Section (C-Section)','Maternity',500000],
-          ['MAT-PNCU','Postnatal Check-Up','Maternity',10000],
-          ['MAT-PAPS','Pap Smear (Cervical Cytology)','Maternity',20000],
+          ['MAT-ANC', 'Antenatal Care (ANC) Visit', 'Maternity', 10000],
+          ['MAT-DELV', 'Normal Vaginal Delivery', 'Maternity', 200000],
+          ['MAT-CS', 'Caesarean Section (C-Section)', 'Maternity', 500000],
+          ['MAT-PNCU', 'Postnatal Check-Up', 'Maternity', 10000],
+          ['MAT-PAPS', 'Pap Smear (Cervical Cytology)', 'Maternity', 20000],
           // MINOR SURGERY
-          ['SURG-INCI','Incision and Drainage (I&D)','Minor Surgery',30000],
-          ['SURG-LUMP','Lump Excision (superficial)','Minor Surgery',60000],
-          ['SURG-CIRC','Circumcision (adult)','Minor Surgery',80000],
-          ['SURG-LIPOM','Lipoma Excision','Minor Surgery',60000],
+          ['SURG-INCI', 'Incision and Drainage (I&D)', 'Minor Surgery', 30000],
+          ['SURG-LUMP', 'Lump Excision (superficial)', 'Minor Surgery', 60000],
+          ['SURG-CIRC', 'Circumcision (adult)', 'Minor Surgery', 80000],
+          ['SURG-LIPOM', 'Lipoma Excision', 'Minor Surgery', 60000],
           // INPATIENT
-          ['HOSP-WARD','Ward Bed (per day)','Inpatient',35000],
-          ['HOSP-SEMI','Semi-Private Room (per day)','Inpatient',60000],
-          ['HOSP-PRIV','Private Room (per day)','Inpatient',90000],
-          ['HOSP-ICU','ICU Bed (per day)','Inpatient',150000],
+          ['HOSP-WARD', 'Ward Bed (per day)', 'Inpatient', 35000],
+          ['HOSP-SEMI', 'Semi-Private Room (per day)', 'Inpatient', 60000],
+          ['HOSP-PRIV', 'Private Room (per day)', 'Inpatient', 90000],
+          ['HOSP-ICU', 'ICU Bed (per day)', 'Inpatient', 150000],
           // ADMINISTRATIVE
-          ['ADMIN-CERT','Medical Certificate','Administrative',5000],
-          ['ADMIN-AMBL','Ambulance Transfer (local)','Administrative',50000],
+          ['ADMIN-CERT', 'Medical Certificate', 'Administrative', 5000],
+          ['ADMIN-AMBL', 'Ambulance Transfer (local)', 'Administrative', 50000],
         ];
         for (const [code, name, dept, price] of initialServices) {
           await client.execute({
             sql: `INSERT OR IGNORE INTO sales_service_catalog (code, name, department, default_price) VALUES (?, ?, ?, ?)`,
             args: [code, name, dept, price]
-          }).catch(() => {});
+          }).catch(() => { });
         }
         console.log('✅ Sales Service Catalog pre-seeded successfully.');
       }
