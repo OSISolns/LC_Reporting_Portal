@@ -889,7 +889,10 @@ exports.deleteNCR = async (req, res, next) => {
 // GET /api/lab/storage-units
 exports.getStorageUnits = async (req, res, next) => {
   try {
-    const { rows } = await db.query('SELECT * FROM lab_storage_units ORDER BY id ASC');
+    const { rows } = await db.query(
+      `SELECT * FROM lab_storage_units 
+       ORDER BY CASE type WHEN 'fridge' THEN 1 WHEN 'room_temp' THEN 2 WHEN 'freezer' THEN 3 ELSE 4 END, id ASC`
+    );
     res.json({ success: true, data: rows });
   } catch (err) { next(err); }
 };
@@ -1224,7 +1227,7 @@ exports.deleteEquipment = async (req, res, next) => {
 // GET /api/lab/inhand-inventory
 exports.getInhandInventory = async (req, res, next) => {
   try {
-    const { storage_temp, equipment_group, department, search } = req.query;
+    const { storage_temp, storage_unit_id, equipment_group, department, search } = req.query;
     let sql = `
       SELECT i.*, u.label AS storage_unit_label, u.temp_range AS storage_unit_temp
       FROM lab_inhand_inventory i
@@ -1236,6 +1239,10 @@ exports.getInhandInventory = async (req, res, next) => {
     if (storage_temp && storage_temp !== 'all') {
       sql += ' AND i.storage_temp = ?';
       params.push(storage_temp);
+    }
+    if (storage_unit_id && storage_unit_id !== 'all') {
+      sql += ' AND i.storage_unit_id = ?';
+      params.push(storage_unit_id);
     }
     if (equipment_group && equipment_group !== 'all') {
       sql += ' AND i.equipment_group = ?';

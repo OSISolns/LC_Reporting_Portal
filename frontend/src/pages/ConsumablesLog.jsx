@@ -1252,17 +1252,18 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const contentTypesFor = (unitType) => ALL_CONTENT_TYPES.filter(c => c.unitTypes.includes(unitType));
 
 
-  // Each unit: { id, label, type: 'fridge'|'freezer', temp_range: string, subdivisions: string[], contentTypes: string[] }
+  // Each unit: { id, label, type: 'fridge'|'freezer'|'room_temp', temp_range: string, subdivisions: string[], contentTypes: string[] }
   const DEFAULT_STORAGE_UNITS = [
-    { id: 'fridge_1', label: 'Fridge 1', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_2', label: 'Fridge 2', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_3', label: 'Fridge 3', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_4', label: 'Fridge 4', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_5', label: 'Fridge 5', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_6', label: 'Fridge 6', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_7', label: 'Fridge 7', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'fridge_8', label: 'Fridge 8', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: [], contentTypes: [] },
-    { id: 'freezer_1', label: 'Freezer 1', type: 'freezer', temp_range: '-20°C to -80°C', subdivisions: [], contentTypes: [] },
+    { id: 'fridge_biochem', label: 'Refrigerator 1 - Biochemistry & ECLIA Reagents', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: ['biochem'], contentTypes: [] },
+    { id: 'fridge_hema', label: 'Refrigerator 2 - Hematology & Blood Bank Controls', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: ['hema'], contentTypes: [] },
+    { id: 'fridge_micro', label: 'Refrigerator 3 - Microbiology & VITEK 2 Cards', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: ['micro'], contentTypes: [] },
+    { id: 'fridge_serology', label: 'Refrigerator 4 - Serology & Rapid Diagnostic Kits', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: ['serology'], contentTypes: [] },
+    { id: 'fridge_samples', label: 'Refrigerator 5 - Clinical Specimen Pre/Post-Hold', type: 'fridge', temp_range: '2°C to 8°C', subdivisions: ['samples'], contentTypes: [] },
+    { id: 'freezer_controls', label: 'Deep Freezer 1 - Lyophilized QC & Calibrators', type: 'freezer', temp_range: '-20°C to -80°C', subdivisions: ['biochem', 'hema'], contentTypes: [] },
+    { id: 'room_temp_biochem', label: 'Room Temp Shelf 1 - Biochemistry Wash & Diluents', type: 'room_temp', temp_range: '20°C to 25°C', subdivisions: ['biochem'], contentTypes: [] },
+    { id: 'room_temp_hema', label: 'Room Temp Cabinet 2 - Hematology Dyes & Lysing', type: 'room_temp', temp_range: '20°C to 25°C', subdivisions: ['hema'], contentTypes: [] },
+    { id: 'room_temp_micro', label: 'Room Temp Bench 3 - Microbiology Saline & Consumables', type: 'room_temp', temp_range: '20°C to 25°C', subdivisions: ['micro'], contentTypes: [] },
+    { id: 'room_temp_general', label: 'Room Temp Rack 4 - General Diagnostic Consumables', type: 'room_temp', temp_range: '20°C to 25°C', subdivisions: ['general'], contentTypes: [] },
   ];
 
   const [STORAGE_UNITS, setStorageUnits] = useState(() => {
@@ -1270,17 +1271,33 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
       const raw = localStorage.getItem('lc_storage_units_config');
       if (raw) {
         const parsed = JSON.parse(raw);
-        // Migrate: ensure temp_range, subdivisions and contentTypes fields exist on old saved units
-        return parsed.map(u => ({
-          ...u,
-          temp_range: u.temp_range || (u.type === 'freezer' ? '-20°C to -80°C' : '2°C to 8°C'),
-          subdivisions: u.subdivisions || [],
-          contentTypes: u.contentTypes || []
-        }));
+        // Only return if it has actual units and not old deprecated ones
+        if (Array.isArray(parsed) && parsed.some(u => u.id?.startsWith('room_temp_') || u.id?.startsWith('fridge_bio'))) {
+          return parsed.map(u => ({
+            ...u,
+            temp_range: u.temp_range || (u.type === 'freezer' ? '-20°C to -80°C' : u.type === 'room_temp' ? '20°C to 25°C' : '2°C to 8°C'),
+            subdivisions: u.subdivisions || [],
+            contentTypes: u.contentTypes || []
+          }));
+        }
       }
     } catch { }
     return DEFAULT_STORAGE_UNITS;
   });
+
+  useEffect(() => {
+    api.get('/lab/storage-units')
+      .then(res => {
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          setStorageUnits(res.data.data.map(u => ({
+            ...u,
+            subdivisions: u.subdivisions || [],
+            contentTypes: u.contentTypes || []
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const persistStorageUnits = (next) => {
     setStorageUnits(next);
@@ -3673,10 +3690,55 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
                           <div className="h-px bg-slate-100 my-1" />
 
+                          {/* Room Temp Units */}
+                          {STORAGE_UNITS.filter(u => u.type === 'room_temp').map(unit => {
+                            const count = filteredDeptStock.filter(r =>
+                              (storageAssignments[String(r.item_id)] || r.storage_unit_id) === unit.id
+                            ).length;
+                            const isActive = selectedStorageUnit === unit.id;
+                            const unitSubdivs = (unit.subdivisions || []).map(sid =>
+                              LAB_SUBDIVISIONS.find(s => s.id === sid)
+                            ).filter(Boolean);
+                            const unitCTs = (unit.contentTypes || []).map(cid =>
+                              ALL_CONTENT_TYPES.find(c => c.id === cid)
+                            ).filter(Boolean);
+                            return (
+                              <button
+                                key={unit.id}
+                                type="button"
+                                onClick={() => setSelectedStorageUnit(isActive ? null : unit.id)}
+                                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${isActive
+                                    ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                  }`}
+                              >
+                                {unit.label}
+                                <span className={`block text-[9px] font-semibold mt-0.5 ${isActive ? 'text-amber-100' : 'text-slate-400'
+                                  }`}>
+                                  {count} item{count !== 1 ? 's' : ''}
+                                </span>
+                                {(unitSubdivs.length > 0 || unitCTs.length > 0) && (
+                                  <div className="flex flex-wrap gap-0.5 mt-1.5">
+                                    {unitSubdivs.map(s => (
+                                      <span key={s.id} className={`px-1 py-px rounded text-[8px] font-bold border ${isActive ? 'bg-white/20 text-white border-white/30' : s.color
+                                        }`}>{s.label}</span>
+                                    ))}
+                                    {unitCTs.map(c => (
+                                      <span key={c.id} className={`px-1 py-px rounded text-[8px] font-bold border ${isActive ? 'bg-white/20 text-white border-white/30' : c.color
+                                        }`}>{c.label}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+
+                          <div className="h-px bg-slate-100 my-1" />
+
                           {/* Freezer */}
                           {STORAGE_UNITS.filter(u => u.type === 'freezer').map(unit => {
                             const count = filteredDeptStock.filter(r =>
-                              storageAssignments[String(r.item_id)] === unit.id
+                              (storageAssignments[String(r.item_id)] || r.storage_unit_id) === unit.id
                             ).length;
                             const isActive = selectedStorageUnit === unit.id;
                             const unitSubdivs = (unit.subdivisions || []).map(sid =>
@@ -3725,12 +3787,12 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                                 const groups = STORAGE_UNITS.map(unit => ({
                                   unit,
                                   rows: filteredDeptStock.filter(r =>
-                                    storageAssignments[String(r.item_id)] === unit.id
+                                    (storageAssignments[String(r.item_id)] || r.storage_unit_id) === unit.id
                                   ),
                                 })).filter(g => g.rows.length > 0);
 
                                 const unassigned = filteredDeptStock.filter(r =>
-                                  !storageAssignments[String(r.item_id)]
+                                  !storageAssignments[String(r.item_id)] && !r.storage_unit_id
                                 );
 
                                 if (groups.length === 0 && unassigned.length === 0) {
@@ -3794,7 +3856,7 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
                               {(() => {
                                 const unit = STORAGE_UNITS.find(u => u.id === selectedStorageUnit);
                                 const rows = filteredDeptStock.filter(r =>
-                                  storageAssignments[String(r.item_id)] === selectedStorageUnit
+                                  (storageAssignments[String(r.item_id)] || r.storage_unit_id) === selectedStorageUnit
                                 );
                                 return (
                                   <StorageUnitGroup

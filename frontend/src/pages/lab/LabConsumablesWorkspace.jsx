@@ -3,13 +3,14 @@ import {
   ClipboardList, Package, Plus, RefreshCw, Search, X, Check,
   AlertTriangle, CheckCircle2, Clock, Droplet, Microscope,
   Activity, Archive, Dna, FlaskConical, Download, Layers,
-  ChevronRight, ArrowRight, ArrowUpRight, ShieldCheck, Zap
+  ChevronRight, ArrowRight, ArrowUpRight, ShieldCheck, Zap,
+  Refrigerator, Snowflake, Thermometer, Box, Eye, CheckCircle, ArrowDown
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
   getUnitStockInUse, consumeUnitStockItem, addUnitStockItem,
   getUnitConsumptionLogs, getUnitRequisitions, getUnitRequisitionItems,
-  createUnitRequisition
+  createUnitRequisition, getStorageUnits, getInhandInventory
 } from '../../api/lab';
 
 // ── The 6 Exact Laboratory Units ──────────────────────────────────────────────
@@ -48,7 +49,7 @@ export default function LabConsumablesWorkspace({ user }) {
   }, [user]);
 
   const [activeUnit, setActiveUnit] = useState(defaultUnitId);
-  const [activeTab, setActiveTab] = useState('stock'); // 'stock' | 'requisitions' | 'logs'
+  const [activeTab, setActiveTab] = useState('stock'); // 'stock' | 'storage' | 'requisitions' | 'logs'
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -57,6 +58,15 @@ export default function LabConsumablesWorkspace({ user }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+
+  // Cold Chain & Physical Storage Units State
+  const [storageUnits, setStorageUnits] = useState([]);
+  const [storageInventory, setStorageInventory] = useState([]);
+  const [storageTabType, setStorageTabType] = useState('all'); // 'all' | 'unit' | 'fridge' | 'room_temp' | 'freezer'
+  const [storageSearchQuery, setStorageSearchQuery] = useState('');
+  const [transferModalItem, setTransferModalItem] = useState(null); // { item, unit }
+  const [transferQty, setTransferQty] = useState(1);
+  const [transferring, setTransferring] = useState(false);
 
   // Consumption Modal State
   const [consumeModalItem, setConsumeModalItem] = useState(null);
@@ -100,10 +110,12 @@ export default function LabConsumablesWorkspace({ user }) {
     else setLoading(true);
 
     try {
-      const [stockRes, reqRes, logsRes] = await Promise.allSettled([
+      const [stockRes, reqRes, logsRes, storageRes, inhandRes] = await Promise.allSettled([
         getUnitStockInUse({ unit: activeUnit }),
         getUnitRequisitions({ unit: activeUnit }),
-        getUnitConsumptionLogs({ unit: activeUnit, limit: 100 })
+        getUnitConsumptionLogs({ unit: activeUnit, limit: 100 }),
+        getStorageUnits(),
+        getInhandInventory()
       ]);
 
       if (stockRes.status === 'fulfilled' && stockRes.value.data?.success) {
@@ -114,6 +126,12 @@ export default function LabConsumablesWorkspace({ user }) {
       }
       if (logsRes.status === 'fulfilled' && logsRes.value.data?.success) {
         setConsumptionLogs(logsRes.value.data.data || []);
+      }
+      if (storageRes.status === 'fulfilled' && storageRes.value.data?.success) {
+        setStorageUnits(storageRes.value.data.data || []);
+      }
+      if (inhandRes.status === 'fulfilled' && inhandRes.value.data?.success) {
+        setStorageInventory(inhandRes.value.data.data || []);
       }
     } catch (err) {
       console.error('Failed to load lab workspace data:', err);
@@ -352,6 +370,70 @@ export default function LabConsumablesWorkspace({ user }) {
     }
   };
 
+  // Storage Units relevant to the currently selected active laboratory unit
+  const activeUnitStorageUnitIds = useMemo(() => {
+    switch (activeUnit) {
+      case 'Biochemistry':
+        return ['fridge_biochem', 'freezer_controls', 'room_temp_biochem'];
+      case 'Hematology':
+        return ['fridge_hema', 'freezer_controls', 'room_temp_hema'];
+      case 'Microbiology':
+        return ['fridge_micro', 'room_temp_micro'];
+      case 'Phlebotomy':
+        return ['fridge_samples', 'room_temp_general'];
+      case 'Histopathology':
+        return ['room_temp_general'];
+      case 'Molecular Biology':
+        return ['fridge_serology', 'freezer_controls', 'room_temp_general'];
+      default:
+        return [];
+    }
+  }, [activeUnit]);
+
+  // Filtered storage units for display
+  const filteredStorageUnits = useMemo(() => {
+    return storageUnits.filter(u => {
+      if (storageTabType === 'unit') {
+        return activeUnitStorageUnitIds.includes(u.id);
+      }
+      if (storageTabType === 'fridge') return u.type === 'fridge';
+      if (storageTabType === 'room_temp') return u.type === 'room_temp';
+      if (storageTabType === 'freezer') return u.type === 'freezer';
+      return true;
+    });
+  }, [storageUnits, storageTabType, activeUnitStorageUnitIds]);
+
+  const handleTransferToBench = async (e) => {
+    e.preventDefault();
+    if (!transferModalItem) return;
+    const { item, unit } = transferModalItem;
+    setTransferring(true);
+    try {
+      const payload = {
+        unit_name: activeUnit,
+        item_name: item.item_name,
+        category: item.category || 'Reagents',
+        quantity_in_use: Number(transferQty) || 1,
+        unit_of_measure: item.unit_of_measure || 'kit',
+        min_threshold: item.min_threshold || 2,
+        storage_location: `${unit.label} (${unit.temp_range || 'Stored'})`
+      };
+      const res = await addUnitStockItem(payload);
+      if (res.data?.success) {
+        toast.success(`Transferred ${transferQty} ${item.unit_of_measure} of ${item.item_name} to ${activeUnit} Bench Stock!`);
+        setTransferModalItem(null);
+        setTransferQty(1);
+        fetchWorkspaceData(true);
+        setActiveTab('stock');
+      }
+    } catch (err) {
+      console.error('Transfer error:', err);
+      toast.error('Failed to transfer item to bench stock.');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   const currentUnitConfig = LAB_UNITS.find(u => u.id === activeUnit) || LAB_UNITS[0];
 
   return (
@@ -476,6 +558,18 @@ export default function LabConsumablesWorkspace({ user }) {
           >
             <Package size={14} />
             <span>Stock In Use ({filteredStock.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('storage')}
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${
+              activeTab === 'storage'
+                ? 'bg-[#1B669E] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Refrigerator size={14} />
+            <span>Fridges &amp; Room Temp ({storageInventory.length})</span>
           </button>
 
           <button
@@ -672,6 +766,283 @@ export default function LabConsumablesWorkspace({ user }) {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: COLD CHAIN & PHYSICAL STORAGE (FRIDGES, ROOM TEMP, FREEZERS) ── */}
+      {activeTab === 'storage' && (
+        <div className="space-y-4">
+          {/* Header Banner */}
+          <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[11px] font-bold text-[#1B669E] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  MoH Rwanda • ISO 15189 Cold Chain Standard
+                </span>
+                <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Reagents Monitored
+                </span>
+              </div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Refrigerator className="text-[#1B669E]" size={18} />
+                Physical Storage Units (Fridges &amp; Room Temp)
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Inspect reagents stored in Refrigerators (2°C–8°C), Room Temp Shelves (20°C–25°C), and Deep Freezers (-20°C to -80°C). Click &quot;Take to Bench&quot; to bring items into your active unit bench stock.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-700 font-bold bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                {storageInventory.length} Total Reagents Stored
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Category & Search Filter Bar */}
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex flex-col lg:flex-row items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-1.5 flex-wrap w-full lg:w-auto">
+              <button
+                onClick={() => setStorageTabType('all')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                  storageTabType === 'all'
+                    ? 'bg-[#1B669E] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                All Storage Units ({storageUnits.length})
+              </button>
+
+              <button
+                onClick={() => setStorageTabType('unit')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  storageTabType === 'unit'
+                    ? 'bg-[#1B669E] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <currentUnitConfig.icon size={13} />
+                <span>{activeUnit} Units ({storageUnits.filter(u => activeUnitStorageUnitIds.includes(u.id)).length})</span>
+              </button>
+
+              <button
+                onClick={() => setStorageTabType('fridge')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  storageTabType === 'fridge'
+                    ? 'bg-sky-700 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <Refrigerator size={13} className="text-sky-600" />
+                <span>Fridges 2°C–8°C ({storageUnits.filter(u => u.type === 'fridge').length})</span>
+              </button>
+
+              <button
+                onClick={() => setStorageTabType('room_temp')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  storageTabType === 'room_temp'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <Thermometer size={13} className="text-amber-600" />
+                <span>Room Temp 20°C–25°C ({storageUnits.filter(u => u.type === 'room_temp').length})</span>
+              </button>
+
+              <button
+                onClick={() => setStorageTabType('freezer')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  storageTabType === 'freezer'
+                    ? 'bg-indigo-700 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <Snowflake size={13} className="text-indigo-600" />
+                <span>Deep Freezers ({storageUnits.filter(u => u.type === 'freezer').length})</span>
+              </button>
+            </div>
+
+            {/* Live Reagent Search Input */}
+            <div className="relative w-full lg:w-72">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={storageSearchQuery}
+                onChange={(e) => setStorageSearchQuery(e.target.value)}
+                placeholder="Search reagents (Cobas, Mindray, VITEK...)"
+                className="w-full pl-8 pr-8 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:border-[#1B669E] text-slate-800"
+              />
+              {storageSearchQuery && (
+                <button
+                  onClick={() => setStorageSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Storage Units Grid */}
+          <div className="space-y-4">
+            {filteredStorageUnits.map(unit => {
+              const isFridge = unit.type === 'fridge';
+              const isFreezer = unit.type === 'freezer';
+              const isRoomTemp = unit.type === 'room_temp';
+
+              // Get all reagents assigned to this unit
+              const allUnitReagents = storageInventory.filter(i => i.storage_unit_id === unit.id);
+              
+              // Filter by user search query if present
+              const displayedReagents = allUnitReagents.filter(i => {
+                if (!storageSearchQuery.trim()) return true;
+                const q = storageSearchQuery.toLowerCase();
+                return (
+                  i.item_name?.toLowerCase().includes(q) ||
+                  i.equipment_group?.toLowerCase().includes(q) ||
+                  i.category?.toLowerCase().includes(q) ||
+                  unit.label?.toLowerCase().includes(q)
+                );
+              });
+
+              // If searching and this unit has 0 matching items, hide it
+              if (storageSearchQuery.trim() && displayedReagents.length === 0) {
+                return null;
+              }
+
+              return (
+                <div key={unit.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+                  {/* Unit Header Bar */}
+                  <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    isFridge ? 'bg-sky-50/70 border-sky-100' :
+                    isFreezer ? 'bg-indigo-50/70 border-indigo-100' :
+                    'bg-amber-50/70 border-amber-100'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl ${
+                        isFridge ? 'bg-sky-100 text-sky-700' :
+                        isFreezer ? 'bg-indigo-100 text-indigo-700' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>
+                        {isFridge ? <Refrigerator size={18} /> :
+                         isFreezer ? <Snowflake size={18} /> :
+                         <Thermometer size={18} />}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-extrabold text-sm text-slate-900">{unit.label}</h3>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${
+                            isFridge ? 'bg-white text-sky-800 border-sky-200' :
+                            isFreezer ? 'bg-white text-indigo-800 border-indigo-200' :
+                            'bg-white text-amber-800 border-amber-200'
+                          }`}>
+                            {unit.temp_range || (isFridge ? '2°C to 8°C' : isFreezer ? '-20°C to -80°C' : '20°C to 25°C')}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">ID: {unit.id}</span>
+                        </div>
+                        <span className="text-xs text-slate-500 font-medium mt-0.5 block">
+                          {isFridge ? 'Cold Chain 2°C to 8°C Reagents' : isFreezer ? 'Lyophilized Controls & Calibrators' : 'Room Temperature 20°C to 25°C Storage'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-slate-700 border border-slate-200 shadow-2xs">
+                        {allUnitReagents.length} Reagents Stored
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Operational
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Reagents Table inside this Unit */}
+                  {displayedReagents.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400 italic">
+                      {unit.id === 'fridge_samples' 
+                        ? 'Reserved for clinical patient specimen pre/post-analytical holding (No stock reagents).'
+                        : 'No reagents currently recorded in this storage unit.'}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            <th className="py-2.5 px-4">Reagent / Item Name</th>
+                            <th className="py-2.5 px-4">Equipment Group / Analyzer</th>
+                            <th className="py-2.5 px-4">Category</th>
+                            <th className="py-2.5 px-4 text-center">In-Hand Stock</th>
+                            <th className="py-2.5 px-4 text-center">Stock Status</th>
+                            <th className="py-2.5 px-4 text-right">Transfer to Bench</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-slate-700">
+                          {displayedReagents.map(reagent => {
+                            const qty = Number(reagent.quantity_in_hand) || 0;
+                            const min = Number(reagent.min_threshold) || 1;
+                            const isStockout = qty <= 0;
+                            const isLow = qty > 0 && qty <= min;
+
+                            return (
+                              <tr key={reagent.id} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="py-3 px-4">
+                                  <span className="font-bold text-slate-900 block text-xs">{reagent.item_name}</span>
+                                  <span className="text-[10px] text-slate-400">Bench: {reagent.department || activeUnit}</span>
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                    {reagent.equipment_group || 'General Lab'}
+                                  </span>
+                                </td>
+
+                                <td className="py-3 px-4 text-slate-600 font-medium">
+                                  {reagent.category || 'Reagents'}
+                                </td>
+
+                                <td className="py-3 px-4 text-center font-mono font-bold">
+                                  <span className={isStockout ? 'text-rose-600' : isLow ? 'text-amber-600' : 'text-slate-800'}>
+                                    {qty} {reagent.unit_of_measure}
+                                  </span>
+                                </td>
+
+                                <td className="py-3 px-4 text-center">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                                    isStockout ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                    isLow ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                    'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  }`}>
+                                    {isStockout ? 'Depleted' : isLow ? 'Low Stock' : 'Adequate'}
+                                  </span>
+                                </td>
+
+                                <td className="py-3 px-4 text-right">
+                                  <button
+                                    onClick={() => {
+                                      setTransferModalItem({ item: reagent, unit });
+                                      setTransferQty(1);
+                                    }}
+                                    className="px-2.5 py-1 text-xs font-semibold text-[#1B669E] bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                    title={`Bring 1 or more ${reagent.unit_of_measure} to ${activeUnit} Bench Stock`}
+                                  >
+                                    <Plus size={12} />
+                                    <span>Take to Bench</span>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1218,6 +1589,79 @@ export default function LabConsumablesWorkspace({ user }) {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Transfer from Storage Unit to Unit Bench Stock ── */}
+      {transferModalItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <Refrigerator className="text-[#1B669E]" size={16} />
+                Transfer Reagent to Bench Stock
+              </h3>
+              <button onClick={() => setTransferModalItem(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleTransferToBench} className="p-5 space-y-3.5 text-xs">
+              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl space-y-1">
+                <span className="font-bold text-slate-900 block text-xs">{transferModalItem.item.item_name}</span>
+                <div className="flex items-center justify-between text-[11px] text-slate-600">
+                  <span>Source Storage:</span>
+                  <span className="font-semibold text-slate-800">{transferModalItem.unit.label}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-600">
+                  <span>Target Bench:</span>
+                  <span className="font-bold text-[#1B669E]">{activeUnit} Laboratory Bench</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-600">
+                  <span>Available in Storage:</span>
+                  <span className="font-mono font-bold text-slate-800">
+                    {transferModalItem.item.quantity_in_hand} {transferModalItem.item.unit_of_measure}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Quantity to Transfer ({transferModalItem.item.unit_of_measure}) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={transferModalItem.item.quantity_in_hand || 100}
+                  step="1"
+                  required
+                  value={transferQty}
+                  onChange={(e) => setTransferQty(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:border-[#1B669E] text-slate-900 font-bold"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  This transfers the reagent onto your active bench in &quot;Stock In Use&quot; ready for daily test logging.
+                </span>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTransferModalItem(null)}
+                  className="px-3.5 py-1.5 font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={transferring}
+                  className="px-4 py-1.5 font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {transferring ? 'Transferring...' : 'Confirm Transfer to Bench'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
