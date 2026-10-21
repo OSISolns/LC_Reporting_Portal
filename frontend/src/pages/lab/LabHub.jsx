@@ -25,8 +25,29 @@ const TUBE_TYPES = [
   { id: 'Yellow Urine Cup', name: 'Sterile Urine Container (Yellow Top)', drawOrder: 8, desc: 'Urinalysis, Urine Chemistry & Microscopy' },
 ];
 
+// ── 6 OPERATIONAL LABORATORY DISCIPLINES (User Standard) ────────────────────
+export const OPERATIONAL_UNITS = [
+  { id: 'Biochemistry', name: 'Biochemistry', shortDesc: 'Cobas C311 / Mindray BS-240', color: 'indigo' },
+  { id: 'Hematology', name: 'Hematology', shortDesc: 'Mindray BC-5000 5-Part Diff', color: 'rose' },
+  { id: 'Microbiology', name: 'Microbiology', shortDesc: 'VITEK 2 / Media & Culture', color: 'emerald' },
+  { id: 'Phlebotomy', name: 'Phlebotomy', shortDesc: 'Order of Draw & Accessioning', color: 'amber' },
+  { id: 'Histopathology', name: 'Histopathology', shortDesc: 'Biopsy & Cytology Microtomy', color: 'purple' },
+  { id: 'Molecular Biology', name: 'Molecular Biology', shortDesc: 'Cobas e411 / GeneXpert PCR', color: 'cyan' },
+];
+
+export const EQUIPMENT_GROUPS_LIST = [
+  'Cobas C311 Reagents',
+  'Cobas e411 Reagents',
+  'Mindray BS-240 Reagents',
+  'Mindray BC-5000 Reagents',
+  'VITEK 2 Compact Reagents',
+  'GeneXpert Cartridges',
+  'General Laboratory Consumables'
+];
+
 // ── TEST ASSAYS CONFIG ───────────────────────────────────────────────────────
 const TEST_ASSAYS = [
+  // ── HEMATOLOGY ──
   {
     id: 'Full Blood Count (FBC/CBC)',
     name: 'Full Blood Count (FBC/CBC)',
@@ -41,12 +62,39 @@ const TEST_ASSAYS = [
     ]
   },
   {
+    id: 'Coagulation Profile (PT/INR/APTT)',
+    name: 'Coagulation Profile (PT/INR/APTT)',
+    category: 'Hematology',
+    defaultTube: 'Blue Citrate',
+    defaultSpecimen: 'Citrated Plasma (9:1 blood to citrate ratio)',
+    focus: 'Intrinsic, extrinsic, and common coagulation cascade pathways and fibrinolysis.',
+    pathologies: 'Pre-operative Bleeding Risk, Disseminated Intravascular Coagulation (DIC), DVT/PE, Warfarin/Heparin Monitoring.',
+    essayPoints: [
+      'Order of Draw & Fill Ratio: Sodium Citrate (Light Blue Top) must be drawn first/early and filled precisely to the indicator line to avoid citrate excess artifact prolongations.',
+      'Clot Detection: Photo-optical and mechanical viscosity-based clot detection of Prothrombin Time (PT/INR), APTT, and Quantitative D-Dimer.'
+    ]
+  },
+  {
+    id: 'Peripheral Blood Film Morphology',
+    name: 'Peripheral Blood Film Morphology',
+    category: 'Hematology',
+    defaultTube: 'Purple EDTA',
+    defaultSpecimen: 'Venous Blood',
+    focus: 'Manual microscopic evaluation of cell morphology, inclusion bodies, and malarial parasites.',
+    pathologies: 'Hemolytic Anemia, Sickle Cell Disease, Parasitemia (Malaria), Acute Leukemias.',
+    essayPoints: [
+      'Staining Technique: Romanowsky / Giemsa-Wright staining of blood smears for automated & manual review.'
+    ]
+  },
+
+  // ── BIOCHEMISTRY ──
+  {
     id: 'Liver Function Test (LFT)',
     name: 'Liver Function Test (LFT)',
     category: 'Biochemistry',
     defaultTube: 'SST Gold Gel',
     defaultSpecimen: 'Venous Blood',
-    focus: 'Hepatic parenchyma integrity, biliary excretion, and synthetic capacity.',
+    focus: 'Hepatic parenchyma integrity, biliary excretion, and synthetic capacity (Cobas C311).',
     pathologies: 'Hepatitis, Cirrhosis, Jaundice, Cholecystitis.',
     essayPoints: [
       'Enzymatic & Synthetic Panel: Transaminases (ALT/AST), Alkaline Phosphatase (ALP), Total/Direct Bilirubin, and Serum Albumin.',
@@ -59,7 +107,7 @@ const TEST_ASSAYS = [
     category: 'Biochemistry',
     defaultTube: 'SST Gold Gel',
     defaultSpecimen: 'Venous Blood',
-    focus: 'Glomerular filtration rate, electrolyte balance, and renal clearance.',
+    focus: 'Glomerular filtration rate, electrolyte balance, and renal clearance (Cobas C311).',
     pathologies: 'Acute Kidney Injury (AKI), Chronic Kidney Disease (CKD), Dehydration.',
     essayPoints: [
       'Clearance Indicators: Serum Creatinine, Blood Urea Nitrogen (BUN), Na+, K+, Cl-, and eGFR calculations.',
@@ -67,61 +115,9 @@ const TEST_ASSAYS = [
     ]
   },
   {
-    id: 'Cardiac Troponin I (STAT)',
-    name: 'Cardiac Troponin I (STAT)',
-    category: 'Cardiac Triage',
-    defaultTube: 'Green Heparin',
-    defaultSpecimen: 'Plasma / Whole Blood',
-    focus: 'High-sensitivity myocardial necrosis biomarker for emergency chest pain triage.',
-    pathologies: 'Acute Myocardial Infarction (AMI), Acute Coronary Syndrome (ACS).',
-    essayPoints: [
-      'STAT Processing Dynamics: Lithium Heparin plasma allows immediate centrifugation without waiting for clot formation.',
-      'Diagnostic Sensitivity: Serial troponin testing at 0h, 3h, 6h detects subtle ischemic myocardial injury.'
-    ]
-  },
-  {
-    id: 'Urine Analysis (Urinalysis)',
-    name: 'Urine Analysis (Urinalysis)',
-    category: 'Nephrology & Urology',
-    defaultTube: 'Yellow Urine Cup',
-    defaultSpecimen: 'Clean-catch Midstream Urine',
-    focus: 'Fluid biopsy of the kidney assessing physical properties, chemical composition, and microscopic sediment.',
-    pathologies: 'Urinary Tract Infections (UTIs), Nephrotic/Nephritic Syndrome, Diabetes Mellitus, and Nephrolithiasis (Kidney Stones).',
-    essayPoints: [
-      'The Three-Part Examination: Physical parameters (color, clarity, specific gravity), chemical dipstick indicators (nitrites, leukocyte esterase, glucose, protein), and microscopic sediment (casts, crystals, epithelial cells, dysmorphic RBCs).',
-      'Pre-analytical Dynamics: Clean-catch midstream collection methods essential to avoid bacterial contamination from normal skin flora.'
-    ]
-  },
-  {
-    id: 'Stool Examination (Fecal Analysis)',
-    name: 'Stool Examination (Fecal Analysis)',
-    category: 'Gastroenterology & Parasitology',
-    defaultTube: 'Yellow Urine Cup',
-    defaultSpecimen: 'Fresh Fecal Sample',
-    focus: 'Assessment of gastrointestinal function, malabsorption, occult bleeding, and colorectal health.',
-    pathologies: 'Colorectal Cancer Screening, Parasitic Infestations (e.g., Giardia, Hookworms), and Inflammatory Bowel Disease (IBD).',
-    essayPoints: [
-      'Occult Blood Mechanisms: Comparing traditional guaiac-based FOBT (gFOBT) with highly specific Fecal Immunochemical Tests (FIT) targeting human hemoglobin.',
-      'Ova & Parasites (O&P): Macroscopic inspection (consistency, mucus) coupled with raw microscopy utilizing iodine/saline wet mounts to locate motile trophozoites or static cysts.'
-    ]
-  },
-  {
-    id: 'Semen Analysis (Andrology)',
-    name: 'Semen Analysis (Andrology)',
-    category: 'Andrology & Reproductive Health',
-    defaultTube: 'Yellow Urine Cup',
-    defaultSpecimen: 'Seminal Fluid',
-    focus: 'Quantifying sperm production, structural integrity, motility, and chemical composition of seminal fluid.',
-    pathologies: 'Male-factor Infertility, Oligospermia, Asthenozoospermia, Teratozoospermia, and Post-Vasectomy Verification.',
-    essayPoints: [
-      'Strict WHO Standardization: Full laboratory compliance with WHO 6th Edition Manual Guidelines (min 4% normal morphology, progressive motility, and 15 million/mL concentration).',
-      'Time & Temperature Sensitivity: Critical post-collection window where analysis must begin within 30–60 mins after liquefaction at room/body temp to prevent false reductions in viability.'
-    ]
-  },
-  {
     id: 'Lipid Profile (Lipids)',
     name: 'Lipid Profile (Lipids)',
-    category: 'Biochemistry & Cardiology',
+    category: 'Biochemistry',
     defaultTube: 'SST Gold Gel',
     defaultSpecimen: 'Venous Blood (12h Fasting)',
     focus: 'Comprehensive cardiovascular atherogenic dyslipidemia risk profiling.',
@@ -132,9 +128,22 @@ const TEST_ASSAYS = [
     ]
   },
   {
+    id: 'Cardiac Troponin I (STAT)',
+    name: 'Cardiac Troponin I (STAT)',
+    category: 'Biochemistry',
+    defaultTube: 'Green Heparin',
+    defaultSpecimen: 'Plasma / Whole Blood',
+    focus: 'High-sensitivity myocardial necrosis biomarker for emergency chest pain triage.',
+    pathologies: 'Acute Myocardial Infarction (AMI), Acute Coronary Syndrome (ACS).',
+    essayPoints: [
+      'STAT Processing Dynamics: Lithium Heparin plasma allows immediate centrifugation without waiting for clot formation.',
+      'Diagnostic Sensitivity: Serial troponin testing at 0h, 3h, 6h detects subtle ischemic myocardial injury.'
+    ]
+  },
+  {
     id: 'Thyroid Function Panel (TFT)',
     name: 'Thyroid Function Panel (TFT)',
-    category: 'Endocrinology & Immunoassay',
+    category: 'Biochemistry',
     defaultTube: 'SST Gold Gel',
     defaultSpecimen: 'Venous Blood',
     focus: 'Hypothalamic-pituitary-thyroid axis evaluation of metabolic homeostasis.',
@@ -145,35 +154,9 @@ const TEST_ASSAYS = [
     ]
   },
   {
-    id: 'Coagulation Profile (PT/INR/APTT)',
-    name: 'Coagulation Profile (PT/INR/APTT)',
-    category: 'Hematology & Hemostasis',
-    defaultTube: 'Blue Citrate',
-    defaultSpecimen: 'Citrated Plasma (9:1 blood to citrate ratio)',
-    focus: 'Intrinsic, extrinsic, and common coagulation cascade pathways and fibrinolysis.',
-    pathologies: 'Pre-operative Bleeding Risk, Disseminated Intravascular Coagulation (DIC), DVT/PE, Warfarin/Heparin Monitoring.',
-    essayPoints: [
-      'Order of Draw & Fill Ratio: Sodium Citrate (Light Blue Top) must be drawn first/early and filled precisely to the indicator line to avoid citrate excess artifact prolongations.',
-      'Clot Detection: Photo-optical and mechanical viscosity-based clot detection of Prothrombin Time (PT/INR), APTT, and Quantitative D-Dimer.'
-    ]
-  },
-  {
-    id: 'Infectious Disease Serology Screen',
-    name: 'Infectious Disease Serology Screen',
-    category: 'Serology & Virology',
-    defaultTube: 'Redtop',
-    defaultSpecimen: 'Serum',
-    focus: 'Multiplex screening for transfusion-transmissible and chronic infectious blood-borne pathogens.',
-    pathologies: 'Hepatitis B, Hepatitis C, HIV 1/2 Infection, Syphilis (Treponema pallidum).',
-    essayPoints: [
-      '4th Generation Ag/Ab Testing: Simultaneous detection of HIV-1 p24 antigen and anti-HIV antibodies drastically shortens diagnostic window period.',
-      'Quality Controls: Dual positive/negative calibrators verified against external proficiency testing (EQA/PT).'
-    ]
-  },
-  {
     id: 'Diabetes & Glycemic Panel (HbA1c & Fasting Glucose)',
     name: 'Diabetes & Glycemic Panel (HbA1c & Fasting Glucose)',
-    category: 'Biochemistry & Diabetes',
+    category: 'Biochemistry',
     defaultTube: 'Purple EDTA',
     defaultSpecimen: 'Venous Whole Blood & Fluoride Plasma',
     focus: 'Long-term 90-day glycemic control and acute glycemic status.',
@@ -186,7 +169,7 @@ const TEST_ASSAYS = [
   {
     id: 'Inflammatory & Sepsis Markers (hs-CRP & PCT)',
     name: 'Inflammatory & Sepsis Markers (hs-CRP & PCT)',
-    category: 'Emergency & Critical Care',
+    category: 'Biochemistry',
     defaultTube: 'SST Gold Gel',
     defaultSpecimen: 'Venous Blood',
     focus: 'High-acuity systemic inflammatory response and bacterial sepsis discrimination.',
@@ -194,6 +177,138 @@ const TEST_ASSAYS = [
     essayPoints: [
       'Bacterial Specificity of Procalcitonin: PCT levels surge rapidly (>2.0 ng/mL in severe sepsis) within 2-4 hours of systemic bacterial endotoxin exposure.',
       'High-Sensitivity CRP: Immunoturbidimetric quantification sensitive down to 0.1 mg/L for micro-vascular inflammation and coronary risk.'
+    ]
+  },
+
+  // ── MICROBIOLOGY ──
+  {
+    id: 'Urine Analysis (Urinalysis)',
+    name: 'Urine Analysis (Urinalysis)',
+    category: 'Microbiology',
+    defaultTube: 'Yellow Urine Cup',
+    defaultSpecimen: 'Clean-catch Midstream Urine',
+    focus: 'Fluid biopsy of the kidney assessing physical properties, chemical composition, and microscopic sediment.',
+    pathologies: 'Urinary Tract Infections (UTIs), Nephrotic/Nephritic Syndrome, Diabetes Mellitus, and Nephrolithiasis (Kidney Stones).',
+    essayPoints: [
+      'The Three-Part Examination: Physical parameters (color, clarity, specific gravity), chemical dipstick indicators (nitrites, leukocyte esterase, glucose, protein), and microscopic sediment (casts, crystals, epithelial cells, dysmorphic RBCs).',
+      'Pre-analytical Dynamics: Clean-catch midstream collection methods essential to avoid bacterial contamination from normal skin flora.'
+    ]
+  },
+  {
+    id: 'Stool Examination (Fecal Analysis)',
+    name: 'Stool Examination (Fecal Analysis)',
+    category: 'Microbiology',
+    defaultTube: 'Yellow Urine Cup',
+    defaultSpecimen: 'Fresh Fecal Sample',
+    focus: 'Assessment of gastrointestinal function, malabsorption, occult bleeding, and colorectal health.',
+    pathologies: 'Colorectal Cancer Screening, Parasitic Infestations (e.g., Giardia, Hookworms), and Inflammatory Bowel Disease (IBD).',
+    essayPoints: [
+      'Occult Blood Mechanisms: Comparing traditional guaiac-based FOBT (gFOBT) with highly specific Fecal Immunochemical Tests (FIT) targeting human hemoglobin.',
+      'Ova & Parasites (O&P): Macroscopic inspection (consistency, mucus) coupled with raw microscopy utilizing iodine/saline wet mounts to locate motile trophozoites or static cysts.'
+    ]
+  },
+  {
+    id: 'Semen Analysis (Andrology)',
+    name: 'Semen Analysis (Andrology)',
+    category: 'Microbiology',
+    defaultTube: 'Yellow Urine Cup',
+    defaultSpecimen: 'Seminal Fluid',
+    focus: 'Quantifying sperm production, structural integrity, motility, and chemical composition of seminal fluid.',
+    pathologies: 'Male-factor Infertility, Oligospermia, Asthenozoospermia, Teratozoospermia, and Post-Vasectomy Verification.',
+    essayPoints: [
+      'Strict WHO Standardization: Full laboratory compliance with WHO 6th Edition Manual Guidelines (min 4% normal morphology, progressive motility, and 15 million/mL concentration).',
+      'Time & Temperature Sensitivity: Critical post-collection window where analysis must begin within 30–60 mins after liquefaction at room/body temp to prevent false reductions in viability.'
+    ]
+  },
+  {
+    id: 'Infectious Disease Serology Screen',
+    name: 'Infectious Disease Serology Screen',
+    category: 'Microbiology',
+    defaultTube: 'Redtop',
+    defaultSpecimen: 'Serum',
+    focus: 'Multiplex screening for transfusion-transmissible and chronic infectious blood-borne pathogens.',
+    pathologies: 'Hepatitis B, Hepatitis C, HIV 1/2 Infection, Syphilis (Treponema pallidum).',
+    essayPoints: [
+      '4th Generation Ag/Ab Testing: Simultaneous detection of HIV-1 p24 antigen and anti-HIV antibodies drastically shortens diagnostic window period.',
+      'Quality Controls: Dual positive/negative calibrators verified against external proficiency testing (EQA/PT).'
+    ]
+  },
+  {
+    id: 'Urine Culture & Sensitivity (VITEK 2)',
+    name: 'Urine Culture & Sensitivity (VITEK 2)',
+    category: 'Microbiology',
+    defaultTube: 'Yellow Urine Cup',
+    defaultSpecimen: 'Sterile Midstream Urine',
+    focus: 'Automated microbial identification and minimum inhibitory concentration (MIC) AST via VITEK 2.',
+    pathologies: 'Pyelonephritis, Recurrent Cystitis, Urosepsis, Multi-drug Resistant Pathogens.',
+    essayPoints: [
+      'Colony Count Threshold: Significant bacteriuria defined as >=10^5 CFU/mL for midstream specimens.'
+    ]
+  },
+
+  // ── PHLEBOTOMY ──
+  {
+    id: 'Venous Blood Specimen Accessioning',
+    name: 'Venous Blood Specimen Accessioning',
+    category: 'Phlebotomy',
+    defaultTube: 'Purple EDTA',
+    defaultSpecimen: 'Venous Blood',
+    focus: 'Order of draw verification, patient identification, tube labeling, and pre-analytical integrity inspection.',
+    pathologies: 'Phlebotomy Quality Assurance, Specimen Rejection Tracking (Hemolysis, Clots, Underfill).',
+    essayPoints: [
+      'CLSI H3-A6 Compliance: Strict adherence to draw order to prevent cross-contamination of tube additives.'
+    ]
+  },
+
+  // ── HISTOPATHOLOGY ──
+  {
+    id: 'Routine Tissue Biopsy & Histology',
+    name: 'Routine Tissue Biopsy & Histology',
+    category: 'Histopathology',
+    defaultTube: 'Yellow Urine Cup',
+    defaultSpecimen: 'Formalin-fixed Tissue Biopsy',
+    focus: 'Macroscopic grossing, tissue processing, paraffin embedding, microtomy & H&E staining.',
+    pathologies: 'Benign & Malignant Neoplasms, Inflammatory Dermatoses, Granulomatous Lesions.',
+    essayPoints: [
+      'Fixation Dynamics: 10% Neutral Buffered Formalin at a 1:20 tissue-to-fixative volume ratio.'
+    ]
+  },
+  {
+    id: 'Cervical Cytology (Pap Smear)',
+    name: 'Cervical Cytology (Pap Smear)',
+    category: 'Histopathology',
+    defaultTube: 'Yellow Urine Cup',
+    defaultSpecimen: 'Liquid-based Cytology (LBC)',
+    focus: 'Cervical cancer screening assessing squamous and glandular intraepithelial lesions (Bethesda System).',
+    pathologies: 'LSIL, HSIL, Cervical Carcinoma, HPV cellular cytopathic changes.',
+    essayPoints: [
+      'Adequacy Criteria: Minimum 5,000 well-preserved squamous cells and presence of endocervical transformation zone.'
+    ]
+  },
+
+  // ── MOLECULAR BIOLOGY ──
+  {
+    id: 'HPV-DNA High-Risk Genotyping',
+    name: 'HPV-DNA High-Risk Genotyping',
+    category: 'Molecular Biology',
+    defaultTube: 'NIPT Tube',
+    defaultSpecimen: 'Cervical Swab / LBC Sample',
+    focus: 'Real-time PCR qualitative detection of 14 high-risk HPV types (HPV 16, 18, and pooled 12 HR-types).',
+    pathologies: 'Cervical Dysplasia, High-Risk Oncogenic HPV Exposure.',
+    essayPoints: [
+      'PCR Specificity: Target amplification of the L1/E6/E7 viral genomic regions with internal beta-globin control.'
+    ]
+  },
+  {
+    id: 'HIV-1 Quantitative Viral Load (STAT)',
+    name: 'HIV-1 Quantitative Viral Load (STAT)',
+    category: 'Molecular Biology',
+    defaultTube: 'Purple EDTA',
+    defaultSpecimen: 'EDTA Plasma',
+    focus: 'Real-time RT-PCR quantification of HIV-1 RNA copies/mL (GeneXpert / Cobas e411).',
+    pathologies: 'Antiretroviral Therapy (ART) Monitoring, Virological Failure, Early Infant Diagnosis.',
+    essayPoints: [
+      'Analytical Sensitivity: Lower limit of detection down to 20 copies/mL; prompt plasma separation within 6h.'
     ]
   }
 ];
@@ -389,6 +504,7 @@ const LabHub = () => {
 
   const [mainView, setMainView] = useState('worklist'); // 'worklist' | 'inhand_inventory'
   const [phaseFilter, setPhaseFilter] = useState('all');
+  const [unitFilter, setUnitFilter] = useState('all'); // 'all' | 'Biochemistry' | 'Hematology' | 'Microbiology' | 'Phlebotomy' | 'Histopathology' | 'Molecular Biology'
   const [orders, setOrders] = useState([]);
   const [qcLogs, setQcLogs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -404,7 +520,7 @@ const LabHub = () => {
   const [showAddInhandModal, setShowAddInhandModal] = useState(false);
   const [editInhandItem, setEditInhandItem] = useState(null);
   const [inhandForm, setInhandForm] = useState({
-    item_name: '', category: 'Reagents', equipment_group: '', department: 'Biochemistry',
+    item_name: '', category: 'Reagents', equipment_group: 'Cobas C311 Reagents', department: 'Biochemistry',
     storage_temp: 'room_temp', storage_unit_id: 'room_temp_1',
     quantity_in_hand: '', unit_of_measure: 'pack', min_threshold: '5',
     expiry_date: '', lot_number: ''
@@ -421,7 +537,8 @@ const LabHub = () => {
   const [tubeType, setTubeType] = useState('Purple EDTA');
   const [urgency, setUrgency] = useState('Routine');
   const [barcode, setBarcode] = useState('');
-  const [testName, setTestName] = useState('Full Blood Count (FBC)');
+  const [testName, setTestName] = useState('Full Blood Count (FBC/CBC)');
+  const [regDepartment, setRegDepartment] = useState('Hematology');
   const [notes, setNotes] = useState('');
 
   // Selected Order & Verification State
@@ -774,6 +891,7 @@ const LabHub = () => {
         specimen_barcode: barcode,
         tube_type: tubeType,
         test_name: testName,
+        department: regDepartment,
         urgency: urgency,
         notes
       });
@@ -797,6 +915,7 @@ const LabHub = () => {
         specimen_barcode: barcode,
         tube_type: tubeType,
         test_name: testName,
+        department: regDepartment,
         urgency: urgency,
         stage: 'Sample Collected',
         phase: 'pre-analytical',
@@ -1014,13 +1133,44 @@ const LabHub = () => {
         o.patient_name?.toLowerCase().includes(q) ||
         o.patient_id?.toLowerCase().includes(q) ||
         o.accession_number?.toLowerCase().includes(q) ||
-        o.specimen_barcode?.toLowerCase().includes(q);
+        o.specimen_barcode?.toLowerCase().includes(q) ||
+        o.test_name?.toLowerCase().includes(q) ||
+        o.department?.toLowerCase().includes(q);
 
       const matchesPhase = phaseFilter === 'all' || o.phase === phaseFilter;
 
-      return matchesSearch && matchesPhase;
+      const matchesUnit = unitFilter === 'all' || (() => {
+        const assay = TEST_ASSAYS.find(a => a.name === o.test_name || a.id === o.test_name);
+        const orderDept = o.department || assay?.category || '';
+        return orderDept.toLowerCase().includes(unitFilter.toLowerCase());
+      })();
+
+      return matchesSearch && matchesPhase && matchesUnit;
     });
-  }, [orders, searchQuery, phaseFilter]);
+  }, [orders, searchQuery, phaseFilter, unitFilter]);
+
+  // Operational unit count tallies
+  const unitCounts = useMemo(() => {
+    const counts = {
+      all: orders.length,
+      Biochemistry: 0,
+      Hematology: 0,
+      Microbiology: 0,
+      Phlebotomy: 0,
+      Histopathology: 0,
+      'Molecular Biology': 0,
+    };
+    orders.forEach(o => {
+      const assay = TEST_ASSAYS.find(a => a.name === o.test_name || a.id === o.test_name);
+      const dept = o.department || assay?.category || '';
+      for (const unit of ['Biochemistry', 'Hematology', 'Microbiology', 'Phlebotomy', 'Histopathology', 'Molecular Biology']) {
+        if (dept.toLowerCase().includes(unit.toLowerCase())) {
+          counts[unit] = (counts[unit] || 0) + 1;
+        }
+      }
+    });
+    return counts;
+  }, [orders]);
 
   // Metrics
   const stats = useMemo(() => {
@@ -1041,49 +1191,47 @@ const LabHub = () => {
       {/* ── SUB-MODULE TOP NAVIGATION BAR ── */}
       <div className="flex items-center gap-1.5 overflow-x-auto bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200 scrollbar-none">
         <button
-          onClick={() => navigate('/lab')}
-          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer bg-white text-emerald-700 shadow-xs border border-slate-200/60"
+          onClick={() => setMainView('worklist')}
+          className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+            mainView === 'worklist' ? 'bg-white text-emerald-700 shadow-xs border border-slate-200/60' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+          }`}
         >
           <FlaskConical size={14} className="text-emerald-600" /> Specimens & Diagnostics
         </button>
         <button
-          onClick={() => navigate('/lab/equipment')}
-          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60"
-        >
-          <Wrench size={14} /> Equipment & PPM
-        </button>
-        <button
-          onClick={() => navigate('/lab/analyzers')}
-          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60"
-        >
-          <Settings size={14} /> Analyzers & QC
-        </button>
-        <button
-          onClick={() => navigate('/lab/archive')}
-          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60"
-        >
-          <FolderArchive size={14} /> Document Archive
-        </button>
-        <button
-          onClick={() => { setMainView(mainView === 'inhand_inventory' ? 'worklist' : 'inhand_inventory'); }}
-          className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${mainView === 'inhand_inventory' ? 'bg-amber-500 text-white shadow-sm' : 'text-amber-700 hover:bg-amber-50'
-            }`}
+          onClick={() => setMainView('inhand_inventory')}
+          className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+            mainView === 'inhand_inventory' ? 'bg-amber-500 text-white shadow-sm' : 'text-amber-700 hover:bg-amber-50'
+          }`}
         >
           <Package size={14} /> In-Hand Inventory
         </button>
         <button
           onClick={() => navigate('/lab-stock')}
           className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-[#1B669E] bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60"
-          title="Laboratory Stock Officer Hub: In-Hand Inventory, Connected Analyzers, Cold Chain & Unit Requisitions"
+          title="Laboratory Stock Officer Hub: Reagents, Connected Analyzers, Cold Chain & Central Inventory"
         >
-          <Package size={14} /> Lab Stock Hub
+          <Package size={14} /> Lab Stock & Reagents
         </button>
         <button
           onClick={() => navigate('/consumables-log')}
           className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-teal-800 bg-teal-50 hover:bg-teal-100 hover:text-teal-950 border border-teal-200/80 shadow-2xs"
-          title="Open Consumables Log to record clinical consumption"
+          title="Open Consumables Log for Unit Bench Stock & Daily Clinical Consumption"
         >
-          <ClipboardList size={14} className="text-teal-700" /> Log Consumption
+          <ClipboardList size={14} className="text-teal-700" /> Consumables Log (Bench Stock)
+        </button>
+        <button
+          onClick={() => navigate('/lab-requisitions')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-purple-800 bg-purple-50/80 hover:bg-purple-100 border border-purple-200/60 shadow-2xs"
+          title="Order laboratory consumables and reagents from store"
+        >
+          <ClipboardList size={14} className="text-purple-700" /> Unit Requisitions
+        </button>
+        <button
+          onClick={() => navigate('/lab/archive')}
+          className="px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60"
+        >
+          <FolderArchive size={14} /> Document Archive
         </button>
         <button
           onClick={() => navigate('/ncr')}
@@ -1110,8 +1258,9 @@ const LabHub = () => {
         {isManager && (
           <button
             onClick={() => navigate('/lab-manager')}
-            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-indigo-800 bg-indigo-50/80 hover:bg-indigo-100 hover:text-indigo-950 border border-indigo-200/60 ${isLeadOrManager ? '' : 'ml-auto'
-              }`}
+            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer text-indigo-800 bg-indigo-50/80 hover:bg-indigo-100 hover:text-indigo-950 border border-indigo-200/60 ${
+              isLeadOrManager ? '' : 'ml-auto'
+            }`}
           >
             <BarChart2 size={14} /> Manager Dashboard
           </button>
@@ -1170,6 +1319,138 @@ const LabHub = () => {
       </div>
 
 
+
+      {/* ── CORE OPERATIONAL MODULES QUICK-ACCESS ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div
+          onClick={() => navigate('/lab-stock')}
+          className="bg-gradient-to-br from-blue-50/90 to-sky-50/60 hover:from-blue-100 hover:to-sky-100 border border-blue-200/80 rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider bg-white/90 px-2.5 py-0.5 rounded-full border border-blue-200/70 shadow-2xs">
+              Lab Stock Officer
+            </span>
+            <Package size={18} className="text-blue-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-900">Lab Stock & Reagents</h3>
+          <p className="text-[11px] text-slate-600 mt-1 line-clamp-2">
+            Central bulk storage, Cold Chain (Fridges 1-8), Room Temp shelves & Cobas C311 / e411 reagent packs.
+          </p>
+        </div>
+
+        <div
+          onClick={() => navigate('/consumables-log')}
+          className="bg-gradient-to-br from-teal-50/90 to-emerald-50/60 hover:from-teal-100 hover:to-emerald-100 border border-teal-200/80 rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider bg-white/90 px-2.5 py-0.5 rounded-full border border-teal-200/70 shadow-2xs">
+              Staff Daily Use
+            </span>
+            <ClipboardList size={18} className="text-teal-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 group-hover:text-teal-900">Consumables Log & Bench Stock</h3>
+          <p className="text-[11px] text-slate-600 mt-1 line-clamp-2">
+            Unit-level stock in use managed by each laboratory discipline. Record daily consumption directly.
+          </p>
+        </div>
+
+        <div
+          onClick={() => navigate('/lab-requisitions')}
+          className="bg-gradient-to-br from-purple-50/90 to-fuchsia-50/60 hover:from-purple-100 hover:to-fuchsia-100 border border-purple-200/80 rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider bg-white/90 px-2.5 py-0.5 rounded-full border border-purple-200/70 shadow-2xs">
+              Replenishments
+            </span>
+            <ClipboardList size={18} className="text-purple-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 group-hover:text-purple-900">Unit Requisitions</h3>
+          <p className="text-[11px] text-slate-600 mt-1 line-clamp-2">
+            Internal replenishment orders from the 6 operational units to Central Store & Lab Stockroom.
+          </p>
+        </div>
+
+        <div
+          onClick={() => navigate('/lab-team-lead')}
+          className="bg-gradient-to-br from-indigo-50/90 to-blue-50/60 hover:from-indigo-100 hover:to-blue-100 border border-indigo-200/80 rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider bg-white/90 px-2.5 py-0.5 rounded-full border border-indigo-200/70 shadow-2xs">
+              Supervision
+            </span>
+            <Microscope size={18} className="text-indigo-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-900">Lab Team Lead Hub</h3>
+          <p className="text-[11px] text-slate-600 mt-1 line-clamp-2">
+            Section oversight, Westgard QC review, technical verifications, critical callouts & ISO 15189 workflows.
+          </p>
+        </div>
+      </div>
+
+      {/* ── 6 OPERATIONAL DISCIPLINES SELECTOR / OVERVIEW ── */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+          <div>
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <FlaskConical size={14} className="text-slate-700" /> Operational Laboratory Units (Staff Stock In Use)
+            </h2>
+            <p className="text-[11px] text-slate-500">
+              Filter specimen queues and local operational stock by diagnostic discipline
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setUnitFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                unitFilter === 'all'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All Disciplines ({unitCounts.all})
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          {OPERATIONAL_UNITS.map(unit => {
+            const isSelected = unitFilter === unit.id;
+            const count = unitCounts[unit.id] || 0;
+            return (
+              <button
+                key={unit.id}
+                onClick={() => setUnitFilter(isSelected ? 'all' : unit.id)}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                  isSelected
+                    ? 'border-indigo-600 bg-indigo-50/70 shadow-xs ring-1 ring-indigo-500/30'
+                    : 'border-slate-200/80 bg-white hover:bg-slate-50 hover:border-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-xs text-slate-900">{unit.name}</span>
+                    <span
+                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                        count > 0 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-tight line-clamp-2">
+                    {unit.shortDesc}
+                  </p>
+                </div>
+                {isSelected && (
+                  <div className="mt-2 text-[9px] font-bold text-indigo-700 flex items-center gap-1">
+                    <CheckCircle2 size={10} /> Active Filter
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* ── CLEAN METRICS CARDS ── */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -1282,8 +1563,28 @@ const LabHub = () => {
                             }`}
                         >
                           <td className="py-2.5 px-3">
-                            <span className="font-semibold text-slate-900 block">{order.patient_name}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">PID: {order.patient_id} • Accession No: {order.accession_number}</span>
+                            {(() => {
+                              const assay = TEST_ASSAYS.find(a => a.name === order.test_name || a.id === order.test_name);
+                              const orderDept = order.department || assay?.category;
+                              return (
+                                <>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-semibold text-slate-900">{order.patient_name}</span>
+                                    {orderDept && (
+                                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+                                        {orderDept}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-mono block">PID: {order.patient_id} • Accession No: {order.accession_number}</span>
+                                  {order.test_name && (
+                                    <span className="text-[10px] text-slate-600 font-medium block truncate max-w-[220px]" title={order.test_name}>
+                                      {order.test_name}
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </td>
 
                           <td className="py-2.5 px-3">
@@ -1758,27 +2059,54 @@ const LabHub = () => {
                 </FieldTooltip>
               </div>
 
-              {/* Test Assay Selection */}
-              <div>
-                <label className="text-[10px] font-semibold text-slate-700 block mb-1">Target Test Assay *</label>
-                <FieldTooltip text="Target laboratory diagnostic panel and assay protocol">
-                  <select
-                    value={testName}
-                    onChange={e => {
-                      const selectedAssay = TEST_ASSAYS.find(a => a.name === e.target.value || a.id === e.target.value);
-                      setTestName(e.target.value);
-                      if (selectedAssay) {
-                        setTubeType(selectedAssay.defaultTube);
-                        setSpecimenType(selectedAssay.defaultSpecimen);
-                      }
-                    }}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-bold text-slate-900 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    {TEST_ASSAYS.map(a => (
-                      <option key={a.id} value={a.name}>{a.name}</option>
-                    ))}
-                  </select>
-                </FieldTooltip>
+              {/* Operational Discipline & Test Assay Selection */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-700 block mb-1">Operational Laboratory Unit *</label>
+                  <FieldTooltip text="Target laboratory discipline / section processing specimen">
+                    <select
+                      value={regDepartment}
+                      onChange={e => {
+                        const dept = e.target.value;
+                        setRegDepartment(dept);
+                        const match = TEST_ASSAYS.find(a => a.category === dept);
+                        if (match) {
+                          setTestName(match.name);
+                          setTubeType(match.defaultTube);
+                          setSpecimenType(match.defaultSpecimen);
+                        }
+                      }}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-semibold text-slate-900 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    >
+                      {['Biochemistry', 'Hematology', 'Microbiology', 'Phlebotomy', 'Histopathology', 'Molecular Biology'].map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </FieldTooltip>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-700 block mb-1">Target Test Assay *</label>
+                  <FieldTooltip text="Target laboratory diagnostic panel and assay protocol">
+                    <select
+                      value={testName}
+                      onChange={e => {
+                        const selectedAssay = TEST_ASSAYS.find(a => a.name === e.target.value || a.id === e.target.value);
+                        setTestName(e.target.value);
+                        if (selectedAssay) {
+                          setTubeType(selectedAssay.defaultTube);
+                          setSpecimenType(selectedAssay.defaultSpecimen);
+                          if (selectedAssay.category) setRegDepartment(selectedAssay.category);
+                        }
+                      }}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded font-bold text-slate-900 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    >
+                      {TEST_ASSAYS.map(a => (
+                        <option key={a.id} value={a.name}>[{a.category}] {a.name}</option>
+                      ))}
+                    </select>
+                  </FieldTooltip>
+                </div>
               </div>
 
               {/* Technical Assay Details Card (Concise Summary) */}
@@ -1896,7 +2224,7 @@ const LabHub = () => {
               </div>
               {isLabStockOfficer ? (
                 <button
-                  onClick={() => { setEditInhandItem(null); setInhandForm({ item_name: '', category: 'Reagents', equipment_group: '', department: 'Biochemistry', storage_temp: 'room_temp', storage_unit_id: 'room_temp_1', quantity_in_hand: '', unit_of_measure: 'pack', min_threshold: '5', expiry_date: '', lot_number: '' }); setShowAddInhandModal(true); }}
+                  onClick={() => { setEditInhandItem(null); setInhandForm({ item_name: '', category: 'Reagents', equipment_group: 'Cobas C311 Reagents', department: 'Biochemistry', storage_temp: 'room_temp', storage_unit_id: 'room_temp_1', quantity_in_hand: '', unit_of_measure: 'pack', min_threshold: '5', expiry_date: '', lot_number: '' }); setShowAddInhandModal(true); }}
                   className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm"
                 >
                   <Plus size={14} /> Add New Item
@@ -1954,13 +2282,13 @@ const LabHub = () => {
               <span className="text-slate-200">|</span>
               <select value={inhandDeptFilter} onChange={e => setInhandDeptFilter(e.target.value)}
                 className="px-2 py-1 rounded-lg border border-slate-200 text-[11px] bg-white focus:outline-none">
-                <option value="all">All Departments</option>
-                {allDepts.map(d => <option key={d} value={d}>{d}</option>)}
+                <option value="all">All Operational Units</option>
+                {['Biochemistry', 'Hematology', 'Microbiology', 'Phlebotomy', 'Histopathology', 'Molecular Biology'].map(d => <option key={d} value={d}>{d}</option>)}
               </select>
               <select value={inhandGroupFilter} onChange={e => setInhandGroupFilter(e.target.value)}
                 className="px-2 py-1 rounded-lg border border-slate-200 text-[11px] bg-white focus:outline-none">
                 <option value="all">All Equipment Groups</option>
-                {allGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                {EQUIPMENT_GROUPS_LIST.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
               <div className="relative ml-auto">
                 <Search size={12} className="absolute left-2 top-1.5 text-slate-400" />
@@ -2084,15 +2412,26 @@ const LabHub = () => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Equipment Group</label>
-                  <input value={inhandForm.equipment_group} onChange={e => setInhandForm(f => ({ ...f, equipment_group: e.target.value }))}
-                    placeholder="e.g. Cobas C311 Reagents"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400" />
+                  <select
+                    value={inhandForm.equipment_group}
+                    onChange={e => setInhandForm(f => ({ ...f, equipment_group: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-400 font-medium"
+                  >
+                    {EQUIPMENT_GROUPS_LIST.map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Department</label>
-                  <select value={inhandForm.department} onChange={e => setInhandForm(f => ({ ...f, department: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none">
-                    {['Biochemistry', 'Hematology', 'Microbiology', 'Molecular', 'General'].map(d => <option key={d}>{d}</option>)}
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Operational Unit (Department)</label>
+                  <select
+                    value={inhandForm.department}
+                    onChange={e => setInhandForm(f => ({ ...f, department: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none font-medium"
+                  >
+                    {['Biochemistry', 'Hematology', 'Microbiology', 'Phlebotomy', 'Histopathology', 'Molecular Biology'].map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
