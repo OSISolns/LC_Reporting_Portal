@@ -2294,6 +2294,28 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     }
 
     try {
+      const cashierAndRamaCols = [
+        'momo_pay_code TEXT',
+        'momo_pay_code_other TEXT',
+        'total_cash_usd REAL DEFAULT 0',
+        'total_cash_eur REAL DEFAULT 0'
+      ];
+      for (const table of ['shift_cashier_close', 'shift_rama_rssb_close']) {
+        for (const colDef of cashierAndRamaCols) {
+          try {
+            await client.execute(`ALTER TABLE ${table} ADD COLUMN ${colDef}`);
+          } catch (err) {
+            if (!err.message?.includes('duplicate column name') && !err.message?.includes('already exists')) {
+              console.warn(`⚠️ SQLite Schema Migration Notice for ${table}:`, err.message);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ SQLite Schema Migration Notice for cashier/rama close tables:', err.message);
+    }
+
+    try {
       await client.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0");
       console.log('✅ SQLite Schema Migration: added must_change_password to users');
     } catch (err) {

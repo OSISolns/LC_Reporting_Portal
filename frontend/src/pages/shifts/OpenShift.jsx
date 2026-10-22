@@ -785,7 +785,7 @@ export default function OpenShift() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               className="max-w-md w-full bg-white rounded-[40px] p-10 text-center shadow-2xl overflow-hidden relative"
             >
-              <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-[#1b669d] via-[#6fb448] to-[#1b669d] animate-pulse" />
+              <div className="absolute top-0 inset-x-0 h-2 bg-[#1b669d]" />
               
               <div className="mb-8 flex justify-center">
                 <div className="w-24 h-24 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-inner">

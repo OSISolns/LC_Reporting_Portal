@@ -1186,7 +1186,7 @@ export default function ShiftDashboard() {
                       {/* Personnel */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1b669d]/10 to-[#1b669d]/20 flex items-center justify-center text-[#1b669d] text-sm font-black shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-[#1b669d]/10 flex items-center justify-center text-[#1b669d] text-sm font-black shrink-0">
                             {s.user_name?.[0]?.toUpperCase() ?? '?'}
                           </div>
                           <div>
@@ -1847,7 +1847,7 @@ export default function ShiftDashboard() {
       {/* ─── Extract Shift Logs & Income Statement Dialog ───────────────────── */}
       <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
         <DialogContent className="bg-white rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-100 max-w-xl p-0">
-          <div className="bg-gradient-to-r from-[#1b669d] to-[#12466d] p-6 text-white text-left">
+          <div className="bg-[#1b669d] p-6 text-white text-left">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-inner">
                 <FileSpreadsheet size={24} className="text-emerald-300" />

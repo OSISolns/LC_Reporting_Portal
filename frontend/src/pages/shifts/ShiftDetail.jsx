@@ -739,7 +739,7 @@ export default function ShiftDetail() {
               <Link to={`/shifts/close/${shift.id}`}
                 className="group relative w-full overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-[#1b669d] via-[#6fb448] to-[#1b669d] opacity-90 group-hover:opacity-100 transition-opacity duration-300 shadow-3xl" />
+                <div className="absolute inset-0 bg-[#1b669d] opacity-90 group-hover:opacity-100 transition-opacity duration-300 shadow-3xl" />
                 <div className="relative py-8 rounded-[40px] flex items-center justify-center gap-4 text-white font-black text-2xl tracking-widest uppercase">
                   <span>Authorize Shift Closure</span>
                   <ChevronRight size={32} className="group-hover:translate-x-2 transition-transform" />

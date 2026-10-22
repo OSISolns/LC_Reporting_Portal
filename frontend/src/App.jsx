@@ -316,7 +316,7 @@ function App() {
 
             <Route path="/sales-hub" element={
               <ProtectedRoute allowedRoles={[
-                'sales_manager', 'principal_cashier', 'cashier', 'admin', 'coo', 'deputy_coo', 'chairman'
+                'sales_manager'
               ]}>
                 <SalesHub />
               </ProtectedRoute>

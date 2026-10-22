@@ -95,8 +95,12 @@ CREATE TABLE IF NOT EXISTS shift_cashier_close (
 
   -- Private payment breakdown
   total_momo_transactions     INTEGER NOT NULL DEFAULT 0,
+  momo_pay_code               TEXT,
+  momo_pay_code_other         TEXT,
   total_card_transactions     INTEGER NOT NULL DEFAULT 0,
   card_bank_terminal          TEXT,
+  total_cash_usd              REAL NOT NULL DEFAULT 0,
+  total_cash_eur              REAL NOT NULL DEFAULT 0,
 
   -- Payment reconciliation
   payments_all_successful     INTEGER NOT NULL DEFAULT 1,
@@ -127,8 +131,12 @@ CREATE TABLE IF NOT EXISTS shift_rama_rssb_close (
   insurances_used             TEXT,
 
   total_momo_transactions     INTEGER NOT NULL DEFAULT 0,
+  momo_pay_code               TEXT,
+  momo_pay_code_other         TEXT,
   total_card_transactions     INTEGER NOT NULL DEFAULT 0,
   card_bank_terminal          TEXT,
+  total_cash_usd              REAL NOT NULL DEFAULT 0,
+  total_cash_eur              REAL NOT NULL DEFAULT 0,
 
   payments_all_successful     INTEGER NOT NULL DEFAULT 1,
   failed_payment_status       TEXT,

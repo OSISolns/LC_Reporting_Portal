@@ -159,15 +159,6 @@ function WelcomeDashboard({ shift, elapsedHours, remainingMin, onDismiss }) {
   // Shift Window Detection
   const openedDate = new Date(shift.opened_at);
   const shiftSchedule = waveCfg.schedule;
-  let mealDeduction = "60 min (20m Breakfast, 40m Lunch)";
-  if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
-    mealDeduction = "None (Evening Wave)";
-  } else if (!shift.wave && !shift.start_hour) {
-    const hour = openedDate.getHours();
-    if (hour >= 14) {
-      mealDeduction = "None";
-    }
-  }
 
   return (
     <motion.div
@@ -177,7 +168,7 @@ function WelcomeDashboard({ shift, elapsedHours, remainingMin, onDismiss }) {
       className="mb-10 space-y-4"
     >
       {/* Welcome card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0f4c75] via-[#1b669d] to-[#1b669d] p-8 text-white shadow-2xl shadow-[#1b669d]/30">
+      <div className="relative overflow-hidden rounded-3xl bg-[#1b669d] p-8 text-white shadow-2xl shadow-[#1b669d]/20">
         {/* bg glow */}
         <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-[#6fb448]/10 blur-3xl pointer-events-none" />
@@ -192,19 +183,13 @@ function WelcomeDashboard({ shift, elapsedHours, remainingMin, onDismiss }) {
               Welcome back, {firstName}! {ROLE_ICONS[shift.shift_role]}
             </h2>
             <div className="mt-4 flex flex-wrap gap-3">
-              {shift.wave && (
-                <div className="px-3 py-1.5 rounded-xl bg-violet-600/30 border border-violet-400/30 backdrop-blur-sm">
-                  <p className="text-[9px] font-black uppercase text-violet-200">Allocated Wave</p>
-                  <p className="text-xs font-bold">{shift.wave}</p>
-                </div>
-              )}
-              <div className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 backdrop-blur-sm">
-                <p className="text-[9px] font-black uppercase text-blue-200">Standard Window</p>
-                <p className="text-xs font-bold">{shiftSchedule}</p>
+              <div className="px-3 py-1.5 rounded-xl bg-violet-600/30 border border-violet-400/30 backdrop-blur-sm">
+                <p className="text-[9px] font-black uppercase text-violet-200">Allocated Wave</p>
+                <p className="text-xs font-bold">{shift.wave || 'Wave 1'}</p>
               </div>
               <div className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 backdrop-blur-sm">
-                <p className="text-[9px] font-black uppercase text-blue-200">Meal Deductions</p>
-                <p className="text-xs font-bold">{mealDeduction}</p>
+                <p className="text-[9px] font-black uppercase text-blue-200">Wave Window</p>
+                <p className="text-xs font-bold">{shiftSchedule}</p>
               </div>
             </div>
             <p className="text-blue-100 text-xs font-medium mt-4 max-w-md opacity-80 italic">" {cfg.mission} "</p>
@@ -332,7 +317,7 @@ function ShiftClosingSummary({ shift, closedData, onExit }) {
         transition={{ type: 'spring', stiffness: 300, damping: 28 }}
       >
         {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-[#0f4c75] px-10 py-10 text-white">
+        <div className="relative overflow-hidden bg-slate-900 px-10 py-10 text-white">
           <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-[#6fb448]/10 blur-3xl pointer-events-none" />
           <div className="flex items-center gap-4 mb-4">
             <div className="w-16 h-16 rounded-2xl bg-[#6fb448] flex items-center justify-center shadow-xl">
@@ -360,19 +345,19 @@ function ShiftClosingSummary({ shift, closedData, onExit }) {
             </div>
           )}
 
-          {/* Duration + time */}
+          {/* Wave & Session Window */}
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-1 flex flex-col items-center justify-center bg-slate-50 rounded-2xl p-5 border-2 border-slate-100 text-center">
-              <Clock size={20} className="text-slate-400 mb-2" />
-              <p className="text-2xl font-black text-slate-900">{durH}h {durM}m</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Duration</p>
+              <Clock size={20} className="text-[#1b669d] mb-2" />
+              <p className="text-xl font-black text-slate-900">{shift.wave || 'Wave 1'}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Shift Wave</p>
             </div>
             <div className="col-span-2 flex flex-col justify-center bg-slate-50 rounded-2xl p-5 border-2 border-slate-100 space-y-2">
               {[
                 {l:'Role', v:cfg.label},
+                {l:'Wave Window', v: getWaveConfig(shift).schedule},
                 {l:'Opened', v:waveStartTime.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})},
                 {l:'Closed', v:closedAt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})},
-                {l:'Worked Hours', v: `${netH}h ${durM}m ${isMorning ? '(Net)' : ''}`}
               ].map(({l,v})=>(
                 <div key={l} className="flex items-center justify-between">
                   <span className="text-xs font-black text-slate-400 uppercase tracking-wider">{l}</span>
@@ -590,25 +575,62 @@ const BillingCloseForm = ({ data, onChange }) => {
         <Modal
           isOpen={showInsuranceModal}
           onClose={() => setShowInsuranceModal(false)}
-          title="Select Insurances"
-          maxWidth="600px"
+          title="Select Insurances & Coverage"
+          maxWidth="640px"
         >
           <div className="p-6">
+            {/* Quick-Pick Popular Rwandan Schemes */}
+            <div className="mb-4">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2">
+                Popular / National Schemes (Click to toggle)
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'RSSB (RAMA)',
+                  'MMI (Military Medical Insurance)',
+                  'SANLAM',
+                  'PRIME INSURANCE LTD',
+                  'Radiant Insurance Company',
+                  'BRITAM Insurance',
+                  'EDEN CARE INSURANCE',
+                  'OLD MUTUAL',
+                  'MIS/UR INSURANCE',
+                  'Private'
+                ].map((pop) => {
+                  const isSel = (data.insurances_used || []).includes(pop);
+                  return (
+                    <button
+                      key={pop}
+                      type="button"
+                      onClick={() => toggleInsurance(pop)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
+                        isSel
+                          ? 'bg-[#1b669d] text-white border-[#1b669d] shadow-xs'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      {isSel ? '✓ ' : '+ '}{pop}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Search */}
-            <div className="relative mb-6">
+            <div className="relative mb-3">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
                 type="text"
                 placeholder="Search insurance provider..."
                 value={insuranceSearch}
                 onChange={(e) => setInsuranceSearch(e.target.value)}
-                className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-[#1b669d] focus:bg-white transition-all outline-none font-bold text-slate-900"
+                className="w-full pl-12 pr-6 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-[#1b669d] focus:bg-white transition-all outline-none font-bold text-slate-900 text-sm"
               />
             </div>
 
-            {/* Selection Count */}
-            <div className="flex items-center justify-between mb-4 px-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            {/* Selection Count and Actions */}
+            <div className="flex items-center justify-between mb-3 px-1">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                 {(data.insurances_used || []).length} Selected
               </span>
               {(data.insurances_used || []).length > 0 && (
@@ -622,42 +644,61 @@ const BillingCloseForm = ({ data, onChange }) => {
               )}
             </div>
 
-            {/* List */}
-            <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar space-y-1">
-              {INSURANCE_OPTIONS.filter(ins =>
-                ins.toLowerCase().includes(insuranceSearch.toLowerCase())
-              ).map((ins) => {
-                const isSelected = (data.insurances_used || []).includes(ins);
-                return (
-                  <label
-                    key={ins}
-                    className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2 ${isSelected ? 'bg-blue-50 border-blue-100' : 'hover:bg-slate-50 border-transparent'
-                      }`}
-                  >
-                    <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-[#1b669d] border-[#1b669d]' : 'bg-white border-slate-200'
-                      }`}>
-                      {isSelected && <BadgeCheck size={14} className="text-white" />}
-                    </div>
-                    <input
-                      type="checkbox"
-                      className="hidden"
-                      checked={isSelected}
-                      onChange={() => toggleInsurance(ins)}
-                    />
-                    <span className={`text-sm font-bold ${isSelected ? 'text-[#1b669d]' : 'text-slate-600'}`}>
-                      {ins}
-                    </span>
-                  </label>
+            {/* Full List */}
+            <div className="max-h-[340px] overflow-y-auto pr-2 custom-scrollbar space-y-1">
+              {(() => {
+                const combined = Array.from(new Set([...(data.insurances_used || []), ...INSURANCE_OPTIONS]));
+                const filtered = combined.filter(ins =>
+                  ins.toLowerCase().includes(insuranceSearch.toLowerCase())
                 );
-              })}
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-slate-400">
+                      <p className="text-sm font-bold">No matching insurance found</p>
+                      <p className="text-xs mt-1">Please check your spelling or clear the search filter.</p>
+                    </div>
+                  );
+                }
+
+                return filtered.map((ins) => {
+                  const isSelected = (data.insurances_used || []).includes(ins);
+                  return (
+                    <label
+                      key={ins}
+                      className={`flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer transition-all border-2 ${
+                        isSelected ? 'bg-blue-50/80 border-blue-200 shadow-xs' : 'hover:bg-slate-50 border-transparent'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${
+                        isSelected ? 'bg-[#1b669d] border-[#1b669d]' : 'bg-white border-slate-300'
+                      }`}>
+                        {isSelected && <BadgeCheck size={13} className="text-white" />}
+                      </div>
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={isSelected}
+                        onChange={() => toggleInsurance(ins)}
+                      />
+                      <span className={`text-xs font-bold ${isSelected ? 'text-[#1b669d]' : 'text-slate-700'}`}>
+                        {ins}
+                      </span>
+                    </label>
+                  );
+                });
+              })()}
             </div>
 
             {/* Footer */}
-            <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-medium">
+                {(data.insurances_used || []).length} insurance scheme(s) active
+              </span>
               <button
                 type="button"
                 onClick={() => setShowInsuranceModal(false)}
-                className="px-8 py-4 rounded-2xl bg-[#1b669d] text-white font-black text-xs uppercase tracking-widest hover:bg-[#124d77] transition-all"
+                className="px-8 py-3 rounded-2xl bg-[#1b669d] text-white font-black text-xs uppercase tracking-widest hover:bg-[#124d77] transition-all shadow-md shadow-[#1b669d]/20"
               >
                 Done
               </button>
@@ -2242,7 +2283,7 @@ export default function CloseShift() {
       <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-10 border-b-2 border-slate-100 pb-12">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
           <div className="flex items-center gap-6 mb-4">
-            <div className="w-20 h-20 rounded-[32px] bg-gradient-to-br from-[#1b669d] to-[#124d77] flex items-center justify-center text-white shadow-2xl shadow-[#1b669d]/20">
+            <div className="w-20 h-20 rounded-[32px] bg-[#1b669d] flex items-center justify-center text-white shadow-2xl shadow-[#1b669d]/20">
               <Lock size={36} />
             </div>
             <div>
@@ -2251,7 +2292,7 @@ export default function CloseShift() {
                 <span className="px-3 py-1 rounded-xl bg-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">{roleLabel} Protocol</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                 <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest">
-                  <Clock size={16} /> Wave: {getWaveConfig(shift).schedule}
+                  <Clock size={16} /> Wave: {shift.wave || getWaveConfig(shift).schedule}
                 </div>
               </div>
             </div>
@@ -2301,7 +2342,7 @@ export default function CloseShift() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 rounded-3xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/80 via-indigo-50/50 to-white p-6 shadow-sm"
+          className="mb-8 rounded-3xl border-2 border-blue-200 bg-blue-50/80 p-6 shadow-sm"
         >
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold">
@@ -2397,7 +2438,7 @@ export default function CloseShift() {
                 <>
                   <p className="font-black text-sm uppercase tracking-widest text-rose-300">⛔ Shift Wave Completed</p>
                   <p className="text-sm font-semibold text-rose-100 mt-1">
-                    Your scheduled <strong>{getWaveConfig(shift).duration}-hour</strong> shift wave has ended.
+                    Your scheduled <strong>{shift.wave || 'Wave'} ({getWaveConfig(shift).schedule})</strong> shift wave has ended.
                     Please finalize your operational reports and submit this handover to close your shift session immediately.
                   </p>
                 </>
@@ -2411,9 +2452,9 @@ export default function CloseShift() {
                   <p className={`text-sm font-semibold mt-1 ${
                     elapsedHours >= getWaveConfig(shift).duration - 0.5 ? 'text-rose-600' : 'text-amber-700'
                   }`}>
-                    You have been on shift for <strong>{Math.floor(elapsedHours)}h {Math.round((elapsedHours % 1) * 60)}m</strong>.
+                    Your allocated shift wave is <strong>{shift.wave || 'Wave 1'} ({getWaveConfig(shift).schedule})</strong>.
                     {remainingMin !== null && remainingMin > 0 && (
-                      <> Only <strong>{remainingMin} minute{remainingMin !== 1 ? 's' : ''}</strong> remaining before shift wave completion.</>
+                      <> Only <strong>{remainingMin} minute{remainingMin !== 1 ? 's' : ''}</strong> remaining before wave completion.</>
                     )}
                     {' '}Please finalize your operational handover and close this shift session now.
                   </p>
@@ -2502,7 +2543,7 @@ export default function CloseShift() {
             disabled={submitting}
             className="w-full relative group overflow-hidden"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600 opacity-90 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 bg-rose-600 opacity-90 group-hover:opacity-100 transition-opacity duration-300" />
             <div className="relative py-8 rounded-[40px] flex items-center justify-center gap-5 text-white font-black text-2xl tracking-widest uppercase shadow-2xl shadow-rose-500/30">
               {submitting ? (
                 <>

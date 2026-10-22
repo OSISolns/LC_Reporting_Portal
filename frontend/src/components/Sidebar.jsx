@@ -108,7 +108,7 @@ const Sidebar = ({ onClose }) => {
     {
       title: 'SALES & FINANCIALS',
       items: [
-        { configKey: 'sales_hub', name: 'Sales Hub', icon: <FileSpreadsheet size={18} />, path: '/sales-hub', requiredPerm: null, allowedRoles: ['sales_manager', 'principal_cashier', 'cashier', 'admin', 'coo', 'deputy_coo', 'chairman'] },
+        { configKey: 'sales_hub', name: 'Sales Hub', icon: <FileSpreadsheet size={18} />, path: '/sales-hub', requiredPerm: null, allowedRoles: ['sales_manager'] },
         { configKey: 'cancellations', name: 'Cancellations', icon: <FileText size={18} />, path: '/cancellations', requiredPerm: { mod: 'cancellations', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
         { configKey: 'refunds', name: 'Refunds', icon: <ReceiptText size={18} />, path: '/refunds', requiredPerm: { mod: 'refunds', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
         { configKey: 'results', name: 'Result Transfers', icon: <RefreshCw size={18} />, path: '/results-transfer', requiredPerm: { mod: 'results_transfer', act: 'view' }, allowedRoles: ['cashier', 'principal_cashier', 'customer_care', 'operations_staff', 'operations', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_hod', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist', 'lab_safety_officer', 'lab_stock_officer', 'lab_tech', 'lab', 'imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'quality_manager', 'qm', 'sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'consultant'] },
@@ -152,8 +152,7 @@ const Sidebar = ({ onClose }) => {
     const roleCfg = sidebarConfigState[user?.role];
     if (roleCfg && item.configKey && roleCfg[item.configKey] === false) {
       const isHsfpsCore = user?.role === 'hsfp' && ['incidents', 'safety', 'risk', 'infection', 'compliance'].includes(item.configKey);
-      const isCooSalesCore = ['coo', 'deputy_coo'].includes(user?.role) && item.configKey === 'sales_hub';
-      if (!isHsfpsCore && !isCooSalesCore) return false;
+      if (!isHsfpsCore) return false;
     }
     return true;
   };

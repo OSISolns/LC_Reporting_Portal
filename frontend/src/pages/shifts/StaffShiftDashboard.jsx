@@ -310,7 +310,7 @@ export default function StaffShiftDashboard() {
       </AnimatePresence>
 
       {/* ── Welcome Header Card ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0f4c75] via-[#1b669d] to-[#124d77] p-8 md:p-10 text-white shadow-2xl shadow-[#1b669d]/15">
+      <div className="relative overflow-hidden rounded-3xl bg-[#1b669d] p-8 md:p-10 text-white shadow-2xl shadow-[#1b669d]/15">
         <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-white/5 blur-3xl pointer-events-none" />
 
@@ -437,7 +437,7 @@ export default function StaffShiftDashboard() {
 
           {/* Quick SLA Stats */}
           <div className="pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-5 bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-2xl border border-emerald-100 flex items-center gap-4">
+            <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
                 <ShieldCheck size={20} />
               </div>
@@ -447,13 +447,13 @@ export default function StaffShiftDashboard() {
               </div>
             </div>
 
-            <div className="p-5 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-2xl border border-blue-100 flex items-center gap-4">
+            <div className="p-5 bg-blue-50 rounded-2xl border border-blue-100 flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center">
                 <Zap size={20} />
               </div>
               <div>
-                <p className="text-xl font-black text-blue-800 leading-none">8 Hours</p>
-                <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mt-1">Standard Shift Threshold</p>
+                <p className="text-xl font-black text-blue-800 leading-none">{activeShift?.wave || 'Wave 1'}</p>
+                <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mt-1">Allocated Wave Schedule</p>
               </div>
             </div>
           </div>

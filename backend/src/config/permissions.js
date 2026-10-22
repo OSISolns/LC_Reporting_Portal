@@ -222,6 +222,7 @@ const ROLE_DEFAULTS = {
     revenue_leakage:  { view:1, create:1, edit:1, delete:1 },
     it_support:       { view:1, create:1 },
     patients:         { view:1, create:0 },
+    sales:            { view:1, create:1, edit:1, delete:1 },
   },
   cashier: {
     cancellations:    { view:1, create:1, edit:0, approve:0, reject:0 },

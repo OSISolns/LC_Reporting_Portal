@@ -6,13 +6,7 @@ const { authMiddleware, roleGuard } = require('../middleware/auth');
 const salesCtrl = require('../controllers/salesController');
 
 const ALLOWED_ROLES = [
-  'sales_manager',
-  'principal_cashier',
-  'cashier',
-  'admin',
-  'coo',
-  'deputy_coo',
-  'chairman'
+  'sales_manager'
 ];
 
 router.use(authMiddleware);
