@@ -50,7 +50,6 @@ router.get('/:id/pdf', checkPermission('cancellations', 'view'), validate([param
 
 router.get('/:id', checkPermission('cancellations', 'view'), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.getRequestById);
 router.patch('/:id/verify', checkPermission('cancellations', 'review'), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.verifyRequest);
-router.patch('/:id/verify-sales', checkPermission('cancellations', 'review'), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.verifySalesRequest);
 router.patch('/:id/approve', checkPermission('cancellations', 'approve'), validate([param('id').isInt().withMessage('Invalid request ID')]), cancellationController.approveRequest);
 router.patch('/:id/reject', checkPermission('cancellations', 'reject'), validate([
   param('id').isInt().withMessage('Invalid request ID'),

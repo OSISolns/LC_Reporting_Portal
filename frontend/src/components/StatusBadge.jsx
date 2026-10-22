@@ -2,10 +2,9 @@ import { CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react';
 
 const StatusBadge = ({ status }) => {
   const config = {
-    pending: { label: 'Pending L1', color: '#FFC107', bg: 'rgba(255, 193, 7, 0.1)', icon: <Clock size={14} /> },
-    verified: { label: 'L1 Verified', color: '#17A2B8', bg: 'rgba(23, 162, 184, 0.1)', icon: <CheckCircle size={14} /> },
+    pending: { label: 'Pending', color: '#FFC107', bg: 'rgba(255, 193, 7, 0.1)', icon: <Clock size={14} /> },
+    verified: { label: 'Verified', color: '#17A2B8', bg: 'rgba(23, 162, 184, 0.1)', icon: <CheckCircle size={14} /> },
     reviewed: { label: 'Verified', color: '#17A2B8', bg: 'rgba(23, 162, 184, 0.1)', icon: <CheckCircle size={14} /> },
-    sales_verified: { label: 'Sales Verified', color: '#2563EB', bg: 'rgba(37, 99, 235, 0.1)', icon: <CheckCircle size={14} /> },
     approved: { label: 'Approved', color: '#28A745', bg: 'rgba(40, 167, 69, 0.1)', icon: <CheckCircle size={14} /> },
     rejected: { label: 'Rejected', color: '#DC3545', bg: 'rgba(220, 53, 69, 0.1)', icon: <XCircle size={14} /> },
   };

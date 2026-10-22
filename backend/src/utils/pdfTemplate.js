@@ -296,22 +296,17 @@ const getMedicalReportHTML = (type, data) => {
           ${data.notes ? `<tr><th>Staff Justification</th><td style="font-size: 8.5pt; color:#64748b; font-style:italic;" class="handwritten">"${data.notes}"</td></tr>` : ''}
         </table>
 
-        <div class="section-head">Section 3: CANCELLATION APPROVAL WORKFLOW</div>
-        <div class="signature-grid" style="grid-template-columns: repeat(4, 1fr); gap: 15px;">
+        <div class="section-head">Section 3: REFUND APPROVAL WORKFLOW</div>
+        <div class="signature-grid">
           <div class="sig-box">
             <span class="sig-label">Initiated by (Staff)</span>
-            <div class="sig-line">${data.creator_name || ''}</div>
+            <div class="sig-line">${data.creator_name}</div>
             <span class="sig-meta">${new Date(data.created_at).toLocaleString()}</span>
           </div>
           <div class="sig-box">
-            <span class="sig-label">1st Verification (L1)</span>
+            <span class="sig-label">Verified by (Manager)</span>
             <div class="sig-line">${data.verifier_name || ''}</div>
             <span class="sig-meta">${data.verified_at ? new Date(data.verified_at).toLocaleDateString() : 'Pending'}</span>
-          </div>
-          <div class="sig-box">
-            <span class="sig-label">2nd Verification (Sales Manager)</span>
-            <div class="sig-line">${data.sales_verifier_name || ''}</div>
-            <span class="sig-meta">${data.sales_verified_at ? new Date(data.sales_verified_at).toLocaleDateString() : 'Pending'}</span>
           </div>
           <div class="sig-box">
             <span class="sig-label">Approved by (C.O.O)</span>

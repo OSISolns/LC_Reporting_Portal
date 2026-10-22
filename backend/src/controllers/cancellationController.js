@@ -104,10 +104,6 @@ exports.getRequestById = async (req, res, next) => {
 
 exports.verifyRequest = async (req, res, next) => {
   try {
-    if (req.user.role === 'sales_manager') {
-      return res.status(403).json({ success: false, message: 'Sales Manager is designated for 2nd verification (L2), not 1st verification (L1).' });
-    }
-
     const request = await Cancellation.verify(req.params.id, req.user.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be verified' });
     await logAction(req, 'VERIFY', 'cancellation_request', request.id);
@@ -116,84 +112,11 @@ exports.verifyRequest = async (req, res, next) => {
     if (request.created_by) {
       await Notification.create({
         userId: request.created_by,
-        title: 'Cancellation 1st Verification Complete',
-        message: `Your cancellation request for ${request.patient_full_name} has completed 1st verification (L1) and awaits 2nd verification by Sales Manager.`,
-        type: 'info',
-        link: `/cancellations/${request.id}`
+        title: 'Cancellation Verified',
+        message: `Your cancellation request for ${request.patient_full_name} has been verified by Operations.`,
+        type: 'success',
+        link: `/cancellations`
       });
-    }
-
-    // Notify Sales Manager for 2nd verification
-    try {
-      const salesManagers = await User.findByRole('sales_manager');
-      for (const sm of salesManagers) {
-        await Notification.create({
-          userId: sm.id,
-          title: 'Cancellation Awaiting 2nd Verification',
-          message: `Cancellation request for ${request.patient_full_name} has passed L1 verification and requires your 2nd verification.`,
-          type: 'warning',
-          link: `/cancellations/${request.id}`
-        });
-      }
-    } catch (e) {
-      console.error('Failed to notify Sales Manager:', e);
-    }
-
-    cache.invalidatePattern('canc:list');
-    cache.invalidate('ai:module_stats');
-    res.json({ success: true, data: request });
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.verifySalesRequest = async (req, res, next) => {
-  try {
-    if (!['sales_manager', 'admin'].includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Access denied. Only the Sales Manager can perform the 2nd verification.' });
-    }
-
-    const existing = await Cancellation.findById(req.params.id);
-    if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
-    if (existing.status !== 'verified') {
-      return res.status(400).json({
-        success: false,
-        message: existing.status === 'pending'
-          ? 'Request must first complete 1st verification (L1) before Sales Manager verification.'
-          : 'Request is not in a valid state for Sales Manager verification.'
-      });
-    }
-
-    const request = await Cancellation.verifySales(req.params.id, req.user.id);
-    if (!request) return res.status(400).json({ success: false, message: 'Request could not be verified by Sales Manager.' });
-    await logAction(req, 'VERIFY_SALES', 'cancellation_request', request.id);
-
-    // Notify Creator
-    if (request.created_by) {
-      await Notification.create({
-        userId: request.created_by,
-        title: 'Cancellation Sales Verification Complete',
-        message: `Your cancellation request for ${request.patient_full_name} has completed 2nd verification by Sales Manager and is pending COO approval.`,
-        type: 'info',
-        link: `/cancellations/${request.id}`
-      });
-    }
-
-    // Notify COO & Deputy COO
-    try {
-      const cooUsers = [...(await User.findByRole('coo')), ...(await User.findByRole('deputy_coo'))];
-      const uniqueCoos = Array.from(new Set(cooUsers.map(u => u.id))).map(id => cooUsers.find(u => u.id === id));
-      for (const cu of uniqueCoos) {
-        await Notification.create({
-          userId: cu.id,
-          title: 'Cancellation Ready for Final Approval',
-          message: `Cancellation request for ${request.patient_full_name} has been verified by the Sales Manager and awaits final authorization.`,
-          type: 'warning',
-          link: `/cancellations/${request.id}`
-        });
-      }
-    } catch (e) {
-      console.error('Failed to notify COO/Deputy COO:', e);
     }
 
     cache.invalidatePattern('canc:list');
@@ -210,17 +133,6 @@ exports.approveRequest = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Access denied. Only COO and Deputy COO can approve cancellation requests.' });
     }
 
-    const existing = await Cancellation.findById(req.params.id);
-    if (!existing) return res.status(404).json({ success: false, message: 'Request not found' });
-    if (existing.status !== 'sales_verified') {
-      return res.status(400).json({
-        success: false,
-        message: existing.status === 'pending'
-          ? 'Request must first be verified by Principal Cashier (L1) and Sales Manager (L2) before final COO approval.'
-          : 'Request must be verified by the Sales Manager (L2) before final COO approval.'
-      });
-    }
-
     const request = await Cancellation.approve(req.params.id, req.user.id);
     if (!request) return res.status(400).json({ success: false, message: 'Request could not be approved' });
     await logAction(req, 'APPROVE', 'cancellation_request', request.id);
@@ -230,7 +142,7 @@ exports.approveRequest = async (req, res, next) => {
       await Notification.create({
         userId: request.created_by,
         title: 'Cancellation Approved',
-        message: `Your cancellation request for ${request.patient_full_name} has been officially approved by COO.`,
+        message: `Your cancellation request for ${request.patient_full_name} has been approved.`,
         type: 'success',
         link: `/cancellations`
       });
@@ -319,10 +231,6 @@ exports.exportExcel = async (req, res, next) => {
       { header: 'PID', key: 'pid_number' },
       { header: 'Amount', key: 'total_amount_cancelled' },
       { header: 'Status', key: 'status' },
-      { header: 'Initiated By', key: 'creator_name' },
-      { header: '1st Verifier (L1)', key: 'verifier_name' },
-      { header: '2nd Verifier (Sales Manager)', key: 'sales_verifier_name' },
-      { header: 'Approved By (COO)', key: 'approver_name' },
       { header: 'Date', key: 'created_at' }
     ];
 

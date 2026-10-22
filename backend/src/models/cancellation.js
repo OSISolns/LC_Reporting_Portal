@@ -128,20 +128,18 @@ class Cancellation {
       SELECT c.*,
              u1.full_name AS creator_name,
              u2.full_name AS verifier_name,
-             u_sm.full_name AS sales_verifier_name,
              u3.full_name AS approver_name,
              u5.full_name AS billed_by_name,
              r1.name AS creator_role,
              r5.name AS billed_by_role,
              CASE WHEN spr.id IS NOT NULL THEN true ELSE false END as is_rated
       FROM cancellation_requests c
-      LEFT JOIN users u1 ON c.created_by        = u1.id
-      LEFT JOIN roles r1 ON u1.role_id          = r1.id
-      LEFT JOIN users u2 ON c.verified_by       = u2.id
-      LEFT JOIN users u_sm ON c.sales_verified_by = u_sm.id
-      LEFT JOIN users u3 ON c.approved_by       = u3.id
-      LEFT JOIN users u5 ON c.billed_by         = u5.id
-      LEFT JOIN roles r5 ON u5.role_id          = r5.id
+      LEFT JOIN users u1 ON c.created_by  = u1.id
+      LEFT JOIN roles r1 ON u1.role_id    = r1.id
+      LEFT JOIN users u2 ON c.verified_by = u2.id
+      LEFT JOIN users u3 ON c.approved_by = u3.id
+      LEFT JOIN users u5 ON c.billed_by   = u5.id
+      LEFT JOIN roles r5 ON u5.role_id    = r5.id
       LEFT JOIN staff_performance_ratings spr ON spr.request_type = 'cancellation' AND spr.request_id = c.id
       WHERE 1=1
     `;
@@ -205,7 +203,6 @@ class Cancellation {
     let query = `SELECT c.*, 
               u1.full_name as creator_name, 
               u2.full_name as verifier_name, 
-              u_sm.full_name as sales_verifier_name,
               u3.full_name as approver_name,
               u4.full_name as rejector_name,
               u5.full_name as billed_by_name,
@@ -214,7 +211,6 @@ class Cancellation {
        FROM cancellation_requests c
        LEFT JOIN users u1 ON c.created_by = u1.id
        LEFT JOIN users u2 ON c.verified_by = u2.id
-       LEFT JOIN users u_sm ON c.sales_verified_by = u_sm.id
        LEFT JOIN users u3 ON c.approved_by = u3.id
        LEFT JOIN users u4 ON c.rejected_by = u4.id
        LEFT JOIN users u5 ON c.billed_by = u5.id
@@ -261,22 +257,11 @@ class Cancellation {
     return rows[0];
   }
 
-  static async verifySales(id, userId) {
-    const { rows } = await db.query(
-      `UPDATE cancellation_requests
-       SET status = 'sales_verified', sales_verified_by = $1, sales_verified_at = NOW(), updated_at = NOW()
-       WHERE id = $2 AND status = 'verified'
-       RETURNING *`,
-      [userId, id]
-    );
-    return rows[0];
-  }
-
   static async approve(id, userId) {
     const { rows } = await db.query(
       `UPDATE cancellation_requests
        SET status = 'approved', approved_by = $1, approved_at = NOW(), updated_at = NOW()
-       WHERE id = $2 AND status IN ('sales_verified', 'verified')
+       WHERE id = $2 AND status = 'verified'
        RETURNING *`,
       [userId, id]
     );
@@ -287,7 +272,7 @@ class Cancellation {
     const { rows } = await db.query(
       `UPDATE cancellation_requests
        SET status = 'rejected', rejected_by = $1, rejection_comment = $2, rejected_at = NOW(), updated_at = NOW()
-       WHERE id = $3 AND status IN ('pending', 'verified', 'sales_verified')
+       WHERE id = $3 AND status IN ('pending', 'verified')
        RETURNING *`,
       [userId, comment, id]
     );

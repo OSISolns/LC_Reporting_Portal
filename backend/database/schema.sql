@@ -74,23 +74,21 @@ CREATE TABLE cancellation_requests (
 
   -- Workflow
   status            VARCHAR(50) NOT NULL DEFAULT 'pending'
-                    CHECK (status IN ('pending','verified','sales_verified','approved','rejected')),
+                    CHECK (status IN ('pending','verified','approved','rejected')),
   rejection_comment TEXT,
 
   -- Actors
-  created_by        INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  verified_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  sales_verified_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  approved_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  rejected_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  verified_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  rejected_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
 
   -- Timestamps
-  created_at        TIMESTAMPTZ DEFAULT NOW(),
-  verified_at       TIMESTAMPTZ,
-  sales_verified_at TIMESTAMPTZ,
-  approved_at       TIMESTAMPTZ,
-  rejected_at       TIMESTAMPTZ,
-  updated_at        TIMESTAMPTZ DEFAULT NOW()
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  verified_at TIMESTAMPTZ,
+  approved_at TIMESTAMPTZ,
+  rejected_at TIMESTAMPTZ,
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- =============================================================

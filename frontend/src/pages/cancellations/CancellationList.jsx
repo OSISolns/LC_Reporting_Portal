@@ -16,7 +16,6 @@ import {
   getCancellations, 
   deleteCancellation,
   verifyCancellation,
-  verifySalesCancellation,
   approveCancellation,
   rejectCancellation,
   uploadCancellationDocument
@@ -343,9 +342,8 @@ const CancellationList = () => {
           >
             <option value="">Status: All Requests</option>
             <option value="draft">📝 Draft</option>
-            <option value="pending">⏳ Pending (L1)</option>
-            <option value="verified">🔍 L1 Verified</option>
-            <option value="sales_verified">💼 Sales Verified</option>
+            <option value="pending">⏳ Pending</option>
+            <option value="verified">🔍 Verified</option>
             <option value="approved">✅ Approved</option>
             <option value="rejected">❌ Rejected</option>
           </select>
@@ -632,7 +630,6 @@ const CancellationList = () => {
             onUploadDocument={handleDocumentUpload}
             onExport={() => activeRequest && handleExport(activeRequest.id)}
             onVerify={() => activeRequest && handleAction(verifyCancellation, activeRequest.id)}
-            onVerifySales={() => activeRequest && handleAction(verifySalesCancellation, activeRequest.id)}
             onApprove={() => activeRequest && handleAction(approveCancellation, activeRequest.id)}
             onReject={(comment) => activeRequest && handleAction(rejectCancellation, activeRequest.id, comment)}
           />

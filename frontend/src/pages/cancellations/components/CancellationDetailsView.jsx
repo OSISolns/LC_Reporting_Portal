@@ -5,24 +5,15 @@ import { PrintHeader, PrintFooter, PrintWatermark } from '../../../components/Pr
 import { useAuth } from '../../../context/AuthContext';
 import SupportingDocumentSection from '../../../components/SupportingDocumentSection';
 
-const CancellationDetailsView = ({ data, onExport, onVerify, onVerifySales, onApprove, onReject, onUploadDocument }) => {
+const CancellationDetailsView = ({ data, onExport, onVerify, onApprove, onReject, onUploadDocument }) => {
   const { user, hasPermission } = useAuth();
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
 
   if (!data) return null;
 
-  const isSalesManager = user?.role === 'sales_manager' || user?.role === 'admin';
-  const isCoo = ['coo', 'deputy_coo', 'admin'].includes(user?.role);
-
-  // L1: Principal Cashier on pending requests (Sales Manager is L2)
-  const canVerify = data.status === 'pending' && hasPermission('cancellations', 'review') && user?.role !== 'sales_manager';
-  // L2: Sales Manager on L1-verified requests
-  const canVerifySales = data.status === 'verified' && isSalesManager;
-  // L3: Final approval by COO on sales-verified requests
-  const canApprove = data.status === 'sales_verified' && hasPermission('cancellations', 'approve');
-  // Rejection: allowed by reviewer/approver
-  const canReject = ['pending', 'verified', 'sales_verified'].includes(data.status) && hasPermission('cancellations', 'reject') && !(user?.role === 'coo' && data.status === 'pending');
+  const canVerify = data.status === 'pending' && hasPermission('cancellations', 'review');
+  const canApprove = data.status === 'verified' && hasPermission('cancellations', 'approve');
 
   const handleRejectSubmit = () => {
     if (!rejectComment.trim()) {
@@ -38,7 +29,7 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onVerifySales, onAp
         title="Cancellation Request Form" 
         docType="CAN" 
         docId={data.id} 
-        issuedAt={data.approved_at || data.sales_verified_at || data.verified_at || data.created_at} 
+        issuedAt={data.approved_at || data.verified_at || data.created_at} 
       />
       <PrintWatermark />
 
@@ -129,9 +120,9 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onVerifySales, onAp
         </table>
 
         {/* Section 3 */}
-        <div className="medical-form-section-head">Section 3: APPROVAL WORKFLOW &amp; OFFICIAL SIGNATURES</div>
-        <div className="medical-signature-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15pt' }}>
-          {/* Level 1: Initiator */}
+        <div className="medical-form-section-head">Section 3: APPROVAL WORKFLOW & OFFICIAL SIGNATURES</div>
+        <div className="medical-signature-grid">
+          {/* Level 1: Cashier */}
           <div className="medical-signature-box">
             <div className="medical-signature-label">1. Initiated By</div>
             <div className="medical-signature-line">
@@ -142,9 +133,9 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onVerifySales, onAp
             </div>
           </div>
 
-          {/* Level 2: 1st Verification */}
+          {/* Level 2: Manager */}
           <div className="medical-signature-box">
-            <div className="medical-signature-label">2. 1st Verification (L1)</div>
+            <div className="medical-signature-label">2. Verified By</div>
             <div className="medical-signature-line" style={{ color: data.verifier_name ? '#000' : '#cbd5e1' }}>
               {data.verifier_name || 'PENDING'}
             </div>
@@ -153,20 +144,9 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onVerifySales, onAp
             </div>
           </div>
 
-          {/* Level 3: 2nd Verification (Sales Manager) */}
+          {/* Level 3: COO */}
           <div className="medical-signature-box">
-            <div className="medical-signature-label">3. 2nd Verification (Sales Mgr)</div>
-            <div className="medical-signature-line" style={{ color: data.sales_verifier_name ? '#000' : '#cbd5e1' }}>
-              {data.sales_verifier_name || 'PENDING'}
-            </div>
-            <div className="medical-stamp-area">
-              {data.sales_verified_at ? new Date(data.sales_verified_at).toLocaleString() : 'Sales Verification'}
-            </div>
-          </div>
-
-          {/* Level 4: COO Approval */}
-          <div className="medical-signature-box">
-            <div className="medical-signature-label">4. Approved (COO)</div>
+            <div className="medical-signature-label">3. Approved (COO)</div>
             <div className="medical-signature-line" style={{ color: data.approver_name ? '#000' : '#cbd5e1' }}>
               {data.approver_name || 'PENDING'}
             </div>
@@ -205,33 +185,23 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onVerifySales, onAp
         flexDirection: 'column',
         gap: '1.25rem'
       }}>
-        {(canVerify || canVerifySales || canApprove || canReject) && !isRejecting && (
+        {(canVerify || canApprove) && !isRejecting && (
           <div style={{
             display: 'flex',
             justifyContent: 'flex-end',
             gap: '1rem',
             paddingBottom: '1rem',
-            borderBottom: '1px solid #e2e8f0',
-            flexWrap: 'wrap'
+            borderBottom: '1px solid #e2e8f0'
           }}>
-            {canReject && (
-              <button onClick={() => setIsRejecting(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: '#fff', color: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-                <XCircle size={18} />
-                Reject Request
-              </button>
-            )}
+            <button onClick={() => setIsRejecting(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: '#fff', color: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+              <XCircle size={18} />
+              Reject Request
+            </button>
 
             {canVerify && (
               <button onClick={onVerify} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: 'var(--warning)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
                 <CheckCircle size={18} />
                 Verify Request (L1)
-              </button>
-            )}
-
-            {canVerifySales && (
-              <button onClick={onVerifySales} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.5rem', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)' }}>
-                <CheckCircle size={18} />
-                2nd Verification (Sales Manager)
               </button>
             )}
 
